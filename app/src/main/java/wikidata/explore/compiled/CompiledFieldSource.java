@@ -19,6 +19,7 @@ public record CompiledFieldSource(
         String subjectField,
         String matchValueField,
         String matchRoleField,
+        String inverseField,
         MissingQualifierPolicy missingQualifierPolicy,
         wikidata.explore.model.RoleKind roleKind,
         RuleDirection direction,
@@ -47,6 +48,7 @@ public record CompiledFieldSource(
         subjectField = clean(subjectField);
         matchValueField = clean(matchValueField);
         matchRoleField = clean(matchRoleField);
+        inverseField = clean(inverseField);
         roleKind = roleKind == null
                 ? wikidata.explore.model.RoleKind.REFERENCE
                 : roleKind;
@@ -85,6 +87,7 @@ public record CompiledFieldSource(
                 source.subjectField(),
                 source.matchValueField(),
                 source.matchRoleField(),
+                source.inverseField(),
                 source.missingQualifierPolicy(),
                 source.roleKind(),
                 source.direction(),

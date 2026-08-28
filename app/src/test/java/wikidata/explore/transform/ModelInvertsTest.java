@@ -52,6 +52,44 @@ class ModelInvertsTest {
         assertEquals("nominees", c.backRefField());
     }
 
+    @Test void explicitForwardFieldDisambiguatesSeveralReferencesToTheSameClass() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField(
+                "offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        offices.mapping().inverseField("source");
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("predecessor", "P155", "Person"));
+        holding.fields().add(entityField("source", "", "Person"));
+        holding.fields().add(entityField("successor", "P156", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        InvertConstruct invert = ModelInverts.derive(project).get(0);
+        assertEquals("source", invert.refField());
+    }
+
+    @Test void legacyInferenceDoesNotChooseByFieldOrderWhenAmbiguous() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField("offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("predecessor", "P155", "Person"));
+        holding.fields().add(entityField("source", "", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        assertTrue(ModelInverts.derive(project).isEmpty());
+    }
+
     @Test void invertFillsTheReverseFieldFromTheForwardReferences() {
         WikidataDynamicObject cat = obj("Q102427", "Best Picture", "Category");
         WikidataDynamicObject f1 = obj("Q1", "Film One", "Oscarnominations");

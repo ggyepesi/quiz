@@ -5,6 +5,7 @@ import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.FieldProductionKind;
 
 import javax.swing.*;
 import java.awt.*;
@@ -288,6 +289,12 @@ public class ModelGraphPanel extends JPanel {
     }
 
     private static String sourceCue(GeneratedFieldModel field) {
+        if (field.mapping().productionKind() == FieldProductionKind.INVERT) {
+            String forward = field.mapping().inverseField();
+            return forward == null || forward.isBlank()
+                    ? "inverse (choose forward field)"
+                    : "inverse of " + field.entityClassName() + "." + forward;
+        }
         String source = switch (field.mapping().sourceType()) {
             case SPARQL -> "WD";
             case DBPEDIA -> "DB";

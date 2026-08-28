@@ -40,6 +40,10 @@ public class FieldSourceMapping {
     private String matchValueField = "";
     private String matchRoleField = "";
 
+    /** INVERT only: the explicit forward reference on the referenced class. Blank is
+     * retained for legacy models, where ModelInverts may infer an unambiguous field. */
+    private String inverseField = "";
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private MissingQualifierPolicy missingQualifierPolicy;
 
@@ -155,6 +159,10 @@ public class FieldSourceMapping {
     public void matchRoleField(String value) {
         matchRoleField = clean(value);
     }
+
+    public String inverseField() { return inverseField; }
+
+    public void inverseField(String value) { inverseField = clean(value); }
 
     public MissingQualifierPolicy missingQualifierPolicy() {
         return missingQualifierPolicy;
@@ -303,6 +311,7 @@ public class FieldSourceMapping {
         subjectField = other.subjectField;
         matchValueField = other.matchValueField;
         matchRoleField = other.matchRoleField;
+        inverseField = other.inverseField;
 
         missingQualifierPolicy = other.missingQualifierPolicy;
         roleKind = other.roleKind;

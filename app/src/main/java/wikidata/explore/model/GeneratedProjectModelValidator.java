@@ -43,6 +43,7 @@ public final class GeneratedProjectModelValidator {
             validateClassReferences(project, clazz, problems);
             validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
+            validateInverseFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
 
@@ -55,6 +56,54 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateInverseFields(
+            GeneratedProjectModel project, GeneratedClassModel owner,
+            List<Problem> problems) {
+        for (GeneratedFieldModel inverse : owner.fields()) {
+            if (inverse == null || inverse.mapping().productionKind()
+                    != FieldProductionKind.INVERT) continue;
+            if (inverse.type() != FieldType.ENTITY
+                    || inverse.cardinality() != FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(path(owner, inverse),
+                        "An inverse must be a collection-valued ENTITY field."));
+                continue;
+            }
+            GeneratedClassModel forwardOwner =
+                    project.findClass(inverse.entityClassName());
+            if (forwardOwner == null) continue; // ordinary reference validation owns it
+            List<GeneratedFieldModel> candidates = forwardOwner.fields().stream()
+                    .filter(java.util.Objects::nonNull)
+                    .filter(field -> field.type() == FieldType.ENTITY)
+                    .filter(field -> owner.className().equals(field.entityClassName()))
+                    .toList();
+            String selected = clean(inverse.mapping().inverseField());
+            // Ask the question generation asks, not a stricter one: a property match
+            // resolves two class references to a single answer, and reporting that as
+            // ambiguous would fail a model that inverts correctly.
+            String pid = clean(inverse.mapping().propertyPid());
+            List<String> referencingOwner =
+                    candidates.stream().map(GeneratedFieldModel::name).toList();
+            List<String> alsoMatchingPid = pid.isBlank() ? List.of()
+                    : candidates.stream()
+                            .filter(field -> pid.equals(clean(field.mapping().propertyPid())))
+                            .map(GeneratedFieldModel::name).toList();
+            if (InverseFieldResolution.resolve(
+                    selected, referencingOwner, alsoMatchingPid) != null) {
+                continue;
+            }
+            problems.add(Problem.error(path(owner, inverse),
+                    !selected.isBlank()
+                            ? "Inverse field '" + forwardOwner.className() + "."
+                              + selected + "' does not reference " + owner.className() + "."
+                            : referencingOwner.isEmpty()
+                            ? "No field on " + forwardOwner.className()
+                              + " references " + owner.className() + "."
+                            : "Several fields on " + forwardOwner.className()
+                              + " reference " + owner.className()
+                              + "; choose the exact inverse field."));
+        }
     }
 
     private static void validateOwnedClass(

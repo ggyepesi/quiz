@@ -9,6 +9,75 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
 
+    // The invariant, not an example of it: validation must accept exactly what
+    // generation can resolve. These drifted once — the resolver preferred a property
+    // match and inverted, while validation counted class references alone and called
+    // the same model ambiguous, so a model that generated correctly failed to load.
+    @Test void validationAcceptsExactlyWhatGenerationCanResolve() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var held = person.addField("held", FieldType.ENTITY, FieldCardinality.SINGLE);
+        held.entityClassName("Position");
+        held.mapping().propertyPid("P39");
+        var sought = person.addField("sought", FieldType.ENTITY, FieldCardinality.SINGLE);
+        sought.entityClassName("Position");
+        sought.mapping().propertyPid("P999");
+        project.addClass(person);
+        project.rootClass(person);
+
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        var holders = position.addField(
+                "holders", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        holders.entityClassName("Person");
+        holders.mapping().productionKind(FieldProductionKind.INVERT);
+        holders.mapping().propertyPid("P39");
+        project.addClass(position);
+
+        assertEquals(1, wikidata.explore.transform.ModelInverts.derive(project).size(),
+                "the property match resolves both references to one forward field");
+        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+                        .contains("choose the exact inverse field"),
+                "so validation must not call it ambiguous");
+
+        // Remove what disambiguated them and both sides must refuse together.
+        held.mapping().propertyPid("P999");
+        assertTrue(wikidata.explore.transform.ModelInverts.derive(project).isEmpty());
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("choose the exact inverse field"));
+    }
+
+    @Test void ambiguousInverseRequiresTheExactForwardField() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = new GeneratedFieldModel(
+                "offices", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        offices.entityClassName("OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(reference("source", "Person"));
+        holding.fields().add(reference("predecessor", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        ValidationResult ambiguous = GeneratedProjectModelValidator.validate(project);
+        assertTrue(ambiguous.format().contains("choose the exact inverse field"),
+                ambiguous.format());
+
+        offices.mapping().inverseField("source");
+        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+                .contains("choose the exact inverse field"));
+    }
+
+    private static GeneratedFieldModel reference(String name, String target) {
+        GeneratedFieldModel field = new GeneratedFieldModel(
+                name, FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName(target);
+        return field;
+    }
+
     private static GeneratedProjectModel oscarLikeProject() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("oscar-like");

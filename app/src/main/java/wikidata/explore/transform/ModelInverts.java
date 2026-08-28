@@ -78,7 +78,8 @@ public final class ModelInverts {
                     continue;
                 }
                 String refField = forwardField(src, target.className(),
-                        clean(back.mapping().propertyPid()));
+                        clean(back.mapping().propertyPid()),
+                        clean(back.mapping().inverseField()));
                 if (refField == null) {
                     continue;
                 }
@@ -113,7 +114,8 @@ public final class ModelInverts {
                     continue;
                 }
                 String refField = forwardField(src, target.className(),
-                        clean(back.source().propertyPid()));
+                        clean(back.source().propertyPid()),
+                        clean(back.source().inverseField()));
                 if (refField == null) {
                     continue;
                 }
@@ -125,39 +127,41 @@ public final class ModelInverts {
     }
 
     private static String forwardField(CompiledClass src,
-                                       String targetClass, String pid) {
-        String byProperty = null;
-        String byClassOnly = null;
+                                       String targetClass, String pid,
+                                       String explicitField) {
+        List<String> byProperty = new ArrayList<>();
+        List<String> byClass = new ArrayList<>();
         for (CompiledField f : src.ownFields()) {
             if (!targetClass.equals(f.entityClassName())) {
                 continue;
             }
+            byClass.add(f.name());
             if (!pid.isBlank() && pid.equals(clean(f.source().propertyPid()))) {
-                byProperty = f.name();
-            } else if (byClassOnly == null) {
-                byClassOnly = f.name();
+                byProperty.add(f.name());
             }
         }
-        return byProperty != null ? byProperty : byClassOnly;
+        return wikidata.explore.model.InverseFieldResolution.resolve(
+                explicitField, byClass, byProperty);
     }
 
     /** The forward field on {@code src} that references {@code targetClass} via the
      *  same property — the field whose references we invert. */
     private static String forwardField(GeneratedClassModel src,
-                                       String targetClass, String pid) {
-        String byProperty = null;
-        String byClassOnly = null;
+                                       String targetClass, String pid,
+                                       String explicitField) {
+        List<String> byProperty = new ArrayList<>();
+        List<String> byClass = new ArrayList<>();
         for (GeneratedFieldModel f : src.fields()) {
             if (f == null || !targetClass.equals(f.entityClassName())) {
                 continue;
             }
+            byClass.add(f.name());
             if (!pid.isBlank() && pid.equals(clean(f.mapping().propertyPid()))) {
-                byProperty = f.name();   // exact match wins
-            } else if (byClassOnly == null) {
-                byClassOnly = f.name();  // fallback: only the class matched
+                byProperty.add(f.name());
             }
         }
-        return byProperty != null ? byProperty : byClassOnly;
+        return wikidata.explore.model.InverseFieldResolution.resolve(
+                explicitField, byClass, byProperty);
     }
 
     private static String clean(String s) {

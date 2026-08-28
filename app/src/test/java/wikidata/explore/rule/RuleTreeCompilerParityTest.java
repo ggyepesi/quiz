@@ -67,6 +67,13 @@ class RuleTreeCompilerParityTest {
         GeneratedFieldModel mag =
                 star.addField("magnitude", FieldType.NUMBER, FieldCardinality.SINGLE);
         mag.mapping().propertyPid("P1215");
+        // The forward reference Constellation.backref inverts. Without it the INVERT
+        // could never produce anything, which the model validator now says out loud
+        // instead of leaving it a silent no-op.
+        GeneratedFieldModel inConstellation =
+                star.addField("constellation", FieldType.ENTITY, FieldCardinality.SINGLE);
+        inConstellation.entityClassName("Constellation");
+        inConstellation.mapping().propertyPid("P59");
         project.addClass(star);
 
         return project;

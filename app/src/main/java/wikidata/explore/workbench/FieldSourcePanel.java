@@ -107,6 +107,7 @@ public class FieldSourcePanel extends JPanel {
     // values" keeps just id+label references that resolve within the set.
     private final JComboBox<FieldProductionKind> productionBox =
             new JComboBox<>(FieldProductionKind.values());
+    private final JComboBox<String> inverseFieldBox = new JComboBox<>();
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
 
@@ -207,10 +208,13 @@ public class FieldSourcePanel extends JPanel {
             refreshCompanionRows();
             refreshStatementFieldControls();
             refreshOwnedComponentControls();
+            refreshInverseFieldChoices();
             updateRecommendation();
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
+        inverseFieldBox.setToolTipText("The forward reference on the target class whose "
+                + "values this collection reverses. No datasource query is issued.");
         graphExpansionBox.setToolTipText("Whether graph discovery follows this typed "
                 + "entity relation. Curated frontier waits for explicit selection.");
         shapeBox.setToolTipText(
@@ -274,16 +278,28 @@ public class FieldSourcePanel extends JPanel {
     private void refreshOwnedComponentControls() {
         boolean owned = productionBox.getSelectedItem()
                 == FieldProductionKind.OWNED_COMPONENT;
-        propertyPidField.setEnabled(!owned);
-        sourceTypeBox.setEnabled(!owned);
-        directionBox.setEnabled(!owned);
-        requiredBox.setEnabled(!owned);
-        onlyRelatedOfTypeBox.setEnabled(!owned);
+        boolean inverse = productionBox.getSelectedItem()
+                == FieldProductionKind.INVERT;
+        boolean acquired = !owned && !inverse;
+        propertyPidField.setEnabled(acquired);
+        sourceTypeBox.setEnabled(acquired);
+        directionBox.setEnabled(acquired);
+        requiredBox.setEnabled(acquired);
+        onlyRelatedOfTypeBox.setEnabled(acquired);
         if (owned) {
             qualifierPidField.setEnabled(false);
             typeBox.setSelectedItem(FieldType.ENTITY);
             shapeBox.setSelectedItem(FieldCardinality.SINGLE);
             renderModeBox.setSelectedItem(FieldRenderMode.INLINE);
+            propertyPidField.setText("");
+            qualifierPidField.setText("");
+            requiredBox.setSelected(false);
+            onlyRelatedOfTypeBox.setSelected(false);
+        } else if (inverse) {
+            qualifierPidField.setEnabled(false);
+            typeBox.setSelectedItem(FieldType.ENTITY);
+            shapeBox.setSelectedItem(FieldCardinality.COLLECTION);
+            renderModeBox.setSelectedItem(FieldRenderMode.REFERENCE);
             propertyPidField.setText("");
             qualifierPidField.setText("");
             requiredBox.setSelected(false);
@@ -505,6 +521,7 @@ public class FieldSourcePanel extends JPanel {
                 field.sortDescending() ? "descending" : "ascending");
         directionBox.setSelectedItem(m.direction());
         productionBox.setSelectedItem(m.productionKind());
+        refreshInverseFieldChoices();
         graphExpansionBox.setSelectedItem(field.graphExpansionPolicy());
         filterOpBox.setSelectedItem(symbolOf(field.filterOperator()));
         filterValueField.setText(field.filterValue() == null
@@ -585,6 +602,27 @@ public class FieldSourcePanel extends JPanel {
         matchRoleBox.setEnabled(companion);
     }
 
+    private void refreshInverseFieldChoices() {
+        String selected = field == null ? "" : field.mapping().inverseField();
+        inverseFieldBox.removeAllItems();
+        inverseFieldBox.addItem("");
+        GeneratedClassModel owner = ownerClass();
+        GeneratedClassModel forwardOwner = field == null || projectModel == null
+                ? null : projectModel.findClass(field.entityClassName());
+        if (owner != null && forwardOwner != null) {
+            for (GeneratedFieldModel candidate : forwardOwner.fields()) {
+                if (candidate != null
+                        && candidate.type() == FieldType.ENTITY
+                        && owner.className().equals(candidate.entityClassName())) {
+                    inverseFieldBox.addItem(candidate.name());
+                }
+            }
+        }
+        if (!selected.isBlank()) inverseFieldBox.setSelectedItem(selected);
+        boolean invert = productionBox.getSelectedItem() == FieldProductionKind.INVERT;
+        inverseFieldBox.setEnabled(invert);
+    }
+
     public void useProperty(String pid, String label) {
         if (field == null) {
             return;
@@ -639,6 +677,7 @@ public class FieldSourcePanel extends JPanel {
         // The source-independent definition is shared with TransformApp's New Field.
         GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
+        GridBagUtils.labeledRow(form, c, y++, "Inverse of:", inverseFieldBox);
         GridBagUtils.labeledRow(form, c, y++, "Graph expansion:", graphExpansionBox);
 
         // --- Where it comes from ---
@@ -838,6 +877,7 @@ public class FieldSourcePanel extends JPanel {
                             field != null ? field.entityClassName() : "");
                 }
             }
+            refreshInverseFieldChoices();
         });
 
         typeBox.addActionListener(e -> {
@@ -928,7 +968,8 @@ public class FieldSourcePanel extends JPanel {
                 (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
-        if (ownedComponent) {
+        boolean inverse = pk == FieldProductionKind.INVERT;
+        if (ownedComponent || inverse) {
             // The edge itself is the producer. The component's declared fields load
             // their own properties using the owner's identifier.
             m.propertyPid("");
@@ -966,6 +1007,10 @@ public class FieldSourcePanel extends JPanel {
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.SINGLE);
             field.renderMode(FieldRenderMode.INLINE);
+        } else if (inverse) {
+            field.type(FieldType.ENTITY);
+            field.cardinality(FieldCardinality.COLLECTION);
+            field.renderMode(FieldRenderMode.REFERENCE);
         }
         // Auto display keeps the established inference; an explicit shared field
         // definition wins in both ModelBuilder and TransformApp.
@@ -994,6 +1039,9 @@ public class FieldSourcePanel extends JPanel {
         // seeds a sensible DEFAULT into the dropdown when a property is picked.
         m.productionKind(
                 (FieldProductionKind) productionBox.getSelectedItem());
+        m.inverseField(m.productionKind() == FieldProductionKind.INVERT
+                && inverseFieldBox.getSelectedItem() != null
+                ? inverseFieldBox.getSelectedItem().toString() : "");
         propertyLabel.setText(m.displayProperty());
 
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
