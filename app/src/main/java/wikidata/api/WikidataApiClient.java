@@ -451,14 +451,27 @@ public class WikidataApiClient {
             List<String> aliases,
             boolean aliasesAnswered,
             Map<String, List<String>> claimValues,
-            String enwikiTitle) {
+            String enwikiTitle,
+            Map<String, List<ApiClaimValue>> claimDetails) {
+
+        /** One truthy claim value together with the qualifiers that constrain it. */
+        public record ApiClaimValue(
+                String value, Map<String, List<String>> qualifiers) {
+            public ApiClaimValue {
+                qualifiers = qualifiers == null ? Map.of() : Map.copyOf(qualifiers);
+            }
+
+            public List<String> qualifier(String pid) {
+                return qualifiers.getOrDefault(pid, List.of());
+            }
+        }
 
         public ApiEntity(
                 String qid,
                 String label,
                 Map<String, List<String>> claimEntityQids) {
             this(qid, label, claimEntityQids, false, Map.of(), List.of(), false,
-                    claimEntityQids, "");
+                    claimEntityQids, "", Map.of());
         }
 
         public ApiEntity(
@@ -467,14 +480,14 @@ public class WikidataApiClient {
                 Map<String, List<String>> claimEntityQids,
                 boolean missing) {
             this(qid, label, claimEntityQids, missing, Map.of(), List.of(), false,
-                    claimEntityQids, "");
+                    claimEntityQids, "", Map.of());
         }
 
         public ApiEntity(
                 String qid, String label, Map<String, List<String>> claimEntityQids,
                 boolean missing, Map<String, String> valuelessClaims) {
             this(qid, label, claimEntityQids, missing, valuelessClaims, List.of(), false,
-                    claimEntityQids, "");
+                    claimEntityQids, "", Map.of());
         }
 
         /** For a caller that HAS asked about aliases; an empty list then means the
@@ -484,7 +497,7 @@ public class WikidataApiClient {
                 boolean missing, Map<String, String> valuelessClaims,
                 List<String> aliases) {
             this(qid, label, claimEntityQids, missing, valuelessClaims, aliases, true,
-                    claimEntityQids, "");
+                    claimEntityQids, "", Map.of());
         }
 
         public ApiEntity {
@@ -492,6 +505,7 @@ public class WikidataApiClient {
                     : Map.copyOf(valuelessClaims);
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             claimValues = claimValues == null ? Map.of() : Map.copyOf(claimValues);
+            claimDetails = claimDetails == null ? Map.of() : Map.copyOf(claimDetails);
         }
 
         /**
@@ -517,6 +531,38 @@ public class WikidataApiClient {
          * this includes literals (dates, strings and media names) as well as QIDs. */
         public List<String> values(String pid) {
             return claimValues.getOrDefault(pid, List.of());
+        }
+
+        /** Lossless truthy values for field projection policies that need qualifiers. */
+        public List<ApiClaimValue> claims(String pid) {
+            return claimDetails.getOrDefault(pid, List.of());
+        }
+
+        /**
+         * Values stated in {@code languageQid}; unqualified values are the fallback
+         * only when no requested-language value exists. The parser itself stays
+         * lossless—this policy is invoked by an explicitly configured field.
+         */
+        public List<String> valuesInLanguage(String pid, String languageQid) {
+            List<ApiClaimValue> details = claims(pid);
+            if (details.isEmpty() || languageQid == null || languageQid.isBlank()) {
+                return values(pid);
+            }
+            List<String> matched = new ArrayList<>();
+            List<String> unqualified = new ArrayList<>();
+            for (ApiClaimValue detail : details) {
+                List<String> languages = detail.qualifier(
+                        wikidata.WikidataLanguageDefaults.QUALIFIER_PID);
+                if (languages.isEmpty()) unqualified.add(detail.value());
+                else if (languages.contains(languageQid)) matched.add(detail.value());
+            }
+            return !matched.isEmpty() ? List.copyOf(matched)
+                    : !unqualified.isEmpty() ? List.copyOf(unqualified) : List.of();
+        }
+
+        public List<String> entityQidsInLanguage(String pid, String languageQid) {
+            return valuesInLanguage(pid, languageQid).stream()
+                    .filter(WikidataIds::isQid).toList();
         }
     }
 
@@ -1226,7 +1272,8 @@ public class WikidataApiClient {
         // en + mul (the language-agnostic label) so an item without an English label
         // still resolves to a name instead of staying a QID — matches the SPARQL
         // The same default-language + mul preference used by LabelService.
-        params.put("languages", "en%7Cmul");
+        params.put("languages", encodePipes(
+                wikidata.WikidataLanguageDefaults.apiLanguages()));
         params.put("format",    "json");
         return get(WIKIDATA_API, params);
     }
@@ -1239,7 +1286,8 @@ public class WikidataApiClient {
                 params.put("action", "wbgetentities");
                 params.put("ids", String.join("%7C", qids));
                 params.put("props", "aliases");
-                params.put("languages", "en%7Cmul");
+                params.put("languages", encodePipes(
+                        wikidata.WikidataLanguageDefaults.apiLanguages()));
                 params.put("format", "json");
                 return get(WIKIDATA_API, params);
             } catch (Exception e) {
@@ -1291,15 +1339,20 @@ public class WikidataApiClient {
 
             Map<String, List<String>> claims = new LinkedHashMap<>();
             Map<String, List<String>> values = new LinkedHashMap<>();
+            Map<String, List<ApiEntity.ApiClaimValue>> details = new LinkedHashMap<>();
             Map<String, String> valueless = new LinkedHashMap<>();
             for (String pid : claimPids) {
                 com.fasterxml.jackson.databind.JsonNode statements =
                         entity.path("claims").path(pid);
-                List<String> vals = entityQids(statements);
+                List<ApiEntity.ApiClaimValue> claimDetails = claimValues(statements);
+                if (!claimDetails.isEmpty()) details.put(pid, claimDetails);
+                List<String> vals = claimDetails.stream().map(ApiEntity.ApiClaimValue::value)
+                        .filter(WikidataIds::isQid).toList();
                 if (!vals.isEmpty()) {
                     claims.put(pid, vals);
                 }
-                List<String> rawValues = statementValues(statements);
+                List<String> rawValues = claimDetails.stream()
+                        .map(ApiEntity.ApiClaimValue::value).toList();
                 if (!rawValues.isEmpty()) values.put(pid, rawValues);
                 if (!rawValues.isEmpty()) continue;
                 // Statements exist but none carries a value: the source is SAYING
@@ -1311,7 +1364,7 @@ public class WikidataApiClient {
             out.put(qid, new ApiEntity(
                     qid, label, claims, false, valueless, aliases, aliasesAnswered,
                     values, entity.path("sitelinks").path(SITE_FILTER)
-                            .path("title").asText("")));
+                            .path("title").asText(""), details));
             parsed[0]++;
         });
         return parsed[0];
@@ -1334,31 +1387,25 @@ public class WikidataApiClient {
         return seen;
     }
 
-    /** The entity-QID values a FIELD takes: the property's truthy statements. */
-    private static List<String> entityQids(JsonNode claimsArray) {
+    /** Every truthy mainsnak with the qualifiers that constrain that statement. */
+    private static List<ApiEntity.ApiClaimValue> claimValues(JsonNode claimsArray) {
         if (!claimsArray.isArray()) return List.of();
-        List<String> out = new ArrayList<>();
-        for (JsonNode claim : defaultLanguageTruthy(claimsArray)) {
-            JsonNode val = claim.path("mainsnak").path("datavalue").path("value");
-            String id = val.path("id").asText("");
-            if (id.isBlank() && val.has("numeric-id")) {
-                id = "Q" + val.path("numeric-id").asText();
-            }
-            if (WikidataIds.isQid(id)) out.add(id);
-        }
-        return out;
-    }
-
-    /** The values a FIELD takes: every truthy mainsnak in document order, decoded
-     * with the same datatype rules used by grouped statement acquisition. */
-    private static List<String> statementValues(JsonNode claimsArray) {
-        if (!claimsArray.isArray()) return List.of();
-        List<String> out = new ArrayList<>();
-        for (JsonNode claim : defaultLanguageTruthy(claimsArray)) {
+        List<ApiEntity.ApiClaimValue> out = new ArrayList<>();
+        for (JsonNode claim : truthy(claimsArray)) {
             String value = snakValue(claim.path("mainsnak").path("datavalue"));
-            if (value != null) out.add(value);
+            if (value == null) continue;
+            Map<String, List<String>> qualifiers = new LinkedHashMap<>();
+            claim.path("qualifiers").fields().forEachRemaining(entry -> {
+                List<String> decoded = new ArrayList<>();
+                for (JsonNode snak : entry.getValue()) {
+                    String q = snakValue(snak.path("datavalue"));
+                    if (q != null) decoded.add(q);
+                }
+                if (!decoded.isEmpty()) qualifiers.put(entry.getKey(), List.copyOf(decoded));
+            });
+            out.add(new ApiEntity.ApiClaimValue(value, qualifiers));
         }
-        return out;
+        return List.copyOf(out);
     }
 
     /**
@@ -1383,43 +1430,6 @@ public class WikidataApiClient {
             else normal.add(claim);
         }
         return preferred.isEmpty() ? normal : preferred;
-    }
-
-    /**
-     * A language-qualified claim is a localized assertion, not an additional value.
-     * Prefer the application's default language when Wikidata states one.  When no
-     * such statement exists, retain unqualified statements as the honest fallback;
-     * they carry no evidence by which we could choose a language.  Explicitly foreign
-     * values are not silently presented as default-language values.
-     *
-     * <p>This is intentionally value-independent: given names exposed the problem,
-     * but titles and other localized entity-valued properties use the same P407
-     * qualifier. Rank selection remains the outer, pre-existing rule.
-     */
-    private static List<JsonNode> defaultLanguageTruthy(JsonNode claimsArray) {
-        List<JsonNode> ranked = truthy(claimsArray);
-        List<JsonNode> preferred = new ArrayList<>();
-        List<JsonNode> unqualified = new ArrayList<>();
-        boolean hasLanguageQualifier = false;
-        for (JsonNode claim : ranked) {
-            JsonNode languages = claim.path("qualifiers")
-                    .path(wikidata.WikidataLanguageDefaults.QUALIFIER_PID);
-            if (!languages.isArray() || languages.isEmpty()) {
-                unqualified.add(claim);
-                continue;
-            }
-            hasLanguageQualifier = true;
-            for (JsonNode language : languages) {
-                String qid = snakValue(language.path("datavalue"));
-                if (wikidata.WikidataLanguageDefaults.ENTITY_QID.equals(qid)) {
-                    preferred.add(claim);
-                    break;
-                }
-            }
-        }
-        if (!preferred.isEmpty()) return preferred;
-        if (!unqualified.isEmpty()) return unqualified;
-        return hasLanguageQualifier ? List.of() : ranked;
     }
 
     /**

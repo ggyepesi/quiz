@@ -114,6 +114,7 @@ public class FieldSourcePanel extends JPanel {
     // For a field of a statement-reification class: the qualifier PID this field
     // draws from (e.g. P585 → year). Blank = a direct/value field.
     private final JTextField qualifierPidField = new JTextField(6);
+    private final JTextField valueLanguageField = new JTextField(6);
     private final JComboBox<QualifierDateMode> qualifierDateModeBox =
             new JComboBox<>(QualifierDateMode.values());
     private final JLabel propertyLabel = new JLabel("(not selected)");
@@ -511,6 +512,7 @@ public class FieldSourcePanel extends JPanel {
 
         propertyPidField.setText(m.propertyPid());
         qualifierPidField.setText(m.qualifierPid());
+        valueLanguageField.setText(m.valueLanguage());
         qualifierDateModeBox.setSelectedItem(m.qualifierDateMode());
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
@@ -649,6 +651,10 @@ public class FieldSourcePanel extends JPanel {
         discoverExternalButton.setVisible(false);
         propRow.add(discoverExternalButton);
         GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
+        valueLanguageField.setToolTipText("Optional 'en' or Wikidata language QID "
+                + "for claim values qualified by P407. Blank preserves every truthy "
+                + "value; unqualified values remain the fallback.");
+        GridBagUtils.labeledRow(form, c, y++, "Value language:", valueLanguageField);
 
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
@@ -917,6 +923,7 @@ public class FieldSourcePanel extends JPanel {
         m.propertyPid(propertyPidField.getText());
         m.qualifierPid(
                 RuleNode.cleanPid(qualifierPidField.getText()));
+        m.valueLanguage(valueLanguageField.getText());
         m.qualifierDateMode(
                 (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
         Object pk = productionBox.getSelectedItem();
@@ -927,6 +934,7 @@ public class FieldSourcePanel extends JPanel {
             m.propertyPid("");
             m.propertyLabel("");
             m.qualifierPid("");
+            m.valueLanguage("");
             m.qualifierDateMode(QualifierDateMode.YEAR);
         }
         boolean dateProjection = field.type() == FieldType.DATE
@@ -1540,6 +1548,7 @@ public class FieldSourcePanel extends JPanel {
         refreshObjectTypeBox("");
         propertyPidField.setText("");
         qualifierPidField.setText("");
+        valueLanguageField.setText("");
         // A blank form is a field about to be created, and a new field keeps what
         // the source states; an existing field's own value replaces this on load.
         qualifierDateModeBox.setSelectedItem(QualifierDateMode.DATE);

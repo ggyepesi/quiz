@@ -24,6 +24,7 @@ public record CompiledFieldSource(
         RuleDirection direction,
         boolean requireLabel,
         String labelLanguage,
+        String valueLanguage,
         boolean requireSitelink,
         int limit,
         String rankBy,
@@ -52,8 +53,9 @@ public record CompiledFieldSource(
         direction = direction == null ? RuleDirection.ITEM_TO_ROOT : direction;
         labelLanguage = clean(labelLanguage);
         if (labelLanguage.isBlank()) {
-            labelLanguage = "en";
+            labelLanguage = wikidata.WikidataLanguageDefaults.CODE;
         }
+        valueLanguage = clean(valueLanguage);
         limit = Math.max(1, limit);
         rankBy = clean(rankBy);
         productionKind = productionKind == null
@@ -88,6 +90,7 @@ public record CompiledFieldSource(
                 source.direction(),
                 source.requireLabel(),
                 source.labelLanguage(),
+                source.valueLanguage(),
                 source.requireSitelink(),
                 source.limit(),
                 source.rankBy(),

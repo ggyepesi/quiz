@@ -125,7 +125,10 @@ class WbGetEntitiesParseTest {
         WikidataApiClient.parseEntities(
                 new ObjectMapper().readTree(json), List.of("P735"), out);
 
-        assertEquals(List.of("Q10"), out.get("Q1").entityQids("P735"));
+        assertEquals(List.of("Q10", "Q20", "Q30"),
+                out.get("Q1").entityQids("P735"), "parsing is lossless");
+        assertEquals(List.of("Q10"), out.get("Q1").entityQidsInLanguage(
+                "P735", wikidata.WikidataLanguageDefaults.ENTITY_QID));
     }
 
     // The branch that REMOVES data. When Wikidata states a language for every value
@@ -144,7 +147,9 @@ class WbGetEntitiesParseTest {
         WikidataApiClient.parseEntities(
                 new ObjectMapper().readTree(json), List.of("P735"), out);
 
-        assertEquals(List.of(), out.get("Q1").entityQids("P735"));
+        assertEquals(List.of("Q10", "Q20"), out.get("Q1").entityQids("P735"));
+        assertEquals(List.of(), out.get("Q1").entityQidsInLanguage(
+                "P735", wikidata.WikidataLanguageDefaults.ENTITY_QID));
     }
 
     @Test
@@ -159,7 +164,9 @@ class WbGetEntitiesParseTest {
         WikidataApiClient.parseEntities(
                 new ObjectMapper().readTree(json), List.of("P735"), out);
 
-        assertEquals(List.of("Q20", "Q30"), out.get("Q1").entityQids("P735"));
+        assertEquals(List.of("Q10", "Q20", "Q30"), out.get("Q1").entityQids("P735"));
+        assertEquals(List.of("Q20", "Q30"), out.get("Q1").entityQidsInLanguage(
+                "P735", wikidata.WikidataLanguageDefaults.ENTITY_QID));
     }
 
     // A nominee (Q11) with two P1411 nomination statements, each carrying an entity

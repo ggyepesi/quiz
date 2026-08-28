@@ -106,7 +106,9 @@ class LabelLanguageIsOneDecisionTest {
                     || DBPEDIA_QUERIES.contains(relative)) continue;
             String source = stripComments(Files.readString(file));
             if (source.contains("\"en\"") || source.contains("\"en,mul\"")
-                    || source.contains("\"en|mul\"") || source.contains("\"enwiki\"")) {
+                    || source.contains("\"en|mul\"")
+                    || source.contains("\"en%7Cmul\"")
+                    || source.contains("\"enwiki\"")) {
                 current.add(relative);
             }
         }

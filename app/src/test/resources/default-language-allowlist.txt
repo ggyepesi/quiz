@@ -3,7 +3,6 @@ datasource/wikidata/WikidataDatasourceProvider.java
 quiz/enrichment/WikipediaTextEvidenceProvider.java
 quiz/enrichment/WikimediaImageEnrichmentProvider.java
 quiz/transform/ui/WikipediaInfoboxEnrichmentProvider.java
-wikidata/explore/compiled/CompiledFieldSource.java
 wikidata/explore/compiled/CompiledCanonical.java
 wikidata/explore/rule/RuleLabelConfig.java
 wikidata/explore/rule/RuleTreeExplainer.java

@@ -28,4 +28,17 @@ public final class WikidataLanguageDefaults {
     public static String wikipediaSite() {
         return CODE + "wiki";
     }
+
+    /**
+     * Wikidata item used to project language-qualified claim values. Blank disables
+     * projection; the shared default code and an explicit language QID are accepted.
+     */
+    public static String entityQid(String code) {
+        String configured = code == null ? "" : code.trim();
+        if (configured.isBlank()) return "";
+        if (CODE.equalsIgnoreCase(configured)) return ENTITY_QID;
+        if (WikidataIds.isQid(configured)) return configured;
+        throw new IllegalArgumentException("Value language must be '" + CODE
+                + "' or a Wikidata language QID, not '" + configured + "'");
+    }
 }

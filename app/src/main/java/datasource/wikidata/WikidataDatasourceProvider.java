@@ -85,10 +85,15 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                     List.of(LANGUAGES)),
             offering(PROPERTY_VALUE, "Statement property", BindingScope.FIELD_VALUE,
                     new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, ""),
-                    List.of(ParameterDescriptor.reference("property", "Property", true, "",
-                            "The Wikidata property supplying this field.",
-                            new SourceReferenceSchema(ID,
-                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
+                    List.of(
+                            ParameterDescriptor.reference("property", "Property", true, "",
+                                    "The Wikidata property supplying this field.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            new ParameterDescriptor("valueLanguage", "Value language",
+                                    ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                                    "Optional language code for values constrained by "
+                                            + "a P407 qualifier. Blank preserves all."))),
             new StatementMembershipOffering(
                     BindingScope.CLASS_POPULATION,
                     SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),

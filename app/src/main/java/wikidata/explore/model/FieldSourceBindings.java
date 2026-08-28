@@ -26,6 +26,7 @@ public final class FieldSourceBindings {
     public static final String PROPERTY = "property";
     public static final String LABEL = "label";
     public static final String SOURCE_TYPE = "sourceType";
+    public static final String VALUE_LANGUAGE = "valueLanguage";
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
 
@@ -110,6 +111,7 @@ public final class FieldSourceBindings {
                 source.provider(), source.operation(),
                 Map.of(PROPERTY, clean(mapping.propertyPid()),
                         LABEL, clean(mapping.propertyLabel()),
+                        VALUE_LANGUAGE, clean(mapping.valueLanguage()),
                         SOURCE_TYPE, (mapping.sourceType() == null
                                 ? FieldSourceType.SPARQL : mapping.sourceType()).name()));
     }
@@ -165,6 +167,11 @@ public final class FieldSourceBindings {
             field.mapping().sourceType(sourceType(recipe));
             field.mapping().propertyPid(recipe.parameter(PROPERTY));
             field.mapping().propertyLabel(recipe.parameter(LABEL));
+            // Old bindings predate this parameter; absence must not erase the
+            // mapping-side value during migration. An explicit blank still clears it.
+            if (recipe.parameters().containsKey(VALUE_LANGUAGE)) {
+                field.mapping().valueLanguage(recipe.parameter(VALUE_LANGUAGE));
+            }
         }
     }
 

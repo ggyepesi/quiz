@@ -56,6 +56,9 @@ public class FieldSourceMapping {
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
     private boolean requireLabel = true;
     private String labelLanguage = wikidata.WikidataLanguageDefaults.CODE;
+    // Blank = preserve every truthy claim value. A language code asks field
+    // projection to interpret P407 qualifiers; parsing remains lossless.
+    private String valueLanguage = "";
     // "Notable only": require the entity to have an English Wikipedia article.
     // The sitelink is a selective entry that bounds a huge class (e.g. Q523
     // star, ~3M) to its notable members (~2886), so a root query can complete
@@ -205,6 +208,10 @@ public class FieldSourceMapping {
                 : labelLanguage.trim();
     }
 
+    public String valueLanguage() { return valueLanguage; }
+
+    public void valueLanguage(String value) { valueLanguage = clean(value); }
+
     public int limit() {
         return limit;
     }
@@ -303,6 +310,7 @@ public class FieldSourceMapping {
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;
         labelLanguage = other.labelLanguage;
+        valueLanguage = other.valueLanguage;
         limit = other.limit;
         productionKind = other.productionKind;
         sourceType = other.sourceType;
