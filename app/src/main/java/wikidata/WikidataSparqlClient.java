@@ -60,6 +60,15 @@ public class WikidataSparqlClient implements AutoCloseable {
     /** Point the client at a different SPARQL endpoint (e.g. DBPEDIA_ENDPOINT). */
     public WikidataSparqlClient(
             String userAgent, int maxParallelRequests, String endpoint) {
+        this(userAgent, maxParallelRequests, endpoint, null);
+    }
+
+    /** Creates a client with an explicitly selected HTTP protocol version. */
+    public WikidataSparqlClient(
+            String userAgent,
+            int maxParallelRequests,
+            String endpoint,
+            HttpClient.Version httpVersion) {
         this.endpoint = endpoint == null || endpoint.isBlank()
                 ? WIKIDATA_ENDPOINT : endpoint;
         this.userAgent =
@@ -73,11 +82,11 @@ public class WikidataSparqlClient implements AutoCloseable {
         this.rateLimiter =
                 new Semaphore(Math.max(1, maxParallelRequests), true);
 
-        this.http =
-                HttpClient.newBuilder()
-                          .executor(executor)
-                          .connectTimeout(Duration.ofSeconds(30))
-                          .build();
+        HttpClient.Builder httpBuilder = HttpClient.newBuilder()
+                .executor(executor)
+                .connectTimeout(Duration.ofSeconds(30));
+        if (httpVersion != null) httpBuilder.version(httpVersion);
+        this.http = httpBuilder.build();
     }
 
     public void log(Consumer<String> log) {
