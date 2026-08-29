@@ -2,6 +2,7 @@ package graphview;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 /** Provider-neutral graph presented to an interactive renderer. */
 public record GraphViewModel(List<Node> nodes, List<Edge> edges) {
@@ -13,11 +14,12 @@ public record GraphViewModel(List<Node> nodes, List<Edge> edges) {
     public enum State { DEFAULT, FRONTIER, EXPANDED, UNAVAILABLE }
 
     public record Node(String id, String label, URI link, int level, State state,
-                       Object value) {
+                       Map<String, String> details, Object value) {
         public Node {
             id = id == null ? "" : id;
             label = label == null || label.isBlank() ? id : label;
             state = state == null ? State.DEFAULT : state;
+            details = details == null ? Map.of() : Map.copyOf(details);
         }
     }
 

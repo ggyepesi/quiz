@@ -146,7 +146,7 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                         node.depth(), node.depth() == 0
                                 ? GraphViewModel.State.EXPANDED
                                 : GraphViewModel.State.FRONTIER,
-                        node)).toList();
+                        java.util.Map.of("Depth", Integer.toString(node.depth())), node)).toList();
         List<GraphViewModel.Edge> edges = java.util.stream.IntStream.range(0, r.edges().size())
                 .mapToObj(index -> {
                     DiscoverEntityRelationQuery.Edge edge = r.edges().get(index);
