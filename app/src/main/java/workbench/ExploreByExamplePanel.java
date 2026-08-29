@@ -45,8 +45,6 @@ public class ExploreByExamplePanel extends JPanel {
 
     private final JButton exploreButton = new JButton("Explore entity relations");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
-    private final JButton setSelectedEntityButton = new JButton("Set selected entity");
-    private final JButton setSelectedPropertyButton = new JButton("Set selected property");
     private final JPanel selectionsButtonHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private WorkbenchSelections workbenchSelections;
 
@@ -160,7 +158,13 @@ public class ExploreByExamplePanel extends JPanel {
     public void selections(WorkbenchSelections selections) {
         this.workbenchSelections = selections;
         selectionsButtonHolder.removeAll();
-        if (selections != null) selectionsButtonHolder.add(new SelectionsButton(selections));
+        if (selections != null) selectionsButtonHolder.add(
+                new SelectionsButton(selections)
+                        .action("Set highlighted entity",
+                                this::canSetSelectedEntity, this::setSelectedEntity)
+                        .action("Set highlighted property",
+                                () -> selectedRelationView != null,
+                                this::setSelectedProperty));
         selectionsButtonHolder.revalidate();
         selectionsButtonHolder.repaint();
         updateButtons();
@@ -336,7 +340,6 @@ public class ExploreByExamplePanel extends JPanel {
 
         JPanel midRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         midRow.add(exploreButton);
-        midRow.add(setSelectedEntityButton);
         midRow.add(useSourceButton);
         midRow.add(selectionsButtonHolder);
 
@@ -352,7 +355,6 @@ public class ExploreByExamplePanel extends JPanel {
         // in the ordinary Explore tab nothing listens, so it would do nothing.
         usePropertyButton.setVisible(false);
         actionRow.add(usePropertyButton);
-        actionRow.add(setSelectedPropertyButton);
         actionRow.add(exploreExampleRelationButton);
         actionRow.add(status);
 
@@ -413,29 +415,12 @@ public class ExploreByExamplePanel extends JPanel {
                 status.setText("Used " + picked[0] + ".");
             }
         });
-        setSelectedEntityButton.addActionListener(e -> {
-            String[] picked = pickEntity(candidates.hasSelection(),
-                    candidates.firstSelected(0), candidates.firstSelected(1),
-                    exploredQid, exploredLabel);
-            if (picked != null && workbenchSelections != null) {
-                workbenchSelections.entity(picked[0], picked[1]);
-                status.setText("Selected entity " + picked[1] + " (" + picked[0] + ").");
-            }
-        });
         usePropertyButton.setVisible(false);
         usePropertyButton.addActionListener(e -> {
             RelationView rel = selectedRelationView;
             if (rel != null) {
                 onUseProperty.accept(rel.pid(), rel.relationLabel());
                 status.setText("Used " + rel.pid() + ".");
-            }
-        });
-        setSelectedPropertyButton.addActionListener(e -> {
-            RelationView relation = selectedRelationView;
-            if (relation != null && workbenchSelections != null) {
-                workbenchSelections.property(relation.pid(), relation.relationLabel());
-                status.setText("Selected property " + relation.relationLabel()
-                        + " (" + relation.pid() + ").");
             }
         });
         exploreExampleRelationButton.addActionListener(e -> {
@@ -549,15 +534,36 @@ public class ExploreByExamplePanel extends JPanel {
         exploreButton.setEnabled(
                 (haveCandidate || WikidataIds.isQid(pendingQid)) && queryRunner != null);
         useSourceButton.setEnabled(haveCandidate || WikidataIds.isQid(exploredQid));
-        setSelectedEntityButton.setEnabled(workbenchSelections != null
-                && (haveCandidate || WikidataIds.isQid(exploredQid)));
         showMembersButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
         usePropertyButton.setEnabled(haveProbe);
-        setSelectedPropertyButton.setEnabled(workbenchSelections != null && haveProbe);
         exploreExampleRelationButton.setEnabled(haveProbe
                 && WikidataIds.isQid(exploredQid));
+    }
+
+    private boolean canSetSelectedEntity() {
+        return workbenchSelections != null
+                && (candidates.hasSelection() || WikidataIds.isQid(exploredQid));
+    }
+
+    private void setSelectedEntity() {
+        String[] picked = pickEntity(candidates.hasSelection(),
+                candidates.firstSelected(0), candidates.firstSelected(1),
+                exploredQid, exploredLabel);
+        if (picked != null && workbenchSelections != null) {
+            workbenchSelections.entity(picked[0], picked[1]);
+            status.setText("Selected entity " + picked[1] + " (" + picked[0] + ").");
+        }
+    }
+
+    private void setSelectedProperty() {
+        RelationView relation = selectedRelationView;
+        if (relation != null && workbenchSelections != null) {
+            workbenchSelections.property(relation.pid(), relation.relationLabel());
+            status.setText("Selected property " + relation.relationLabel()
+                    + " (" + relation.pid() + ").");
+        }
     }
 
     /**

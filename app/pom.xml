@@ -81,6 +81,19 @@
             <version>1.5.2</version>
         </dependency>
 
+        <!-- Interactive, dynamic graph rendering embedded in the Swing workbench. -->
+        <dependency>
+            <groupId>org.graphstream</groupId>
+            <artifactId>gs-ui-swing</artifactId>
+            <version>2.0</version>
+        </dependency>
+        <!-- gs-ui-swing declares its core API as provided. -->
+        <dependency>
+            <groupId>org.graphstream</groupId>
+            <artifactId>gs-core</artifactId>
+            <version>2.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

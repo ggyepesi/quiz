@@ -73,7 +73,6 @@ public class PropertyDiscoveryPanel extends JPanel {
     // a bespoke table was bought for, and they stop reading at any size.
     private final JPanel resultHolder = new JPanel(new BorderLayout());
     private final JButton addFieldButton = new JButton("Add field");
-    private final JButton setSelectedPropertyButton = new JButton("Set selected property");
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private WorkbenchSelections selections;
     private final JButton allowButton = new JButton("Allow example");
@@ -161,11 +160,14 @@ public class PropertyDiscoveryPanel extends JPanel {
     public void selections(WorkbenchSelections value) {
         selections = value;
         selectionsHolder.removeAll();
-        if (value != null) selectionsHolder.add(new SelectionsButton(value));
+        if (value != null) {
+            selectionsHolder.add(new SelectionsButton(value).action(
+                    "Set highlighted property",
+                    () -> selectedProperty != null,
+                    this::setSelectedProperty));
+        }
         selectionsHolder.revalidate();
         selectionsHolder.repaint();
-        setSelectedPropertyButton.setEnabled(
-                value != null && selectedProperty != null);
     }
 
     public void onAddAllowedQid(Consumer<String> handler) {
@@ -229,10 +231,7 @@ public class PropertyDiscoveryPanel extends JPanel {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         actions.add(selectionsHolder);
-        actions.add(setSelectedPropertyButton);
         addFieldButton.setToolTipText("Turn the selected property into a field of this class.");
-        setSelectedPropertyButton.setToolTipText(
-                "Remember this property without changing the model.");
         allowButton.setToolTipText("Add the selected row's example entity to the "
                 + "class's allowed QIDs.");
         excludeButton.setToolTipText("Add the selected row's example entity to the "
@@ -241,9 +240,6 @@ public class PropertyDiscoveryPanel extends JPanel {
         actions.add(allowButton);
         actions.add(excludeButton);
         addFieldButton.addActionListener(e -> withSelected(onAddField::accept));
-        setSelectedPropertyButton.addActionListener(e -> withSelected(property -> {
-            if (selections != null) selections.property(property.pid(), property.label());
-        }));
         allowButton.addActionListener(e -> withSelected(
                 p -> { if (!p.exampleQid().isBlank()) onAddAllowedQid.accept(p.exampleQid()); }));
         excludeButton.addActionListener(e -> withSelected(
@@ -398,7 +394,6 @@ public class PropertyDiscoveryPanel extends JPanel {
     private void selectProperty(DiscoveredProperty property) {
         selectedProperty = property;
         addFieldButton.setEnabled(property != null);
-        setSelectedPropertyButton.setEnabled(selections != null && property != null);
         boolean hasExample = property != null && !property.exampleQid().isBlank();
         allowButton.setEnabled(hasExample);
         excludeButton.setEnabled(hasExample);
@@ -407,6 +402,12 @@ public class PropertyDiscoveryPanel extends JPanel {
                     + (property.label() == null || property.label().isBlank()
                             ? "" : " (" + property.label() + ")"));
         }
+    }
+
+    private void setSelectedProperty() {
+        withSelected(property -> {
+            if (selections != null) selections.property(property.pid(), property.label());
+        });
     }
 
     private void withSelected(Consumer<DiscoveredProperty> action) {

@@ -1,17 +1,21 @@
 package wikidata.explore.workbench;
 
+import graphview.GraphViewModel;
+import graphview.InteractiveGraphView;
 import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.query.logical.DiscoverEntityRelationQuery;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
 import java.awt.*;
+import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import workbench.SelectionsButton;
 import workbench.WorkbenchSelections;
 
 /** Explorer controls for bounded QID traversal through the selected property. */
-final class EntityRelationDiscoveryPanel extends JPanel {
+final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable {
     private final JLabel property = new JLabel("No property selected");
     private final JTextField startingQid = new JTextField(12);
     private final JComboBox<DiscoverEntityRelationQuery.Direction> direction =
@@ -19,12 +23,15 @@ final class EntityRelationDiscoveryPanel extends JPanel {
     private final JSpinner depth = new JSpinner(new SpinnerNumberModel(3,0,12,1));
     private final JSpinner nodes = new JSpinner(new SpinnerNumberModel(250,1,5000,25));
     private final JButton discover = new JButton("Explore entity relation");
-    private final JButton useSelections = new JButton("Use selections");
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JLabel status = new JLabel("Enter one or more starting QIDs.");
-    private final EntityRelationDiagram diagram = new EntityRelationDiagram();
-    private String pid = ""; private boolean wired;
+    private final InteractiveGraphView diagram = new InteractiveGraphView();
+    private String pid = "";
+    private String propertyLabel = "";
+    private boolean wired;
     private WorkbenchSelections selections;
+    private Set<String> selectedNodeQids = Set.of();
+    private DiscoverEntityRelationQuery.Result result;
 
     EntityRelationDiscoveryPanel() {
         super(new BorderLayout(6,6));
@@ -36,22 +43,25 @@ final class EntityRelationDiscoveryPanel extends JPanel {
         GridBagUtils.labeledRow(controls,c,3,"Maximum depth:",depth);
         GridBagUtils.labeledRow(controls,c,4,"Maximum QIDs:",nodes);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT,6,0));
-        actions.add(selectionsHolder); actions.add(useSelections); actions.add(discover); actions.add(status);
+        actions.add(selectionsHolder); actions.add(discover); actions.add(status);
         GridBagUtils.wideRow(controls,5,actions);
         GridBagUtils.wideRow(controls,6,new JLabel("<html>QIDs are nodes; the selected PID is the edge. "
                 + "Use several levels for hierarchical relations such as P279, or depth 1 for constraints such as P1001.</html>"));
-        add(controls,BorderLayout.NORTH); add(new JScrollPane(diagram),BorderLayout.CENTER); discover.setEnabled(false);
-        diagram.onSelectionChanged(s -> status.setText(s.size()+" QID node(s) selected."));
-        diagram.onStartingQidRequested(qid -> {
-            startingQid.setText(qid);
-            status.setText(qid + " is now the starting QID; press Explore to continue.");
+        add(controls,BorderLayout.NORTH); add(diagram,BorderLayout.CENTER); discover.setEnabled(false);
+        diagram.onSelectionChanged(selected -> {
+            selectedNodeQids = selected;
+            if (selected.size() == 1) {
+                String qid = selected.iterator().next();
+                startingQid.setText(qid);
+                status.setText(qid + " selected; use Selections or run from it.");
+            } else {
+                status.setText(selected.size()+" QID node(s) selected.");
+            }
         });
-        useSelections.addActionListener(event -> useSelections());
-        useSelections.setToolTipText("Fill the starting QID and edge from the reusable selections");
-        refreshSelectionAction();
     }
     void property(WikidataPropertyViewable selected) {
         pid = selected == null ? "" : selected.pid();
+        propertyLabel = selected == null ? "" : selected.getDisplayName();
         property.setText(selected == null ? "No property selected" : selected.getDisplayName()+" ("+selected.pid()+")");
         discover.setEnabled(wired && !pid.isBlank());
     }
@@ -70,27 +80,51 @@ final class EntityRelationDiscoveryPanel extends JPanel {
         selections = value;
         selectionsHolder.removeAll();
         if (value != null) {
-            selectionsHolder.add(new SelectionsButton(value));
-            value.onChange(this::refreshSelectionAction);
+            selectionsHolder.add(new SelectionsButton(value).action(
+                    "Use selected entity as starting QID",
+                    () -> selections.entity().isPresent(),
+                    this::useSelectedEntity).action(
+                    "Use selected property as edge",
+                    () -> selections.property().isPresent(),
+                    this::useSelectedProperty).action(
+                    "Set highlighted entity",
+                    () -> selectedNodeQids.size() == 1,
+                    this::setSelectedEntity).action(
+                    "Set edge property",
+                    () -> !pid.isBlank(),
+                    this::setSelectedProperty));
         }
         selectionsHolder.revalidate();
         selectionsHolder.repaint();
-        refreshSelectionAction();
     }
-    private void refreshSelectionAction() {
-        useSelections.setEnabled(selections != null
-                && selections.entity().isPresent()
-                && selections.property().isPresent());
-    }
-    private void useSelections() {
+
+    private void useSelectedEntity() {
         if (selections == null) return;
-        selections.entity().ifPresent(entity -> selections.property().ifPresent(selected -> {
+        selections.entity().ifPresent(entity -> {
             startingQid.setText(entity.qid());
+            status.setText(entity.qid() + " is now the starting QID.");
+        });
+    }
+
+    private void useSelectedProperty() {
+        if (selections == null) return;
+        selections.property().ifPresent(selected -> {
             pid = selected.pid();
+            propertyLabel = selected.label();
             property.setText(selected.label() + " (" + selected.pid() + ")");
             discover.setEnabled(wired);
-            status.setText("Ready to explore " + selected.pid() + " from " + entity.qid() + ".");
-        }));
+            status.setText(selected.pid() + " is now the edge property.");
+        });
+    }
+    private void setSelectedEntity() {
+        if (selections == null || result == null || selectedNodeQids.size() != 1) return;
+        String qid = selectedNodeQids.iterator().next();
+        result.nodes().stream().filter(node -> qid.equals(node.qid())).findFirst()
+                .ifPresent(node -> selections.entity(node.qid(), node.label()));
+    }
+    private void setSelectedProperty() {
+        if (selections == null || pid.isBlank()) return;
+        selections.property(pid, propertyLabel.isBlank() ? pid : propertyLabel);
     }
     private DiscoverEntityRelationQuery query() {
         String qid = startingQid.getText() == null ? "" : startingQid.getText().trim();
@@ -98,8 +132,36 @@ final class EntityRelationDiscoveryPanel extends JPanel {
                 ((Number)depth.getValue()).intValue(),((Number)nodes.getValue()).intValue());
     }
     private void accept(DiscoverEntityRelationQuery.Result r) {
-        diagram.result(r); status.setText(r.nodes().size()+" QID nodes, "+r.edges().size()+" edges"
+        result = r;
+        selectedNodeQids = Set.of();
+        diagram.model(graphModel(r));
+        status.setText(r.nodes().size()+" QID nodes, "+r.edges().size()+" edges"
                 +(r.discoveryLimitReached()?" — discovery limit reached":""));
     }
+
+    static GraphViewModel graphModel(DiscoverEntityRelationQuery.Result r) {
+        List<GraphViewModel.Node> nodes = r.nodes().stream().map(node ->
+                new GraphViewModel.Node(node.qid(), node.label(),
+                        URI.create("https://www.wikidata.org/wiki/" + node.qid()),
+                        node.depth(), node.depth() == 0
+                                ? GraphViewModel.State.EXPANDED
+                                : GraphViewModel.State.FRONTIER,
+                        node)).toList();
+        List<GraphViewModel.Edge> edges = java.util.stream.IntStream.range(0, r.edges().size())
+                .mapToObj(index -> {
+                    DiscoverEntityRelationQuery.Edge edge = r.edges().get(index);
+                    return new GraphViewModel.Edge("relation-" + index,
+                            edge.sourceQid(), edge.targetQid(), r.pid(), true);
+                }).toList();
+        return new GraphViewModel(nodes, edges);
+    }
     private static String message(Throwable e) { return e.getMessage()==null||e.getMessage().isBlank()?e.getClass().getSimpleName():e.getMessage(); }
+
+    /** Releases the renderer's viewer thread. The window this lives in hides rather
+     *  than disposes, deliberately, so the explored graph survives a close and reopen —
+     *  which means nothing here can decide when the renderer is finished. The workbench
+     *  says so on the way out. */
+    @Override public void close() {
+        diagram.close();
+    }
 }

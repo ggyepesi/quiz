@@ -24,11 +24,10 @@ import workbench.WorkbenchSelections;
  * Hosts the mutually exclusive editors for qid-identity source classes,
  * statement-reification classes and fields.
  */
-public class ModelSourceWorkbenchPanel extends JPanel {
+public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private final GeneratedProjectModel projectModel;
     private final WorkbenchSelections selections = new WorkbenchSelections();
-    private final JButton useSelectedProperty = new JButton("Use selected property");
 
     private final ClassSourcePanel classSourcePanel =
             new ClassSourcePanel();
@@ -132,8 +131,6 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         statementSourcePanel.setProjectModel(
                 projectModel);
         buildUi();
-        selections.onChange(this::refreshSelectionActions);
-        refreshSelectionActions();
     }
 
     public void setQueryRunner(
@@ -263,7 +260,6 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         EditableComponents.setEditable(cardPanel, enabled);
         EditableComponents.setEditable(kindHeader, enabled);
         EditableComponents.setEditable(helperTabs, enabled);
-        refreshSelectionActions();
     }
 
     public void edit(Object selected) {
@@ -307,7 +303,6 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         discoveryPanel.refreshNodeTitle();
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
-        refreshSelectionActions();
 
         // The editors for the newly shown card are built (or rebuilt) enabled. The lock
         // is a property of THIS panel, so re-applying it here keeps every caller of
@@ -773,11 +768,12 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         configHeader.setLayout(new BoxLayout(configHeader, BoxLayout.Y_AXIS));
         configHeader.add(kindHeader);
         JPanel reuse = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        reuse.add(new SelectionsButton(selections));
-        reuse.add(useSelectedProperty);
+        reuse.add(new SelectionsButton(selections).action(
+                "Use selected property",
+                this::canUseSelectedProperty,
+                this::useSelectedProperty));
         configHeader.add(reuse);
         config.add(configHeader, BorderLayout.NORTH);
-        useSelectedProperty.addActionListener(event -> useSelectedProperty());
         config.add(
                 cardPanel,
                 BorderLayout.CENTER);
@@ -787,16 +783,11 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         add(config, BorderLayout.CENTER);
     }
 
-    private void refreshSelectionActions() {
+    private boolean canUseSelectedProperty() {
         boolean destination = selected instanceof GeneratedFieldModel
                 || selected instanceof GeneratedClassModel clazz
                 && !clazz.reifiesStatements() && !clazz.ownedClass();
-        useSelectedProperty.setEnabled(editingEnabled
-                && destination && selections.property().isPresent());
-        useSelectedProperty.setToolTipText(selections.property()
-                .map(value -> "Use " + value.label() + " (" + value.pid()
-                        + ") in the current configuration")
-                .orElse("Select a property for reuse first"));
+        return editingEnabled && destination && selections.property().isPresent();
     }
 
     private void useSelectedProperty() {
@@ -905,4 +896,9 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         afterChange.accept(null);
     }
 
+
+    /** Releases helper tools that hold more than memory. */
+    @Override public void close() {
+        propertyPanel.close();
+    }
 }

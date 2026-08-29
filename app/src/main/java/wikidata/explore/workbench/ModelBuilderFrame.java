@@ -139,7 +139,7 @@ public class ModelBuilderFrame extends JFrame {
             new JButton("Model graph");
 
     private final JButton showSelectionsButton =
-            new JButton("Selections");
+            new JButton("Vocabularies / populations");
     private final JButton showEntityKindsButton =
             new JButton("Entity kinds");
 
@@ -222,6 +222,7 @@ public class ModelBuilderFrame extends JFrame {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
                 queryFactory.close();
+                sourceWorkbench.close();
             }
         });
         setSize(1750, 950);
