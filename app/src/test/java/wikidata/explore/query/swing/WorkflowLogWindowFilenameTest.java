@@ -76,10 +76,13 @@ class WorkflowLogWindowFilenameTest {
     }
 
     @Test void terminalStatusRefreshesEvenWhenTheReaderScrolledUp() {
-        assertFalse(WorkflowLogWindow.refreshFully(false, work.LogStatus.RUNNING));
-        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.OK));
-        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.FAILED));
-        assertTrue(WorkflowLogWindow.refreshFully(true, work.LogStatus.RUNNING));
+        assertFalse(WorkflowLogWindow.refreshFully(false, work.LogStatus.RUNNING, false));
+        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.OK, false));
+        assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.FAILED, false));
+        assertTrue(WorkflowLogWindow.refreshFully(true, work.LogStatus.RUNNING, false));
+        assertTrue(WorkflowLogWindow.refreshFully(
+                false, work.LogStatus.RUNNING, true),
+                "a completed child refreshes while its workflow continues");
     }
 
     private static process.ProcessWorkflowPipeline pipeline() {

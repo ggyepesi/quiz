@@ -35,7 +35,8 @@ public class WorkflowLogWindow implements LogListener {
     @Override
     public void logChanged(
             LogNode root,
-            boolean added) {
+            boolean added,
+            boolean terminalUpdate) {
 
         SwingUtilities.invokeLater(() -> {
             if (added && !workflows.contains(root)) {
@@ -60,7 +61,7 @@ public class WorkflowLogWindow implements LogListener {
                 // its visible card keeps saying RUNNING. CardListView itself protects
                 // an active text selection, and the deferred replay below catches up
                 // after that selection/scroll position is released.
-                if (refreshFully(atBottom, root.status())) {
+                if (refreshFully(atBottom, root.status(), terminalUpdate)) {
                     view.upsertViewable(root);
                     if (atBottom && bar != null) {
                         // After the upsert lays out, jump to the (new) bottom.
@@ -78,8 +79,10 @@ public class WorkflowLogWindow implements LogListener {
         });
     }
 
-    static boolean refreshFully(boolean atBottom, LogStatus status) {
-        return atBottom || status != null && status.isTerminal();
+    static boolean refreshFully(
+            boolean atBottom, LogStatus rootStatus, boolean terminalUpdate) {
+        return atBottom || terminalUpdate
+                || rootStatus != null && rootStatus.isTerminal();
     }
 
     private JScrollBar verticalBar() {

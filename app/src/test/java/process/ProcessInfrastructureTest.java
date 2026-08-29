@@ -66,7 +66,7 @@ class ProcessInfrastructureTest {
 
         ProcessOutcome<String> outcome = new ProcessRunner(
                 new QueryContext(),
-                (node, added) -> root.set(node),
+                (node, added, completed) -> root.set(node),
                 ProcessInputHandler.unsupported())
                 .run(parent, new CancellationToken());
 
@@ -99,7 +99,7 @@ class ProcessInfrastructureTest {
         };
 
         new ProcessRunner(new QueryContext(),
-                (node, added) -> root.set(node), ProcessInputHandler.unsupported())
+                (node, added, completed) -> root.set(node), ProcessInputHandler.unsupported())
                 .run(process, new CancellationToken());
 
         assertAllTerminal(root.get());

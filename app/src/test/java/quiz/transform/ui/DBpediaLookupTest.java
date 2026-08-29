@@ -31,7 +31,7 @@ class DBpediaLookupTest {
                     wikidata.explore.query.core.WikidataAccess.of(client, null)
                             .with(wikidata.explore.query.core.Datasource.DBPEDIA, client).bind(),
                     accepted::addAll,
-                    (root, added) -> {
+                    (root, added, completed) -> {
                         if (added && !roots.contains(root)) {
                             roots.add(root);
                         }

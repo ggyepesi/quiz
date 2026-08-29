@@ -30,7 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RunningStateReleaseTest {
 
     private static final class Recorder implements LogListener {
-        @Override public void logChanged(LogNode root, boolean added) { }
+        @Override public void logChanged(
+                LogNode root, boolean added, boolean terminalUpdate) { }
     }
 
     @Test void aFailedProcessStillReportsThatItStopped() throws Exception {

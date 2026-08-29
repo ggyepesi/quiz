@@ -203,7 +203,7 @@ public class WorkflowRecorder {
             LogNode node, LogStatus status, String summary, Throwable error) {
         if (node == null) return;
         node.complete(status, summary, describeError(error));
-        fire(false);
+        fireCompletion();
     }
 
     /** Terminally closes all descendants, including entries abandoned by third-party code. */
@@ -211,7 +211,7 @@ public class WorkflowRecorder {
             LogStatus status, String summary, Throwable error) {
         finishTree(root, status, describeError(error));
         root.complete(status, summary, describeError(error));
-        fire(false);
+        fireCompletion();
     }
 
     private void finishTree(LogNode parent, LogStatus status, String error) {
@@ -239,7 +239,7 @@ public class WorkflowRecorder {
                 describeError(error));
 
         stack.remove(node);
-        fire(false);
+        fireCompletion();
     }
 
     /**
@@ -267,7 +267,7 @@ public class WorkflowRecorder {
                 terminal,
                 terminal == LogStatus.OK ? summary : null,
                 error);
-        fire(false);
+        fireCompletion();
     }
 
     /**
@@ -329,12 +329,22 @@ public class WorkflowRecorder {
             return;
         }
         child.complete(status == null ? LogStatus.OK : status, summary, null);
-        fire(false);
+        fireCompletion();
     }
 
+    /** An ordinary change: a node was added or its running state advanced. */
     private void fire(boolean added) {
+        notifyListener(added, false);
+    }
+
+    /** A change that closed a node, which a view must render even mid-workflow. */
+    private void fireCompletion() {
+        notifyListener(false, true);
+    }
+
+    private void notifyListener(boolean added, boolean terminalUpdate) {
         if (listener != null) {
-            listener.logChanged(root, added);
+            listener.logChanged(root, added, terminalUpdate);
         }
     }
 
