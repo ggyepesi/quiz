@@ -2,6 +2,13 @@
 
 ## Status
 
+**Superseded** by [Entity Relations as a Meta-Domain](entity-relations-as-a-meta-domain.md).
+A walked node needs no way of its own to carry an annotation: a typed entity field
+pointing at its own class is already an edge, and jurisdiction is already a field. The
+measurement below pointed there — *nothing new is needed for the 89.5% case* — without
+being read that way. What remains valid is that measurement, the two bugs in the original
+query, and the reason edge qualifiers are a different construct.
+
 Sketch, not implemented. Written from a concrete question — get the subclass structure
 of public offices with each office's jurisdiction attached — and from measuring where
 that jurisdiction actually lives.
