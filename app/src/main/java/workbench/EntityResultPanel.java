@@ -104,6 +104,10 @@ public class EntityResultPanel extends JPanel {
         return table.getSelectedRow() >= 0;
     }
 
+    public int selectionCount() {
+        return table.getSelectedRowCount();
+    }
+
     /** Select the first row, if any — e.g. after a single-entity lookup. */
     public void selectFirstRow() {
         if (model.getRowCount() > 0) {

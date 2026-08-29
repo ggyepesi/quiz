@@ -474,7 +474,7 @@ public class ModelBuilderFrame extends JFrame {
             selectionsPanel = new SelectionViewerPanel(projectModel, apiClient, client);
             // Entities collected anywhere in Explore can be named as a vocabulary here.
             selectionsPanel.selections(sourceWorkbench.selections());
-            selectionsWindow = new JFrame("Selections");
+            selectionsWindow = new JFrame("Vocabularies / populations");
             selectionsWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             selectionsWindow.setLayout(new BorderLayout());
             selectionsWindow.add(selectionsPanel, BorderLayout.CENTER);

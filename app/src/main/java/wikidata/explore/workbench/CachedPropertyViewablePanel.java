@@ -25,7 +25,7 @@ public class CachedPropertyViewablePanel extends JPanel {
             new JLabel(" ");
     private final JPanel propertyBrowser = new JPanel(new BorderLayout(6, 0));
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    private WikidataPropertyViewable selectedProperty;
+    private List<WikidataPropertyViewable> selectedProperties = List.of();
     private WorkbenchSelections selections;
 
     private final List<WikidataPropertyViewable> properties =
@@ -37,13 +37,9 @@ public class CachedPropertyViewablePanel extends JPanel {
     public CachedPropertyViewablePanel() {
         super(new BorderLayout(6, 6));
         propertyList.valueLinker(wikidata.ui.WikidataLinks.valueLinker());
-        propertyList.onSelectionChanged(selected -> {
-            if (selected instanceof WikidataPropertyViewable property) {
-                selectedProperty = property;
-            } else {
-                selectedProperty = null;
-            }
-        });
+        propertyList.onSelectionSetChanged(selected -> selectedProperties = selected.stream()
+                .filter(WikidataPropertyViewable.class::isInstance)
+                .map(WikidataPropertyViewable.class::cast).toList());
         add(propertyBrowser, BorderLayout.CENTER);
         JPanel footer = new JPanel(new BorderLayout(6, 0));
         footer.add(statusLabel, BorderLayout.CENTER);
@@ -59,8 +55,8 @@ public class CachedPropertyViewablePanel extends JPanel {
         selectionsHolder.removeAll();
         if (value != null) {
             selectionsHolder.add(new SelectionsButton(value).action(
-                    "Add highlighted property to reusable selections",
-                    () -> selectedProperty != null,
+                    "Add selected properties to reusable selections",
+                    () -> !selectedProperties.isEmpty(),
                     this::setSelectedProperty));
         }
         selectionsHolder.revalidate();
@@ -68,8 +64,10 @@ public class CachedPropertyViewablePanel extends JPanel {
     }
 
     private void setSelectedProperty() {
-        if (selectedProperty != null && selections != null) {
-            selections.property(selectedProperty.pid(), selectedProperty.getDisplayName());
+        if (selections != null) {
+            for (WikidataPropertyViewable property : selectedProperties) {
+                selections.property(property.pid(), property.getDisplayName());
+            }
         }
     }
 

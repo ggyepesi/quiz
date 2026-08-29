@@ -75,10 +75,10 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                     "Use selected property as edge",
                     () -> selections.property().isPresent(),
                     this::useSelectedProperty).action(
-                    "Add highlighted entity to reusable selections",
-                    () -> selectedNodeQids.size() == 1,
+                    "Add selected entities to reusable selections",
+                    () -> !selectedNodeQids.isEmpty(),
                     this::setSelectedEntity).action(
-                    "Add edge property to reusable selections",
+                    "Add selected edge property to reusable selections",
                     () -> !pid.isBlank(),
                     this::setSelectedProperty));
         }
@@ -105,10 +105,9 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         });
     }
     private void setSelectedEntity() {
-        if (selections == null || result == null || selectedNodeQids.size() != 1) return;
-        String qid = selectedNodeQids.iterator().next();
-        result.nodes().stream().filter(node -> qid.equals(node.qid())).findFirst()
-                .ifPresent(node -> selections.entity(node.qid(), node.label()));
+        if (selections == null || result == null || selectedNodeQids.isEmpty()) return;
+        result.nodes().stream().filter(node -> selectedNodeQids.contains(node.qid()))
+                .forEach(node -> selections.entity(node.qid(), node.label()));
     }
     private void setSelectedProperty() {
         if (selections == null || pid.isBlank()) return;

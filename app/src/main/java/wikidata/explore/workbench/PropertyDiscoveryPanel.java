@@ -78,6 +78,7 @@ public class PropertyDiscoveryPanel extends JPanel {
     private final JButton allowButton = new JButton("Allow example");
     private final JButton excludeButton = new JButton("Exclude example");
     private DiscoveredProperty selectedProperty;
+    private List<DiscoveredProperty> selectedProperties = List.of();
     // Each run rebuilds the view over new rows; the columns/search/sort the user chose
     // are about the SHAPE of a discovered property, which does not change between runs,
     // so they are carried across instead of resetting to the default on every Run.
@@ -162,8 +163,8 @@ public class PropertyDiscoveryPanel extends JPanel {
         selectionsHolder.removeAll();
         if (value != null) {
             selectionsHolder.add(new SelectionsButton(value).action(
-                    "Add highlighted property to reusable selections",
-                    () -> selectedProperty != null,
+                    "Add selected properties to reusable selections",
+                    () -> !selectedProperties.isEmpty(),
                     this::setSelectedProperty));
         }
         selectionsHolder.revalidate();
@@ -362,9 +363,10 @@ public class PropertyDiscoveryPanel extends JPanel {
                 .emptyMessage("No properties discovered yet — pick a class and Run.")
                 .configState(resultConfig)
                 .configListener(state -> resultConfig = state)
-                .selectionListener(selected -> selectProperty(
-                        selected instanceof DiscoveredPropertyViewable row
-                                ? row.property() : null))
+                .selectionSetListener(selected -> selectProperties(selected.stream()
+                        .filter(DiscoveredPropertyViewable.class::isInstance)
+                        .map(DiscoveredPropertyViewable.class::cast)
+                        .map(DiscoveredPropertyViewable::property).toList()))
                 .build();
 
         resultHolder.removeAll();
@@ -392,22 +394,31 @@ public class PropertyDiscoveryPanel extends JPanel {
     /** The actions act on the selection, so they are disabled until there is one, and
      *  the two example actions until that row HAS an example entity to act on. */
     private void selectProperty(DiscoveredProperty property) {
-        selectedProperty = property;
-        addFieldButton.setEnabled(property != null);
-        boolean hasExample = property != null && !property.exampleQid().isBlank();
+        selectProperties(property == null ? List.of() : List.of(property));
+    }
+
+    private void selectProperties(List<DiscoveredProperty> properties) {
+        selectedProperties = properties == null ? List.of() : List.copyOf(properties);
+        selectedProperty = selectedProperties.size() == 1
+                ? selectedProperties.getFirst() : null;
+        addFieldButton.setEnabled(selectedProperty != null);
+        boolean hasExample = selectedProperty != null
+                && !selectedProperty.exampleQid().isBlank();
         allowButton.setEnabled(hasExample);
         excludeButton.setEnabled(hasExample);
-        if (property != null) {
-            statusLabel.setText("Selected " + property.pid()
-                    + (property.label() == null || property.label().isBlank()
-                            ? "" : " (" + property.label() + ")"));
+        if (selectedProperty != null) {
+            statusLabel.setText("Selected " + selectedProperty.pid()
+                    + (selectedProperty.label() == null || selectedProperty.label().isBlank()
+                            ? "" : " (" + selectedProperty.label() + ")"));
+        } else if (!selectedProperties.isEmpty()) {
+            statusLabel.setText("Selected " + selectedProperties.size() + " properties");
         }
     }
 
     private void setSelectedProperty() {
-        withSelected(property -> {
-            if (selections != null) selections.property(property.pid(), property.label());
-        });
+        if (selections == null) return;
+        selectedProperties.forEach(property ->
+                selections.property(property.pid(), property.label()));
     }
 
     private void withSelected(Consumer<DiscoveredProperty> action) {

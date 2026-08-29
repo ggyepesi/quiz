@@ -91,4 +91,29 @@ class VocabularyFromSelectionsTest {
         }
         return null;
     }
+
+    @Test void selectedEntitiesCanGrowAnExistingVocabularyWithoutLosingItsValueType() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        VocabularySelection prize = new VocabularySelection("Prize");
+        prize.valueQids(java.util.List.of("Q38104"));
+        prize.valueTypeQid("Q7191");
+        project.addSelection(prize);
+
+        WorkbenchSelections selections = new WorkbenchSelections();
+        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
+        panel.selections(selections);
+        panel.refreshSelections();
+
+        selections.entity("Q38104", "Physics");
+        selections.entity("Q44585", "Chemistry");
+        button(panel, "Add selected entities").doClick();
+
+        VocabularySelection stored =
+                (VocabularySelection) project.findSelection("Prize");
+        assertEquals(java.util.List.of("Q38104", "Q44585"), stored.valueQids(),
+                "an already-present value is not added twice");
+        assertEquals("Q7191", stored.valueTypeQid(),
+                "growing a vocabulary keeps the rest of its definition");
+        assertEquals(1, project.selections().size());
+    }
 }

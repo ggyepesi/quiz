@@ -39,7 +39,7 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton openQidButton = new JButton("Open QID");
     private final JButton searchButton = new JButton("Search");
     private final EntityResultPanel candidates =
-            new EntityResultPanel(List.of("QID", "Label", "Description"), 0, false);
+            new EntityResultPanel(List.of("QID", "Label", "Description"), 0, true);
 
     private final JButton exploreButton = new JButton("Explore entity relations");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
@@ -51,6 +51,7 @@ public class ExploreByExamplePanel extends JPanel {
     // bespoke table. The holder swaps in a fresh card view each time the relation set changes.
     private final JPanel relationHolder = new JPanel(new BorderLayout());
     private List<RelationView> relations = List.of();
+    private List<RelationView> selectedRelationViews = List.of();
     private RelationView selectedRelationView;
     private final JButton showMembersButton = new JButton("Show members");
     private final JButton addTargetsButton = new JButton("Add as relation targets");
@@ -154,10 +155,10 @@ public class ExploreByExamplePanel extends JPanel {
         selectionsButtonHolder.removeAll();
         if (selections != null) selectionsButtonHolder.add(
                 new SelectionsButton(selections)
-                        .action("Add highlighted entity to reusable selections",
+                        .action("Add selected entities to reusable selections",
                                 this::canSetSelectedEntity, this::setSelectedEntity)
-                        .action("Add highlighted property to reusable selections",
-                                () -> selectedRelationView != null,
+                        .action("Add selected properties to reusable selections",
+                                () -> !selectedRelationViews.isEmpty(),
                                 this::setSelectedProperty));
         selectionsButtonHolder.revalidate();
         selectionsButtonHolder.repaint();
@@ -480,10 +481,11 @@ public class ExploreByExamplePanel extends JPanel {
     }
 
     /** Render {@code rels} as cards through objectview's SearchableView — search, sort,
-     *  filter (incl. by Kind) come from the shared card view. Single-card selection sets the
-     *  picked relation for the actions. A fresh view is built per relation set. */
+     *  filter (incl. by Kind) come from the shared card view. Reusable selection accepts
+     *  the whole selected set; relation-specific actions require exactly one. */
     private void showRelations(List<RelationView> rels) {
         relations = rels == null ? List.of() : rels;
+        selectedRelationViews = List.of();
         selectedRelationView = null;
         relationHolder.removeAll();
         if (relations.isEmpty()) {
@@ -495,9 +497,12 @@ public class ExploreByExamplePanel extends JPanel {
                     .mode(objectview.render.RenderingMode.TABLE)
                     .sample(relations.get(0))
                     .valueLinker(WikidataLinks.valueLinker())
-                    .selectionListener(o -> {
-                        selectedRelationView =
-                                o instanceof RelationView rv ? rv : null;
+                    .selectionSetListener(selected -> {
+                        selectedRelationViews = selected.stream()
+                                .filter(RelationView.class::isInstance)
+                                .map(RelationView.class::cast).toList();
+                        selectedRelationView = selectedRelationViews.size() == 1
+                                ? selectedRelationViews.getFirst() : null;
                         updateButtons();
                     })
                     .build();
@@ -510,11 +515,13 @@ public class ExploreByExamplePanel extends JPanel {
 
     private void updateButtons() {
         boolean haveCandidate = candidates.hasSelection();
+        boolean haveOneCandidate = candidates.selectionCount() == 1;
         boolean haveProbe = selectedRelationView != null;
         // A pre-loaded seed (presentSeed) enables Explore even without a search candidate.
         exploreButton.setEnabled(
-                (haveCandidate || WikidataIds.isQid(pendingQid)) && queryRunner != null);
-        useSourceButton.setEnabled(haveCandidate || WikidataIds.isQid(exploredQid));
+                (haveOneCandidate || WikidataIds.isQid(pendingQid)) && queryRunner != null);
+        useSourceButton.setEnabled(haveOneCandidate
+                || !haveCandidate && WikidataIds.isQid(exploredQid));
         showMembersButton.setEnabled(haveProbe);
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
@@ -527,22 +534,31 @@ public class ExploreByExamplePanel extends JPanel {
     }
 
     private void setSelectedEntity() {
-        String[] picked = pickEntity(candidates.hasSelection(),
-                candidates.firstSelected(0), candidates.firstSelected(1),
-                exploredQid, exploredLabel);
-        if (picked != null && workbenchSelections != null) {
-            workbenchSelections.entity(picked[0], picked[1]);
-            status.setText("Selected entity " + picked[1] + " (" + picked[0] + ").");
+        if (workbenchSelections == null) return;
+        List<List<Object>> rows = candidates.selectedRows();
+        int added = 0;
+        for (List<Object> row : rows) {
+            String qid = row.isEmpty() || row.get(0) == null ? "" : row.get(0).toString();
+            String label = row.size() < 2 || row.get(1) == null ? qid : row.get(1).toString();
+            if (WikidataIds.isQid(qid)) {
+                workbenchSelections.entity(qid, label);
+                added++;
+            }
         }
+        if (added == 0 && WikidataIds.isQid(exploredQid)) {
+            workbenchSelections.entity(exploredQid, exploredLabel);
+            added = 1;
+        }
+        if (added > 0) status.setText("Added " + added + " entity selection(s).");
     }
 
     private void setSelectedProperty() {
-        RelationView relation = selectedRelationView;
-        if (relation != null && workbenchSelections != null) {
+        if (workbenchSelections == null) return;
+        for (RelationView relation : selectedRelationViews) {
             workbenchSelections.property(relation.pid(), relation.relationLabel());
-            status.setText("Selected property " + relation.relationLabel()
-                    + " (" + relation.pid() + ").");
         }
+        if (!selectedRelationViews.isEmpty()) status.setText("Added "
+                + selectedRelationViews.size() + " property selection(s).");
     }
 
     private ClassSearchQuery buildSearchQuery() {

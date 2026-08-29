@@ -19,6 +19,7 @@ import wikidata.explore.model.VocabularySelection;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -59,6 +60,7 @@ public class SelectionViewerPanel extends JPanel {
     private final JTextField discPidField = new JTextField(6);
     private final JTextField discSubjectsField = new JTextField(20);
     private final JButton discoverButton = new JButton("Discover & add");
+    private final JButton addToVocabularyButton = new JButton("Add selected entities");
 
     public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api,
                                 WikidataSparqlClient sparql) {
@@ -70,9 +72,10 @@ public class SelectionViewerPanel extends JPanel {
         cardsScroll.setPreferredSize(new Dimension(460, 520));
 
         JPanel viewRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        viewRow.add(new JLabel("Selection:"));
+        viewRow.add(new JLabel("Vocabulary / population:"));
         viewRow.add(selectionBox);
         viewRow.add(showButton);
+        viewRow.add(addToVocabularyButton);
 
         // Inline "declare a vocabulary": a name + QIDs, so the construct is usable
         // without a separate editor — paste the Oscar categories, see them at once.
@@ -108,7 +111,7 @@ public class SelectionViewerPanel extends JPanel {
         // Two rows carry a name box of the same shape; naming this one keeps them
         // distinguishable to anything that has to find it rather than guess.
         reuseNameField.setName("vocabularyFromSelectionsName");
-        reuseRow.add(new JLabel("From selections:"));
+        reuseRow.add(new JLabel("From reusable selections:"));
         reuseRow.add(reuseNameField);
         reuseRow.add(selectionsHolder);
         reuseRow.add(useSelectionsButton);
@@ -126,6 +129,8 @@ public class SelectionViewerPanel extends JPanel {
         add(status, BorderLayout.SOUTH);
 
         showButton.addActionListener(e -> showSelected());
+        selectionBox.addActionListener(e -> refreshSelectionAction());
+        addToVocabularyButton.addActionListener(e -> addSelectionsToChosenVocabulary());
         addButton.addActionListener(e -> addVocabulary());
         discoverButton.addActionListener(e -> discoverVocabulary());
     }
@@ -169,6 +174,47 @@ public class SelectionViewerPanel extends JPanel {
         useSelectionsButton.setToolTipText(count == 0
                 ? "Select entities in Explore, then name them as a vocabulary here"
                 : "Make a vocabulary of the " + count + " selected entities");
+
+        // The same collection either NAMES a new vocabulary or GROWS the chosen one.
+        // Only a vocabulary has explicit values to grow; a population is defined by a
+        // rule, and adding QIDs to it would silently mean something else.
+        boolean vocabulary = chosenSelection() instanceof VocabularySelection;
+        addToVocabularyButton.setEnabled(count > 0 && vocabulary);
+        addToVocabularyButton.setToolTipText(!vocabulary
+                ? "Choose a vocabulary above to add the selected entities to it"
+                : count == 0
+                        ? "Select entities in Explore, then add them to this vocabulary"
+                        : "Add the " + count + " selected entities to this vocabulary");
+    }
+
+    /** The selection the selector points at — one place decides what "chosen" means. */
+    private Selection chosenSelection() {
+        int i = selectionBox.getSelectedIndex();
+        return i < 0 || i >= project.selections().size() ? null : project.selections().get(i);
+    }
+
+    /**
+     * Grows the chosen vocabulary by the reusable entity selection. The stored
+     * vocabulary is EDITED rather than rebuilt: a rebuilt one would carry the name and
+     * values across and quietly drop its value type.
+     */
+    private void addSelectionsToChosenVocabulary() {
+        if (selections == null) return;
+        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) {
+            status.setText("Choose a vocabulary to add the selected entities to.");
+            return;
+        }
+        LinkedHashSet<String> values = new LinkedHashSet<>(vocabulary.valueQids());
+        int before = values.size();
+        selections.entities().forEach(entity -> values.add(entity.qid()));
+        vocabulary.valueQids(List.copyOf(values));
+        storeVocabulary(vocabulary);
+        refreshSelections();
+        int added = values.size() - before;
+        status.setText(added == 0
+                ? "Every selected entity was already in " + vocabulary.name() + "."
+                : "Added " + added + " value(s) to " + vocabulary.name()
+                        + " — now " + values.size() + ".");
     }
 
     /** Names the whole entity selection as a vocabulary. */
