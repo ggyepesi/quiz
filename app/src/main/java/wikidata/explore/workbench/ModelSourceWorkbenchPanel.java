@@ -79,6 +79,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             new CategorySeedPanel();
     private final CachedPropertyViewablePanel propertyPanel =
             new CachedPropertyViewablePanel();
+    private final EntityRelationDiscoveryPanel entityRelationPanel =
+            new EntityRelationDiscoveryPanel();
     private final GraphPatternSamplePanel graphPatternPanel;
     private final GraphConfigurationDiagram graphConfigurationDiagram;
 
@@ -106,12 +108,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.explorePanel.selections(selections);
         this.propertyPanel.selections(selections);
+        this.entityRelationPanel.selections(selections);
         this.discoveryPanel.selections(selections);
-        this.explorePanel.onExploreEntityRelation(request ->
-        {
-            propertyPanel.exploreEntityRelation(
-                    request.pid(), request.startingQid(), request.direction());
-        });
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.baseClassCandidates(
@@ -144,7 +142,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
         graphPatternPanel.setQueryRunner(queryRunner);
-        propertyPanel.setQueryRunner(queryRunner);
+        entityRelationPanel.setQueryRunner(queryRunner);
     }
 
     public void afterChange(
@@ -231,6 +229,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void onGraphSelection(Consumer<Object> consumer) {
         graphConfigurationDiagram.onActivate(consumer);
+    }
+
+    /** The window's reusable selections, shared with tools that name or consume them. */
+    public workbench.WorkbenchSelections selections() {
+        return selections;
     }
 
     public JComponent helperTools() {
@@ -752,6 +755,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         wikidataTools.addTab(
                 "Properties",
                 propertyPanel);
+        wikidataTools.addTab(
+                "Entity relations",
+                entityRelationPanel);
 
         wikipediaTools.addTab(
                 "Categories",
@@ -899,6 +905,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     /** Releases helper tools that hold more than memory. */
     @Override public void close() {
-        propertyPanel.close();
+        entityRelationPanel.close();
     }
 }

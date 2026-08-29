@@ -4,13 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import javax.swing.JMenuItem;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorkbenchSelectionsTest {
-    @Test void entityAndPropertyAreIndependentSingleValueSlots() {
+    @Test void entitiesAndPropertiesAccumulateIndependently() {
         WorkbenchSelections selections = new WorkbenchSelections();
         AtomicInteger changes = new AtomicInteger();
         selections.onChange(changes::incrementAndGet);
@@ -19,13 +20,40 @@ class WorkbenchSelectionsTest {
         selections.property("P26", "spouse");
         selections.entity("Q937", "Albert Einstein");
 
-        assertEquals("Q937", selections.entity().orElseThrow().qid());
+        assertEquals(List.of("Q42", "Q937"), selections.entities().stream()
+                .map(WorkbenchSelections.Entity::qid).toList());
         assertEquals("P26", selections.property().orElseThrow().pid());
         assertEquals(3, changes.get());
 
         selections.clearProperty();
         assertTrue(selections.property().isEmpty());
-        assertEquals("Q937", selections.entity().orElseThrow().qid());
+        assertEquals(2, selections.entities().size());
+    }
+
+    // Arity is the using side's question. A tool that walks from a starting point
+    // cannot begin at six, and quietly beginning at whichever was picked last would be
+    // an arbitrary answer — so the single accessor is empty until exactly one remains.
+    @Test void theSingleAccessorIsEmptyUnlessExactlyOneIsSelected() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        assertTrue(selections.entity().isEmpty(), "none selected");
+
+        selections.entity("Q80061", "Physiology or Medicine");
+        assertEquals("Q80061", selections.entity().orElseThrow().qid());
+
+        selections.entity("Q38104", "Physics");
+        assertTrue(selections.entity().isEmpty(), "two selected is not one");
+        assertEquals(2, selections.entities().size(), "but both remain available");
+
+        selections.removeEntity(selections.entities().get(1));
+        assertEquals("Q80061", selections.entity().orElseThrow().qid(),
+                "removing the second leaves exactly one again");
+    }
+
+    @Test void selectingTheSameValueTwiceSelectsItOnce() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        selections.entity("Q38104", "Physics");
+        selections.entity("Q38104", "Physics");
+        assertEquals(1, selections.entities().size());
     }
 
     @Test void contextualMenuActionReadsCurrentStateWhenOpened() {

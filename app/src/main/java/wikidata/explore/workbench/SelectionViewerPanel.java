@@ -11,6 +11,8 @@ import wikidata.explore.extract.SelectionContentResolver;
 import wikidata.explore.extract.ValueVocabularyDiscovery;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
+import workbench.SelectionsButton;
+import workbench.WorkbenchSelections;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
 
@@ -44,6 +46,11 @@ public class SelectionViewerPanel extends JPanel {
     private final JTextField newNameField = new JTextField(14);
     private final JTextField newQidsField = new JTextField(24);
     private final JButton addButton = new JButton("Add & show");
+    private final JTextField reuseNameField = new JTextField(14);
+    private final JButton useSelectionsButton = new JButton("Use selected entities");
+    private final JPanel selectionsHolder =
+            new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    private WorkbenchSelections selections;
 
     // Discover a vocabulary from a property's DISTINCT values over sample subjects —
     // e.g. the P31 types of some nominees, the P136 genres of some works.
@@ -93,11 +100,25 @@ public class SelectionViewerPanel extends JPanel {
         discSubjectsField.setToolTipText("A few sample subject QIDs to profile "
                 + "(e.g. some nominee or work QIDs), comma/space-separated.");
 
+        // The multiple-selection side of reusable selections: collect entities anywhere
+        // in Explore, then name them once here. Arity is stated by which accessor is
+        // read — entities() takes the whole collection, entity() would demand exactly one.
+        JPanel reuseRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        // Two rows carry a name box of the same shape; naming this one keeps them
+        // distinguishable to anything that has to find it rather than guess.
+        reuseNameField.setName("vocabularyFromSelectionsName");
+        reuseRow.add(new JLabel("From selections:"));
+        reuseRow.add(reuseNameField);
+        reuseRow.add(selectionsHolder);
+        reuseRow.add(useSelectionsButton);
+        useSelectionsButton.addActionListener(e -> addVocabularyFromSelections());
+
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
         top.add(viewRow);
         top.add(newRow);
         top.add(discRow);
+        top.add(reuseRow);
 
         add(top, BorderLayout.NORTH);
         add(cardsScroll, BorderLayout.CENTER);
@@ -106,6 +127,48 @@ public class SelectionViewerPanel extends JPanel {
         showButton.addActionListener(e -> showSelected());
         addButton.addActionListener(e -> addVocabulary());
         discoverButton.addActionListener(e -> discoverVocabulary());
+    }
+
+    /** Share the workbench's reusable selections so a vocabulary can be named from them. */
+    public void selections(WorkbenchSelections value) {
+        selections = value;
+        selectionsHolder.removeAll();
+        if (value != null) {
+            selectionsHolder.add(new SelectionsButton(value));
+            value.onChange(this::refreshSelectionAction);
+        }
+        selectionsHolder.revalidate();
+        selectionsHolder.repaint();
+        refreshSelectionAction();
+    }
+
+    private void refreshSelectionAction() {
+        int count = selections == null ? 0 : selections.entities().size();
+        useSelectionsButton.setEnabled(count > 0);
+        useSelectionsButton.setToolTipText(count == 0
+                ? "Select entities in Explore, then name them as a vocabulary here"
+                : "Make a vocabulary of the " + count + " selected entities");
+    }
+
+    /** Names the whole entity selection as a vocabulary. */
+    private void addVocabularyFromSelections() {
+        String name = reuseNameField.getText().trim();
+        if (name.isBlank()) {
+            status.setText("Give the vocabulary a name.");
+            return;
+        }
+        if (selections == null || selections.entities().isEmpty()) {
+            status.setText("No entities selected — pick some in Explore first.");
+            return;
+        }
+        VocabularySelection created = new VocabularySelection(name);
+        created.valueQids(selections.entities().stream()
+                .map(WorkbenchSelections.Entity::qid).toList());
+        project.addSelection(created);
+        reuseNameField.setText("");
+        refreshSelections();
+        status.setText("Added vocabulary " + name + " with "
+                + created.valueQids().size() + " value(s).");
     }
 
     /** Run a value-vocabulary discovery and materialize it as a VocabularySelection. */

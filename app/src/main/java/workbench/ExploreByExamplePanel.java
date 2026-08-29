@@ -3,7 +3,6 @@ package workbench;
 import wikidata.WikidataIds;
 
 import wikidata.explore.query.logical.ClassSearchQuery;
-import wikidata.explore.query.logical.DiscoverEntityRelationQuery;
 import wikidata.explore.query.logical.ExploreEntityQuery;
 import wikidata.explore.query.logical.RelationMembersQuery;
 import wikidata.explore.query.result.TableQueryResult;
@@ -34,7 +33,6 @@ public class ExploreByExamplePanel extends JPanel {
     private Consumer<List<String>> onAddRelationTargets = qids -> {};
     private BiConsumer<String, String> onUseAsSourceQid = (qid, label) -> {};
     private BiConsumer<String, String> onUseProperty = (pid, label) -> {};
-    private Consumer<RelationExploration> onExploreEntityRelation = request -> {};
 
     private final JTextField searchField = new JTextField(22);
     private final JTextField qidField = new JTextField(8);
@@ -58,7 +56,6 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton addTargetsButton = new JButton("Add as relation targets");
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
     private final JButton usePropertyButton = new JButton("Use selected property");
-    private final JButton exploreExampleRelationButton = new JButton("Explore selected relation");
     private final JLabel hint = new JLabel(
             "<html>Search → pick an entity → Explore relations → pick a "
                     + "relation: <b>Show members</b> (then double-click a member to "
@@ -150,9 +147,6 @@ public class ExploreByExamplePanel extends JPanel {
     public void onUseProperty(BiConsumer<String, String> handler) {
         this.onUseProperty = handler == null ? (p, l) -> {} : handler;
     }
-    public void onExploreEntityRelation(Consumer<RelationExploration> handler) {
-        onExploreEntityRelation = handler == null ? request -> {} : handler;
-    }
 
     /** Share explicit, reusable entity/property selections with the surrounding workbench. */
     public void selections(WorkbenchSelections selections) {
@@ -160,7 +154,7 @@ public class ExploreByExamplePanel extends JPanel {
         selectionsButtonHolder.removeAll();
         if (selections != null) selectionsButtonHolder.add(
                 new SelectionsButton(selections)
-                        .action("Set highlighted entity",
+                        .action("Select highlighted entity",
                                 this::canSetSelectedEntity, this::setSelectedEntity)
                         .action("Set highlighted property",
                                 () -> selectedRelationView != null,
@@ -355,7 +349,6 @@ public class ExploreByExamplePanel extends JPanel {
         // in the ordinary Explore tab nothing listens, so it would do nothing.
         usePropertyButton.setVisible(false);
         actionRow.add(usePropertyButton);
-        actionRow.add(exploreExampleRelationButton);
         actionRow.add(status);
 
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC));
@@ -421,18 +414,6 @@ public class ExploreByExamplePanel extends JPanel {
             if (rel != null) {
                 onUseProperty.accept(rel.pid(), rel.relationLabel());
                 status.setText("Used " + rel.pid() + ".");
-            }
-        });
-        exploreExampleRelationButton.addActionListener(e -> {
-            RelationExploration request = relationExploration(
-                    selectedRelationView, exploredQid);
-            if (request != null) {
-                if (workbenchSelections != null) {
-                    workbenchSelections.entity(exploredQid, exploredLabel);
-                    workbenchSelections.property(
-                            selectedRelationView.pid(), selectedRelationView.relationLabel());
-                }
-                onExploreEntityRelation.accept(request);
             }
         });
         openQidButton.addActionListener(e -> openQid());
@@ -538,8 +519,6 @@ public class ExploreByExamplePanel extends JPanel {
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
         usePropertyButton.setEnabled(haveProbe);
-        exploreExampleRelationButton.setEnabled(haveProbe
-                && WikidataIds.isQid(exploredQid));
     }
 
     private boolean canSetSelectedEntity() {
@@ -565,26 +544,6 @@ public class ExploreByExamplePanel extends JPanel {
                     + " (" + relation.pid() + ").");
         }
     }
-
-    /**
-     * The relation is an edge of the entity being explored. Its example is only evidence;
-     * using that example as the graph seed silently replaced the user's selection.
-     */
-    static RelationExploration relationExploration(
-            RelationView relation, String exploredQid) {
-        if (relation == null || !WikidataIds.isQid(exploredQid)
-                || !WikidataIds.isPid(relation.pid())) return null;
-        return new RelationExploration(
-                relation.pid(), exploredQid,
-                relation.incoming()
-                        ? DiscoverEntityRelationQuery.Direction.INCOMING
-                        : DiscoverEntityRelationQuery.Direction.OUTGOING);
-    }
-
-    public record RelationExploration(
-            String pid,
-            String startingQid,
-            DiscoverEntityRelationQuery.Direction direction) { }
 
     private ClassSearchQuery buildSearchQuery() {
         String text = searchField.getText() == null ? "" : searchField.getText().trim();

@@ -31,11 +31,16 @@ public final class SelectionsButton extends JButton {
     }
 
     private void refresh() {
-        int count = (selections.entity().isPresent() ? 1 : 0)
-                + (selections.property().isPresent() ? 1 : 0);
+        int count = selections.entities().size() + selections.properties().size();
         setText(count == 0
                 ? "Reusable selections"
                 : "Reusable selections (" + count + ")");
+    }
+
+    private static void header(JPopupMenu menu, String kind, int count) {
+        JMenuItem item = new JMenuItem(count == 0 ? kind + ": none" : kind + " (" + count + ")");
+        item.setEnabled(false);
+        menu.add(item);
     }
 
     private void showMenu() {
@@ -45,27 +50,33 @@ public final class SelectionsButton extends JButton {
     /** Builds the current menu so contextual actions evaluate against current UI state. */
     JPopupMenu menu() {
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem entity = new JMenuItem(selections.entity()
-                .map(value -> "Entity: " + value.label() + " (" + value.qid() + ")")
-                .orElse("Entity: none"));
-        entity.setEnabled(false);
-        menu.add(entity);
-        selections.entity().ifPresent(value -> {
-            JMenuItem clear = new JMenuItem("Clear entity");
+        // Every selected value is listed and individually removable: a collection the
+        // reader cannot see the contents of is one they cannot correct.
+        header(menu, "Entities", selections.entities().size());
+        for (WorkbenchSelections.Entity value : selections.entities()) {
+            JMenuItem item = new JMenuItem(
+                    "  " + value.label() + " (" + value.qid() + ")  ✕");
+            item.addActionListener(event -> selections.removeEntity(value));
+            menu.add(item);
+        }
+        if (!selections.entities().isEmpty()) {
+            JMenuItem clear = new JMenuItem("  Clear all entities");
             clear.addActionListener(event -> selections.clearEntity());
             menu.add(clear);
-        });
+        }
         menu.addSeparator();
-        JMenuItem property = new JMenuItem(selections.property()
-                .map(value -> "Property: " + value.label() + " (" + value.pid() + ")")
-                .orElse("Property: none"));
-        property.setEnabled(false);
-        menu.add(property);
-        selections.property().ifPresent(value -> {
-            JMenuItem clear = new JMenuItem("Clear property");
+        header(menu, "Properties", selections.properties().size());
+        for (WorkbenchSelections.Property value : selections.properties()) {
+            JMenuItem item = new JMenuItem(
+                    "  " + value.label() + " (" + value.pid() + ")  ✕");
+            item.addActionListener(event -> selections.removeProperty(value));
+            menu.add(item);
+        }
+        if (!selections.properties().isEmpty()) {
+            JMenuItem clear = new JMenuItem("  Clear all properties");
             clear.addActionListener(event -> selections.clearProperty());
             menu.add(clear);
-        });
+        }
         if (!actions.isEmpty()) {
             menu.addSeparator();
             for (MenuAction action : actions) {

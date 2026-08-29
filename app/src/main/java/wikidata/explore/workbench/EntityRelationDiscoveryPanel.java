@@ -59,22 +59,10 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
             }
         });
     }
-    void property(WikidataPropertyViewable selected) {
-        pid = selected == null ? "" : selected.pid();
-        propertyLabel = selected == null ? "" : selected.getDisplayName();
-        property.setText(selected == null ? "No property selected" : selected.getDisplayName()+" ("+selected.pid()+")");
-        discover.setEnabled(wired && !pid.isBlank());
-    }
     void setQueryRunner(SwingQueryRunner runner) {
         if (wired || runner == null) return; wired=true;
         runner.wireButton(discover,this::accept,this::query,e -> status.setText("Discovery failed: "+message(e)));
         discover.setEnabled(!pid.isBlank());
-    }
-    void startingQid(String qid) {
-        if (wikidata.WikidataIds.isQid(qid)) startingQid.setText(qid);
-    }
-    void direction(DiscoverEntityRelationQuery.Direction value) {
-        if (value != null) direction.setSelectedItem(value);
     }
     void selections(WorkbenchSelections value) {
         selections = value;
@@ -87,10 +75,10 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                     "Use selected property as edge",
                     () -> selections.property().isPresent(),
                     this::useSelectedProperty).action(
-                    "Set highlighted entity",
+                    "Select highlighted entity",
                     () -> selectedNodeQids.size() == 1,
                     this::setSelectedEntity).action(
-                    "Set edge property",
+                    "Select edge property",
                     () -> !pid.isBlank(),
                     this::setSelectedProperty));
         }
