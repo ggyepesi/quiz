@@ -52,8 +52,23 @@ class WorkbenchSelectionsTest {
     @Test void selectingTheSameValueTwiceSelectsItOnce() {
         WorkbenchSelections selections = new WorkbenchSelections();
         selections.entity("Q38104", "Physics");
-        selections.entity("Q38104", "Physics");
+        selections.entity("Q38104", "Nobel Prize in Physics");
         assertEquals(1, selections.entities().size());
+        assertEquals("Nobel Prize in Physics", selections.entities().getFirst().label(),
+                "a better label updates the same source identity");
+    }
+
+    @Test void aListenerRegistrationCanBeDetached() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        AtomicInteger changes = new AtomicInteger();
+        WorkbenchSelections.Registration registration =
+                selections.onChange(changes::incrementAndGet);
+
+        selections.entity("Q38104", "Physics");
+        registration.close();
+        selections.entity("Q44585", "Chemistry");
+
+        assertEquals(1, changes.get());
     }
 
     @Test void contextualMenuActionReadsCurrentStateWhenOpened() {

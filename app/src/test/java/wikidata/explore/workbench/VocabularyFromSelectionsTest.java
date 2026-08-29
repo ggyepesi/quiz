@@ -46,6 +46,17 @@ class VocabularyFromSelectionsTest {
                 .findFirst().orElseThrow();
         assertEquals(3, created.valueQids().size(), "every selected entity is a value");
         assertTrue(created.valueQids().contains("Q38104"));
+
+        selections.clearEntity();
+        selections.entity("Q7191", "Nobel Prize");
+        named(panel, "vocabularyFromSelectionsName").setText("Prize");
+        use.doClick();
+
+        assertEquals(1, project.selections().stream()
+                .filter(s -> "Prize".equals(s.name())).count(),
+                "correcting a named vocabulary replaces it rather than shadowing it");
+        assertEquals(java.util.List.of("Q7191"),
+                ((VocabularySelection) project.findSelection("Prize")).valueQids());
     }
 
     private static JButton button(Container root, String text) {

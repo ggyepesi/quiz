@@ -11,14 +11,32 @@ import java.util.function.BooleanSupplier;
 public final class SelectionsButton extends JButton {
     private final WorkbenchSelections selections;
     private final List<MenuAction> actions = new ArrayList<>();
+    private WorkbenchSelections.Registration registration;
 
     public SelectionsButton(WorkbenchSelections selections) {
         super("Reusable selections");
         this.selections = selections;
-        setToolTipText("Show the entity and property selected for reuse");
+        setToolTipText("Show the entities and properties selected for reuse");
         addActionListener(event -> showMenu());
-        selections.onChange(this::refresh);
         refresh();
+    }
+
+    private void listen() {
+        if (registration == null) registration = selections.onChange(this::refresh);
+    }
+
+    @Override public void addNotify() {
+        super.addNotify();
+        listen();
+        refresh();
+    }
+
+    @Override public void removeNotify() {
+        if (registration != null) {
+            registration.close();
+            registration = null;
+        }
+        super.removeNotify();
     }
 
     public SelectionsButton action(

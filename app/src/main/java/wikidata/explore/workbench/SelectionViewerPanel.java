@@ -51,6 +51,7 @@ public class SelectionViewerPanel extends JPanel {
     private final JPanel selectionsHolder =
             new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private WorkbenchSelections selections;
+    private WorkbenchSelections.Registration selectionRegistration;
 
     // Discover a vocabulary from a property's DISTINCT values over sample subjects —
     // e.g. the P31 types of some nominees, the P136 genres of some works.
@@ -131,15 +132,35 @@ public class SelectionViewerPanel extends JPanel {
 
     /** Share the workbench's reusable selections so a vocabulary can be named from them. */
     public void selections(WorkbenchSelections value) {
+        if (selectionRegistration != null) {
+            selectionRegistration.close();
+            selectionRegistration = null;
+        }
         selections = value;
         selectionsHolder.removeAll();
         if (value != null) {
             selectionsHolder.add(new SelectionsButton(value));
-            value.onChange(this::refreshSelectionAction);
+            selectionRegistration = value.onChange(this::refreshSelectionAction);
         }
         selectionsHolder.revalidate();
         selectionsHolder.repaint();
         refreshSelectionAction();
+    }
+
+    @Override public void addNotify() {
+        super.addNotify();
+        if (selectionRegistration == null && selections != null) {
+            selectionRegistration = selections.onChange(this::refreshSelectionAction);
+        }
+        refreshSelectionAction();
+    }
+
+    @Override public void removeNotify() {
+        if (selectionRegistration != null) {
+            selectionRegistration.close();
+            selectionRegistration = null;
+        }
+        super.removeNotify();
     }
 
     private void refreshSelectionAction() {
@@ -164,10 +185,10 @@ public class SelectionViewerPanel extends JPanel {
         VocabularySelection created = new VocabularySelection(name);
         created.valueQids(selections.entities().stream()
                 .map(WorkbenchSelections.Entity::qid).toList());
-        project.addSelection(created);
+        boolean replaced = storeVocabulary(created);
         reuseNameField.setText("");
         refreshSelections();
-        status.setText("Added vocabulary " + name + " with "
+        status.setText((replaced ? "Replaced" : "Added") + " vocabulary " + name + " with "
                 + created.valueQids().size() + " value(s).");
     }
 
@@ -227,7 +248,7 @@ public class SelectionViewerPanel extends JPanel {
                 }
                 VocabularySelection s = new VocabularySelection(name);
                 s.valueQids(qids);
-                project.addSelection(s);
+                boolean replaced = storeVocabulary(s);
                 discNameField.setText("");
                 discPidField.setText("");
                 discSubjectsField.setText("");
@@ -235,7 +256,8 @@ public class SelectionViewerPanel extends JPanel {
                 selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
                 render(s, values);
                 status.setText(name + " [VOCABULARY]: discovered " + values.size()
-                        + " value(s) — set a field's target to \"" + name
+                        + " value(s)" + (replaced ? "; replaced its previous definition" : "")
+                        + " — set a field's target to \"" + name
                         + "\" to use it as its value domain.");
             }
         }.execute();
@@ -259,12 +281,19 @@ public class SelectionViewerPanel extends JPanel {
         }
         VocabularySelection s = new VocabularySelection(name);
         s.valueQids(qids);
-        project.addSelection(s);
+        storeVocabulary(s);
         newNameField.setText("");
         newQidsField.setText("");
         refreshSelections();
         selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
         showSelected();
+    }
+
+    /** One write rule for every vocabulary-creation surface in this panel. */
+    private boolean storeVocabulary(VocabularySelection vocabulary) {
+        boolean replaced = project.findSelection(vocabulary.name()) != null;
+        project.replaceSelection(vocabulary);
+        return replaced;
     }
 
     /** Re-read the project's selections into the selector — call when the window opens,

@@ -162,7 +162,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         selectionsHolder.removeAll();
         if (value != null) {
             selectionsHolder.add(new SelectionsButton(value).action(
-                    "Set highlighted property",
+                    "Add highlighted property to reusable selections",
                     () -> selectedProperty != null,
                     this::setSelectedProperty));
         }

@@ -154,9 +154,9 @@ public class ExploreByExamplePanel extends JPanel {
         selectionsButtonHolder.removeAll();
         if (selections != null) selectionsButtonHolder.add(
                 new SelectionsButton(selections)
-                        .action("Select highlighted entity",
+                        .action("Add highlighted entity to reusable selections",
                                 this::canSetSelectedEntity, this::setSelectedEntity)
-                        .action("Set highlighted property",
+                        .action("Add highlighted property to reusable selections",
                                 () -> selectedRelationView != null,
                                 this::setSelectedProperty));
         selectionsButtonHolder.revalidate();
