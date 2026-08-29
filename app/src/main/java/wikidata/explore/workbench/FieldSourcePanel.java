@@ -596,6 +596,11 @@ public class FieldSourcePanel extends JPanel {
             }
         }
 
+        refreshCompanionApplicability();
+    }
+
+    /** Re-evaluate visibility from live controls without rebuilding their choices. */
+    private void refreshCompanionApplicability() {
         Object pk = productionBox.getSelectedItem();
         boolean companion = pk == FieldProductionKind.COMPANION_MATCH;
         // A DATE field (Auto production) can overlay its value from a referenced
@@ -603,8 +608,9 @@ public class FieldSourcePanel extends JPanel {
         // that composes with the field's own source. Enable via (Subject field) +
         // source (Match value field); the source lives on the REFERENCED class, so
         // allow typing it.
-        boolean dateProjection = field != null
-                && field.type() == FieldType.DATE
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        boolean dateProjection = definition != null
+                && definition.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
         // These three describe how a companion or date-projection field is matched.
         // On any other kind they are not merely unavailable, they are meaningless.
@@ -896,6 +902,7 @@ public class FieldSourcePanel extends JPanel {
         typeBox.addActionListener(e -> {
             updateRecommendation();
             refreshStatementFieldControls();
+            refreshCompanionApplicability();
             if (typeBox.getSelectedItem() == FieldType.ENTITY
                     && selectedEntityClass().isBlank()) {
                 String propLabel = field != null && field.mapping() != null
@@ -1038,10 +1045,8 @@ public class FieldSourcePanel extends JPanel {
         field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
                                      ? wikidata.explore.model.EdgeMembershipMode.INHERIT
                                      : wikidata.explore.model.EdgeMembershipMode.NONE);
-        boolean graphTraversable = field.type() == FieldType.ENTITY
-                && !field.entityClassName().isBlank()
-                && m.sourceType() == FieldSourceType.SPARQL
-                && WikidataIds.isPid(m.propertyPid());
+        boolean graphTraversable =
+                WikidataFieldGraphTraversalEligibility.canDeclare(projectModel, field);
         field.graphExpansionPolicy(graphTraversable
                 ? (GraphExpansionPolicy) graphExpansionBox.getSelectedItem()
                 : GraphExpansionPolicy.NONE);
@@ -1478,10 +1483,12 @@ public class FieldSourcePanel extends JPanel {
         // The editor decides from live controls, so it cannot pass a saved field —
         // but the RULE is the one validation and compilation use, asked, not restated.
         boolean eligible = definition != null
-                && WikidataFieldGraphTraversalEligibility.hasTypedTarget(
-                        definition.type(), definition.entityClassName())
-                && WikidataFieldGraphTraversalEligibility.hasPropertySource(
-                        source, propertyPidField.getText().trim());
+                && WikidataFieldGraphTraversalEligibility.canDeclare(
+                        projectModel,
+                        definition.type(),
+                        definition.entityClassName(),
+                        source,
+                        propertyPidField.getText().trim());
         applicable(graphExpansionRow, eligible);
         graphExpansionBox.setToolTipText(eligible
                 ? "Expose values reached through this field as a curated graph frontier."

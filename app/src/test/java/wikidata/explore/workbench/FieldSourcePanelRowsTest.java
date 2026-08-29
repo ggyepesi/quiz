@@ -10,11 +10,16 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import javax.swing.JComponent;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,6 +65,48 @@ class FieldSourcePanelRowsTest {
                 "the row appears exactly where the traversal rule says it could apply");
     }
 
+    @Test void aVocabularyTargetIsNotOfferedEntityGraphExpansion() {
+        GeneratedFieldModel genre =
+                field("genre", FieldType.ENTITY, FieldProductionKind.AUTO, "Genres");
+        genre.mapping().sourceType(FieldSourceType.SPARQL);
+        genre.mapping().propertyPid("P136");
+
+        FieldSourcePanel panel = new FieldSourcePanel();
+        GeneratedProjectModel project = projectContaining(genre, false);
+        project.addSelection(new wikidata.explore.model.VocabularySelection("Genres"));
+        panel.setProjectModel(project);
+        panel.edit(genre);
+
+        assertTrue(!visibleRowLabels(panel).contains("Graph expansion:"),
+                "a selection is an entity-shaped target, but not a modeled traversal class");
+    }
+
+    @Test void changingTheLiveTypeImmediatelyRevealsDateProjectionRows() {
+        FieldSourcePanel panel = editing(field(
+                "when", FieldType.STRING, FieldProductionKind.AUTO, ""));
+        JComboBox<?> type = comboContaining(panel, FieldType.DATE);
+
+        type.setSelectedItem(FieldType.DATE);
+        List<String> shown = visibleRowLabels(panel);
+        assertTrue(shown.contains("Subject field:"), shown.toString());
+        assertTrue(shown.contains("Match value field:"), shown.toString());
+        assertTrue(!shown.contains("Match role field:"), shown.toString());
+
+        type.setSelectedItem(FieldType.STRING);
+        shown = visibleRowLabels(panel);
+        assertTrue(!shown.contains("Subject field:"), shown.toString());
+        assertTrue(!shown.contains("Match value field:"), shown.toString());
+    }
+
+    @Test void companionMatchShowsAllThreeMatchingRows() {
+        List<String> shown = visibleRowLabels(editing(field(
+                "match", FieldType.STRING, FieldProductionKind.COMPANION_MATCH, "")));
+
+        assertTrue(shown.contains("Subject field:"), shown.toString());
+        assertTrue(shown.contains("Match value field:"), shown.toString());
+        assertTrue(shown.contains("Match role field:"), shown.toString());
+    }
+
     // The qualifier SOURCE is the deliberate exception: it stays visible on a class
     // that cannot use it, so the class/field relationship is explicit. Only the
     // settings OF a qualifier disappear when there is no qualifier to settle.
@@ -85,8 +132,40 @@ class FieldSourcePanelRowsTest {
 
     private static FieldSourcePanel editing(GeneratedFieldModel field) {
         FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(projectContaining(field, true));
         panel.edit(field);
         return panel;
+    }
+
+    private static GeneratedProjectModel projectContaining(
+            GeneratedFieldModel field, boolean includeTargetClass) {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel owner = new GeneratedClassModel("Owner");
+        project.addClass(owner);
+        project.rootClass(owner);
+        if (includeTargetClass && !field.entityClassName().isBlank()
+                && project.findClass(field.entityClassName()) == null) {
+            project.addClass(new GeneratedClassModel(field.entityClassName()));
+        }
+        return project;
+    }
+
+    private static JComboBox<?> comboContaining(Container root, Object value) {
+        ArrayDeque<Container> pending = new ArrayDeque<>();
+        Set<Component> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            for (Component component : pending.removeFirst().getComponents()) {
+                if (!seen.add(component)) continue;
+                if (component instanceof JComboBox<?> combo) {
+                    for (int i = 0; i < combo.getItemCount(); i++) {
+                        if (value.equals(combo.getItemAt(i))) return combo;
+                    }
+                }
+                if (component instanceof Container child) pending.addLast(child);
+            }
+        }
+        throw new AssertionError("No combo contains " + value);
     }
 
     /** The labels a reader can actually see, in layout order. */

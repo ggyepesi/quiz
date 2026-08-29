@@ -3,6 +3,7 @@ package wikidata.explore.workbench;
 import objectview.view.ViewableListPanel;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyStore;
+import wikidata.explore.query.logical.DiscoverEntityRelationQuery;
 import wikidata.explore.query.swing.SwingQueryRunner;
 
 import javax.swing.*;
@@ -11,7 +12,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import workbench.SelectionsButton;
+import workbench.WorkbenchSelections;
 
 public class CachedPropertyViewablePanel extends JPanel {
 
@@ -25,14 +27,13 @@ public class CachedPropertyViewablePanel extends JPanel {
     private final JButton discoverGraph =
             new JButton("Explore entity relation");
     private final JButton useProperty =
-            new JButton("Use selected property");
+            new JButton("Set selected property");
+    private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final EntityRelationDiscoveryPanel relationGraph =
             new EntityRelationDiscoveryPanel();
     private JDialog relationDialog;
     private WikidataPropertyViewable selectedProperty;
-
-    private Consumer<WikidataPropertyViewable> propertyRequested =
-            p -> {};
+    private WorkbenchSelections selections;
 
     private final List<WikidataPropertyViewable> properties =
             new ArrayList<>();
@@ -45,7 +46,7 @@ public class CachedPropertyViewablePanel extends JPanel {
         propertyList.onSelectionChanged(selected -> {
             if (selected instanceof WikidataPropertyViewable property) {
                 selectedProperty = property;
-                useProperty.setEnabled(true);
+                useProperty.setEnabled(selections != null);
                 discoverGraph.setEnabled(true);
                 relationGraph.property(property);
             } else {
@@ -59,14 +60,17 @@ public class CachedPropertyViewablePanel extends JPanel {
         JPanel footer = new JPanel(new BorderLayout(6, 0));
         footer.add(statusLabel, BorderLayout.CENTER);
         useProperty.setEnabled(false);
-        useProperty.setToolTipText("Add a field for the selected property to the current class.");
+        useProperty.setToolTipText("Remember this property for explicit use in configuration.");
         useProperty.addActionListener(event -> {
-            if (selectedProperty != null) propertyRequested.accept(selectedProperty);
+            if (selectedProperty != null && selections != null) {
+                selections.property(selectedProperty.pid(), selectedProperty.getDisplayName());
+            }
         });
         discoverGraph.setEnabled(false);
         discoverGraph.setToolTipText("Use the selected property as an edge between QID nodes.");
         discoverGraph.addActionListener(event -> showRelationGraph());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        actions.add(selectionsHolder);
         actions.add(useProperty);
         actions.add(discoverGraph);
         footer.add(actions, BorderLayout.EAST);
@@ -78,11 +82,14 @@ public class CachedPropertyViewablePanel extends JPanel {
         relationGraph.setQueryRunner(runner);
     }
 
-    public void onUseProperty(
-            Consumer<WikidataPropertyViewable> propertyRequested) {
-
-        this.propertyRequested =
-                propertyRequested == null ? p -> {} : propertyRequested;
+    public void selections(WorkbenchSelections value) {
+        selections = value;
+        relationGraph.selections(value);
+        selectionsHolder.removeAll();
+        if (value != null) selectionsHolder.add(new SelectionsButton(value));
+        selectionsHolder.revalidate();
+        selectionsHolder.repaint();
+        useProperty.setEnabled(selectedProperty != null && value != null);
     }
 
     public Map<String, WikidataProperty> propertyCache() {
@@ -126,12 +133,16 @@ public class CachedPropertyViewablePanel extends JPanel {
         relationDialog.toFront();
     }
 
-    public void exploreEntityRelation(String pid, String startingQid) {
+    public void exploreEntityRelation(
+            String pid,
+            String startingQid,
+            DiscoverEntityRelationQuery.Direction direction) {
         WikidataProperty property = cache.get(pid);
         if (property == null) return;
         selectedProperty = new WikidataPropertyViewable(property);
         relationGraph.property(selectedProperty);
         relationGraph.startingQid(startingQid);
+        relationGraph.direction(direction);
         showRelationGraph();
     }
 

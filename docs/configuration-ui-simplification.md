@@ -2,9 +2,12 @@
 
 ## Status
 
-**First step implemented** (`d661438b`): a plain string field is asked 15 rows instead
-of 23. Written after measuring the configuration surface rather than from the impression
-that it had grown — and corrected below where the first measurement was wrong.
+**First step implemented** (`d661438b`, then hardened): a plain string field is asked
+15 rows instead of 23. Written after measuring the configuration surface rather than
+from the impression that it had grown — and corrected below where the first measurement
+was wrong. The hardening matters: visibility now asks the complete compiler rule (including
+that an entity target is a modeled class), Apply asks that same rule, and rows react to
+unsaved type changes rather than lagging until a field is applied and reopened.
 
 ## The problem, measured
 
@@ -106,12 +109,16 @@ Today all three are greyed, which is why the panel reads as uniformly complicate
    non-Wikipedia sources — have **no rule written anywhere today**, and inventing one in
    the UI is how the editor drifts from what actually compiles. They wait for a rule to
    exist, and are then one line each.
-3. Ask the shared predicate. `refreshGraphExpansionControl` currently restates the
-   eligibility rule inline, making a third copy beside the validator and the compiler.
-   It should call `WikidataFieldGraphTraversalEligibility`, which needs a parts-based
-   overload because the editor decides from live controls rather than a saved field.
-4. A test per field kind: given a field of kind X, exactly these rows are visible. The
-   panel has no test today, and this is the kind it can actually have.
+3. Ask the shared predicate. `refreshGraphExpansionControl`, Apply, validation and
+   compilation must not each define “traversable.” The shared predicate therefore has
+   both saved-field and parts-based forms: the editor asks it from live controls, while
+   Apply and the compiler ask it from the field. “Typed target” includes a class that is
+   actually present in the model; a vocabulary selection is entity-shaped but is not a
+   graph-expansion class.
+4. Test both snapshots and transitions. “Given a field of kind X, exactly these rows are
+   visible” catches the initial layout. “Change X to Y without Apply, then back” catches
+   the equally important live-editor contract. Positive cases are required too: otherwise
+   a permanently hidden row satisfies every negative visibility assertion.
 
 Size, as built: about 200 lines across `FormRow`, the panel and the shared predicate.
 Contained, as expected — `GridBagLayout` collapses a row whose components are all
@@ -144,6 +151,23 @@ codebase produces that failure more reliably than any other.
 
 ## Cheaper than any of it
 
-One constant per action label removes the "Use" / "Use selected" / "Use selected as
-class type (P31)" drift in an hour, with no architecture at all. Worth doing first
-whatever else is decided.
+One constant per action label removes accidental wording drift only where the actions
+really have the same meaning. “Use selected” and “Use selected as class type (P31)” may
+look related while promising different model changes; collapsing those labels would make
+the UI terser but less truthful. The cheaper safe step is a small vocabulary of shared
+verbs plus destination-specific objects, with each label still describing its effect.
+
+## Review conclusions for the next slice
+
+- Continue converting only rows whose applicability is owned by a model/compiler rule.
+  Do not infer relevance from control labels, datasource names or class names.
+- Treat the editor as a live model draft. Every dependency (`Type`, `Load as`, target
+  class, source and property) must refresh affected rows before Apply.
+- Keep **relevant but unavailable** visible with a reason. Hiding it would erase the route
+  by which a reader learns how to make it available.
+- Measure the next editor before changing it. `ClassSourcePanel` has the larger surface,
+  but its controls describe several identity/source regimes; row count alone does not
+  identify which sections can safely disappear.
+- Prefer progressive sections over a second dialog. A concise editor should preserve the
+  configured model in one place, not move advanced settings into a parallel editor with
+  a second save boundary.

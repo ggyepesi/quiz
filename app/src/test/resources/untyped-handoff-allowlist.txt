@@ -1,0 +1,7 @@
+wikidata/explore/workbench/CategorySeedPanel.java::onUseAsSourceQid
+wikidata/explore/workbench/ModelGraphPanel.java::onFieldSelected
+wikidata/explore/workbench/StatementSummaryPanel.java::onConfigureField
+wikidata/explore/workbench/StatementSummaryPanel.java::onConfigureQualifier
+wikidata/explore/workbench/WikiProjectSeedPanel.java::onUseAsSourceQid
+workbench/ExploreByExamplePanel.java::onUseAsSourceQid
+workbench/ExploreByExamplePanel.java::onUseProperty

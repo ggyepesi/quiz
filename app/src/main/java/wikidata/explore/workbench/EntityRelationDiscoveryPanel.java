@@ -7,6 +7,8 @@ import wikidata.explore.query.swing.SwingQueryRunner;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
+import workbench.SelectionsButton;
+import workbench.WorkbenchSelections;
 
 /** Explorer controls for bounded QID traversal through the selected property. */
 final class EntityRelationDiscoveryPanel extends JPanel {
@@ -17,9 +19,12 @@ final class EntityRelationDiscoveryPanel extends JPanel {
     private final JSpinner depth = new JSpinner(new SpinnerNumberModel(3,0,12,1));
     private final JSpinner nodes = new JSpinner(new SpinnerNumberModel(250,1,5000,25));
     private final JButton discover = new JButton("Explore entity relation");
+    private final JButton useSelections = new JButton("Use selections");
+    private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JLabel status = new JLabel("Enter one or more starting QIDs.");
     private final EntityRelationDiagram diagram = new EntityRelationDiagram();
     private String pid = ""; private boolean wired;
+    private WorkbenchSelections selections;
 
     EntityRelationDiscoveryPanel() {
         super(new BorderLayout(6,6));
@@ -30,7 +35,9 @@ final class EntityRelationDiscoveryPanel extends JPanel {
         GridBagUtils.labeledRow(controls,c,2,"Direction:",direction);
         GridBagUtils.labeledRow(controls,c,3,"Maximum depth:",depth);
         GridBagUtils.labeledRow(controls,c,4,"Maximum QIDs:",nodes);
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT,6,0)); actions.add(discover); actions.add(status); GridBagUtils.wideRow(controls,5,actions);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT,6,0));
+        actions.add(selectionsHolder); actions.add(useSelections); actions.add(discover); actions.add(status);
+        GridBagUtils.wideRow(controls,5,actions);
         GridBagUtils.wideRow(controls,6,new JLabel("<html>QIDs are nodes; the selected PID is the edge. "
                 + "Use several levels for hierarchical relations such as P279, or depth 1 for constraints such as P1001.</html>"));
         add(controls,BorderLayout.NORTH); add(new JScrollPane(diagram),BorderLayout.CENTER); discover.setEnabled(false);
@@ -39,6 +46,9 @@ final class EntityRelationDiscoveryPanel extends JPanel {
             startingQid.setText(qid);
             status.setText(qid + " is now the starting QID; press Explore to continue.");
         });
+        useSelections.addActionListener(event -> useSelections());
+        useSelections.setToolTipText("Fill the starting QID and edge from the reusable selections");
+        refreshSelectionAction();
     }
     void property(WikidataPropertyViewable selected) {
         pid = selected == null ? "" : selected.pid();
@@ -52,6 +62,35 @@ final class EntityRelationDiscoveryPanel extends JPanel {
     }
     void startingQid(String qid) {
         if (wikidata.WikidataIds.isQid(qid)) startingQid.setText(qid);
+    }
+    void direction(DiscoverEntityRelationQuery.Direction value) {
+        if (value != null) direction.setSelectedItem(value);
+    }
+    void selections(WorkbenchSelections value) {
+        selections = value;
+        selectionsHolder.removeAll();
+        if (value != null) {
+            selectionsHolder.add(new SelectionsButton(value));
+            value.onChange(this::refreshSelectionAction);
+        }
+        selectionsHolder.revalidate();
+        selectionsHolder.repaint();
+        refreshSelectionAction();
+    }
+    private void refreshSelectionAction() {
+        useSelections.setEnabled(selections != null
+                && selections.entity().isPresent()
+                && selections.property().isPresent());
+    }
+    private void useSelections() {
+        if (selections == null) return;
+        selections.entity().ifPresent(entity -> selections.property().ifPresent(selected -> {
+            startingQid.setText(entity.qid());
+            pid = selected.pid();
+            property.setText(selected.label() + " (" + selected.pid() + ")");
+            discover.setEnabled(wired);
+            status.setText("Ready to explore " + selected.pid() + " from " + entity.qid() + ".");
+        }));
     }
     private DiscoverEntityRelationQuery query() {
         String qid = startingQid.getText() == null ? "" : startingQid.getText().trim();

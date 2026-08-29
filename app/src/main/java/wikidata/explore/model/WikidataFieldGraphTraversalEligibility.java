@@ -9,9 +9,8 @@ public final class WikidataFieldGraphTraversalEligibility {
 
     public static boolean hasTypedModeledTarget(
             GeneratedProjectModel project, GeneratedFieldModel field) {
-        return project != null && field != null
-                && hasTypedTarget(field.type(), field.entityClassName())
-                && project.findClass(field.entityClassName()) != null;
+        return field != null && hasTypedModeledTarget(
+                project, field.type(), field.entityClassName());
     }
 
     /**
@@ -19,9 +18,12 @@ public final class WikidataFieldGraphTraversalEligibility {
      * editor must answer it from live controls before anything is applied. One rule,
      * two callers with different shapes — as with the inverse-field resolution.
      */
-    public static boolean hasTypedTarget(FieldType type, String entityClassName) {
-        return type == FieldType.ENTITY
-                && entityClassName != null && !entityClassName.isBlank();
+    public static boolean hasTypedModeledTarget(
+            GeneratedProjectModel project, FieldType type, String entityClassName) {
+        return project != null
+                && type == FieldType.ENTITY
+                && entityClassName != null && !entityClassName.isBlank()
+                && project.findClass(entityClassName) != null;
     }
 
     public static boolean hasPropertySource(GeneratedFieldModel field) {
@@ -38,7 +40,25 @@ public final class WikidataFieldGraphTraversalEligibility {
             GeneratedProjectModel project, GeneratedFieldModel field) {
         return field != null
                 && field.graphExpansionPolicy() != GraphExpansionPolicy.NONE
+                && canDeclare(project, field);
+    }
+
+    /** Eligibility before a policy has been selected. */
+    public static boolean canDeclare(
+            GeneratedProjectModel project, GeneratedFieldModel field) {
+        return field != null
                 && hasTypedModeledTarget(project, field)
                 && hasPropertySource(field);
+    }
+
+    /** The same declaration question asked from an editor's live controls. */
+    public static boolean canDeclare(
+            GeneratedProjectModel project,
+            FieldType type,
+            String entityClassName,
+            FieldSourceType sourceType,
+            String pid) {
+        return hasTypedModeledTarget(project, type, entityClassName)
+                && hasPropertySource(sourceType, pid);
     }
 }

@@ -152,6 +152,14 @@ public class ClassSourcePanel extends JPanel {
         this.log = log == null ? s -> {} : log;
     }
 
+    /** Fill the class population relation from the explicit workbench selection. */
+    public void usePopulationProperty(String pid, String label) {
+        if (!WikidataIds.isPid(pid)) return;
+        relationPidField.setText(pid);
+        relationLabel.setText(label == null || label.isBlank() ? pid : label);
+        updateTypeRowLabel();
+    }
+
     /**
      * One-shot: the search button's action listener binds to the first
      * runner's workflow, so later calls are ignored.
