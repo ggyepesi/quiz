@@ -49,6 +49,21 @@ public class FieldSourcePanel extends JPanel {
     private final JLabel applyStatusLabel = new JLabel(" ");
 
     private Consumer<Void> afterChange = v -> {};
+    // Rows hidden when they cannot apply to the field being configured. Only rows
+    // whose rule ALREADY exists are held here; inventing a relevance rule in the
+    // editor is how it drifts from what actually compiles.
+    private FormRow inverseFieldRow;
+    private FormRow graphExpansionRow;
+    private FormRow subjectFieldRow;
+    private FormRow matchValueRow;
+    private FormRow matchRoleRow;
+    // Settings OF a qualifier. The qualifier source itself stays visible even where it
+    // cannot apply, deliberately, so the class/field relationship is explicit — but
+    // where there is no qualifier there is nothing about one to configure.
+    private FormRow qualifierTimeRow;
+    private FormRow missingQualifierRow;
+    private FormRow reifyRoleRow;
+
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Runnable onSampleRequested = () -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -591,15 +606,22 @@ public class FieldSourcePanel extends JPanel {
         boolean dateProjection = field != null
                 && field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
-        subjectBox.setEnabled(companion || dateProjection);
-        matchValueBox.setEnabled(companion || dateProjection);
+        // These three describe how a companion or date-projection field is matched.
+        // On any other kind they are not merely unavailable, they are meaningless.
+        applicable(subjectFieldRow, companion || dateProjection);
+        applicable(matchValueRow, companion || dateProjection);
         matchValueBox.setEditable(dateProjection);
         matchValueBox.setToolTipText(dateProjection
                                              ? "The PATH to project off the reference — e.g. date.year (year), "
                                                + "date.monthDay (birthday), or date (the whole date). "
                                                + "Extraction is the path, not a convention."
                                              : null);
-        matchRoleBox.setEnabled(companion);
+        applicable(matchRoleRow, companion);
+    }
+
+    /** Rows are held only after buildUi has run; before that there is nothing to hide. */
+    private static void applicable(FormRow row, boolean applicable) {
+        if (row != null) row.applicable(applicable);
     }
 
     private void refreshInverseFieldChoices() {
@@ -620,7 +642,7 @@ public class FieldSourcePanel extends JPanel {
         }
         if (!selected.isBlank()) inverseFieldBox.setSelectedItem(selected);
         boolean invert = productionBox.getSelectedItem() == FieldProductionKind.INVERT;
-        inverseFieldBox.setEnabled(invert);
+        applicable(inverseFieldRow, invert);
     }
 
     public void useProperty(String pid, String label) {
@@ -677,8 +699,8 @@ public class FieldSourcePanel extends JPanel {
         // The source-independent definition is shared with TransformApp's New Field.
         GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
-        GridBagUtils.labeledRow(form, c, y++, "Inverse of:", inverseFieldBox);
-        GridBagUtils.labeledRow(form, c, y++, "Graph expansion:", graphExpansionBox);
+        inverseFieldRow = FormRow.add(form, c, y++, "Inverse of:", inverseFieldBox);
+        graphExpansionRow = FormRow.add(form, c, y++, "Graph expansion:", graphExpansionBox);
 
         // --- Where it comes from ---
         GridBagUtils.wideRow(form, y++, sectionLabel("Source"));
@@ -733,7 +755,7 @@ public class FieldSourcePanel extends JPanel {
         GridBagUtils.labeledRow(form, c, y++, "Qualifier of:", qualifierPidField);
         qualifierDateModeBox.setToolTipText("YEAR keeps the legacy year-only "
                 + "projection; DATE retains Wikidata's stated precision and calendar.");
-        GridBagUtils.labeledRow(
+        qualifierTimeRow = FormRow.add(
                 form, c, y++, "Qualifier time:", qualifierDateModeBox);
 
         missingQualifierBox.setToolTipText("<html>Reify (#92): what this ENTITY "
@@ -744,12 +766,8 @@ public class FieldSourcePanel extends JPanel {
                                                    + "<b>Leave missing</b> — stay empty (right for a plain reference like "
                                                    + "<b>edition</b>: an absent ceremony must not become the film).<br>"
                                                    + "<b>Auto</b> — leave missing; any fallback must be explicit.</html>");
-        GridBagUtils.labeledRow(
-                form,
-                c,
-                y++,
-                "Missing qualifier:",
-                missingQualifierBox);
+        missingQualifierRow = FormRow.add(
+                form, c, y++, "Missing qualifier:", missingQualifierBox);
 
         roleKindBox.setToolTipText("<html>Reify (#99): the semantic role this "
                 + "qualifier plays.<br><b>IDENTITY</b> — the subject's own role "
@@ -757,12 +775,7 @@ public class FieldSourcePanel extends JPanel {
                 + "record that names the subject through it is a DIFFERENT event, not "
                 + "a denormalized self-copy.<br><b>REFERENCE</b> — a pointer to "
                 + "another entity (<b>forWork</b>, <b>edition</b>); the default.</html>");
-        GridBagUtils.labeledRow(
-                form,
-                c,
-                y++,
-                "Reify role:",
-                roleKindBox);
+        reifyRoleRow = FormRow.add(form, c, y++, "Reify role:", roleKindBox);
 
         // Canonical identity is configured once, at class level, in
         // StatementSourcePanel. Keeping a second per-field dedup control here
@@ -775,16 +788,16 @@ public class FieldSourcePanel extends JPanel {
                                           + "holding the entity that <b>carries</b> the companion statement "
                                           + "(e.g. <b>nominee</b> — the Oscar win P166 is on the winner). "
                                           + "<b>source</b> = the reify subject.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Subject field:", subjectBox);
+        subjectFieldRow = FormRow.add(form, c, y++, "Subject field:", subjectBox);
         matchValueBox.setToolTipText("<html>Companion match: this record's field "
                                              + "whose value must equal the companion statement's value "
                                              + "(e.g. <b>category</b>).</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Match value field:", matchValueBox);
+        matchValueRow = FormRow.add(form, c, y++, "Match value field:", matchValueBox);
         matchRoleBox.setToolTipText("<html>Companion match: this record's field "
                                             + "matched against the companion's role qualifier — or the "
                                             + "companion subject when that qualifier is absent "
                                             + "(e.g. <b>source</b> vs the win's for-work/film).</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Match role field:", matchRoleBox);
+        matchRoleRow = FormRow.add(form, c, y++, "Match role field:", matchRoleBox);
 
         directionBox.setToolTipText("<html>Where the property lives:<br>"
                                             + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
@@ -1356,7 +1369,7 @@ public class FieldSourcePanel extends JPanel {
                 && validQualifier
                 && typeBox.getSelectedItem() == FieldType.DATE
                 && runtimeField;
-        qualifierDateModeBox.setEnabled(dateQualifier);
+        applicable(qualifierTimeRow, dateQualifier);
 
         boolean policyEnabled =
                 statementClass
@@ -1365,12 +1378,12 @@ public class FieldSourcePanel extends JPanel {
                         && scalar
                         && runtimeField;
 
-        missingQualifierBox.setEnabled(policyEnabled);
+        applicable(missingQualifierRow, policyEnabled);
         if (!policyEnabled) {
             missingQualifierBox.setSelectedItem(POL_AUTO);
         }
 
-        roleKindBox.setEnabled(policyEnabled);
+        applicable(reifyRoleRow, policyEnabled);
         if (!policyEnabled) {
             roleKindBox.setSelectedItem(wikidata.explore.model.RoleKind.REFERENCE);
         }
@@ -1462,13 +1475,14 @@ public class FieldSourcePanel extends JPanel {
     private void refreshGraphExpansionControl() {
         FieldDefinition definition = fieldDefinitionPanel.definition();
         FieldSourceType source = (FieldSourceType) sourceTypeBox.getSelectedItem();
+        // The editor decides from live controls, so it cannot pass a saved field —
+        // but the RULE is the one validation and compilation use, asked, not restated.
         boolean eligible = definition != null
-                && definition.type() == FieldType.ENTITY
-                && definition.entityClassName() != null
-                && !definition.entityClassName().isBlank()
-                && source == FieldSourceType.SPARQL
-                && WikidataIds.isPid(propertyPidField.getText().trim());
-        graphExpansionBox.setEnabled(eligible);
+                && WikidataFieldGraphTraversalEligibility.hasTypedTarget(
+                        definition.type(), definition.entityClassName())
+                && WikidataFieldGraphTraversalEligibility.hasPropertySource(
+                        source, propertyPidField.getText().trim());
+        applicable(graphExpansionRow, eligible);
         graphExpansionBox.setToolTipText(eligible
                 ? "Expose values reached through this field as a curated graph frontier."
                 : "Graph expansion requires a typed Wikidata entity field with a Pxx property.");
