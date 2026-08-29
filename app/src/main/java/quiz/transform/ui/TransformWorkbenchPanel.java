@@ -2,6 +2,7 @@ package quiz.transform.ui;
 
 import objectview.demo.MultiView;
 import objectview.render.GroupTreeView;
+import objectview.render.GroupMembersView;
 import work.CancellationToken;
 import process.ProcessInputHandler;
 import process.ProcessInputRequest;
@@ -858,10 +859,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             String memberType,
             int generation,
             String selectedType) {
-        GroupTreeView groups = new GroupTreeView(root);
-        JPanel instances = new JPanel(new BorderLayout());
-
-        java.util.function.Consumer<objectview.group.ViewableGroup<?>> show = group -> {
+        GroupMembersView grouped = new GroupMembersView(
+                root, group -> {
             activeGroup = group;
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
@@ -871,17 +870,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             if (viewStepsPanel != null) {
                 viewStepsPanel.refreshWorkingSet();
             }
-            instances.removeAll();
-            instances.add(titledInstancePanel(
-                    instanceTitle(group), shown, memberType),
-                    BorderLayout.CENTER);
-            instances.revalidate();
-            instances.repaint();
             updateScopeStatus();
-        };
-        activeShow = show;
-        groups.setShowGroupHandler(show);
-        groups.setSelectionHandler(group -> {
+            return titledInstancePanel(instanceTitle(group), shown, memberType);
+        }, JSplitPane.VERTICAL_SPLIT, true, 0.7, false);
+        GroupTreeView groups = grouped.groups();
+        activeShow = grouped::showGroup;
+        grouped.setSelectionHandler(group -> {
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             selectedGroup = group instanceof quiz.transform.EditableGroup editable
@@ -902,13 +896,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 ? editable : null;
         objectview.group.ViewableGroup<?> initial = activeGroup != null
                 && belongsTo(root, activeGroup) ? activeGroup : root;
-        if (!groups.selectGroup(initial, true)) show.accept(root);
-
-        JSplitPane split = new JSplitPane(
-                JSplitPane.VERTICAL_SPLIT, instances, groups);
-        split.setResizeWeight(0.7);
-        split.setOneTouchExpandable(true);
-        return split;
+        if (!grouped.selectGroup(initial, true)) grouped.showGroup(root);
+        return grouped;
     }
 
     private static String selectedGroupStatus(

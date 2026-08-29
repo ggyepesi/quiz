@@ -153,6 +153,22 @@ public final class WikidataExplorerQueries {
                 .build();
     }
 
+    /**
+     * Source-declared relationships between properties. Kept separate from the large
+     * catalogue query so multi-valued metadata cannot duplicate its property rows.
+     */
+    public static String propertyStructureMetadataForCache() {
+        return """
+                SELECT DISTINCT ?property ?superproperty ?inverse WHERE {
+                  ?property a wikibase:Property .
+                  OPTIONAL { ?property wdt:P1647 ?superproperty . }
+                  OPTIONAL { ?property wdt:P1696 ?inverse . }
+                  FILTER(BOUND(?superproperty) || BOUND(?inverse))
+                }
+                ORDER BY ?property
+                """;
+    }
+
     private static String cleanPid(String pid) {
         if (pid == null) {
             return "";

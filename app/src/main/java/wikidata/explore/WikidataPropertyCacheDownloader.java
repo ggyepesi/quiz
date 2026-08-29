@@ -7,7 +7,11 @@ import wikidata.WikidataSparqlClient;
 import wikidata.query.WikidataExplorerQueries;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class WikidataPropertyCacheDownloader {
     public static void main(String[] args) {
@@ -21,6 +25,16 @@ public class WikidataPropertyCacheDownloader {
 
             List<WikidataProperty> properties =
                     new ArrayList<>();
+
+            Map<String, Set<String>> superproperties = new LinkedHashMap<>();
+            Map<String, Set<String>> inverses = new LinkedHashMap<>();
+            for (WikidataBinding b : client.query(
+                    WikidataExplorerQueries.propertyStructureMetadataForCache())) {
+                String pid = b.qid("property");
+                if (!WikidataIds.isPid(pid)) continue;
+                add(superproperties, pid, b.qid("superproperty"));
+                add(inverses, pid, b.qid("inverse"));
+            }
 
             for (WikidataBinding b : client.query(sparql)) {
                 String pid = b.qid("property");
@@ -46,7 +60,9 @@ public class WikidataPropertyCacheDownloader {
                             datatype == null
                                     ? ""
                                     : datatype,
-                            cardinality));
+                            cardinality,
+                            joined(superproperties.get(pid)),
+                            joined(inverses.get(pid))));
                 }
             }
 
@@ -54,5 +70,15 @@ public class WikidataPropertyCacheDownloader {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void add(Map<String, Set<String>> values, String pid, String related) {
+        if (WikidataIds.isPid(related)) {
+            values.computeIfAbsent(pid, ignored -> new LinkedHashSet<>()).add(related);
+        }
+    }
+
+    private static String joined(Set<String> values) {
+        return values == null ? "" : String.join(",", values);
     }
 }
