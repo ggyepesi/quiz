@@ -8,7 +8,9 @@ import java.awt.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorkbenchSelectionsTest {
@@ -126,5 +128,41 @@ class WorkbenchSelectionsTest {
     private static JList<?> entityList(SelectionsButton button) {
         JTabbedPane tabs = (JTabbedPane) button.dialogContent();
         return component((Container) tabs.getComponentAt(0), JList.class, null);
+    }
+
+    /**
+     * Removal used to appear only where an ADD action was registered, so a tool that
+     * merely USES the collection could show a wrong value without offering any way to
+     * drop it. The dialog is the collection's editor in every context.
+     */
+    @Test void aUseOnlyDialogCanStillCorrectTheCollection() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        selections.entity("Q42", "Douglas Adams");
+        selections.property("P31", "instance of");
+        SelectionsButton button = new SelectionsButton(selections).useProperties(
+                "Use selected property", SelectionsButton.Cardinality.SINGLE, values -> { });
+
+        JTabbedPane tabs = (JTabbedPane) button.dialogContent();
+        Container entityTab = (Container) tabs.getComponentAt(0);
+        component(entityTab, JList.class, null).setSelectedIndex(0);
+        component(entityTab, JButton.class, "Remove selected entities").doClick();
+
+        assertTrue(selections.entities().isEmpty(), "an entity can be dropped here too");
+        assertEquals(1, selections.properties().size());
+    }
+
+    @Test void twoUseActionsThatDisagreeAboutArityAreRefusedWhereTheyAreWired() {
+        SelectionsButton button = new SelectionsButton(new WorkbenchSelections())
+                .useEntities("Use one", SelectionsButton.Cardinality.SINGLE, values -> { });
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> button.useEntities("Use several",
+                        SelectionsButton.Cardinality.MULTIPLE, values -> { }));
+        assertTrue(refused.getMessage().contains("Use several"),
+                "the message names the action that disagrees");
+
+        assertDoesNotThrow(() -> button.useProperties("Use several properties",
+                SelectionsButton.Cardinality.MULTIPLE, values -> { }),
+                "the other tab has its own list and its own arity");
     }
 }

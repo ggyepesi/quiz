@@ -14,8 +14,6 @@ public final class SelectionsButton extends JButton {
     private final WorkbenchSelections selections;
     private final List<AddAction> entityAdds = new ArrayList<>();
     private final List<AddAction> propertyAdds = new ArrayList<>();
-    private boolean entityRemoval;
-    private boolean propertyRemoval;
     private final List<UseAction<WorkbenchSelections.Entity>> entityUses = new ArrayList<>();
     private final List<UseAction<WorkbenchSelections.Property>> propertyUses = new ArrayList<>();
     private WorkbenchSelections.Registration registration;
@@ -29,10 +27,10 @@ public final class SelectionsButton extends JButton {
     }
 
     public SelectionsButton addEntities(String label, BooleanSupplier enabled, Runnable add) {
-        entityAdds.add(new AddAction(label, enabled, add)); entityRemoval = true; return this;
+        entityAdds.add(new AddAction(label, enabled, add)); return this;
     }
     public SelectionsButton addProperties(String label, BooleanSupplier enabled, Runnable add) {
-        propertyAdds.add(new AddAction(label, enabled, add)); propertyRemoval = true; return this;
+        propertyAdds.add(new AddAction(label, enabled, add)); return this;
     }
     public SelectionsButton useEntities(String label, Cardinality cardinality,
             Consumer<List<WorkbenchSelections.Entity>> use) {
@@ -40,7 +38,9 @@ public final class SelectionsButton extends JButton {
     }
     public SelectionsButton useEntities(String label, Cardinality cardinality,
             BooleanSupplier enabled, Consumer<List<WorkbenchSelections.Entity>> use) {
-        entityUses.add(new UseAction<>(label, cardinality, enabled, use)); return this;
+        entityUses.add(oneCardinality(entityUses,
+                new UseAction<>(label, cardinality, enabled, use), "entities"));
+        return this;
     }
     public SelectionsButton useProperties(String label, Cardinality cardinality,
             Consumer<List<WorkbenchSelections.Property>> use) {
@@ -48,7 +48,9 @@ public final class SelectionsButton extends JButton {
     }
     public SelectionsButton useProperties(String label, Cardinality cardinality,
             BooleanSupplier enabled, Consumer<List<WorkbenchSelections.Property>> use) {
-        propertyUses.add(new UseAction<>(label, cardinality, enabled, use)); return this;
+        propertyUses.add(oneCardinality(propertyUses,
+                new UseAction<>(label, cardinality, enabled, use), "properties"));
+        return this;
     }
 
     @Override public void addNotify() {
@@ -93,7 +95,7 @@ public final class SelectionsButton extends JButton {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
         entityAdds.forEach(action -> actions.add(addButton(action,
                 () -> replace(model, selections.entities()))));
-        if (entityRemoval) actions.add(removeButton("Remove selected entities", list, () -> {
+        actions.add(removeButton("Remove selected entities", list, () -> {
             List.copyOf(list.getSelectedValuesList()).forEach(selections::removeEntity);
             replace(model, selections.entities());
         }));
@@ -109,7 +111,7 @@ public final class SelectionsButton extends JButton {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
         propertyAdds.forEach(action -> actions.add(addButton(action,
                 () -> replace(model, selections.properties()))));
-        if (propertyRemoval) actions.add(removeButton("Remove selected properties", list, () -> {
+        actions.add(removeButton("Remove selected properties", list, () -> {
             List.copyOf(list.getSelectedValuesList()).forEach(selections::removeProperty);
             replace(model, selections.properties());
         }));
@@ -122,13 +124,24 @@ public final class SelectionsButton extends JButton {
                 ? ListSelectionModel.SINGLE_SELECTION
                 : ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     }
-    private static Cardinality cardinality(List<? extends UseAction<?>> actions) {
-        if (actions.isEmpty()) return Cardinality.MULTIPLE;
-        Cardinality first = actions.getFirst().cardinality();
-        if (actions.stream().anyMatch(action -> action.cardinality() != first)) {
-            throw new IllegalStateException("One reusable-selection tab cannot mix single and multiple use actions");
+    /**
+     * A tab has ONE list, so its selection mode is one decision. Two use actions that
+     * disagree about it are a wiring mistake, and it is caught where the wiring happens
+     * — not when a reader eventually clicks the button and the dialog fails to build.
+     */
+    private static <T> UseAction<T> oneCardinality(
+            List<UseAction<T>> existing, UseAction<T> action, String kind) {
+        if (!existing.isEmpty() && existing.getFirst().cardinality() != action.cardinality()) {
+            throw new IllegalArgumentException("The " + kind + " tab already uses "
+                    + existing.getFirst().cardinality() + " selection; \"" + action.label
+                    + "\" asks for " + action.cardinality() + ".");
         }
-        return first;
+        return action;
+    }
+
+    /** Nothing to use means nothing constrains the list: several may be removed at once. */
+    private static Cardinality cardinality(List<? extends UseAction<?>> actions) {
+        return actions.isEmpty() ? Cardinality.MULTIPLE : actions.getFirst().cardinality();
     }
     private JButton addButton(AddAction action, Runnable after) {
         JButton button = new JButton(action.label);
@@ -136,6 +149,12 @@ public final class SelectionsButton extends JButton {
         button.addActionListener(e -> { action.operation.run(); after.run(); });
         return button;
     }
+    /**
+     * Always offered. This dialog IS the collection's editor, so a reader who can see a
+     * wrong value must be able to drop it — whatever the presenting tool happens to do
+     * with the collection. It used to appear only where an ADD action was registered,
+     * which left the vocabulary window able to show a mistake but not correct it.
+     */
     private static <T> JButton removeButton(String text, JList<T> list, Runnable remove) {
         JButton button = new JButton(text); button.setEnabled(false);
         list.addListSelectionListener(e -> button.setEnabled(!list.isSelectionEmpty()));
