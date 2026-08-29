@@ -27,7 +27,7 @@ public class CachedPropertyViewablePanel extends JPanel implements AutoCloseable
             new JLabel(" ");
     private final JPanel propertyBrowser = new JPanel(new BorderLayout(6, 0));
     private final JButton discoverGraph =
-            new JButton("Explore entity relation");
+            new JButton("Explore relation using highlighted property");
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final EntityRelationDiscoveryPanel relationGraph =
             new EntityRelationDiscoveryPanel();
@@ -48,11 +48,9 @@ public class CachedPropertyViewablePanel extends JPanel implements AutoCloseable
             if (selected instanceof WikidataPropertyViewable property) {
                 selectedProperty = property;
                 discoverGraph.setEnabled(true);
-                relationGraph.property(property);
             } else {
                 selectedProperty = null;
                 discoverGraph.setEnabled(false);
-                relationGraph.property(null);
             }
         });
         add(propertyBrowser, BorderLayout.CENTER);

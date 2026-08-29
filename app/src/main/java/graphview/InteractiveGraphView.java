@@ -1,116 +1,78 @@
 package graphview;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.scene.Scene;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import netscape.javascript.JSObject;
 import objectview.utils.BrowserLauncher;
-import org.graphstream.graph.Graph;
-import org.graphstream.graph.Node;
-import org.graphstream.graph.implementations.MultiGraph;
-import org.graphstream.ui.graphicGraph.GraphicElement;
-import org.graphstream.ui.swing_viewer.SwingViewer;
-import org.graphstream.ui.swing_viewer.ViewPanel;
-import org.graphstream.ui.view.Viewer;
-import org.graphstream.ui.view.util.InteractiveElement;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.List;
 import java.util.function.Consumer;
 
-/** Swing-hosted open-source graph renderer with selection and neighborhood folding. */
+/** Swing host for a local Cytoscape.js graph. No provider or domain knowledge lives here. */
 public final class InteractiveGraphView extends JPanel implements AutoCloseable {
-    private static final EnumSet<InteractiveElement> NODES =
-            EnumSet.of(InteractiveElement.NODE);
-    private static final String STYLESHEET = """
-            graph { fill-color: #f7f8fa; padding: 70px; }
-            node { shape: rounded-box; size-mode: fit; padding: 12px, 9px;
-                   fill-color: #e8eef8; stroke-mode: plain; stroke-color: #8795aa;
-                   stroke-width: 2px; text-color: #151a22; text-size: 18px;
-                   text-alignment: center; }
-            node.frontier { fill-color: #fff2cc; stroke-color: #c59a28; }
-            node.expanded { fill-color: #dcefe2; stroke-color: #4e9567; }
-            node.unavailable { fill-color: #f7dddd; stroke-color: #b65e5e; }
-            node.selected { stroke-color: #3478c8; stroke-width: 3px; }
-            node.collapsed { stroke-mode: dashes; stroke-width: 2px; }
-            edge { fill-color: #43526a; size: 2px; arrow-shape: arrow;
-                   arrow-size: 13px, 8px; text-color: #303b4d; text-size: 12px;
-                   text-background-mode: rounded-box; text-background-color: #f7f8fa;
-                   text-padding: 3px; }
-            """;
+    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final String CYTOSCAPE = "/META-INF/resources/webjars/cytoscape/3.33.1/dist/cytoscape.min.js";
+    private static final String HTML_LABEL = "/META-INF/resources/webjars/cytoscape-node-html-label/1.2.2/dist/cytoscape-node-html-label.min.js";
 
-    private final Graph graph = new MultiGraph("interactive");
-    private final SwingViewer viewer;
-    private final ViewPanel view;
+    /** The classpath assets this renderer needs, so a version bump fails at build. */
+    static java.util.List<String> assetPaths() {
+        return java.util.List.of(CYTOSCAPE, HTML_LABEL);
+    }
+    private final JPanel host = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel("Run discovery to draw the graph.");
-    private final JEditorPane selectedDetails = new JEditorPane("text/html", "");
-    private final Set<String> selected = new LinkedHashSet<>();
-    private final Set<String> collapsed = new LinkedHashSet<>();
-    private GraphViewModel model = new GraphViewModel(List.of(), List.of());
+    // Written on the EDT, read on the FX thread — by the load handler that sends the
+    // first graph, and by the bridge resolving a clicked node's link. A stale read here
+    // would look like a node on screen having no link, intermittently.
+    private volatile GraphViewModel model = new GraphViewModel(List.of(), List.of());
     private Consumer<Set<String>> selectionListener = ignored -> { };
     private Consumer<String> activationListener = ignored -> { };
+    private volatile WebEngine engine;
+    private boolean initialized;
 
     public InteractiveGraphView() {
-        super(new BorderLayout(4, 4));
-        graph.setStrict(false);
-        graph.setAutoCreate(false);
-        graph.setAttribute("ui.stylesheet", STYLESHEET);
-        graph.setAttribute("ui.quality");
-        graph.setAttribute("ui.antialias");
-        viewer = new SwingViewer(graph, Viewer.ThreadingModel.GRAPH_IN_GUI_THREAD);
-        view = (ViewPanel) viewer.addDefaultView(false);
-        viewer.enableAutoLayout();
-        installMouseInteraction();
-
+        super(new BorderLayout());
         JToolBar tools = new JToolBar();
         tools.setFloatable(false);
-        tools.add(button("Fit", this::fit));
-        tools.add(button("Collapse", this::collapseSelected));
-        tools.add(button("Expand", this::expandSelected));
-        tools.add(button("Open selected link", this::openSelected));
+        tools.add(button("Fit", "fitGraph()"));
+        tools.add(button("Zoom in", "zoomGraph(1.25)"));
+        tools.add(button("Zoom out", "zoomGraph(0.8)"));
+        tools.add(button("Collapse selected", "collapseSelected()"));
+        tools.add(button("Expand selected", "expandSelected()"));
+        tools.add(button("Open selected link", "openSelected()"));
+        JLabel help = new JLabel("  ⓘ  ");
+        help.setToolTipText("<html><b>Graph controls</b><br>Click a node to select it<br>Cmd/Ctrl-click to extend selection<br>Drag nodes or the canvas<br>Scroll or use Zoom to change scale<br>Right-click a node to fold/unfold descendants<br>Click the QID link to open the source</html>");
+        tools.add(help);
         tools.addSeparator();
         tools.add(status);
         add(tools, BorderLayout.NORTH);
-        add(view, BorderLayout.CENTER);
-        selectedDetails.setEditable(false);
-        selectedDetails.setOpaque(false);
-        selectedDetails.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        selectedDetails.addHyperlinkListener(event -> {
-            if (event.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
-                BrowserLauncher.open(event.getURL().toString());
-            }
-        });
-        selectedDetails.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
-        add(selectedDetails, BorderLayout.SOUTH);
+        add(host, BorderLayout.CENTER);
+    }
+
+    @Override public void addNotify() {
+        super.addNotify();
+        if (!initialized) {
+            initialized = true;
+            JFXPanel fxHost = new JFXPanel();
+            host.add(fxHost, BorderLayout.CENTER);
+            host.revalidate();
+            Platform.runLater(() -> initializeFx(fxHost));
+        }
     }
 
     public void model(GraphViewModel value) {
         model = value == null ? new GraphViewModel(List.of(), List.of()) : value;
-        selected.clear();
-        collapsed.retainAll(model.nodes().stream().map(GraphViewModel.Node::id).toList());
-        graph.clear();
-        graph.setAttribute("ui.stylesheet", STYLESHEET);
-        graph.setAttribute("ui.quality");
-        graph.setAttribute("ui.antialias");
-        for (GraphViewModel.Node item : model.nodes()) {
-            if (item.id().isBlank()) continue;
-            Node node = graph.addNode(item.id());
-            node.setAttribute("ui.label", item.label() + "\n" + item.id());
-            applyClass(node, item);
-        }
-        int ordinal = 0;
-        for (GraphViewModel.Edge item : model.edges()) {
-            if (graph.getNode(item.sourceId()) == null || graph.getNode(item.targetId()) == null) continue;
-            String id = item.id().isBlank() ? "edge-" + ordinal++ : item.id();
-            var edge = graph.addEdge(id, item.sourceId(), item.targetId(), item.directed());
-            if (!item.label().isBlank()) edge.setAttribute("ui.label", item.label());
-        }
-        refreshVisibility();
-        status.setText(model.nodes().size() + " nodes · " + model.edges().size() + " edges");
-        selectedDetails.setText("");
-        SwingUtilities.invokeLater(this::fit);
-        selectionListener.accept(Set.of());
+        runScript("setGraph(" + modelJson(model) + ")");
     }
 
     public void onSelectionChanged(Consumer<Set<String>> listener) {
@@ -122,172 +84,111 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     }
 
     @Override public void close() {
-        viewer.disableAutoLayout();
-        // GraphStream 2.0 assumes its Swing renderer has been realized before close;
-        // closing a never-displayed view dereferences an uninitialized renderer map.
-        if (view.isDisplayable()) viewer.close();
+        WebEngine current = engine;
+        engine = null;
+        if (current != null) Platform.runLater(() -> current.load(null));
     }
 
-    private void installMouseInteraction() {
-        view.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent event) {
-                GraphicElement element = view.findGraphicElementAt(NODES, event.getX(), event.getY());
-                if (element == null) return;
-                String id = element.getId();
-                if (SwingUtilities.isRightMouseButton(event)) {
-                    toggleCollapsed(id);
-                } else if (event.getClickCount() >= 2) {
-                    activationListener.accept(id);
-                    open(id);
-                } else {
-                    select(id, event.isControlDown() || event.isMetaDown() || event.isShiftDown());
-                }
+    private void initializeFx(JFXPanel fxHost) {
+        WebView web = new WebView();
+        engine = web.getEngine();
+        engine.getLoadWorker().stateProperty().addListener((ignored, oldState, state) -> {
+            if (state == javafx.concurrent.Worker.State.SUCCEEDED) {
+                JSObject window = (JSObject) engine.executeScript("window");
+                window.setMember("graphBridge", new Bridge());
+                engine.executeScript("setGraph(" + modelJson(model) + ")");
             }
         });
-        view.addMouseWheelListener(this::zoom);
+        engine.loadContent(page());
+        fxHost.setScene(new Scene(web));
     }
 
-    private void select(String id, boolean extend) {
-        if (!extend) selected.clear();
-        if (!selected.add(id)) selected.remove(id);
-        refreshClasses();
-        showSelectedDetails();
-        status.setText(selected.size() + " selected · right-click to fold/unfold");
-        selectionListener.accept(Set.copyOf(selected));
-    }
-
-    private void toggleCollapsed(String id) {
-        boolean closing = collapsed.add(id);
-        if (!closing) collapsed.remove(id);
-        int hidden = refreshVisibility();
-        status.setText(closing
-                ? hidden == 0 ? "This node has no deeper discovered subgraph."
-                        : hidden + " deeper node(s) hidden."
-                : "Subgraph expanded; " + hidden + " node(s) remain hidden elsewhere.");
-    }
-
-    private void collapseSelected() {
-        if (selected.isEmpty()) {
-            status.setText("Select one or more nodes before collapsing.");
-            return;
-        }
-        collapsed.addAll(selected);
-        int hidden = refreshVisibility();
-        status.setText(hidden == 0 ? "The selection has no deeper discovered nodes."
-                : hidden + " deeper node(s) hidden.");
-    }
-
-    private void expandSelected() {
-        if (selected.isEmpty()) {
-            status.setText("Select one or more collapsed nodes before expanding.");
-            return;
-        }
-        collapsed.removeAll(selected);
-        int hidden = refreshVisibility();
-        status.setText("Selection expanded; " + hidden + " node(s) remain hidden elsewhere.");
-    }
-
-    private int refreshVisibility() {
-        graph.nodes().forEach(node -> node.removeAttribute("ui.hide"));
-        graph.edges().forEach(edge -> edge.removeAttribute("ui.hide"));
-        Set<String> hidden = new LinkedHashSet<>();
-        collapsed.forEach(root -> hidden.addAll(descendants(root)));
-        hidden.forEach(id -> {
-            Node node = graph.getNode(id);
-            if (node != null) node.setAttribute("ui.hide");
-        });
-        graph.edges().filter(edge -> hidden.contains(edge.getNode0().getId())
-                || hidden.contains(edge.getNode1().getId()))
-                .forEach(edge -> edge.setAttribute("ui.hide"));
-        refreshClasses();
-        return hidden.size();
-    }
-
-    private Set<String> descendants(String rootId) {
-        Map<String, Integer> levels = new LinkedHashMap<>();
-        model.nodes().forEach(node -> levels.put(node.id(), node.level()));
-        int rootLevel = levels.getOrDefault(rootId, Integer.MAX_VALUE);
-        Set<String> hidden = new LinkedHashSet<>();
-        ArrayDeque<String> pending = new ArrayDeque<>();
-        pending.add(rootId);
-        while (!pending.isEmpty()) {
-            String current = pending.removeFirst();
-            for (GraphViewModel.Edge edge : model.edges()) {
-                String other = edge.sourceId().equals(current) ? edge.targetId()
-                        : edge.targetId().equals(current) ? edge.sourceId() : null;
-                if (other == null || other.equals(rootId)
-                        || levels.getOrDefault(other, -1) <= rootLevel || !hidden.add(other)) continue;
-                pending.add(other);
-            }
-        }
-        return hidden;
-    }
-
-    private void refreshClasses() {
-        for (GraphViewModel.Node item : model.nodes()) {
-            Node node = graph.getNode(item.id());
-            if (node != null) applyClass(node, item);
-        }
-    }
-
-    private void applyClass(Node node, GraphViewModel.Node item) {
-        List<String> classes = new ArrayList<>();
-        if (item.state() != GraphViewModel.State.DEFAULT) {
-            classes.add(item.state().name().toLowerCase(Locale.ROOT));
-        }
-        if (selected.contains(item.id())) classes.add("selected");
-        if (collapsed.contains(item.id())) classes.add("collapsed");
-        if (classes.isEmpty()) node.removeAttribute("ui.class");
-        else node.setAttribute("ui.class", String.join(",", classes));
-    }
-
-    private void fit() {
-        view.getCamera().setAutoFitView(true);
-        view.getCamera().resetView();
-    }
-
-    private void zoom(MouseWheelEvent event) {
-        view.getCamera().setAutoFitView(false);
-        double factor = event.getWheelRotation() < 0 ? 0.85 : 1.18;
-        view.getCamera().setViewPercent(view.getCamera().getViewPercent() * factor);
-    }
-
-    private void openSelected() {
-        if (selected.size() == 1) open(selected.iterator().next());
-        else status.setText("Select exactly one node to open its link.");
-    }
-
-    private void showSelectedDetails() {
-        if (selected.size() != 1) {
-            selectedDetails.setText("");
-            return;
-        }
-        String id = selected.iterator().next();
-        model.nodes().stream().filter(node -> id.equals(node.id())).findFirst().ifPresent(node -> {
-            String link = node.link() == null ? escape(node.id())
-                    : "<a href='" + escape(node.link().toString()) + "'>" + escape(node.id()) + "</a>";
-            StringBuilder html = new StringBuilder("<html><b>").append(escape(node.label()))
-                    .append("</b> · ").append(link);
-            node.details().forEach((name, value) -> html.append(" &nbsp; <b>")
-                    .append(escape(name)).append(":</b> ").append(escape(value)));
-            selectedDetails.setText(html.append("</html>").toString());
-        });
-    }
-
-    private static String escape(String value) {
-        return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("'", "&#39;").replace("\"", "&quot;");
-    }
-
-    private void open(String id) {
-        model.nodes().stream().filter(node -> id.equals(node.id())).map(GraphViewModel.Node::link)
-                .filter(Objects::nonNull).map(Object::toString).findFirst()
-                .ifPresent(BrowserLauncher::open);
-    }
-
-    private static JButton button(String label, Runnable action) {
+    private JButton button(String label, String script) {
         JButton button = new JButton(label);
-        button.addActionListener(event -> action.run());
+        button.addActionListener(event -> runScript(script));
         return button;
     }
+
+    private void runScript(String script) {
+        WebEngine current = engine;
+        if (current != null) Platform.runLater(() -> {
+            try { current.executeScript(script); }
+            catch (RuntimeException failure) { message("Graph action failed: " + failure.getMessage()); }
+        });
+    }
+
+    private void message(String value) {
+        SwingUtilities.invokeLater(() -> status.setText(value == null ? "" : value));
+    }
+
+    /** Public because JavaScript calls this object through the JavaFX bridge. */
+    public final class Bridge {
+        public void selection(String json) {
+            try {
+                @SuppressWarnings("unchecked") List<String> ids = JSON.readValue(json, List.class);
+                Set<String> selected = Set.copyOf(ids);
+                SwingUtilities.invokeLater(() -> selectionListener.accept(selected));
+            } catch (IOException failure) { message("Could not read graph selection."); }
+        }
+        public void open(String id) {
+            model.nodes().stream().filter(node -> node.id().equals(id)).findFirst().ifPresent(node -> {
+                if (node.link() != null) BrowserLauncher.open(node.link().toString());
+                SwingUtilities.invokeLater(() -> activationListener.accept(id));
+            });
+        }
+        public void message(String value) { InteractiveGraphView.this.message(value); }
+    }
+
+    static String modelJson(GraphViewModel model) {
+        List<Map<String, Object>> nodes = model.nodes().stream().map(node -> {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", node.id()); data.put("label", node.label());
+            data.put("link", node.link() == null ? "" : node.link().toString());
+            data.put("level", node.level()); data.put("state", node.state().name().toLowerCase());
+            data.put("details", node.details());
+            return Map.<String, Object>of("data", data, "classes", data.get("state"));
+        }).toList();
+        List<Map<String, Object>> edges = model.edges().stream().map(edge -> Map.<String, Object>of("data",
+                Map.of("id", edge.id(), "source", edge.sourceId(), "target", edge.targetId(),
+                        "label", edge.label(), "directed", edge.directed()))).toList();
+        try { return JSON.writeValueAsString(Map.of("nodes", nodes, "edges", edges)); }
+        catch (JsonProcessingException impossible) { throw new IllegalArgumentException(impossible); }
+    }
+
+    static String page() {
+        return PAGE.replace("__CYTOSCAPE__", resource(CYTOSCAPE)).replace("__HTML_LABEL__", resource(HTML_LABEL));
+    }
+
+    private static String resource(String path) {
+        try (InputStream input = InteractiveGraphView.class.getResourceAsStream(path)) {
+            if (input == null) throw new IllegalStateException("Missing graph resource " + path);
+            return new String(input.readAllBytes(), StandardCharsets.UTF_8).replace("</script>", "<\\/script>");
+        } catch (IOException failure) { throw new IllegalStateException("Cannot load graph resource " + path, failure); }
+    }
+
+    private static final String PAGE = """
+        <!doctype html><html><head><meta charset="UTF-8"><style>
+        html,body,#cy{width:100%;height:100%;margin:0;overflow:hidden;font:13px sans-serif;background:#f7f8fa}
+        .node-card{box-sizing:border-box;min-width:145px;max-width:220px;padding:8px 10px;border:2px solid #8795aa;border-radius:10px;background:#e8eef8;text-align:center;box-shadow:0 1px 3px #0002;pointer-events:auto}
+        .node-card.frontier{background:#fff2cc;border-color:#c59a28}.node-card.expanded{background:#dcefe2;border-color:#4e9567}.node-card.unavailable{background:#f7dddd;border-color:#b65e5e}
+        .node-label{font-weight:600;overflow-wrap:anywhere}.node-link{display:inline-block;margin-top:3px;color:#1d5fa7;text-decoration:underline}.node-details{margin-top:3px;color:#596579;font-size:11px}
+        </style><script>__CYTOSCAPE__</script><script>__HTML_LABEL__</script></head><body><div id="cy"></div><script>
+        let cy=cytoscape({container:document.getElementById('cy'),elements:[],selectionType:'single',boxSelectionEnabled:true,wheelSensitivity:0.25,style:[
+          {selector:'node',style:{'width':165,'height':62,'background-opacity':0,'border-width':0,'label':''}},
+          {selector:'node:selected',style:{'overlay-color':'#3478c8','overlay-opacity':0.18,'overlay-padding':8}},
+          {selector:'edge',style:{'curve-style':'bezier','width':2,'line-color':'#718097','target-arrow-color':'#718097','target-arrow-shape':'triangle','label':'data(label)','font-size':11,'text-background-color':'#f7f8fa','text-background-opacity':1,'text-background-padding':2}},
+          {selector:'.undirected',style:{'target-arrow-shape':'none'}}]});
+        const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+        const details=d=>Object.entries(d.details||{}).map(([k,v])=>`<span><b>${esc(k)}:</b> ${esc(v)}</span>`).join(' · ');
+        cy.nodeHtmlLabel([{query:'node',tpl:d=>`<div class="node-card ${esc(d.state)}"><div class="node-label">${esc(d.label)}</div>${d.link?`<a class="node-link" data-node="${esc(d.id)}" href="#" onclick="event.stopPropagation();graphBridge.open(this.dataset.node);return false">${esc(d.id)}</a>`:`<div>${esc(d.id)}</div>`}<div class="node-details">${details(d)}</div></div>`}],{enablePointerEvents:true});
+        function layout(){cy.layout({name:'breadthfirst',directed:true,spacingFactor:1.35,padding:35,animate:false}).run()}function fitGraph(){cy.fit(cy.elements(':visible'),35)}function zoomGraph(f){cy.zoom({level:cy.zoom()*f,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})}
+        function setGraph(model){cy.elements().remove();cy.add(model.nodes);cy.add(model.edges.map(e=>{if(!e.data.directed)e.classes='undirected';return e}));layout();fitGraph();graphBridge.message(`${model.nodes.length} node(s), ${model.edges.length} relation(s)`)}
+        function selectedIds(){return cy.nodes(':selected').map(n=>n.id())}function descendants(root){let level=Number(root.data('level')),found=cy.collection(),pending=root.neighborhood('node'),seen=new Set([root.id()]);while(pending.length){let next=cy.collection();pending.forEach(n=>{if(seen.has(n.id()))return;seen.add(n.id());if(Number(n.data('level'))>level){found=found.union(n);next=next.union(n.neighborhood('node'))}});pending=next}return found}
+        function collapseSelected(){let roots=cy.nodes(':selected');if(!roots.length){graphBridge.message('Select one or more nodes to collapse.');return}let hidden=cy.collection();roots.forEach(n=>hidden=hidden.union(descendants(n)));hidden.hide();graphBridge.message(`Collapsed ${hidden.length} deeper node(s).`);fitGraph()}
+        function expandSelected(){let roots=cy.nodes(':selected');if(!roots.length){graphBridge.message('Select one or more nodes to expand.');return}let shown=cy.collection();roots.forEach(n=>shown=shown.union(descendants(n)));shown.show();graphBridge.message(`Expanded ${shown.length} deeper node(s).`);fitGraph()}
+        function openSelected(){let ids=selectedIds();if(ids.length!==1){graphBridge.message('Select exactly one node to open its link.');return}graphBridge.open(ids[0])}
+        cy.on('select unselect','node',()=>graphBridge.selection(JSON.stringify(selectedIds())));cy.on('cxttap','node',e=>{let n=e.target,hidden=descendants(n).filter(':hidden');n.select();if(hidden.length)expandSelected();else collapseSelected()});
+        window.setGraph=setGraph;window.fitGraph=fitGraph;window.zoomGraph=zoomGraph;window.collapseSelected=collapseSelected;window.expandSelected=expandSelected;window.openSelected=openSelected;
+        </script></body></html>
+        """;
 }

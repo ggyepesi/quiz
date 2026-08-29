@@ -88,6 +88,12 @@ construct per thing produced:
 8. **Survey what already exists BEFORE adding anything.** The structure is usually already
    there — go find it. Proactively, not as an after-the-fact check.
    *(Trigger: about to write a new class or mechanism.)*
+9. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
+   inspection state only; it must not silently configure another tool, mutate the model, or
+   start expensive work. A mutation is an explicit, verb-labelled command that names its target
+   (for example, “Use selected property as edge”), and every command produces an immediate
+   visible result or explains why it had no effect. *(Trigger: a selection listener writes state
+   outside the view that owns the selection.)*
 
 ## Working agreements
 

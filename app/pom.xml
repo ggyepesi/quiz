@@ -81,17 +81,26 @@
             <version>1.5.2</version>
         </dependency>
 
-        <!-- Interactive, dynamic graph rendering embedded in the Swing workbench. -->
+        <!-- Cytoscape runs locally inside JavaFX WebView embedded in Swing. -->
         <dependency>
-            <groupId>org.graphstream</groupId>
-            <artifactId>gs-ui-swing</artifactId>
-            <version>2.0</version>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>21.0.10</version>
         </dependency>
-        <!-- gs-ui-swing declares its core API as provided. -->
         <dependency>
-            <groupId>org.graphstream</groupId>
-            <artifactId>gs-core</artifactId>
-            <version>2.0</version>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>21.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>cytoscape</artifactId>
+            <version>3.33.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>cytoscape-node-html-label</artifactId>
+            <version>1.2.2</version>
         </dependency>
 
         <dependency>

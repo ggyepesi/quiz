@@ -17,7 +17,7 @@ class GraphViewStaysNeutralTest {
     private static final Pattern IMPORT = Pattern.compile(
             "^import\\s+(?:static\\s+)?([^;]+);", Pattern.MULTILINE);
     private static final Set<String> FOUNDATIONS =
-            Set.of("java", "javax", "graphview", "objectview", "org");
+            Set.of("java", "javax", "javafx", "netscape", "graphview", "objectview", "org");
 
     @Test void graphViewDoesNotKnowAnyDatasourceOrApplication() throws Exception {
         List<String> offenders = new ArrayList<>();
@@ -26,7 +26,8 @@ class GraphViewStaysNeutralTest {
                 var matcher = IMPORT.matcher(Files.readString(file));
                 while (matcher.find()) {
                     String imported = matcher.group(1).trim();
-                    if (!FOUNDATIONS.contains(imported.split("\\.")[0])) {
+                    if (!FOUNDATIONS.contains(imported.split("\\.")[0])
+                            && !imported.startsWith("com.fasterxml.jackson.")) {
                         offenders.add(file.getFileName() + " imports " + imported);
                     }
                 }
