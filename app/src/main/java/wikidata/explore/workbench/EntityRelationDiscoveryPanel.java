@@ -68,17 +68,17 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         selections = value;
         selectionsHolder.removeAll();
         if (value != null) {
-            selectionsHolder.add(new SelectionsButton(value).action(
+            selectionsHolder.add(new SelectionsButton(value).useEntities(
                     "Use selected entity as starting QID",
-                    () -> selections.entity().isPresent(),
-                    this::useSelectedEntity).action(
+                    SelectionsButton.Cardinality.SINGLE,
+                    selected -> useSelectedEntity(selected.getFirst())).useProperties(
                     "Use selected property as edge",
-                    () -> selections.property().isPresent(),
-                    this::useSelectedProperty).action(
-                    "Add selected entities to reusable selections",
+                    SelectionsButton.Cardinality.SINGLE,
+                    selected -> useSelectedProperty(selected.getFirst())).addEntities(
+                    "Add selected entities",
                     () -> !selectedNodeQids.isEmpty(),
-                    this::setSelectedEntity).action(
-                    "Add selected edge property to reusable selections",
+                    this::setSelectedEntity).addProperties(
+                    "Add selected edge property",
                     () -> !pid.isBlank(),
                     this::setSelectedProperty));
         }
@@ -86,23 +86,17 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         selectionsHolder.repaint();
     }
 
-    private void useSelectedEntity() {
-        if (selections == null) return;
-        selections.entity().ifPresent(entity -> {
-            startingQid.setText(entity.qid());
-            status.setText(entity.qid() + " is now the starting QID.");
-        });
+    private void useSelectedEntity(WorkbenchSelections.Entity entity) {
+        startingQid.setText(entity.qid());
+        status.setText(entity.qid() + " is now the starting QID.");
     }
 
-    private void useSelectedProperty() {
-        if (selections == null) return;
-        selections.property().ifPresent(selected -> {
-            pid = selected.pid();
-            propertyLabel = selected.label();
-            property.setText(selected.label() + " (" + selected.pid() + ")");
-            discover.setEnabled(wired);
-            status.setText(selected.pid() + " is now the edge property.");
-        });
+    private void useSelectedProperty(WorkbenchSelections.Property selected) {
+        pid = selected.pid();
+        propertyLabel = selected.label();
+        property.setText(selected.label() + " (" + selected.pid() + ")");
+        discover.setEnabled(wired);
+        status.setText(selected.pid() + " is now the edge property.");
     }
     private void setSelectedEntity() {
         if (selections == null || result == null || selectedNodeQids.isEmpty()) return;

@@ -2,7 +2,8 @@ package workbench;
 
 import org.junit.jupiter.api.Test;
 
-import javax.swing.JMenuItem;
+import javax.swing.*;
+import java.awt.*;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,31 +23,27 @@ class WorkbenchSelectionsTest {
 
         assertEquals(List.of("Q42", "Q937"), selections.entities().stream()
                 .map(WorkbenchSelections.Entity::qid).toList());
-        assertEquals("P26", selections.property().orElseThrow().pid());
+        assertEquals("P26", selections.properties().getFirst().pid());
         assertEquals(3, changes.get());
 
         selections.clearProperty();
-        assertTrue(selections.property().isEmpty());
+        assertTrue(selections.properties().isEmpty());
         assertEquals(2, selections.entities().size());
     }
 
-    // Arity is the using side's question. A tool that walks from a starting point
-    // cannot begin at six, and quietly beginning at whichever was picked last would be
-    // an arbitrary answer — so the single accessor is empty until exactly one remains.
-    @Test void theSingleAccessorIsEmptyUnlessExactlyOneIsSelected() {
+    @Test void usingSideDecidesWhetherTheDialogSelectionIsSingleOrMultiple() {
         WorkbenchSelections selections = new WorkbenchSelections();
-        assertTrue(selections.entity().isEmpty(), "none selected");
-
         selections.entity("Q80061", "Physiology or Medicine");
-        assertEquals("Q80061", selections.entity().orElseThrow().qid());
-
         selections.entity("Q38104", "Physics");
-        assertTrue(selections.entity().isEmpty(), "two selected is not one");
-        assertEquals(2, selections.entities().size(), "but both remain available");
+        SelectionsButton single = new SelectionsButton(selections).useEntities(
+                "Use selected entity", SelectionsButton.Cardinality.SINGLE, ignored -> { });
+        SelectionsButton multiple = new SelectionsButton(selections).useEntities(
+                "Use selected entities", SelectionsButton.Cardinality.MULTIPLE, ignored -> { });
 
-        selections.removeEntity(selections.entities().get(1));
-        assertEquals("Q80061", selections.entity().orElseThrow().qid(),
-                "removing the second leaves exactly one again");
+        assertEquals(ListSelectionModel.SINGLE_SELECTION,
+                entityList(single).getSelectionMode());
+        assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION,
+                entityList(multiple).getSelectionMode());
     }
 
     @Test void selectingTheSameValueTwiceSelectsItOnce() {
@@ -71,27 +68,63 @@ class WorkbenchSelectionsTest {
         assertEquals(1, changes.get());
     }
 
-    @Test void contextualMenuActionReadsCurrentStateWhenOpened() {
+    @Test void contextualAddActionReadsCurrentStateWhenDialogIsRealized() {
         WorkbenchSelections selections = new WorkbenchSelections();
         AtomicInteger invocations = new AtomicInteger();
         boolean[] enabled = {false};
-        SelectionsButton button = new SelectionsButton(selections).action(
-                "Set highlighted entity", () -> enabled[0], invocations::incrementAndGet);
+        SelectionsButton button = new SelectionsButton(selections).addEntities(
+                "Add selected entities", () -> enabled[0], invocations::incrementAndGet);
 
-        JMenuItem disabled = menuItem(button, "Set highlighted entity");
+        JButton disabled = component(button.dialogContent(), JButton.class, "Add selected entities");
         assertTrue(!disabled.isEnabled());
 
         enabled[0] = true;
-        JMenuItem active = menuItem(button, "Set highlighted entity");
+        JButton active = component(button.dialogContent(), JButton.class, "Add selected entities");
         assertTrue(active.isEnabled());
         active.doClick();
         assertEquals(1, invocations.get());
     }
 
-    private static JMenuItem menuItem(SelectionsButton button, String text) {
-        for (var component : button.menu().getComponents()) {
-            if (component instanceof JMenuItem item && text.equals(item.getText())) return item;
+    @Test void dialogHasTypedTabsAndRemovalRequiresAnExplicitButton() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        selections.entity("Q42", "Douglas Adams");
+        SelectionsButton button = new SelectionsButton(selections).addEntities(
+                "Add selected entities", () -> false, () -> { });
+        JTabbedPane tabs = (JTabbedPane) button.dialogContent();
+        assertEquals(List.of("Entities", "Properties"), List.of(
+                tabs.getTitleAt(0), tabs.getTitleAt(1)));
+
+        @SuppressWarnings("unchecked") JList<WorkbenchSelections.Entity> list =
+                (JList<WorkbenchSelections.Entity>) component(
+                        (Container) tabs.getComponentAt(0), JList.class, null);
+        list.setSelectedIndex(0);
+        assertEquals(1, selections.entities().size());
+        component((Container) tabs.getComponentAt(0), JButton.class,
+                "Remove selected entities").doClick();
+        assertTrue(selections.entities().isEmpty());
+    }
+
+    private static <T extends Component> T component(
+            Container root, Class<T> type, String text) {
+        for (Component candidate : root.getComponents()) {
+            if (type.isInstance(candidate)
+                    && (text == null || candidate instanceof AbstractButton button
+                    && text.equals(button.getText()))) return type.cast(candidate);
+            if (candidate instanceof Container child) {
+                T found = componentOrNull(child, type, text);
+                if (found != null) return found;
+            }
         }
-        throw new AssertionError("Missing menu item: " + text);
+        throw new AssertionError("Missing component: " + type.getSimpleName() + " " + text);
+    }
+    private static <T extends Component> T componentOrNull(
+            Container root, Class<T> type, String text) {
+        try { return component(root, type, text); }
+        catch (AssertionError ignored) { return null; }
+    }
+
+    private static JList<?> entityList(SelectionsButton button) {
+        JTabbedPane tabs = (JTabbedPane) button.dialogContent();
+        return component((Container) tabs.getComponentAt(0), JList.class, null);
     }
 }

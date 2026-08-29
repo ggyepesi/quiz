@@ -1,112 +1,183 @@
 package workbench;
 
-import javax.swing.JButton;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
+import javax.swing.*;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
-/** Compact, reusable view of the typed workbench selections. */
+/** Opens the shared reusable-selection collection with operations supplied by its caller. */
 public final class SelectionsButton extends JButton {
+    public enum Cardinality { SINGLE, MULTIPLE }
+
     private final WorkbenchSelections selections;
-    private final List<MenuAction> actions = new ArrayList<>();
+    private final List<AddAction> entityAdds = new ArrayList<>();
+    private final List<AddAction> propertyAdds = new ArrayList<>();
+    private boolean entityRemoval;
+    private boolean propertyRemoval;
+    private final List<UseAction<WorkbenchSelections.Entity>> entityUses = new ArrayList<>();
+    private final List<UseAction<WorkbenchSelections.Property>> propertyUses = new ArrayList<>();
     private WorkbenchSelections.Registration registration;
 
     public SelectionsButton(WorkbenchSelections selections) {
         super("Reusable selections");
         this.selections = selections;
-        setToolTipText("Show the entities and properties selected for reuse");
-        addActionListener(event -> showMenu());
+        setToolTipText("Open the reusable entities and properties");
+        addActionListener(event -> showDialog());
         refresh();
     }
 
-    private void listen() {
-        if (registration == null) registration = selections.onChange(this::refresh);
+    public SelectionsButton addEntities(String label, BooleanSupplier enabled, Runnable add) {
+        entityAdds.add(new AddAction(label, enabled, add)); entityRemoval = true; return this;
+    }
+    public SelectionsButton addProperties(String label, BooleanSupplier enabled, Runnable add) {
+        propertyAdds.add(new AddAction(label, enabled, add)); propertyRemoval = true; return this;
+    }
+    public SelectionsButton useEntities(String label, Cardinality cardinality,
+            Consumer<List<WorkbenchSelections.Entity>> use) {
+        return useEntities(label, cardinality, () -> true, use);
+    }
+    public SelectionsButton useEntities(String label, Cardinality cardinality,
+            BooleanSupplier enabled, Consumer<List<WorkbenchSelections.Entity>> use) {
+        entityUses.add(new UseAction<>(label, cardinality, enabled, use)); return this;
+    }
+    public SelectionsButton useProperties(String label, Cardinality cardinality,
+            Consumer<List<WorkbenchSelections.Property>> use) {
+        return useProperties(label, cardinality, () -> true, use);
+    }
+    public SelectionsButton useProperties(String label, Cardinality cardinality,
+            BooleanSupplier enabled, Consumer<List<WorkbenchSelections.Property>> use) {
+        propertyUses.add(new UseAction<>(label, cardinality, enabled, use)); return this;
     }
 
     @Override public void addNotify() {
         super.addNotify();
-        listen();
+        if (registration == null) registration = selections.onChange(this::refresh);
         refresh();
     }
-
     @Override public void removeNotify() {
-        if (registration != null) {
-            registration.close();
-            registration = null;
-        }
+        if (registration != null) { registration.close(); registration = null; }
         super.removeNotify();
     }
-
-    public SelectionsButton action(
-            String label, BooleanSupplier enabled, Runnable operation) {
-        if (label != null && !label.isBlank() && operation != null) {
-            actions.add(new MenuAction(label,
-                    enabled == null ? () -> true : enabled, operation));
-        }
-        return this;
-    }
-
     private void refresh() {
         int count = selections.entities().size() + selections.properties().size();
-        setText(count == 0
-                ? "Reusable selections"
-                : "Reusable selections (" + count + ")");
+        setText(count == 0 ? "Reusable selections" : "Reusable selections (" + count + ")");
     }
 
-    private static void header(JPopupMenu menu, String kind, int count) {
-        JMenuItem item = new JMenuItem(count == 0 ? kind + ": none" : kind + " (" + count + ")");
-        item.setEnabled(false);
-        menu.add(item);
+    private void showDialog() {
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Reusable selections", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(content(dialog));
+        dialog.setSize(600, 480);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
-    private void showMenu() {
-        menu().show(this, 0, getHeight());
+    /** Builds this presenting context's view of the shared reusable collection. */
+    public JComponent dialogContent() { return content(null); }
+
+    private JComponent content(JDialog dialog) {
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Entities", entityPanel(dialog));
+        tabs.addTab("Properties", propertyPanel(dialog));
+        return tabs;
     }
 
-    /** Builds the current menu so contextual actions evaluate against current UI state. */
-    JPopupMenu menu() {
-        JPopupMenu menu = new JPopupMenu();
-        // Every selected value is listed and individually removable: a collection the
-        // reader cannot see the contents of is one they cannot correct.
-        header(menu, "Entities", selections.entities().size());
-        for (WorkbenchSelections.Entity value : selections.entities()) {
-            JMenuItem item = new JMenuItem(
-                    "  " + value.label() + " (" + value.qid() + ")  ✕");
-            item.addActionListener(event -> selections.removeEntity(value));
-            menu.add(item);
-        }
-        if (!selections.entities().isEmpty()) {
-            JMenuItem clear = new JMenuItem("  Clear all entities");
-            clear.addActionListener(event -> selections.clearEntity());
-            menu.add(clear);
-        }
-        menu.addSeparator();
-        header(menu, "Properties", selections.properties().size());
-        for (WorkbenchSelections.Property value : selections.properties()) {
-            JMenuItem item = new JMenuItem(
-                    "  " + value.label() + " (" + value.pid() + ")  ✕");
-            item.addActionListener(event -> selections.removeProperty(value));
-            menu.add(item);
-        }
-        if (!selections.properties().isEmpty()) {
-            JMenuItem clear = new JMenuItem("  Clear all properties");
-            clear.addActionListener(event -> selections.clearProperty());
-            menu.add(clear);
-        }
-        if (!actions.isEmpty()) {
-            menu.addSeparator();
-            for (MenuAction action : actions) {
-                JMenuItem item = new JMenuItem(action.label());
-                item.setEnabled(action.enabled().getAsBoolean());
-                item.addActionListener(event -> action.operation().run());
-                menu.add(item);
-            }
-        }
-        return menu;
+    private JComponent entityPanel(JDialog dialog) {
+        DefaultListModel<WorkbenchSelections.Entity> model = model(selections.entities());
+        JList<WorkbenchSelections.Entity> list = new JList<>(model);
+        list.setCellRenderer(renderer(e -> e.label() + " (" + e.qid() + ")"));
+        configureSelection(list, cardinality(entityUses));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        entityAdds.forEach(action -> actions.add(addButton(action,
+                () -> replace(model, selections.entities()))));
+        if (entityRemoval) actions.add(removeButton("Remove selected entities", list, () -> {
+            List.copyOf(list.getSelectedValuesList()).forEach(selections::removeEntity);
+            replace(model, selections.entities());
+        }));
+        entityUses.forEach(use -> actions.add(useButton(use, list, dialog)));
+        return listPanel(list, actions, "Collect entities in one tool and use them in another.");
     }
 
-    private record MenuAction(
-            String label, BooleanSupplier enabled, Runnable operation) { }
+    private JComponent propertyPanel(JDialog dialog) {
+        DefaultListModel<WorkbenchSelections.Property> model = model(selections.properties());
+        JList<WorkbenchSelections.Property> list = new JList<>(model);
+        list.setCellRenderer(renderer(p -> p.label() + " (" + p.pid() + ")"));
+        configureSelection(list, cardinality(propertyUses));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        propertyAdds.forEach(action -> actions.add(addButton(action,
+                () -> replace(model, selections.properties()))));
+        if (propertyRemoval) actions.add(removeButton("Remove selected properties", list, () -> {
+            List.copyOf(list.getSelectedValuesList()).forEach(selections::removeProperty);
+            replace(model, selections.properties());
+        }));
+        propertyUses.forEach(use -> actions.add(useButton(use, list, dialog)));
+        return listPanel(list, actions, "Properties are kept separately from entities.");
+    }
+
+    private static void configureSelection(JList<?> list, Cardinality cardinality) {
+        list.setSelectionMode(cardinality == Cardinality.SINGLE
+                ? ListSelectionModel.SINGLE_SELECTION
+                : ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    }
+    private static Cardinality cardinality(List<? extends UseAction<?>> actions) {
+        if (actions.isEmpty()) return Cardinality.MULTIPLE;
+        Cardinality first = actions.getFirst().cardinality();
+        if (actions.stream().anyMatch(action -> action.cardinality() != first)) {
+            throw new IllegalStateException("One reusable-selection tab cannot mix single and multiple use actions");
+        }
+        return first;
+    }
+    private JButton addButton(AddAction action, Runnable after) {
+        JButton button = new JButton(action.label);
+        button.setEnabled(action.enabled == null || action.enabled.getAsBoolean());
+        button.addActionListener(e -> { action.operation.run(); after.run(); });
+        return button;
+    }
+    private static <T> JButton removeButton(String text, JList<T> list, Runnable remove) {
+        JButton button = new JButton(text); button.setEnabled(false);
+        list.addListSelectionListener(e -> button.setEnabled(!list.isSelectionEmpty()));
+        button.addActionListener(e -> remove.run()); return button;
+    }
+    private static <T> JButton useButton(UseAction<T> action, JList<T> list, JDialog dialog) {
+        JButton button = new JButton(action.label);
+        Runnable refresh = () -> button.setEnabled(
+                (action.enabled == null || action.enabled.getAsBoolean())
+                && (action.cardinality == Cardinality.SINGLE
+                ? list.getSelectedIndices().length == 1 : !list.isSelectionEmpty()));
+        list.addListSelectionListener(e -> refresh.run());
+        button.addActionListener(e -> {
+            action.operation.accept(List.copyOf(list.getSelectedValuesList()));
+            if (dialog != null) dialog.dispose();
+        });
+        refresh.run(); return button;
+    }
+    private static JPanel listPanel(JList<?> list, JPanel actions, String hint) {
+        JPanel panel = new JPanel(new BorderLayout(6, 6));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        panel.add(new JLabel(hint), BorderLayout.NORTH);
+        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+        panel.add(actions, BorderLayout.SOUTH); return panel;
+    }
+    private static <T> ListCellRenderer<T> renderer(java.util.function.Function<T, String> text) {
+        return (list, value, index, selected, focus) -> {
+            JLabel label = new JLabel(text.apply(value)); label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+            label.setBackground(selected ? list.getSelectionBackground() : list.getBackground());
+            label.setForeground(selected ? list.getSelectionForeground() : list.getForeground());
+            return label;
+        };
+    }
+    private static <T> DefaultListModel<T> model(List<T> values) {
+        DefaultListModel<T> model = new DefaultListModel<>(); values.forEach(model::addElement); return model;
+    }
+    private static <T> void replace(DefaultListModel<T> model, List<T> values) {
+        model.clear(); values.forEach(model::addElement);
+    }
+
+    private record AddAction(String label, BooleanSupplier enabled, Runnable operation) { }
+    private record UseAction<T>(String label, Cardinality cardinality,
+                                BooleanSupplier enabled, Consumer<List<T>> operation) { }
 }

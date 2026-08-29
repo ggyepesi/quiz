@@ -317,6 +317,74 @@ public class GeneratedProjectModel {
         selections.set(selections.indexOf(existing), replacement);
     }
 
+    /** Renames one selection and every model reference to it. */
+    public boolean renameSelection(String oldName, String newName) {
+        Selection selection = findSelection(oldName);
+        String next = newName == null ? "" : newName.trim();
+        if (selection == null || next.isBlank()) return false;
+        Selection conflict = findSelection(next);
+        if (conflict != null && conflict != selection) return false;
+        // A field target names a class or a selection in ONE namespace, and the class
+        // wins it. Renaming onto a class name would leave this selection unreachable.
+        if (findClass(next) != null) return false;
+        String previous = selection.name();
+        boolean fieldsPointHere = fieldTargetsResolveToSelection(previous);
+        selection.name(next);
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz.statementSource() != null
+                    && clazz.statementSource().valueSelectionName().equalsIgnoreCase(previous)) {
+                clazz.statementSource().valueSelectionName(next);
+            }
+            if (fieldsPointHere) renameFieldSelection(clazz.fields(), previous, next);
+        }
+        return true;
+    }
+
+    /** Removes an unreferenced selection; referenced declarations must be redirected first. */
+    public boolean removeSelection(String name) {
+        Selection selection = findSelection(name);
+        if (selection == null || selectionReferenced(selection.name())) return false;
+        return selections.remove(selection);
+    }
+
+    public boolean selectionReferenced(String name) {
+        if (name == null || name.isBlank()) return false;
+        boolean fieldsPointHere = fieldTargetsResolveToSelection(name);
+        for (GeneratedClassModel clazz : classes) {
+            // A statement source names a SELECTION explicitly, so it is never ambiguous.
+            if (clazz.statementSource() != null
+                    && clazz.statementSource().valueSelectionName().equalsIgnoreCase(name)) return true;
+            if (fieldsPointHere && fieldReferencesSelection(clazz.fields(), name)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether a field whose target reads {@code name} means the SELECTION of that name.
+     * Class and selection names share one namespace and a class wins it — ClassImportPlan
+     * and the validator both ask findClass first — so while a class of that name exists,
+     * no field target refers to the selection, however many spell its name.
+     */
+    private boolean fieldTargetsResolveToSelection(String name) {
+        return findClass(name) == null;
+    }
+
+    private static void renameFieldSelection(List<GeneratedFieldModel> fields,
+            String previous, String next) {
+        for (GeneratedFieldModel field : fields) {
+            if (field.entityClassName().equalsIgnoreCase(previous)) field.entityClassName(next);
+            renameFieldSelection(field.fields(), previous, next);
+        }
+    }
+
+    private static boolean fieldReferencesSelection(List<GeneratedFieldModel> fields, String name) {
+        for (GeneratedFieldModel field : fields) {
+            if (field.entityClassName().equalsIgnoreCase(name)
+                    || fieldReferencesSelection(field.fields(), name)) return true;
+        }
+        return false;
+    }
+
     public void replaceEntityKindRule(EntityKindRule replacement) {
         if (replacement == null) return;
         for (int i = 0; i < entityKindRules.size(); i++) {

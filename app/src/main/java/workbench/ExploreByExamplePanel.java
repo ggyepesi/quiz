@@ -155,9 +155,9 @@ public class ExploreByExamplePanel extends JPanel {
         selectionsButtonHolder.removeAll();
         if (selections != null) selectionsButtonHolder.add(
                 new SelectionsButton(selections)
-                        .action("Add selected entities to reusable selections",
+                        .addEntities("Add selected entities",
                                 this::canSetSelectedEntity, this::setSelectedEntity)
-                        .action("Add selected properties to reusable selections",
+                        .addProperties("Add selected properties",
                                 () -> !selectedRelationViews.isEmpty(),
                                 this::setSelectedProperty));
         selectionsButtonHolder.revalidate();
@@ -549,7 +549,8 @@ public class ExploreByExamplePanel extends JPanel {
             workbenchSelections.entity(exploredQid, exploredLabel);
             added = 1;
         }
-        if (added > 0) status.setText("Added " + added + " entity selection(s).");
+        if (added > 0) status.setText("Added " + added
+                + " selected entity value(s) to reusable selections.");
     }
 
     private void setSelectedProperty() {
@@ -558,7 +559,8 @@ public class ExploreByExamplePanel extends JPanel {
             workbenchSelections.property(relation.pid(), relation.relationLabel());
         }
         if (!selectedRelationViews.isEmpty()) status.setText("Added "
-                + selectedRelationViews.size() + " property selection(s).");
+                + selectedRelationViews.size()
+                + " selected property value(s) to reusable selections.");
     }
 
     private ClassSearchQuery buildSearchQuery() {

@@ -2,7 +2,7 @@ package workbench;
 
 import org.junit.jupiter.api.Test;
 
-import javax.swing.JMenuItem;
+import javax.swing.JButton;
 import javax.swing.JTable;
 import java.awt.Component;
 import java.awt.Container;
@@ -48,18 +48,23 @@ class ExploreByExamplePanelPickTest {
         table.setRowSelectionInterval(0, 2);
 
         SelectionsButton button = component(panel, SelectionsButton.class);
-        menuItem(button, "Add selected entities to reusable selections").doClick();
+        JButton add = button(button.dialogContent(), "Add selected entities");
+        add.doClick();
 
         assertEquals(List.of("Q80061", "Q38104", "Q44585"),
                 selections.entities().stream()
                         .map(WorkbenchSelections.Entity::qid).toList());
     }
 
-    private static JMenuItem menuItem(SelectionsButton button, String text) {
-        for (Component component : button.menu().getComponents()) {
-            if (component instanceof JMenuItem item && text.equals(item.getText())) return item;
+    private static JButton button(Container root, String text) {
+        for (Component component : root.getComponents()) {
+            if (component instanceof JButton button && text.equals(button.getText())) return button;
+            if (component instanceof Container child) {
+                JButton found = button(child, text);
+                if (found != null) return found;
+            }
         }
-        throw new AssertionError("Missing menu item: " + text);
+        return null;
     }
 
     private static <T extends Component> T component(Container root, Class<T> type) {

@@ -3,117 +3,148 @@ package wikidata.explore.workbench;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
+import workbench.SelectionsButton;
 import workbench.WorkbenchSelections;
 
-import javax.swing.JButton;
-import javax.swing.JTextField;
-import java.awt.Component;
-import java.awt.Container;
+import javax.swing.*;
+import java.awt.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * The multiple-selection side of reusable selections: entities are collected wherever
- * the reader finds them, and named once as a vocabulary. Searching "Nobel Prize" and
- * picking the categories one at a time is the case this exists for.
- */
 class VocabularyFromSelectionsTest {
 
-    @Test void entitiesCollectedInExploreBecomeAVocabulary() throws Exception {
+    @Test void reusableEntitiesAreAddedToTheChosenVocabulary() {
         GeneratedProjectModel project = new GeneratedProjectModel();
-        WorkbenchSelections selections = new WorkbenchSelections();
+        VocabularySelection prize = new VocabularySelection("Prize");
+        prize.valueQids(List.of("Q38104"));
+        project.addSelection(prize);
+        WorkbenchSelections reusable = new WorkbenchSelections();
+        reusable.entity("Q38104", "Physics");
+        reusable.entity("Q44585", "Chemistry");
+
         SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
-        panel.selections(selections);
+        panel.selections(reusable);
+        SelectionsButton open = component(panel, SelectionsButton.class);
+        JTabbedPane tabs = (JTabbedPane) open.dialogContent();
+        @SuppressWarnings("unchecked") JList<WorkbenchSelections.Entity> list =
+                (JList<WorkbenchSelections.Entity>) component(
+                        (Container) tabs.getComponentAt(0), JList.class);
+        list.setSelectionInterval(0, 1);
+        button((Container) tabs.getComponentAt(0), "Add selected entities").doClick();
 
-        JButton use = button(panel, "Use selected entities");
-        assertNotNull(use, "the panel offers the multiple-selection action");
-        assertTrue(!use.isEnabled(), "nothing selected yet");
+        assertEquals(List.of("Q38104", "Q44585"), prize.valueQids());
+    }
 
-        selections.entity("Q80061", "Nobel Prize in Physiology or Medicine");
-        selections.entity("Q38104", "Nobel Prize in Physics");
-        selections.entity("Q44585", "Nobel Prize in Chemistry");
-        assertTrue(use.isEnabled(), "three selected");
+    @Test void theOneEntityListRemovesOnlyItsSelectedRows() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        VocabularySelection prize = new VocabularySelection("Prize");
+        prize.valueQids(List.of("Q38104", "Q44585", "Q80061"));
+        project.addSelection(prize);
+        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
 
-        named(panel, "vocabularyFromSelectionsName").setText("Prize");
-        use.doClick();
+        JList<?> list = component(panel, JList.class);
+        assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode());
+        list.setSelectedIndices(new int[]{0, 2});
+        button(panel, "Remove selected").doClick();
 
-        VocabularySelection created = project.selections().stream()
-                .filter(s -> "Prize".equals(s.name()))
-                .filter(VocabularySelection.class::isInstance)
-                .map(VocabularySelection.class::cast)
-                .findFirst().orElseThrow();
-        assertEquals(3, created.valueQids().size(), "every selected entity is a value");
-        assertTrue(created.valueQids().contains("Q38104"));
+        assertEquals(List.of("Q44585"), prize.valueQids());
+    }
 
-        selections.clearEntity();
-        selections.entity("Q7191", "Nobel Prize");
-        named(panel, "vocabularyFromSelectionsName").setText("Prize");
-        use.doClick();
+    @Test void renameUpdatesFieldsThatReferToTheVocabularyAndDeleteRefusesWhileReferenced() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        VocabularySelection prize = new VocabularySelection("Prize");
+        project.addSelection(prize);
+        wikidata.explore.model.GeneratedClassModel owner =
+                new wikidata.explore.model.GeneratedClassModel("Award");
+        wikidata.explore.model.GeneratedFieldModel field =
+                new wikidata.explore.model.GeneratedFieldModel();
+        field.entityClassName("Prize");
+        owner.fields().add(field);
+        project.addClass(owner);
 
-        assertEquals(1, project.selections().stream()
-                .filter(s -> "Prize".equals(s.name())).count(),
-                "correcting a named vocabulary replaces it rather than shadowing it");
-        assertEquals(java.util.List.of("Q7191"),
-                ((VocabularySelection) project.findSelection("Prize")).valueQids());
+        assertTrue(project.renameSelection("Prize", "NobelCategory"));
+        assertEquals("NobelCategory", field.entityClassName());
+        assertTrue(!project.removeSelection("NobelCategory"));
     }
 
     private static JButton button(Container root, String text) {
-        for (Component component : root.getComponents()) {
-            if (component instanceof JButton candidate
-                    && text.equals(candidate.getText())) return candidate;
-            if (component instanceof Container child) {
-                JButton found = button(child, text);
+        for (Component candidate : root.getComponents()) {
+            if (candidate instanceof JButton button && text.equals(button.getText())) return button;
+            if (candidate instanceof Container child) {
+                JButton found = buttonOrNull(child, text);
                 if (found != null) return found;
             }
         }
-        return null;
+        throw new AssertionError("No button " + text);
     }
-
-    /** Two rows carry a name box of the same shape, so this one is found by name. */
-    private static JTextField named(Container root, String name) {
-        JTextField found = search(root, name);
-        if (found == null) throw new AssertionError("no text field named " + name);
-        return found;
+    private static JButton buttonOrNull(Container root, String text) {
+        try { return button(root, text); } catch (AssertionError ignored) { return null; }
     }
-
-    // The search returns null so a branch without the field does not end the search;
-    // only the caller decides that missing is a failure.
-    private static JTextField search(Container root, String name) {
-        for (Component component : root.getComponents()) {
-            if (component instanceof JTextField candidate
-                    && name.equals(candidate.getName())) return candidate;
-            if (component instanceof Container child) {
-                JTextField found = search(child, name);
+    private static <T extends Component> T component(Container root, Class<T> type) {
+        for (Component candidate : root.getComponents()) {
+            if (type.isInstance(candidate)) return type.cast(candidate);
+            if (candidate instanceof Container child) {
+                T found = componentOrNull(child, type);
                 if (found != null) return found;
             }
         }
-        return null;
+        throw new AssertionError("No " + type.getSimpleName());
+    }
+    private static <T extends Component> T componentOrNull(Container root, Class<T> type) {
+        try { return component(root, type); } catch (AssertionError ignored) { return null; }
     }
 
-    @Test void selectedEntitiesCanGrowAnExistingVocabularyWithoutLosingItsValueType() {
+    @Test void pastedQidsGrowTheChosenVocabularyAndNonQidsAreReported() {
         GeneratedProjectModel project = new GeneratedProjectModel();
-        VocabularySelection prize = new VocabularySelection("Prize");
-        prize.valueQids(java.util.List.of("Q38104"));
-        prize.valueTypeQid("Q7191");
-        project.addSelection(prize);
+        project.addSelection(new VocabularySelection("Prize"));
+        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
+        panel.refreshSelections();
 
+        panel.addPastedQids("Q80061 Q38104, Q44585\nQ35637 not-a-qid Q38104");
+
+        VocabularySelection prize = (VocabularySelection) project.findSelection("Prize");
+        assertEquals(java.util.List.of("Q80061", "Q38104", "Q44585", "Q35637"),
+                prize.valueQids(), "in paste order, never twice");
+        assertTrue(status(panel).contains("1 not a QID"), "rejects are reported");
+    }
+
+    /**
+     * A vocabulary stores QIDs only. Entities picked BY LABEL in Explore must not redraw
+     * as bare QIDs the moment they are added — that is the one thing the reader is here
+     * to check.
+     */
+    @Test void anAddedEntityKeepsTheLabelItWasPickedBy() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addSelection(new VocabularySelection("Prize"));
         WorkbenchSelections selections = new WorkbenchSelections();
         SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
         panel.selections(selections);
-        panel.refreshSelections();
 
-        selections.entity("Q38104", "Physics");
-        selections.entity("Q44585", "Chemistry");
-        button(panel, "Add selected entities").doClick();
+        selections.entity("Q38104", "Nobel Prize in Physics");
+        SelectionsButton open = component(panel, SelectionsButton.class);
+        JTabbedPane tabs = (JTabbedPane) open.dialogContent();
+        Container entityTab = (Container) tabs.getComponentAt(0);
+        component(entityTab, JList.class).setSelectionInterval(0, 0);
+        button(entityTab, "Add selected entities").doClick();
 
-        VocabularySelection stored =
-                (VocabularySelection) project.findSelection("Prize");
-        assertEquals(java.util.List.of("Q38104", "Q44585"), stored.valueQids(),
-                "an already-present value is not added twice");
-        assertEquals("Q7191", stored.valueTypeQid(),
-                "growing a vocabulary keeps the rest of its definition");
-        assertEquals(1, project.selections().size());
+        JList<?> shown = component(panel, JList.class);
+        assertEquals(1, shown.getModel().getSize());
+        assertTrue(shown.getModel().getElementAt(0).toString().contains("Nobel Prize in Physics"),
+                "the label survives into the vocabulary view");
+    }
+
+    private static String status(Container root) {
+        StringBuilder all = new StringBuilder();
+        collectLabels(root, all);
+        return all.toString();
+    }
+
+    private static void collectLabels(Container root, StringBuilder into) {
+        for (Component component : root.getComponents()) {
+            if (component instanceof javax.swing.JLabel label) into.append(label.getText()).append('\n');
+            if (component instanceof Container child) collectLabels(child, into);
+        }
     }
 }

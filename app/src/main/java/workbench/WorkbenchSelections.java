@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Window-scoped, typed copy/paste state for workbench values.
@@ -16,12 +15,9 @@ import java.util.Optional;
  * for "Nobel Prize" and want the five categories: pick them one at a time, name them
  * once.
  *
- * <p>Arity is the using side's question, and it is answered by which accessor a tool
- * reads. {@link #entities()} is for a tool that acts on the whole collection;
- * {@link #entity()} is for one that needs a single starting point, and it is empty
- * unless exactly one is selected — a walk cannot begin at six places, and quietly
- * beginning at whichever was picked last would be an arbitrary answer to a question
- * with no single answer.
+ * <p>This object owns the shared collection, not the current UI selection within it.
+ * Each realization of the reusable-selection dialog decides whether its list permits
+ * one or several highlighted values and passes exactly those values to its consumer.
  */
 public final class WorkbenchSelections {
 
@@ -56,17 +52,6 @@ public final class WorkbenchSelections {
     public List<Entity> entities() { return List.copyOf(entities.values()); }
 
     public List<Property> properties() { return List.copyOf(properties.values()); }
-
-    /** The one selected entity, when exactly one is. See the class note on arity. */
-    public Optional<Entity> entity() {
-        return entities.size() == 1
-                ? Optional.of(entities.values().iterator().next()) : Optional.empty();
-    }
-
-    public Optional<Property> property() {
-        return properties.size() == 1
-                ? Optional.of(properties.values().iterator().next()) : Optional.empty();
-    }
 
     /** Adds to the selection; picking the same value twice does not select it twice. */
     public void entity(String qid, String label) {

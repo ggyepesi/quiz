@@ -774,10 +774,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         configHeader.setLayout(new BoxLayout(configHeader, BoxLayout.Y_AXIS));
         configHeader.add(kindHeader);
         JPanel reuse = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        reuse.add(new SelectionsButton(selections).action(
+        reuse.add(new SelectionsButton(selections).useProperties(
                 "Use selected property",
-                this::canUseSelectedProperty,
-                this::useSelectedProperty));
+                SelectionsButton.Cardinality.SINGLE,
+                values -> useSelectedProperty(values.getFirst())));
         configHeader.add(reuse);
         config.add(configHeader, BorderLayout.NORTH);
         config.add(
@@ -790,21 +790,19 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     private boolean canUseSelectedProperty() {
-        boolean destination = selected instanceof GeneratedFieldModel
+        return (selected instanceof GeneratedFieldModel
                 || selected instanceof GeneratedClassModel clazz
-                && !clazz.reifiesStatements() && !clazz.ownedClass();
-        return editingEnabled && destination && selections.property().isPresent();
+                && !clazz.reifiesStatements() && !clazz.ownedClass()) && editingEnabled;
     }
 
-    private void useSelectedProperty() {
-        selections.property().ifPresent(property -> {
-            if (selected instanceof GeneratedFieldModel) {
-                fieldSourcePanel.useProperty(property.pid(), property.label());
-            } else if (selected instanceof GeneratedClassModel clazz
-                    && !clazz.reifiesStatements() && !clazz.ownedClass()) {
-                classSourcePanel.usePopulationProperty(property.pid(), property.label());
-            }
-        });
+    private void useSelectedProperty(WorkbenchSelections.Property property) {
+        if (property == null || !canUseSelectedProperty()) return;
+        if (selected instanceof GeneratedFieldModel) {
+            fieldSourcePanel.useProperty(property.pid(), property.label());
+        } else if (selected instanceof GeneratedClassModel clazz
+                && !clazz.reifiesStatements() && !clazz.ownedClass()) {
+            classSourcePanel.usePopulationProperty(property.pid(), property.label());
+        }
     }
 
     private void switchClassKind() {

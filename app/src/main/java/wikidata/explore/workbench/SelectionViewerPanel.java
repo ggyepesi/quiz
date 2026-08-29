@@ -1,66 +1,43 @@
 package wikidata.explore.workbench;
 
-import objectview.render.Card;
-import objectview.render.RenderContext;
-import objectview.utils.swing.GridBagUtils;
-import objectview.viewconfig.ViewConfig;
-import objectview.Viewable;
+import wikidata.WikidataIds;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.SelectionContentResolver;
-import wikidata.explore.extract.ValueVocabularyDiscovery;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
-import workbench.SelectionsButton;
-import workbench.WorkbenchSelections;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
+import workbench.SelectionsButton;
+import workbench.WorkbenchSelections;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Browse a {@link Selection}'s CONTENT (slice 2 of the Selection construct). A Selection is
- * never a served product, but its content is inspectable: pick a Selection, resolve
- * its members (labelled), and render them as the same cards used everywhere else —
- * so making the Oscar categories a vocabulary hides nothing, it just stops them
- * being a class. Reuses the shared Card rendering rather than a bespoke widget.
- */
+/** A deliberately small editor: one named selection and one list of its entities. */
 public class SelectionViewerPanel extends JPanel {
-
-    /** Sample size for a POPULATION selection's bounded subject query. */
     private static final int POPULATION_SAMPLE_LIMIT = 200;
 
     private final GeneratedProjectModel project;
     private final WikidataApiClient api;
     private final WikidataSparqlClient sparql;
-
     private final JComboBox<String> selectionBox = new JComboBox<>();
-    private final JButton showButton = new JButton("Show content");
+    private final JButton newButton = new JButton("New");
+    private final JButton renameButton = new JButton("Rename");
+    private final JButton deleteButton = new JButton("Delete");
+    private final DefaultListModel<EntityRow> entitiesModel = new DefaultListModel<>();
+    private final JList<EntityRow> entities = new JList<>(entitiesModel);
+    private final JPanel reusableHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    private final JButton pasteButton = new JButton("Paste QIDs");
+    private final JButton removeButton = new JButton("Remove selected");
+    // Labels this panel has been told, by QID. A vocabulary stores QIDs only, so
+    // without this the six prizes just picked BY LABEL redraw as six bare QIDs.
+    private final Map<String, String> knownLabels = new HashMap<>();
     private final JLabel status = new JLabel(" ");
-    private final JPanel cards = new JPanel(new GridBagLayout());
-    private final JScrollPane cardsScroll = new JScrollPane(cards);
-
-    private final JTextField newNameField = new JTextField(14);
-    private final JTextField newQidsField = new JTextField(24);
-    private final JButton addButton = new JButton("Add & show");
-    private final JTextField reuseNameField = new JTextField(14);
-    private final JButton useSelectionsButton = new JButton("Use selected entities");
-    private final JPanel selectionsHolder =
-            new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    private WorkbenchSelections selections;
-    private WorkbenchSelections.Registration selectionRegistration;
-
-    // Discover a vocabulary from a property's DISTINCT values over sample subjects —
-    // e.g. the P31 types of some nominees, the P136 genres of some works.
-    private final JTextField discNameField = new JTextField(14);
-    private final JTextField discPidField = new JTextField(6);
-    private final JTextField discSubjectsField = new JTextField(20);
-    private final JButton discoverButton = new JButton("Discover & add");
-    private final JButton addToVocabularyButton = new JButton("Add selected entities");
 
     public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api,
                                 WikidataSparqlClient sparql) {
@@ -68,359 +45,270 @@ public class SelectionViewerPanel extends JPanel {
         this.project = project;
         this.api = api;
         this.sparql = sparql;
-        cardsScroll.getVerticalScrollBar().setUnitIncrement(18);
-        cardsScroll.setPreferredSize(new Dimension(460, 520));
 
-        JPanel viewRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        viewRow.add(new JLabel("Vocabulary / population:"));
-        viewRow.add(selectionBox);
-        viewRow.add(showButton);
-        viewRow.add(addToVocabularyButton);
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        top.add(new JLabel("Vocabulary / population:"));
+        top.add(selectionBox);
+        top.add(newButton);
+        top.add(renameButton);
+        top.add(deleteButton);
 
-        // Inline "declare a vocabulary": a name + QIDs, so the construct is usable
-        // without a separate editor — paste the Oscar categories, see them at once.
-        JPanel newRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        newRow.add(new JLabel("New vocabulary:"));
-        newRow.add(newNameField);
-        newRow.add(new JLabel("QIDs:"));
-        newRow.add(newQidsField);
-        newRow.add(addButton);
-        newQidsField.setToolTipText("Comma- or space-separated QIDs, e.g. Q102427 Q106301");
+        entities.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        entities.setCellRenderer((list, value, index, selected, focus) -> {
+            JLabel label = new JLabel(value.label() + " (" + value.qid() + ")");
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(5, 7, 5, 7));
+            label.setBackground(selected ? list.getSelectionBackground() : list.getBackground());
+            label.setForeground(selected ? list.getSelectionForeground() : list.getForeground());
+            return label;
+        });
 
-        // Discover a vocabulary: name + property + a few sample subjects, and the
-        // property's distinct values over them become the vocabulary. This is how a
-        // referenced class's `type` (P31) / `genre` (P136) gets a value domain
-        // without pasting QIDs — sample a handful of nominees / works.
-        JPanel discRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        discRow.add(new JLabel("Discover vocab:"));
-        discRow.add(discNameField);
-        discRow.add(new JLabel("prop:"));
-        discRow.add(discPidField);
-        discRow.add(new JLabel("subjects:"));
-        discRow.add(discSubjectsField);
-        discRow.add(discoverButton);
-        discPidField.setToolTipText("The property whose distinct values form the "
-                + "vocabulary, e.g. P31 (type) or P136 (genre).");
-        discSubjectsField.setToolTipText("A few sample subject QIDs to profile "
-                + "(e.g. some nominee or work QIDs), comma/space-separated.");
-
-        // The multiple-selection side of reusable selections: collect entities anywhere
-        // in Explore, then name them once here. Arity is stated by which accessor is
-        // read — entities() takes the whole collection, entity() would demand exactly one.
-        JPanel reuseRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        // Two rows carry a name box of the same shape; naming this one keeps them
-        // distinguishable to anything that has to find it rather than guess.
-        reuseNameField.setName("vocabularyFromSelectionsName");
-        reuseRow.add(new JLabel("From reusable selections:"));
-        reuseRow.add(reuseNameField);
-        reuseRow.add(selectionsHolder);
-        reuseRow.add(useSelectionsButton);
-        useSelectionsButton.addActionListener(e -> addVocabularyFromSelections());
-
-        JPanel top = new JPanel();
-        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        top.add(viewRow);
-        top.add(newRow);
-        top.add(discRow);
-        top.add(reuseRow);
+        JPanel entityActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        entityActions.add(reusableHolder);
+        entityActions.add(pasteButton);
+        entityActions.add(removeButton);
+        JPanel south = new JPanel(new BorderLayout());
+        south.add(entityActions, BorderLayout.NORTH);
+        south.add(status, BorderLayout.SOUTH);
 
         add(top, BorderLayout.NORTH);
-        add(cardsScroll, BorderLayout.CENTER);
-        add(status, BorderLayout.SOUTH);
+        add(new JScrollPane(entities), BorderLayout.CENTER);
+        add(south, BorderLayout.SOUTH);
 
-        showButton.addActionListener(e -> showSelected());
-        selectionBox.addActionListener(e -> refreshSelectionAction());
-        addToVocabularyButton.addActionListener(e -> addSelectionsToChosenVocabulary());
-        addButton.addActionListener(e -> addVocabulary());
-        discoverButton.addActionListener(e -> discoverVocabulary());
+        selectionBox.addActionListener(e -> showChosen());
+        entities.addListSelectionListener(e -> updateActions());
+        newButton.addActionListener(e -> createVocabulary());
+        renameButton.addActionListener(e -> renameChosen());
+        deleteButton.addActionListener(e -> deleteChosen());
+        pasteButton.addActionListener(e -> pasteQids());
+        removeButton.addActionListener(e -> removeSelectedEntities());
+        refreshSelections();
     }
 
-    /** Share the workbench's reusable selections so a vocabulary can be named from them. */
     public void selections(WorkbenchSelections value) {
-        if (selectionRegistration != null) {
-            selectionRegistration.close();
-            selectionRegistration = null;
-        }
-        selections = value;
-        selectionsHolder.removeAll();
+        reusableHolder.removeAll();
         if (value != null) {
-            selectionsHolder.add(new SelectionsButton(value));
-            selectionRegistration = value.onChange(this::refreshSelectionAction);
+            SelectionsButton button = new SelectionsButton(value).useEntities(
+                    "Add selected entities",
+                    SelectionsButton.Cardinality.MULTIPLE,
+                    () -> chosenSelection() instanceof VocabularySelection,
+                    this::addEntities);
+            button.setName("vocabularyReusableSelections");
+            reusableHolder.add(button);
         }
-        selectionsHolder.revalidate();
-        selectionsHolder.repaint();
-        refreshSelectionAction();
+        reusableHolder.revalidate();
+        reusableHolder.repaint();
+        updateActions();
     }
 
-    @Override public void addNotify() {
-        super.addNotify();
-        if (selectionRegistration == null && selections != null) {
-            selectionRegistration = selections.onChange(this::refreshSelectionAction);
-        }
-        refreshSelectionAction();
-    }
-
-    @Override public void removeNotify() {
-        if (selectionRegistration != null) {
-            selectionRegistration.close();
-            selectionRegistration = null;
-        }
-        super.removeNotify();
-    }
-
-    private void refreshSelectionAction() {
-        int count = selections == null ? 0 : selections.entities().size();
-        useSelectionsButton.setEnabled(count > 0);
-        useSelectionsButton.setToolTipText(count == 0
-                ? "Select entities in Explore, then name them as a vocabulary here"
-                : "Make a vocabulary of the " + count + " selected entities");
-
-        // The same collection either NAMES a new vocabulary or GROWS the chosen one.
-        // Only a vocabulary has explicit values to grow; a population is defined by a
-        // rule, and adding QIDs to it would silently mean something else.
-        boolean vocabulary = chosenSelection() instanceof VocabularySelection;
-        addToVocabularyButton.setEnabled(count > 0 && vocabulary);
-        addToVocabularyButton.setToolTipText(!vocabulary
-                ? "Choose a vocabulary above to add the selected entities to it"
-                : count == 0
-                        ? "Select entities in Explore, then add them to this vocabulary"
-                        : "Add the " + count + " selected entities to this vocabulary");
-    }
-
-    /** The selection the selector points at — one place decides what "chosen" means. */
     private Selection chosenSelection() {
         int i = selectionBox.getSelectedIndex();
         return i < 0 || i >= project.selections().size() ? null : project.selections().get(i);
     }
 
-    /**
-     * Grows the chosen vocabulary by the reusable entity selection. The stored
-     * vocabulary is EDITED rather than rebuilt: a rebuilt one would carry the name and
-     * values across and quietly drop its value type.
-     */
-    private void addSelectionsToChosenVocabulary() {
-        if (selections == null) return;
-        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) {
-            status.setText("Choose a vocabulary to add the selected entities to.");
-            return;
-        }
-        LinkedHashSet<String> values = new LinkedHashSet<>(vocabulary.valueQids());
-        int before = values.size();
-        selections.entities().forEach(entity -> values.add(entity.qid()));
-        vocabulary.valueQids(List.copyOf(values));
-        storeVocabulary(vocabulary);
-        refreshSelections();
-        int added = values.size() - before;
-        status.setText(added == 0
-                ? "Every selected entity was already in " + vocabulary.name() + "."
-                : "Added " + added + " value(s) to " + vocabulary.name()
-                        + " — now " + values.size() + ".");
-    }
-
-    /** Names the whole entity selection as a vocabulary. */
-    private void addVocabularyFromSelections() {
-        String name = reuseNameField.getText().trim();
-        if (name.isBlank()) {
-            status.setText("Give the vocabulary a name.");
-            return;
-        }
-        if (selections == null || selections.entities().isEmpty()) {
-            status.setText("No entities selected — pick some in Explore first.");
-            return;
-        }
-        VocabularySelection created = new VocabularySelection(name);
-        created.valueQids(selections.entities().stream()
-                .map(WorkbenchSelections.Entity::qid).toList());
-        boolean replaced = storeVocabulary(created);
-        reuseNameField.setText("");
-        refreshSelections();
-        status.setText((replaced ? "Replaced" : "Added") + " vocabulary " + name + " with "
-                + created.valueQids().size() + " value(s).");
-    }
-
-    /** Run a value-vocabulary discovery and materialize it as a VocabularySelection. */
-    private void discoverVocabulary() {
-        String name = discNameField.getText().trim();
-        String pid = discPidField.getText().trim();
-        if (name.isBlank()) {
-            status.setText("Give the vocabulary a name.");
-            return;
-        }
-        if (!pid.matches("(?i)P\\d+")) {
-            status.setText("Enter a property, e.g. P31 (type) or P136 (genre).");
-            return;
-        }
-        List<String> subjects = new ArrayList<>();
-        for (String tok : discSubjectsField.getText().split("[,\\s]+")) {
-            if (tok != null && tok.trim().matches("(?i)Q\\d+")) {
-                subjects.add(tok.trim());
-            }
-        }
-        if (subjects.isEmpty()) {
-            status.setText("Enter a few sample subject QIDs (e.g. some nominees).");
-            return;
-        }
-        if (sparql == null) {
-            status.setText("No SPARQL client available for discovery.");
-            return;
-        }
-
-        status.setText("Discovering " + pid + " values over " + subjects.size()
-                + " subject(s)…");
-        discoverButton.setEnabled(false);
-        new SwingWorker<List<WikidataDynamicObject>, Void>() {
-            @Override
-            protected List<WikidataDynamicObject> doInBackground() {
-                return new ValueVocabularyDiscovery()
-                        .discover(subjects, pid, 200, 500, sparql, api, null);
-            }
-
-            @Override
-            protected void done() {
-                List<WikidataDynamicObject> values;
-                try {
-                    values = get();
-                } catch (Exception ex) {
-                    values = new ArrayList<>();
-                }
-                discoverButton.setEnabled(true);
-                if (values.isEmpty()) {
-                    status.setText("No " + pid + " values discovered over those subjects.");
-                    return;
-                }
-                List<String> qids = new ArrayList<>();
-                for (WikidataDynamicObject v : values) {
-                    qids.add(v.qid());
-                }
-                VocabularySelection s = new VocabularySelection(name);
-                s.valueQids(qids);
-                boolean replaced = storeVocabulary(s);
-                discNameField.setText("");
-                discPidField.setText("");
-                discSubjectsField.setText("");
-                refreshSelections();
-                selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
-                render(s, values);
-                status.setText(name + " [VOCABULARY]: discovered " + values.size()
-                        + " value(s)" + (replaced ? "; replaced its previous definition" : "")
-                        + " — set a field's target to \"" + name
-                        + "\" to use it as its value domain.");
-            }
-        }.execute();
-    }
-
-    private void addVocabulary() {
-        String name = newNameField.getText().trim();
-        if (name.isBlank()) {
-            status.setText("Give the vocabulary a name.");
-            return;
-        }
-        java.util.List<String> qids = new java.util.ArrayList<>();
-        for (String tok : newQidsField.getText().split("[,\\s]+")) {
-            if (tok != null && tok.trim().matches("(?i)Q\\d+")) {
-                qids.add(tok.trim());
-            }
-        }
-        if (qids.isEmpty()) {
-            status.setText("Enter at least one QID (e.g. Q102427).");
-            return;
-        }
-        VocabularySelection s = new VocabularySelection(name);
-        s.valueQids(qids);
-        storeVocabulary(s);
-        newNameField.setText("");
-        newQidsField.setText("");
-        refreshSelections();
-        selectionBox.setSelectedItem(name + "  [" + Selection.Kind.VOCABULARY + "]");
-        showSelected();
-    }
-
-    /** One write rule for every vocabulary-creation surface in this panel. */
-    private boolean storeVocabulary(VocabularySelection vocabulary) {
-        boolean replaced = project.findSelection(vocabulary.name()) != null;
-        project.replaceSelection(vocabulary);
-        return replaced;
-    }
-
-    /** Re-read the project's selections into the selector — call when the window opens,
-     *  since selections can be added/edited while it's closed. */
     public void refreshSelections() {
-        String previous = (String) selectionBox.getSelectedItem();
+        Selection previous = chosenSelection();
+        String previousName = previous == null ? "" : previous.name();
         selectionBox.removeAllItems();
-        for (Selection s : project.selections()) {
-            selectionBox.addItem(s.name() + "  [" + s.kind() + "]");
+        for (Selection selection : project.selections()) {
+            selectionBox.addItem(selection.name() + "  [" + selection.kind() + "]");
         }
-        if (previous != null) {
-            selectionBox.setSelectedItem(previous);
+        if (!previousName.isBlank()) selectByName(previousName);
+        if (selectionBox.getSelectedIndex() < 0 && selectionBox.getItemCount() > 0) {
+            selectionBox.setSelectedIndex(0);
         }
-        boolean any = selectionBox.getItemCount() > 0;
-        showButton.setEnabled(any);
-        if (!any) {
-            cards.removeAll();
-            cards.revalidate();
-            cards.repaint();
-            status.setText("No selections declared in this domain.");
+        showChosen();
+    }
+
+    private void selectByName(String name) {
+        for (int i = 0; i < project.selections().size(); i++) {
+            if (project.selections().get(i).name().equalsIgnoreCase(name)) {
+                selectionBox.setSelectedIndex(i);
+                return;
+            }
         }
     }
 
-    private void showSelected() {
-        int i = selectionBox.getSelectedIndex();
-        if (i < 0 || i >= project.selections().size()) {
+    private void showChosen() {
+        entitiesModel.clear();
+        Selection selection = chosenSelection();
+        if (selection == null) {
+            status.setText("No vocabulary or population declared in this domain.");
+            updateActions();
             return;
         }
-        Selection selection = project.selections().get(i);
-        status.setText("Resolving \"" + selection.name() + "\" …");
-        showButton.setEnabled(false);
+        if (selection instanceof VocabularySelection vocabulary) {
+            // Show what is known WITHOUT waiting: a vocabulary is explicit QIDs, and the
+            // panel must stay usable offline. Labels arrive after, if a client exists.
+            vocabulary.valueQids().forEach(qid -> entitiesModel.addElement(row(qid)));
+            status.setText(vocabulary.name() + ": " + vocabulary.valueQids().size() + " entities");
+            updateActions();
+            if (api != null && !vocabulary.valueQids().isEmpty()) resolveLabels(vocabulary);
+            return;
+        }
+        status.setText("Loading a sample of " + selection.name() + "…");
+        updateActions();
         new SwingWorker<List<WikidataDynamicObject>, Void>() {
-            @Override
-            protected List<WikidataDynamicObject> doInBackground() {
+            @Override protected List<WikidataDynamicObject> doInBackground() {
                 return new SelectionContentResolver().resolve(
                         selection, sparql, api, POPULATION_SAMPLE_LIMIT, null);
             }
-
-            @Override
-            protected void done() {
+            @Override protected void done() {
+                if (selection != chosenSelection()) return;
                 List<WikidataDynamicObject> content;
-                try {
-                    content = get();
-                } catch (Exception ex) {
-                    content = new ArrayList<>();
-                }
-                render(selection, content);
-                showButton.setEnabled(true);
+                try { content = get(); } catch (Exception ex) { content = List.of(); }
+                entitiesModel.clear();
+                content.forEach(value -> entitiesModel.addElement(
+                        new EntityRow(value.qid(), value.getDisplayName())));
+                status.setText(selection.name() + ": " + content.size() + " sampled entities");
+                updateActions();
             }
         }.execute();
     }
 
-    private void render(Selection selection, List<WikidataDynamicObject> content) {
-        cards.removeAll();
+    private EntityRow row(String qid) {
+        return new EntityRow(qid, knownLabels.get(qid));
+    }
 
-        List<Viewable> viewables = new ArrayList<>(content);
-        RenderContext context = new RenderContext(viewables);
+    /** Learns the labels of a vocabulary's QIDs, then redraws it with them. */
+    private void resolveLabels(VocabularySelection vocabulary) {
+        new SwingWorker<List<WikidataDynamicObject>, Void>() {
+            @Override protected List<WikidataDynamicObject> doInBackground() {
+                return new SelectionContentResolver().resolve(vocabulary, api, null);
+            }
+            @Override protected void done() {
+                List<WikidataDynamicObject> content;
+                try { content = get(); } catch (Exception ex) { return; }
+                content.forEach(value -> learn(value.qid(), value.getDisplayName()));
+                if (vocabulary != chosenSelection()) return;
+                entitiesModel.clear();
+                vocabulary.valueQids().forEach(qid -> entitiesModel.addElement(row(qid)));
+            }
+        }.execute();
+    }
 
-        ViewConfig config = ViewConfig.of(WikidataDynamicObject.class);
-        // Render all (non-hidden) fields so each member shows its Wikidata link field
-        // besides its title. A bare vocabulary member has only that, so this stays clean.
-        config.setAllFields(true);
-        config.setThumb(false);
-        config.setAddListener(false);
-        context.putClassConfig(WikidataDynamicObject.class, config);
-
-        int row = 0;
-        for (WikidataDynamicObject o : content) {
-            Card card = new Card(o, config.copy(), context, false);
-            context.registerTopLevel(o, card);
-            card.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createEmptyBorder(2, 2, 2, 2),
-                    BorderFactory.createLineBorder(Color.LIGHT_GRAY)));
-            GridBagUtils.stackedCard(cards, row++, card);
+    private void learn(String qid, String label) {
+        if (qid != null && label != null && !label.isBlank() && !label.equals(qid)) {
+            knownLabels.put(qid, label);
         }
-        GridBagUtils.verticalGlue(cards, row);
+    }
 
-        cards.revalidate();
-        cards.repaint();
-        boolean sampled = selection.kind() == Selection.Kind.POPULATION;
-        status.setText(selection.name() + " [" + selection.kind() + "]: "
-                + content.size() + (sampled ? " sampled member(s)" : " member(s)"));
+    private void createVocabulary() {
+        String name = prompt("New vocabulary name", "New vocabulary");
+        if (name == null) return;
+        if (project.findSelection(name) != null) {
+            status.setText("A vocabulary or population named " + name + " already exists.");
+            return;
+        }
+        project.addSelection(new VocabularySelection(name));
+        refreshSelections();
+        selectByName(name);
+        showChosen();
+        status.setText("Created vocabulary " + name + ". Add entities from reusable selections.");
+    }
+
+    private void renameChosen() {
+        Selection selected = chosenSelection();
+        if (!(selected instanceof VocabularySelection)) return;
+        String next = prompt("Rename vocabulary", selected.name());
+        if (next == null) return;
+        if (!project.renameSelection(selected.name(), next)) {
+            status.setText("Could not rename: the name is blank or already used.");
+            return;
+        }
+        refreshSelections();
+        selectByName(next);
+        showChosen();
+        status.setText("Renamed vocabulary to " + next + ".");
+    }
+
+    private void deleteChosen() {
+        Selection selected = chosenSelection();
+        if (!(selected instanceof VocabularySelection)) return;
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Delete vocabulary " + selected.name() + "?", "Delete vocabulary",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) return;
+        if (!project.removeSelection(selected.name())) {
+            status.setText("Cannot delete " + selected.name() + ": the model still references it.");
+            return;
+        }
+        refreshSelections();
+    }
+
+    private void addEntities(List<WorkbenchSelections.Entity> selected) {
+        selected.forEach(entity -> learn(entity.qid(), entity.label()));
+        grow(selected.stream().map(WorkbenchSelections.Entity::qid).toList(), 0);
+    }
+
+    /**
+     * Pastes QIDs straight into the chosen vocabulary. Naming a vocabulary is often
+     * faster from a list already in hand than from six searches, so the two ways of
+     * growing one share this rule rather than each having their own.
+     */
+    private void pasteQids() {
+        if (!(chosenSelection() instanceof VocabularySelection)) return;
+        JTextArea input = new JTextArea(6, 32);
+        input.setLineWrap(true);
+        int answer = JOptionPane.showConfirmDialog(this, new JScrollPane(input),
+                "Paste QIDs (comma- or space-separated)",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) return;
+        addPastedQids(input.getText());
+    }
+
+    /** Splits pasted text into QIDs and grows the chosen vocabulary by them. */
+    void addPastedQids(String text) {
+        List<String> tokens = List.of((text == null ? "" : text).trim().split("[,\\s]+"));
+        List<String> qids = tokens.stream().filter(WikidataIds::isQid).toList();
+        grow(qids, tokens.stream().filter(t -> !t.isBlank()).count() - qids.size());
+    }
+
+    /** The one way a vocabulary grows: added in order, never twice, rejects reported. */
+    private void grow(List<String> qids, long rejected) {
+        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) return;
+        LinkedHashSet<String> values = new LinkedHashSet<>(vocabulary.valueQids());
+        int before = values.size();
+        values.addAll(qids);
+        vocabulary.valueQids(List.copyOf(values));
+        showChosen();
+        status.setText("Added " + (values.size() - before) + " — " + values.size()
+                + " total" + (rejected > 0 ? ", " + rejected + " not a QID" : "") + ".");
+    }
+
+    private void removeSelectedEntities() {
+        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) return;
+        LinkedHashSet<String> removed = new LinkedHashSet<>(
+                entities.getSelectedValuesList().stream().map(EntityRow::qid).toList());
+        vocabulary.valueQids(vocabulary.valueQids().stream()
+                .filter(qid -> !removed.contains(qid)).toList());
+        showChosen();
+        status.setText("Removed " + removed.size() + " entities — "
+                + vocabulary.valueQids().size() + " remain.");
+    }
+
+    private void updateActions() {
+        boolean vocabulary = chosenSelection() instanceof VocabularySelection;
+        renameButton.setEnabled(vocabulary);
+        deleteButton.setEnabled(vocabulary);
+        pasteButton.setEnabled(vocabulary);
+        removeButton.setEnabled(vocabulary && !entities.isSelectionEmpty());
+    }
+
+    private String prompt(String message, String initial) {
+        String value = JOptionPane.showInputDialog(this, message, initial);
+        if (value == null) return null;
+        value = value.trim();
+        if (value.isBlank()) {
+            status.setText("A vocabulary name is required.");
+            return null;
+        }
+        return value;
+    }
+
+    private record EntityRow(String qid, String label) {
+        EntityRow {
+            label = label == null || label.isBlank() ? qid : label;
+        }
     }
 }
