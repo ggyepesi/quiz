@@ -11,6 +11,7 @@ import java.awt.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VocabularyFromSelectionsTest {
@@ -96,20 +97,6 @@ class VocabularyFromSelectionsTest {
         try { return component(root, type); } catch (AssertionError ignored) { return null; }
     }
 
-    @Test void pastedQidsGrowTheChosenVocabularyAndNonQidsAreReported() {
-        GeneratedProjectModel project = new GeneratedProjectModel();
-        project.addSelection(new VocabularySelection("Prize"));
-        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
-        panel.refreshSelections();
-
-        panel.addPastedQids("Q80061 Q38104, Q44585\nQ35637 not-a-qid Q38104");
-
-        VocabularySelection prize = (VocabularySelection) project.findSelection("Prize");
-        assertEquals(java.util.List.of("Q80061", "Q38104", "Q44585", "Q35637"),
-                prize.valueQids(), "in paste order, never twice");
-        assertTrue(status(panel).contains("1 not a QID"), "rejects are reported");
-    }
-
     /**
      * A vocabulary stores QIDs only. Entities picked BY LABEL in Explore must not redraw
      * as bare QIDs the moment they are added — that is the one thing the reader is here
@@ -135,16 +122,33 @@ class VocabularyFromSelectionsTest {
                 "the label survives into the vocabulary view");
     }
 
-    private static String status(Container root) {
-        StringBuilder all = new StringBuilder();
-        collectLabels(root, all);
-        return all.toString();
-    }
+    /**
+     * The selector holds Selections, so what it points at survives a rebuild, a reorder
+     * and a rename — none of which the model promises to keep stable. Deleting what it
+     * points at is the one case with no object to return to, and it falls back.
+     */
+    @Test void theSelectorPointsAtASelectionRatherThanAPositionOrAName() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        VocabularySelection laureates = new VocabularySelection("Laureates");
+        project.addSelection(categories);
+        project.addSelection(laureates);
+        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
+        JComboBox<?> selector = component(panel, JComboBox.class);
 
-    private static void collectLabels(Container root, StringBuilder into) {
-        for (Component component : root.getComponents()) {
-            if (component instanceof javax.swing.JLabel label) into.append(label.getText()).append('\n');
-            if (component instanceof Container child) collectLabels(child, into);
-        }
+        selector.setSelectedItem(laureates);
+        project.removeSelection("Categories");
+        project.addSelection(categories);
+        panel.refreshSelections();
+        assertSame(laureates, selector.getSelectedItem(), "a reorder does not move it");
+
+        assertTrue(project.renameSelection("Laureates", "Laureate"));
+        panel.refreshSelections();
+        assertSame(laureates, selector.getSelectedItem(), "a rename does not lose it");
+
+        project.removeSelection("Laureate");
+        panel.refreshSelections();
+        assertSame(categories, selector.getSelectedItem(),
+                "with nothing to return to, the first selection is chosen");
     }
 }

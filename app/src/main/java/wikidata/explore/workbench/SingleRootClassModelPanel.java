@@ -226,12 +226,11 @@ public class SingleRootClassModelPanel extends JPanel {
             projectNode.add(classNode);
         }
 
-        // Selections (vocabularies / populations) shown inline, so the domain's
-        // value domains are visible in the tree — not hidden behind the Selections
-        // window, and clearly NOT classes.
+        // Vocabularies and populations are shown inline, so the domain's value
+        // domains are visible in the tree and clearly are not classes.
         if (!projectModel.selections().isEmpty()) {
             DefaultMutableTreeNode selectionsNode =
-                    new DefaultMutableTreeNode("Selections");
+                    new DefaultMutableTreeNode("Vocabularies / populations");
             for (Selection s : projectModel.selections()) {
                 selectionsNode.add(new DefaultMutableTreeNode(s));
             }

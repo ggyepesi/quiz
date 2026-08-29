@@ -1,0 +1,40 @@
+{
+  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "version" : 1,
+  "name" : "",
+  "description" : "",
+  "root" : {
+    "@class" : "wikidata.explore.rule.RuleNode",
+    "name" : "NobelPrizes",
+    "itemVar" : "nobelPrizes",
+    "sourceQid" : "",
+    "sourceLabel" : "",
+    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "propertyPid" : "P31",
+    "propertyLabel" : "instance of",
+    "direction" : "ITEM_TO_ROOT",
+    "membershipPid" : "",
+    "membershipQid" : "",
+    "labelConfig" : {
+      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "requireLabel" : true,
+      "language" : "en"
+    },
+    "includedFields" : [ "java.util.ArrayList", [ ] ],
+    "limit" : 200,
+    "sortFieldName" : "",
+    "sortDescending" : false,
+    "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
+    "valueFilters" : [ "java.util.ArrayList", [ ] ],
+    "edges" : [ "java.util.ArrayList", [ ] ],
+    "requireSitelink" : false,
+    "rankBySitelinks" : false,
+    "rankPropertyPid" : "",
+    "rankDescending" : true,
+    "rankFrom" : -1,
+    "rankUntil" : -1,
+    "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
+  }
+}

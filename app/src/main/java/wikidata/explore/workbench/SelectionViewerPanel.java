@@ -1,6 +1,5 @@
 package wikidata.explore.workbench;
 
-import wikidata.WikidataIds;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.SelectionContentResolver;
@@ -25,14 +24,13 @@ public class SelectionViewerPanel extends JPanel {
     private final GeneratedProjectModel project;
     private final WikidataApiClient api;
     private final WikidataSparqlClient sparql;
-    private final JComboBox<String> selectionBox = new JComboBox<>();
+    private final JComboBox<Selection> selectionBox = new JComboBox<>();
     private final JButton newButton = new JButton("New");
     private final JButton renameButton = new JButton("Rename");
     private final JButton deleteButton = new JButton("Delete");
     private final DefaultListModel<EntityRow> entitiesModel = new DefaultListModel<>();
     private final JList<EntityRow> entities = new JList<>(entitiesModel);
     private final JPanel reusableHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    private final JButton pasteButton = new JButton("Paste QIDs");
     private final JButton removeButton = new JButton("Remove selected");
     // Labels this panel has been told, by QID. A vocabulary stores QIDs only, so
     // without this the six prizes just picked BY LABEL redraw as six bare QIDs.
@@ -52,6 +50,15 @@ public class SelectionViewerPanel extends JPanel {
         top.add(newButton);
         top.add(renameButton);
         top.add(deleteButton);
+        selectionBox.setRenderer((list, value, index, selected, focus) -> {
+            JLabel label = new JLabel(
+                    value == null ? "" : value.name() + "  [" + value.kind() + "]");
+            label.setOpaque(true);
+            label.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+            label.setBackground(selected ? list.getSelectionBackground() : list.getBackground());
+            label.setForeground(selected ? list.getSelectionForeground() : list.getForeground());
+            return label;
+        });
 
         entities.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         entities.setCellRenderer((list, value, index, selected, focus) -> {
@@ -65,7 +72,6 @@ public class SelectionViewerPanel extends JPanel {
 
         JPanel entityActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
         entityActions.add(reusableHolder);
-        entityActions.add(pasteButton);
         entityActions.add(removeButton);
         JPanel south = new JPanel(new BorderLayout());
         south.add(entityActions, BorderLayout.NORTH);
@@ -80,7 +86,6 @@ public class SelectionViewerPanel extends JPanel {
         newButton.addActionListener(e -> createVocabulary());
         renameButton.addActionListener(e -> renameChosen());
         deleteButton.addActionListener(e -> deleteChosen());
-        pasteButton.addActionListener(e -> pasteQids());
         removeButton.addActionListener(e -> removeSelectedEntities());
         refreshSelections();
     }
@@ -102,31 +107,29 @@ public class SelectionViewerPanel extends JPanel {
     }
 
     private Selection chosenSelection() {
-        int i = selectionBox.getSelectedIndex();
-        return i < 0 || i >= project.selections().size() ? null : project.selections().get(i);
+        return (Selection) selectionBox.getSelectedItem();
     }
 
     public void refreshSelections() {
+        // Carry the chosen SELECTION across the rebuild, not its name or its position.
+        // A rename mutates the object, so the name it had no longer finds it; a
+        // position is only correct while nothing reorders the model.
         Selection previous = chosenSelection();
-        String previousName = previous == null ? "" : previous.name();
         selectionBox.removeAllItems();
         for (Selection selection : project.selections()) {
-            selectionBox.addItem(selection.name() + "  [" + selection.kind() + "]");
+            selectionBox.addItem(selection);
         }
-        if (!previousName.isBlank()) selectByName(previousName);
-        if (selectionBox.getSelectedIndex() < 0 && selectionBox.getItemCount() > 0) {
-            selectionBox.setSelectedIndex(0);
-        }
+        choose(previous);
         showChosen();
     }
 
-    private void selectByName(String name) {
-        for (int i = 0; i < project.selections().size(); i++) {
-            if (project.selections().get(i).name().equalsIgnoreCase(name)) {
-                selectionBox.setSelectedIndex(i);
-                return;
-            }
+    /** Points the selector at one selection, falling back to the first that exists. */
+    private void choose(Selection selection) {
+        if (selection != null && project.selections().contains(selection)) {
+            selectionBox.setSelectedItem(selection);
+            return;
         }
+        if (selectionBox.getItemCount() > 0) selectionBox.setSelectedIndex(0);
     }
 
     private void showChosen() {
@@ -200,10 +203,10 @@ public class SelectionViewerPanel extends JPanel {
             status.setText("A vocabulary or population named " + name + " already exists.");
             return;
         }
-        project.addSelection(new VocabularySelection(name));
+        VocabularySelection created = new VocabularySelection(name);
+        project.addSelection(created);
         refreshSelections();
-        selectByName(name);
-        showChosen();
+        choose(created);
         status.setText("Created vocabulary " + name + ". Add entities from reusable selections.");
     }
 
@@ -217,8 +220,7 @@ public class SelectionViewerPanel extends JPanel {
             return;
         }
         refreshSelections();
-        selectByName(next);
-        showChosen();
+        choose(selected);
         status.setText("Renamed vocabulary to " + next + ".");
     }
 
@@ -238,30 +240,10 @@ public class SelectionViewerPanel extends JPanel {
 
     private void addEntities(List<WorkbenchSelections.Entity> selected) {
         selected.forEach(entity -> learn(entity.qid(), entity.label()));
+        // Reusable entities are validated when they enter WorkbenchSelections, so this
+        // source has no rejects. Keep that fact explicit at the shared growth boundary:
+        // another add source may accept raw tokens and must report what it rejected.
         grow(selected.stream().map(WorkbenchSelections.Entity::qid).toList(), 0);
-    }
-
-    /**
-     * Pastes QIDs straight into the chosen vocabulary. Naming a vocabulary is often
-     * faster from a list already in hand than from six searches, so the two ways of
-     * growing one share this rule rather than each having their own.
-     */
-    private void pasteQids() {
-        if (!(chosenSelection() instanceof VocabularySelection)) return;
-        JTextArea input = new JTextArea(6, 32);
-        input.setLineWrap(true);
-        int answer = JOptionPane.showConfirmDialog(this, new JScrollPane(input),
-                "Paste QIDs (comma- or space-separated)",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (answer != JOptionPane.OK_OPTION) return;
-        addPastedQids(input.getText());
-    }
-
-    /** Splits pasted text into QIDs and grows the chosen vocabulary by them. */
-    void addPastedQids(String text) {
-        List<String> tokens = List.of((text == null ? "" : text).trim().split("[,\\s]+"));
-        List<String> qids = tokens.stream().filter(WikidataIds::isQid).toList();
-        grow(qids, tokens.stream().filter(t -> !t.isBlank()).count() - qids.size());
     }
 
     /** The one way a vocabulary grows: added in order, never twice, rejects reported. */
@@ -273,7 +255,7 @@ public class SelectionViewerPanel extends JPanel {
         vocabulary.valueQids(List.copyOf(values));
         showChosen();
         status.setText("Added " + (values.size() - before) + " — " + values.size()
-                + " total" + (rejected > 0 ? ", " + rejected + " not a QID" : "") + ".");
+                + " total" + (rejected > 0 ? ", " + rejected + " rejected" : "") + ".");
     }
 
     private void removeSelectedEntities() {
@@ -291,7 +273,6 @@ public class SelectionViewerPanel extends JPanel {
         boolean vocabulary = chosenSelection() instanceof VocabularySelection;
         renameButton.setEnabled(vocabulary);
         deleteButton.setEnabled(vocabulary);
-        pasteButton.setEnabled(vocabulary);
         removeButton.setEnabled(vocabulary && !entities.isSelectionEmpty());
     }
 
