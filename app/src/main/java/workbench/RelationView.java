@@ -20,18 +20,20 @@ public final class RelationView implements Viewable {
     private final String kind;
     private final int count;
     private final String example;
+    private final String exampleQid;
     private final String direction;
     private final String pid;
     @DisplayField private final String label;
 
     public RelationView(
             String direction, String pid, String label,
-            int count, String example, String kind) {
+            int count, String example, String kind, String exampleQid) {
         this.direction = direction == null ? "" : direction;
         this.pid = pid == null ? "" : pid;
         this.label = label == null || label.isBlank() ? this.pid : label;
         this.count = count;
         this.example = example == null ? "" : example;
+        this.exampleQid = exampleQid == null ? "" : exampleQid;
         this.kind = kind == null ? "" : kind;
     }
 
@@ -42,6 +44,7 @@ public final class RelationView implements Viewable {
 
     /** Incoming relations point AT the explored entity; outgoing start from it. */
     public boolean incoming() { return direction.startsWith("←"); }
+    public String exampleQid() { return exampleQid; }
 
     @Override public String getIdentifier() { return pid + "|" + direction; }
 

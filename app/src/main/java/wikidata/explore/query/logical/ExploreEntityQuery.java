@@ -33,7 +33,7 @@ import wikidata.explore.query.core.WikidataAccess;
 public class ExploreEntityQuery implements Query<TableQueryResult> {
 
     public static final List<String> COLUMNS =
-            List.of("Direction", "PID", "Relation", "Count", "Example", "Kind");
+            List.of("Direction", "PID", "Relation", "Count", "Example", "Kind", "Example QID");
 
     private final String qid;
     private final int limit;
@@ -126,13 +126,15 @@ public class ExploreEntityQuery implements Query<TableQueryResult> {
             String label = b.value("pl");
             String count = b.value("n");
             String[] kindEx = classify(b.value("ex"), b.value("exLabel"));
+            String exampleQid = "entity".equals(kindEx[0]) ? b.qid("ex") : "";
             rows.add(new ArrayList<>(List.of(
                     incoming ? "← in" : "→ out",
                     pid,
                     label == null ? pid : label,
                     count == null ? "0" : count,
                     kindEx[1],    // Example (display)
-                    kindEx[0]))); // Kind
+                    kindEx[0],
+                    exampleQid == null ? "" : exampleQid)));
         }
     }
 

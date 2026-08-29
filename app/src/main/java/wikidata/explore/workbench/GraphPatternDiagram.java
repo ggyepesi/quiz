@@ -33,7 +33,6 @@ final class GraphPatternDiagram extends JComponent {
         }
     }
 
-    private static final Color ACCENT = new Color(30, 110, 210);
     private final Map<Rectangle, Role> hitTargets = new LinkedHashMap<>();
     private final Map<Rectangle, GraphTraversalStep> stepTargets = new LinkedHashMap<>();
     private GraphExpansionPattern pattern;
@@ -108,7 +107,7 @@ final class GraphPatternDiagram extends JComponent {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
             if (pattern == null && steps.isEmpty()) {
-                g.setColor(muted());
+                g.setColor(DiagramStyle.muted());
                 g.drawString("No graph pattern selected.", 16, 32);
                 return;
             }
@@ -133,25 +132,25 @@ final class GraphPatternDiagram extends JComponent {
             arrow(g, x3 + w, y + h / 2, x4, y + h / 2,
                     pattern.targetField());
             if (!details.footer().isBlank()) {
-                g.setColor(muted());
+                g.setColor(DiagramStyle.muted());
                 g.setFont(g.getFont().deriveFont(11f));
                 g.drawString(details.footer(), gap, 108);
             }
             }
             int stepY = pattern == null ? 28 : 124;
             if (pattern == null) {
-                g.setColor(text());
+                g.setColor(DiagramStyle.text());
                 g.setFont(g.getFont().deriveFont(Font.BOLD));
                 g.drawString("Configured field traversal", gap, 18);
             }
             for (GraphTraversalStep step : steps) {
                 Rectangle row = new Rectangle(gap, stepY - 16,
                         Math.max(100, getWidth() - 2 * gap), 22);
-                g.setColor(tint());
+                g.setColor(DiagramStyle.tint());
                 g.fillRoundRect(row.x, row.y, row.width, row.height, 8, 8);
-                g.setColor(ACCENT);
+                g.setColor(DiagramStyle.ACCENT);
                 g.drawRoundRect(row.x, row.y, row.width, row.height, 8, 8);
-                g.setColor(text());
+                g.setColor(DiagramStyle.text());
                 g.setFont(g.getFont().deriveFont(Font.PLAIN, 11f));
                 String arrow = step.direction() == datasource.graph.GraphTraversalDirection.OUTGOING
                         ? " → " : " ← ";
@@ -168,22 +167,22 @@ final class GraphPatternDiagram extends JComponent {
     }
 
     private void box(Graphics2D g, Rectangle bounds, String title, String detail, Role role) {
-        g.setColor(tint());
+        g.setColor(DiagramStyle.tint());
         g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 12, 12);
-        g.setColor(ACCENT);
+        g.setColor(DiagramStyle.ACCENT);
         g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 12, 12);
-        g.setColor(text());
+        g.setColor(DiagramStyle.text());
         g.setFont(g.getFont().deriveFont(Font.BOLD));
-        g.drawString(elide(g, title, bounds.width - 18), bounds.x + 9, bounds.y + 21);
-        g.setColor(muted());
+        g.drawString(DiagramStyle.elide(g, title, bounds.width - 18), bounds.x + 9, bounds.y + 21);
+        g.setColor(DiagramStyle.muted());
         g.setFont(g.getFont().deriveFont(Font.PLAIN));
-        g.drawString(elide(g, detail, bounds.width - 18), bounds.x + 9, bounds.y + 41);
+        g.drawString(DiagramStyle.elide(g, detail, bounds.width - 18), bounds.x + 9, bounds.y + 41);
         if (onActivate != null) hitTargets.put(new Rectangle(bounds), role);
     }
 
     private static void arrow(Graphics2D g, int x1, int y1, int x2, int y2,
                               String label) {
-        g.setColor(muted());
+        g.setColor(DiagramStyle.muted());
         g.drawLine(x1 + 3, y1, x2 - 5, y2);
         g.drawLine(x2 - 12, y2 - 5, x2 - 5, y2);
         g.drawLine(x2 - 12, y2 + 5, x2 - 5, y2);
@@ -193,30 +192,4 @@ final class GraphPatternDiagram extends JComponent {
         g.setFont(old);
     }
 
-    private static String elide(Graphics2D g, String text, int width) {
-        String value = text == null ? "" : text;
-        if (g.getFontMetrics().stringWidth(value) <= width) return value;
-        while (value.length() > 1
-                && g.getFontMetrics().stringWidth(value + "…") > width) {
-            value = value.substring(0, value.length() - 1);
-        }
-        return value + "…";
-    }
-
-    private static Color text() {
-        return ui("Label.foreground", Color.DARK_GRAY);
-    }
-
-    private static Color muted() {
-        return ui("Label.disabledForeground", Color.GRAY);
-    }
-
-    private static Color tint() {
-        return new Color(ACCENT.getRed(), ACCENT.getGreen(), ACCENT.getBlue(), 28);
-    }
-
-    private static Color ui(String key, Color fallback) {
-        Color value = UIManager.getColor(key);
-        return value == null ? fallback : value;
-    }
 }

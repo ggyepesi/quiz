@@ -59,6 +59,10 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             new JTabbedPane(
                     JTabbedPane.TOP,
                     JTabbedPane.SCROLL_TAB_LAYOUT);
+    private final JTabbedPane wikidataTools =
+            new JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
+    private final JTabbedPane wikipediaTools =
+            new JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
 
     private final NodeSamplePanel samplePanel =
             new NodeSamplePanel();
@@ -97,6 +101,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
+        this.explorePanel.onExploreEntityRelation(propertyPanel::exploreEntityRelation);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.baseClassCandidates(
@@ -129,6 +134,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
         graphPatternPanel.setQueryRunner(queryRunner);
+        propertyPanel.setQueryRunner(queryRunner);
     }
 
     public void afterChange(
@@ -225,9 +231,15 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         return propertyPanel;
     }
 
+
     /** Opens the existing property catalogue from explanatory/configuration links. */
     public void showProperties() {
-        helperTabs.setSelectedComponent(propertyPanel);
+        showWikidataTool(propertyPanel);
+    }
+
+    private void showWikidataTool(Component tool) {
+        helperTabs.setSelectedComponent(wikidataTools);
+        wikidataTools.setSelectedComponent(tool);
     }
 
     /** Locks every mutation surface owned by the workbench, including helper tools
@@ -474,7 +486,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
             // ones. Cardinality sampling may run without tearing the reader out of
             // that sequence. Direct property-catalogue actions retain the historical
             // behaviour of opening Sample so the result is visible immediately.
-            if (showSampleTab) helperTabs.setSelectedComponent(samplePanel);
+            if (showSampleTab) showWikidataTool(samplePanel);
             samplePanel.triggerFieldSample();
         } else {
             onFieldAddedFromTool.accept(field);
@@ -634,8 +646,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         fieldSourcePanel.onSampleRequested(
                 () -> {
                     onShowHelperTools.run();
-                    helperTabs.setSelectedComponent(
-                            samplePanel);
+                    showWikidataTool(samplePanel);
                     samplePanel.triggerFieldSample();
                 });
 
@@ -648,7 +659,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
         // naming the unsampleable field lands on a tab nobody is looking at.
         samplePanel.onSampleFailed(() -> {
             onShowHelperTools.run();
-            helperTabs.setSelectedComponent(samplePanel);
+            showWikidataTool(samplePanel);
         });
         samplePanel.onCardinalitySuggested(
                 cardinality -> {
@@ -716,7 +727,7 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                     }
                 });
 
-        propertyPanel.onPropertySelected(
+        propertyPanel.onUseProperty(
                 property -> {
                     useProperty(
                             property.pid(),
@@ -724,27 +735,31 @@ public class ModelSourceWorkbenchPanel extends JPanel {
                     afterChange.accept(null);
                 });
 
-        helperTabs.addTab(
-                "Explore",
+        wikidataTools.addTab(
+                "Entity",
                 explorePanel);
-        helperTabs.addTab(
+        wikidataTools.addTab(
                 "Sample",
                 samplePanel);
-        helperTabs.addTab(
+        wikidataTools.addTab(
                 "Discover",
                 discoveryPanel);
-        helperTabs.addTab(
-                "WikiProject",
-                wikiProjectPanel);
-        helperTabs.addTab(
-                "Category",
-                categoryPanel);
-        helperTabs.addTab(
+        wikidataTools.addTab(
                 "Graph patterns",
                 graphPatternPanel);
-        helperTabs.addTab(
+        wikidataTools.addTab(
                 "Properties",
                 propertyPanel);
+
+        wikipediaTools.addTab(
+                "Categories",
+                categoryPanel);
+        wikipediaTools.addTab(
+                "WikiProjects",
+                wikiProjectPanel);
+
+        helperTabs.addTab("Wikidata", wikidataTools);
+        helperTabs.addTab("Wikipedia", wikipediaTools);
 
         JPanel config =
                 new JPanel(new BorderLayout());

@@ -33,6 +33,7 @@ public class ExploreByExamplePanel extends JPanel {
     private Consumer<List<String>> onAddRelationTargets = qids -> {};
     private BiConsumer<String, String> onUseAsSourceQid = (qid, label) -> {};
     private BiConsumer<String, String> onUseProperty = (pid, label) -> {};
+    private BiConsumer<String, String> onExploreEntityRelation = (pid, qid) -> {};
 
     private final JTextField searchField = new JTextField(22);
     private final JTextField qidField = new JTextField(8);
@@ -41,7 +42,7 @@ public class ExploreByExamplePanel extends JPanel {
     private final EntityResultPanel candidates =
             new EntityResultPanel(List.of("QID", "Label", "Description"), 0, false);
 
-    private final JButton exploreButton = new JButton("Explore relations");
+    private final JButton exploreButton = new JButton("Explore entity relations");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
 
     // Relations render as Viewables through objectview's SearchableView, so they get the
@@ -54,6 +55,7 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton addTargetsButton = new JButton("Add as relation targets");
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
     private final JButton usePropertyButton = new JButton("Use selected property");
+    private final JButton exploreExampleRelationButton = new JButton("Explore example relation");
     private final JLabel hint = new JLabel(
             "<html>Search → pick an entity → Explore relations → pick a "
                     + "relation: <b>Show members</b> (then double-click a member to "
@@ -144,6 +146,9 @@ public class ExploreByExamplePanel extends JPanel {
 
     public void onUseProperty(BiConsumer<String, String> handler) {
         this.onUseProperty = handler == null ? (p, l) -> {} : handler;
+    }
+    public void onExploreEntityRelation(BiConsumer<String, String> handler) {
+        onExploreEntityRelation = handler == null ? (p, q) -> {} : handler;
     }
 
     /** Configure the panel to PICK A PROPERTY of a given entity (mode 2 of Explore): its
@@ -325,6 +330,7 @@ public class ExploreByExamplePanel extends JPanel {
         actionRow.add(addTargetsButton);
         actionRow.add(addSeedsButton);
         actionRow.add(usePropertyButton);
+        actionRow.add(exploreExampleRelationButton);
         actionRow.add(status);
 
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC));
@@ -390,6 +396,12 @@ public class ExploreByExamplePanel extends JPanel {
             if (rel != null) {
                 onUseProperty.accept(rel.pid(), rel.relationLabel());
                 status.setText("Used " + rel.pid() + ".");
+            }
+        });
+        exploreExampleRelationButton.addActionListener(e -> {
+            RelationView relation = selectedRelationView;
+            if (relation != null && WikidataIds.isQid(relation.exampleQid())) {
+                onExploreEntityRelation.accept(relation.pid(), relation.exampleQid());
             }
         });
         openQidButton.addActionListener(e -> openQid());
@@ -470,6 +482,7 @@ public class ExploreByExamplePanel extends JPanel {
             JComponent table = objectview.view.SearchableView.builder(relations)
                     .mode(objectview.render.RenderingMode.TABLE)
                     .sample(relations.get(0))
+                    .valueLinker(WikidataLinks.valueLinker())
                     .selectionListener(o -> {
                         selectedRelationView =
                                 o instanceof RelationView rv ? rv : null;
@@ -494,6 +507,8 @@ public class ExploreByExamplePanel extends JPanel {
         addTargetsButton.setEnabled(haveProbe);
         addSeedsButton.setEnabled(haveProbe);
         usePropertyButton.setEnabled(haveProbe);
+        exploreExampleRelationButton.setEnabled(haveProbe
+                && WikidataIds.isQid(selectedRelationView.exampleQid()));
     }
 
     private ClassSearchQuery buildSearchQuery() {
@@ -610,7 +625,8 @@ public class ExploreByExamplePanel extends JPanel {
                 continue;
             }
             found.add(new RelationView(
-                    dir, pid, str(row, 2), num(str(row, 3)), str(row, 4), str(row, 5)));
+                    dir, pid, str(row, 2), num(str(row, 3)), str(row, 4), str(row, 5),
+                    str(row, 6)));
         }
         SwingUtilities.invokeLater(() -> {
             showRelations(found);

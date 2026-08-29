@@ -10,6 +10,7 @@ import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.StatementClassSource;
 
 import javax.swing.JComboBox;
+import javax.swing.JTabbedPane;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,6 +18,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ModelSourceWorkbenchPanelTest {
+
+    @Test void explorerToolsAreGroupedByDatasourceAndProgrammaticNavigationStillWorks() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("Root");
+        model.addClass(root);
+        model.rootClass(root);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+
+        JTabbedPane sources = (JTabbedPane) panel.helperTools();
+        assertEquals(2, sources.getTabCount());
+        assertEquals("Wikidata", sources.getTitleAt(0));
+        assertEquals("Wikipedia", sources.getTitleAt(1));
+
+        panel.showProperties();
+        assertEquals("Wikidata", sources.getTitleAt(sources.getSelectedIndex()));
+        JTabbedPane wikidata = (JTabbedPane) sources.getSelectedComponent();
+        assertEquals("Properties", wikidata.getTitleAt(wikidata.getSelectedIndex()));
+    }
 
     @Test void editsSurviveNavigatingToAnotherModelNode() {
         GeneratedProjectModel model = new GeneratedProjectModel();
