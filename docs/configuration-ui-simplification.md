@@ -2,23 +2,32 @@
 
 ## Status
 
-Design note, not yet implemented. Written after measuring the configuration surface
-rather than from the impression that it had grown.
+**First step implemented** (`d661438b`): a plain string field is asked 15 rows instead
+of 23. Written after measuring the configuration surface rather than from the impression
+that it had grown — and corrected below where the first measurement was wrong.
 
 ## The problem, measured
 
-| editor | controls | labelled rows | lines |
-|---|---|---|---|
-| `FieldSourcePanel` | 25 | 15 | 1665 |
-| `ClassSourcePanel` | 26 | 29 | 1356 |
-| `StatementSourcePanel` | 8 | 21 | 749 |
+| editor | controls | top-level rows | rows a reader sees | lines |
+|---|---|---|---|---|
+| `FieldSourcePanel` | 25 | 15 | **23** | 1665 |
+| `ClassSourcePanel` | 26 | 29 | — | 1356 |
+| `StatementSourcePanel` | 8 | 21 | — | 749 |
 
-Configuring one field shows fifteen labelled rows:
+The first count of this note said fifteen. That was the number of top-level
+`labeledRow` calls, not the number a reader sees: the shared field-definition panel adds
+five more and the qualifier settings three, which a grep for one call shape does not
+find. The true figure came from a failing test printing the whole visible set — the
+measurement taken by accident was better than the one taken on purpose.
+
+Configuring one plain string field showed twenty-three labelled rows:
 
 ```text
-Load as · Inverse of · Graph expansion · From · Property · Value language ·
-Wikipedia fallback · Wikipedia categories · Qualifier of · Subject field ·
-Match value field · Match role field · Found on · Expectation · Numeric filter
+Field name · Holds · Of class · Count · Display · Load as · Inverse of ·
+Graph expansion · From · Property · Value language · Wikipedia fallback ·
+Wikipedia categories · Qualifier of · Qualifier time · Missing qualifier ·
+Reify role · Subject field · Match value field · Match role field ·
+Found on · Expectation · Numeric filter
 ```
 
 Most cannot apply together. `Inverse of` is meaningful only for an INVERT field;
@@ -83,12 +92,20 @@ Today all three are greyed, which is why the panel reads as uniformly complicate
    | Subject field | companion match, or date projection |
    | Match value field | companion match, or date projection |
    | Match role field | companion match |
+   | Qualifier time | `dateQualifier` |
+   | Missing qualifier | `policyEnabled` |
+   | Reify role | `policyEnabled` |
    | Qualifier of | statement class — **stays greyed**, per the comment above |
 
-   That takes an ordinary field from fifteen rows to about ten. The remaining rows —
-   `Numeric filter` on non-numeric fields, the Wikipedia rows on non-Wikipedia sources —
-   have **no rule written anywhere today**, and inventing one in the UI is how the
-   editor drifts from what actually compiles. They wait for a rule to exist.
+   Eight rows, not the five first listed here: `Qualifier time`, `Missing qualifier` and
+   `Reify role` have rules too and were missed for the same reason the row count was
+   wrong — they are not written in the call shape that was grepped. That takes an
+   ordinary field from **23 rows to 15**.
+
+   The remaining rows — `Numeric filter` on non-numeric fields, the Wikipedia rows on
+   non-Wikipedia sources — have **no rule written anywhere today**, and inventing one in
+   the UI is how the editor drifts from what actually compiles. They wait for a rule to
+   exist, and are then one line each.
 3. Ask the shared predicate. `refreshGraphExpansionControl` currently restates the
    eligibility rule inline, making a third copy beside the validator and the compiler.
    It should call `WikidataFieldGraphTraversalEligibility`, which needs a parts-based
@@ -96,8 +113,9 @@ Today all three are greyed, which is why the panel reads as uniformly complicate
 4. A test per field kind: given a field of kind X, exactly these rows are visible. The
    panel has no test today, and this is the kind it can actually have.
 
-Size: roughly 150–250 lines in one file. Contained — `GridBagLayout` collapses a row
-whose components are all invisible, so the running `y++` counters need no rework.
+Size, as built: about 200 lines across `FormRow`, the panel and the shared predicate.
+Contained, as expected — `GridBagLayout` collapses a row whose components are all
+invisible, so the running `y++` counters needed no rework.
 
 ## What this is deliberately not
 
