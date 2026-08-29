@@ -16,6 +16,13 @@ class InteractiveGraphViewTest {
                 () -> assertTrue(page.contains("nodeHtmlLabel")),
                 () -> assertTrue(page.contains("enablePointerEvents:true")),
                 () -> assertTrue(page.contains("class=\"node-link\"")),
+                () -> assertTrue(page.contains("onclick=\"selectNode(event,this.dataset.node)\"")),
+                () -> assertTrue(page.contains("selectNode(event,this.dataset.node);graphBridge.open")),
+                () -> assertTrue(page.contains("path2dEnabled(false)")),
+                () -> assertTrue(page.contains("if(!this.__graphPathStarted)")),
+                () -> assertTrue(page.contains("case'radial'")),
+                () -> assertTrue(page.contains("case'concentric'")),
+                () -> assertTrue(page.contains("case'cose'")),
                 () -> assertTrue(page.contains("function collapseSelected()")),
                 () -> assertFalse(page.contains("__CYTOSCAPE__")));
     }

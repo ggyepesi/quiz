@@ -21,6 +21,24 @@ import java.util.function.Consumer;
 
 /** Swing host for a local Cytoscape.js graph. No provider or domain knowledge lives here. */
 public final class InteractiveGraphView extends JPanel implements AutoCloseable {
+    private enum LayoutChoice {
+        HIERARCHY("Hierarchy", "hierarchy"),
+        RADIAL_HIERARCHY("Radial hierarchy", "radial"),
+        CIRCLE("Circle", "circle"),
+        CONCENTRIC_DEPTH("Concentric by depth", "concentric"),
+        GRID("Grid", "grid"),
+        FORCE_DIRECTED("Force-directed", "cose"),
+        RANDOM("Random", "random");
+
+        private final String label;
+        private final String scriptName;
+        LayoutChoice(String label, String scriptName) {
+            this.label = label;
+            this.scriptName = scriptName;
+        }
+        @Override public String toString() { return label; }
+    }
+
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String CYTOSCAPE = "/META-INF/resources/webjars/cytoscape/3.33.1/dist/cytoscape.min.js";
     private static final String HTML_LABEL = "/META-INF/resources/webjars/cytoscape-node-html-label/1.2.2/dist/cytoscape-node-html-label.min.js";
@@ -38,6 +56,10 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     private Consumer<Set<String>> selectionListener = ignored -> { };
     private Consumer<String> activationListener = ignored -> { };
     private volatile WebEngine engine;
+    // WebEngine stores Java members weakly. Retain the bridge for as long as the
+    // page can call it; otherwise buttons keep running JavaScript but their Java
+    // destination can disappear after an unrelated garbage collection.
+    private volatile Bridge bridge;
     private boolean initialized;
 
     public InteractiveGraphView() {
@@ -47,6 +69,19 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         tools.add(button("Fit", "fitGraph()"));
         tools.add(button("Zoom in", "zoomGraph(1.25)"));
         tools.add(button("Zoom out", "zoomGraph(0.8)"));
+        tools.addSeparator();
+        tools.add(new JLabel("Layout:"));
+        JComboBox<LayoutChoice> layouts = new JComboBox<>(LayoutChoice.values());
+        layouts.setSelectedItem(LayoutChoice.HIERARCHY);
+        layouts.setToolTipText("Try the same discovered graph with a different Cytoscape layout");
+        tools.add(layouts);
+        JButton applyLayout = new JButton("Apply layout");
+        applyLayout.addActionListener(event -> {
+            LayoutChoice selected = (LayoutChoice) layouts.getSelectedItem();
+            if (selected != null) runScript("layoutGraph('" + selected.scriptName + "')");
+        });
+        tools.add(applyLayout);
+        tools.addSeparator();
         tools.add(button("Collapse selected", "collapseSelected()"));
         tools.add(button("Expand selected", "expandSelected()"));
         tools.add(button("Open selected link", "openSelected()"));
@@ -86,6 +121,7 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     @Override public void close() {
         WebEngine current = engine;
         engine = null;
+        bridge = null;
         if (current != null) Platform.runLater(() -> current.load(null));
     }
 
@@ -95,7 +131,8 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         engine.getLoadWorker().stateProperty().addListener((ignored, oldState, state) -> {
             if (state == javafx.concurrent.Worker.State.SUCCEEDED) {
                 JSObject window = (JSObject) engine.executeScript("window");
-                window.setMember("graphBridge", new Bridge());
+                bridge = new Bridge();
+                window.setMember("graphBridge", bridge);
                 engine.executeScript("setGraph(" + modelJson(model) + ")");
             }
         });
@@ -132,8 +169,13 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         }
         public void open(String id) {
             model.nodes().stream().filter(node -> node.id().equals(id)).findFirst().ifPresent(node -> {
-                if (node.link() != null) BrowserLauncher.open(node.link().toString());
-                SwingUtilities.invokeLater(() -> activationListener.accept(id));
+                SwingUtilities.invokeLater(() -> {
+                    activationListener.accept(id);
+                    if (node.link() != null) {
+                        message("Opening " + id + " in the browser.");
+                        BrowserLauncher.open(node.link().toString());
+                    } else message(id + " has no source link.");
+                });
             });
         }
         public void message(String value) { InteractiveGraphView.this.message(value); }
@@ -173,22 +215,45 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         .node-card.frontier{background:#fff2cc;border-color:#c59a28}.node-card.expanded{background:#dcefe2;border-color:#4e9567}.node-card.unavailable{background:#f7dddd;border-color:#b65e5e}
         .node-label{font-weight:600;overflow-wrap:anywhere}.node-link{display:inline-block;margin-top:3px;color:#1d5fa7;text-decoration:underline}.node-details{margin-top:3px;color:#596579;font-size:11px}
         </style><script>__CYTOSCAPE__</script><script>__HTML_LABEL__</script></head><body><div id="cy"></div><script>
+        // JavaFX WebKit differs from the Canvas contract here: lineTo() on an empty
+        // path does not establish the first point, and closePath() then throws from
+        // WCPathImpl. Cytoscape polygon arrows deliberately start with lineTo().
+        // Normalize that one browser difference before the renderer sees a canvas.
+        (()=>{const p=CanvasRenderingContext2D.prototype,begin=p.beginPath,move=p.moveTo,line=p.lineTo,arc=p.arc,rect=p.rect,close=p.closePath;
+          p.beginPath=function(){this.__graphPathStarted=false;return begin.call(this)};
+          p.moveTo=function(x,y){this.__graphPathStarted=true;return move.call(this,x,y)};
+          p.lineTo=function(x,y){if(!this.__graphPathStarted){this.__graphPathStarted=true;return move.call(this,x,y)}return line.call(this,x,y)};
+          p.arc=function(){this.__graphPathStarted=true;return arc.apply(this,arguments)};
+          p.rect=function(){this.__graphPathStarted=true;return rect.apply(this,arguments)};
+          p.closePath=function(){if(this.__graphPathStarted)return close.call(this)};
+        })();
         let cy=cytoscape({container:document.getElementById('cy'),elements:[],selectionType:'single',boxSelectionEnabled:true,wheelSensitivity:0.25,style:[
           {selector:'node',style:{'width':165,'height':62,'background-opacity':0,'border-width':0,'label':''}},
           {selector:'node:selected',style:{'overlay-color':'#3478c8','overlay-opacity':0.18,'overlay-padding':8}},
           {selector:'edge',style:{'curve-style':'bezier','width':2,'line-color':'#718097','target-arrow-color':'#718097','target-arrow-shape':'triangle','label':'data(label)','font-size':11,'text-background-color':'#f7f8fa','text-background-opacity':1,'text-background-padding':2}},
           {selector:'.undirected',style:{'target-arrow-shape':'none'}}]});
+        cy.renderer().path2dEnabled(false);
         const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
         const details=d=>Object.entries(d.details||{}).map(([k,v])=>`<span><b>${esc(k)}:</b> ${esc(v)}</span>`).join(' · ');
-        cy.nodeHtmlLabel([{query:'node',tpl:d=>`<div class="node-card ${esc(d.state)}"><div class="node-label">${esc(d.label)}</div>${d.link?`<a class="node-link" data-node="${esc(d.id)}" href="#" onclick="event.stopPropagation();graphBridge.open(this.dataset.node);return false">${esc(d.id)}</a>`:`<div>${esc(d.id)}</div>`}<div class="node-details">${details(d)}</div></div>`}],{enablePointerEvents:true});
-        function layout(){cy.layout({name:'breadthfirst',directed:true,spacingFactor:1.35,padding:35,animate:false}).run()}function fitGraph(){cy.fit(cy.elements(':visible'),35)}function zoomGraph(f){cy.zoom({level:cy.zoom()*f,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})}
-        function setGraph(model){cy.elements().remove();cy.add(model.nodes);cy.add(model.edges.map(e=>{if(!e.data.directed)e.classes='undirected';return e}));layout();fitGraph();graphBridge.message(`${model.nodes.length} node(s), ${model.edges.length} relation(s)`)}
+        cy.nodeHtmlLabel([{query:'node',tpl:d=>`<div class="node-card ${esc(d.state)}" data-node="${esc(d.id)}" onclick="selectNode(event,this.dataset.node)"><div class="node-label">${esc(d.label)}</div>${d.link?`<a class="node-link" data-node="${esc(d.id)}" href="#" onclick="selectNode(event,this.dataset.node);graphBridge.open(this.dataset.node);return false">${esc(d.id)}</a>`:`<div>${esc(d.id)}</div>`}<div class="node-details">${details(d)}</div></div>`}],{enablePointerEvents:true});
+        function layoutGraph(kind){let options={animate:false,padding:35};switch(kind){
+          case'radial':Object.assign(options,{name:'breadthfirst',directed:true,circle:true,spacingFactor:1.25});break;
+          case'circle':Object.assign(options,{name:'circle',spacingFactor:1.15});break;
+          case'concentric':Object.assign(options,{name:'concentric',concentric:n=>-Number(n.data('level')||0),levelWidth:()=>1,minNodeSpacing:35});break;
+          case'grid':Object.assign(options,{name:'grid',avoidOverlap:true,avoidOverlapPadding:20});break;
+          case'cose':Object.assign(options,{name:'cose',randomize:true,nodeRepulsion:()=>900000,idealEdgeLength:()=>120,componentSpacing:80,numIter:1200});break;
+          case'random':Object.assign(options,{name:'random'});break;
+          default:Object.assign(options,{name:'breadthfirst',directed:true,spacingFactor:1.35});kind='hierarchy';
+        }cy.layout(options).run();fitGraph();graphBridge.message(`Applied ${kind} layout to ${cy.nodes(':visible').length} node(s).`)}
+        function fitGraph(){cy.fit(cy.elements(':visible'),35)}function zoomGraph(f){cy.zoom({level:cy.zoom()*f,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})}
+        function setGraph(model){cy.elements().remove();cy.add(model.nodes);cy.add(model.edges.map(e=>{if(!e.data.directed)e.classes='undirected';return e}));layoutGraph('hierarchy');graphBridge.message(`${model.nodes.length} node(s), ${model.edges.length} relation(s)`)}
+        function selectNode(event,id){event.stopPropagation();let node=cy.getElementById(id),extend=event.metaKey||event.ctrlKey||event.shiftKey;if(!extend)cy.nodes().unselect();if(extend&&node.selected())node.unselect();else node.select()}
         function selectedIds(){return cy.nodes(':selected').map(n=>n.id())}function descendants(root){let level=Number(root.data('level')),found=cy.collection(),pending=root.neighborhood('node'),seen=new Set([root.id()]);while(pending.length){let next=cy.collection();pending.forEach(n=>{if(seen.has(n.id()))return;seen.add(n.id());if(Number(n.data('level'))>level){found=found.union(n);next=next.union(n.neighborhood('node'))}});pending=next}return found}
         function collapseSelected(){let roots=cy.nodes(':selected');if(!roots.length){graphBridge.message('Select one or more nodes to collapse.');return}let hidden=cy.collection();roots.forEach(n=>hidden=hidden.union(descendants(n)));hidden.hide();graphBridge.message(`Collapsed ${hidden.length} deeper node(s).`);fitGraph()}
         function expandSelected(){let roots=cy.nodes(':selected');if(!roots.length){graphBridge.message('Select one or more nodes to expand.');return}let shown=cy.collection();roots.forEach(n=>shown=shown.union(descendants(n)));shown.show();graphBridge.message(`Expanded ${shown.length} deeper node(s).`);fitGraph()}
         function openSelected(){let ids=selectedIds();if(ids.length!==1){graphBridge.message('Select exactly one node to open its link.');return}graphBridge.open(ids[0])}
         cy.on('select unselect','node',()=>graphBridge.selection(JSON.stringify(selectedIds())));cy.on('cxttap','node',e=>{let n=e.target,hidden=descendants(n).filter(':hidden');n.select();if(hidden.length)expandSelected();else collapseSelected()});
-        window.setGraph=setGraph;window.fitGraph=fitGraph;window.zoomGraph=zoomGraph;window.collapseSelected=collapseSelected;window.expandSelected=expandSelected;window.openSelected=openSelected;
+        window.setGraph=setGraph;window.selectNode=selectNode;window.layoutGraph=layoutGraph;window.fitGraph=fitGraph;window.zoomGraph=zoomGraph;window.collapseSelected=collapseSelected;window.expandSelected=expandSelected;window.openSelected=openSelected;
         </script></body></html>
         """;
 }

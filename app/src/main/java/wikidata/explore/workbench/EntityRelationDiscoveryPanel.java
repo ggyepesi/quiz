@@ -75,10 +75,10 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                     "Use selected property as edge",
                     () -> selections.property().isPresent(),
                     this::useSelectedProperty).action(
-                    "Select highlighted entity",
+                    "Add highlighted entity to reusable selections",
                     () -> selectedNodeQids.size() == 1,
                     this::setSelectedEntity).action(
-                    "Select edge property",
+                    "Add edge property to reusable selections",
                     () -> !pid.isBlank(),
                     this::setSelectedProperty));
         }

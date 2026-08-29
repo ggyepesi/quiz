@@ -16,6 +16,8 @@ import java.awt.Container;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModelSourceWorkbenchPanelTest {
 
@@ -35,6 +37,10 @@ class ModelSourceWorkbenchPanelTest {
         assertEquals("Wikidata", sources.getTitleAt(sources.getSelectedIndex()));
         JTabbedPane wikidata = (JTabbedPane) sources.getSelectedComponent();
         assertEquals("Properties", wikidata.getTitleAt(wikidata.getSelectedIndex()));
+        int entityRelations = wikidata.indexOfTab("Entity relations");
+        assertTrue(entityRelations >= 0, "Entity relations tab is present");
+        assertInstanceOf(EntityRelationDiscoveryPanel.class,
+                wikidata.getComponentAt(entityRelations));
     }
 
     @Test void editsSurviveNavigatingToAnotherModelNode() {

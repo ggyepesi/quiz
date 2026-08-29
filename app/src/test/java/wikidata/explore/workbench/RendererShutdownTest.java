@@ -7,10 +7,9 @@ import wikidata.explore.model.GeneratedProjectModel;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
- * The graph renderer holds a viewer thread, and the window it lives in hides rather
- * than disposes so an explored graph survives a close and reopen. Nothing inside that
- * window can therefore decide when the renderer is finished — the workbench says so on
- * the way out, and this asserts the path exists and survives being taken twice.
+ * The graph renderer owns a JavaFX WebView inside the Explorer tab. The workbench owns
+ * that tab and therefore owns renderer shutdown; this asserts the path exists and
+ * survives being taken twice.
  */
 class RendererShutdownTest {
 
