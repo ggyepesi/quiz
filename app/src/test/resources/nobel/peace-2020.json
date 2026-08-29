@@ -1,0 +1,62 @@
+{
+    "nobelPrizes": [
+        {
+            "awardYear": "2020",
+            "category": {
+                "en": "Peace",
+                "no": "Fred",
+                "se": "Fred"
+            },
+            "categoryFullName": {
+                "en": "The Nobel Peace Prize",
+                "no": "Nobels fredspris",
+                "se": "Nobels fredspris"
+            },
+            "dateAwarded": "2020-10-09",
+            "prizeAmount": 10000000,
+            "prizeAmountAdjusted": 12361835,
+            "links": [
+                {
+                    "rel": "nobelPrize",
+                    "href": "https://api.nobelprize.org/2/nobelPrize/pea/2020",
+                    "action": "GET",
+                    "types": "application/json"
+                }
+            ],
+            "laureates": [
+                {
+                    "id": "994",
+                    "orgName": {
+                        "en": "World Food Programme",
+                        "no": "Verdens matvareprogram"
+                    },
+                    "acronym": "WFP",
+                    "portion": "1",
+                    "sortOrder": "1",
+                    "motivation": {
+                        "en": "for its efforts to combat hunger, for its contribution to bettering conditions for peace in conflict-affected areas and for acting as a driving force in efforts to prevent the use of hunger as a weapon of war and conflict",
+                        "no": "for dets innsats i kampen mot sult, for dets bidrag til \u00e5 skape forutsetninger for fred i konfliktutsatte omr\u00e5der, og for \u00e5 v\u00e6re en p\u00e5driver i arbeidet mot bruken av sult som et v\u00e5pen i krig og konflikt"
+                    },
+                    "links": [
+                        {
+                            "rel": "laureate",
+                            "href": "https://api.nobelprize.org/2/laureate/994",
+                            "action": "GET",
+                            "types": "application/json"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "meta": {
+        "offset": 0,
+        "limit": 25,
+        "nobelPrizeYear": 2020,
+        "nobelPrizeCategory": "pea",
+        "count": 1,
+        "terms": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/",
+        "license": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/#licence",
+        "disclaimer": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/#disclaimer"
+    }
+}

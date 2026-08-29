@@ -1,0 +1,113 @@
+{
+    "nobelPrizes": [
+        {
+            "awardYear": "2018",
+            "category": {
+                "en": "Physics",
+                "no": "Fysikk",
+                "se": "Fysik"
+            },
+            "categoryFullName": {
+                "en": "The Nobel Prize in Physics",
+                "no": "Nobelprisen i fysikk",
+                "se": "Nobelpriset i fysik"
+            },
+            "dateAwarded": "2018-10-02",
+            "topMotivation": {
+                "en": "for groundbreaking inventions in the field of laser physics",
+                "se": "f\u00f6r banbrytande uppfinningar inom laserfysik"
+            },
+            "prizeAmount": 9000000,
+            "prizeAmountAdjusted": 11380800,
+            "links": [
+                {
+                    "rel": "nobelPrize",
+                    "href": "https://api.nobelprize.org/2/nobelPrize/phy/2018",
+                    "action": "GET",
+                    "types": "application/json"
+                }
+            ],
+            "laureates": [
+                {
+                    "id": "960",
+                    "knownName": {
+                        "en": "Arthur Ashkin"
+                    },
+                    "fullName": {
+                        "en": "Arthur Ashkin"
+                    },
+                    "portion": "1/2",
+                    "sortOrder": "1",
+                    "motivation": {
+                        "en": "for the optical tweezers and their application to biological systems",
+                        "se": "f\u00f6r den optiska pincetten och dess till\u00e4mpning p\u00e5 biologiska system"
+                    },
+                    "links": [
+                        {
+                            "rel": "laureate",
+                            "href": "https://api.nobelprize.org/2/laureate/960",
+                            "action": "GET",
+                            "types": "application/json"
+                        }
+                    ]
+                },
+                {
+                    "id": "961",
+                    "knownName": {
+                        "en": "G\u00e9rard Mourou"
+                    },
+                    "fullName": {
+                        "en": "G\u00e9rard Mourou"
+                    },
+                    "portion": "1/4",
+                    "sortOrder": "2",
+                    "motivation": {
+                        "en": "for their method of generating high-intensity, ultra-short optical pulses",
+                        "se": "f\u00f6r deras metod att alstra h\u00f6gintensiva, ultrakorta optiska pulser"
+                    },
+                    "links": [
+                        {
+                            "rel": "laureate",
+                            "href": "https://api.nobelprize.org/2/laureate/961",
+                            "action": "GET",
+                            "types": "application/json"
+                        }
+                    ]
+                },
+                {
+                    "id": "962",
+                    "knownName": {
+                        "en": "Donna Strickland"
+                    },
+                    "fullName": {
+                        "en": "Donna Strickland"
+                    },
+                    "portion": "1/4",
+                    "sortOrder": "3",
+                    "motivation": {
+                        "en": "for their method of generating high-intensity, ultra-short optical pulses",
+                        "se": "f\u00f6r deras metod att alstra h\u00f6gintensiva, ultrakorta optiska pulser"
+                    },
+                    "links": [
+                        {
+                            "rel": "laureate",
+                            "href": "https://api.nobelprize.org/2/laureate/962",
+                            "action": "GET",
+                            "types": "application/json"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "meta": {
+        "offset": 0,
+        "limit": 25,
+        "nobelPrizeYear": 2018,
+        "nobelPrizeCategory": "phy",
+        "count": 1,
+        "terms": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/",
+        "license": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/#licence",
+        "disclaimer": "https://www.nobelprize.org/about/terms-of-use-for-api-nobelprize-org-and-data-nobelprize-org/#disclaimer"
+    }
+}
