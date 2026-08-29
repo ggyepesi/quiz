@@ -62,6 +62,7 @@ public final class DiscoverEntityRelationQuery
         seeds.forEach(qid -> nodes.put(qid, new Node(qid, qid, 0)));
         LinkedHashSet<Edge> edges = new LinkedHashSet<>();
         LinkedHashSet<String> frontier = new LinkedHashSet<>(seeds);
+        String anchorVar = anchorVar(direction), adjacentVar = adjacentVar(direction);
         boolean limited = false;
         for (int depth = 1; depth <= maxDepth && !frontier.isEmpty(); depth++) {
             context.cancellation().throwIfCancelled();
@@ -74,27 +75,29 @@ public final class DiscoverEntityRelationQuery
                         step.request(sparql);
                         List<WikidataBinding> answer = WikidataAccess
                                 .sparql(context, Datasource.WIKIDATA).query(sparql);
-                        step.summary(answer.size() + " direct edge row(s)");
+                        long edgeRows = answer.stream().filter(row ->
+                                WikidataIds.isQid(row.qid("source"))
+                                        && WikidataIds.isQid(row.qid("target"))).count();
+                        step.summary(edgeRows + " direct edge row(s)");
                         return answer;
                     });
             if (rows.size() > rowLimit) limited = true;
             LinkedHashSet<String> next = new LinkedHashSet<>();
             for (WikidataBinding row : rows.stream().limit(rowLimit).toList()) {
                 String source = row.qid("source"), target = row.qid("target");
+                String anchor = row.qid(anchorVar);
+                if (!WikidataIds.isQid(anchor) || !frontier.contains(anchor)) continue;
+                putLabel(nodes, anchor, row.label(anchorVar));
+                // OPTIONAL deliberately returns the labelled anchor even when it has
+                // no adjacent entity. It is a node result, not an edge result.
                 if (!WikidataIds.isQid(source) || !WikidataIds.isQid(target)) continue;
-                String anchor = direction == Direction.OUTGOING ? source : target;
-                if (!frontier.contains(anchor)) continue;
-                putLabel(nodes, anchor, direction == Direction.OUTGOING
-                        ? row.label("source") : row.label("target"));
-                String adjacent = direction == Direction.OUTGOING ? target : source;
+                String adjacent = row.qid(adjacentVar);
                 if (!nodes.containsKey(adjacent)) {
                     if (nodes.size() >= maxNodes) { limited = true; continue; }
-                    String label = direction == Direction.OUTGOING
-                            ? row.label("target") : row.label("source");
-                    nodes.put(adjacent, new Node(adjacent, label(label, adjacent), waveDepth));
+                    nodes.put(adjacent, new Node(
+                            adjacent, label(row.label(adjacentVar), adjacent), waveDepth));
                     next.add(adjacent);
-                } else putLabel(nodes, adjacent, direction == Direction.OUTGOING
-                        ? row.label("target") : row.label("source"));
+                } else putLabel(nodes, adjacent, row.label(adjacentVar));
                 edges.add(new Edge(source, target));
             }
             frontier = next;
@@ -107,12 +110,33 @@ public final class DiscoverEntityRelationQuery
     private String query(LinkedHashSet<String> frontier, int limit) {
         String values = frontier.stream().map(qid -> "wd:" + qid)
                 .collect(Collectors.joining(" "));
-        String relation = direction == Direction.OUTGOING
-                ? "VALUES ?source { " + values + " }\n  ?source wdt:" + pid + " ?target ."
-                : "VALUES ?target { " + values + " }\n  ?source wdt:" + pid + " ?target .";
         return "SELECT DISTINCT ?source ?sourceLabel ?target ?targetLabel WHERE {\n  "
-                + relation + "\n  " + wikidata.query.LabelService.service()
-                + "}\nORDER BY ?source ?target\nLIMIT " + limit;
+                + "VALUES ?" + anchorVar(direction) + " { " + values + " }\n"
+                + "  OPTIONAL { ?source wdt:" + pid + " ?target . }\n  "
+                + wikidata.query.LabelService.service()
+                + "}\n" + orderBy(direction) + "\nLIMIT " + limit;
+    }
+
+    /**
+     * The frontier node a row is anchored on, and the node that row reaches. Direction is
+     * decided here once; every other question this query asks of a row is one of these
+     * two, so it is asked by name rather than re-derived at each use.
+     */
+    private static String anchorVar(Direction direction) {
+        return direction == Direction.OUTGOING ? "source" : "target";
+    }
+    private static String adjacentVar(Direction direction) {
+        return direction == Direction.OUTGOING ? "target" : "source";
+    }
+
+    /**
+     * Anchor first, then the node it reaches. The adjacent variable is the one the
+     * OPTIONAL leaves unbound, and unbound sorts LOWEST in SPARQL: ordering by it first
+     * would put every edgeless anchor ahead of every edge, so a truncated wave would
+     * spend its row budget on rows that carry no relation.
+     */
+    static String orderBy(Direction direction) {
+        return "ORDER BY ?" + anchorVar(direction) + " ?" + adjacentVar(direction);
     }
 
     private static void putLabel(Map<String, Node> nodes, String qid, String label) {
