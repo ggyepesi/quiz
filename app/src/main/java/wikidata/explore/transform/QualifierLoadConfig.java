@@ -140,10 +140,25 @@ public record QualifierLoadConfig(
      *              list instead of keeping one. Driven by the model field's
      *              "Count: List" cardinality.
      */
-    public record Qualifier(String pid, String fieldName, Kind kind, boolean multi) {
+    /**
+     * @param language for a monolingual-text value, the language to keep. Blank keeps
+     *                 every wording, which is the only honest answer when none was
+     *                 asked for. Ignored by the other kinds, whose values state no
+     *                 language of their own.
+     */
+    public record Qualifier(String pid, String fieldName, Kind kind, boolean multi,
+                            String language) {
+        public Qualifier {
+            language = language == null ? "" : language.trim();
+        }
+
+        public Qualifier(String pid, String fieldName, Kind kind, boolean multi) {
+            this(pid, fieldName, kind, multi, "");
+        }
+
         /** Back-compat single-valued form. */
         public Qualifier(String pid, String fieldName, Kind kind) {
-            this(pid, fieldName, kind, false);
+            this(pid, fieldName, kind, false, "");
         }
     }
 

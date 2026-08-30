@@ -379,9 +379,18 @@ public class QualifierLoader {
                     }
                 }
                 case STRING -> {
+                    // A monolingual value arrives carrying its language. Keep the
+                    // wordings this field asked for, and store the text alone: the
+                    // language was the means of choosing, not part of the answer.
                     for (String value : vals) {
-                        if (value != null && !value.isBlank()) {
-                            putQualifier(stmt, q, value);
+                        if (value == null
+                                || !wikidata.MonolingualTextCodec.isIn(
+                                        value, q.language())) {
+                            continue;
+                        }
+                        String text = wikidata.MonolingualTextCodec.text(value);
+                        if (!text.isBlank()) {
+                            putQualifier(stmt, q, text);
                             if (!q.multi()) break;
                         }
                     }

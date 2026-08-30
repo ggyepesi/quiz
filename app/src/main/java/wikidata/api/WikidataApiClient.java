@@ -1519,7 +1519,14 @@ public class WikidataApiClient {
                             + wikidata.CalendarModelCodec.precisionMark(
                                 val.path("precision").asInt(-1));
             }
-            case "monolingualtext" -> val.path("text").asText(null);
+            // The language is stated on the literal, not on a P407 qualifier, so it
+            // travels with the text or it is lost. One codec writes and reads it.
+            case "monolingualtext" -> {
+                String text = val.path("text").asText(null);
+                yield text == null ? null : text
+                        + wikidata.MonolingualTextCodec.mark(
+                                val.path("language").asText(""));
+            }
             case "quantity" -> {
                 String a = val.path("amount").asText("");
                 yield a.isBlank() ? null : (a.startsWith("+") ? a.substring(1) : a);

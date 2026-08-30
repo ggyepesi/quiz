@@ -718,9 +718,10 @@ public class FieldSourcePanel extends JPanel {
         discoverExternalButton.setVisible(false);
         propRow.add(discoverExternalButton);
         GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
-        valueLanguageField.setToolTipText("Optional 'en' or Wikidata language QID "
-                + "for claim values qualified by P407. Blank preserves every truthy "
-                + "value; unqualified values remain the fallback.");
+        valueLanguageField.setToolTipText("Optional language for the value: 'en' or a "
+                + "Wikidata language QID. Entity values are chosen by their P407 "
+                + "qualifier, monolingual text by the language on the literal. Blank "
+                + "preserves every value; those stating no language are always kept.");
         GridBagUtils.labeledRow(form, c, y++, "Value language:", valueLanguageField);
 
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -989,7 +990,8 @@ public class FieldSourcePanel extends JPanel {
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = pk == FieldProductionKind.INVERT;
-        if (ownedComponent || inverse) {
+        boolean statementSubject = pk == FieldProductionKind.STATEMENT_SUBJECT;
+        if (ownedComponent || inverse || statementSubject) {
             // The edge itself is the producer. The component's declared fields load
             // their own properties using the owner's identifier.
             m.propertyPid("");
@@ -1031,6 +1033,11 @@ public class FieldSourcePanel extends JPanel {
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.COLLECTION);
             field.renderMode(FieldRenderMode.REFERENCE);
+        } else if (statementSubject) {
+            field.type(FieldType.ENTITY);
+            field.cardinality(FieldCardinality.SINGLE);
+            field.renderMode(FieldRenderMode.REFERENCE);
+            m.roleKind(wikidata.explore.model.RoleKind.IDENTITY);
         }
         // Auto display keeps the established inference; an explicit shared field
         // definition wins in both ModelBuilder and TransformApp.
@@ -1186,6 +1193,10 @@ public class FieldSourcePanel extends JPanel {
                     + "No property is configured on this producing field.<br>"
                     + "<i>Example:</i> Person.structuredName → Name, where Name.givenName "
                     + "loads P735 and Name.familyName loads P734.</html>";
+            case STATEMENT_SUBJECT -> "<html><b>Statement subject</b> — on a "
+                    + "statement class, copy the entity that carries the statement. "
+                    + "No property or qualifier is required.<br><i>Example:</i> "
+                    + "NobelPrize.laureate is the subject carrying P166.</html>";
             case INVERT -> "<html><b>Invert</b> — <b>derived</b>, not fetched: the "
                     + "reverse of a forward reference on the referenced class, built "
                     + "in memory from data already generated (no query, no depth, no "

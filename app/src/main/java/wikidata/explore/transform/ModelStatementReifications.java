@@ -174,7 +174,8 @@ public final class ModelStatementReifications {
                     clean(field.mapping().qualifierPid()),
                     field.name(),
                     kind,
-                    multi));
+                    multi,
+                    clean(field.mapping().valueLanguage())));
 
             if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
                 listQualifiers.add(field.name());
@@ -330,7 +331,8 @@ public final class ModelStatementReifications {
                     clean(field.source().qualifierPid()),
                     field.name(),
                     kind,
-                    multi));
+                    multi,
+                    clean(field.source().valueLanguage())));
 
             if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
                 listQualifiers.add(field.name());
@@ -508,6 +510,13 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles = new ArrayList<>();
 
         for (CompiledField field : statementClass.ownFields()) {
+            if (field.source().productionKind()
+                    == FieldProductionKind.STATEMENT_SUBJECT) {
+                roles.add(new ReifyConstruct.Role(
+                        field.name(), field.name(), true,
+                        wikidata.explore.model.RoleKind.IDENTITY));
+                continue;
+            }
             if (!supportsMissingQualifierPolicy(statementClass, field)) {
                 continue;
             }
@@ -705,6 +714,13 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles = new ArrayList<>();
 
         for (GeneratedFieldModel field : statementClass.fields()) {
+            if (StatementFieldSemantics.isStatementSubjectField(
+                    statementClass, field)) {
+                roles.add(new ReifyConstruct.Role(
+                        field.name(), field.name(), true,
+                        wikidata.explore.model.RoleKind.IDENTITY));
+                continue;
+            }
             if (!StatementFieldSemantics
                     .supportsMissingQualifierPolicy(
                             statementClass,
