@@ -5,8 +5,8 @@
   "description" : "",
   "root" : {
     "@class" : "wikidata.explore.rule.RuleNode",
-    "name" : "NobelPrizes",
-    "itemVar" : "nobelPrizes",
+    "name" : "NobelPrize",
+    "itemVar" : "nobelPrize",
     "sourceQid" : "",
     "sourceLabel" : "",
     "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],

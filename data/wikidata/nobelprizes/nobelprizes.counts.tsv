@@ -1,0 +1,6 @@
+# NobelPrizes — per-class counts, one row per save
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-08-30T17:01:54	total=1758	Person=989	LaureatesWithMotivation=730	Laureate=33	Categories=6
+2026-08-30T23:20:16	total=2392	Person=989	LaureatesWithMotivation=730	NobelPrize=634	Laureate=33	Categories=6
+2026-08-30T23:57:21	total=2392	Person=989	LaureatesWithMotivation=730	NobelPrize=634	Laureate=33	Categories=6
+2026-08-31T00:07:59	total=2378	Person=989	LaureatesWithMotivation=716	NobelPrize=634	Laureate=33	Categories=6

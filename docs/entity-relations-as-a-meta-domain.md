@@ -2,9 +2,11 @@
 
 ## Status
 
-Design note, not started. Three observations that turn out to be one direction, recorded
-with the measurements that support them. Larger than anything in flight; deliberately not
-begun before the release.
+Design note. The provider-neutral traversal declarations and graph renderer exist, but
+field-based traversal is not yet executed by generation and the Viewable projection is not
+yet defined. Three observations point in one architectural direction, recorded with the
+measurements that support them. The property meta-domain migration is deliberately not
+begun before the release; it must not block the smaller class-graph milestone.
 
 ## The three observations
 
@@ -26,11 +28,18 @@ OfficeHolding.successor  -> Person
 OfficeHolding.position   -> Position
 ```
 
-A typed entity field pointing at its own class **is** an edge, configured through the
-ordinary field editor. So a graph view is (instances of a class, a chosen reference
-field), and everything a node should show — jurisdiction, instance-of, an image — is
-field configuration that already carries sampling, validation, the value-language policy
-and media handling.
+A typed entity field is an edge configured through the ordinary field editor. A field
+pointing back to its owner class gives the simplest, homogeneous graph: (instances of a
+class, a chosen self-reference field). Everything a node should show — jurisdiction,
+instance-of, an image — is field configuration that already carries sampling, validation,
+the value-language policy and media handling.
+
+The examples above are not all homogeneous. `Person.spouse` is; the `OfficeHolding`
+fields connect different classes. The first implementation milestone deliberately covers
+self-references such as `Position.broaderPosition -> Position`. A later heterogeneous
+projection may render the union of source and target classes. The neutral
+`GraphTraversalStep` already preserves both class names, so that extension does not
+require weakening the traversal model.
 
 This supersedes
 [Carrying Facts Through Relation Discovery](carrying-facts-through-relation-discovery.md).
@@ -44,21 +53,46 @@ The workbench already turns exploring into configuring — "Use as class type (P
 as Seed QIDs", "Use selected property". Relation discovery is the one exploration with no
 such action, so it grew its own node/edge/fact vocabulary instead.
 
-One composite action closes it, assembling calls that already exist:
+One composite action closes it, but it produces a proposal rather than invoking editor
+buttons directly:
 
 ```text
-class          the target type          "Use as class type (P31)"
-seedQids       the starting QID         "Add as Seed QIDs"
+class          the selected class       never inferred or created silently
+seedQids       the starting QID         a graph anchor, not the class's P31 type
 a field        from the property        useProperty(pid, label)
   type         ENTITY
   entityClass  the same class           the self-reference IS the edge
   propertyPid  the walked property
 ```
 
-Then the rest composes unasked: `WikidataFieldGraphTraversal.derive` turns any entity
-field with a property source and a non-`NONE` policy into a `GraphTraversalStep`, so
-setting that field to `CURATED` yields the frontier, the coverage ledger, the
-configuration diagram and the expansion workflow — all of it reading the same field.
+The discovery result does not establish a population type. `Q28470012` may be a useful
+Position anchor without being the P31 class that defines all Positions. Population/type
+configuration stays independent; if the selected class has no valid population, the
+workflow reports that and asks the user to configure it separately.
+
+`WikidataFieldGraphTraversal.derive` already turns a typed modeled entity field with a
+Wikidata property source and `CURATED` policy into a `GraphTraversalStep`. Today that step
+is shown in the configuration and sample diagrams. It is **not yet consumed by production
+generation**: ledger application still reads statement-class `patterns()` only, and no
+production caller executes `GraphWave` over `traversalSteps()`. Wiring execution,
+coverage, frontier review and durable expansion to the same field is the next milestone,
+not an existing consequence.
+
+The action follows the shared workflow:
+
+```text
+show proposed configuration
+  Target class: Position
+  Add anchor: Q28470012
+  Add field: broaderPosition -> Position
+  Source: Wikidata P279, outgoing
+  Graph policy: Curated frontier
+apply through one model-level mutation
+show the resulting configured graph
+```
+
+The mutation belongs below Swing. Reusing field-editor validation and model operations is
+desirable; calling UI actions as an integration API is not.
 
 So the three acts stay separate and each keeps its job:
 
@@ -68,8 +102,26 @@ So the three acts stay separate and each keeps its job:
 
 Open question: whether the translator targets the selected class or creates one.
 Creating means guessing a name and a population rule from a walk, which is where it can
-go quietly wrong. Targeting the selection is unambiguous and matches the other
-translators.
+go quietly wrong. The first milestone therefore requires and targets the selected class.
+Class creation may later be a separate, explicitly previewed action.
+
+### First class-graph milestone
+
+```text
+Entity relation preview
+        -> propose configuration
+Existing selected class
+        + anchor QID
+        + typed self-reference field
+        + CURATED traversal policy
+        -> generate / expand through GraphTraversalStep
+Snapshot class instances
+        -> GraphProjection(edge field path, node ViewConfig)
+Interactive graph rendering
+```
+
+This milestone is useful for History on its own. It neither requires nor waits for the
+property catalogue migration below.
 
 ## The catalogue is a domain in disguise
 
@@ -85,9 +137,12 @@ the pipeline in miniature for one type:
 | `PropertyStructuralHints` | 30 | classification |
 | `PropertyStructureGroups` | 44 | grouping |
 
-A meta-domain would not add a concept. It would delete a parallel one — and its own edges
-are the same self-referencing fields described above: `P279` between classes, `P1647`
-subproperty, `P1696` inverse.
+A meta-domain would not add a concept. It would delete a parallel one. It is broader than
+the property catalogue, however: `P1647` (subproperty) and `P1696` (inverse) connect
+properties, while `P279` connects entity classes. A useful meta-domain therefore needs at
+least distinct `Property` and `EntityType` classes (or an explicit common
+`WikidataConcept` abstraction); it must not pretend all three relations have Property
+instances at both ends.
 
 Its purpose is configuring ordinary domains: which properties exist, what they relate,
 which classes they are about. Today that question is answered by a bespoke catalogue; it
@@ -95,14 +150,18 @@ should be answered by a domain, curated with the tools every other domain gets.
 
 ### Two cautions
 
-**Scale.** History is 2,390 objects. The catalogue is 13,553 and the class hierarchy far
-larger. `properties.tsv` is a flat cached file precisely because it is big and slow to
-change; a generated snapshot has a different lifecycle, and generation has never been
-exercised at that size.
+**Scale and lifecycle.** History is 2,390 objects and the catalogue is 13,553, but object
+count alone is not novel — Oscars already generates more than 30,000 objects. The
+unmeasured costs are acquiring the complete property population, enriching its structural
+relations, refreshing it on an appropriate cadence, and serving a richer schema instead
+of a flat TSV. `properties.tsv` is slow-changing bootstrap data; replacing it requires an
+equivalent or better refresh and offline-start story.
 
 **Bootstrapping.** Domains would be configured using the meta-domain, and the meta-domain
 configured with the same tool. Not vicious — it must only be built once — but the first
-build has no catalogue to help it.
+build has no generated catalogue to help it. The existing TSV should remain an explicit
+bootstrap input until the generated snapshot proves equivalent; deleting the old path is
+the end of the migration, not its first step.
 
 ## Where the renderer belongs
 
@@ -113,12 +172,17 @@ change what that library is for every consumer.
 
 The split the current seam already implies:
 
-- **objectview owns the contract** — a graph rendering mode over Viewables, and "edges
-  come from this reference field". `GraphViewModel` is that contract in all but name:
-  provider-neutral nodes and edges, and a `details` map that is exactly the per-node
-  fields a Viewable supplies.
+- **objectview owns the projection contract** — a graph rendering mode over Viewables:
+  node population, edge `FieldPath`, and node `ViewConfig`. It retains field kinds,
+  nested values, media, provenance and the existing identity/display contracts.
 - **The application owns the implementation** — `InteractiveGraphView`, where the
-  dependency is.
+  dependency is. Its `GraphViewModel` is currently a provider-neutral renderer DTO, not
+  yet the Viewable contract: flattening details into `Map<String,String>` loses the
+  semantics needed for configured fields to appear automatically.
+
+An application adapter may materialize the ObjectView projection into `GraphViewModel`
+for Cytoscape. Adding `Position.jurisdiction` must change the Viewable/ViewConfig, not add
+another line that manually copies jurisdiction into the DTO's `details` map.
 
 That is what let GraphStream be replaced by Cytoscape in one file, and it keeps
 `datasource.graph` — the candidate open-source boundary — free of any of it.
@@ -130,3 +194,7 @@ a private node/fact model beside field configuration, a bespoke catalogue beside
 generation pipeline, a bespoke diagram beside the rendering family. The direction is the
 same in all three — **stop having a second way to do something the model already does** —
 which is the rule this codebase keeps rediscovering.
+
+They share that rule, not a release dependency. Implement and validate the class-graph
+projection first. Treat the property/entity-type meta-domain as a separate migration with
+its own measurements and deletion criterion.

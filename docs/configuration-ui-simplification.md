@@ -171,3 +171,26 @@ verbs plus destination-specific objects, with each label still describing its ef
 - Prefer progressive sections over a second dialog. A concise editor should preserve the
   configured model in one place, not move advanced settings into a parallel editor with
   a second save boundary.
+
+## Deferred until the Nobel walkthrough is complete
+
+The Nobel configuration repeatedly leaves controls untouched: Alias, Extends,
+Subtype, Wikidata type/class membership, Reifies statements of, and several source
+details remain visible even when the selected construct does not need them. Revisit
+this after the walkthrough, using its complete friction list rather than redesigning
+mid-demo.
+
+The likely direction is construct-specific progressive disclosure:
+
+- the chosen class/field kind determines the small required surface;
+- relevant optional controls remain discoverable in named sections;
+- uncommon cross-cutting controls live under an explicit **Advanced** section;
+- an existing non-default value keeps its section visibly marked or expanded, so
+  simplification never hides configured state;
+- visibility asks the same applicability predicates used by validation and compilation,
+  rather than a UI-only table of class names or labels.
+
+Whether the current basic kinds need refinement is intentionally left open. First
+measure which controls Nobel actually needed for Source, Statement, role/entity and
+qualifier fields; only then decide whether progressive sections are sufficient or the
+type vocabulary itself is overloaded.

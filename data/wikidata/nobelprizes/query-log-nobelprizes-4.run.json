@@ -1,0 +1,104 @@
+{
+  "formatVersion" : 1,
+  "savedAt" : "2026-08-30T21:57:31.693104Z",
+  "logText" : "Log message  [OK]  Done\n    | Nothing to remap yet — run Generate domain (or instances) first.\nLog message  [OK]  Done\n    | Nothing to remap yet — run Generate domain (or instances) first.\nLog message  [OK]  Done\n    | Canonicalization: scanned=2392 withModel=2386 withSpec=2386 derived=1364 changed=0  sample: type=LaureatesWithMotivation field= value=[null] 'Henry Kissinger — Nobel Peace Prize' -> 'Henry Kissinger — Nobel Peace Prize'\nLog message  [OK]  Done\n    | Loaded 2392 saved object(s) from nobelprizes.snapshot.json; mapped 2392 instance(s).\nLog message  [OK]  Done\n    | Generated 2392 objects (in memory — use \"Save domain\" to persist to nobelprizes.snapshot.json).\n5 repeated statement label(s) across 1 class(es) — 11 instances involved  [OK]  statement records repeating a label their display-name rule takes from a participant.\n  LaureatesWithMotivation  [OK]  5 shared label(s) — most repeated 3 times\n      International Red Cross and Red Crescent Movement — Nobel Peace Prize  [OK]  3 statement records\n      Office of the United Nations High Commissioner for Refugees — Nobel Peace Prize  [OK]  2 statement records\n      International Committee of the Red Cross — Nobel Peace Prize  [OK]  2 statement records\n      Karl Barry Sharpless — Nobel Prize in Chemistry  [OK]  2 statement records\n      Frederick Sanger — Nobel Prize in Chemistry  [OK]  2 statement records\nLog message  [OK]  Done\n    | What this run did:\n    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.\n    |   Self-reference: Not run in this operation\n    |   Owned composition: Not run in this operation\n    |   Kind classification: Not run in this operation\n    |   Projections: Not run in this operation\n    |   Objects in the pool: 2392\nRemap domain  [OK]  2392 objects\n  Remap instances (no download)  [OK]  2392 objects\n      | Datasource plan: 7 binding(s): 2 Wikidata id (QID), 2 Label, 2 Also known as, 1 Statement property. Compiled and checked, not executed — Remap transforms the saved graph without acquiring class populations, names or field values.\n      | Reusing 2392 downloaded objects from the previous run.\n      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.\n      | Aggregate LaureatesWithMotivation → NobelPrize: 634 group(s) by category + year; 2 source record(s) excluded by missing-key policy.\n      | Snapshot entity-kind classification: 0 newly classified, 33 unknown (33 without stored evidence); 1022 of 1022 role member(s) eligible from evidence producers.\n      | Canonicalization: scanned=2392 withModel=2386 withSpec=2386 derived=1364 changed=0  sample: type=LaureatesWithMotivation field= value=[null] 'Henry Kissinger — Nobel Peace Prize' -> 'Henry Kissinger — Nobel Peace Prize'\n      | Remap (idempotent transforms only): 2392 objects re-materialized, 634 projected field(s) filled, 0 entity kind(s) assigned, 0 dropped (required-field).\n      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.\nLog message  [OK]  Done\n    | Generated 2392 objects (in memory — use \"Save domain\" to persist to nobelprizes.snapshot.json).\n5 repeated statement label(s) across 1 class(es) — 11 instances involved  [OK]  statement records repeating a label their display-name rule takes from a participant.\n  LaureatesWithMotivation  [OK]  5 shared label(s) — most repeated 3 times\n      International Red Cross and Red Crescent Movement — Nobel Peace Prize  [OK]  3 statement records\n      Office of the United Nations High Commissioner for Refugees — Nobel Peace Prize  [OK]  2 statement records\n      International Committee of the Red Cross — Nobel Peace Prize  [OK]  2 statement records\n      Karl Barry Sharpless — Nobel Prize in Chemistry  [OK]  2 statement records\n      Frederick Sanger — Nobel Prize in Chemistry  [OK]  2 statement records\nLog message  [OK]  Done\n    | What this run did:\n    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.\n    |   Self-reference: Not run in this operation\n    |   Owned composition: Ran; every owned part already existed and was reused\n    |   Kind classification: Ran; every kind was already settled\n    |   Projections: Ran; no projected field value changed\n    |   Objects in the pool: 2392\nLog message  [OK]  Done\n    | Saved domain \"NobelPrizes\":\n    | Config:    data/wikidata/nobelprizes/nobelprizes.model.json\n    | Rule tree: data/wikidata/nobelprizes/nobelprizes.ruletree.json\n    | Instances: 2392 -> data/wikidata/nobelprizes/nobelprizes.snapshot.json\n    | Registry:  data/wikidata/datasets.json\n    | Counts:    data/wikidata/nobelprizes/nobelprizes.counts.tsv\n",
+  "pipelines" : [ {
+    "title" : "Remap domain — NobelPrizes",
+    "phases" : [ {
+      "phase" : {
+        "id" : "validate-plan",
+        "title" : "Prepare remap",
+        "description" : "Freeze and compile the model, then stage a copy of the saved graph.",
+        "details" : [ "2392 existing objects", "4 configured classes" ],
+        "explanation" : {
+          "purpose" : "Freeze and compile the model, then stage a copy of the saved graph.",
+          "inputs" : [ ],
+          "operations" : [ "2392 existing objects", "4 configured classes" ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "2392 object(s) staged",
+      "startedAtNanos" : 684748103334480,
+      "elapsedMillis" : 304
+    }, {
+      "phase" : {
+        "id" : "construct",
+        "title" : "Construct",
+        "description" : "Replay the transforms safe for an already-reified pool.",
+        "details" : [ ],
+        "explanation" : {
+          "purpose" : "Replay the transforms safe for an already-reified pool.",
+          "inputs" : [ ],
+          "operations" : [ ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "634 projected field value(s) changed",
+      "startedAtNanos" : 684748408189370,
+      "elapsedMillis" : 39
+    }, {
+      "phase" : {
+        "id" : "semantic-worklist",
+        "title" : "Semantic",
+        "description" : "Settle entity kinds and compose owned parts.",
+        "details" : [ ],
+        "explanation" : {
+          "purpose" : "Settle entity kinds and compose owned parts.",
+          "inputs" : [ ],
+          "operations" : [ ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "0 kind(s), 0 owned part(s)",
+      "startedAtNanos" : 684748448124285,
+      "elapsedMillis" : 55
+    }, {
+      "phase" : {
+        "id" : "finalize",
+        "title" : "Finalize",
+        "description" : "Canonicalize names, prune, check expectations and build vocabularies.",
+        "details" : [ ],
+        "explanation" : {
+          "purpose" : "Canonicalize names, prune, check expectations and build vocabularies.",
+          "inputs" : [ ],
+          "operations" : [ ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "0 dropped (required-field)",
+      "startedAtNanos" : 684748503578086,
+      "elapsedMillis" : 46
+    }, {
+      "phase" : {
+        "id" : "materialize",
+        "title" : "Materialize instances",
+        "description" : "Map the final shared graph into viewable instances.",
+        "details" : [ ],
+        "explanation" : {
+          "purpose" : "Map the final shared graph into viewable instances.",
+          "inputs" : [ ],
+          "operations" : [ ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "2392 instance(s) materialized",
+      "startedAtNanos" : 684748552631339,
+      "elapsedMillis" : 65
+    } ]
+  } ]
+}

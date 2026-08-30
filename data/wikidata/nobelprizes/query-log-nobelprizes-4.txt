@@ -1,0 +1,59 @@
+Log message  [OK]  Done
+    | Nothing to remap yet — run Generate domain (or instances) first.
+Log message  [OK]  Done
+    | Nothing to remap yet — run Generate domain (or instances) first.
+Log message  [OK]  Done
+    | Canonicalization: scanned=2392 withModel=2386 withSpec=2386 derived=1364 changed=0  sample: type=LaureatesWithMotivation field= value=[null] 'Henry Kissinger — Nobel Peace Prize' -> 'Henry Kissinger — Nobel Peace Prize'
+Log message  [OK]  Done
+    | Loaded 2392 saved object(s) from nobelprizes.snapshot.json; mapped 2392 instance(s).
+Log message  [OK]  Done
+    | Generated 2392 objects (in memory — use "Save domain" to persist to nobelprizes.snapshot.json).
+5 repeated statement label(s) across 1 class(es) — 11 instances involved  [OK]  statement records repeating a label their display-name rule takes from a participant.
+  LaureatesWithMotivation  [OK]  5 shared label(s) — most repeated 3 times
+      International Red Cross and Red Crescent Movement — Nobel Peace Prize  [OK]  3 statement records
+      Office of the United Nations High Commissioner for Refugees — Nobel Peace Prize  [OK]  2 statement records
+      International Committee of the Red Cross — Nobel Peace Prize  [OK]  2 statement records
+      Karl Barry Sharpless — Nobel Prize in Chemistry  [OK]  2 statement records
+      Frederick Sanger — Nobel Prize in Chemistry  [OK]  2 statement records
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.
+    |   Self-reference: Not run in this operation
+    |   Owned composition: Not run in this operation
+    |   Kind classification: Not run in this operation
+    |   Projections: Not run in this operation
+    |   Objects in the pool: 2392
+Remap domain  [OK]  2392 objects
+  Remap instances (no download)  [OK]  2392 objects
+      | Datasource plan: 7 binding(s): 2 Wikidata id (QID), 2 Label, 2 Also known as, 1 Statement property. Compiled and checked, not executed — Remap transforms the saved graph without acquiring class populations, names or field values.
+      | Reusing 2392 downloaded objects from the previous run.
+      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.
+      | Aggregate LaureatesWithMotivation → NobelPrize: 634 group(s) by category + year; 2 source record(s) excluded by missing-key policy.
+      | Snapshot entity-kind classification: 0 newly classified, 33 unknown (33 without stored evidence); 1022 of 1022 role member(s) eligible from evidence producers.
+      | Canonicalization: scanned=2392 withModel=2386 withSpec=2386 derived=1364 changed=0  sample: type=LaureatesWithMotivation field= value=[null] 'Henry Kissinger — Nobel Peace Prize' -> 'Henry Kissinger — Nobel Peace Prize'
+      | Remap (idempotent transforms only): 2392 objects re-materialized, 634 projected field(s) filled, 0 entity kind(s) assigned, 0 dropped (required-field).
+      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.
+Log message  [OK]  Done
+    | Generated 2392 objects (in memory — use "Save domain" to persist to nobelprizes.snapshot.json).
+5 repeated statement label(s) across 1 class(es) — 11 instances involved  [OK]  statement records repeating a label their display-name rule takes from a participant.
+  LaureatesWithMotivation  [OK]  5 shared label(s) — most repeated 3 times
+      International Red Cross and Red Crescent Movement — Nobel Peace Prize  [OK]  3 statement records
+      Office of the United Nations High Commissioner for Refugees — Nobel Peace Prize  [OK]  2 statement records
+      International Committee of the Red Cross — Nobel Peace Prize  [OK]  2 statement records
+      Karl Barry Sharpless — Nobel Prize in Chemistry  [OK]  2 statement records
+      Frederick Sanger — Nobel Prize in Chemistry  [OK]  2 statement records
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.
+    |   Self-reference: Not run in this operation
+    |   Owned composition: Ran; every owned part already existed and was reused
+    |   Kind classification: Ran; every kind was already settled
+    |   Projections: Ran; no projected field value changed
+    |   Objects in the pool: 2392
+Log message  [OK]  Done
+    | Saved domain "NobelPrizes":
+    | Config:    data/wikidata/nobelprizes/nobelprizes.model.json
+    | Rule tree: data/wikidata/nobelprizes/nobelprizes.ruletree.json
+    | Instances: 2392 -> data/wikidata/nobelprizes/nobelprizes.snapshot.json
+    | Registry:  data/wikidata/datasets.json
+    | Counts:    data/wikidata/nobelprizes/nobelprizes.counts.tsv

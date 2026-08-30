@@ -144,8 +144,10 @@ Categories.* The Award class then carries 1033 statements — 231 Physics, 233 M
 subjects as the value set — is a different construct with its own trade-offs, and it is
 not needed when the set is six things you can name.
 
-**The Nobel domain beyond Categories.** The prize/share/laureate structure needs a second
-datasource, because Wikidata cannot express a prize shared under different motivations:
-`P6208` is single-valued per award statement, but 76 of 633 prize-years carry more than
-one motivation, and the prize-level motivation has nowhere to live. That is documented
-where that work happens, not here.
+**The Nobel domain beyond Categories.** Wikidata's P166 statements carry laureate,
+category, time and award-rationale evidence, so the first release can model them without
+a second datasource. P6208 is conceptually an award motivation but is stored as
+monolingual text: one statement may carry the same rationale in several languages.
+ModelBuilder retains the language long enough to select the requested wording and then
+stores the resulting text. The later question of grouping shared prizes is documented
+in [the Nobel demo guide](nobel-prizes-first-release-guide.md).

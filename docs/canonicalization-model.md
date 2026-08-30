@@ -46,8 +46,14 @@ reject.
 
 - `ClassKind` on `GeneratedClassModel` is the sole identity discriminator.
 - `CanonicalSpec` contains the policies used by that regime:
-  `{ keyFields[], displayNameMode = LABEL|FIELD|TEMPLATE,
+  `{ keyFields[], duplicatePolicy = KEEP_ONE|MERGE_RECORDS,
+     displayNameMode = LABEL|FIELD|TEMPLATE,
      displayNameField, displayNameTemplate, labelLanguage }`.
+- The natural key answers **when two records mean the same thing**. The duplicate
+  policy answers what happens after they meet. `KEEP_ONE` preserves the preferred
+  complete copy and remains the default for models that do not declare a policy.
+  `MERGE_RECORDS` preserves that copy's scalar values, fills missing scalars and
+  unions collection values in encounter order.
 - `getIdentifier()`/`getDisplayName()` on the materialized object are computed
   from `CanonicalSpec`.
 - Remove `ensureNameField()` and the implicit `name` field; drop the

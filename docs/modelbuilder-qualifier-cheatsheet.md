@@ -20,7 +20,7 @@ statement.
   - select a **reified class** → the **"Statement class"** panel (read‑only
     derived view: *Identity / Roles / Dedup key / Qualifier fields*).
   - select a **field** → the **field editor**.
-- **Toolbar**: `Generate instances` (selected class) · `Generate domain` (all
+- **Toolbar**: `Generate class instances` (selected class) · `Generate domain` (all
   classes) · `Remap (no download)` · `Save domain` · `Show rule tree` ·
   `Show query logs` · `Depth`.
 
