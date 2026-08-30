@@ -28,11 +28,19 @@ public final class GenerationFactDemandPlan {
     public static FactDemandPlan compile(
             GeneratedProjectModel model,
             datasource.api.SourceExecutionPlan sourcePlan) {
+        return compile(model, model == null ? null
+                : wikidata.explore.compiled.ProjectModelCompiler.compile(model), sourcePlan);
+    }
+
+    static FactDemandPlan compile(
+            GeneratedProjectModel model,
+            wikidata.explore.compiled.CompiledProjectModel compiled,
+            datasource.api.SourceExecutionPlan sourcePlan) {
         if (model == null) return FactDemandPlan.empty();
         List<FactDemand> planned = new ArrayList<>();
         planned.addAll(DisambiguationPrune.factDemands(model));
         planned.addAll(ReferentFieldLoad.factDemands(model));
-        for (var recipe : ModelStatementReifications.derive(model)) {
+        for (var recipe : ModelStatementReifications.derive(compiled)) {
             var load = recipe.load();
             planned.add(FactDemand.of(
                     "statement acquisition", load.entityType(),

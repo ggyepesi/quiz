@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import datasource.schema.FieldType;
+
 import aux.FlexibleDate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -122,7 +124,7 @@ class SubclassDomainTest {
                 new SnapshotDomain(List.of(france, alabama)));
         working.defineSubclass("USState", "State", List.of(alabama));
         var definition = new wikidata.explore.model.FieldDefinition(
-                "maps", wikidata.explore.model.FieldType.IMAGE, "",
+                "maps", datasource.schema.FieldType.IMAGE, "",
                 wikidata.explore.model.FieldCardinality.COLLECTION,
                 wikidata.explore.model.FieldRenderMode.INLINE);
         assertTrue(working.addField("USState", FieldDefinitions.toFieldRef(definition)));
@@ -145,7 +147,7 @@ class SubclassDomainTest {
         WorkingDomain working = new WorkingDomain(
                 new SnapshotDomain(List.of(state("Ashmore"))));
         var definition = new wikidata.explore.model.FieldDefinition(
-                "maps", wikidata.explore.model.FieldType.IMAGE, "",
+                "maps", datasource.schema.FieldType.IMAGE, "",
                 wikidata.explore.model.FieldCardinality.COLLECTION,
                 wikidata.explore.model.FieldRenderMode.INLINE);
         assertTrue(working.addField("State", FieldDefinitions.toFieldRef(definition)));

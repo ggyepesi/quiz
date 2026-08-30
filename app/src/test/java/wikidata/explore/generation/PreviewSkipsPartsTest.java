@@ -1,5 +1,7 @@
 package wikidata.explore.generation;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.*;

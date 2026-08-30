@@ -12,7 +12,7 @@ import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.ClassSourceBindings;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceMapping;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

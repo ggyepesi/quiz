@@ -16,6 +16,26 @@ public final class ProjectModelCompiler {
     private ProjectModelCompiler() {
     }
 
+    /**
+     * The compiled model when it compiles, and nothing when it does not.
+     *
+     * <p>Refusing to RUN an invalid model is a gate; refusing to READ one is not. A model
+     * under construction is invalid for most of the time someone is building it, so a
+     * caller that merely describes what a model says — a snapshot save recording graph
+     * state, a preview, a report — asks this and gets an empty answer, while generation
+     * asks {@link #compile} and is stopped. The distinction is named here rather than
+     * left to each caller to catch an exception and guess what to do with it.
+     */
+    public static Optional<CompiledProjectModel> compileIfValid(
+            GeneratedProjectModel editable) {
+        if (editable == null) return Optional.empty();
+        try {
+            return Optional.of(compile(editable));
+        } catch (ModelCompilationException invalid) {
+            return Optional.empty();
+        }
+    }
+
     public static CompiledProjectModel compile(
             GeneratedProjectModel editable) {
 

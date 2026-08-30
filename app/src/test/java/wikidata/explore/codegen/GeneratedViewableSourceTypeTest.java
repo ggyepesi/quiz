@@ -6,7 +6,7 @@ import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldRenderMode;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

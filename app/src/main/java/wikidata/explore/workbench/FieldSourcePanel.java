@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.schema.FieldType;
+
 import wikidata.WikidataIds;
 
 import objectview.utils.swing.GridBagUtils;

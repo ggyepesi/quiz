@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import datasource.api.SourceRecipe;
 import datasource.api.SourceBinding;

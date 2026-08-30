@@ -9,7 +9,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.model.FieldSourceMapping;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.WikidataBinding;
@@ -260,7 +260,8 @@ public class GenerationPipeline {
         // here the model was never checked at all, so an invalid one did not merely
         // waste the fetching: it went on to build a runtime and materialize instances
         // from a model nothing had refused, and the run looked like it worked.
-        wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        wikidata.explore.compiled.CompiledProjectModel compiled =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         RuleNode plan = plan(snapshot);
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
@@ -302,7 +303,7 @@ public class GenerationPipeline {
         // construct is what stops preview quietly showing values a declared restriction
         // would have pruned.
         wikidata.explore.transform.StatementTransforms.applyIdempotent(
-                snapshot, dynamicObjects, log);
+                compiled, dynamicObjects, log);
 
         // displayName from each class's CanonicalSpec (see Canonicalization).
         wikidata.explore.transform.Canonicalization.apply(snapshot, dynamicObjects, log);
@@ -344,6 +345,8 @@ public class GenerationPipeline {
         steps = steps == null ? RunSteps.SILENT : steps;
         steps.started(GenerateDomainPipeline.PLAN,
                 "Compile the model and stage the saved graph");
+        wikidata.explore.compiled.CompiledProjectModel compiled =
+                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -369,7 +372,7 @@ public class GenerationPipeline {
                 "Replay local transforms");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();
         int filled = wikidata.explore.transform.StatementTransforms.applyIdempotent(
-                snapshot, pool, log, projectedRecords);
+                compiled, pool, log, projectedRecords);
         steps.completed(GenerateDomainPipeline.CONSTRUCT,
                 filled + " projected field value(s) changed");
         steps.started(GenerateDomainPipeline.SEMANTIC,
@@ -386,8 +389,6 @@ public class GenerationPipeline {
                 kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
         steps.started(GenerateDomainPipeline.FINALIZE,
                 "Finalize and validate the transformed graph");
-        wikidata.explore.compiled.CompiledProjectModel compiled =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         DomainFinalization.Result finalization = DomainFinalization.apply(
                 snapshot, compiled, pool, List.of(), null, log);
         int restricted = finalization.requiredDropped();

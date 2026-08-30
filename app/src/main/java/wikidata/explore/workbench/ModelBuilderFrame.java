@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.schema.FieldType;
+
 import wikidata.WikidataIds;
 
 import aux.SplitPaneUtils;
@@ -627,7 +629,7 @@ public class ModelBuilderFrame extends JFrame {
                 .filter(java.util.Objects::nonNull)
                 .anyMatch(clazz -> clazz.fields().stream().anyMatch(field ->
                         field != null && field.type()
-                                == wikidata.explore.model.FieldType.ENTITY
+                                == datasource.schema.FieldType.ENTITY
                                 && field.mapping().productionKind()
                                 == wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT));
         if (!modelHasParts || lastRun == null || lastRun.dynamicObjects() == null) {

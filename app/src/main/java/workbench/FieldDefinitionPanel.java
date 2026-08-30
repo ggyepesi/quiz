@@ -4,7 +4,7 @@ import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldDefinition;
 import wikidata.explore.model.FieldRenderMode;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 import javax.swing.*;
 import java.awt.*;

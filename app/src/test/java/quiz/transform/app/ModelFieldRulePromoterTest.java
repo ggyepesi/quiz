@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.Correction;
@@ -89,7 +91,7 @@ class ModelFieldRulePromoterTest {
         File modelFile = temp.resolve("movies.model.json").toFile();
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movies");
-        movie.addField("locations", wikidata.explore.model.FieldType.ENTITY,
+        movie.addField("locations", datasource.schema.FieldType.ENTITY,
                 wikidata.explore.model.FieldCardinality.COLLECTION);
         model.rootClass(movie);
         new GeneratedProjectModelStore().save(model, modelFile);

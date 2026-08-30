@@ -5,7 +5,7 @@ import wikidata.explore.compiled.CompiledField;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.api.FactDemand;
 import wikidata.api.FactDemandPlan;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

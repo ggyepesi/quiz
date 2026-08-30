@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldDefinition;
 import wikidata.explore.model.FieldRenderMode;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

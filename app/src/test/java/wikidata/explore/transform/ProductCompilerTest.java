@@ -9,7 +9,7 @@ import objectview.field.FieldPath;
 import objectview.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

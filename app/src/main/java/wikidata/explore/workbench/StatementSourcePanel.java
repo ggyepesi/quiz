@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.schema.FieldType;
+
 import objectview.utils.swing.GridBagUtils;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphExpansionPolicy;
@@ -341,7 +343,7 @@ public class StatementSourcePanel extends JPanel {
         for (GeneratedFieldModel field : clazz.fields()) {
             if (StatementFieldSemantics.isRuntimeStatementField(field)
                     && field.mapping().isQualifier()
-                    && field.type() == wikidata.explore.model.FieldType.ENTITY
+                    && field.type() == datasource.schema.FieldType.ENTITY
                     && field.cardinality() != null
                     && field.cardinality().isCollection()) {
                 primaryListFieldBox.addItem(field.name());
@@ -428,13 +430,18 @@ public class StatementSourcePanel extends JPanel {
             return;
         }
 
-        Reification reification =
-                projectModel == null
-                        ? null
-                        : ModelStatementReifications
-                          .deriveOne(
-                                  clazz,
-                                  projectModel);
+        Reification reification = null;
+        if (projectModel != null) {
+            try {
+                var compiled = wikidata.explore.compiled.ProjectModelCompiler
+                        .compile(projectModel);
+                reification = ModelStatementReifications.deriveOne(
+                        compiled.findClass(clazz.className()).orElse(null), compiled);
+            } catch (IllegalArgumentException | IllegalStateException ignored) {
+                // An editor routinely holds an incomplete draft. Runtime derivation
+                // starts only after that draft passes the same compiler as generation.
+            }
+        }
 
         if (reification == null) {
             identityValue.setText(

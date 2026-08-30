@@ -6,7 +6,7 @@ import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataObjectGraph;
 import wikidata.explore.model.EntityKindRule;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

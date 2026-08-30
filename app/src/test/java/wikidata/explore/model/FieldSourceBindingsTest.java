@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import datasource.Datasources;
 import datasource.api.SourceBinding;
 import datasource.api.SourceBindingSlot;

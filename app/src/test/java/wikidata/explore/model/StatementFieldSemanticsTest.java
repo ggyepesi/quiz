@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,7 +17,7 @@ class StatementFieldSemanticsTest {
                 new java.io.File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
         GeneratedClassModel award = model.findClass("LaureatesWithMotivation");
 
-        assertEquals(java.util.List.of("category", "year", "laureates"),
+        assertEquals(java.util.List.of("category", "year"),
                 StatementCanonicalDefaults.suggest(award),
                 "Re-derive must never present the saved Nobel statement class with "
                         + "an empty proposal");
@@ -26,12 +28,21 @@ class StatementFieldSemanticsTest {
                 "../data/wikidata/nobelprizes/nobelprizes.model.json").isFile();
     }
 
-    @Test void normalizedStatementParticipantsMayDefineTheNaturalGrain() {
+    /**
+     * Participants were briefly admitted to the key on the theory that the set is a
+     * stable natural grain. Nobel disproved it: 393 award statements name no co-laureate
+     * at all, so the "set" is whatever one statement happened to list, and identifying by
+     * it split shares that belong together. Participants are unioned by the duplicate
+     * policy instead — one mechanism for the question, not two.
+     */
+    @Test void participantsDoNotIdentifyAStatement() {
         GeneratedFieldModel participants = new GeneratedFieldModel(
                 "laureates", FieldType.ENTITY, FieldCardinality.COLLECTION);
         participants.mapping().productionKind(FieldProductionKind.STATEMENT_PARTICIPANTS);
 
-        assertTrue(StatementFieldSemantics.isCanonicalKeyCandidate(participants));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                StatementFieldSemantics.isCanonicalKeyCandidate(participants),
+                "a collection never identifies, participants included");
     }
 
     private static GeneratedClassModel reifyingClass() {

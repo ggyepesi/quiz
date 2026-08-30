@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 import datasource.graph.GraphExpansionPolicy;
 import wikidata.explore.model.GeneratedClassModel;
@@ -44,7 +46,7 @@ class StatementSourcePanelTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel award = new GeneratedClassModel("Award");
         award.statementSource(new StatementClassSource("P166"));
-        award.addField("category", wikidata.explore.model.FieldType.ENTITY,
+        award.addField("category", datasource.schema.FieldType.ENTITY,
                         wikidata.explore.model.FieldCardinality.SINGLE)
                 .mapping().propertyPid("P166");
         award.canonical().keyFields().add("customKey");
@@ -143,7 +145,7 @@ class StatementSourcePanelTest {
         prize.statementSource(new StatementClassSource("P166"));
         GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
         laureate.addField("prizes",
-                wikidata.explore.model.FieldType.ENTITY,
+                datasource.schema.FieldType.ENTITY,
                 wikidata.explore.model.FieldCardinality.COLLECTION)
                 .entityClassName("NobelPrizes");
         project.rootClass(prize);

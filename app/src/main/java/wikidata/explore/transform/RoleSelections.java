@@ -2,7 +2,7 @@ package wikidata.explore.transform;
 
 import objectview.Viewable;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

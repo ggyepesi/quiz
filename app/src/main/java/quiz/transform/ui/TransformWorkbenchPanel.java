@@ -1,5 +1,7 @@
 package quiz.transform.ui;
 
+import datasource.schema.FieldType;
+
 import objectview.demo.MultiView;
 import objectview.render.GroupTreeView;
 import objectview.render.GroupMembersView;
@@ -235,7 +237,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 new workbench.FieldDefinitionPanel();
         editor.availableTargetTypes(controller.types());
         editor.edit(new wikidata.explore.model.FieldDefinition(
-                "", wikidata.explore.model.FieldType.STRING, "",
+                "", datasource.schema.FieldType.STRING, "",
                 wikidata.explore.model.FieldCardinality.SINGLE,
                 wikidata.explore.model.FieldRenderMode.AUTO));
         int ok = JOptionPane.showConfirmDialog(this, editor, "New field on " + type,

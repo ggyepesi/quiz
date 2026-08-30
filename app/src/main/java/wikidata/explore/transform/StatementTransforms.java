@@ -33,19 +33,11 @@ public final class StatementTransforms {
 
     private StatementTransforms() {}
 
-    /** A replayable stage, in whichever form of the model the caller holds. Both
-     *  overloads exist on the transforms themselves; a stage names both so neither path
-     *  can quietly run a different set. Returns how many values it filled (0 when the
-     *  stage does not fill). */
+    /** A replayable stage over the validated, compiled model. Returns how many values
+     *  it filled (0 when the stage does not fill). */
     @FunctionalInterface
     private interface CompiledRun {
         int run(CompiledProjectModel model, List<WikidataDynamicObject> pool,
-                GenerationLog log, List<WikidataDynamicObject> changedOut);
-    }
-
-    @FunctionalInterface
-    private interface ModelRun {
-        int run(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
                 GenerationLog log, List<WikidataDynamicObject> changedOut);
     }
 
@@ -64,35 +56,27 @@ public final class StatementTransforms {
      * user their restriction edits had been skipped while they were in fact applied.
      */
     public enum Stage {
-        REIFY("reify", null, null),
+        REIFY("reify", null),
         AGGREGATES("aggregate classes",
-                (model, pool, log, filled) -> ModelAggregates.apply(model, pool, log),
                 (model, pool, log, filled) -> ModelAggregates.apply(model, pool, log)),
         FIELD_VALUE_RESTRICTIONS("field-value restrictions",
                 (model, pool, log, filled) -> {
-                    FieldValueRestrictions.apply(model, pool); return 0; },
-                (model, pool, log, filled) -> {
                     FieldValueRestrictions.apply(model, pool); return 0; }),
         INVERTS("inverts",
-                (model, pool, log, filled) -> {
-                    ModelInverts.apply(model, pool, log); return 0; },
                 (model, pool, log, filled) -> {
                     ModelInverts.apply(model, pool, log); return 0; }),
         // The only stage that can say WHICH records it touched, so the only one given
         // somewhere to put them. The rest ignore the collector rather than pretend.
         YEAR_PROJECTIONS("year projections",
-                ModelYearProjections::apply,
                 ModelYearProjections::apply),
-        COMPANION_MATCH("companion match", null, null);
+        COMPANION_MATCH("companion match", null);
 
         private final String displayName;
         private final CompiledRun compiled;
-        private final ModelRun editable;
 
-        Stage(String displayName, CompiledRun compiled, ModelRun editable) {
+        Stage(String displayName, CompiledRun compiled) {
             this.displayName = displayName;
             this.compiled = compiled;
-            this.editable = editable;
         }
 
         public String displayName() { return displayName; }
@@ -227,31 +211,6 @@ public final class StatementTransforms {
         for (Stage stage : Stage.values()) {
             if (stage.snapshotReplayable()) {
                 filled += stage.compiled.run(compiled, pool, log, projectionChangedOut);
-            }
-        }
-        return filled;
-    }
-
-    /** Editable-model overload, for a path that has no compiled model to hand. */
-    public static int applyIdempotent(
-            GeneratedProjectModel project,
-            List<WikidataDynamicObject> pool,
-            GenerationLog log) {
-
-        return applyIdempotent(project, pool, log, null);
-    }
-
-    /** As above, collecting the records a projection filled. */
-    public static int applyIdempotent(
-            GeneratedProjectModel project,
-            List<WikidataDynamicObject> pool,
-            GenerationLog log,
-            List<WikidataDynamicObject> projectionChangedOut) {
-
-        int filled = 0;
-        for (Stage stage : Stage.values()) {
-            if (stage.snapshotReplayable()) {
-                filled += stage.editable.run(project, pool, log, projectionChangedOut);
             }
         }
         return filled;

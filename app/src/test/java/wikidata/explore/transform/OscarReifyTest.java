@@ -6,7 +6,7 @@ import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -132,7 +132,8 @@ class OscarReifyTest {
         ModelStatementReifications.Reification r =
                 ModelStatementReifications.deriveOne(nom, project);
         assertEquals(List.of("Q103360"),
-                ModelStatementReifications.valueFilterGaps(r, project));
+                ModelStatementReifications.valueFilterGaps(r,
+                        ProjectModelCompiler.compile(project)));
     }
 
     @Test void noValueFilterGapWhenTheFilterCoversMembership() {
@@ -153,7 +154,8 @@ class OscarReifyTest {
 
         ModelStatementReifications.Reification r =
                 ModelStatementReifications.deriveOne(nom, project);
-        assertTrue(ModelStatementReifications.valueFilterGaps(r, project).isEmpty(),
+        assertTrue(ModelStatementReifications.valueFilterGaps(
+                r, ProjectModelCompiler.compile(project)).isEmpty(),
                 "inherited value filter covers all membership targets");
     }
 
@@ -533,7 +535,8 @@ class OscarReifyTest {
         // sourceMapping — assert it agrees with the editable path (here it flags
         // Q102427, a membership target not in the value filter).
         assertEquals(
-                ModelStatementReifications.valueFilterGaps(editable, project),
+                ModelStatementReifications.valueFilterGaps(
+                        editable, ProjectModelCompiler.compile(project)),
                 ModelStatementReifications.valueFilterGaps(fromCompiled, compiled),
                 "compiled valueFilterGaps must match the editable one");
     }

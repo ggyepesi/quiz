@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import java.util.ArrayList;
 import java.util.List;
 import datasource.api.SourceBinding;

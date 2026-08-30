@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 /** Single model boundary for the explicit Owned-class construction path. */
 public final class OwnedClassSemantics {
 

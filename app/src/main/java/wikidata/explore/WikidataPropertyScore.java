@@ -2,7 +2,7 @@ package wikidata.explore;
 
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldRenderMode;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 public class WikidataPropertyScore {
 

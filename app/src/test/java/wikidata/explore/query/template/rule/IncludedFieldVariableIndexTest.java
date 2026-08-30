@@ -3,7 +3,7 @@ package wikidata.explore.query.template.rule;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.filter.WikidataValueFilterOperator;
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;

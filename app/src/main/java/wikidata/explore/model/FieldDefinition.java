@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 /**
  * Source-independent definition of one domain field. ModelBuilder adds extraction
  * mapping around it; TransformApp can use the same definition for a newly declared

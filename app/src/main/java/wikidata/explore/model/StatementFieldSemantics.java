@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 /**
  * Shared StatementClass field rules used by the editor, validator and runtime.
  *
@@ -153,11 +155,16 @@ public final class StatementFieldSemantics {
     public static boolean isCanonicalKeyCandidate(
             GeneratedFieldModel field) {
 
+        // A COLLECTION never identifies, participants included. That exception was
+        // added on the theory that a participant set is a stable natural key, and the
+        // Nobel data disproved it: 393 award statements state no "together with" at
+        // all, so the set is really whichever co-laureates that one statement happened
+        // to name, and identifying by it split shares that belong together. The answer
+        // is to keep participants OUT of the key and let the duplicate policy union
+        // them, which is one mechanism for the question rather than two.
         return (isRuntimeStatementField(field)
                 || field != null && field.mapping().productionKind()
                         == FieldProductionKind.STATEMENT_SUBJECT)
-                && (field.cardinality() != FieldCardinality.COLLECTION
-                    || field.mapping().productionKind()
-                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
+                && field.cardinality() != FieldCardinality.COLLECTION;
     }
 }

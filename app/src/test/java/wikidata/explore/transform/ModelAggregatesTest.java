@@ -1,5 +1,7 @@
 package wikidata.explore.transform;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.extract.WikidataDynamicObject;

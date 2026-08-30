@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import datasource.schema.FieldType;
+
 import wikidata.WikidataIds;
 
 import wikidata.explore.compiled.CompiledClass;

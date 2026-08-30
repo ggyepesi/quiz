@@ -10,7 +10,7 @@ import objectview.field.FieldAccess;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataObjectGraph;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -33,8 +33,13 @@ public final class WikidataGraphDiscoveryState {
         if (model == null) return GraphDiscoveryState.EMPTY;
         List<GraphExpansionPattern> patterns = new ArrayList<>();
         List<GraphExpansionCoverage> coverage = new ArrayList<>();
+        // A model that does not compile has nothing to say about traversal, which is the
+        // same empty answer a null model gives. Saving records what is there; deciding
+        // whether a model is fit to run belongs to generation, not to persistence.
+        var compiled = wikidata.explore.compiled.ProjectModelCompiler.compileIfValid(model);
+        if (compiled.isEmpty()) return GraphDiscoveryState.EMPTY;
         for (ModelStatementReifications.Reification reification
-                : ModelStatementReifications.derive(model)) {
+                : ModelStatementReifications.derive(compiled.get())) {
             var load = reification.load();
             GeneratedClassModel statement = model.findClass(load.statementType());
             if (statement == null || statement.statementSource() == null
@@ -93,7 +98,9 @@ public final class WikidataGraphDiscoveryState {
     public static GraphExpansionPattern structuralPattern(
             GeneratedProjectModel model, String statementClassName) {
         if (model == null || statementClassName == null) return null;
-        return ModelStatementReifications.derive(model).stream()
+        var compiled = wikidata.explore.compiled.ProjectModelCompiler.compileIfValid(model);
+        if (compiled.isEmpty()) return null;
+        return ModelStatementReifications.derive(compiled.get()).stream()
                 .filter(reification ->
                         statementClassName.equals(reification.load().statementType()))
                 .map(reification -> structuralPattern(model, reification))

@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
 import objectview.field.FieldSet;

@@ -5,7 +5,7 @@ import objectview.field.FieldRef;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldDefinition;
 import wikidata.explore.model.FieldRenderMode;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 /** Adapts the shared producer-neutral field definition to the runtime schema. */
 public final class FieldDefinitions {

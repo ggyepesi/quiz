@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import datasource.graph.GraphExpansionPolicy;
 import wikidata.WikidataIds;
 

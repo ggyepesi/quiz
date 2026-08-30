@@ -1,5 +1,7 @@
 package quiz.web.sources;
 
+import datasource.schema.FieldType;
+
 import objectview.field.DynamicFields;
 import objectview.Viewable;
 import objectview.group.ViewableGroup;
@@ -78,7 +80,7 @@ public class GeneratedSource implements ViewableSource {
             return out;
         }
         for (wikidata.explore.model.GeneratedFieldModel f : t.fields()) {
-            if (f == null || f.type() != wikidata.explore.model.FieldType.ENTITY) {
+            if (f == null || f.type() != datasource.schema.FieldType.ENTITY) {
                 continue;
             }
             wikidata.explore.model.GeneratedClassModel c =
@@ -87,7 +89,7 @@ public class GeneratedSource implements ViewableSource {
                 continue;   // f targets a vocabulary or nothing, not a nested class
             }
             for (wikidata.explore.model.GeneratedFieldModel g : c.fields()) {
-                if (g == null || g.type() != wikidata.explore.model.FieldType.ENTITY) {
+                if (g == null || g.type() != datasource.schema.FieldType.ENTITY) {
                     continue;
                 }
                 String vocab = g.entityClassName();

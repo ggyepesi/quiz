@@ -1,6 +1,6 @@
 package datasource.api;
 
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 /**
  * Provider-neutral shape emitted by a datasource operation.

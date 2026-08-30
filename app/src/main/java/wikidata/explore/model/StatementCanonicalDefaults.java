@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,13 +74,6 @@ public final class StatementCanonicalDefaults {
             if (StatementFieldSemantics.isStatementSubjectField(owner, field)
                     && field.type() == FieldType.ENTITY
                     && field.cardinality() != FieldCardinality.COLLECTION) {
-                result.add(field.name());
-            }
-            // Unlike an arbitrary collection, a participant field is a normalized
-            // mathematical set available before deduplication. Its sorted entity ids
-            // are therefore a stable part of a shared statement's natural grain.
-            if (field.mapping().productionKind()
-                    == FieldProductionKind.STATEMENT_PARTICIPANTS) {
                 result.add(field.name());
             }
         }

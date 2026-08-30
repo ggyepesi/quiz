@@ -8,7 +8,7 @@ import datasource.api.SourceRecipe;
 import datasource.api.acquisition.ClassPopulationOperation;
 import datasource.api.acquisition.PopulationSelection;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 
 import java.util.List;
 import java.util.Map;

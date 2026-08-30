@@ -5,7 +5,7 @@ import process.ProcessWorkflowPipeline;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
@@ -52,6 +52,7 @@ class GenerateDomainPipelineTest {
         var category = nomination.addField(
                 "category", FieldType.ENTITY, FieldCardinality.SINGLE);
         category.mapping().propertyPid("P1411");
+        category.mapping().allowedQids().add("Q19020");
         var nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.COLLECTION);
         nominee.mapping().qualifierPid("P2453");

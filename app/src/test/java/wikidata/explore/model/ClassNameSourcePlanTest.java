@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 import datasource.Datasources;
 import org.junit.jupiter.api.Test;
 import wikidata.api.FactDemand;
@@ -69,8 +71,10 @@ class ClassNameSourcePlanTest {
     @Test void aCategorySourceAlsoDemandsItsArticleCorrespondence() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        // A category relation that produces values reads entities, not text — the
+        // fixture said STRING and nothing checked it until planning began compiling.
         var location = movie.addField(
-                "location", FieldType.STRING, FieldCardinality.COLLECTION);
+                "location", FieldType.ENTITY, FieldCardinality.COLLECTION);
         FieldSourceBindings.put(location, new datasource.api.SourceBinding(
                 datasource.api.SourceBindingTarget.fieldValue("Movie", "location",
                         datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),

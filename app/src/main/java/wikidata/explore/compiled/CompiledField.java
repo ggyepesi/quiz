@@ -1,5 +1,7 @@
 package wikidata.explore.compiled;
 
+import datasource.schema.FieldType;
+
 import wikidata.explore.filter.WikidataValueFilterOperator;
 import wikidata.explore.model.*;
 

@@ -1,5 +1,7 @@
 package wikidata.explore.generation;
 
+import datasource.schema.FieldType;
+
 import datasource.graph.GraphExpansionPolicy;
 import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;

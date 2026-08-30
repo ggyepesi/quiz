@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import datasource.schema.FieldType;
+
 import objectview.Viewable;
 import objectview.ViewableAdapter;
 import org.junit.jupiter.api.Test;
@@ -37,7 +39,7 @@ class DeclaredSourceSeedTest {
         owner.className(className);
         model.rootClass(owner);
         if (pid != null) {
-            var declared = owner.addField(field, wikidata.explore.model.FieldType.ENTITY,
+            var declared = owner.addField(field, datasource.schema.FieldType.ENTITY,
                     wikidata.explore.model.FieldCardinality.COLLECTION);
             declared.mapping().propertyPid(pid);
             declared.mapping().propertyLabel(label);

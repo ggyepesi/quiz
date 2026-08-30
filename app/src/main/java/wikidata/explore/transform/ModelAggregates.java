@@ -9,8 +9,6 @@ import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.AggregateClassSource;
 import wikidata.explore.model.AggregateIdentity;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,15 +23,6 @@ public final class ModelAggregates {
             GenerationLog log) {
         if (model == null) return 0;
         List<Recipe> recipes = model.classes().stream().filter(CompiledClass::aggregateClass)
-                .map(c -> recipe(c.className(), c.aggregateSource())).toList();
-        return apply(recipes, pool, log);
-    }
-
-    public static int apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
-            GenerationLog log) {
-        if (model == null) return 0;
-        List<Recipe> recipes = model.classes().stream()
-                .filter(c -> c.aggregateSource() != null && c.aggregateSource().configured())
                 .map(c -> recipe(c.className(), c.aggregateSource())).toList();
         return apply(recipes, pool, log);
     }
@@ -113,11 +102,6 @@ public final class ModelAggregates {
     }
 
     private static Recipe recipe(String target, CompiledAggregateSource source) {
-        return new Recipe(target, source.sourceClassName(), source.membersField(),
-                source.keys().stream().map(k -> new Key(k.targetField(), k.sourceField())).toList(),
-                source.missingKeyPolicy());
-    }
-    private static Recipe recipe(String target, AggregateClassSource source) {
         return new Recipe(target, source.sourceClassName(), source.membersField(),
                 source.keys().stream().map(k -> new Key(k.targetField(), k.sourceField())).toList(),
                 source.missingKeyPolicy());

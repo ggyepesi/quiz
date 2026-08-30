@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import datasource.schema.FieldType;
+
 /**
  * Effective field semantics shared by compilation and explanatory UI.
  *

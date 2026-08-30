@@ -35,21 +35,22 @@ public final class GenerateDomainPipeline {
     private GenerateDomainPipeline() { }
 
     public static ProcessWorkflowPipeline configured(GeneratedProjectModel model) {
+        var compiled = wikidata.explore.compiled.ProjectModelCompiler.compile(model);
         return new ProcessWorkflowPipeline(List.of(
                 phase(PLAN, "Validate & plan",
                         "Freeze the model, compile it and derive required operations.",
                         List.of(model.classes().size() + " configured classes")),
                 phase(DISCOVER, "Discover populations",
                         "Discover root members and statement subjects.",
-                        rootDetails(model), discoveryExplanation(model)),
+                        rootDetails(model, compiled), discoveryExplanation(model)),
                 phase(ACQUIRE_STATEMENTS, "Acquire statement facts",
                         "Load main statements and configured qualifier facts.",
-                        statementAcquisitionDetails(model),
-                        statementAcquisitionExplanation(model)),
+                        statementAcquisitionDetails(model, compiled),
+                        statementAcquisitionExplanation(compiled)),
                 phase(CONSTRUCT, "Construct graph",
                         "Reify statement records, apply restrictions, inverts and projections.",
-                        statementConstructionDetails(model),
-                        statementConstructionExplanation(model)),
+                        statementConstructionDetails(compiled),
+                        statementConstructionExplanation(compiled)),
                 phase(SEMANTIC, "Resolve semantic worklist",
                         "Repeat role stamping, field/evidence acquisition, kind classification "
                                 + "and owned-value construction until stable.",
@@ -127,7 +128,8 @@ public final class GenerateDomainPipeline {
                 id, title, description, details, explanation);
     }
 
-    private static List<String> rootDetails(GeneratedProjectModel model) {
+    private static List<String> rootDetails(GeneratedProjectModel model,
+            wikidata.explore.compiled.CompiledProjectModel compiled) {
         List<String> out = new ArrayList<>();
         for (GeneratedClassModel clazz : model.classes()) {
             MembershipPattern pattern = MembershipPattern.of(clazz, model);
@@ -139,7 +141,8 @@ public final class GenerateDomainPipeline {
                         + ", depth " + clazz.generationDepth());
             }
         }
-        for (FactDemand demand : GenerationFactDemandPlan.compile(model).all()) {
+        for (FactDemand demand : GenerationFactDemandPlan.compile(
+                model, compiled, null).all()) {
             if (!demand.propertyPids().isEmpty()) {
                 out.add(demand.targetClass() + " — retain "
                         + String.join(", ", demand.propertyPids()) + " for "
@@ -153,10 +156,11 @@ public final class GenerateDomainPipeline {
         return none(out, "No directly extracted root classes");
     }
 
-    private static List<String> statementAcquisitionDetails(GeneratedProjectModel model) {
+    private static List<String> statementAcquisitionDetails(GeneratedProjectModel model,
+            wikidata.explore.compiled.CompiledProjectModel compiled) {
         List<String> out = new ArrayList<>();
-        FactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model);
-        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+        FactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model, compiled, null);
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(compiled)) {
             var load = recipe.load();
             String source = load.discoverSubjects()
                     ? "discover subjects into " + load.entityType()
@@ -189,9 +193,10 @@ public final class GenerateDomainPipeline {
         return none(out, "No statement classes");
     }
 
-    private static List<String> statementConstructionDetails(GeneratedProjectModel model) {
+    private static List<String> statementConstructionDetails(
+            wikidata.explore.compiled.CompiledProjectModel compiled) {
         List<String> out = new ArrayList<>();
-        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(compiled)) {
             var load = recipe.load();
             var construct = recipe.reify();
             String key = construct.dedupBy().isEmpty() ? "surrogate statement identity"
@@ -495,10 +500,10 @@ public final class GenerateDomainPipeline {
     }
 
     private static PhaseExplanation statementAcquisitionExplanation(
-            GeneratedProjectModel model) {
+            wikidata.explore.compiled.CompiledProjectModel compiled) {
         List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
         List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
-        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(compiled)) {
             var load = recipe.load();
             refs.add(PhaseExplanation.ModelReference.clazz(load.statementType()));
             refs.add(PhaseExplanation.ModelReference.property(load.propertyPid()));
@@ -531,10 +536,10 @@ public final class GenerateDomainPipeline {
     }
 
     private static PhaseExplanation statementConstructionExplanation(
-            GeneratedProjectModel model) {
+            wikidata.explore.compiled.CompiledProjectModel compiled) {
         List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
         List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
-        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+        for (var recipe : wikidata.explore.transform.ModelStatementReifications.derive(compiled)) {
             var load = recipe.load();
             var construct = recipe.reify();
             refs.add(PhaseExplanation.ModelReference.clazz(construct.targetType()));

@@ -10,11 +10,11 @@ import org.junit.jupiter.api.io.TempDir;
 import quiz.transform.app.SnapshotDomain;
 import domain.DomainField;
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldType;
+import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
