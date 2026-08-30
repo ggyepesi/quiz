@@ -7,6 +7,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldType;
+import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -27,6 +28,60 @@ class OscarReifyTest {
         WikidataDynamicObject o = new WikidataDynamicObject(qid, name);
         o.type(type);
         return o;
+    }
+
+    @Test void mergePolicyUnionsParticipantsOfRecordsWithTheSameNaturalKey() {
+        WikidataDynamicObject ashkin = obj("Q1", "Arthur Ashkin", "Person");
+        WikidataDynamicObject mourou = obj("Q2", "Gérard Mourou", "Person");
+        WikidataDynamicObject physics = obj("Q38104", "Nobel Prize in Physics", "Category");
+
+        WikidataDynamicObject first = obj("statement-1", "first", "Statement");
+        first.put("category", physics);
+        first.put("year", 2018);
+        first.put("motivation", "for one achievement");
+        first.put("laureates", List.of(ashkin));
+
+        WikidataDynamicObject second = obj("statement-2", "second", "Statement");
+        second.put("category", physics);
+        second.put("year", 2018);
+        second.put("motivation", "for one achievement");
+        second.put("laureates", List.of(mourou));
+
+        WikidataDynamicObject source = obj("source", "source", "Source");
+        source.put("awards", List.of(first, second));
+
+        ReifyConstruct merge = new ReifyConstruct(
+                "Source", "awards", "LaureatesWithMotivation", "source", "value", true,
+                List.of(), List.of("category", "year", "motivation"), "laureates",
+                List.of(), CanonicalSpec.DuplicatePolicy.MERGE_RECORDS);
+
+        List<WikidataDynamicObject> result = new TransformEngine()
+                .applyReify(new ArrayList<>(List.of(source)), merge);
+
+        assertEquals(1, result.size());
+        assertEquals(List.of(ashkin, mourou), result.get(0).get("laureates"));
+    }
+
+    @Test void absentMergePolicyKeepsTheHistoricPreferredCopy() {
+        WikidataDynamicObject one = obj("Q1", "One", "Person");
+        WikidataDynamicObject two = obj("Q2", "Two", "Person");
+        WikidataDynamicObject first = obj("statement-1", "first", "Statement");
+        first.put("key", "same");
+        first.put("members", List.of(one));
+        WikidataDynamicObject second = obj("statement-2", "second", "Statement");
+        second.put("key", "same");
+        second.put("members", List.of(two));
+        WikidataDynamicObject source = obj("source", "source", "Source");
+        source.put("items", List.of(first, second));
+
+        ReifyConstruct keepOne = new ReifyConstruct(
+                "Source", "items", "Record", "source", "value", true,
+                List.of(), List.of("key"));
+        List<WikidataDynamicObject> result = new TransformEngine()
+                .applyReify(new ArrayList<>(List.of(source)), keepOne);
+
+        assertEquals(1, result.size());
+        assertEquals(List.of(one), result.get(0).get("members"));
     }
 
     @Test void valueQidsInheritedFromSourceMembershipWhenTheFieldHasNone() {
@@ -324,6 +379,27 @@ class OscarReifyTest {
                 "the person-side copies are dropped, not served");
         assertEquals("WikidataDynamicObject", aStmt.typeName());
         assertEquals("WikidataDynamicObject", bStmt.typeName());
+    }
+
+    @Test void anExplicitSymmetricListIncludesSubjectAndQualifierParticipants() {
+        WikidataDynamicObject einstein = obj("Q937", "Albert Einstein", "Laureate");
+        WikidataDynamicObject collaborator = obj("Q2", "Collaborator", "Laureate");
+        WikidataDynamicObject physics = obj("Q38104", "Physics", "Category");
+        WikidataDynamicObject statement = obj("Q937$award", "Physics", "Statement");
+        statement.put("category", physics);
+        statement.merge("laureates", collaborator);
+        einstein.put("awards", List.of(statement));
+
+        ReifyConstruct construct = new ReifyConstruct(
+                "Laureate", "awards", "PrizeShare", "source", "value", true,
+                List.of(), List.of(), "laureates", List.of("laureates"));
+
+        List<WikidataDynamicObject> result = new TransformEngine().applyReify(
+                new ArrayList<>(List.of(einstein)), construct);
+
+        assertEquals(1, result.size());
+        assertEquals(List.of(einstein, collaborator), result.getFirst().get("laureates"),
+                "the source storage asymmetry must not leak into the served list");
     }
 
     @Test void separateNominationsInSameCategoryStaySeparate() {

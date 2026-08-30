@@ -74,6 +74,91 @@ class ModelStatementReificationsTest {
                 reify.dedupBy().toString());
     }
 
+    @Test void anExplicitStatementSubjectNeedsNoQualifier() {
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("Laureate", "P166"));
+        prize.fields().add(field("category", FieldType.ENTITY, "P166", ""));
+        GeneratedFieldModel laureate = field(
+                "laureate", FieldType.ENTITY, "", "");
+        laureate.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        laureate.entityClassName("Laureate");
+        prize.fields().add(laureate);
+
+        GeneratedClassModel target = new GeneratedClassModel("Laureate");
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(target);
+        project.addClass(prize);
+
+        ModelStatementReifications.Reification editable =
+                ModelStatementReifications.deriveOne(prize, project);
+        var compiled = ProjectModelCompiler.compile(project);
+        ModelStatementReifications.Reification immutable =
+                ModelStatementReifications.deriveOne(
+                        compiled.findClass("NobelPrize").orElseThrow(), compiled);
+
+        for (ModelStatementReifications.Reification result
+                : List.of(editable, immutable)) {
+            assertTrue(result.load().qualifiers().stream().noneMatch(
+                    q -> q.fieldName().equals("laureate")));
+            assertTrue(result.reify().roles().stream().anyMatch(
+                    role -> role.field().equals("laureate")
+                            && role.fallbackToSource()
+                            && role.kind()
+                            == wikidata.explore.model.RoleKind.IDENTITY));
+        }
+        assertTrue(StatementCanonicalDefaults.suggest(prize)
+                .containsAll(List.of("category", "laureate")));
+    }
+
+    @Test void englishLanguageQidCompilesToTheLiteralLanguageCode() {
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("Laureate", "P166"));
+        prize.fields().add(field("category", FieldType.ENTITY, "P166", ""));
+        GeneratedFieldModel motivation = field(
+                "motivation", FieldType.TEXT, "", "P6208");
+        motivation.mapping().valueLanguage("Q1860");
+        prize.fields().add(motivation);
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Laureate"));
+        project.addClass(prize);
+
+        QualifierLoadConfig.Qualifier qualifier = ModelStatementReifications
+                .deriveOne(prize, project).load().qualifiers().stream()
+                .filter(item -> item.fieldName().equals("motivation"))
+                .findFirst().orElseThrow();
+
+        assertEquals("en", qualifier.language(),
+                "Q1860 and en must configure the same monolingual-text wording");
+    }
+
+    @Test void statementParticipantsCompileAsAFieldOperationNotCanonicalPolicy() {
+        GeneratedClassModel share = new GeneratedClassModel("LaureateGroup");
+        share.statementSource(new StatementClassSource("Laureate", "P166"));
+        share.fields().add(field("category", FieldType.ENTITY, "P166", ""));
+        GeneratedFieldModel laureates = new GeneratedFieldModel(
+                "laureates", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        laureates.mapping().qualifierPid("P1706");
+        laureates.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_PARTICIPANTS);
+        share.fields().add(laureates);
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Laureate"));
+        project.addClass(share);
+
+        ModelStatementReifications.Reification result =
+                ModelStatementReifications.deriveOne(share, project);
+
+        assertEquals(List.of("laureates"),
+                result.reify().subjectParticipantFields());
+        assertTrue(result.load().qualifiers().stream().anyMatch(qualifier ->
+                qualifier.fieldName().equals("laureates")
+                        && qualifier.pid().equals("P1706")
+                        && qualifier.multi()));
+    }
+
     @Test void explicitDateProjectionSurvivesEditableAndCompiledDerivation() {
         GeneratedClassModel source = new GeneratedClassModel("People");
         GeneratedClassModel statement = new GeneratedClassModel("Reign");

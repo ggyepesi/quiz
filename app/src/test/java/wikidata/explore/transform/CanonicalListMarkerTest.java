@@ -81,11 +81,15 @@ class CanonicalListMarkerTest {
 
     @Test void theDeclarationSurvivesTheRoundTripThroughTheCompiledModel() {
         CanonicalSpec spec = new CanonicalSpec()
-                .primaryListField("nominees");
+                .primaryListField("nominees")
+                .duplicatePolicy(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS);
 
-        assertEquals("nominees",
-                wikidata.explore.compiled.CompiledCanonical.from(spec)
-                        .toSpec().primaryListField(),
+        CanonicalSpec restored = wikidata.explore.compiled.CompiledCanonical.from(spec)
+                .toSpec();
+        assertEquals("nominees", restored.primaryListField(),
                 "compile and decompile must not lose which copy is canonical");
+        assertEquals(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS,
+                restored.duplicatePolicy(),
+                "compile and decompile must not lose how duplicates combine");
     }
 }

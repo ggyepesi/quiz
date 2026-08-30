@@ -6,6 +6,12 @@ public enum FieldProductionKind {
     CHILD_OBJECTS,
     /** One component object composed from the owning entity itself. */
     OWNED_COMPONENT,
+    /** On a statement class, copy the entity carrying the reified statement.
+     *  This is a first-class source, not a missing-qualifier fallback. */
+    STATEMENT_SUBJECT,
+    /** On a statement class, assemble a symmetric participant collection from the
+     * statement subject plus the configured entity qualifier values. */
+    STATEMENT_PARTICIPANTS,
     /** DERIVED, not fetched: this field is the inverse of a forward reference on
      *  the referenced class — built in memory from data already generated, with no
      *  query. E.g. {@code Category.nominees} = the reverse of
@@ -26,6 +32,8 @@ public enum FieldProductionKind {
             case DELAYED_ENTITY_FIELD -> "Related entity values";
             case CHILD_OBJECTS -> "Related objects";
             case OWNED_COMPONENT -> "Owned component (QID from owner)";
+            case STATEMENT_SUBJECT -> "Statement subject";
+            case STATEMENT_PARTICIPANTS -> "Statement participants";
             case INVERT -> "Invert (reverse of another field)";
             case COMPANION_MATCH -> "Companion match (outcome flag)";
             case AUTO -> "Auto";

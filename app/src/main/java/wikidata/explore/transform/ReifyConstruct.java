@@ -26,7 +26,9 @@ public record ReifyConstruct(
         boolean promote,
         java.util.List<Role> roles,
         java.util.List<String> dedupBy,
-        String primaryListField) {
+        String primaryListField,
+        java.util.List<String> subjectParticipantFields,
+        wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy) {
 
     /**
      * A CANONICAL field on a promoted event whose value is a qualifier ({@code
@@ -56,20 +58,29 @@ public record ReifyConstruct(
         roles = roles == null ? java.util.List.of() : roles;
         dedupBy = dedupBy == null ? java.util.List.of() : dedupBy;
         primaryListField = primaryListField == null ? "" : primaryListField;
+        subjectParticipantFields = subjectParticipantFields == null
+                ? java.util.List.of() : java.util.List.copyOf(subjectParticipantFields);
+        duplicatePolicy = duplicatePolicy == null
+                ? wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE
+                : duplicatePolicy;
     }
 
     /** Back-compat 5-arg form (non-promoting, wraps the element). */
     public ReifyConstruct(String sourceType, String listField, String targetType,
                           String sourceField, String elementField) {
         this(sourceType, listField, targetType, sourceField, elementField,
-                false, java.util.List.of(), java.util.List.of(), "");
+                false, java.util.List.of(), java.util.List.of(), "",
+                java.util.List.of(),
+                wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE);
     }
 
     /** Back-compat 6-arg form (promote, no canonical roles/dedup). */
     public ReifyConstruct(String sourceType, String listField, String targetType,
                           String sourceField, String elementField, boolean promote) {
         this(sourceType, listField, targetType, sourceField, elementField,
-                promote, java.util.List.of(), java.util.List.of(), "");
+                promote, java.util.List.of(), java.util.List.of(), "",
+                java.util.List.of(),
+                wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE);
     }
 
     /** 8-arg form (roles + dedup) without canonicalization. */
@@ -77,7 +88,29 @@ public record ReifyConstruct(
                           String sourceField, String elementField, boolean promote,
                           java.util.List<Role> roles, java.util.List<String> dedupBy) {
         this(sourceType, listField, targetType, sourceField, elementField,
-                promote, roles, dedupBy, "");
+                promote, roles, dedupBy, "", java.util.List.of(),
+                wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE);
+    }
+
+    /** Back-compat form without subject/list composition. */
+    public ReifyConstruct(String sourceType, String listField, String targetType,
+                          String sourceField, String elementField, boolean promote,
+                          java.util.List<Role> roles, java.util.List<String> dedupBy,
+                          String primaryListField) {
+        this(sourceType, listField, targetType, sourceField, elementField,
+                promote, roles, dedupBy, primaryListField, java.util.List.of(),
+                wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE);
+    }
+
+    /** Back-compatible form with subject/list composition and historic keep-one policy. */
+    public ReifyConstruct(String sourceType, String listField, String targetType,
+                          String sourceField, String elementField, boolean promote,
+                          java.util.List<Role> roles, java.util.List<String> dedupBy,
+                          String primaryListField,
+                          java.util.List<String> subjectParticipantFields) {
+        this(sourceType, listField, targetType, sourceField, elementField,
+                promote, roles, dedupBy, primaryListField, subjectParticipantFields,
+                wikidata.explore.model.CanonicalSpec.DuplicatePolicy.KEEP_ONE);
     }
 
     /** Whether this reify canonicalizes by a primary list (the shared-award

@@ -21,8 +21,9 @@ public final class StatementFieldSemantics {
 
         return field != null
                 && !field.isNameField()
-                && field.mapping().productionKind()
-                == FieldProductionKind.AUTO;
+                && (field.mapping().productionKind() == FieldProductionKind.AUTO
+                    || field.mapping().productionKind()
+                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
     }
 
     /**
@@ -36,6 +37,16 @@ public final class StatementFieldSemantics {
                 && owner.reifiesStatements()
                 && isRuntimeStatementField(field)
                 && field.mapping().isQualifier();
+    }
+
+    /** True when the field explicitly denotes the entity carrying the statement. */
+    public static boolean isStatementSubjectField(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        return owner != null
+                && owner.reifiesStatements()
+                && field != null
+                && field.mapping().productionKind()
+                        == FieldProductionKind.STATEMENT_SUBJECT;
     }
 
     /**
@@ -142,8 +153,11 @@ public final class StatementFieldSemantics {
     public static boolean isCanonicalKeyCandidate(
             GeneratedFieldModel field) {
 
-        return isRuntimeStatementField(field)
-                && field.cardinality()
-                != FieldCardinality.COLLECTION;
+        return (isRuntimeStatementField(field)
+                || field != null && field.mapping().productionKind()
+                        == FieldProductionKind.STATEMENT_SUBJECT)
+                && (field.cardinality() != FieldCardinality.COLLECTION
+                    || field.mapping().productionKind()
+                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
     }
 }

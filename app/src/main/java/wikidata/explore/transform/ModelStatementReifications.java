@@ -158,6 +158,7 @@ public final class ModelStatementReifications {
         List<QualifierLoadConfig.Qualifier> qualifiers =
                 new ArrayList<>();
         List<String> listQualifiers = new ArrayList<>();
+        List<String> subjectParticipantFields = new ArrayList<>();
 
         for (GeneratedFieldModel field : statementClass.fields()) {
             if (!StatementFieldSemantics.isRuntimeStatementField(field)
@@ -175,10 +176,14 @@ public final class ModelStatementReifications {
                     field.name(),
                     kind,
                     multi,
-                    clean(field.mapping().valueLanguage())));
+                    qualifierLanguage(kind, field.mapping().valueLanguage())));
 
             if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
                 listQualifiers.add(field.name());
+                if (field.mapping().productionKind()
+                        == FieldProductionKind.STATEMENT_PARTICIPANTS) {
+                    subjectParticipantFields.add(field.name());
+                }
             }
         }
         String primaryListField = canonicalListMarker(
@@ -235,7 +240,9 @@ public final class ModelStatementReifications {
                 true,
                 roles,
                 dedup,
-                primaryListField);
+                primaryListField,
+                subjectParticipantFields,
+                statementClass.canonical().duplicatePolicy());
 
         return new Reification(load, reify);
     }
@@ -316,6 +323,7 @@ public final class ModelStatementReifications {
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
         List<String> listQualifiers = new ArrayList<>();
+        List<String> subjectParticipantFields = new ArrayList<>();
 
         for (CompiledField field : statementClass.ownFields()) {
             if (!runtimeStatementField(field)
@@ -332,10 +340,14 @@ public final class ModelStatementReifications {
                     field.name(),
                     kind,
                     multi,
-                    clean(field.source().valueLanguage())));
+                    qualifierLanguage(kind, field.source().valueLanguage())));
 
             if (kind == QualifierLoadConfig.Kind.ENTITY && multi) {
                 listQualifiers.add(field.name());
+                if (field.source().productionKind()
+                        == FieldProductionKind.STATEMENT_PARTICIPANTS) {
+                    subjectParticipantFields.add(field.name());
+                }
             }
         }
         String primaryListField = canonicalListMarker(
@@ -389,7 +401,9 @@ public final class ModelStatementReifications {
                 true,
                 roles,
                 dedup,
-                primaryListField);
+                primaryListField,
+                subjectParticipantFields,
+                statementClass.canonical().duplicatePolicy());
 
         return new Reification(load, reify);
     }
@@ -565,11 +579,12 @@ public final class ModelStatementReifications {
         return listQualifiers.isEmpty() ? "" : listQualifiers.get(0);
     }
 
-    /** Compiled fields are never name fields (the compiler drops those), so a
-     *  runtime statement field is simply an AUTO-produced one. */
+    /** Compiled fields are never name fields (the compiler drops those). */
     private static boolean runtimeStatementField(CompiledField field) {
         return field != null
-                && field.source().productionKind() == FieldProductionKind.AUTO;
+                && (field.source().productionKind() == FieldProductionKind.AUTO
+                    || field.source().productionKind()
+                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
     }
 
     private static boolean supportsMissingQualifierPolicy(
@@ -830,12 +845,16 @@ public final class ModelStatementReifications {
                 + (reify.canonicalizesByList()
                 ? reify.primaryListField()
                 : "—")
+                + "\n subject-participant fields: "
+                + display(reify.subjectParticipantFields())
                 + "\n subject-fallback fields: "
                 + display(subjectFallbacks)
                 + "\n statement-value-fallback fields: "
                 + display(valueFallbacks)
                 + "\n canonical key: "
                 + display(reify.dedupBy(), " + ")
+                + "\n duplicate policy: "
+                + reify.duplicatePolicy()
                 + "\n qualifiers: "
                 + (qualifierText.length() == 0
                 ? "—"
@@ -1257,6 +1276,13 @@ public final class ModelStatementReifications {
                     : QualifierLoadConfig.Kind.YEAR;
         }
         return QualifierLoadConfig.Kind.STRING;
+    }
+
+    private static String qualifierLanguage(
+            QualifierLoadConfig.Kind kind, String configured) {
+        return kind == QualifierLoadConfig.Kind.STRING
+                ? wikidata.WikidataLanguageDefaults.literalCode(configured)
+                : "";
     }
 
     private static String display(List<String> values) {

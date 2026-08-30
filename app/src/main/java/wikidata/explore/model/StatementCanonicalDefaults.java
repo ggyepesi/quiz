@@ -17,7 +17,8 @@ import java.util.List;
  * silently acquiring a different meaning.</p>
  *
  * <p>The proposed statement grain is the statement value plus scalar entity
- * qualifiers and scalar date qualifiers. Collection qualifiers denote
+ * qualifiers, scalar date qualifiers, and an explicitly declared statement
+ * subject. Collection qualifiers denote
  * zero-or-more participants rather than one stable key component; and derived
  * fields such as {@code COMPANION_MATCH} do not exist when reification performs
  * its identity-based deduplication.</p>
@@ -66,6 +67,18 @@ public final class StatementCanonicalDefaults {
                     && (field.type() == FieldType.ENTITY
                             || field.type() == FieldType.DATE)
                     && field.cardinality() != FieldCardinality.COLLECTION) {
+                result.add(field.name());
+            }
+            if (StatementFieldSemantics.isStatementSubjectField(owner, field)
+                    && field.type() == FieldType.ENTITY
+                    && field.cardinality() != FieldCardinality.COLLECTION) {
+                result.add(field.name());
+            }
+            // Unlike an arbitrary collection, a participant field is a normalized
+            // mathematical set available before deduplication. Its sorted entity ids
+            // are therefore a stable part of a shared statement's natural grain.
+            if (field.mapping().productionKind()
+                    == FieldProductionKind.STATEMENT_PARTICIPANTS) {
                 result.add(field.name());
             }
         }

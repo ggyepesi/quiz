@@ -9,6 +9,31 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StatementFieldSemanticsTest {
 
+    @org.junit.jupiter.api.condition.EnabledIf("nobelModelPresent")
+    @Test void savedNobelModelHasANonEmptyDerivedIdentityProposal() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(
+                new java.io.File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
+        GeneratedClassModel award = model.findClass("LaureatesWithMotivation");
+
+        assertEquals(java.util.List.of("category", "year", "laureates"),
+                StatementCanonicalDefaults.suggest(award),
+                "Re-derive must never present the saved Nobel statement class with "
+                        + "an empty proposal");
+    }
+
+    static boolean nobelModelPresent() {
+        return new java.io.File(
+                "../data/wikidata/nobelprizes/nobelprizes.model.json").isFile();
+    }
+
+    @Test void normalizedStatementParticipantsMayDefineTheNaturalGrain() {
+        GeneratedFieldModel participants = new GeneratedFieldModel(
+                "laureates", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        participants.mapping().productionKind(FieldProductionKind.STATEMENT_PARTICIPANTS);
+
+        assertTrue(StatementFieldSemantics.isCanonicalKeyCandidate(participants));
+    }
+
     private static GeneratedClassModel reifyingClass() {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.statementSource(

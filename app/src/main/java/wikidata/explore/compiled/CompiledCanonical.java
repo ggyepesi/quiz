@@ -12,6 +12,7 @@ import java.util.List;
  */
 public record CompiledCanonical(
         List<String> keyFields,
+        CanonicalSpec.DuplicatePolicy duplicatePolicy,
         CanonicalSpec.DisplayNameMode displayNameMode,
         String displayNameField,
         String displayNameTemplate,
@@ -20,6 +21,8 @@ public record CompiledCanonical(
 
     public CompiledCanonical {
         keyFields = keyFields == null ? List.of() : List.copyOf(keyFields);
+        duplicatePolicy = duplicatePolicy == null
+                ? CanonicalSpec.DuplicatePolicy.KEEP_ONE : duplicatePolicy;
         displayNameMode = displayNameMode == null
                 ? CanonicalSpec.DisplayNameMode.LABEL
                 : displayNameMode;
@@ -32,12 +35,13 @@ public record CompiledCanonical(
         primaryListField = clean(primaryListField);
     }
 
-    /** Back-compat: no declared canonical list marker (the inference decides). */
+    /** Back-compat: keep one duplicate and infer the canonical-list marker. */
     public CompiledCanonical(List<String> keyFields,
                              CanonicalSpec.DisplayNameMode displayNameMode,
                              String displayNameField, String displayNameTemplate,
                              String labelLanguage) {
-        this(keyFields, displayNameMode, displayNameField,
+        this(keyFields, CanonicalSpec.DuplicatePolicy.KEEP_ONE,
+                displayNameMode, displayNameField,
                 displayNameTemplate, labelLanguage, "");
     }
 
@@ -47,6 +51,7 @@ public record CompiledCanonical(
      *  {@code Canonicalizer}, which is spec-typed). */
     public CanonicalSpec toSpec() {
         CanonicalSpec spec = new CanonicalSpec()
+                .duplicatePolicy(duplicatePolicy)
                 .displayNameMode(displayNameMode)
                 .displayNameField(displayNameField)
                 .displayNameTemplate(displayNameTemplate)
@@ -60,6 +65,7 @@ public record CompiledCanonical(
         CanonicalSpec source = spec == null ? new CanonicalSpec() : spec;
         return new CompiledCanonical(
                 source.keyFields(),
+                source.duplicatePolicy(),
                 source.displayNameMode(),
                 source.displayNameField(),
                 source.displayNameTemplate(),

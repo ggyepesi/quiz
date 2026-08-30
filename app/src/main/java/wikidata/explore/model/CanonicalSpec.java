@@ -15,6 +15,17 @@ import java.util.List;
  */
 public class CanonicalSpec {
 
+    public enum DuplicatePolicy {
+        /** Preserve the preferred complete copy. This is the historic behaviour. */
+        KEEP_ONE {
+            @Override public String toString() { return "Keep one"; }
+        },
+        /** Preserve scalar values from the preferred copy and union collection values. */
+        MERGE_RECORDS {
+            @Override public String toString() { return "Merge records"; }
+        }
+    }
+
 
     public enum DisplayNameMode {
         /** Wikidata label (entities only). */
@@ -29,6 +40,7 @@ public class CanonicalSpec {
     // Identity for STATEMENT classes: the natural-key fields (the grain), in order.
     // Empty => surrogate. SOURCE and OWNED obtain identity elsewhere.
     private final List<String> keyFields = new ArrayList<>();
+    private DuplicatePolicy duplicatePolicy = DuplicatePolicy.KEEP_ONE;
 
     private DisplayNameMode displayNameMode = DisplayNameMode.LABEL;
     private String displayNameField = "";       // DisplayNameMode.FIELD
@@ -39,12 +51,22 @@ public class CanonicalSpec {
     // Blank => fall back to structural inference; see primaryListField().
     private String primaryListField = "";
 
+
     public CanonicalSpec() {}
 
 
 
     /** The natural-key fields for a STATEMENT class (mutable). */
     public List<String> keyFields() { return keyFields; }
+
+    public DuplicatePolicy duplicatePolicy() {
+        return duplicatePolicy == null ? DuplicatePolicy.KEEP_ONE : duplicatePolicy;
+    }
+
+    public CanonicalSpec duplicatePolicy(DuplicatePolicy policy) {
+        duplicatePolicy = policy == null ? DuplicatePolicy.KEEP_ONE : policy;
+        return this;
+    }
 
     /**
      * Which collection field marks the canonical copy of a reified statement (#92).
@@ -99,10 +121,12 @@ public class CanonicalSpec {
     public CanonicalSpec copy() {
         CanonicalSpec c = new CanonicalSpec();
         c.keyFields.addAll(keyFields);
+        c.duplicatePolicy = duplicatePolicy();
         c.displayNameMode = displayNameMode;
         c.displayNameField = displayNameField;
         c.displayNameTemplate = displayNameTemplate;
         c.labelLanguage = labelLanguage;
+        c.primaryListField = primaryListField;
         return c;
     }
 }
