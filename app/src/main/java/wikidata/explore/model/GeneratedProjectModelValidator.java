@@ -46,6 +46,8 @@ public final class GeneratedProjectModelValidator {
             validateInverseFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
+            validateStatementSubjectFields(clazz, problems);
+            validateValueLanguages(clazz, problems);
 
             if (clazz.reifiesStatements()) {
                 validateStatementClass(
@@ -56,6 +58,70 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    /**
+     * The shared Value language control has two representations: entity-valued
+     * language projections use a Wikidata QID, while monolingual text uses a language
+     * code. Validate that distinction before a generation run starts.
+     */
+    private static void validateValueLanguages(
+            GeneratedClassModel owner, List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            String configured = clean(field.mapping().valueLanguage());
+            if (configured.isBlank()) continue;
+            try {
+                if (field.type() == FieldType.ENTITY) {
+                    wikidata.WikidataLanguageDefaults.entityQid(configured);
+                } else if (field.type() == FieldType.STRING
+                        || field.type() == FieldType.TEXT) {
+                    wikidata.WikidataLanguageDefaults.literalCode(configured);
+                } else {
+                    // Inert, not wrong. A field that changed type keeps the language it
+                    // was given, and that leftover produces no bad data — it selects
+                    // nothing on a kind of value that states no language. Blocking a
+                    // run for it would fail models that were correct before this check
+                    // existed; saying so lets the reader clear it when they pass by.
+                    problems.add(Problem.warning(path(owner, field),
+                            "Value language is ignored on a " + field.type()
+                                    + " field; it applies to ENTITY, STRING and TEXT."));
+                }
+            } catch (IllegalArgumentException invalid) {
+                problems.add(Problem.error(path(owner, field), invalid.getMessage()));
+            }
+        }
+    }
+
+    private static void validateStatementSubjectFields(
+            GeneratedClassModel owner, List<Problem> problems) {
+        int subjects = 0;
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null || field.mapping().productionKind()
+                    != FieldProductionKind.STATEMENT_SUBJECT) {
+                continue;
+            }
+            subjects++;
+            if (!owner.reifiesStatements()) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement subject is available only on a Statement class."));
+            }
+            if (field.type() != FieldType.ENTITY
+                    || field.cardinality() == FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement subject must be a single ENTITY field."));
+            }
+            if (!clean(field.mapping().propertyPid()).isBlank()
+                    || !clean(field.mapping().qualifierPid()).isBlank()) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement subject must not declare a property or qualifier."));
+            }
+        }
+        if (subjects > 1) {
+            problems.add(Problem.error(owner.className(),
+                    "A Statement class must declare at most one Statement subject field; "
+                            + subjects + " are configured."));
+        }
     }
 
     private static void validateInverseFields(

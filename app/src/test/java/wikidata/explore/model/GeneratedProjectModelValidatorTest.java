@@ -9,6 +9,42 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
 
+    @Test void monolingualTextRequiresACodeRatherThanAForeignLanguageQid() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        GeneratedFieldModel motivation = prize.addField(
+                "motivation", FieldType.TEXT, FieldCardinality.SINGLE);
+        motivation.mapping().valueLanguage("Q188"); // Swedish language item
+        project.rootClass(prize);
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.errors().stream().anyMatch(problem ->
+                        problem.location().equals("NobelPrize.motivation")
+                                && problem.message().contains("needs its language code")),
+                invalid.format());
+
+        motivation.mapping().valueLanguage("sv");
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                "the literal language code is the valid representation");
+    }
+
+    @Test void entityLanguageProjectionRequiresAQidOrTheDefaultCode() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel givenName = person.addField(
+                "givenName", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        givenName.mapping().valueLanguage("sv");
+        project.rootClass(person);
+
+        assertFalse(GeneratedProjectModelValidator.validate(project).valid());
+
+        givenName.mapping().valueLanguage("Q188");
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                "an entity-valued language projection uses the language entity QID");
+    }
+
     // The invariant, not an example of it: validation must accept exactly what
     // generation can resolve. These drifted once — the resolver preferred a property
     // match and inverted, while validation counted class references alone and called
@@ -320,5 +356,86 @@ class GeneratedProjectModelValidatorTest {
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("only another Owned class")), result.format());
+    }
+
+    @Test void statementSubjectIsRejectedOutsideAStatementClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel laureate = person.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        laureate.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        project.addClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only on a Statement class")), result.format());
+    }
+
+    @Test void statementSubjectDoesNotAcceptAPropertyOrQualifier() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel laureate = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        laureate.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        laureate.mapping().propertyPid("P31");
+        project.addClass(people);
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("must not declare a property or qualifier")),
+                result.format());
+    }
+
+    @Test void aStatementClassHasAtMostOneExplicitSubjectField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        for (String name : java.util.List.of("laureate", "recipient")) {
+            GeneratedFieldModel subject = prize.addField(
+                    name, FieldType.ENTITY, FieldCardinality.SINGLE);
+            subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        }
+        project.rootClass(people);
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("at most one Statement subject")),
+                result.format());
+    }
+
+    /**
+     * A field that changed type keeps the language it was given, and on a kind of value
+     * that states no language that leftover selects nothing — it is inert, not wrong.
+     * Blocking a run for it would fail models that were correct before the check
+     * existed, so it is reported without stopping anything.
+     */
+    @Test void aLanguageOnAFieldThatCannotUseOneIsReportedWithoutBlocking() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        GeneratedFieldModel awarded = prize.addField(
+                "awarded", FieldType.DATE, FieldCardinality.SINGLE);
+        awarded.mapping().valueLanguage("en");
+        project.rootClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), "an inert leftover does not stop a generation run");
+        assertTrue(result.problems().stream().anyMatch(problem ->
+                        problem.severity() == GeneratedProjectModelValidator
+                                .Severity.WARNING
+                                && problem.location().equals("NobelPrize.awarded")
+                                && problem.message().contains("ignored on a Date")),
+                result.format());
     }
 }
