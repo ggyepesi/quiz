@@ -25,6 +25,8 @@ public enum MembershipPattern {
      *  identifier. Being owned is a property of the CLASS; WHERE it is produced is a
      *  property of the field, and a class may be produced at several sites. */
     OWNED_COMPONENT("Owned class"),
+    /** Members are grouped offline from another modeled class. */
+    AGGREGATED("Aggregate class"),
     /** A referenced-only ("identity holder") class: it has no membership rule of its
      *  own — its members are DERIVED as the range of a field that targets it (an
      *  entity at the value-end of that field's property). Complete the moment a field
@@ -69,6 +71,9 @@ public enum MembershipPattern {
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz != null && clazz.ownedClass()) {
             return OWNED_COMPONENT;
+        }
+        if (clazz != null && clazz.classKind() == ClassKind.AGGREGATE) {
+            return AGGREGATED;
         }
         MembershipPattern base = of(clazz);
         if (base != UNCONFIGURED) {
@@ -245,6 +250,9 @@ public enum MembershipPattern {
         if (clazz.reifiesStatements()) {
             return REIFIED;
         }
+        if (clazz.classKind() == ClassKind.AGGREGATE) {
+            return AGGREGATED;
+        }
         FieldSourceMapping m = clazz.instanceMapping();
         String pid = clean(m.propertyPid());
         boolean seeded = !clazz.seedQids().isEmpty();
@@ -328,6 +336,11 @@ public enum MembershipPattern {
             case SINGLE_TARGET_RELATION, MULTI_TARGET_RELATION ->
                     p.label + " (" + pid + " → " + targetCount(m) + ")";
             case SEEDED -> p.label + " (" + clazz.seedQids().size() + ")";
+            case AGGREGATED -> {
+                AggregateClassSource a = clazz.aggregateSource();
+                yield a == null ? p.label : p.label + " (" + a.sourceClassName()
+                        + " → " + a.membersField() + ")";
+            }
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.

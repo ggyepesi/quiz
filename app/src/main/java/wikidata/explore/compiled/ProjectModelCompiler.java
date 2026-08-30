@@ -70,7 +70,7 @@ public final class ProjectModelCompiler {
 
         CompiledCanonical canonical =
                 compileCanonical(
-                        clazz.canonical(),
+                        canonicalForCompilation(clazz),
                         effectiveFields,
                         clazz.className());
 
@@ -95,8 +95,18 @@ public final class ProjectModelCompiler {
                                 ? ""
                                 : statementSource.className(),
                         StatementFieldSemantics.statementValueFieldName(clazz)),
+                CompiledAggregateSource.from(clazz.aggregateSource()),
                 ownFields,
                 effectiveFields);
+    }
+
+    private static CanonicalSpec canonicalForCompilation(GeneratedClassModel clazz) {
+        CanonicalSpec canonical = clazz.canonical().copy();
+        // Aggregate identity belongs exclusively to AggregateClassSource.keys. A
+        // legacy/editor-written CanonicalSpec key is neither consulted nor copied into
+        // runtime, so the two declarations cannot drift.
+        if (clazz.classKind() == ClassKind.AGGREGATE) canonical.keyFields().clear();
+        return canonical;
     }
 
     private static CompiledCanonical compileCanonical(
@@ -157,10 +167,12 @@ public final class ProjectModelCompiler {
 
         return new CompiledCanonical(
                 resolvedKeys,
+                canonical.duplicatePolicy(),
                 canonical.displayNameMode(),
                 resolvedDisplayField,
                 canonical.displayNameTemplate(),
-                canonical.labelLanguage());
+                canonical.labelLanguage(),
+                canonical.primaryListField());
     }
 
     private static List<CompiledField> compileFields(

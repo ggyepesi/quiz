@@ -45,6 +45,9 @@ public class GeneratedClassModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private StatementClassSource statementSource;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private AggregateClassSource aggregateSource;
+
     private int generationDepth = 1;
 
     private final FieldSourceMapping instanceMapping =
@@ -114,12 +117,16 @@ public class GeneratedClassModel {
 
     public ClassKind classKind() {
         if (classKind == ClassKind.OWNED) return ClassKind.OWNED;
+        if (classKind == ClassKind.AGGREGATE) return ClassKind.AGGREGATE;
         return reifiesStatements() ? ClassKind.STATEMENT : ClassKind.SOURCE;
     }
 
     public void classKind(ClassKind value) {
         classKind = value == null ? ClassKind.SOURCE : value;
-        if (classKind == ClassKind.OWNED) clearIndependentPopulation();
+        if (classKind != ClassKind.AGGREGATE) aggregateSource = null;
+        if (classKind == ClassKind.OWNED || classKind == ClassKind.AGGREGATE) {
+            clearIndependentPopulation();
+        }
     }
 
     /** Clears query/seed/reification state that would independently populate a class. */
@@ -176,8 +183,25 @@ public class GeneratedClassModel {
         return statementSource;
     }
 
+    public AggregateClassSource aggregateSource() {
+        return aggregateSource;
+    }
+
+    public void aggregateSource(AggregateClassSource value) {
+        aggregateSource = value == null ? null : value.copy();
+        if (aggregateSource != null) {
+            statementSource = null;
+            classKind = ClassKind.AGGREGATE;
+            canonical().keyFields().clear();
+        }
+    }
+
     public void statementSource(StatementClassSource value) {
         statementSource = value == null ? null : value.copy();
+        if (statementSource != null) {
+            aggregateSource = null;
+            if (classKind == ClassKind.AGGREGATE) classKind = ClassKind.SOURCE;
+        }
         // Assigning a statement source makes this a STATEMENT class, and the
         // identity regime follows from that rather than being set alongside it. The
         // natural-key FIELDS still cannot be chosen here: callers commonly assign the
@@ -331,6 +355,7 @@ public class GeneratedClassModel {
                 statementSource == null
                         ? null
                         : statementSource.copy();
+        copy.aggregateSource = aggregateSource == null ? null : aggregateSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;

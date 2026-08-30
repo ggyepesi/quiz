@@ -22,7 +22,10 @@ public enum ClassKind {
 
     /** Produced per owning instance, and identified by its owner and the site that made
      *  it — never by anything of its own. */
-    OWNED;
+    OWNED,
+
+    /** Built offline by grouping records of another modeled class. */
+    AGGREGATE;
 
     /**
      * Whether instances take their identity from the datasource, rather than deriving it.

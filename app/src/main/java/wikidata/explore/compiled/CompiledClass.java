@@ -29,6 +29,7 @@ public final class CompiledClass {
     private final List<String> seedQids;
     private final CompiledCanonical canonical;
     private final CompiledStatementSource statementSource;
+    private final CompiledAggregateSource aggregateSource;
     private final List<CompiledField> ownFields;
     private final List<CompiledField> effectiveFields;
     private final Map<String, CompiledField> fieldsByLowerName;
@@ -46,6 +47,7 @@ public final class CompiledClass {
             List<String> seedQids,
             CompiledCanonical canonical,
             CompiledStatementSource statementSource,
+            CompiledAggregateSource aggregateSource,
             List<CompiledField> ownFields,
             List<CompiledField> effectiveFields) {
 
@@ -65,6 +67,7 @@ public final class CompiledClass {
                 ? CompiledCanonical.from(null)
                 : canonical;
         this.statementSource = statementSource;
+        this.aggregateSource = aggregateSource;
         this.ownFields = ownFields == null ? List.of() : List.copyOf(ownFields);
         this.effectiveFields = effectiveFields == null
                 ? List.of()
@@ -103,6 +106,10 @@ public final class CompiledClass {
     public List<String> seedQids() { return seedQids; }
     public CompiledCanonical canonical() { return canonical; }
     public CompiledStatementSource statementSource() { return statementSource; }
+    public CompiledAggregateSource aggregateSource() { return aggregateSource; }
+    public boolean aggregateClass() {
+        return aggregateSource != null && aggregateSource.configured();
+    }
     public boolean statementClass() {
         return statementSource != null && statementSource.configured();
     }
