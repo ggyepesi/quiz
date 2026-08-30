@@ -14,6 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalizerTest {
 
+    private record StableScalar(String canonical, String rendered)
+            implements aux.StableValue {
+        @Override public String stableForm() { return canonical; }
+        @Override public String toString() { return rendered; }
+    }
+
     /** A minimal Viewable used as a field value (a reference). */
     private record Ref(String id, String label) implements Viewable {
         @Override public String getIdentifier() { return id; }
@@ -92,6 +98,53 @@ class CanonicalizerTest {
 
         assertEquals("Q1|Q2|1979", Canonicalizer.identifier(
                 ClassKind.STATEMENT, spec, reader(fields), "GUID", "fb"));
+    }
+
+    @Test
+    void aCollectionKeyUsesEveryMemberAndIgnoresOrder() {
+        CanonicalSpec spec = new CanonicalSpec();
+        spec.keyFields().add("laureates");
+
+        String first = Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                reader(Map.of("laureates", List.of(
+                        new Ref("Q3", "Donna Strickland"),
+                        new Ref("Q1", "Gérard Mourou"),
+                        new Ref("Q2", "Arthur Ashkin")))), "statement-1", "fallback");
+        String reordered = Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                reader(Map.of("laureates", List.of(
+                        new Ref("Q2", "Arthur Ashkin"),
+                        new Ref("Q3", "Donna Strickland"),
+                        new Ref("Q1", "Gérard Mourou")))), "statement-2", "fallback");
+
+        assertEquals("[Q1,Q2,Q3]", first);
+        assertEquals(first, reordered);
+    }
+
+    @Test
+    void collectionKeysWithDifferentMembersRemainDistinct() {
+        CanonicalSpec spec = new CanonicalSpec();
+        spec.keyFields().add("laureates");
+
+        String shared = Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                reader(Map.of("laureates", List.of(new Ref("Q1", "A"), new Ref("Q2", "B")))),
+                "statement-1", "fallback");
+        String solo = Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                reader(Map.of("laureates", List.of(new Ref("Q1", "A")))),
+                "statement-2", "fallback");
+
+        assertFalse(shared.equals(solo));
+    }
+
+    @Test
+    void aValueTypesStableFormWinsOverItsRendering() {
+        CanonicalSpec spec = new CanonicalSpec();
+        spec.keyFields().add("year");
+
+        assertEquals("canonical-date", Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec,
+                reader(Map.of("year", new StableScalar(
+                        "canonical-date", "friendly rendered date"))),
+                "statement", "fallback"));
     }
 
     @Test

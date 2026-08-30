@@ -324,6 +324,11 @@ public class TransformEngine {
                             el.recordOrigin(r.field(), FieldOrigin.MISSING);
                         }
                     }
+                    // A participant field is not a fallback and not canonical-copy
+                    // policy: its declared value is the union of two source facts.
+                    for (String field : c.subjectParticipantFields()) {
+                        includeOnce(el, field, src);
+                    }
                     // "Had an inverse qualifier" (a denormalized copy of a nomination
                     // whose canonical form is the work's own statement) is a property
                     // of the recorded origins, not a separate flag: it's true iff some
@@ -356,7 +361,7 @@ public class TransformEngine {
                 c.canonicalizesByList()
                         ? canonicalize(created, c.primaryListField(), srcField,
                                        hadInverseQual)
-                        : c.dedupBy().isEmpty() ? created : dedup(created, c.dedupBy());
+                        : created;
 
         // The SAME nomination can still arrive from both the work's statement and
         // the nominee's own back-reference — a person's P1411 "nominated for" with
@@ -368,7 +373,8 @@ public class TransformEngine {
         // (source==the list). Uses the final field values, so it's robust to when
         // the qualifiers were loaded.
         if (!c.dedupBy().isEmpty()) {
-            result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField, c.roles());
+            result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField,
+                    c.roles(), c.duplicatePolicy());
         }
 
         // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
@@ -450,6 +456,26 @@ public class TransformEngine {
             }
         }
         return result;
+    }
+
+    /** Subject first, followed by the qualifier values, with entity identity dedup. */
+    private static void includeOnce(
+            WikidataDynamicObject record, String field, Object subject) {
+        if (record == null || subject == null) return;
+        List<Object> combined = new ArrayList<>();
+        combined.add(subject);
+        Object existing = record.get(field);
+        if (existing instanceof Collection<?> values) {
+            for (Object value : values) {
+                if (combined.stream().noneMatch(item -> sameEntity(item, value))) {
+                    combined.add(value);
+                }
+            }
+        } else if (existing != null
+                && combined.stream().noneMatch(item -> sameEntity(item, existing))) {
+            combined.add(existing);
+        }
+        record.put(field, combined);
     }
 
     private static boolean nonEmpty(Object v) {
@@ -690,16 +716,6 @@ public class TransformEngine {
         return a.equals(b);
     }
 
-    private static List<WikidataDynamicObject> dedup(
-            List<WikidataDynamicObject> objs, List<String> keyFields) {
-        java.util.Map<String, WikidataDynamicObject> byKey =
-                new java.util.LinkedHashMap<>();
-        for (WikidataDynamicObject o : objs) {
-            byKey.putIfAbsent(keyOf(o, keyFields), o);
-        }
-        return new ArrayList<>(byKey.values());
-    }
-
     /**
      * Collapse records equal on {@code keyFields}, preferring the WORK-anchored
      * copy: the one whose {@code srcField} value equals one of its role values
@@ -709,19 +725,65 @@ public class TransformEngine {
      */
     private static List<WikidataDynamicObject> dedupPreferringWorkAnchored(
             List<WikidataDynamicObject> objs, List<String> keyFields,
-            String srcField, List<ReifyConstruct.Role> roles) {
+            String srcField, List<ReifyConstruct.Role> roles,
+            wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy) {
         java.util.Map<String, WikidataDynamicObject> byKey =
                 new java.util.LinkedHashMap<>();
         for (WikidataDynamicObject o : objs) {
             String k = keyOf(o, keyFields);
             WikidataDynamicObject cur = byKey.get(k);
-            if (cur == null
-                    || (!workAnchored(cur, srcField, roles)
-                        && workAnchored(o, srcField, roles))) {
+            if (cur == null) {
                 byKey.put(k, o);
+                continue;
+            }
+            boolean replace = !workAnchored(cur, srcField, roles)
+                    && workAnchored(o, srcField, roles);
+            if (replace) {
+                if (duplicatePolicy
+                        == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS) {
+                    mergePartialRecord(o, cur);
+                }
+                byKey.put(k, o);
+            } else if (duplicatePolicy
+                    == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS) {
+                mergePartialRecord(cur, o);
             }
         }
         return new ArrayList<>(byKey.values());
+    }
+
+    /**
+     * Completes the preferred representative from another partial copy. Collections
+     * are unioned in encounter order; an absent scalar is filled; conflicting scalar
+     * values remain on the preferred record rather than silently becoming a list.
+     */
+    private static void mergePartialRecord(
+            WikidataDynamicObject preferred, WikidataDynamicObject partial) {
+        for (var entry : partial.dynamicFields().entrySet()) {
+            String field = entry.getKey();
+            Object incoming = entry.getValue();
+            Object existing = preferred.get(field);
+            if (existing == null) {
+                preferred.put(field, incoming);
+                continue;
+            }
+            if (existing instanceof Collection<?> || incoming instanceof Collection<?>) {
+                List<Object> union = new ArrayList<>();
+                appendDistinct(union, existing);
+                appendDistinct(union, incoming);
+                preferred.put(field, union);
+            }
+        }
+    }
+
+    private static void appendDistinct(List<Object> target, Object value) {
+        if (value instanceof Collection<?> values) {
+            for (Object item : values) appendDistinct(target, item);
+            return;
+        }
+        if (value != null && target.stream().noneMatch(item -> sameEntity(item, value))) {
+            target.add(value);
+        }
     }
 
     // The source is (also) a role value — e.g. source==forWork: the statement sits
@@ -753,15 +815,15 @@ public class TransformEngine {
         return sb.toString();
     }
 
+    /**
+     * The dedup key asks the same question a canonical identity asks — what text does
+     * this value have that means the same thing in a later process — so it asks the
+     * same rule. Its own copy answered it for references and collections but fell
+     * through to toString() for a value type that publishes a canonical form, which is
+     * precisely what that form exists to prevent.
+     */
     private static String valueKey(Object v) {
-        if (v instanceof WikidataDynamicObject w) {
-            return w.getIdentifier() != null ? w.getIdentifier() : w.getDisplayName();
-        }
-        if (v instanceof Collection<?> col) {
-            return col.stream().map(TransformEngine::valueKey).sorted()
-                    .collect(java.util.stream.Collectors.joining(","));
-        }
-        return String.valueOf(v);
+        return wikidata.explore.model.StableIdentity.of(v);
     }
 
     private static String display(Object v) {

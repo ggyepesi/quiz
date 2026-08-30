@@ -38,16 +38,17 @@ public final class Canonicalizer {
 
     /**
      * The identifier for a class of {@code kind}: one whose identity comes from its
-     * source keeps its {@code qid}; one that derives it joins its natural-key fields
-     * (the grain). Falls back to {@code fallback} when nothing resolves.
+     * source keeps its provider-qualified {@code sourceId}; one that derives it joins
+     * its natural-key fields (the grain). Falls back to {@code fallback} when nothing
+     * resolves.
      *
      * <p>The regime is the caller's to state, because it follows from how the class is
      * built rather than from anything in the spec.
      */
     public static String identifier(ClassKind kind, CanonicalSpec spec,
-                                    FieldReader reader, String qid, String fallback) {
+                                    FieldReader reader, String sourceId, String fallback) {
         if (kind == null || kind.identityFromSource()) {
-            return firstNonBlank(qid, fallback);
+            return firstNonBlank(sourceId, fallback);
         }
         // An owned part's identifier is established by composition from owner +
         // production site. This field-only evaluator cannot reconstruct it and must
@@ -117,16 +118,7 @@ public final class Canonicalizer {
     }
 
     private static String idOf(Object v) {
-        if (v == null) {
-            return "";
-        }
-        if (v instanceof Viewable q) {
-            return safe(q.getIdentifier());
-        }
-        if (v instanceof Collection<?> c) {
-            return c.isEmpty() ? "" : idOf(c.iterator().next());
-        }
-        return String.valueOf(v);
+        return StableIdentity.of(v);
     }
 
     private static String orFallback(String value, String fallback) {
