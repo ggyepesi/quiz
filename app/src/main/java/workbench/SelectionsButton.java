@@ -88,18 +88,50 @@ public final class SelectionsButton extends JButton {
     }
 
     private JComponent entityPanel(JDialog dialog) {
-        DefaultListModel<WorkbenchSelections.Entity> model = model(selections.entities());
-        JList<WorkbenchSelections.Entity> list = new JList<>(model);
-        list.setCellRenderer(renderer(e -> e.label() + " (" + e.qid() + ")"));
-        configureSelection(list, cardinality(entityUses));
+        EntityResultPanel list = new EntityResultPanel(
+                List.of("QID", "Label", "Description"), 0,
+                cardinality(entityUses) == Cardinality.MULTIPLE);
+        list.setColumnWidths(90, 180, 280);
+        list.setEntities(selections.entities());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        List<JButton> useButtons = new ArrayList<>();
         entityAdds.forEach(action -> actions.add(addButton(action,
-                () -> replace(model, selections.entities()))));
-        actions.add(removeButton("Remove selected entities", list, () -> {
-            List.copyOf(list.getSelectedValuesList()).forEach(selections::removeEntity);
-            replace(model, selections.entities());
-        }));
-        entityUses.forEach(use -> actions.add(useButton(use, list, dialog)));
+                () -> list.setEntities(selections.entities()))));
+        JButton remove = new JButton("Remove selected entities");
+        remove.setEnabled(false);
+        remove.addActionListener(event -> {
+            var selected = new java.util.LinkedHashSet<>(list.selectedQids());
+            selections.entities().stream().filter(e -> selected.contains(e.qid()))
+                    .toList().forEach(selections::removeEntity);
+            list.setEntities(selections.entities());
+        });
+        actions.add(remove);
+        entityUses.forEach(use -> {
+            JButton button = new JButton(use.label);
+            Runnable refresh = () -> button.setEnabled(
+                    (use.enabled == null || use.enabled.getAsBoolean())
+                    && (use.cardinality == Cardinality.SINGLE
+                    ? list.selectionCount() == 1 : list.hasSelection()));
+            button.addActionListener(event -> {
+                var selected = new java.util.LinkedHashSet<>(list.selectedQids());
+                use.operation.accept(selections.entities().stream()
+                        .filter(e -> selected.contains(e.qid())).toList());
+                if (dialog != null) dialog.dispose();
+            });
+            refresh.run();
+            useButtons.add(button);
+            actions.add(button);
+        });
+        list.onSelectionChanged(() -> {
+            remove.setEnabled(list.hasSelection());
+            for (int i = 0; i < entityUses.size(); i++) {
+                UseAction<WorkbenchSelections.Entity> use = entityUses.get(i);
+                useButtons.get(i).setEnabled(
+                        (use.enabled == null || use.enabled.getAsBoolean())
+                        && (use.cardinality == Cardinality.SINGLE
+                        ? list.selectionCount() == 1 : list.hasSelection()));
+            }
+        });
         return listPanel(list, actions, "Collect entities in one tool and use them in another.");
     }
 
@@ -173,11 +205,11 @@ public final class SelectionsButton extends JButton {
         });
         refresh.run(); return button;
     }
-    private static JPanel listPanel(JList<?> list, JPanel actions, String hint) {
+    private static JPanel listPanel(JComponent list, JPanel actions, String hint) {
         JPanel panel = new JPanel(new BorderLayout(6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         panel.add(new JLabel(hint), BorderLayout.NORTH);
-        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+        panel.add(list instanceof EntityResultPanel ? list : new JScrollPane(list), BorderLayout.CENTER);
         panel.add(actions, BorderLayout.SOUTH); return panel;
     }
     private static <T> ListCellRenderer<T> renderer(java.util.function.Function<T, String> text) {

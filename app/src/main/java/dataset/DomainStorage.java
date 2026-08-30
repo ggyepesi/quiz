@@ -138,6 +138,20 @@ public final class DomainStorage {
         return conventional;
     }
 
+    /**
+     * Resolves the model ModelBuilder should open first. A remembered domain is a
+     * convenience, never an authority: if it was renamed, deleted or never saved,
+     * startup falls back to the ordinary default domain.
+     */
+    public File preferredModelFile(String rememberedName, String fallbackName) {
+        if (rememberedName != null && !rememberedName.isBlank()) {
+            File remembered = modelFileOf(rememberedName);
+            if (remembered != null && remembered.isFile()) return remembered;
+        }
+        File fallback = modelFileOf(fallbackName);
+        return fallback != null && fallback.isFile() ? fallback : null;
+    }
+
     /** The model files claiming {@code name}, when more than one does — so a caller
      *  can say WHICH files collide rather than only that a name is unresolvable. */
     public List<File> modelFilesClaiming(String name) {

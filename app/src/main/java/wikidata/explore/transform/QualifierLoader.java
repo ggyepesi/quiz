@@ -379,20 +379,13 @@ public class QualifierLoader {
                     }
                 }
                 case STRING -> {
-                    // A monolingual value arrives carrying its language. Keep the
-                    // wordings this field asked for, and store the text alone: the
-                    // language was the means of choosing, not part of the answer.
-                    for (String value : vals) {
-                        if (value == null
-                                || !wikidata.MonolingualTextCodec.isIn(
-                                        value, q.language())) {
-                            continue;
-                        }
-                        String text = wikidata.MonolingualTextCodec.text(value);
-                        if (!text.isBlank()) {
-                            putQualifier(stmt, q, text);
-                            if (!q.multi()) break;
-                        }
+                    // Exact-language values win; untagged is a fallback only when
+                    // the requested language has no answer. The shared codec also
+                    // strips transport metadata from ordinary literal fields.
+                    for (String text : wikidata.MonolingualTextCodec.select(
+                            vals, q.language())) {
+                        putQualifier(stmt, q, text);
+                        if (!q.multi()) break;
                     }
                 }
             }

@@ -15,6 +15,8 @@ import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.StatementClassSource;
 import datasource.api.SourceBindingSlot;
 import wikidata.explore.query.logical.ClassSearchQuery;
@@ -40,6 +42,7 @@ public class ClassSourcePanel extends JPanel {
             new JComboBox<>(ClassSearchQuery.Mode.values());
 
     private GeneratedClassModel clazz;
+    private GeneratedProjectModel projectModel;
     private SwingQueryRunner queryRunner;
 
     private Consumer<String> log = s -> {};
@@ -150,6 +153,10 @@ public class ClassSourcePanel extends JPanel {
 
     public void log(Consumer<String> log) {
         this.log = log == null ? s -> {} : log;
+    }
+
+    public void setProjectModel(GeneratedProjectModel projectModel) {
+        this.projectModel = projectModel;
     }
 
     /** Fill the class population relation from the explicit workbench selection. */
@@ -883,7 +890,22 @@ public class ClassSourcePanel extends JPanel {
 
         boolean wasStatementClass = clazz.reifiesStatements();
 
-        clazz.className(classNameField.getText());
+        String typedName = classNameField.getText() == null
+                ? "" : classNameField.getText().trim();
+        if (typedName.isBlank()) {
+            renameError("A class name is required.");
+            classNameField.setText(clazz.className());
+        } else {
+            String requestedName = GeneratedViewableSourceGenerator
+                    .sanitizeClassName(typedName);
+            if (projectModel == null
+                    || !projectModel.renameClass(clazz.className(), requestedName)) {
+                renameError("A class or vocabulary/population named '" + requestedName
+                        + "' already exists.");
+                classNameField.setText(clazz.className());
+            }
+        }
+        classNameField.setText(clazz.className());
         clazz.alias(aliasField.getText());
 
         Object base = baseClassBox.getSelectedItem();
@@ -1001,6 +1023,11 @@ public class ClassSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
+    private void renameError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
     // --- Identity & label (canonicalization) ---
 
     /** Loads the class's canonical spec into the section. */
@@ -1049,6 +1076,7 @@ public class ClassSourcePanel extends JPanel {
                     case SOURCE -> KIND_ENTITY;
                     case STATEMENT -> KIND_DERIVED;
                     case OWNED -> "Owned (owner + production site)";
+                    case AGGREGATE -> "Aggregate (grouping key)";
                 });
         canonicalSourcesLabel.setText(describeClassSources());
 

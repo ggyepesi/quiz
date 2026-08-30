@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.ClassSourceBindings;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.GeneratedProjectModel;
 import datasource.api.SourceBindingSlot;
 
 import javax.swing.JCheckBox;
@@ -22,7 +23,7 @@ class ClassSourcePanelTest {
 
     @Test void aliasesAreAnExplicitEditableClassSourceChoice() {
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        ClassSourcePanel panel = new ClassSourcePanel();
+        ClassSourcePanel panel = panelFor(person);
         panel.edit(person);
 
         JCheckBox aliases = checkBox(panel, "Add aliases (Also known as)");
@@ -41,7 +42,7 @@ class ClassSourcePanelTest {
         source.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
         holding.statementSource(source);
 
-        ClassSourcePanel panel = new ClassSourcePanel();
+        ClassSourcePanel panel = panelFor(holding);
         panel.edit(holding);
         panel.applyEdits();
 
@@ -63,7 +64,7 @@ class ClassSourcePanelTest {
         source.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
         holding.statementSource(source);
 
-        ClassSourcePanel panel = new ClassSourcePanel();
+        ClassSourcePanel panel = panelFor(holding);
         panel.edit(holding);
         panel.applyEdits();
 
@@ -83,5 +84,13 @@ class ClassSourcePanelTest {
             }
         }
         return null;
+    }
+
+    private static ClassSourcePanel panelFor(GeneratedClassModel clazz) {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(clazz);
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        return panel;
     }
 }

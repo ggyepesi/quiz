@@ -232,16 +232,19 @@ public class GeneratedProjectModel {
      * keeps a dangling target, and an owned class silently stops being produced because
      * no site names it any more.
      */
-    public void renameClass(String oldName, String newName) {
+    public boolean renameClass(String oldName, String newName) {
         String from = oldName == null ? "" : oldName.trim();
         String to = newName == null ? "" : newName.trim();
-        if (from.isEmpty() || to.isEmpty() || from.equals(to)) {
-            return;
-        }
+        if (from.isEmpty() || to.isEmpty()) return false;
         GeneratedClassModel target = findClass(from);
-        if (target == null) {
-            return;
-        }
+        if (target == null) return false;
+        // A no-op cannot collide with another namespace entry: it changes nothing.
+        // Check it before legacy/invalid duplicate-name diagnostics so merely applying
+        // an unchanged editor remains safe.
+        if (from.equals(to)) return true;
+        GeneratedClassModel classConflict = findClass(to);
+        if (classConflict != null && classConflict != target) return false;
+        if (findSelection(to) != null) return false;
         target.className(to);
         for (GeneratedClassModel clazz : classes) {
             if (clazz == null) continue;
@@ -252,6 +255,11 @@ public class GeneratedProjectModel {
             if (statement != null && from.equals(clean(statement.sourceClassName()))) {
                 statement.sourceClassName(to);
             }
+            AggregateClassSource aggregate = clazz.aggregateSource();
+            if (aggregate != null && from.equals(clean(aggregate.sourceClassName()))) {
+                aggregate.sourceClassName(to);
+            }
+            renameBindingTargets(clazz.sourceBindings(), from, to);
             renameFieldTargets(clazz.fields(), from, to);
         }
         for (EntityKindRule rule : entityKindRules) {
@@ -265,6 +273,7 @@ public class GeneratedProjectModel {
                 role.ownerClassName(to);
             }
         }
+        return true;
     }
 
     private static void renameFieldTargets(
@@ -275,8 +284,76 @@ public class GeneratedProjectModel {
             if (from.equals(clean(field.entityClassName()))) {
                 field.entityClassName(to);
             }
+            renameBindingTargets(field.sourceBindings(), from, to);
             renameFieldTargets(field.fields(), from, to);
         }
+    }
+
+    /** Binding targets are durable model addresses, so a class rename must move them
+     * with every other name reference. Leaving the old address causes synchronization
+     * to add a second binding under the new name while the stale one remains. */
+    private static void renameBindingTargets(
+            List<datasource.api.SourceBinding> bindings, String from, String to) {
+        if (bindings == null) return;
+        for (int i = 0; i < bindings.size(); i++) {
+            datasource.api.SourceBinding binding = bindings.get(i);
+            if (binding == null || !from.equals(binding.target().className())) continue;
+            datasource.api.SourceBindingTarget target = binding.target();
+            bindings.set(i, new datasource.api.SourceBinding(
+                    new datasource.api.SourceBindingTarget(target.scope(), to,
+                            target.fieldPath(), target.slot()),
+                    binding.recipe()));
+        }
+    }
+
+    /** Repairs models saved by the pre-rename binding leak. A binding is stored on
+     * exactly the class/field it addresses, so its durable address can be recovered
+     * without guessing from provider-specific recipe contents. */
+    void reconcileSourceBindingTargets() {
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null) continue;
+            retargetBindings(clazz.sourceBindings(), clazz.className(), "");
+            reconcileFieldBindingTargets(clazz.className(), "", clazz.fields());
+        }
+    }
+
+    private static void reconcileFieldBindingTargets(
+            String owner, String prefix, List<GeneratedFieldModel> fields) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            String path = prefix.isBlank() ? field.name() : prefix + "." + field.name();
+            retargetBindings(field.sourceBindings(), owner, path);
+            reconcileFieldBindingTargets(owner, path, field.fields());
+        }
+    }
+
+    private static void retargetBindings(List<datasource.api.SourceBinding> bindings,
+            String owner, String path) {
+        if (bindings == null) return;
+        for (int i = 0; i < bindings.size(); i++) {
+            datasource.api.SourceBinding binding = bindings.get(i);
+            if (binding == null) continue;
+            datasource.api.SourceBindingTarget target = binding.target();
+            String expectedPath = target.scope() == datasource.api.BindingScope.FIELD_VALUE
+                    ? path : "";
+            if (owner.equals(target.className()) && expectedPath.equals(target.fieldPath())) {
+                continue;
+            }
+            bindings.set(i, new datasource.api.SourceBinding(
+                    new datasource.api.SourceBindingTarget(target.scope(), owner,
+                            expectedPath, target.slot()), binding.recipe()));
+        }
+        // A save after the old rename leak could already contain both the stale and
+        // newly synchronized address. Once retargeted they occupy the same semantic
+        // slot; retain the later entry, matching normal replace semantics.
+        java.util.LinkedHashMap<datasource.api.SourceBindingTarget,
+                datasource.api.SourceBinding> unique = new java.util.LinkedHashMap<>();
+        for (datasource.api.SourceBinding binding : bindings) {
+            if (binding != null) unique.put(binding.target(), binding);
+        }
+        bindings.clear();
+        bindings.addAll(unique.values());
     }
 
     private static String clean(String value) {

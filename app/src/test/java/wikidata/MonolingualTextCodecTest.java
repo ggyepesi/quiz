@@ -14,16 +14,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MonolingualTextCodecTest {
 
     @Test void aValueCarriesTheLanguageItStates() {
-        String wire = "for the optical tweezers"
-                + MonolingualTextCodec.mark("en");
+        String wire = MonolingualTextCodec.encode(
+                "for the optical tweezers", "en");
 
         assertEquals("for the optical tweezers", MonolingualTextCodec.text(wire));
         assertEquals("en", MonolingualTextCodec.language(wire));
     }
 
     @Test void aValueStatingNoLanguageIsNotGivenOne() {
-        assertEquals("", MonolingualTextCodec.mark(null));
-        assertEquals("", MonolingualTextCodec.mark("  "));
+        assertEquals("plain", MonolingualTextCodec.encode("plain", null));
+        assertEquals("plain", MonolingualTextCodec.encode("plain", "  "));
         assertEquals("plain text", MonolingualTextCodec.text("plain text"));
         assertEquals("", MonolingualTextCodec.language("plain text"),
                 "absence stays absence rather than defaulting to English");
@@ -34,25 +34,36 @@ class MonolingualTextCodecTest {
         assertEquals("", MonolingualTextCodec.language("write to a@b.example"),
                 "a dotted host is not a language tag");
         assertEquals("ends with @", MonolingualTextCodec.text("ends with @"));
+        assertEquals("meet me @home", MonolingualTextCodec.text("meet me @home"));
+        assertEquals("", MonolingualTextCodec.language("meet me @home"));
     }
 
     @Test void aRegionalTagSurvivesWhole() {
-        String wire = "texto" + MonolingualTextCodec.mark("pt-br");
+        String wire = MonolingualTextCodec.encode("texto", "pt-br");
 
         assertEquals("pt-br", MonolingualTextCodec.language(wire));
         assertEquals("texto", MonolingualTextCodec.text(wire));
     }
 
-    @Test void anUntaggedValueIsAdmittedByAnyRequest() {
-        assertTrue(MonolingualTextCodec.isIn("plain", "en"),
-                "a value stating no language contradicts nothing that was asked for");
-        assertTrue(MonolingualTextCodec.isIn("text" + MonolingualTextCodec.mark("EN"), "en"),
-                "a language tag is not case sensitive");
-        assertFalse(MonolingualTextCodec.isIn("text" + MonolingualTextCodec.mark("sv"), "en"));
+    @Test void exactLanguageWinsAndUntaggedIsOnlyAFallback() {
+        assertEquals(java.util.List.of("English"), MonolingualTextCodec.select(
+                java.util.List.of("untagged",
+                        MonolingualTextCodec.encode("English", "EN"),
+                        MonolingualTextCodec.encode("Swedish", "sv")), "en"));
+        assertEquals(java.util.List.of("untagged"), MonolingualTextCodec.select(
+                java.util.List.of("untagged",
+                        MonolingualTextCodec.encode("Swedish", "sv")), "en"));
     }
 
     @Test void askingForNoLanguageKeepsEveryWording() {
-        assertTrue(MonolingualTextCodec.isIn("text" + MonolingualTextCodec.mark("sv"), ""));
-        assertTrue(MonolingualTextCodec.isIn("text" + MonolingualTextCodec.mark("nn"), null));
+        assertEquals(java.util.List.of("Swedish", "Nynorsk"),
+                MonolingualTextCodec.select(java.util.List.of(
+                        MonolingualTextCodec.encode("Swedish", "sv"),
+                        MonolingualTextCodec.encode("Nynorsk", "nn")), ""));
+    }
+
+    @Test void internalMarkersInPlainTextRoundTrip() {
+        String raw = "\u001eMLT:2:enordinary text";
+        assertEquals(raw, MonolingualTextCodec.text(MonolingualTextCodec.plain(raw)));
     }
 }

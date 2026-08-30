@@ -65,6 +65,9 @@ public final class StatementTransforms {
      */
     public enum Stage {
         REIFY("reify", null, null),
+        AGGREGATES("aggregate classes",
+                (model, pool, log, filled) -> ModelAggregates.apply(model, pool, log),
+                (model, pool, log, filled) -> ModelAggregates.apply(model, pool, log)),
         FIELD_VALUE_RESTRICTIONS("field-value restrictions",
                 (model, pool, log, filled) -> {
                     FieldValueRestrictions.apply(model, pool); return 0; },

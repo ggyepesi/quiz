@@ -7,6 +7,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.model.StatementClassSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -14,8 +15,20 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SingleRootClassModelPanelTest {
+
+    @Test void onlyModelLeavesOpenConfigurationEditors() {
+        assertTrue(SingleRootClassModelPanel.isConfigurable(new GeneratedProjectModel()));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                new GeneratedClassModel("NobelPrize")));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                new VocabularySelection("Categories")));
+    }
 
     @Test void configurationTreeNamesTheSharedValueDomainsConsistently() {
         GeneratedProjectModel project = modelWithEdition();
@@ -26,8 +39,28 @@ class SingleRootClassModelPanelTest {
         DefaultMutableTreeNode root =
                 (DefaultMutableTreeNode) tree.getModel().getRoot();
 
-        assertEquals("Vocabularies / populations",
+        assertEquals(SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES,
                 ((DefaultMutableTreeNode) root.getLastChild()).getUserObject());
+    }
+
+    @Test void aVocabularySelectionSurvivesTreeRefreshAndGetsContextualActions() {
+        GeneratedProjectModel project = modelWithEdition();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        project.addSelection(categories);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(categories);
+        panel.refresh();
+
+        assertSame(categories, panel.selectedUserObject());
+        assertTrue(button(panel, "Rename vocabulary").isEnabled());
+        assertTrue(button(panel, "Add vocabulary").isEnabled());
+        assertFalse(button(panel, "Add field").isEnabled());
+        assertTrue(button(panel, "Remove").isEnabled());
+
+        panel.selectClass(project.rootClass());
+        assertTrue(button(panel, "Rename class").isEnabled());
+        assertTrue(button(panel, "Add class").isEnabled());
     }
 
     private static GeneratedProjectModel modelWithEdition() {
@@ -65,6 +98,26 @@ class SingleRootClassModelPanelTest {
                 "editor must re-bind to the live (new) edition field, not the orphan");
     }
 
+    @Test void aTreeRefreshCannotUndoAClassRenameThroughAStaleEditor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrizes");
+        prize.statementSource(new StatementClassSource("P166"));
+        project.rootClass(prize);
+
+        SingleRootClassModelPanel tree = new SingleRootClassModelPanel(project);
+        ModelSourceWorkbenchPanel editor = new ModelSourceWorkbenchPanel(project);
+        editor.edit(prize); // editor still displays NobelPrizes
+        tree.addTreeSelectionListener(event ->
+                editor.changeSelection(tree.selectedUserObject()));
+
+        project.renameClass("NobelPrizes", "NobelPrize");
+        tree.refresh();
+        editor.applyEdits();
+
+        assertEquals("NobelPrize", prize.className(),
+                "a transient empty tree selection must not reapply the old editor name");
+    }
+
     private static <T extends java.awt.Component> T find(
             java.awt.Container root, Class<T> type) {
         for (java.awt.Component child : root.getComponents()) {
@@ -81,5 +134,16 @@ class SingleRootClassModelPanelTest {
             java.awt.Container root, Class<T> type) {
         try { return find(root, type); }
         catch (AssertionError ignored) { return null; }
+    }
+
+    private static JButton button(java.awt.Container root, String text) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof JButton button && text.equals(button.getText())) return button;
+            if (child instanceof java.awt.Container container) {
+                try { return button(container, text); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No button " + text);
     }
 }

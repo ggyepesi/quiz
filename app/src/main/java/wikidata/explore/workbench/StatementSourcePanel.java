@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.StatementCanonicalDefaults;
 import wikidata.explore.model.StatementFieldSemantics;
 import wikidata.explore.rule.RuleNode;
@@ -25,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
 /**
@@ -44,6 +46,8 @@ public class StatementSourcePanel extends JPanel {
 
     private Consumer<Void> afterChange = ignored -> {};
     private Supplier<List<String>> sourceClassCandidates = List::of;
+    private BiPredicate<List<String>, List<String>> identityChangeConfirmation =
+            this::confirmIdentityChange;
 
     private final JLabel titleLabel = new JLabel("Statement class");
     /** The "no declaration — infer it" choice, shown instead of a blank row. */
@@ -53,6 +57,8 @@ public class StatementSourcePanel extends JPanel {
     private final JComboBox<String> reifyFromBox = new JComboBox<>();
     private final JTextField statementPropField =
             new JTextField("P1411", 6);
+    private static final String NO_VALUE_DOMAIN = "(none)";
+    private final JComboBox<String> valueDomainBox = new JComboBox<>();
     private final JTextField valueTypeField = new JTextField(10);
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
@@ -62,6 +68,8 @@ public class StatementSourcePanel extends JPanel {
             new JPanel(new GridBagLayout());
     private final Map<String, JCheckBox> keyFieldBoxes =
             new LinkedHashMap<>();
+    private final JComboBox<CanonicalSpec.DuplicatePolicy> duplicatePolicyBox =
+            new JComboBox<>(CanonicalSpec.DuplicatePolicy.values());
 
     private final JComboBox<String> displayNameFieldBox =
             new JComboBox<>();
@@ -133,6 +141,8 @@ public class StatementSourcePanel extends JPanel {
                         ? "P1411"
                         : source.propertyPid());
 
+        refreshValueDomainChoices(source == null ? "" : source.valueSelectionName());
+
         // The value-type filter remains part of the statement class's
         // extraction mapping: it constrains the ps: value by P31.
         valueTypeField.setText(
@@ -149,7 +159,30 @@ public class StatementSourcePanel extends JPanel {
             return;
         }
 
-        clazz.className(classNameField.getText().trim());
+        String previousClassName = clazz.className();
+        String typedClassName = classNameField.getText() == null
+                ? "" : classNameField.getText().trim();
+        if (typedClassName.isBlank()) {
+            showRenameError("A class name is required.");
+            classNameField.setText(clazz.className());
+        } else {
+            String requestedClassName = GeneratedViewableSourceGenerator
+                    .sanitizeClassName(typedClassName);
+            if (projectModel == null) {
+                throw new IllegalStateException(
+                        "A Statement class can only be renamed inside a project model.");
+            }
+            if (!projectModel.renameClass(previousClassName, requestedClassName)) {
+                showRenameError("A class or vocabulary/population named '"
+                        + requestedClassName + "' already exists.");
+                classNameField.setText(clazz.className());
+            }
+        }
+        // Show the canonical spelling chosen by the same sanitizer used by source
+        // generation. More importantly, rename through the project: class names are
+        // references in field targets, base classes, role selections and kind rules,
+        // so changing only this object leaves a partially renamed model.
+        classNameField.setText(clazz.className());
 
         String sourceClass =
                 selectedText(reifyFromBox);
@@ -177,6 +210,8 @@ public class StatementSourcePanel extends JPanel {
                     : prior.copy();
             next.sourceClassName(sourceClass);
             next.propertyPid(statementPid);
+            String valueDomain = selectedText(valueDomainBox);
+            next.valueSelectionName(NO_VALUE_DOMAIN.equals(valueDomain) ? "" : valueDomain);
             next.graphExpansionPolicy((GraphExpansionPolicy)
                     graphExpansionBox.getSelectedItem());
             clazz.statementSource(next);
@@ -202,6 +237,11 @@ public class StatementSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
+    private void showRenameError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
     private void refreshSourceClassChoices() {
         String selected =
                 selectedText(reifyFromBox);
@@ -223,6 +263,26 @@ public class StatementSourcePanel extends JPanel {
         if (!selected.isBlank()) {
             reifyFromBox.setSelectedItem(selected);
         }
+    }
+
+    private void refreshValueDomainChoices(String selected) {
+        valueDomainBox.removeAllItems();
+        valueDomainBox.addItem(NO_VALUE_DOMAIN);
+        boolean found = false;
+        if (projectModel != null) for (var selection : projectModel.selections()) {
+            if (selection instanceof wikidata.explore.model.VocabularySelection) {
+                valueDomainBox.addItem(selection.name());
+                found |= selection.name().equals(selected);
+            }
+        }
+        // An unresolved declaration is a validation problem, not permission for an
+        // editor merely being opened to erase it. Keep it visible and selected until
+        // the vocabulary is restored or the user explicitly chooses "none".
+        if (selected != null && !selected.isBlank() && !found) {
+            valueDomainBox.addItem(selected);
+        }
+        valueDomainBox.setSelectedItem(selected == null || selected.isBlank()
+                ? NO_VALUE_DOMAIN : selected);
     }
 
     /**
@@ -247,6 +307,7 @@ public class StatementSourcePanel extends JPanel {
         }
 
         CanonicalSpec canonical = clazz.canonical();
+        duplicatePolicyBox.setSelectedItem(canonical.duplicatePolicy());
 
         int row = 0;
         for (GeneratedFieldModel field : clazz.fields()) {
@@ -317,6 +378,9 @@ public class StatementSourcePanel extends JPanel {
 
     private void applyCanonicalControls() {
         CanonicalSpec canonical = clazz.canonical();
+
+        canonical.duplicatePolicy(
+                (CanonicalSpec.DuplicatePolicy) duplicatePolicyBox.getSelectedItem());
 
         String primaryList = selectedText(primaryListFieldBox);
         canonical.primaryListField(
@@ -500,18 +564,55 @@ public class StatementSourcePanel extends JPanel {
                 + " values become a curated frontier.</html>");
     }
 
-    private void rederiveIdentity() {
+    void identityChangeConfirmation(
+            BiPredicate<List<String>, List<String>> confirmation) {
+        identityChangeConfirmation = confirmation == null
+                ? this::confirmIdentityChange : confirmation;
+    }
+
+    void rederiveIdentity() {
         if (clazz == null) {
             return;
         }
 
-        // Clearing the explicit spec asks GeneratedClassModel to infer the grain
-        // from the current source fields. The checkboxes then make the inferred
-        // result visible and editable before it is saved again.
-        clazz.canonical(null);
+        List<String> current = List.copyOf(clazz.canonical().keyFields());
+        List<String> proposed = StatementCanonicalDefaults.suggest(clazz);
+        if (current.equals(proposed)) {
+            JOptionPane.showMessageDialog(this,
+                    "Identity fields already match the derived proposal:\n"
+                            + displayIdentityFields(proposed),
+                    "Re-derive identity", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!identityChangeConfirmation.test(current, proposed)) {
+            return;
+        }
+
+        // Identity is independent of display and duplicate handling. Re-deriving
+        // the grain must not reset a custom display template or MERGE_RECORDS — the
+        // old implementation replaced the whole CanonicalSpec despite this button
+        // promising only an identity change.
+        StatementCanonicalDefaults.replaceKeyWithSuggestion(clazz);
         rebuildCanonicalControls();
         refreshDerived();
         afterChange.accept(null);
+    }
+
+    private boolean confirmIdentityChange(
+            List<String> current, List<String> proposed) {
+        String message = "Replace the identity fields for " + clazz.className() + "?\n\n"
+                + "Current:  " + displayIdentityFields(current) + "\n"
+                + "Proposed: " + displayIdentityFields(proposed) + "\n\n"
+                + "This changes which statement records are considered duplicates.\n"
+                + "Display-name and duplicate-merge settings will not change.";
+        return JOptionPane.showConfirmDialog(this, message, "Re-derive identity",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE)
+                == JOptionPane.OK_OPTION;
+    }
+
+    private static String displayIdentityFields(List<String> fields) {
+        return fields == null || fields.isEmpty()
+                ? "(no fields — surrogate identity)" : String.join(" + ", fields);
     }
 
     private void clear() {
@@ -524,6 +625,7 @@ public class StatementSourcePanel extends JPanel {
         graphPatternValue.setText(" ");
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
+        duplicatePolicyBox.setSelectedItem(CanonicalSpec.DuplicatePolicy.KEEP_ONE);
         displayNameFieldBox.removeAllItems();
         identityValue.setText(" ");
         subjectFallbackValue.setText(" ");
@@ -580,6 +682,11 @@ public class StatementSourcePanel extends JPanel {
             "Statement property:",
             statementPropField);
 
+        valueDomainBox.setToolTipText("Optional vocabulary of allowed statement values. "
+                + "Required when subjects are discovered directly from the property.");
+        GridBagUtils.labeledRow(form, row++,
+            "Value domain:", valueDomainBox);
+
         valueTypeField.setToolTipText(
                 "Optional P31 filter on the statement value.");
         GridBagUtils.labeledRow(form, row++,
@@ -614,12 +721,18 @@ public class StatementSourcePanel extends JPanel {
         cc.fill = GridBagConstraints.HORIZONTAL;
 
         GridBagUtils.labeledRow(canonical, cc, 0,
-            "Key fields:",
+            "Same record when:",
             keyFieldsPanel);
+
+        duplicatePolicyBox.setToolTipText("What happens when key fields identify "
+                + "several copies: keep the preferred complete copy, or preserve "
+                + "its scalar values while unioning collection values from every copy.");
+        GridBagUtils.labeledRow(canonical, cc, 1,
+            "When duplicates occur:", duplicatePolicyBox);
 
         displayNameFieldBox.setToolTipText(
                 "Single field used as the record's display name.");
-        GridBagUtils.labeledRow(canonical, cc, 1,
+        GridBagUtils.labeledRow(canonical, cc, 2,
             "Display-name field:",
             displayNameFieldBox);
 
@@ -631,7 +744,7 @@ public class StatementSourcePanel extends JPanel {
                 + "duplicates and are dropped.<br><b>" + INFER_PRIMARY_LIST + "</b> takes "
                 + "the first such qualifier — correct with one candidate, decided by "
                 + "field order with two.</html>");
-        GridBagUtils.labeledRow(canonical, cc, 2,
+        GridBagUtils.labeledRow(canonical, cc, 3,
             "Canonical list:",
             primaryListFieldBox);
 
@@ -643,7 +756,7 @@ public class StatementSourcePanel extends JPanel {
         rederive.addActionListener(
                 event -> rederiveIdentity());
 
-        GridBagUtils.wideRow(canonical, 3, rederive);
+        GridBagUtils.wideRow(canonical, 4, rederive);
         GridBagUtils.wideRow(form, row++, canonical);
 
         JPanel buttons =

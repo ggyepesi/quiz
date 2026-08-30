@@ -27,10 +27,17 @@ public final class WorkbenchSelections {
         @Override void close();
     }
 
-    public record Entity(String qid, String label) {
+    /**
+     * The presentation carried with an entity wherever it is shown in the workbench.
+     * Identity remains the QID; label and description may improve as richer sources
+     * encounter the same entity.
+     */
+    public record Entity(String qid, String label, String description) {
+        public Entity(String qid, String label) { this(qid, label, ""); }
         public Entity {
             if (!WikidataIds.isQid(qid)) throw new IllegalArgumentException("Invalid QID");
             label = label == null || label.isBlank() ? qid : label;
+            description = description == null ? "" : description;
         }
     }
 
@@ -55,7 +62,17 @@ public final class WorkbenchSelections {
 
     /** Adds to the selection; picking the same value twice does not select it twice. */
     public void entity(String qid, String label) {
-        Entity next = new Entity(qid, label);
+        entity(qid, label, "");
+    }
+
+    public void entity(String qid, String label, String description) {
+        Entity next = new Entity(qid, label, description);
+        Entity known = entities.get(qid);
+        if (known != null) {
+            next = new Entity(qid,
+                    next.label().equals(qid) ? known.label() : next.label(),
+                    next.description().isBlank() ? known.description() : next.description());
+        }
         if (!next.equals(entities.put(next.qid(), next))) changed();
     }
 

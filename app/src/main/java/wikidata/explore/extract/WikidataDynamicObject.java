@@ -100,8 +100,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public WikidataDynamicObject() { }
 
-    public WikidataDynamicObject(String qid, String name) {
-        String id = normalizeQid(qid);
+    public WikidataDynamicObject(String identifier, String name) {
+        String id = normalizeIdentifier(identifier);
         this.identifier = id == null ? "" : id;
         this.name = name == null || name.isBlank() ? this.identifier : name;
     }
@@ -481,8 +481,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         dynamicFields.put(fieldName, list);
     }
 
-    private static String normalizeQid(String qid) {
-        return qid == null ? null : qid.strip().trim();
+    private static String normalizeIdentifier(String identifier) {
+        return identifier == null ? null : identifier.strip().trim();
     }
 
     private static void addIfMissing(List<Object> list, Object value) {

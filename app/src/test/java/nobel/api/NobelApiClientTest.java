@@ -16,65 +16,73 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Physics 2018 is the case worth pinning: three laureates, TWO achievements, and a
  * prize-level motivation over both. It is exactly what Wikidata cannot represent - there
- * the umbrella is hung on Mourou alone - so if the share grouping is wrong, the domain
- * silently loses the structure this source was chosen for.
+ * the umbrella is hung on Mourou alone - so if the achievement grouping is wrong, the
+ * domain silently loses the structure this source was chosen for.
  */
 class NobelApiClientTest {
 
-    private static NobelPrizeAward award(String fixture) throws Exception {
+    private static NobelPrizeAward award(String fixture, String categoryCode) throws Exception {
         try (InputStream in = NobelApiClientTest.class
                 .getResourceAsStream("/nobel/" + fixture + ".json")) {
-            return NobelApiClient.parse(new ObjectMapper().readTree(in)).getFirst();
+            return NobelApiClient.parse(
+                    new ObjectMapper().readTree(in), categoryCode).getFirst();
         }
     }
 
-    @Test void aDividedPrizeKeepsItsUmbrellaAndItsSharesApart() throws Exception {
-        NobelPrizeAward physics = award("physics-2018");
+    @Test void aDividedPrizeKeepsItsUmbrellaAndItsAchievementsApart() throws Exception {
+        NobelPrizeAward physics = award("physics-2018", "phy");
 
+        assertEquals("phy", physics.categoryCode(),
+                "the category-filtered request supplies the code absent from the response");
         assertEquals(2018, physics.year());
         assertEquals("Physics", physics.category());
         assertEquals("for groundbreaking inventions in the field of laser physics",
                 physics.topMotivation(),
                 "the prize-level motivation belongs to the prize, not to one laureate");
-        assertEquals(2, physics.shares().size(), "three laureates, two achievements");
+        assertEquals(2, physics.achievements().size(),
+                "three laureate awards, two achievements");
     }
 
-    @Test void laureatesCitedForTheSameAchievementFormOneShare() throws Exception {
-        List<NobelPrizeAward.Share> shares = award("physics-2018").shares();
+    @Test void laureatesCitedForOneAchievementKeepTheirOwnPortions() throws Exception {
+        List<NobelPrizeAward.Achievement> achievements =
+                award("physics-2018", "phy").achievements();
 
         assertEquals("for the optical tweezers and their application to biological systems",
-                shares.getFirst().motivation());
-        assertEquals("1/2", shares.getFirst().portion());
-        assertEquals(List.of("Arthur Ashkin"), names(shares.getFirst()));
+                achievements.getFirst().motivation());
+        assertEquals(List.of("Arthur Ashkin"), names(achievements.getFirst()));
+        assertEquals(List.of("1/2"), portions(achievements.getFirst()));
 
         assertEquals("for their method of generating high-intensity, ultra-short optical pulses",
-                shares.get(1).motivation());
-        assertEquals("1/4", shares.get(1).portion());
-        assertEquals(2, names(shares.get(1)).size(), "the half shared by two");
-        assertTrue(names(shares.get(1)).contains("Donna Strickland"));
+                achievements.get(1).motivation());
+        assertEquals(2, names(achievements.get(1)).size(), "the achievement has two laureates");
+        assertEquals(List.of("1/4", "1/4"), portions(achievements.get(1)),
+                "each laureate's allocation survives instead of becoming one share value");
+        assertTrue(names(achievements.get(1)).contains("Donna Strickland"));
     }
 
     @Test void everyLaureateSurvivesTheGroupingInSourceOrder() throws Exception {
-        NobelPrizeAward physics = award("physics-2018");
+        NobelPrizeAward physics = award("physics-2018", "phy");
 
         assertEquals(List.of("960", "961", "962"),
-                physics.laureates().stream().map(NobelPrizeAward.Laureate::apiId).toList(),
+                physics.laureateAwards().stream()
+                        .map(NobelPrizeAward.LaureateAward::apiId).toList(),
                 "the ids that join to Wikidata P8024, in sortOrder");
         assertEquals(List.of(1, 2, 3),
-                physics.laureates().stream()
-                        .map(NobelPrizeAward.Laureate::sortOrder).toList());
-        assertFalse(physics.laureates().getFirst().organization());
+                physics.laureateAwards().stream()
+                        .map(NobelPrizeAward.LaureateAward::sortOrder).toList());
+        assertFalse(physics.laureateAwards().getFirst().organization());
     }
 
     @Test void anOrganisationIsNamedFromTheFieldTheSourceUsesForOne() throws Exception {
-        NobelPrizeAward peace = award("peace-2020");
+        NobelPrizeAward peace = award("peace-2020", "pea");
 
-        NobelPrizeAward.Laureate wfp = peace.laureates().getFirst();
+        NobelPrizeAward.LaureateAward wfp = peace.laureateAwards().getFirst();
+        assertEquals("pea", peace.categoryCode());
         assertEquals("World Food Programme", wfp.name(),
                 "an organisation has orgName where a person has knownName");
         assertTrue(wfp.organization(), "the Peace Prize is not always won by a person");
         assertEquals("994", wfp.apiId());
-        assertEquals("1", peace.shares().getFirst().portion(), "an undivided prize");
+        assertEquals("1", wfp.portion(), "an undivided prize");
     }
 
     @Test void theCategoryQueryReportsWhatItReadAndRefusesAnUnknownCategory()
@@ -89,6 +97,7 @@ class NobelApiClientTest {
 
         List<NobelPrizeAward> awards = client.category("PHY").execute(new QueryContext());
         assertEquals(1, awards.size());
+        assertEquals("phy", awards.getFirst().categoryCode());
 
         IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
                 () -> client.category("chemistry"));
@@ -98,11 +107,17 @@ class NobelApiClientTest {
 
     @Test void aResponseWithNoPrizesYieldsNothingRatherThanFailing() throws Exception {
         assertEquals(List.of(), NobelApiClient.parse(
-                new ObjectMapper().readTree("{\"nobelPrizes\":[]}")));
-        assertEquals(List.of(), NobelApiClient.parse(null));
+                new ObjectMapper().readTree("{\"nobelPrizes\":[]}"), "phy"));
+        assertEquals(List.of(), NobelApiClient.parse(null, "phy"));
     }
 
-    private static List<String> names(NobelPrizeAward.Share share) {
-        return share.laureates().stream().map(NobelPrizeAward.Laureate::name).toList();
+    private static List<String> names(NobelPrizeAward.Achievement achievement) {
+        return achievement.laureateAwards().stream()
+                .map(NobelPrizeAward.LaureateAward::name).toList();
+    }
+
+    private static List<String> portions(NobelPrizeAward.Achievement achievement) {
+        return achievement.laureateAwards().stream()
+                .map(NobelPrizeAward.LaureateAward::portion).toList();
     }
 }

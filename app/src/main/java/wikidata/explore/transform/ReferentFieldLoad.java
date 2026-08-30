@@ -430,7 +430,8 @@ public final class ReferentFieldLoad {
      *  (boolean/auto) aren't a Wikidata property load. */
     private static boolean loadableType(FieldType t) {
         return t == FieldType.ENTITY || t == FieldType.DATE
-                || t == FieldType.STRING || t == FieldType.IMAGE;
+                || t == FieldType.STRING || t == FieldType.TEXT
+                || t == FieldType.IMAGE;
     }
 
     private static LoadOutcome loadField(
@@ -667,6 +668,7 @@ public final class ReferentFieldLoad {
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
             if (field.type() != FieldType.DATE && field.type() != FieldType.STRING
+                    && field.type() != FieldType.TEXT
                     && field.type() != FieldType.IMAGE) continue;
             String pid = clean(field.mapping().propertyPid());
             wikidata.explore.extract.LoadedDeclaration done = known.get(
@@ -763,6 +765,12 @@ public final class ReferentFieldLoad {
                 && field.cardinality().isCollection();
         boolean date = field.type() == FieldType.DATE;
         boolean image = field.type() == FieldType.IMAGE;
+        // Configuration is invariant for the whole field. Resolve it before touching
+        // any object so an invalid language fails immediately rather than part-way
+        // through a large population, and do not repeat the same work per entity.
+        String literalLanguage = date || image ? ""
+                : wikidata.WikidataLanguageDefaults.literalCode(
+                        field.mapping().valueLanguage());
         // Calendar models this build cannot translate, for THIS field and this load.
         java.util.Set<String> untranslatedCalendars = new java.util.TreeSet<>();
         int loaded = 0;
@@ -775,8 +783,17 @@ public final class ReferentFieldLoad {
                 continue;
             }
             List<Object> values = new ArrayList<>();
-            for (WikidataApiClient.ApiStatement s : ss) {
-                String raw = s.value();
+            List<String> rawValues = ss.stream()
+                    .map(WikidataApiClient.ApiStatement::value)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            List<String> selectedValues = date || image
+                    ? rawValues
+                    : wikidata.MonolingualTextCodec.select(
+                            rawValues, literalLanguage);
+            for (String selected : selectedValues) {
+                String raw = date ? selected : image
+                        ? wikidata.MonolingualTextCodec.text(selected) : selected;
                 if (raw == null || raw.isBlank()) {
                     continue;
                 }
@@ -831,6 +848,10 @@ public final class ReferentFieldLoad {
 
         boolean collection = field.cardinality() != null
                 && field.cardinality().isCollection();
+        // Like literal language above, this is one field declaration, not an
+        // entity-specific decision.
+        String languageQid = wikidata.WikidataLanguageDefaults.entityQid(
+                field.mapping().valueLanguage());
         int loaded = 0;
         for (WikidataDynamicObject o : objs) {
             WikidataApiClient.ApiEntity e = batch.entities().get(o.qid());
@@ -838,8 +859,6 @@ public final class ReferentFieldLoad {
                 continue;   // no data, or already populated
             }
             List<WikidataDynamicObject> values = new ArrayList<>();
-            String languageQid = wikidata.WikidataLanguageDefaults.entityQid(
-                    field.mapping().valueLanguage());
             List<String> projected = languageQid.isBlank()
                     ? e.entityQids(pid)
                     : e.entityQidsInLanguage(pid, languageQid);

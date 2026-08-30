@@ -32,7 +32,7 @@ class RunButtonRowLayoutTest {
                         + NARROW_WINDOW + "px window can show on one line");
 
         JPanel generate = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        for (String label : List.of("Generate instances", "Generate domain", "Cancel",
+        for (String label : List.of("Generate class", "Generate domain", "Cancel",
                 "Depth")) {
             generate.add(new javax.swing.JButton(label));
         }

@@ -216,7 +216,7 @@ public class GenerationPipeline {
 
     /** Single-class preview with the same post-extraction source orbit as domain
      * generation. The compatibility overload remains for offline/tests without an entity
-     * client; interactive Generate instances supplies both dependencies. */
+     * client; interactive Generate class instances supplies both dependencies. */
     public GenerationRun fullRun(
             GeneratedProjectModel snapshot,
             int depth,

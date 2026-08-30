@@ -63,30 +63,36 @@ public final class PopulationSubjectLoader {
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
                 "Discover subjects: " + relationPid + " into " + label)) {
+            String title = "Subjects with " + relationPid + " into " + label;
+            GenerationLog.Running running = g.subqueryStarted(title, query);
             int rows = 0;
-            for (WikidataBinding binding : client.query(query)) {
-                String qid = binding.qid("subject");
-                if (qid == null || !WikidataIds.isQid(qid)) {
-                    continue;
+            try {
+                for (WikidataBinding binding : client.query(query)) {
+                    String qid = binding.qid("subject");
+                    if (qid == null || !WikidataIds.isQid(qid)) {
+                        continue;
+                    }
+                    rows++;
+                    WikidataDynamicObject o = known.get(qid);
+                    if (o == null) {
+                        o = new WikidataDynamicObject(qid, qid);
+                        // A directly discovered subject is still a Wikidata entity. The
+                        // ordinary class loader seeds this source link while constructing
+                        // its objects; omitting it here made the same Person lose the
+                        // Wikidata affordance solely because P39 discovered it.
+                        o.put("wikidata", o.wikidataUrl());
+                        known.put(qid, o);
+                        created.add(o);
+                    }
+                    // Stamp the internal load type so QualifierLoader/reify can select it
+                    // without a modeled source class.
+                    o.type(entityType);
                 }
-                rows++;
-                WikidataDynamicObject o = known.get(qid);
-                if (o == null) {
-                    o = new WikidataDynamicObject(qid, qid);
-                    // A directly discovered subject is still a Wikidata entity. The
-                    // ordinary class loader seeds this source link while constructing
-                    // its objects; omitting it here made the same Person lose the
-                    // Wikidata affordance solely because P39 discovered it.
-                    o.put("wikidata", o.wikidataUrl());
-                    known.put(qid, o);
-                    created.add(o);
-                }
-                // Stamp the internal load type so QualifierLoader/reify can select it
-                // without a modeled source class.
-                o.type(entityType);
+                running.done(rows + " subjects");
+            } catch (Exception failure) {
+                running.failed(failure.getMessage());
+                throw failure;
             }
-            g.subquery("Subjects with " + relationPid + " into " + label,
-                    query, rows + " subjects");
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();

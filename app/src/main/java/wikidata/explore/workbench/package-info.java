@@ -3,7 +3,7 @@
  *
  * <p>{@code ModelBuilderFrame} hosts the workbench: edit the project model
  * (classes/fields via {@code ClassSourcePanel} / {@code FieldSourcePanel}),
- * discover types/properties and sample, generate instances, view the rule tree
+ * discover types/properties and sample, generate class instances, view the rule tree
  * (readable plan), and Save everything (model + rule tree + snapshot). It also
  * carries the UX helpers built around the large config surface: subtype &amp;
  * DBpedia-property discovery, and the explained {@code FieldRecipes}

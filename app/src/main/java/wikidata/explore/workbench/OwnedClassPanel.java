@@ -4,6 +4,7 @@ import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -53,18 +54,20 @@ final class OwnedClassPanel extends JPanel {
     void applyEdits() {
         if (clazz == null) return;
         String previousName = clazz.className();
-        clazz.className(className.getText());
-        if (!previousName.equals(clazz.className())) {
-            // The class name is the stored target of producing fields. Keep those
-            // references attached when the minimal editor renames the class.
-            for (GeneratedClassModel owner : project.classes()) {
-                if (owner == null) continue;
-                owner.fields().stream()
-                        .filter(field -> field != null
-                                && previousName.equals(field.entityClassName()))
-                        .forEach(field -> field.entityClassName(clazz.className()));
+        String typedName = className.getText() == null ? "" : className.getText().trim();
+        if (typedName.isBlank()) {
+            renameError("A class name is required.");
+            className.setText(clazz.className());
+        } else {
+            String requested = GeneratedViewableSourceGenerator
+                    .sanitizeClassName(typedName);
+            if (!project.renameClass(previousName, requested)) {
+                renameError("A class or vocabulary/population named '" + requested
+                        + "' already exists.");
+                className.setText(clazz.className());
             }
         }
+        className.setText(clazz.className());
         clazz.alias(alias.getText());
         Object selectedBase = baseClass.getSelectedItem();
         clazz.baseClassName(selectedBase == null || NO_BASE.equals(selectedBase)
@@ -74,6 +77,11 @@ final class OwnedClassPanel extends JPanel {
         clazz.ownedClass(true);
         refreshSites();
         afterChange.accept(null);
+    }
+
+    private void renameError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
+                JOptionPane.WARNING_MESSAGE);
     }
 
     private void refreshSites() {

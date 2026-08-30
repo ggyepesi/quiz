@@ -8,6 +8,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.VocabularySelection;
 
 import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
@@ -18,8 +19,48 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ModelSourceWorkbenchPanelTest {
+
+    @Test void theDomainNodeHasAnOverviewRatherThanAStaleClassEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.name("NobelPrizes");
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+
+        panel.edit(model);
+
+        assertSame(model, panel.selected());
+        DomainOverviewPanel overview = component(panel, DomainOverviewPanel.class);
+        assertTrue(overview.isVisible());
+    }
+
+    @Test void aVocabularyUsesTheConfigurationAreaRatherThanAnExternalWindow() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        model.addSelection(categories);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        SelectionViewerPanel editor = new SelectionViewerPanel(model, null, null);
+        panel.selectionEditor(editor);
+
+        panel.edit(categories);
+
+        assertSame(categories, panel.selected());
+        assertTrue(editor.isVisible(), "the vocabulary editor is the visible config card");
+        assertEquals(0, buttonsNamed(editor, "New", "Rename", "Delete"),
+                "structural vocabulary actions belong to the model tree");
+    }
+
+    private static int buttonsNamed(Container root, String... names) {
+        java.util.Set<String> wanted = java.util.Set.of(names);
+        int count = 0;
+        for (Component child : root.getComponents()) {
+            if (child instanceof javax.swing.JButton button
+                    && wanted.contains(button.getText())) count++;
+            if (child instanceof Container container) count += buttonsNamed(container, names);
+        }
+        return count;
+    }
 
     @Test void explorerToolsAreGroupedByDatasourceAndProgrammaticNavigationStillWorks() {
         GeneratedProjectModel model = new GeneratedProjectModel();
@@ -88,6 +129,47 @@ class ModelSourceWorkbenchPanelTest {
         assertEquals(1, refreshes.get());
     }
 
+    @Test void confirmedDomainReplacementDoesNotCommitTheOldEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel oldClass = new GeneratedClassModel("OldDomainClass");
+        model.rootClass(oldClass);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(oldClass);
+        AtomicInteger commits = new AtomicInteger();
+        panel.afterChange(ignored -> commits.incrementAndGet());
+
+        panel.abandonEdits();
+        GeneratedProjectModel replacement = new GeneratedProjectModel();
+        GeneratedClassModel mythology = new GeneratedClassModel("Mythology");
+        replacement.rootClass(mythology);
+        replacement.addSelection(new VocabularySelection("Categories"));
+        model.copyContentsFrom(replacement);
+        panel.changeSelection(model.rootClass());
+
+        assertEquals(0, commits.get(),
+                "a tree event after replacement must not flush the old domain editor");
+        assertSame(mythology, panel.selected());
+    }
+
+    @Test void removingTheSelectedClassDoesNotCommitItsOrphanedEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("Root");
+        GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
+        model.rootClass(root);
+        model.addClass(laureate);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(laureate);
+        AtomicInteger commits = new AtomicInteger();
+        panel.afterChange(ignored -> commits.incrementAndGet());
+
+        model.removeClass(laureate);
+        panel.changeSelection(root);
+
+        assertEquals(0, commits.get(),
+                "tree navigation after remove must not apply the removed class");
+        assertSame(root, panel.selected());
+    }
+
     @SuppressWarnings("unchecked")
     private static JComboBox<String> comboContaining(Container root, String item) {
         for (Component component : root.getComponents()) {
@@ -107,6 +189,17 @@ class ModelSourceWorkbenchPanelTest {
             }
         }
         throw new AssertionError("No combo contains " + item);
+    }
+
+    private static <T extends Component> T component(Container root, Class<T> type) {
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) return type.cast(child);
+            if (child instanceof Container container) {
+                try { return component(container, type); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No " + type.getSimpleName());
     }
 
     @Test void aFieldSampleUsesItsDeclaringClassRatherThanTheProjectRoot() {

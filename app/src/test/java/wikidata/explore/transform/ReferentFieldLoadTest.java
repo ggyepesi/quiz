@@ -390,6 +390,29 @@ class ReferentFieldLoadTest {
         assertEquals("Academy Awards", ceremony.get("officialName"));
     }
 
+    @Test void directMonolingualLiteralUsesTheSameLanguageSelectionAsAQualifier() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel personClass = new GeneratedClassModel("Person");
+        GeneratedFieldModel motto = personClass.addField(
+                "motto", FieldType.TEXT, FieldCardinality.SINGLE);
+        motto.mapping().propertyPid("P1451");
+        motto.mapping().valueLanguage("Q1860");
+        model.rootClass(personClass);
+
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
+        person.type("Person");
+        RecordingApi api = new RecordingApi();
+        api.statement("Q1", "P1451", "Q1$untagged", "fallback", Map.of())
+                .statement("Q1", "P1451", "Q1$sv",
+                        wikidata.MonolingualTextCodec.encode("svensk", "sv"), Map.of())
+                .statement("Q1", "P1451", "Q1$en",
+                        wikidata.MonolingualTextCodec.encode("English", "en"), Map.of());
+
+        assertEquals(1, ReferentFieldLoad.apply(model, List.of(person), api, null));
+        assertEquals("English", person.get("motto"),
+                "Q1860 and en are the same request, and exact beats untagged");
+    }
+
     /** A referent that exists ONLY nested inside another record (never a top-level
      *  pool entry) is still found and loaded — e.g. a Ceremony as a Nomination's P805
      *  qualifier value. The pool passed in contains only the Nomination. */

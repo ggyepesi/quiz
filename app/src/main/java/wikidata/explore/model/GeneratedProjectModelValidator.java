@@ -34,6 +34,7 @@ public final class GeneratedProjectModelValidator {
         validateUniqueClassNames(project, problems);
         validateSelectionsAndKindRules(project, problems);
         validateOwnedComponentCycles(project, problems);
+        validateAggregateCycles(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) {
@@ -48,6 +49,7 @@ public final class GeneratedProjectModelValidator {
             validateCanonical(clazz, problems);
             validateStatementSubjectFields(clazz, problems);
             validateValueLanguages(clazz, problems);
+            validateAggregateClass(project, clazz, problems);
 
             if (clazz.reifiesStatements()) {
                 validateStatementClass(
@@ -58,6 +60,66 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateAggregateCycles(GeneratedProjectModel project,
+            List<Problem> problems) {
+        for (GeneratedClassModel start : project.classes()) {
+            if (start == null || start.aggregateSource() == null) continue;
+            Set<String> seen = new LinkedHashSet<>();
+            GeneratedClassModel current = start;
+            while (current != null && current.aggregateSource() != null) {
+                if (!seen.add(current.className())) {
+                    problems.add(Problem.error(start.className(),
+                            "Aggregate source cycle: " + String.join(" → ", seen)
+                                    + " → " + current.className() + "."));
+                    break;
+                }
+                current = project.findClass(current.aggregateSource().sourceClassName());
+            }
+        }
+    }
+
+    private static void validateAggregateClass(GeneratedProjectModel project,
+            GeneratedClassModel aggregate, List<Problem> problems) {
+        AggregateClassSource spec = aggregate.aggregateSource();
+        if (aggregate.classKind() != ClassKind.AGGREGATE && spec == null) return;
+        if (spec == null || !spec.configured()) {
+            problems.add(Problem.error(aggregate.className(),
+                    "Aggregate class requires a source class, grouping key and members field."));
+            return;
+        }
+        GeneratedClassModel source = project.findClass(spec.sourceClassName());
+        if (source == null || source == aggregate) {
+            problems.add(Problem.error(aggregate.className(),
+                    "Aggregate source class '" + spec.sourceClassName() + "' does not exist."));
+            return;
+        }
+        GeneratedFieldModel members = findField(aggregate, spec.membersField());
+        if (members == null || members.type() != FieldType.ENTITY
+                || members.cardinality() != FieldCardinality.COLLECTION
+                || !source.className().equals(members.entityClassName())) {
+            problems.add(Problem.error(aggregate.className(),
+                    "Aggregate members field must be a list-valued ENTITY field of class "
+                            + source.className() + "."));
+        }
+        Set<String> targets = new LinkedHashSet<>();
+        for (AggregateClassSource.Key key : spec.keys()) {
+            GeneratedFieldModel target = findField(aggregate, key.targetField());
+            GeneratedFieldModel input = findField(source, key.sourceField());
+            if (target == null) problems.add(Problem.error(aggregate.className(),
+                    "Aggregate key target field '" + key.targetField() + "' does not exist."));
+            if (input == null) problems.add(Problem.error(aggregate.className(),
+                    "Aggregate key source field '" + key.sourceField() + "' does not exist on "
+                            + source.className() + "."));
+            if (!targets.add(key.targetField())) problems.add(Problem.error(aggregate.className(),
+                    "Aggregate key target field '" + key.targetField() + "' is repeated."));
+            if (target != null && target.cardinality() == FieldCardinality.COLLECTION
+                    || input != null && input.cardinality() == FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(aggregate.className(),
+                        "Aggregate grouping fields must be scalar: " + key.targetField() + "."));
+            }
+        }
     }
 
     /**
@@ -97,10 +159,29 @@ public final class GeneratedProjectModelValidator {
             GeneratedClassModel owner, List<Problem> problems) {
         int subjects = 0;
         for (GeneratedFieldModel field : owner.fields()) {
-            if (field == null || field.mapping().productionKind()
-                    != FieldProductionKind.STATEMENT_SUBJECT) {
+            if (field == null) {
                 continue;
             }
+            if (field.mapping().productionKind()
+                    == FieldProductionKind.STATEMENT_PARTICIPANTS) {
+                if (!owner.reifiesStatements()) {
+                    problems.add(Problem.error(path(owner, field),
+                            "Statement participants are available only on a Statement class."));
+                }
+                if (field.type() != FieldType.ENTITY
+                        || field.cardinality() != FieldCardinality.COLLECTION) {
+                    problems.add(Problem.error(path(owner, field),
+                            "Statement participants must be a list-valued ENTITY field."));
+                }
+                if (!wikidata.WikidataIds.isPid(
+                        clean(field.mapping().qualifierPid()))) {
+                    problems.add(Problem.error(path(owner, field),
+                            "Statement participants require an entity qualifier PID."));
+                }
+                continue;
+            }
+            if (field.mapping().productionKind()
+                    != FieldProductionKind.STATEMENT_SUBJECT) continue;
             subjects++;
             if (!owner.reifiesStatements()) {
                 problems.add(Problem.error(path(owner, field),
@@ -674,13 +755,11 @@ public final class GeneratedProjectModelValidator {
 
                 GeneratedFieldModel field =
                         findField(clazz, name);
-                if (field != null
-                        && !StatementFieldSemantics
-                        .isCanonicalKeyCandidate(field)) {
+                if (field != null && !StatementFieldSemantics.isCanonicalKeyCandidate(field)) {
                     problems.add(Problem.error(
                             path(clazz, field),
-                            "Only scalar, Auto-produced fields can "
-                                    + "participate in a canonical key."));
+                            "Only scalar runtime fields and normalized Statement "
+                                    + "participants can participate in a canonical key."));
                 }
             }
         }

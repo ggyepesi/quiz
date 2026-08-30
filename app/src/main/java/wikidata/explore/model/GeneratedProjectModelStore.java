@@ -104,6 +104,7 @@ public final class GeneratedProjectModelStore {
         migrateRemovedCanonicalKind(tree);
         GeneratedProjectModel model = mapper.treeToValue(tree, GeneratedProjectModel.class);
         OwnedClassSemantics.migrateLegacy(model);
+        model.reconcileSourceBindingTargets();
         PopulationSourceBindings.synchronize(model);
         ClassSourceBindings.synchronize(model);
         FieldSourceBindings.migrateOnLoad(model);

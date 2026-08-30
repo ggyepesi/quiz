@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
 import workbench.SelectionsButton;
+import workbench.EntityResultPanel;
 import workbench.WorkbenchSelections;
 
 import javax.swing.*;
@@ -29,10 +30,9 @@ class VocabularyFromSelectionsTest {
         panel.selections(reusable);
         SelectionsButton open = component(panel, SelectionsButton.class);
         JTabbedPane tabs = (JTabbedPane) open.dialogContent();
-        @SuppressWarnings("unchecked") JList<WorkbenchSelections.Entity> list =
-                (JList<WorkbenchSelections.Entity>) component(
-                        (Container) tabs.getComponentAt(0), JList.class);
-        list.setSelectionInterval(0, 1);
+        EntityResultPanel list = component(
+                (Container) tabs.getComponentAt(0), EntityResultPanel.class);
+        list.selectRows(0, 1);
         button((Container) tabs.getComponentAt(0), "Add selected entities").doClick();
 
         assertEquals(List.of("Q38104", "Q44585"), prize.valueQids());
@@ -45,9 +45,9 @@ class VocabularyFromSelectionsTest {
         project.addSelection(prize);
         SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
 
-        JList<?> list = component(panel, JList.class);
-        assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode());
-        list.setSelectedIndices(new int[]{0, 2});
+        EntityResultPanel list = component(panel, EntityResultPanel.class);
+        assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.selectionMode());
+        list.selectRows(0, 2);
         button(panel, "Remove selected").doClick();
 
         assertEquals(List.of("Q44585"), prize.valueQids());
@@ -113,13 +113,32 @@ class VocabularyFromSelectionsTest {
         SelectionsButton open = component(panel, SelectionsButton.class);
         JTabbedPane tabs = (JTabbedPane) open.dialogContent();
         Container entityTab = (Container) tabs.getComponentAt(0);
-        component(entityTab, JList.class).setSelectionInterval(0, 0);
+        component(entityTab, EntityResultPanel.class).selectRows(0);
         button(entityTab, "Add selected entities").doClick();
 
-        JList<?> shown = component(panel, JList.class);
-        assertEquals(1, shown.getModel().getSize());
-        assertTrue(shown.getModel().getElementAt(0).toString().contains("Nobel Prize in Physics"),
+        EntityResultPanel shown = component(panel, EntityResultPanel.class);
+        assertEquals(1, shown.rowCount());
+        assertTrue(shown.valueAt(0, 1).toString().contains("Nobel Prize in Physics"),
                 "the label survives into the vocabulary view");
+    }
+
+    @Test void aVocabularyDoesNotPromiseDescriptionsItCannotPersist() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addSelection(new VocabularySelection("Prize"));
+        WorkbenchSelections selections = new WorkbenchSelections();
+        selections.entity("Q38104", "Nobel Prize in Physics", "award category");
+        SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
+        panel.selections(selections);
+
+        SelectionsButton open = component(panel, SelectionsButton.class);
+        JTabbedPane tabs = (JTabbedPane) open.dialogContent();
+        Container entityTab = (Container) tabs.getComponentAt(0);
+        component(entityTab, EntityResultPanel.class).selectRows(0);
+        button(entityTab, "Add selected entities").doClick();
+
+        EntityResultPanel shown = component(panel, EntityResultPanel.class);
+        assertEquals(2, ((JTable) component(shown, JTable.class)).getColumnCount(),
+                "a vocabulary stores QIDs, not transient search descriptions");
     }
 
     /**

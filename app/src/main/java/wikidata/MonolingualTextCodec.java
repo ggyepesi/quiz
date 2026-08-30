@@ -1,76 +1,84 @@
 package wikidata;
 
-/**
- * Carries the language of a Wikidata monolingual-text value beside its text, and reads
- * it back.
- *
- * <p>A monolingual text states its language on the literal itself, unlike a claim value
- * qualified by {@code P407}. That language used to be dropped where the datavalue is
- * read, so every wording of one fact arrived indistinguishable from every other: the
- * Nobel award rationale (P6208) is stated in about thirteen languages, and a field
- * loading it received roughly two values per statement with no way to tell them apart.
- *
- * <p>This is the same arrangement {@link CalendarModelCodec} uses for a time's calendar:
- * the wire form carries the extra fact, and ONE codec reads it, so the reader and the
- * writer agree by construction rather than by both remembering the same convention.
- */
+import java.util.ArrayList;
+import java.util.List;
+
+/** Losslessly carries a Wikidata monolingual-text value through a string boundary. */
 public final class MonolingualTextCodec {
-
-    /** Separates the text from the language stated on it, as RDF spells it. */
-    private static final String LANGUAGE_SEPARATOR = "@";
-
-    /** A language tag: letters, digits and hyphens, as BCP 47 writes them. */
+    private static final String VALUE = "\u001eMLT:";
+    private static final String RAW = "\u001eRAW:";
     private static final java.util.regex.Pattern TAG =
             java.util.regex.Pattern.compile("[A-Za-z][A-Za-z0-9]*(-[A-Za-z0-9]+)*");
 
-    private MonolingualTextCodec() {
-    }
+    private MonolingualTextCodec() { }
 
-    /**
-     * The suffix stating {@code language}, or nothing when the source stated none.
-     * Absence stays absence: an untagged value is not silently called English.
-     */
-    public static String mark(String language) {
+    /** A length-framed value; ordinary text ending in {@code @home} is unambiguous. */
+    public static String encode(String text, String language) {
+        if (text == null) return null;
         String tag = language == null ? "" : language.trim();
-        return tag.isEmpty() || !TAG.matcher(tag).matches()
-                ? "" : LANGUAGE_SEPARATOR + tag;
+        if (tag.isEmpty() || !TAG.matcher(tag).matches()) return plain(text);
+        return VALUE + tag.length() + ":" + tag + text;
     }
 
-    /** The text without its language, which is what a reader is shown. */
+    /** Escapes an ordinary string if it begins with an internal frame marker. */
+    public static String plain(String text) {
+        if (text == null) return null;
+        return text.startsWith(VALUE) || text.startsWith(RAW) ? RAW + text : text;
+    }
+
+    /** The text without transport metadata. */
     public static String text(String wireValue) {
-        int at = separator(wireValue);
-        return at < 0 ? wireValue : wireValue.substring(0, at);
+        if (wireValue == null) return null;
+        if (wireValue.startsWith(RAW)) return wireValue.substring(RAW.length());
+        Frame frame = frame(wireValue);
+        return frame == null ? wireValue : wireValue.substring(frame.textStart());
     }
 
-    /** The language stated on the value, or {@code ""} when it states none. */
+    /** The stated language, or {@code ""} for an ordinary/untagged value. */
     public static String language(String wireValue) {
-        int at = separator(wireValue);
-        return at < 0 ? "" : wireValue.substring(at + 1);
+        Frame frame = frame(wireValue);
+        return frame == null ? "" : frame.language();
     }
 
     /**
-     * Whether this value may be read as {@code language}.
-     *
-     * <p>A value stating no language is admitted by any request: it does not contradict
-     * what was asked for, and refusing it would drop the values a source left untagged
-     * rather than the ones in another language.
+     * Exact tagged matches win. Untagged values are a fallback only when the requested
+     * language has no answer; blank preserves every wording. Results are plain text.
      */
-    public static boolean isIn(String wireValue, String language) {
+    public static List<String> select(List<String> wireValues, String language) {
+        if (wireValues == null || wireValues.isEmpty()) return List.of();
         String wanted = language == null ? "" : language.trim();
-        if (wanted.isEmpty()) return true;
-        String stated = language(wireValue);
-        return stated.isEmpty() || stated.equalsIgnoreCase(wanted);
+        List<String> exact = new ArrayList<>();
+        List<String> untagged = new ArrayList<>();
+        List<String> all = new ArrayList<>();
+        for (String value : wireValues) {
+            if (value == null) continue;
+            String decoded = text(value);
+            if (decoded == null || decoded.isBlank()) continue;
+            all.add(decoded);
+            String stated = language(value);
+            if (stated.isEmpty()) untagged.add(decoded);
+            else if (stated.equalsIgnoreCase(wanted)) exact.add(decoded);
+        }
+        if (wanted.isEmpty()) return List.copyOf(all);
+        return !exact.isEmpty() ? List.copyOf(exact) : List.copyOf(untagged);
     }
 
-    /**
-     * The index of the language separator, or -1 when the value carries no tag.
-     * Read from the END, because the text may contain the separator itself, and only a
-     * well-formed tag after the last one counts as a language.
-     */
-    private static int separator(String wireValue) {
-        if (wireValue == null) return -1;
-        int at = wireValue.lastIndexOf(LANGUAGE_SEPARATOR);
-        if (at < 0 || at == wireValue.length() - 1) return -1;
-        return TAG.matcher(wireValue.substring(at + 1)).matches() ? at : -1;
+    private static Frame frame(String value) {
+        if (value == null || !value.startsWith(VALUE)) return null;
+        int lengthEnd = value.indexOf(':', VALUE.length());
+        if (lengthEnd < 0) return null;
+        int length;
+        try {
+            length = Integer.parseInt(value.substring(VALUE.length(), lengthEnd));
+        } catch (NumberFormatException invalid) {
+            return null;
+        }
+        int languageStart = lengthEnd + 1;
+        int textStart = languageStart + length;
+        if (length <= 0 || textStart > value.length()) return null;
+        String tag = value.substring(languageStart, textStart);
+        return TAG.matcher(tag).matches() ? new Frame(tag, textStart) : null;
     }
+
+    private record Frame(String language, int textStart) { }
 }

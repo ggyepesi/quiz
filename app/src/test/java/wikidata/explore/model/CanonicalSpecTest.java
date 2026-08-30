@@ -11,6 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class CanonicalSpecTest {
 
+    @Test void existingModelsKeepOneDuplicateUnlessMergeIsDeclared() {
+        CanonicalSpec spec = new CanonicalSpec();
+        assertEquals(CanonicalSpec.DuplicatePolicy.KEEP_ONE, spec.duplicatePolicy());
+
+        spec.duplicatePolicy(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS);
+        assertEquals(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS,
+                spec.copy().duplicatePolicy());
+    }
+
     @Test void aFreshClassTakesItsIdentityAndNameFromItsSource() {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         CanonicalSpec spec = person.canonical();

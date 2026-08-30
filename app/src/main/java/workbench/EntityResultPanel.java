@@ -100,6 +100,19 @@ public class EntityResultPanel extends JPanel {
         }
     }
 
+    /** The canonical interactive presentation of Wikidata entities in workbench lists. */
+    public void setEntities(List<WorkbenchSelections.Entity> entities) {
+        setRows(entities == null ? List.of() : entities.stream()
+                .map(entity -> {
+                    List<Object> row = new ArrayList<>();
+                    if (model.getColumnCount() > 0) row.add(entity.qid());
+                    if (model.getColumnCount() > 1) row.add(entity.label());
+                    if (model.getColumnCount() > 2) row.add(entity.description());
+                    return row;
+                })
+                .toList());
+    }
+
     public boolean hasSelection() {
         return table.getSelectedRow() >= 0;
     }
@@ -107,6 +120,23 @@ public class EntityResultPanel extends JPanel {
     public int selectionCount() {
         return table.getSelectedRowCount();
     }
+
+    public int selectionMode() { return table.getSelectionModel().getSelectionMode(); }
+
+    /** Select model rows; intended for host actions and focused UI tests. */
+    public void selectRows(int... rows) {
+        table.clearSelection();
+        for (int row : rows) {
+            if (row >= 0 && row < model.getRowCount()) {
+                int view = table.convertRowIndexToView(row);
+                if (view >= 0) table.addRowSelectionInterval(view, view);
+            }
+        }
+    }
+
+    public int rowCount() { return model.getRowCount(); }
+
+    public Object valueAt(int row, int column) { return model.getValueAt(row, column); }
 
     /** Select the first row, if any — e.g. after a single-entity lookup. */
     public void selectFirstRow() {

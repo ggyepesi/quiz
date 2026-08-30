@@ -177,6 +177,7 @@ public final class NameCollisions {
             case SOURCE -> Meaning.ENTITY_AMBIGUITY;
             case STATEMENT -> Meaning.STATEMENT_REPETITION;
             case OWNED -> Meaning.OWNED_REPETITION;
+            case AGGREGATE -> Meaning.STATEMENT_REPETITION;
         };
     }
 }

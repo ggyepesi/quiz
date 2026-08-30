@@ -27,6 +27,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DomainStorageTest {
 
+    @Test void aRememberedSavedDomainWinsAndAMissingOneFallsBack(@TempDir Path root)
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        write(storage.modelFile("Constellations"), "{\"name\":\"Constellations\"}");
+        write(storage.modelFile("History"), "{\"name\":\"History\"}");
+
+        assertEquals(storage.modelFile("History"),
+                storage.preferredModelFile("History", "Constellations"));
+        assertEquals(storage.modelFile("Constellations"),
+                storage.preferredModelFile("Deleted domain", "Constellations"));
+    }
+
     @Test void aNameBecomesAFolderKeyByLosingEverythingButLettersAndDigits() {
         assertEquals("greekmyth", DomainStorage.key("Greek Myth"));
         assertEquals("constellations", DomainStorage.key("Constellations"));

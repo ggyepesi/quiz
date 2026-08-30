@@ -540,8 +540,10 @@ public class ExploreByExamplePanel extends JPanel {
         for (List<Object> row : rows) {
             String qid = row.isEmpty() || row.get(0) == null ? "" : row.get(0).toString();
             String label = row.size() < 2 || row.get(1) == null ? qid : row.get(1).toString();
+            String description = row.size() < 3 || row.get(2) == null
+                    ? "" : row.get(2).toString();
             if (WikidataIds.isQid(qid)) {
-                workbenchSelections.entity(qid, label);
+                workbenchSelections.entity(qid, label, description);
                 added++;
             }
         }

@@ -64,7 +64,8 @@ public final class NobelApiClient {
             @Override public String purpose() { return "Read awarded Nobel Prizes"; }
             @Override public String queryType() { return "Nobel API"; }
             @Override public String skeleton() {
-                return "category -> prize(year) -> share(motivation, portion) -> laureate";
+                return "category -> prize(year) -> achievement(motivation)"
+                        + " -> laureate award(portion)";
             }
             @Override public String description() {
                 return "Prize structure from nobelprize.org; the person comes from Wikidata.";
@@ -78,10 +79,14 @@ public final class NobelApiClient {
                         parameters(), step -> {
                             step.request(uri.toString());
                             List<NobelPrizeAward> awards =
-                                    parse(JSON.readTree(fetcher.fetch(uri)));
+                                    parse(JSON.readTree(fetcher.fetch(uri)), code);
                             step.summary(awards.size() + " prize(s), "
-                                    + awards.stream().mapToInt(a -> a.shares().size()).sum()
-                                    + " share(s)");
+                                    + awards.stream().mapToInt(
+                                            a -> a.achievements().size()).sum()
+                                    + " achievement(s), "
+                                    + awards.stream().mapToInt(
+                                            a -> a.laureateAwards().size()).sum()
+                                    + " laureate award(s)");
                             return awards;
                         });
             }
@@ -91,34 +96,40 @@ public final class NobelApiClient {
         };
     }
 
-    /** Parses one {@code nobelPrizes} response. Public so a fixture can drive it. */
-    public static List<NobelPrizeAward> parse(JsonNode root) {
+    /**
+     * Parses one category-filtered {@code nobelPrizes} response. The API response does
+     * not repeat the category code, so the request that selected the category supplies
+     * it rather than a label or URL being reverse-engineered into one.
+     */
+    public static List<NobelPrizeAward> parse(JsonNode root, String categoryCode) {
+        String code = categoryCode == null ? "" : categoryCode.trim().toLowerCase();
+        if (!CATEGORIES.contains(code)) throw new IllegalArgumentException(
+                "Unknown Nobel category code: " + categoryCode + ". Known: " + CATEGORIES);
         List<NobelPrizeAward> awards = new ArrayList<>();
         if (root == null) return awards;
         for (JsonNode prize : root.path("nobelPrizes")) {
             awards.add(new NobelPrizeAward(
-                    text(prize.path("categoryCode")),
+                    code,
                     en(prize.path("category")),
                     prize.path("awardYear").asInt(),
                     en(prize.path("topMotivation")),
-                    shares(prize.path("laureates"))));
+                    achievements(prize.path("laureates"))));
         }
         return awards;
     }
 
     /**
-     * Groups the prize's laureates into shares by the motivation they won for.
+     * Groups laureate awards into derived achievements by their motivation.
      *
      * <p>The API states the motivation on each laureate, so a share is not a record of
-     * its own: it is the laureates cited for the same achievement. Physics 2018 has three
-     * laureates and two shares - Ashkin for optical tweezers, Mourou and Strickland
-     * together for ultra-short pulses. Grouping preserves first-appearance order, so
-     * shares come out in the source's sortOrder, and a laureate whose motivation is
-     * unstated forms a share of their own rather than being merged with other silent ones.
+     * its own. Physics 2018 has three laureate awards and two achievements: Ashkin for
+     * optical tweezers, Mourou and Strickland together for ultra-short pulses. The
+     * portion remains on each laureate award. Grouping preserves first-appearance order,
+     * and an unstated motivation stays alone rather than merging unrelated silent entries.
      */
-    private static List<NobelPrizeAward.Share> shares(JsonNode laureates) {
-        Map<String, List<NobelPrizeAward.Laureate>> byMotivation = new LinkedHashMap<>();
-        Map<String, String> portions = new LinkedHashMap<>();
+    private static List<NobelPrizeAward.Achievement> achievements(JsonNode laureates) {
+        Map<String, List<NobelPrizeAward.LaureateAward>> byMotivation =
+                new LinkedHashMap<>();
         Map<String, String> motivations = new LinkedHashMap<>();
         int unstated = 0;
         for (JsonNode node : laureates) {
@@ -126,18 +137,18 @@ public final class NobelApiClient {
             String motivation = en(node.path("motivation"));
             String key = motivation.isBlank() ? "unstated#" + unstated++ : motivation;
             byMotivation.computeIfAbsent(key, ignored -> new ArrayList<>())
-                    .add(new NobelPrizeAward.Laureate(
+                    .add(new NobelPrizeAward.LaureateAward(
                             text(node.path("id")),
                             organization ? en(node.path("orgName")) : name(node),
+                            text(node.path("portion")),
                             node.path("sortOrder").asInt(),
                             organization));
-            portions.putIfAbsent(key, text(node.path("portion")));
             motivations.putIfAbsent(key, motivation);
         }
-        List<NobelPrizeAward.Share> shares = new ArrayList<>();
-        byMotivation.forEach((key, members) -> shares.add(new NobelPrizeAward.Share(
-                motivations.get(key), portions.get(key), members)));
-        return shares;
+        List<NobelPrizeAward.Achievement> achievements = new ArrayList<>();
+        byMotivation.forEach((key, members) -> achievements.add(
+                new NobelPrizeAward.Achievement(motivations.get(key), members)));
+        return achievements;
     }
 
     /** A person's usual name, falling back to the full one when no short form exists. */

@@ -31,7 +31,7 @@ public class GenerateInstancesQuery
 
     @Override
     public String purpose() {
-        return "Generate instances";
+        return "Generate class instances";
     }
 
     @Override

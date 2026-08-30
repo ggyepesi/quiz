@@ -24,6 +24,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PopulationSubjectLoaderTest {
 
+    @Test void requestIsVisibleBeforeSubjectDiscoveryBlocks() {
+        List<String> events = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                events.add("query");
+                return super.query(query);
+            }
+        };
+        wikidata.explore.extract.GenerationLog log = new wikidata.explore.extract.GenerationLog() {
+            @Override public void message(String text) { }
+            @Override public void subquery(String title, String request, String summary) { }
+            @Override public Running subqueryStarted(String title, String request) {
+                events.add("started:" + request);
+                return new Running() {
+                    @Override public void done(String summary) { events.add("done:" + summary); }
+                    @Override public void failed(String error) { events.add("failed:" + error); }
+                };
+            }
+        };
+
+        new PopulationSubjectLoader().discover(new ArrayList<>(), "P166", Set.of("Q38104"),
+                "__subject", "Categories", sparql, log);
+
+        assertTrue(events.getFirst().startsWith("started:SELECT DISTINCT"), events.toString());
+        assertEquals("query", events.get(1));
+        assertEquals("done:0 subjects", events.get(2));
+    }
+
     private static final class RecordingApi extends FakeWikidataApiClient {
         List<String> requestedPids = List.of();
         Set<FactDemand.EntityMetadata> requestedMetadata = Set.of();

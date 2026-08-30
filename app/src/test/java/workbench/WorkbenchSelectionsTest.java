@@ -43,18 +43,30 @@ class WorkbenchSelectionsTest {
                 "Use selected entities", SelectionsButton.Cardinality.MULTIPLE, ignored -> { });
 
         assertEquals(ListSelectionModel.SINGLE_SELECTION,
-                entityList(single).getSelectionMode());
+                entityList(single).selectionMode());
         assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION,
-                entityList(multiple).getSelectionMode());
+                entityList(multiple).selectionMode());
     }
 
     @Test void selectingTheSameValueTwiceSelectsItOnce() {
         WorkbenchSelections selections = new WorkbenchSelections();
-        selections.entity("Q38104", "Physics");
+        selections.entity("Q38104", "Physics", "award category");
         selections.entity("Q38104", "Nobel Prize in Physics");
         assertEquals(1, selections.entities().size());
         assertEquals("Nobel Prize in Physics", selections.entities().getFirst().label(),
                 "a better label updates the same source identity");
+        assertEquals("award category", selections.entities().getFirst().description(),
+                "a poorer handoff does not discard presentation facts already known");
+    }
+
+    @Test void reusableEntitiesUseTheCanonicalEntityColumns() {
+        WorkbenchSelections selections = new WorkbenchSelections();
+        selections.entity("Q42", "Douglas Adams", "English writer");
+        EntityResultPanel panel = entityList(new SelectionsButton(selections));
+
+        assertEquals("Q42", panel.valueAt(0, 0));
+        assertEquals("Douglas Adams", panel.valueAt(0, 1));
+        assertEquals("English writer", panel.valueAt(0, 2));
     }
 
     @Test void aListenerRegistrationCanBeDetached() {
@@ -96,10 +108,9 @@ class WorkbenchSelectionsTest {
         assertEquals(List.of("Entities", "Properties"), List.of(
                 tabs.getTitleAt(0), tabs.getTitleAt(1)));
 
-        @SuppressWarnings("unchecked") JList<WorkbenchSelections.Entity> list =
-                (JList<WorkbenchSelections.Entity>) component(
-                        (Container) tabs.getComponentAt(0), JList.class, null);
-        list.setSelectedIndex(0);
+        EntityResultPanel list = component(
+                (Container) tabs.getComponentAt(0), EntityResultPanel.class, null);
+        list.selectRows(0);
         assertEquals(1, selections.entities().size());
         component((Container) tabs.getComponentAt(0), JButton.class,
                 "Remove selected entities").doClick();
@@ -125,9 +136,9 @@ class WorkbenchSelectionsTest {
         catch (AssertionError ignored) { return null; }
     }
 
-    private static JList<?> entityList(SelectionsButton button) {
+    private static EntityResultPanel entityList(SelectionsButton button) {
         JTabbedPane tabs = (JTabbedPane) button.dialogContent();
-        return component((Container) tabs.getComponentAt(0), JList.class, null);
+        return component((Container) tabs.getComponentAt(0), EntityResultPanel.class, null);
     }
 
     /**
@@ -144,7 +155,7 @@ class WorkbenchSelectionsTest {
 
         JTabbedPane tabs = (JTabbedPane) button.dialogContent();
         Container entityTab = (Container) tabs.getComponentAt(0);
-        component(entityTab, JList.class, null).setSelectedIndex(0);
+        component(entityTab, EntityResultPanel.class, null).selectRows(0);
         component(entityTab, JButton.class, "Remove selected entities").doClick();
 
         assertTrue(selections.entities().isEmpty(), "an entity can be dropped here too");

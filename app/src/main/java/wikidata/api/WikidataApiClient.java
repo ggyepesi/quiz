@@ -1492,14 +1492,17 @@ public class WikidataApiClient {
     }
 
     /** A snak's raw value by datatype: entity → {@code Qxxx}, time → the ISO time
-     *  string, monolingualtext → text, quantity → the (unsigned) amount, string →
-     *  the string. Null when the snak has no value (novalue/somevalue).
+     *  string, monolingualtext → framed text and language, quantity → the
+     *  (unsigned) amount, string → the string. Null when the snak has no value
+     *  (novalue/somevalue).
      *
      *  <p>This is the single reader of a Wikibase datavalue — a time's calendar is
      *  only stated here, so anything that parses one of these strings must be able
      *  to get it from the string alone. A time therefore carries both its calendar
      *  and {@link wikidata.CalendarModelCodec#precisionMark precision}, which
-     *  {@link wikidata.CalendarModelCodec#readTime(String)} reads back. */
+     *  {@link wikidata.CalendarModelCodec#readTime(String)} reads back. A monolingual
+     *  text similarly carries its language through {@link wikidata.MonolingualTextCodec}
+     *  until the configured field chooses a wording. */
     private static String snakValue(JsonNode datavalue) {
         if (datavalue.isMissingNode()) return null;
         JsonNode val = datavalue.path("value");
@@ -1523,15 +1526,15 @@ public class WikidataApiClient {
             // travels with the text or it is lost. One codec writes and reads it.
             case "monolingualtext" -> {
                 String text = val.path("text").asText(null);
-                yield text == null ? null : text
-                        + wikidata.MonolingualTextCodec.mark(
-                                val.path("language").asText(""));
+                yield wikidata.MonolingualTextCodec.encode(
+                        text, val.path("language").asText(""));
             }
             case "quantity" -> {
                 String a = val.path("amount").asText("");
                 yield a.isBlank() ? null : (a.startsWith("+") ? a.substring(1) : a);
             }
-            case "string"          -> val.asText(null);
+            case "string"          -> wikidata.MonolingualTextCodec.plain(
+                    val.asText(null));
             default -> val.isTextual() ? val.asText() : null;
         };
     }

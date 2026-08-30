@@ -9,13 +9,27 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SingleRootClassModelPanel extends JPanel {
+
+    public enum ConfigurationSection {
+        VOCABULARIES("Vocabularies / populations");
+        private final String label;
+        ConfigurationSection(String label) { this.label = label; }
+        @Override public String toString() { return label; }
+    }
 
     private final GeneratedProjectModel projectModel;
     private DefaultMutableTreeNode rootTreeNode;
     private final DefaultTreeModel treeModel;
     private final JTree tree;
+    private final List<TreeSelectionListener> selectionListeners = new ArrayList<>();
+    /** Tree-model replacement temporarily clears selection. That is Swing layout state,
+     * not a user navigation, and must never make an editor apply stale values. */
+    private boolean refreshing;
+    private boolean editingEnabled = true;
 
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
@@ -34,6 +48,13 @@ public class SingleRootClassModelPanel extends JPanel {
         this.rootTreeNode = buildTree();
         this.treeModel = new DefaultTreeModel(rootTreeNode);
         this.tree = new JTree(treeModel);
+        this.tree.addTreeSelectionListener(event -> {
+            if (refreshing) return;
+            updateActionState();
+            for (TreeSelectionListener listener : List.copyOf(selectionListeners)) {
+                listener.valueChanged(event);
+            }
+        });
 
         buildUi();
         refresh();
@@ -48,16 +69,15 @@ public class SingleRootClassModelPanel extends JPanel {
     }
 
     public void addTreeSelectionListener(TreeSelectionListener listener) {
-        tree.addTreeSelectionListener(listener);
+        if (listener != null) selectionListeners.add(listener);
     }
 
     /** Keeps the model tree navigable while preventing structural edits. */
     public void setEditingEnabled(boolean enabled) {
-        renameClassButton.setEnabled(enabled);
+        editingEnabled = enabled;
         addClassButton.setEnabled(enabled);
         importClassButton.setEnabled(enabled);
-        addFieldButton.setEnabled(enabled);
-        removeButton.setEnabled(enabled);
+        updateActionState();
     }
 
     public void onImportClass(Runnable action) {
@@ -72,6 +92,16 @@ public class SingleRootClassModelPanel extends JPanel {
         DefaultMutableTreeNode n =
                 (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         return n == null ? null : n.getUserObject();
+    }
+
+    /** Only model leaves have configuration editors. The domain and grouping rows
+     * are navigation context and selecting them must not blank or flush an editor. */
+    public static boolean isConfigurable(Object value) {
+        return value instanceof GeneratedClassModel
+                || value instanceof GeneratedFieldModel
+                || value instanceof Selection
+                || value instanceof ConfigurationSection
+                || value instanceof GeneratedProjectModel;
     }
 
     public GeneratedClassModel selectedClassOrRoot() {
@@ -98,22 +128,52 @@ public class SingleRootClassModelPanel extends JPanel {
         // re-binds the editor to the live object.
         String selClassName = selectedClassName(selected);
         String selFieldName = selected instanceof GeneratedFieldModel f ? f.name() : null;
+        String selSelectionName = selected instanceof Selection selection
+                ? selection.name() : null;
+        ConfigurationSection selSection = selected instanceof ConfigurationSection section
+                ? section : null;
+        boolean selDomain = selected instanceof GeneratedProjectModel;
 
         java.util.Set<java.util.List<String>> expanded = expandedPaths();
 
-        rootTreeNode = buildTree();
-        treeModel.setRoot(rootTreeNode);
-        treeModel.reload();
+        refreshing = true;
+        try {
+            rootTreeNode = buildTree();
+            treeModel.setRoot(rootTreeNode);
+            treeModel.reload();
 
-        restoreExpanded(expanded);
+            restoreExpanded(expanded);
 
-        if (selFieldName != null) {
-            selectFieldByName(selClassName, selFieldName);
-        } else if (selClassName != null) {
-            selectClassByName(selClassName);
-        } else {
-            selectClass(projectModel.rootClass());
+            if (selDomain) {
+                selectNode(rootTreeNode);
+            } else if (selSection != null) {
+                selectSection(selSection);
+            } else if (selSelectionName != null) {
+                selectSelectionByName(selSelectionName);
+            } else if (selFieldName != null) {
+                selectFieldByName(selClassName, selFieldName);
+            } else if (selClassName != null) {
+                selectClassByName(selClassName);
+            } else {
+                selectClass(projectModel.rootClass());
+            }
+        } finally {
+            refreshing = false;
         }
+
+        // Consumers care about the selected model object after refresh, not the
+        // transient clear/reselect events used to rebuild the JTree. Publish exactly
+        // that stable state even when Swing considers its row path unchanged.
+        TreePath selectedPath = tree.getSelectionPath();
+        if (selectedPath != null) {
+            javax.swing.event.TreeSelectionEvent stable =
+                    new javax.swing.event.TreeSelectionEvent(
+                            tree, selectedPath, true, null, selectedPath);
+            for (TreeSelectionListener listener : List.copyOf(selectionListeners)) {
+                listener.valueChanged(stable);
+            }
+        }
+        updateActionState();
     }
 
     // The class name of the current selection: a class node directly, or the class
@@ -159,6 +219,15 @@ public class SingleRootClassModelPanel extends JPanel {
         }
     }
 
+    private void selectSelectionByName(String name) {
+        Selection selection = projectModel.findSelection(name);
+        if (selection != null) {
+            selectSelection(selection);
+        } else {
+            selectClass(projectModel.rootClass());
+        }
+    }
+
     public void selectField(GeneratedFieldModel field) {
         DefaultMutableTreeNode node =
                 findNodeForUserObject(rootTreeNode, field);
@@ -173,6 +242,34 @@ public class SingleRootClassModelPanel extends JPanel {
         if (node != null) {
             selectNode(node);
         }
+    }
+
+    public void selectSelection(Selection selection) {
+        DefaultMutableTreeNode node = findNodeForUserObject(rootTreeNode, selection);
+        if (node != null) selectNode(node);
+    }
+
+    private void selectSection(ConfigurationSection section) {
+        DefaultMutableTreeNode node = findNodeForUserObject(rootTreeNode, section);
+        if (node != null) selectNode(node);
+    }
+
+    private void updateActionState() {
+        Object selected = selectedUserObject();
+        boolean classContext = selected instanceof GeneratedClassModel
+                || selected instanceof GeneratedFieldModel;
+        boolean vocabulary = selected instanceof VocabularySelection;
+        boolean vocabularyContext = vocabulary
+                || selected == ConfigurationSection.VOCABULARIES;
+
+        renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
+        addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
+
+        renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary));
+        addClassButton.setEnabled(editingEnabled);
+        importClassButton.setEnabled(editingEnabled && classContext);
+        addFieldButton.setEnabled(editingEnabled && classContext);
+        removeButton.setEnabled(editingEnabled && (classContext || vocabulary));
     }
 
     private void buildUi() {
@@ -198,15 +295,67 @@ public class SingleRootClassModelPanel extends JPanel {
         add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(buttons), BorderLayout.NORTH);
         add(new JScrollPane(tree), BorderLayout.CENTER);
 
-        renameClassButton.addActionListener(e -> renameClass());
-        addClassButton.addActionListener(e -> addClass());
+        renameClassButton.addActionListener(e -> renameSelected());
+        addClassButton.addActionListener(e -> addSelectedKind());
         addFieldButton.addActionListener(e -> addField());
         removeButton.addActionListener(e -> removeSelected());
     }
 
+    private void renameSelected() {
+        if (selectedUserObject() instanceof VocabularySelection vocabulary) {
+            renameVocabulary(vocabulary);
+        } else {
+            renameClass();
+        }
+    }
+
+    private void addSelectedKind() {
+        Object selected = selectedUserObject();
+        if (selected instanceof VocabularySelection
+                || selected == ConfigurationSection.VOCABULARIES) {
+            addVocabulary();
+        } else {
+            addClass();
+        }
+    }
+
+    private void renameVocabulary(VocabularySelection vocabulary) {
+        String name = JOptionPane.showInputDialog(
+                this, "Vocabulary name:", vocabulary.name());
+        if (name == null) return;
+        if (!projectModel.renameSelection(vocabulary.name(), name)) {
+            JOptionPane.showMessageDialog(this,
+                    "A class or vocabulary/population named '" + name.trim()
+                            + "' already exists, or the name is blank.",
+                    "Cannot rename vocabulary", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        refresh();
+        selectSelection(vocabulary);
+    }
+
+    private void addVocabulary() {
+        String name = JOptionPane.showInputDialog(
+                this, "New vocabulary name:", "Vocabulary");
+        if (name == null || name.isBlank()) return;
+        String clean = name.trim();
+        if (projectModel.findClass(clean) != null
+                || projectModel.findSelection(clean) != null) {
+            JOptionPane.showMessageDialog(this,
+                    "A class or vocabulary/population named '" + clean
+                            + "' already exists.",
+                    "Cannot add vocabulary", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        VocabularySelection created = new VocabularySelection(clean);
+        projectModel.addSelection(created);
+        refresh();
+        selectSelection(created);
+    }
+
     private DefaultMutableTreeNode buildTree() {
         DefaultMutableTreeNode projectNode =
-                new DefaultMutableTreeNode("Domain: " + projectModel.name());
+                new DefaultMutableTreeNode(projectModel);
 
         for (GeneratedClassModel cls : projectModel.classes()) {
             DefaultMutableTreeNode classNode =
@@ -226,21 +375,22 @@ public class SingleRootClassModelPanel extends JPanel {
             projectNode.add(classNode);
         }
 
-        // Vocabularies and populations are shown inline, so the domain's value
-        // domains are visible in the tree and clearly are not classes.
-        if (!projectModel.selections().isEmpty()) {
-            DefaultMutableTreeNode selectionsNode =
-                    new DefaultMutableTreeNode("Vocabularies / populations");
-            for (Selection s : projectModel.selections()) {
-                selectionsNode.add(new DefaultMutableTreeNode(s));
-            }
-            projectNode.add(selectionsNode);
+        // Always present: this is also how an empty domain creates its FIRST
+        // vocabulary now that configuration lives in the tree rather than a header button.
+        DefaultMutableTreeNode selectionsNode = new DefaultMutableTreeNode(
+                ConfigurationSection.VOCABULARIES);
+        for (Selection s : projectModel.selections()) {
+            selectionsNode.add(new DefaultMutableTreeNode(s));
         }
+        projectNode.add(selectionsNode);
 
         return projectNode;
     }
 
     private void renameClass() {
+        Object selected = selectedUserObject();
+        if (!(selected instanceof GeneratedClassModel)
+                && !(selected instanceof GeneratedFieldModel)) return;
         GeneratedClassModel cls = selectedClassOrRoot();
 
         String s =
@@ -249,14 +399,25 @@ public class SingleRootClassModelPanel extends JPanel {
                         "Class name:",
                         cls.className());
 
-        if (s == null || s.isBlank()) {
+        if (s == null) {
+            return;
+        }
+        if (s.isBlank()) {
+            JOptionPane.showMessageDialog(this, "A class name is required.",
+                    "Cannot rename class", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         // Through the project, so every field target, base class and kind rule that
         // names this class follows the rename instead of dangling.
-        projectModel.renameClass(cls.className(),
-                GeneratedViewableSourceGenerator.sanitizeClassName(s));
+        String requested = GeneratedViewableSourceGenerator.sanitizeClassName(s);
+        if (!projectModel.renameClass(cls.className(), requested)) {
+            JOptionPane.showMessageDialog(this,
+                    "A class or vocabulary/population named '" + requested
+                            + "' already exists.",
+                    "Cannot rename class", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         refresh();
         selectClass(cls);
@@ -310,6 +471,23 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private void removeSelected() {
         Object selected = selectedUserObject();
+
+        if (selected instanceof VocabularySelection vocabulary) {
+            int answer = JOptionPane.showConfirmDialog(this,
+                    "Delete vocabulary " + vocabulary.name() + "?",
+                    "Delete vocabulary", JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.OK_OPTION) return;
+            if (!projectModel.removeSelection(vocabulary.name())) {
+                JOptionPane.showMessageDialog(this,
+                        "Cannot delete " + vocabulary.name()
+                                + ": the model still references it.",
+                        "Cannot delete vocabulary", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            refresh();
+            return;
+        }
 
         if (selected instanceof GeneratedFieldModel f) {
             // The `name` field is vestigial now (identity/display comes from the
@@ -463,7 +641,10 @@ public class SingleRootClassModelPanel extends JPanel {
                     tree, value, sel, expanded, leaf, row, focus);
             Object uo = value instanceof DefaultMutableTreeNode dn
                     ? dn.getUserObject() : null;
-            if (uo instanceof GeneratedClassModel cls) {
+            if (uo instanceof GeneratedProjectModel model) {
+                setText("Domain: " + model.name());
+                setFont(getFont().deriveFont(Font.BOLD));
+            } else if (uo instanceof GeneratedClassModel cls) {
                 // The display alias when set; the real className follows in
                 // parentheses so the identity stays visible.
                 StringBuilder t = new StringBuilder(cls.displayClassName());

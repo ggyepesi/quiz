@@ -19,10 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class MonolingualQualifierLanguageTest {
 
-    private static final String EN = "for the optical tweezers"
-            + MonolingualTextCodec.mark("en");
-    private static final String SV = "for den optiska pincetten"
-            + MonolingualTextCodec.mark("se");
+    private static final String EN = "for the optical tweezers";
+    private static final String SV = MonolingualTextCodec.encode(
+            "for den optiska pincetten", "sv");
     private static final String UNTAGGED = "rationale of unstated language";
 
     private static final class StubApi extends WikidataApiClient {
@@ -55,7 +54,9 @@ class MonolingualQualifierLanguageTest {
         physics.type("Categories");
         StubApi api = new StubApi(Map.of("Q1000000", List.of(
                 new WikidataApiClient.ApiStatement("Q1000000$a", "Q38104",
-                        Map.of("P6208", List.of(SV, EN, UNTAGGED))))));
+                        Map.of("P6208", List.of(SV,
+                                MonolingualTextCodec.encode(EN, "en"),
+                                UNTAGGED))))));
 
         QualifierLoadConfig cfg = new QualifierLoadConfig(
                 "Laureate", "P166", "__Award", "NobelPrize", "category", "",
@@ -89,10 +90,8 @@ class MonolingualQualifierLanguageTest {
                 "with no language asked for, every wording is kept and none is invented");
     }
 
-    @Test void anUntaggedWordingIsKeptAlongsideTheRequestedOne() {
-        assertEquals(
-                List.of("for the optical tweezers", "rationale of unstated language"),
-                motivationOf("en", true),
-                "a value stating no language contradicts nothing that was asked for");
+    @Test void anUntaggedWordingDoesNotDisplaceARequestedOne() {
+        assertEquals("for the optical tweezers", motivationOf("en", true),
+                "an exact language answer wins over the untagged fallback");
     }
 }

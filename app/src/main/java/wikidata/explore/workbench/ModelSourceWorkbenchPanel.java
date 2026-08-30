@@ -16,6 +16,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import workbench.ExploreByExamplePanel;
 import workbench.SelectionsButton;
 import workbench.WorkbenchSelections;
@@ -36,13 +37,15 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private final StatementSourcePanel statementSourcePanel =
             new StatementSourcePanel();
     private final OwnedClassPanel ownedClassPanel;
+    private final AggregateClassPanel aggregateClassPanel;
 
     private final JComboBox<String> kindBox =
             new JComboBox<>(
                     new String[]{
                             "Source class",
                             "Statement class",
-                            "Owned class"
+                            "Owned class",
+                            "Aggregate class"
                     });
 
     private final JPanel kindHeader =
@@ -51,12 +54,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                             FlowLayout.LEFT,
                             6,
                             2));
+    private final JPanel reusableSelectionsPanel =
+            new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
 
     private boolean updatingKind = false;
     private boolean editingEnabled = true;
 
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
+    private final DomainOverviewPanel domainOverview;
+    private SelectionViewerPanel selectionEditor;
 
     private final JTabbedPane helperTabs =
             new JTabbedPane(
@@ -103,14 +110,17 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
+        this.domainOverview = new DomainOverviewPanel(projectModel);
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
+        this.aggregateClassPanel = new AggregateClassPanel(projectModel);
         this.explorePanel.selections(selections);
         this.propertyPanel.selections(selections);
         this.entityRelationPanel.selections(selections);
         this.discoveryPanel.selections(selections);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
+        this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.baseClassCandidates(
                 () -> projectModel.classes()
@@ -118,6 +128,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                                   .map(
                                           GeneratedClassModel::className)
                                   .toList());
+        classSourcePanel.setProjectModel(projectModel);
 
         statementSourcePanel.sourceClassCandidates(
                 () -> projectModel.classes()
@@ -236,6 +247,30 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return selections;
     }
 
+    public void selectionEditor(SelectionViewerPanel editor) {
+        if (selectionEditor != null) cardPanel.remove(selectionEditor);
+        selectionEditor = editor;
+        if (editor != null) cardPanel.add(editor, "selection");
+    }
+
+    public void domainStatus(Supplier<DomainOverviewPanel.Status> supplier) {
+        domainOverview.status(supplier);
+    }
+
+    public void refreshDomainOverview() {
+        domainOverview.refresh();
+    }
+
+    /** Opens the vocabulary/population editor in the Configuration area. */
+    public void showSelections(wikidata.explore.model.Selection selection) {
+        if (selectionEditor == null) return;
+        this.selected = selection;
+        kindBox.setEnabled(editingEnabled);
+        kindHeader.setVisible(false);
+        selectionEditor.edit(selection);
+        ((CardLayout) cardPanel.getLayout()).show(cardPanel, "selection");
+    }
+
     public JComponent helperTools() {
         return helperTabs;
     }
@@ -274,14 +309,18 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         if (selected instanceof GeneratedClassModel clazz) {
             updatingKind = true;
             MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
-            kindBox.setSelectedIndex(clazz.reifiesStatements()
+            kindBox.setSelectedIndex(clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE
+                    ? 3 : clazz.reifiesStatements()
                     ? 1 : pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0);
             kindBox.setEnabled(editingEnabled);
             updatingKind = false;
 
             kindHeader.setVisible(true);
 
-            if (clazz.reifiesStatements()) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+                aggregateClassPanel.edit(clazz);
+                layout.show(cardPanel, "aggregate");
+            } else if (clazz.reifiesStatements()) {
                 statementSourcePanel.edit(clazz);
                 layout.show(cardPanel, "statement");
             } else if (pattern == MembershipPattern.OWNED_COMPONENT) {
@@ -297,6 +336,23 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             kindHeader.setVisible(false);
             fieldSourcePanel.edit(field);
             layout.show(cardPanel, "field");
+        } else if (selected instanceof wikidata.explore.model.Selection selection
+                && selectionEditor != null) {
+            kindBox.setEnabled(editingEnabled);
+            kindHeader.setVisible(false);
+            selectionEditor.edit(selection);
+            layout.show(cardPanel, "selection");
+        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
+                && selectionEditor != null) {
+            kindBox.setEnabled(editingEnabled);
+            kindHeader.setVisible(false);
+            selectionEditor.edit(null);
+            layout.show(cardPanel, "selection");
+        } else if (selected instanceof GeneratedProjectModel) {
+            kindBox.setEnabled(editingEnabled);
+            kindHeader.setVisible(false);
+            domainOverview.refresh();
+            layout.show(cardPanel, "domain");
         } else {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
@@ -306,6 +362,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         discoveryPanel.refreshNodeTitle();
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
+        reusableSelectionsPanel.setVisible(!(selected instanceof GeneratedClassModel clazz)
+                || clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE);
 
         // The editors for the newly shown card are built (or rebuilt) enabled. The lock
         // is a property of THIS panel, so re-applying it here keeps every caller of
@@ -327,13 +385,48 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
         changingSelection = true;
         try {
-            if (selected != null && selected != next) {
+            if (selected != null && selected != next
+                    && isLiveSelection(selected)) {
                 applyEdits();
             }
             edit(next);
         } finally {
             changingSelection = false;
         }
+    }
+
+    /** Whether the selected editor still owns a declaration in the current model. */
+    private boolean isLiveSelection(Object value) {
+        if (value instanceof GeneratedClassModel clazz) {
+            return projectModel.classes().contains(clazz);
+        }
+        if (value instanceof GeneratedFieldModel field) {
+            return projectModel.declaringClass(field) != null;
+        }
+        if (value instanceof wikidata.explore.model.Selection selection) {
+            return projectModel.selections().contains(selection);
+        }
+        return value == projectModel
+                || value instanceof SingleRootClassModelPanel.ConfigurationSection;
+    }
+
+    /**
+     * Detaches every editor without committing it.
+     *
+     * <p>This is the other half of a confirmed "discard changes" operation. A
+     * domain load replaces the contents of the shared project object; leaving an
+     * old editor selected lets the tree-selection event produced by that replacement
+     * flush stale controls into the new domain. In particular, an old class name can
+     * then collide with a vocabulary in the domain being loaded.</p>
+     */
+    void abandonEdits() {
+        selected = null;
+        classSourcePanel.edit(null);
+        statementSourcePanel.edit(null);
+        ownedClassPanel.edit(null);
+        aggregateClassPanel.edit(null);
+        fieldSourcePanel.edit(null);
+        edit(null);
     }
 
     private String selectedNodeTitle() {
@@ -370,6 +463,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 statementSourcePanel.applyEdits();
             } else if (kindBox.getSelectedIndex() == 2) {
                 ownedClassPanel.applyEdits();
+            } else if (kindBox.getSelectedIndex() == 3) {
+                aggregateClassPanel.applyEdits();
             } else {
                 classSourcePanel.applyEdits();
             }
@@ -626,6 +721,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     private void buildUi() {
+        cardPanel.add(domainOverview, "domain");
         cardPanel.add(
                 classSourcePanel,
                 "class");
@@ -635,6 +731,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         cardPanel.add(
                 ownedClassPanel,
                 "owned");
+        cardPanel.add(aggregateClassPanel, "aggregate");
         cardPanel.add(
                 fieldSourcePanel,
                 "field");
@@ -773,12 +870,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         JPanel configHeader = new JPanel();
         configHeader.setLayout(new BoxLayout(configHeader, BoxLayout.Y_AXIS));
         configHeader.add(kindHeader);
-        JPanel reuse = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        reuse.add(new SelectionsButton(selections).useProperties(
+        reusableSelectionsPanel.add(new SelectionsButton(selections).useProperties(
                 "Use selected property",
                 SelectionsButton.Cardinality.SINGLE,
                 values -> useSelectedProperty(values.getFirst())));
-        configHeader.add(reuse);
+        configHeader.add(reusableSelectionsPanel);
         config.add(configHeader, BorderLayout.NORTH);
         config.add(
                 cardPanel,
@@ -792,7 +888,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private boolean canUseSelectedProperty() {
         return (selected instanceof GeneratedFieldModel
                 || selected instanceof GeneratedClassModel clazz
-                && !clazz.reifiesStatements() && !clazz.ownedClass()) && editingEnabled;
+                && !clazz.reifiesStatements() && !clazz.ownedClass()
+                && clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE)
+                && editingEnabled;
     }
 
     private void useSelectedProperty(WorkbenchSelections.Property property) {
@@ -817,8 +915,30 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         int kind = kindBox.getSelectedIndex();
         boolean toStatement = kind == 1;
+        reusableSelectionsPanel.setVisible(kind != 3);
+
+        if (kind == 3) {
+            if (clazz.reifiesStatements()) statementSourcePanel.applyEdits();
+            else if (clazz.ownedClass()) ownedClassPanel.applyEdits();
+            else if (clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE) {
+                classSourcePanel.applyEdits();
+            }
+            clazz.statementSource(null);
+            clazz.classKind(wikidata.explore.model.ClassKind.AGGREGATE);
+            if (clazz.aggregateSource() == null) {
+                clazz.aggregateSource(new wikidata.explore.model.AggregateClassSource());
+            }
+            aggregateClassPanel.edit(clazz);
+            layout.show(cardPanel, "aggregate");
+            afterChange.accept(null);
+            return;
+        }
 
         if (kind == 2) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+                aggregateClassPanel.applyEdits();
+                clazz.aggregateSource(null);
+            }
             if (!clazz.ownedClass()) {
                 int answer = JOptionPane.showConfirmDialog(this,
                         "Make " + clazz.className() + " an Owned class?\n\n"
@@ -843,6 +963,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
 
         if (toStatement) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+                aggregateClassPanel.applyEdits();
+                clazz.aggregateSource(null);
+                clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
+            }
             if (clazz.ownedClass()) {
                 clazz.ownedClass(false);
             }
@@ -884,6 +1009,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             statementSourcePanel.edit(clazz);
             layout.show(cardPanel, "statement");
         } else {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+                aggregateClassPanel.applyEdits();
+                clazz.aggregateSource(null);
+                clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
+            }
             if (clazz.ownedClass()) {
                 clazz.ownedClass(false);
             }

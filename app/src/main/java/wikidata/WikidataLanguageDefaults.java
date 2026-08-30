@@ -41,4 +41,22 @@ public final class WikidataLanguageDefaults {
         throw new IllegalArgumentException("Value language must be '" + CODE
                 + "' or a Wikidata language QID, not '" + configured + "'");
     }
+
+    /**
+     * Language code used by a monolingual-text literal. The shared English QID is
+     * accepted because the Value language control also serves entity-valued fields.
+     * Other language QIDs need a datasource lookup and therefore cannot be guessed.
+     */
+    public static String literalCode(String configuredValue) {
+        String configured = configuredValue == null ? "" : configuredValue.trim();
+        if (configured.isBlank()) return "";
+        if (CODE.equalsIgnoreCase(configured)
+                || ENTITY_QID.equalsIgnoreCase(configured)) return CODE;
+        if (WikidataIds.isQid(configured)) {
+            throw new IllegalArgumentException("Monolingual-text language '"
+                    + configured + "' needs its language code; use '" + CODE
+                    + "' for " + ENTITY_QID + ".");
+        }
+        return configured;
+    }
 }
