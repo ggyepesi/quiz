@@ -255,11 +255,11 @@ class DomainStorageTest {
     }
 
     /**
-     * A domain adopts from models only: copying between domains would duplicate a
-     * configuration with no model owning it. A model may take from anything, because
-     * factoring a class out of a domain is how the first model gets built.
+     * Copying and importing are different acts with different reach. A copy is a
+     * convenience and may start from any project. An import leaves the class owned by
+     * the model it names, so only a model can be imported from.
      */
-    @Test void aDomainCopiesFromModelsAndAModelFromAnything(@TempDir Path root)
+    @Test void copyReachesAnyProjectAndImportOnlyModels(@TempDir Path root)
             throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());
         writeProject(storage, "People", "MODEL");
@@ -267,21 +267,22 @@ class DomainStorageTest {
         writeProject(storage, "Nobel", "DOMAIN");
         writeProject(storage, "Oscars", "DOMAIN");
 
+        assertEquals(List.of("Nobel", "Oscars", "People", "Places"),
+                storage.copySourcesFor("Constellations"),
+                "a copy may start from any saved project");
         assertEquals(List.of("People", "Places"),
-                storage.copySourcesFor("Nobel", false),
-                "a domain is offered models, not other domains");
-        assertEquals(List.of("Nobel", "Oscars", "Places"),
-                storage.copySourcesFor("People", true),
-                "a model may draw on domains, and never on itself");
+                storage.importSourcesFor("Nobel"),
+                "an import names a model that keeps owning the class");
     }
 
-    @Test void aProjectIsNeverOfferedAsItsOwnCopySource(@TempDir Path root)
+    @Test void aProjectIsNeitherCopiedNorImportedFromItself(@TempDir Path root)
             throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());
         writeProject(storage, "People", "MODEL");
 
-        assertEquals(List.of(), storage.copySourcesFor("People", false));
-        assertEquals(List.of(), storage.copySourcesFor("  people  ", true),
+        assertEquals(List.of(), storage.copySourcesFor("People"));
+        assertEquals(List.of(), storage.importSourcesFor("People"));
+        assertEquals(List.of(), storage.importSourcesFor("  people  "),
                 "the folder key decides identity, so punctuation and case cannot "
                         + "smuggle a project into its own source list");
     }

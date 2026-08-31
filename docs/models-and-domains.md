@@ -1,7 +1,7 @@
 # Models and domains
 
-Status: model configuration and model use are implemented — the latter as adoption, see
-step 2. Instance ownership is deliberately deferred.
+Status: model configuration and model use are implemented — the latter as copy and
+import, see step 2. Instance ownership is deliberately deferred.
 
 ## Rule number 1: keep it simple
 
@@ -77,43 +77,55 @@ The former Shared modules panel and shortcut are not part of this design. The co
 version/pin implementation is not exposed by the first-step UI and will be removed as model use
 is implemented rather than carried forward as a compatibility contract.
 
-## Step 2: model use (implemented as adoption)
+## Step 2: model use — copy and import
 
-A class is **adopted** into another project: it lands there as a real class that records
-where it came from, in `GeneratedClassModel.originModel`. The stamp is applied at the one
-point a class crosses projects and only when absent, so a class adopted from People and
-relayed onward still names People — the project in the middle passed it along rather than
-authoring it. `qualifiedClassName()` renders `People.Person` from that stamp; no qualified
-name is stored, so none can drift from the class it names.
+These are two different acts sharing one mechanism, and keeping them apart is the whole
+of this step.
 
-**The origin owns the field configuration.** `fieldsLocked()` is the one place that is
-decided, and Add field, Remove and the field editor all ask it rather than testing for an
-origin themselves. Removing the class is still allowed: dropping an adoption is the
-adopting project's decision, not the origin's. How an adopting project may override fields
-is deliberately open until there is experience with models — and nothing generated so far
-is expensive enough to regenerate to force the decision now.
+**Copy** eases configuring a class that is the same as, or similar to, one already
+configured elsewhere. The result belongs to the project that copied it: freely editable,
+renamable, no lasting relationship, no record of where it came from. A copy may start
+from any saved project. Where it was copied from constrains nothing, so nothing needs to
+be remembered about it.
+
+**Import** uses a model's class where it stands. The class stays owned by the model named
+in `GeneratedClassModel.importedFrom`, and is not edited in the importing project at all
+— not its fields, not its name, not its membership. It is edited in the model that owns
+it. Only a model can be imported from.
+
+`isImported()` is the single question every editor asks, so where a class may be changed
+is decided once. The whole class editor is locked rather than each control, so a control
+added to those editors later cannot quietly escape the rule. The class may still be
+removed: dropping an import ends the use, which is the one thing about it the importing
+project does decide. Ownership survives relaying — importing a class the source had
+itself imported still names the model that owns it — and copying an imported class yields
+an ordinary class, which is how a project takes a model's configuration and then diverges
+from it.
+
+The UI marks the difference: an imported class shows `imported from People` on its tree
+row and a notice above its disabled editor naming the owning model, so a locked editor
+reads as owned rather than broken. A copy carries no mark, because it claims nothing.
 
 **Which models a project uses is derived, not declared.** A project uses a model exactly
-when it holds a class adopted from it, which the stamps already record; `ModelUse` computes
-it. A declared list beside them would be a second way to know one fact, free to disagree
-with the classes actually present. The consequence is accepted: a use begins with the first
-adopted class and ends with the last, and a model cannot be declared as used before
-anything is adopted from it. If something later needs that, it is a new construct with a
-reason.
+when it holds a class imported from it, which `importedFrom` already records; `ModelUse`
+computes it and the Uses section reports it. Copies never appear there. A declared list
+beside the imports would be a second way to know one fact, free to disagree with the
+classes actually present. The accepted consequence: a use begins with the first imported
+class and ends with the last, and a model cannot be declared as used before anything is
+imported from it.
 
-**Who may copy from whom.** A domain adopts from models only — a domain-to-domain copy
-would duplicate a configuration with no model between them to own it. A model may copy from
-anything, since factoring a class out of a domain that already has it configured is how the
-first model gets built. `DomainStorage.copySourcesFor` is where that rule lives.
+**Circular use** cannot arise — import materialises a copy of the configuration, and a
+copy does not recurse. **Stored qualified references** are unnecessary: a field targets a
+class by its own name, and `qualifiedClassName()` derives `People.Person` for display.
+Name collisions are handled by the import plan's replace/reuse choice.
 
-Two bullets of the original plan dissolved rather than being built. **Circular use** cannot
-arise: adoption is a copy, and a copy does not recurse. **Stored qualified references** are
-unnecessary: a field targets a local class by its own name, and the qualified form is
-display. Name collisions were already handled by the import plan's replace/reuse choice.
+Still open: nothing reports that an owning model has moved since a class was imported
+from it. The domain signature mechanism answers the equivalent question for instances and
+the same shape would answer this one, but no measurement forces it yet.
 
-Still open: nothing yet reports that an origin has moved since a class was adopted from it.
-The domain signature mechanism answers the equivalent question for instances, and the same
-shape would answer this one, but no measurement forces it yet.
+Also deliberately open: whether an importing project may ever override an imported class,
+and in what form. That decision wants experience with models, and nothing generated so far
+is expensive enough to regenerate to force it now.
 
 ## Step 3: instance ownership and reuse
 

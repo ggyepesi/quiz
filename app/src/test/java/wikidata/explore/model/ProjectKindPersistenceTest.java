@@ -50,15 +50,15 @@ class ProjectKindPersistenceTest {
     }
 
     /**
-     * Origin that does not survive a save is no origin at all: the adopting project
-     * would reopen with no record of where its classes came from.
+     * Ownership that does not survive a save is no ownership at all: the importing
+     * project would reopen with no record of which model owns its classes.
      */
-    @Test void anAdoptedClassOriginSurvivesASave() throws Exception {
+    @Test void anImportedClassOwnerSurvivesASave() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("Nobel");
-        GeneratedClassModel adopted = new GeneratedClassModel("Name");
-        adopted.originModel("People");
-        project.addClass(adopted);
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
         project.addClass(new GeneratedClassModel("Prize"));
         Path file = temp.resolve("Nobel.model.json");
 
@@ -66,8 +66,8 @@ class ProjectKindPersistenceTest {
         store.save(project, file.toFile());
         GeneratedProjectModel loaded = store.load(file.toFile());
 
-        assertEquals("People", loaded.findClass("Name").originModel());
-        assertEquals("", loaded.findClass("Prize").originModel(),
-                "a class authored here still reports no origin after a reload");
+        assertEquals("People", loaded.findClass("Name").importedFrom());
+        assertEquals("", loaded.findClass("Prize").importedFrom(),
+                "a class this project wrote still reports no owner after a reload");
     }
 }

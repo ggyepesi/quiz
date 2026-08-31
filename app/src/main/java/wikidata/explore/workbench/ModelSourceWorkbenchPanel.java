@@ -48,6 +48,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                             "Aggregate class"
                     });
 
+    /** Says, above the editor, that what is shown belongs to another model. Visible
+     *  only for an imported class, whose controls are all disabled — without it the
+     *  editor would look merely broken. */
+    private final JLabel importedNotice = new JLabel();
     private final JPanel kindHeader =
             new JPanel(
                     new FlowLayout(
@@ -293,6 +297,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     /** Locks every mutation surface owned by the workbench, including helper tools
      * currently hosted in the separate Explorer window. Labels and containers remain
      * enabled so the selected configuration can still be read. */
+    /** Names the owning model above a disabled editor, or hides the notice. */
+    private void showImportedNotice(GeneratedClassModel clazz) {
+        boolean imported = clazz != null && clazz.isImported();
+        importedNotice.setVisible(imported);
+        if (imported) {
+            importedNotice.setText("Imported from " + clazz.importedFrom()
+                    + " — owned there, and edited there. Shown here as it stands.");
+        }
+    }
+
     /** The class declaring this field, or null when it belongs to none. */
     private GeneratedClassModel owningClassOf(GeneratedFieldModel field) {
         if (field == null || projectModel == null) return null;
@@ -339,38 +353,52 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 classSourcePanel.edit(clazz);
                 layout.show(cardPanel, "class");
             }
+            // An imported class is not edited here at all — name, membership, identity
+            // and everything else belong to the model that owns it. Locking the card
+            // rather than each control means a new control cannot be added to these
+            // editors and quietly escape the rule. Reapplied on every selection, so
+            // this project's own classes stay editable.
+            EditableComponents.setEditable(cardPanel, editingEnabled && !clazz.isImported());
+            kindBox.setEnabled(editingEnabled && !clazz.isImported());
+            showImportedNotice(clazz);
         } else if (selected
                 instanceof GeneratedFieldModel field) {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
+            showImportedNotice(null);
             fieldSourcePanel.edit(field);
-            // A field of an adopted class is readable but not editable: its
-            // configuration belongs to the model the class came from. Set on every
-            // selection so moving to an unlocked field restores editing.
+            // A field of an imported class is readable but not editable: it is
+            // configuration owned by the model the class comes from. Set on every
+            // selection so moving to this project's own field restores editing.
             GeneratedClassModel fieldOwner = owningClassOf(field);
             EditableComponents.setEditable(fieldSourcePanel,
-                    editingEnabled && (fieldOwner == null || !fieldOwner.fieldsLocked()));
+                    editingEnabled && (fieldOwner == null || !fieldOwner.isImported()));
+            showImportedNotice(fieldOwner);
             layout.show(cardPanel, "field");
         } else if (selected instanceof wikidata.explore.model.Selection selection
                 && selectionEditor != null) {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
+            showImportedNotice(null);
             selectionEditor.edit(selection);
             layout.show(cardPanel, "selection");
         } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
                 && selectionEditor != null) {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
+            showImportedNotice(null);
             selectionEditor.edit(null);
             layout.show(cardPanel, "selection");
         } else if (selected instanceof GeneratedProjectModel) {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
+            showImportedNotice(null);
             domainOverview.refresh();
             layout.show(cardPanel, "domain");
         } else {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
+            showImportedNotice(null);
             layout.show(cardPanel, "empty");
         }
 
@@ -884,6 +912,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         JPanel config = new JPanel(new BorderLayout());
         JPanel configHeader = new JPanel();
         configHeader.setLayout(new BoxLayout(configHeader, BoxLayout.Y_AXIS));
+        importedNotice.setVisible(false);
+        importedNotice.setForeground(new java.awt.Color(120, 85, 20));
+        importedNotice.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        configHeader.add(importedNotice);
         configHeader.add(kindHeader);
         reusableSelectionsPanel.add(new SelectionsButton(selections).useProperties(
                 "Use selected property",

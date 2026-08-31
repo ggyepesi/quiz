@@ -36,7 +36,8 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
-    private final JButton importClassButton = new JButton("Copy class…");
+    private final JButton copyClassButton = new JButton("Copy class…");
+    private final JButton importClassButton = new JButton("Import class…");
     private final JButton addFieldButton = new JButton("Add field");
     private final JButton removeButton = new JButton("Remove");
 
@@ -79,8 +80,17 @@ public class SingleRootClassModelPanel extends JPanel {
     public void setEditingEnabled(boolean enabled) {
         editingEnabled = enabled;
         addClassButton.setEnabled(enabled);
+        copyClassButton.setEnabled(enabled);
         importClassButton.setEnabled(enabled);
         updateActionState();
+    }
+
+    public void onCopyClass(Runnable action) {
+        for (java.awt.event.ActionListener listener
+                : copyClassButton.getActionListeners()) {
+            copyClassButton.removeActionListener(listener);
+        }
+        if (action != null) copyClassButton.addActionListener(e -> action.run());
     }
 
     public void onImportClass(Runnable action) {
@@ -104,7 +114,7 @@ public class SingleRootClassModelPanel extends JPanel {
                 || value instanceof GeneratedFieldModel
                 || value instanceof Selection
                 // Only the vocabulary section opens an editor. Uses reports what was
-                // adopted and configures nothing, so it is inspection, not a surface.
+                // imported and configures nothing, so it is inspection, not a surface.
                 || value == ConfigurationSection.VOCABULARIES
                 || value instanceof GeneratedProjectModel;
     }
@@ -270,21 +280,22 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
         addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
 
-        // An adopted class's field configuration belongs to the model it came from.
-        // The class itself may still be removed — dropping an adoption is this
-        // project's decision — so only the field actions ask the lock.
+        // An imported class is owned by the model it comes from and is not edited
+        // here. Removing it is still this project's decision: dropping an import ends
+        // the use, which is the one thing about it this project does decide.
         GeneratedClassModel owningClass = selected instanceof GeneratedClassModel c
                 ? c
                 : selected instanceof GeneratedFieldModel f ? owningClassOf(f) : null;
-        boolean fieldsLocked = owningClass != null && owningClass.fieldsLocked();
+        boolean imported = owningClass != null && owningClass.isImported();
 
-        renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary)
-                && !(owningClass != null && owningClass.nameLocked()));
+        renameClassButton.setEnabled(
+                editingEnabled && (classContext || vocabulary) && !imported);
         addClassButton.setEnabled(editingEnabled);
+        copyClassButton.setEnabled(editingEnabled && classContext);
         importClassButton.setEnabled(editingEnabled && classContext);
-        addFieldButton.setEnabled(editingEnabled && classContext && !fieldsLocked);
+        addFieldButton.setEnabled(editingEnabled && classContext && !imported);
         removeButton.setEnabled(editingEnabled && (classContext || vocabulary)
-                && !(fieldsLocked && selected instanceof GeneratedFieldModel));
+                && !(imported && selected instanceof GeneratedFieldModel));
     }
 
     private void buildUi() {
@@ -300,6 +311,7 @@ public class SingleRootClassModelPanel extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
+        buttons.add(copyClassButton);
         buttons.add(importClassButton);
         buttons.add(addFieldButton);
         buttons.add(removeButton);
@@ -399,9 +411,10 @@ public class SingleRootClassModelPanel extends JPanel {
         }
         projectNode.add(selectionsNode);
 
-        // Derived from the adopted classes, so it is present exactly when something has
-        // been adopted. Nothing is configured here — it reports what this project took
-        // from elsewhere and where each class came from.
+        // Derived from the imported classes, so it is present exactly when something is
+        // imported. Nothing is configured here — it reports which models this project
+        // uses and which classes it takes from each. Copies never appear: a copy is this
+        // project's own and is not a use of anything.
         List<ModelUse> uses = ModelUse.of(projectModel);
         if (!uses.isEmpty()) {
             DefaultMutableTreeNode usesNode =
@@ -685,8 +698,8 @@ public class SingleRootClassModelPanel extends JPanel {
                 if (cls.hasBase()) {
                     t.append(" : ").append(cls.baseClassName());
                 }
-                if (!cls.originModel().isBlank()) {
-                    t.append(" ← ").append(cls.originModel());
+                if (cls.isImported()) {
+                    t.append("   imported from ").append(cls.importedFrom());
                 }
                 t.append("   [").append(MembershipPattern.describe(cls, project)).append(']');
                 setText(t.toString());

@@ -291,8 +291,8 @@ public class GeneratedProjectModel {
         if (from.equals(to)) return true;
         // Deliberately after the no-op check: the class editors call this on every
         // Apply with an unchanged name, and refusing there would report a rename
-        // failure every time an adopted class is merely saved.
-        if (target.nameLocked()) return false;
+        // failure every time an imported class is merely saved.
+        if (target.isImported()) return false;
         GeneratedClassModel classConflict = findClass(to);
         if (classConflict != null && classConflict != target) return false;
         if (findSelection(to) != null) return false;

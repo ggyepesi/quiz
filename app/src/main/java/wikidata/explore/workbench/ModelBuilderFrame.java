@@ -660,6 +660,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());
+        classModelPanel.onCopyClass(this::copyClassConfiguration);
         classModelPanel.onImportClass(this::importClassConfiguration);
 
         sourceWorkbench.afterApplyField(f -> {
@@ -1596,26 +1597,42 @@ public class ModelBuilderFrame extends JFrame {
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
+    private void copyClassConfiguration() {
+        bringInClass(ClassImportPlan.Ownership.COPY);
+    }
+
     private void importClassConfiguration() {
+        bringInClass(ClassImportPlan.Ownership.IMPORT);
+    }
+
+    /**
+     * Copy and import are the same mechanism and different acts. Copying takes a class
+     * from any project and the result is this project's own. Importing uses a model's
+     * class where it stands: it stays that model's, and is not edited here.
+     */
+    private void bringInClass(ClassImportPlan.Ownership ownership) {
+        boolean importing = ownership == ClassImportPlan.Ownership.IMPORT;
         try {
             sourceWorkbench.applyEdits();
-            boolean intoModel = projectModel.isModel();
-            java.util.List<String> sources =
-                    storage.copySourcesFor(projectModel.name(), intoModel);
+            java.util.List<String> sources = importing
+                    ? storage.importSourcesFor(projectModel.name())
+                    : storage.copySourcesFor(projectModel.name());
             if (sources.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        intoModel
-                                ? "No other saved project is available to copy from."
-                                : "No saved model is available.\n\n"
-                                        + "A domain adopts its classes from a model. "
-                                        + "Create a model and copy the classes into it "
-                                        + "first — a model may take them from a domain.",
-                        "Copy class", JOptionPane.INFORMATION_MESSAGE);
+                        importing
+                                ? "No saved model is available to import from.\n\n"
+                                        + "An imported class stays owned by the model it "
+                                        + "comes from. Create a model and put the classes "
+                                        + "there first — a model may copy them from a "
+                                        + "domain."
+                                : "No other saved project is available to copy from.",
+                        importing ? "Import class" : "Copy class",
+                        JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             String domain = (String) JOptionPane.showInputDialog(
-                    this, intoModel ? "Copy from project:" : "Copy from model:",
-                    "Copy class configuration",
+                    this, importing ? "Import from model:" : "Copy from project:",
+                    importing ? "Import class" : "Copy class configuration",
                     JOptionPane.PLAIN_MESSAGE, null, sources.toArray(), sources.getFirst());
             if (domain == null) return;
 
@@ -1624,7 +1641,8 @@ public class ModelBuilderFrame extends JFrame {
             java.util.List<String> classNames = source.classes().stream()
                     .map(GeneratedClassModel::className).toList();
             String className = (String) JOptionPane.showInputDialog(
-                    this, "Class:", "Copy from " + domain,
+                    this, "Class:",
+                    (importing ? "Import from " : "Copy from ") + domain,
                     JOptionPane.PLAIN_MESSAGE, null, classNames.toArray(),
                     classNames.getFirst());
             if (className == null) return;
@@ -1660,8 +1678,13 @@ public class ModelBuilderFrame extends JFrame {
             preview.setEditable(false);
             preview.setLineWrap(true);
             preview.setWrapStyleWord(true);
-            preview.setText("Copy " + className + " from " + domain + " into "
-                    + projectModel.name() + ".\n\n"
+            preview.setText((importing ? "Import " : "Copy ") + className + " from "
+                    + domain + " into " + projectModel.name() + ".\n\n"
+                    + (importing
+                            ? "The class stays owned by " + domain
+                                    + ". It is shown and used here, and edited there.\n\n"
+                            : "The copy belongs to " + projectModel.name()
+                                    + " and is edited here like any other class.\n\n")
                     + "Class configuration: identity, display name, inheritance, "
                     + "fields and source bindings.\n"
                     + "Supporting declarations: " + plan.selections().size()
@@ -1687,7 +1710,8 @@ public class ModelBuilderFrame extends JFrame {
             }
 
             int accepted = JOptionPane.showConfirmDialog(this, choices,
-                    "Copy class configuration", JOptionPane.OK_CANCEL_OPTION,
+                    importing ? "Import class" : "Copy class configuration",
+                    JOptionPane.OK_CANCEL_OPTION,
                     JOptionPane.PLAIN_MESSAGE);
             if (accepted != JOptionPane.OK_OPTION) return;
 
@@ -1696,7 +1720,8 @@ public class ModelBuilderFrame extends JFrame {
             selected.add(className);
             ClassImportPlan.ConflictPolicy policy =
                     (ClassImportPlan.ConflictPolicy) conflictPolicy.getSelectedItem();
-            java.util.List<GeneratedClassModel> imported = plan.apply(selected, policy);
+            java.util.List<GeneratedClassModel> imported =
+                    plan.apply(selected, policy, ownership);
             modelChanged();
             GeneratedClassModel copied = projectModel.findClass(className);
             if (copied != null) classModelPanel.selectClass(copied);

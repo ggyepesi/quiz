@@ -199,23 +199,25 @@ public final class DomainStorage {
     }
 
     /**
-     * The projects {@code projectName} may copy class configuration from.
-     *
-     * <p>A domain copies from models only. Adopting from a model is what using one
-     * means; a domain-to-domain copy would duplicate a configuration with no model
-     * between them to own it, which is the divergence models exist to prevent.
-     *
-     * <p>A model may copy from anything, including a domain. Factoring a class out of a
-     * domain that already has it configured is how a model gets started, so restricting
-     * a model to other models would leave the first one with nothing to draw on.
-     *
-     * <p>A project never lists itself.
+     * The projects {@code projectName} may copy a class from — any other saved project.
+     * Copying eases configuring a class that resembles one already configured; the copy
+     * is this project's own, so where it was copied from constrains nothing.
      */
-    public List<String> copySourcesFor(String projectName, boolean intoModel) {
+    public List<String> copySourcesFor(String projectName) {
+        String own = key(projectName == null ? "" : projectName);
+        return modelBackedNames().stream().filter(name -> !key(name).equals(own)).toList();
+    }
+
+    /**
+     * The models {@code projectName} may import a class from. Only models: importing is
+     * using a model's class where it stands, and a domain does not own configuration on
+     * another project's behalf. A project never imports from itself.
+     */
+    public List<String> importSourcesFor(String projectName) {
         String own = key(projectName == null ? "" : projectName);
         return modelBackedNames().stream()
                 .filter(name -> !key(name).equals(own))
-                .filter(name -> intoModel || isModelKind(name))
+                .filter(this::isModelKind)
                 .toList();
     }
 

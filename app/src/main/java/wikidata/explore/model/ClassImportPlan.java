@@ -114,9 +114,26 @@ public final class ClassImportPlan {
     }
 
     /** Apply selected classes; declarations required by those classes follow them. */
+    /**
+     * Whether the classes land as this project's own or as the source model's.
+     *
+     * <p>These are different acts, not settings of one. COPY eases configuring a class
+     * that resembles another: the result is the copier's, freely editable, with no
+     * lasting relationship. IMPORT uses a model's class where it stands: the class is
+     * shown and referenced here and edited only in the model that owns it.
+     */
+    public enum Ownership { COPY, IMPORT }
+
     public List<GeneratedClassModel> apply(
             Set<String> selectedClassNames,
             ConflictPolicy policy) {
+        return apply(selectedClassNames, policy, Ownership.COPY);
+    }
+
+    public List<GeneratedClassModel> apply(
+            Set<String> selectedClassNames,
+            ConflictPolicy policy,
+            Ownership ownership) {
         LinkedHashSet<String> selected = new LinkedHashSet<>();
         if (selectedClassNames != null) selected.addAll(selectedClassNames);
         selected.add(requestedClass);
@@ -133,11 +150,15 @@ public final class ClassImportPlan {
             GeneratedClassModel existing = candidate.findClass(sourceClass.className());
             if (existing != null && policy == ConflictPolicy.REUSE_TARGET) continue;
             GeneratedClassModel copy = sourceClass.copy();
-            // Where the class came from, kept through further copies: a class adopted
-            // from People and then copied onward still originates in People, not in
-            // whichever project passed it along. Only a class authored in the source
-            // takes the source's name.
-            if (copy.originModel().isBlank()) copy.originModel(source.name());
+            // An import is owned by the model it names, and that ownership survives
+            // being passed along: importing a class the source had itself imported
+            // still points at the model that owns it, not at the relay. A copy claims
+            // nothing, so it arrives owned by nobody but this project.
+            if (ownership == Ownership.COPY) {
+                copy.importedFrom("");
+            } else if (!copy.isImported()) {
+                copy.importedFrom(source.name());
+            }
             candidate.replaceClass(copy);
             imported.add(copy);
         }

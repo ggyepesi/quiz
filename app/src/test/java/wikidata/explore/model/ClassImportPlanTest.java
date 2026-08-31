@@ -185,81 +185,119 @@ class ClassImportPlanTest {
     }
 
     /**
-     * An adopted class records where it came from, and its fields are the owning
-     * model's. How an adopting project may reshape them is a later decision; until it
-     * is made, the origin is the single authority over the field configuration.
+     * A copy is the copying project's, entirely. It carries no claim from wherever it
+     * was copied, because copying eases configuring a class that resembles another —
+     * the resemblance is a starting point, not a relationship.
      */
-    @Test void anAdoptedClassRemembersItsOriginAndItsFieldsAreLocked() {
+    @Test void aCopiedClassBelongsToTheProjectThatCopiedIt() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Person")
                 .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
 
-        assertEquals("Oscars", model.findClass("Person").originModel());
-        assertEquals("Oscars", model.findClass("Name").originModel());
-        assertTrue(model.findClass("Person").fieldsLocked());
-        assertTrue(model.findClass("Name").fieldsLocked());
-    }
+        assertEquals("", model.findClass("Person").importedFrom());
+        assertFalse(model.findClass("Person").isImported());
+        assertFalse(model.findClass("Name").isImported());
 
-    /** A class authored here has no origin; nothing to inherit and nothing to display. */
-    @Test void aClassAuthoredHereHasNoOrigin() {
-        assertEquals("", oscarPeople().findClass("Person").originModel());
+        model.findClass("Name").addField(
+                "nickname", FieldType.STRING, FieldCardinality.SINGLE);
+        assertTrue(model.renameClass("Name", "PersonName"));
+
+        assertEquals(2, model.findClass("PersonName").fields().size(),
+                "a copy is edited like any class this project wrote itself");
+        assertEquals(1, oscarPeople().findClass("Name").fields().size(),
+                "and the project it was copied from is untouched");
     }
 
     /**
-     * Origin survives being passed along. Adopting Person from People into a domain and
-     * then copying it onward still names People — the project in the middle relayed it,
-     * it did not author it.
+     * An import leaves the class owned by the model it names, which is what makes it a
+     * use of that model rather than a duplicate of it.
      */
-    @Test void originNamesTheAuthorNotTheLastHop() {
+    @Test void anImportedClassStaysOwnedByTheModelItComesFrom() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertEquals("Oscars", model.findClass("Person").importedFrom());
+        assertEquals("Oscars", model.findClass("Name").importedFrom());
+        assertTrue(model.findClass("Person").isImported());
+        assertEquals("Oscars.Person", model.findClass("Person").qualifiedClassName());
+    }
+
+    /** A class this project wrote is owned by nobody else. */
+    @Test void aClassAuthoredHereIsNotImported() {
+        assertEquals("", oscarPeople().findClass("Person").importedFrom());
+        assertFalse(oscarPeople().findClass("Person").isImported());
+    }
+
+    /**
+     * Ownership survives being passed along. Importing a class the source had itself
+     * imported still names the model that owns it — the project in the middle is a
+     * relay, and relaying does not transfer ownership to the relay.
+     */
+    @Test void importedOwnershipNamesTheOwnerNotTheLastHop() {
         GeneratedProjectModel relay = emptyModel();
         relay.name("Relay");
         ClassImportPlan.of(oscarPeople(), relay, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
 
         GeneratedProjectModel destination = emptyModel();
         destination.name("Nobel");
         ClassImportPlan.of(relay, destination, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
 
-        assertEquals("Oscars", destination.findClass("Person").originModel());
+        assertEquals("Oscars", destination.findClass("Person").importedFrom());
     }
 
     /**
-     * Two projects adopting the same class each get their own copy, both locked to the
-     * origin. Separate copies are what will later let them diverge; nothing shares an
-     * object across projects today.
+     * Copying an imported class takes the configuration and drops the claim: the result
+     * is an ordinary class of the copying project. Otherwise there would be no way to
+     * take a model's class and then diverge from it.
      */
-    @Test void eachAdoptingProjectGetsItsOwnLockedCopy() {
+    @Test void copyingAnImportedClassYieldsAnOrdinaryOne() {
+        GeneratedProjectModel relay = emptyModel();
+        relay.name("Relay");
+        ClassImportPlan.of(oscarPeople(), relay, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
+        assertTrue(relay.findClass("Name").isImported());
+
+        GeneratedProjectModel destination = emptyModel();
+        destination.name("Nobel");
+        ClassImportPlan.of(relay, destination, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertFalse(destination.findClass("Name").isImported(),
+                "a copy claims nothing, whatever it was copied from");
+    }
+
+    /** The model that owns a class is not locked out of its own class. */
+    @Test void theOwningModelStillEditsWhatOthersImport() {
         GeneratedProjectModel source = oscarPeople();
-        GeneratedProjectModel first = emptyModel();
-        first.name("First");
-        GeneratedProjectModel second = emptyModel();
-        second.name("Second");
+        GeneratedProjectModel importer = emptyModel();
+        ClassImportPlan.of(source, importer, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
 
-        ClassImportPlan.of(source, first, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
-        ClassImportPlan.of(source, second, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
-
-        assertNotSame(first.findClass("Name"), second.findClass("Name"));
-        assertNotSame(source.findClass("Name"), first.findClass("Name"));
-        assertTrue(first.findClass("Name").fieldsLocked());
-        assertTrue(second.findClass("Name").fieldsLocked());
-        assertFalse(source.findClass("Name").fieldsLocked(),
-                "the owning model is not locked out of its own class");
+        assertTrue(importer.findClass("Name").isImported());
+        assertFalse(source.findClass("Name").isImported());
+        assertTrue(source.renameClass("Name", "FullName"));
     }
 
     /**
-     * The name is how an adopted class claims its origin, so it cannot be changed here.
-     * Renaming and keeping the origin would assert a class the origin does not have;
-     * renaming and dropping the origin would make rename a way around the field lock.
+     * The name is how an imported class names what owns it, so the importing project
+     * cannot change it: renaming Name to PersonName while still pointing at Oscars
+     * would assert a class Oscars does not have.
      */
-    @Test void anAdoptedClassCannotBeRenamedByTheProjectThatAdoptedIt() {
+    @Test void anImportedClassCannotBeRenamedByTheProjectThatImportedIt() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
 
-        assertTrue(model.findClass("Name").nameLocked());
+        assertTrue(model.findClass("Name").isImported());
         assertFalse(model.renameClass("Name", "PersonName"));
         assertNotNull(model.findClass("Name"), "the class keeps its name");
         assertNull(model.findClass("PersonName"));
@@ -269,13 +307,14 @@ class ClassImportPlanTest {
 
     /**
      * The class editors call renameClass on every Apply with the name unchanged. That
-     * must stay a no-op success for an adopted class, or merely saving one would report
-     * a rename failure.
+     * must stay a no-op success for an imported class, or merely saving one would
+     * report a rename failure.
      */
-    @Test void savingAnAdoptedClassUnchangedIsNotARenameFailure() {
+    @Test void savingAnImportedClassUnchangedIsNotARenameFailure() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                        ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(model.renameClass("Name", "Name"),
                 "an unchanged name is a no-op, not a refused rename");
@@ -288,7 +327,7 @@ class ClassImportPlanTest {
         project.rootClass(new GeneratedClassModel("Prize"));
         project.addClass(new GeneratedClassModel("Ceremony"));
 
-        assertFalse(project.findClass("Ceremony").nameLocked());
+        assertFalse(project.findClass("Ceremony").isImported());
         assertTrue(project.renameClass("Ceremony", "Edition"));
         assertNotNull(project.findClass("Edition"));
     }

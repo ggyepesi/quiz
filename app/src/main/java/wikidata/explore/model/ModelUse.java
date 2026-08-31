@@ -8,14 +8,17 @@ import java.util.List;
  * Which models a project uses, and what it took from each.
  *
  * <p>This is derived, never stored. A project uses a model exactly when it holds a class
- * adopted from it, and the adopted classes already record that in {@link
- * GeneratedClassModel#originModel()}. A second, declared list would be a second way to
+ * imported from it, and imported classes already record that in {@link
+ * GeneratedClassModel#importedFrom()}. A second, declared list would be a second way to
  * know the same fact, free to disagree with the classes actually present — the project
  * keeps only one discovery path per fact, so this one is computed.
  *
- * <p>The consequence worth knowing: a use appears when the first class is adopted and
+ * <p>Copied classes are deliberately absent. A copy is the copying project's own and
+ * carries no claim from where it came, so it is not a use of anything.
+ *
+ * <p>The consequence worth knowing: a use appears when the first class is imported and
  * disappears when the last one is removed. There is no way to declare a model as used
- * before adopting from it. Nothing needs that yet; if something does, it is a new
+ * before importing from it. Nothing needs that yet; if something does, it is a new
  * construct with a reason, not a field quietly added here.
  */
 public record ModelUse(String modelName, List<String> classNames) {
@@ -25,8 +28,9 @@ public record ModelUse(String modelName, List<String> classNames) {
     }
 
     /**
-     * The models this project uses, in the order their first adopted class appears, each
-     * with the classes adopted from it. A project that has adopted nothing uses nothing.
+     * The models this project uses, in the order their first imported class appears,
+     * each with the classes imported from it. A project that imports nothing uses
+     * nothing.
      */
     public static List<ModelUse> of(GeneratedProjectModel project) {
         if (project == null) return List.of();
@@ -34,7 +38,7 @@ public record ModelUse(String modelName, List<String> classNames) {
         LinkedHashMap<String, List<String>> byModel = new LinkedHashMap<>();
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) continue;
-            String origin = clazz.originModel();
+            String origin = clazz.importedFrom();
             if (origin.isBlank()) continue;
             byModel.computeIfAbsent(origin, key -> new ArrayList<>())
                     .add(clazz.className());
@@ -45,7 +49,7 @@ public record ModelUse(String modelName, List<String> classNames) {
         return List.copyOf(uses);
     }
 
-    /** Whether this project holds any class adopted from {@code modelName}. */
+    /** Whether this project holds any class imported from {@code modelName}. */
     public static boolean uses(GeneratedProjectModel project, String modelName) {
         if (modelName == null || modelName.isBlank()) return false;
         return of(project).stream()

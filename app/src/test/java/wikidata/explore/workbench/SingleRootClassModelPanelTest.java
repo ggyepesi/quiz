@@ -173,20 +173,20 @@ class SingleRootClassModelPanelTest {
     }
 
     /**
-     * An adopted class is owned by the model it came from, so this project cannot add
-     * to or remove from its fields. The class itself stays removable — dropping an
-     * adoption is the adopting project's decision, not the origin's.
+     * An imported class is owned by the model it comes from and is not edited here. The
+     * class itself stays removable: dropping an import ends the use, which is the one
+     * thing about it this project does decide.
      */
-    @Test void theFieldActionsOfAnAdoptedClassAreLocked() {
+    @Test void theEditActionsOfAnImportedClassAreLocked() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("Nobel");
         project.rootClass(new GeneratedClassModel("Prize"));
 
-        GeneratedClassModel adopted = new GeneratedClassModel("Name");
-        adopted.originModel("People");
-        GeneratedFieldModel adoptedField = adopted.addField(
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        GeneratedFieldModel importedField = imported.addField(
                 "givenName", FieldType.STRING, FieldCardinality.SINGLE);
-        project.addClass(adopted);
+        project.addClass(imported);
 
         GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
         GeneratedFieldModel myField = mine.addField(
@@ -197,55 +197,55 @@ class SingleRootClassModelPanelTest {
         JButton addField = button(panel, "Add field");
         JButton remove = button(panel, "Remove");
 
-        panel.selectClass(adopted);
-        assertFalse(addField.isEnabled(), "cannot add a field to an adopted class");
-        assertTrue(remove.isEnabled(), "but the adoption itself can be dropped");
+        panel.selectClass(imported);
+        assertFalse(addField.isEnabled(), "cannot add a field to an imported class");
+        assertTrue(remove.isEnabled(), "but the import itself can be dropped");
 
-        panel.selectField(adoptedField);
-        assertFalse(remove.isEnabled(), "cannot remove an adopted class's field");
+        panel.selectField(importedField);
+        assertFalse(remove.isEnabled(), "cannot remove an imported class's field");
 
         panel.selectClass(mine);
-        assertTrue(addField.isEnabled(), "a class authored here is unaffected");
+        assertTrue(addField.isEnabled(), "a class this project wrote is unaffected");
         panel.selectField(myField);
         assertTrue(remove.isEnabled());
     }
 
     /**
-     * The name is how an adopted class claims its origin, so the project that adopted it
-     * cannot rename it — not through the tree, and not by typing in the class editor.
+     * The name is how an imported class names its owner, so the importing project cannot
+     * change it — not through the tree, and not by typing in the class editor.
      */
-    @Test void anAdoptedClassCannotBeRenamedFromTheTree() {
+    @Test void anImportedClassCannotBeRenamedFromTheTree() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
-        GeneratedClassModel adopted = new GeneratedClassModel("Name");
-        adopted.originModel("People");
-        project.addClass(adopted);
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
         GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
         project.addClass(mine);
 
         SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
         JButton rename = button(panel, "Rename class");
 
-        panel.selectClass(adopted);
-        assertFalse(rename.isEnabled(), "an adopted class is named by its origin");
+        panel.selectClass(imported);
+        assertFalse(rename.isEnabled(), "an imported class is named by the model that owns it");
 
         panel.selectClass(mine);
-        assertTrue(rename.isEnabled(), "a class authored here renames as before");
+        assertTrue(rename.isEnabled(), "a class this project wrote renames as before");
     }
 
-    /** The tree says where an adopted class came from; a local class shows no origin. */
-    @Test void theTreeShowsWhereAnAdoptedClassCameFrom() {
+    /** The tree marks an imported class with its owning model; a copy carries no mark. */
+    @Test void theTreeMarksAnImportedClassAndItsOwner() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
-        GeneratedClassModel adopted = new GeneratedClassModel("Name");
-        adopted.originModel("People");
-        project.addClass(adopted);
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
 
         SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
-        assertTrue(renderedTextOf(panel, adopted).contains("People"),
-                "the origin is visible on the class row");
-        assertFalse(renderedTextOf(panel, project.rootClass()).contains("\u2190"),
-                "a class authored here carries no origin marker");
+        assertTrue(renderedTextOf(panel, imported).contains("imported from People"),
+                "the owning model is visible on the class row");
+        assertFalse(renderedTextOf(panel, project.rootClass()).contains("imported"),
+                "a class this project wrote carries no marker");
     }
 
     private static String renderedTextOf(
@@ -270,11 +270,11 @@ class SingleRootClassModelPanelTest {
     }
 
     /**
-     * The Uses section is present exactly when something has been adopted, and it
+     * The Uses section is present exactly when something is imported, and it
      * configures nothing — selecting it must not open an editor, because reporting what
      * a project took from elsewhere is inspection.
      */
-    @Test void theTreeReportsWhatWasAdoptedAndOffersNoEditorForIt() {
+    @Test void theTreeReportsWhatIsImportedAndOffersNoEditorForIt() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
 
@@ -282,17 +282,17 @@ class SingleRootClassModelPanelTest {
         assertNull(nodeFor((DefaultMutableTreeNode)
                         find(before, JTree.class).getModel().getRoot(),
                 SingleRootClassModelPanel.ConfigurationSection.USES),
-                "nothing adopted, so nothing to report");
+                "nothing imported, so nothing to report");
 
-        GeneratedClassModel adopted = new GeneratedClassModel("Name");
-        adopted.originModel("People");
-        project.addClass(adopted);
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
 
         SingleRootClassModelPanel after = new SingleRootClassModelPanel(project);
         DefaultMutableTreeNode uses = nodeFor((DefaultMutableTreeNode)
                         find(after, JTree.class).getModel().getRoot(),
                 SingleRootClassModelPanel.ConfigurationSection.USES);
-        assertNotNull(uses, "an adopted class puts its origin on the tree");
+        assertNotNull(uses, "an imported class puts its owner on the tree");
         assertEquals(1, uses.getChildCount());
         assertEquals("People", ((wikidata.explore.model.ModelUse)
                 ((DefaultMutableTreeNode) uses.getChildAt(0)).getUserObject())
@@ -304,5 +304,39 @@ class SingleRootClassModelPanelTest {
         assertTrue(SingleRootClassModelPanel.isConfigurable(
                 SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES),
                 "the vocabulary section still opens its editor");
+    }
+
+    /**
+     * Copy and import are separate commands because they are separate acts. Offering
+     * one control that quietly decides which one happened is how the two got conflated
+     * in the first place.
+     */
+    @Test void copyAndImportAreDistinctCommands() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        assertNotNull(button(panel, "Copy class…"));
+        assertNotNull(button(panel, "Import class…"));
+    }
+
+    /**
+     * A copy carries no mark, because it belongs to this project and claims nothing.
+     * If a copy were marked, the marking would stop meaning "owned elsewhere".
+     */
+    @Test void aCopiedClassIsNotMarkedAsImported() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel copied = new GeneratedClassModel("Name");
+        project.addClass(copied);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        assertFalse(copied.isImported());
+        assertFalse(renderedTextOf(panel, copied).contains("imported"));
+        assertNull(nodeFor((DefaultMutableTreeNode)
+                        find(panel, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "a copy is not a use of anything");
     }
 }

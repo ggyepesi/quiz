@@ -36,10 +36,6 @@ final class OwnedClassPanel extends JPanel {
     void edit(GeneratedClassModel value) {
         clazz = value;
         className.setText(value == null ? "" : value.className());
-        // The name of an adopted class belongs to the model it came from, so it is
-        // readable but not typeable here. Set on every edit so selecting a class
-        // authored here restores it.
-        className.setEditable(value == null || !value.nameLocked());
         alias.setText(value == null ? "" : value.alias());
         baseClass.removeAllItems();
         baseClass.addItem(NO_BASE);

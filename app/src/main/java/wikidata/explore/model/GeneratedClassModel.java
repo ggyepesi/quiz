@@ -38,10 +38,12 @@ public class GeneratedClassModel {
     private String discriminatorQid = "";
     private String alias = "";
 
-    /** The project this class was copied in from, empty when authored here. Provenance
-     *  only: an adopted class belongs to the adopting project and stays editable there,
-     *  so one model class can be shaped differently in different contexts. */
-    private String originModel = "";
+    /** The model this class is imported from, empty when the class is this project's
+     *  own. An imported class is configuration owned elsewhere: it is shown and used
+     *  here, and edited only where it lives. Copying sets nothing here — a copy belongs
+     *  to whoever copied it, and its resemblance to the original is a starting point,
+     *  not a claim. */
+    private String importedFrom = "";
 
     /** Explicit population kind for a component class. The owner is intentionally
      * not stored here: every ENTITY field targeting this class is a production site. */
@@ -123,57 +125,35 @@ public class GeneratedClassModel {
         alias = clean(value);
     }
 
-    /** The project this class was copied in from; empty when authored here. */
-    public String originModel() {
-        return originModel == null ? "" : originModel;
+    /** The model that owns this class; empty when the class is this project's own. */
+    public String importedFrom() {
+        return importedFrom == null ? "" : importedFrom;
     }
 
-    public void originModel(String value) {
-        originModel = clean(value);
+    public void importedFrom(String value) {
+        importedFrom = clean(value);
     }
 
     /**
      * How this class reads when the project it came from matters: {@code People.Person}
-     * for an adopted class, plain {@code Person} for one authored here. A display form
-     * derived from the origin — the class is referenced by its own name everywhere, so
-     * there is no qualified name stored anywhere to fall out of step with this one.
+     * for an imported class, plain {@code Person} for this project's own. A display
+     * form derived from the owner — the class is referenced by its own name everywhere,
+     * so no stored qualified name can fall out of step with this one.
      */
     public String qualifiedClassName() {
-        return originModel().isBlank() ? className : originModel() + "." + className;
+        return isImported() ? importedFrom() + "." + className : className;
     }
 
     /**
-     * Whether this class was taken from another project rather than authored here. The
-     * fact the locks below are policies over — asked by name so no caller re-derives it
-     * from an empty string.
-     */
-    public boolean isAdopted() {
-        return !originModel().isBlank();
-    }
-
-    /**
-     * Whether this project may change the field configuration. An adopted class is
-     * owned by the model it came from: its fields, and whether there are more or fewer
-     * of them, are that model's to decide. How an adopting project might override
-     * them is deliberately undecided, so until it is decided the answer is simply no.
+     * Whether this class is owned by another model. An imported class is not edited
+     * here at all — not its fields, not its name, not its membership. The single
+     * question every editor asks, so where a class may be changed is decided once.
      *
-     * <p>This is the one place that question is answered. Every editor asks it rather
-     * than testing for an origin itself, so widening it later is one change.
+     * <p>Copying does not make a class imported. A copy is the copier's and carries no
+     * claim from wherever it was copied.
      */
-    public boolean fieldsLocked() {
-        return isAdopted();
-    }
-
-    /**
-     * Whether the class name may be changed here. It may not while the class is
-     * adopted: the name is how the origin is claimed, so renaming Name to PersonName
-     * while still reporting People as its origin asserts a correspondence that does not
-     * hold, and qualifiedClassName() would render People.PersonName, which names
-     * nothing. Allowing the rename and dropping the origin instead would make renaming
-     * a way to unlock the fields, quietly undoing the rule above.
-     */
-    public boolean nameLocked() {
-        return isAdopted();
+    public boolean isImported() {
+        return !importedFrom().isBlank();
     }
 
     public String displayClassName() {
@@ -432,7 +412,7 @@ public class GeneratedClassModel {
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
         copy.alias = alias;
-        copy.originModel = originModel;
+        copy.importedFrom = importedFrom;
         copy.classKind = classKind;
 
         copy.statementSource =

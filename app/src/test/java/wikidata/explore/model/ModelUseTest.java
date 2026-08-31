@@ -8,13 +8,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ModelUseTest {
 
-    private static GeneratedClassModel adopted(String name, String origin) {
+    private static GeneratedClassModel imported(String name, String owner) {
         GeneratedClassModel clazz = new GeneratedClassModel(name);
-        clazz.originModel(origin);
+        clazz.importedFrom(owner);
         return clazz;
     }
 
-    @Test void aProjectThatAdoptedNothingUsesNothing() {
+    @Test void aProjectThatImportsNothingUsesNothing() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.addClass(new GeneratedClassModel("Prize"));
 
@@ -22,12 +22,12 @@ class ModelUseTest {
         assertFalse(ModelUse.uses(project, "People"));
     }
 
-    @Test void classesAdoptedFromOneModelAreReportedTogether() {
+    @Test void classesImportedFromOneModelAreReportedTogether() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.addClass(new GeneratedClassModel("Prize"));
-        project.addClass(adopted("Person", "People"));
-        project.addClass(adopted("Name", "People"));
-        project.addClass(adopted("Place", "Geography"));
+        project.addClass(imported("Person", "People"));
+        project.addClass(imported("Name", "People"));
+        project.addClass(imported("Place", "Geography"));
 
         List<ModelUse> uses = ModelUse.of(project);
 
@@ -45,10 +45,10 @@ class ModelUseTest {
      * class adopted from a model ends the use with no second record to update — which is
      * the whole reason this is derived rather than declared.
      */
-    @Test void aUseEndsWhenItsLastAdoptedClassGoes() {
+    @Test void aUseEndsWhenItsLastImportedClassGoes() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
-        GeneratedClassModel name = adopted("Name", "People");
+        GeneratedClassModel name = imported("Name", "People");
         project.addClass(name);
         assertTrue(ModelUse.uses(project, "People"));
 
@@ -60,7 +60,7 @@ class ModelUseTest {
 
     @Test void aUseIsFoundWhateverTheCaseTheNameIsAskedIn() {
         GeneratedProjectModel project = new GeneratedProjectModel();
-        project.addClass(adopted("Name", "People"));
+        project.addClass(imported("Name", "People"));
 
         assertTrue(ModelUse.uses(project, "people"));
         assertTrue(ModelUse.uses(project, "  People  "));
@@ -68,8 +68,8 @@ class ModelUseTest {
         assertFalse(ModelUse.uses(project, null));
     }
 
-    @Test void anAdoptedClassReadsQualifiedAndALocalOneDoesNot() {
-        assertEquals("People.Person", adopted("Person", "People").qualifiedClassName());
+    @Test void anImportedClassReadsQualifiedAndALocalOneDoesNot() {
+        assertEquals("People.Person", imported("Person", "People").qualifiedClassName());
         assertEquals("Person", new GeneratedClassModel("Person").qualifiedClassName());
     }
 }
