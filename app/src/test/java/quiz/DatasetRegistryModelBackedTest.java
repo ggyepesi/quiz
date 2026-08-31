@@ -60,7 +60,6 @@ class DatasetRegistryModelBackedTest {
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();
         d.name("countries");
         d.snapshotPath("data/wikidata/transform/countries.snapshot.json");
-        d.instanceCount(768);
 
         assertFalse(d.isModelBacked(),
                 "a snapshot saved from a working set has no model to reopen");

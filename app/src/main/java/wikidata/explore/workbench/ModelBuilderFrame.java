@@ -2501,7 +2501,7 @@ public class ModelBuilderFrame extends JFrame {
                 // Register the dataset: model + rule-tree + snapshot saved
                 // TOGETHER as one consistent triple, so the web serves it and a
                 // snapshot is never paired with a mismatched model.
-                registerDataset(n, runSig);
+                registerDataset(runSig);
                 report.append("Registry:  ")
                       .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
 
@@ -2564,7 +2564,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // Upserts this project's dataset (model + rule-tree + snapshot triple) into
     // the registry the web reads, so multiple domains coexist and are served.
-    private void registerDataset(int instanceCount, String snapshotModelSignature) {
+    private void registerDataset(String snapshotModelSignature) {
         try {
             quiz.DatasetRegistry reg = quiz.DatasetRegistry.load();
             quiz.DatasetRegistry.Dataset d = new quiz.DatasetRegistry.Dataset();
@@ -2575,7 +2575,6 @@ public class ModelBuilderFrame extends JFrame {
             d.modelPath(modelFile().getPath());
             d.ruletreePath(ruleTreeFile().getPath());
             d.snapshotPath(snapshotFile().getPath());
-            d.instanceCount(instanceCount);
             d.modelSignature(snapshotModelSignature == null ? "" : snapshotModelSignature);
             d.savedAt(java.time.LocalDateTime.now().toString());
             java.util.List<String> types = new java.util.ArrayList<>();

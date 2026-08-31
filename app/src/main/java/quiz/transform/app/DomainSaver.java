@@ -48,10 +48,8 @@ public final class DomainSaver implements DomainWriter {
         d.snapshotPath(file.getPath());
         d.types().addAll(types);
         d.rootClass(types.isEmpty() ? "" : types.iterator().next());
-        // Match the generation-pipeline registry entry (ModelBuilderFrame): count
-        // the whole pool (roots + nested), stamp the save time. modelSignature stays
-        // blank — a transform-view save is not model-backed.
-        d.instanceCount(converted.allObjects().size());
+        // Stamp the save time. modelSignature stays blank — a transform-view save is
+        // not model-backed.
         d.savedAt(java.time.LocalDateTime.now().toString());
 
         DatasetRegistry reg = DatasetRegistry.load();

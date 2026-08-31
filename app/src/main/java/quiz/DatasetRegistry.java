@@ -29,7 +29,6 @@ public final class DatasetRegistry {
         private String ruletreePath = "";
         private String snapshotPath = "";
         private List<String> types = new ArrayList<>();
-        private int instanceCount = 0;
         private String savedAt = "";
         // Signature (rule-tree hash) of the model the saved snapshot was
         // generated from — so a later load can detect the model drifted past
@@ -66,8 +65,6 @@ public final class DatasetRegistry {
         public void snapshotPath(String v) { snapshotPath = v == null ? "" : v; }
         public List<String> types() { return types; }
         public void types(List<String> v) { types = v == null ? new ArrayList<>() : v; }
-        public int instanceCount() { return instanceCount; }
-        public void instanceCount(int v) { instanceCount = v; }
         public String savedAt() { return savedAt; }
         public void savedAt(String v) { savedAt = v == null ? "" : v; }
         public String modelSignature() { return modelSignature; }
@@ -115,6 +112,11 @@ public final class DatasetRegistry {
         m.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
         m.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
         m.enable(SerializationFeature.INDENT_OUTPUT);
+        // A registry on disk outlives the fields this class happens to declare. A
+        // dropped field must not stop an existing file loading, or removing one means
+        // every machine's registry has to be edited by hand before the app will start.
+        m.disable(com.fasterxml.jackson.databind.DeserializationFeature
+                .FAIL_ON_UNKNOWN_PROPERTIES);
         return m;
     }
 
