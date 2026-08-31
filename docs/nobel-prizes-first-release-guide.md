@@ -408,17 +408,64 @@ Generate with the explanatory pipeline visible, then verify at least:
 
 ## Current status
 
-- [x] `Categories` vocabulary contains six QIDs.
+Verified against the saved model and the generated snapshot on 2026-08-31.
+
+**Done**
+
+- [x] `Categories` vocabulary contains the six category QIDs.
 - [x] Wikidata statement model agreed.
 - [x] Statement value-domain control is explicit in ModelBuilder.
-- [ ] P166 and its qualifier structure verified through Explore.
-- [ ] Statement population declared in the clean saved NobelPrizes model.
-- [x] Statement subject can be composed into an explicit symmetric participant list.
-- [ ] `category` and `year` retained as aggregation evidence on
-  `LaureatesWithMotivation`.
-- [ ] `motivation` qualifier field configured.
-- [ ] Clean configuration rebuilt with `LaureatesWithMotivation` as Statement class.
-- [ ] Laureate kinds configured.
+- [x] `P166` and its qualifier structure verified through Explore and by measurement:
+      1033 statements, 1031 with `P585`, `P6208` in about thirteen languages.
+- [x] Statement population declared in the saved model — `LaureatesWithMotivation`
+      reifies `P166` bounded by `Categories`.
+- [x] Statement subject composed into an explicit symmetric participant list
+      (`STATEMENT_PARTICIPANTS`).
+- [x] `category` and `year` retained as aggregation evidence.
+- [x] `motivation` configured, `P6208` with **Value language `en`**.
 - [x] Language selection for monolingual-text values.
-- [ ] Transform aggregation configured and verified.
-- [ ] Domain generated and verified.
+- [x] Identity settled: the grain is `category + year + motivation`; participants are
+      unioned by the duplicate policy rather than identifying a record.
+- [x] Transform aggregation configured and verified — `NobelPrize` aggregates
+      `LaureatesWithMotivation` by category and year, excluding records with no year.
+- [x] Domain generated and verified: **989 Person, 33 Laureate, 716 awards, 634 prizes,
+      6 categories**. 716 is exactly Wikidata's distinct category/year/motivation count;
+      558 prize-years resolve to one achievement.
+- [x] Registered for serving in `data/wikidata/datasets.json` with its model, ruletree
+      and snapshot paths and all four types.
+
+**Open**
+
+- [ ] **Serve it and look at it.** The dataset is registered, but no one has loaded this
+      domain in the web client. `NobelPrize` is an aggregate class, a shape no previously
+      served domain has, so this is the step with real unknowns rather than real work.
+- [ ] **Enrich `Person`.** It has zero fields today. Coverage over the 990 human
+      laureates is essentially complete and makes the demo look finished:
+
+      | field | property | coverage |
+      |---|---|---|
+      | birth date | P569 | 990 / 990 |
+      | citizenship | P27 | 990 / 990 |
+      | given name | P735 | 977 |
+      | portrait | P18 | 970 |
+      | death date | P570 | 696 (the rest are living) |
+
+- [ ] **Classify the 33 non-people.** A `Q5` entity-kind rule produces `Person`; the
+      organisations that win the Peace Prize stay in the generic `Laureate` bucket
+      instead of an organisation kind.
+- [ ] **Clean the dataset registry.** A stale `nobel-prizes` entry from 2026-08-02 points
+      at a snapshot that no longer exists and claims the same `rootClass` as the real
+      entry. `President` and `SportTeam` have the same collision (×2 and ×3).
+
+## What the remaining numbers mean
+
+The 78 prize-years holding more than one record are the source disagreeing with itself,
+not the model:
+
+- **74** genuinely have several achievements — including years where Wikidata hangs the
+  prize-level motivation on one arbitrary laureate, as it does to Mourou for Physics 2018.
+- **4** are laureates whose rationale nobody recorded: Peace 1997, 1917, 1944 and 1963.
+
+Both stay visible as gaps rather than being merged into a guess. Two awards state no year
+and therefore belong to no prize, which is what the aggregate's missing-key policy says
+out loud.
