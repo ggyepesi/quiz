@@ -17,7 +17,8 @@ import java.util.List;
 public class SingleRootClassModelPanel extends JPanel {
 
     public enum ConfigurationSection {
-        VOCABULARIES("Vocabularies / populations");
+        VOCABULARIES("Vocabularies / populations"),
+        USES("Uses");
         private final String label;
         ConfigurationSection(String label) { this.label = label; }
         @Override public String toString() { return label; }
@@ -102,7 +103,9 @@ public class SingleRootClassModelPanel extends JPanel {
         return value instanceof GeneratedClassModel
                 || value instanceof GeneratedFieldModel
                 || value instanceof Selection
-                || value instanceof ConfigurationSection
+                // Only the vocabulary section opens an editor. Uses reports what was
+                // adopted and configures nothing, so it is inspection, not a surface.
+                || value == ConfigurationSection.VOCABULARIES
                 || value instanceof GeneratedProjectModel;
     }
 
@@ -395,6 +398,19 @@ public class SingleRootClassModelPanel extends JPanel {
         }
         projectNode.add(selectionsNode);
 
+        // Derived from the adopted classes, so it is present exactly when something has
+        // been adopted. Nothing is configured here — it reports what this project took
+        // from elsewhere and where each class came from.
+        List<ModelUse> uses = ModelUse.of(projectModel);
+        if (!uses.isEmpty()) {
+            DefaultMutableTreeNode usesNode =
+                    new DefaultMutableTreeNode(ConfigurationSection.USES);
+            for (ModelUse use : uses) {
+                usesNode.add(new DefaultMutableTreeNode(use));
+            }
+            projectNode.add(usesNode);
+        }
+
         return projectNode;
     }
 
@@ -675,6 +691,11 @@ public class SingleRootClassModelPanel extends JPanel {
                 setText(t.toString());
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(60, 90, 120));
+            } else if (uo instanceof ModelUse use) {
+                setText(use.modelName() + "   ["
+                        + String.join(", ", use.classNames()) + "]");
+                setForeground(sel ? getTextSelectionColor()
+                        : new Color(110, 110, 110));
             } else if (uo instanceof Selection seln) {
                 String detail;
                 if (seln instanceof VocabularySelection v) {

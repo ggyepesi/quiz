@@ -13,6 +13,7 @@ import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -243,5 +244,42 @@ class SingleRootClassModelPanelTest {
             if (hit != null) return hit;
         }
         return null;
+    }
+
+    /**
+     * The Uses section is present exactly when something has been adopted, and it
+     * configures nothing — selecting it must not open an editor, because reporting what
+     * a project took from elsewhere is inspection.
+     */
+    @Test void theTreeReportsWhatWasAdoptedAndOffersNoEditorForIt() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+
+        SingleRootClassModelPanel before = new SingleRootClassModelPanel(project);
+        assertNull(nodeFor((DefaultMutableTreeNode)
+                        find(before, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "nothing adopted, so nothing to report");
+
+        GeneratedClassModel adopted = new GeneratedClassModel("Name");
+        adopted.originModel("People");
+        project.addClass(adopted);
+
+        SingleRootClassModelPanel after = new SingleRootClassModelPanel(project);
+        DefaultMutableTreeNode uses = nodeFor((DefaultMutableTreeNode)
+                        find(after, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES);
+        assertNotNull(uses, "an adopted class puts its origin on the tree");
+        assertEquals(1, uses.getChildCount());
+        assertEquals("People", ((wikidata.explore.model.ModelUse)
+                ((DefaultMutableTreeNode) uses.getChildAt(0)).getUserObject())
+                .modelName());
+
+        assertFalse(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "Uses reports, it does not configure");
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES),
+                "the vocabulary section still opens its editor");
     }
 }

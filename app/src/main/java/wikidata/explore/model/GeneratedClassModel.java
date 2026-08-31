@@ -133,6 +133,16 @@ public class GeneratedClassModel {
     }
 
     /**
+     * How this class reads when the project it came from matters: {@code People.Person}
+     * for an adopted class, plain {@code Person} for one authored here. A display form
+     * derived from the origin — the class is referenced by its own name everywhere, so
+     * there is no qualified name stored anywhere to fall out of step with this one.
+     */
+    public String qualifiedClassName() {
+        return originModel().isBlank() ? className : originModel() + "." + className;
+    }
+
+    /**
      * Whether this project may change the field configuration. An adopted class is
      * owned by the model it came from: its fields, and whether there are more or fewer
      * of them, are that model's to decide. How an adopting project might override
