@@ -293,6 +293,15 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     /** Locks every mutation surface owned by the workbench, including helper tools
      * currently hosted in the separate Explorer window. Labels and containers remain
      * enabled so the selected configuration can still be read. */
+    /** The class declaring this field, or null when it belongs to none. */
+    private GeneratedClassModel owningClassOf(GeneratedFieldModel field) {
+        if (field == null || projectModel == null) return null;
+        for (GeneratedClassModel clazz : projectModel.classes()) {
+            if (clazz != null && clazz.fields().contains(field)) return clazz;
+        }
+        return null;
+    }
+
     public void setEditingEnabled(boolean enabled) {
         editingEnabled = enabled;
         EditableComponents.setEditable(cardPanel, enabled);
@@ -335,6 +344,12 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             fieldSourcePanel.edit(field);
+            // A field of an adopted class is readable but not editable: its
+            // configuration belongs to the model the class came from. Set on every
+            // selection so moving to an unlocked field restores editing.
+            GeneratedClassModel fieldOwner = owningClassOf(field);
+            EditableComponents.setEditable(fieldSourcePanel,
+                    editingEnabled && (fieldOwner == null || !fieldOwner.fieldsLocked()));
             layout.show(cardPanel, "field");
         } else if (selected instanceof wikidata.explore.model.Selection selection
                 && selectionEditor != null) {

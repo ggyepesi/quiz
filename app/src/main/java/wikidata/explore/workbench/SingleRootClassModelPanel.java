@@ -267,11 +267,20 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
         addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
 
+        // An adopted class's field configuration belongs to the model it came from.
+        // The class itself may still be removed — dropping an adoption is this
+        // project's decision — so only the field actions ask the lock.
+        GeneratedClassModel owningClass = selected instanceof GeneratedClassModel c
+                ? c
+                : selected instanceof GeneratedFieldModel f ? owningClassOf(f) : null;
+        boolean fieldsLocked = owningClass != null && owningClass.fieldsLocked();
+
         renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary));
         addClassButton.setEnabled(editingEnabled);
         importClassButton.setEnabled(editingEnabled && classContext);
-        addFieldButton.setEnabled(editingEnabled && classContext);
-        removeButton.setEnabled(editingEnabled && (classContext || vocabulary));
+        addFieldButton.setEnabled(editingEnabled && classContext && !fieldsLocked);
+        removeButton.setEnabled(editingEnabled && (classContext || vocabulary)
+                && !(fieldsLocked && selected instanceof GeneratedFieldModel));
     }
 
     private void buildUi() {
@@ -658,6 +667,9 @@ public class SingleRootClassModelPanel extends JPanel {
                 }
                 if (cls.hasBase()) {
                     t.append(" : ").append(cls.baseClassName());
+                }
+                if (!cls.originModel().isBlank()) {
+                    t.append(" ← ").append(cls.originModel());
                 }
                 t.append("   [").append(MembershipPattern.describe(cls, project)).append(']');
                 setText(t.toString());

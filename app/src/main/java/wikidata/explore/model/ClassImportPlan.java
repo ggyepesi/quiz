@@ -133,6 +133,11 @@ public final class ClassImportPlan {
             GeneratedClassModel existing = candidate.findClass(sourceClass.className());
             if (existing != null && policy == ConflictPolicy.REUSE_TARGET) continue;
             GeneratedClassModel copy = sourceClass.copy();
+            // Where the class came from, kept through further copies: a class adopted
+            // from People and then copied onward still originates in People, not in
+            // whichever project passed it along. Only a class authored in the source
+            // takes the source's name.
+            if (copy.originModel().isBlank()) copy.originModel(source.name());
             candidate.replaceClass(copy);
             imported.add(copy);
         }

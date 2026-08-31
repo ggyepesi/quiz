@@ -183,4 +183,69 @@ class ClassImportPlanTest {
             assertNotNull(model.findClass(name), name + " arrived");
         }
     }
+
+    /**
+     * An adopted class records where it came from, and its fields are the owning
+     * model's. How an adopting project may reshape them is a later decision; until it
+     * is made, the origin is the single authority over the field configuration.
+     */
+    @Test void anAdoptedClassRemembersItsOriginAndItsFieldsAreLocked() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertEquals("Oscars", model.findClass("Person").originModel());
+        assertEquals("Oscars", model.findClass("Name").originModel());
+        assertTrue(model.findClass("Person").fieldsLocked());
+        assertTrue(model.findClass("Name").fieldsLocked());
+    }
+
+    /** A class authored here has no origin; nothing to inherit and nothing to display. */
+    @Test void aClassAuthoredHereHasNoOrigin() {
+        assertEquals("", oscarPeople().findClass("Person").originModel());
+    }
+
+    /**
+     * Origin survives being passed along. Adopting Person from People into a domain and
+     * then copying it onward still names People — the project in the middle relayed it,
+     * it did not author it.
+     */
+    @Test void originNamesTheAuthorNotTheLastHop() {
+        GeneratedProjectModel relay = emptyModel();
+        relay.name("Relay");
+        ClassImportPlan.of(oscarPeople(), relay, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        GeneratedProjectModel destination = emptyModel();
+        destination.name("Nobel");
+        ClassImportPlan.of(relay, destination, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertEquals("Oscars", destination.findClass("Person").originModel());
+    }
+
+    /**
+     * Two projects adopting the same class each get their own copy, both locked to the
+     * origin. Separate copies are what will later let them diverge; nothing shares an
+     * object across projects today.
+     */
+    @Test void eachAdoptingProjectGetsItsOwnLockedCopy() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel first = emptyModel();
+        first.name("First");
+        GeneratedProjectModel second = emptyModel();
+        second.name("Second");
+
+        ClassImportPlan.of(source, first, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+        ClassImportPlan.of(source, second, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertNotSame(first.findClass("Name"), second.findClass("Name"));
+        assertNotSame(source.findClass("Name"), first.findClass("Name"));
+        assertTrue(first.findClass("Name").fieldsLocked());
+        assertTrue(second.findClass("Name").fieldsLocked());
+        assertFalse(source.findClass("Name").fieldsLocked(),
+                "the owning model is not locked out of its own class");
+    }
 }

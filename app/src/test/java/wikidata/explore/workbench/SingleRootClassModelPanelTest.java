@@ -170,4 +170,78 @@ class SingleRootClassModelPanelTest {
             assertEquals(kind + ": People", ((javax.swing.JLabel) rendered).getText());
         }
     }
+
+    /**
+     * An adopted class is owned by the model it came from, so this project cannot add
+     * to or remove from its fields. The class itself stays removable — dropping an
+     * adoption is the adopting project's decision, not the origin's.
+     */
+    @Test void theFieldActionsOfAnAdoptedClassAreLocked() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Nobel");
+        project.rootClass(new GeneratedClassModel("Prize"));
+
+        GeneratedClassModel adopted = new GeneratedClassModel("Name");
+        adopted.originModel("People");
+        GeneratedFieldModel adoptedField = adopted.addField(
+                "givenName", FieldType.STRING, FieldCardinality.SINGLE);
+        project.addClass(adopted);
+
+        GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
+        GeneratedFieldModel myField = mine.addField(
+                "year", FieldType.STRING, FieldCardinality.SINGLE);
+        project.addClass(mine);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton addField = button(panel, "Add field");
+        JButton remove = button(panel, "Remove");
+
+        panel.selectClass(adopted);
+        assertFalse(addField.isEnabled(), "cannot add a field to an adopted class");
+        assertTrue(remove.isEnabled(), "but the adoption itself can be dropped");
+
+        panel.selectField(adoptedField);
+        assertFalse(remove.isEnabled(), "cannot remove an adopted class's field");
+
+        panel.selectClass(mine);
+        assertTrue(addField.isEnabled(), "a class authored here is unaffected");
+        panel.selectField(myField);
+        assertTrue(remove.isEnabled());
+    }
+
+    /** The tree says where an adopted class came from; a local class shows no origin. */
+    @Test void theTreeShowsWhereAnAdoptedClassCameFrom() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel adopted = new GeneratedClassModel("Name");
+        adopted.originModel("People");
+        project.addClass(adopted);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        assertTrue(renderedTextOf(panel, adopted).contains("People"),
+                "the origin is visible on the class row");
+        assertFalse(renderedTextOf(panel, project.rootClass()).contains("\u2190"),
+                "a class authored here carries no origin marker");
+    }
+
+    private static String renderedTextOf(
+            SingleRootClassModelPanel panel, Object userObject) {
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode node = nodeFor(
+                (DefaultMutableTreeNode) tree.getModel().getRoot(), userObject);
+        assertNotNull(node, "node for " + userObject);
+        return ((JLabel) tree.getCellRenderer().getTreeCellRendererComponent(
+                tree, node, false, true, false, 0, false)).getText();
+    }
+
+    private static DefaultMutableTreeNode nodeFor(
+            DefaultMutableTreeNode from, Object userObject) {
+        if (from.getUserObject() == userObject) return from;
+        for (int i = 0; i < from.getChildCount(); i++) {
+            DefaultMutableTreeNode hit = nodeFor(
+                    (DefaultMutableTreeNode) from.getChildAt(i), userObject);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
 }

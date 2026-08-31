@@ -38,6 +38,11 @@ public class GeneratedClassModel {
     private String discriminatorQid = "";
     private String alias = "";
 
+    /** The project this class was copied in from, empty when authored here. Provenance
+     *  only: an adopted class belongs to the adopting project and stays editable there,
+     *  so one model class can be shaped differently in different contexts. */
+    private String originModel = "";
+
     /** Explicit population kind for a component class. The owner is intentionally
      * not stored here: every ENTITY field targeting this class is a production site. */
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
@@ -116,6 +121,28 @@ public class GeneratedClassModel {
 
     public void alias(String value) {
         alias = clean(value);
+    }
+
+    /** The project this class was copied in from; empty when authored here. */
+    public String originModel() {
+        return originModel == null ? "" : originModel;
+    }
+
+    public void originModel(String value) {
+        originModel = clean(value);
+    }
+
+    /**
+     * Whether this project may change the field configuration. An adopted class is
+     * owned by the model it came from: its fields, and whether there are more or fewer
+     * of them, are that model's to decide. How an adopting project might override
+     * them is deliberately undecided, so until it is decided the answer is simply no.
+     *
+     * <p>This is the one place that question is answered. Every editor asks it rather
+     * than testing for an origin itself, so widening it later is one change.
+     */
+    public boolean fieldsLocked() {
+        return !originModel().isBlank();
     }
 
     public String displayClassName() {
@@ -374,6 +401,7 @@ public class GeneratedClassModel {
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
         copy.alias = alias;
+        copy.originModel = originModel;
         copy.classKind = classKind;
 
         copy.statementSource =
