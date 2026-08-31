@@ -40,9 +40,15 @@ public class ViewableServerMain {
                 if (snap.isFile()) {
                     java.io.File model = d.modelPath().isBlank()
                             ? null : new java.io.File(d.modelPath());
-                    GeneratedSource.registerAll(store,
+                    // A conflict skips the TYPE, not the dataset: the rest of this
+                    // domain is still servable, and the clash is named so it can be
+                    // resolved rather than discovered by browsing the wrong data.
+                    for (String conflict : GeneratedSource.registerAll(store,
                             d.rootClass().isBlank() ? d.name() : d.rootClass(),
-                            snap, model);
+                            snap, model, d.name())) {
+                        System.err.println("Dataset '" + d.name() + "': " + conflict
+                                + " (that type is not served from here)");
+                    }
                 } else {
                     System.err.println("Dataset '" + d.name()
                             + "': snapshot missing at " + d.snapshotPath() + " (skipped)");

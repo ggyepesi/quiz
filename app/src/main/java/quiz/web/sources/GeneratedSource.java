@@ -184,11 +184,27 @@ public class GeneratedSource implements ViewableSource {
      */
     public static void registerAll(ViewableStore store, String defaultType, File file)
             throws Exception {
-        registerAll(store, defaultType, file, null);
+        registerAll(store, defaultType, file, null, "");
     }
 
     public static void registerAll(ViewableStore store, String defaultType,
                                    File file, File modelFile) throws Exception {
+        registerAll(store, defaultType, file, modelFile, "");
+    }
+
+
+    /**
+     * Registers a source for each served type in the snapshot.
+     *
+     * @param origin the dataset this snapshot belongs to, named in a type conflict.
+     * @return one message per type another dataset already serves. A conflict is about
+     *         ONE type name, so the rest of this dataset is registered regardless —
+     *         History losing its office holdings because its Person clashed would punish
+     *         the types that were fine.
+     */
+    public static java.util.List<String> registerAll(
+            ViewableStore store, String defaultType,
+            File file, File modelFile, String origin) throws Exception {
         Set<String> types = new LinkedHashSet<>();
         if (file.isFile()) {
             var loaded = new WikidataDynamicObjectJsonStore()
@@ -197,9 +213,15 @@ public class GeneratedSource implements ViewableSource {
         }
         if (types.isEmpty()) types.add(defaultType);
         wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);
+        java.util.List<String> conflicts = new java.util.ArrayList<>();
         for (String t : types) {
-            store.register(new GeneratedSource(t, file, model));
+            try {
+                store.register(new GeneratedSource(t, file, model), origin);
+            } catch (IllegalStateException conflict) {
+                conflicts.add(conflict.getMessage());
+            }
         }
+        return conflicts;
     }
 
     @Override

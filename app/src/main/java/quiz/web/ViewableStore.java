@@ -29,10 +29,40 @@ public class ViewableStore {
     private final Map<String, List<Viewable>> topByType = new LinkedHashMap<>();
     private final Map<String, ViewableGroup<?>> rootGroupByType = new LinkedHashMap<>();
 
+    private final Map<String, String> originByType = new LinkedHashMap<>();
+
     public void register(ViewableSource source) {
-        if (source != null) {
-            sources.put(source.type(), source);
+        register(source, "");
+    }
+
+    /**
+     * Registers one type's source. A type name is what a URL asks for and what the
+     * client lists, so it resolves to ONE source: registering a second silently replaced
+     * the first, and browsing a type then showed whichever domain the registry happened
+     * to load last, under a heading claiming the other. Oscars' 6,863 people were served
+     * as History's 142 that way, with nothing said.
+     *
+     * <p>The conflict is refused here, where the invariant is, and named for whoever
+     * composes the store — two domains declaring one served type is a modelling decision
+     * to make, not a condition to recover from.
+     */
+    public void register(ViewableSource source, String origin) {
+        if (source == null) {
+            return;
         }
+        String type = source.type();
+        ViewableSource existing = sources.get(type);
+        if (existing != null && existing != source) {
+            throw new IllegalStateException("Two sources serve the type '" + type + "': "
+                    + described(originByType.get(type)) + " and " + described(origin)
+                    + ". A served type name resolves to one source.");
+        }
+        sources.put(type, source);
+        originByType.put(type, origin == null ? "" : origin);
+    }
+
+    private static String described(String origin) {
+        return origin == null || origin.isBlank() ? "an unnamed source" : "'" + origin + "'";
     }
 
     public List<String> types() {
