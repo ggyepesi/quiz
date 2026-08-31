@@ -289,6 +289,10 @@ public class GeneratedProjectModel {
         // Check it before legacy/invalid duplicate-name diagnostics so merely applying
         // an unchanged editor remains safe.
         if (from.equals(to)) return true;
+        // Deliberately after the no-op check: the class editors call this on every
+        // Apply with an unchanged name, and refusing there would report a rename
+        // failure every time an adopted class is merely saved.
+        if (target.nameLocked()) return false;
         GeneratedClassModel classConflict = findClass(to);
         if (classConflict != null && classConflict != target) return false;
         if (findSelection(to) != null) return false;

@@ -278,7 +278,8 @@ public class SingleRootClassModelPanel extends JPanel {
                 : selected instanceof GeneratedFieldModel f ? owningClassOf(f) : null;
         boolean fieldsLocked = owningClass != null && owningClass.fieldsLocked();
 
-        renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary));
+        renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary)
+                && !(owningClass != null && owningClass.nameLocked()));
         addClassButton.setEnabled(editingEnabled);
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !fieldsLocked);

@@ -204,6 +204,10 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class: " + clazz.className());
 
         classNameField.setText(clazz.className());
+        // The name of an adopted class belongs to the model it came from, so it is
+        // readable but not typeable here. Set on every edit so selecting a class
+        // authored here restores it.
+        classNameField.setEditable(!clazz.nameLocked());
         aliasField.setText(clazz.alias());
         searchTextField.setText(clazz.className());
 

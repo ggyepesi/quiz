@@ -126,6 +126,10 @@ public class StatementSourcePanel extends JPanel {
         titleLabel.setText(
                 "Statement class: " + clazz.className());
         classNameField.setText(clazz.className());
+        // The name of an adopted class belongs to the model it came from, so it is
+        // readable but not typeable here. Set on every edit so selecting a class
+        // authored here restores it.
+        classNameField.setEditable(!clazz.nameLocked());
 
         refreshSourceClassChoices();
 

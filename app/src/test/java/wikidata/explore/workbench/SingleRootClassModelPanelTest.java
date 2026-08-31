@@ -210,6 +210,29 @@ class SingleRootClassModelPanelTest {
         assertTrue(remove.isEnabled());
     }
 
+    /**
+     * The name is how an adopted class claims its origin, so the project that adopted it
+     * cannot rename it — not through the tree, and not by typing in the class editor.
+     */
+    @Test void anAdoptedClassCannotBeRenamedFromTheTree() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel adopted = new GeneratedClassModel("Name");
+        adopted.originModel("People");
+        project.addClass(adopted);
+        GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
+        project.addClass(mine);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton rename = button(panel, "Rename class");
+
+        panel.selectClass(adopted);
+        assertFalse(rename.isEnabled(), "an adopted class is named by its origin");
+
+        panel.selectClass(mine);
+        assertTrue(rename.isEnabled(), "a class authored here renames as before");
+    }
+
     /** The tree says where an adopted class came from; a local class shows no origin. */
     @Test void theTreeShowsWhereAnAdoptedClassCameFrom() {
         GeneratedProjectModel project = new GeneratedProjectModel();

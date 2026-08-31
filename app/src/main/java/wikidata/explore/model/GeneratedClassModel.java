@@ -143,6 +143,15 @@ public class GeneratedClassModel {
     }
 
     /**
+     * Whether this class was taken from another project rather than authored here. The
+     * fact the locks below are policies over — asked by name so no caller re-derives it
+     * from an empty string.
+     */
+    public boolean isAdopted() {
+        return !originModel().isBlank();
+    }
+
+    /**
      * Whether this project may change the field configuration. An adopted class is
      * owned by the model it came from: its fields, and whether there are more or fewer
      * of them, are that model's to decide. How an adopting project might override
@@ -152,7 +161,19 @@ public class GeneratedClassModel {
      * than testing for an origin itself, so widening it later is one change.
      */
     public boolean fieldsLocked() {
-        return !originModel().isBlank();
+        return isAdopted();
+    }
+
+    /**
+     * Whether the class name may be changed here. It may not while the class is
+     * adopted: the name is how the origin is claimed, so renaming Name to PersonName
+     * while still reporting People as its origin asserts a correspondence that does not
+     * hold, and qualifiedClassName() would render People.PersonName, which names
+     * nothing. Allowing the rename and dropping the origin instead would make renaming
+     * a way to unlock the fields, quietly undoing the rule above.
+     */
+    public boolean nameLocked() {
+        return isAdopted();
     }
 
     public String displayClassName() {

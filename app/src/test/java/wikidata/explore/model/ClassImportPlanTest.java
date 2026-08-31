@@ -248,4 +248,48 @@ class ClassImportPlanTest {
         assertFalse(source.findClass("Name").fieldsLocked(),
                 "the owning model is not locked out of its own class");
     }
+
+    /**
+     * The name is how an adopted class claims its origin, so it cannot be changed here.
+     * Renaming and keeping the origin would assert a class the origin does not have;
+     * renaming and dropping the origin would make rename a way around the field lock.
+     */
+    @Test void anAdoptedClassCannotBeRenamedByTheProjectThatAdoptedIt() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertTrue(model.findClass("Name").nameLocked());
+        assertFalse(model.renameClass("Name", "PersonName"));
+        assertNotNull(model.findClass("Name"), "the class keeps its name");
+        assertNull(model.findClass("PersonName"));
+        assertEquals("Oscars.Name", model.findClass("Name").qualifiedClassName(),
+                "the qualified form still names a class the origin actually has");
+    }
+
+    /**
+     * The class editors call renameClass on every Apply with the name unchanged. That
+     * must stay a no-op success for an adopted class, or merely saving one would report
+     * a rename failure.
+     */
+    @Test void savingAnAdoptedClassUnchangedIsNotARenameFailure() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertTrue(model.renameClass("Name", "Name"),
+                "an unchanged name is a no-op, not a refused rename");
+    }
+
+    /** A class authored here is renamed as it always was. */
+    @Test void aClassAuthoredHereIsStillRenamable() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Nobel");
+        project.rootClass(new GeneratedClassModel("Prize"));
+        project.addClass(new GeneratedClassModel("Ceremony"));
+
+        assertFalse(project.findClass("Ceremony").nameLocked());
+        assertTrue(project.renameClass("Ceremony", "Edition"));
+        assertNotNull(project.findClass("Edition"));
+    }
 }
