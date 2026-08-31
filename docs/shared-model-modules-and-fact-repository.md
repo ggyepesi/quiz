@@ -98,9 +98,12 @@ preview of affected classes, fields and generated data.
 
 **This sentence is the largest piece of work in the proposal, not an internal detail.**
 Names are the reference mechanism today. `GeneratedProjectModel.renameClass` rewrites six
-kinds of reference by name — field targets, base classes, statement source classes,
-entity-kind rules and role-selection owners — and `entityClassName` resolves to a class OR
-a selection in one shared namespace, where the class wins. Several defects this month came
+kinds of reference by name — field targets (recursively), base classes, statement source
+classes, aggregate source classes, entity-kind rules and role-selection owners — and
+`entityClassName` resolves to a class OR a selection in one shared namespace, where the
+class wins. Aggregate sources joined that list this month, which is the point: the set of
+places a name is a reference grows with the model vocabulary, and every addition is a
+place an import has to be resolved. Several defects this month came
 from exactly that arrangement.
 
 It also cannot be deferred quietly: `shared.people.Person` imported into a domain that
@@ -283,7 +286,9 @@ classes and have diverged, which is the proposal's own motivation observed in th
 | Oscars | 6 fields: the same first five, then **`deathDate`** P570 | identical |
 | Nobel | none | — |
 
-`Name` is identical in both and extracts unchanged. `Person` needs three decisions before
+`Name` is identical in both — same fields, types, cardinalities and property mappings —
+and extracts unchanged; the only difference in the saved JSON is unset values written as
+`""` in one domain and omitted in the other. `Person` needs three decisions before
 anything moves:
 
 - **Which fields are shared.** The five common ones are uncontroversial; `type`, `spouse`
