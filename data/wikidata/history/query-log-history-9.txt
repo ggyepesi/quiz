@@ -1,0 +1,64 @@
+Log message  [OK]  Done
+    | Loaded domain "History".
+Log message  [OK]  Done
+    | Nothing to remap yet — run Generate domain (or instances) first.
+Log message  [OK]  Done
+    | Canonicalization: scanned=676 withModel=448 withSpec=448 derived=140 changed=0  sample: type=OfficeHolding field= value=[null] 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)' -> 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)'
+Log message  [OK]  Done
+    | Built vocabulary 'Type' from the served pool -> 2 distinct value(s)
+Log message  [OK]  Done
+    | Loaded 676 saved object(s) from history.snapshot.json; mapped 629 instance(s).
+Log message  [OK]  Done
+    | 1 vocabulary(ies) filled from the generated data — use "Save domain" to persist them.
+Log message  [OK]  Done
+    | Generated 629 objects (in memory — use "Save domain" to persist to history.snapshot.json).
+1 ambiguous entity name(s) across 1 class(es) — 2 instances involved  [OK]  distinct datasource entities; open "Name collisions (1)" to inspect.
+  Person  [OK]  1 shared label(s) — most repeated 2 times
+      Eleonora Gonzaga  [OK]  2 entities
+1 repeated owned-part label(s) across 1 class(es) — 2 instances involved  [OK]  owned parts whose display name is inherited from their owner.
+  Name  [OK]  1 shared label(s) — most repeated 2 times
+      Eleonora Gonzaga — Structured Name  [OK]  2 owned parts
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.
+    |   Self-reference: Not run in this operation
+    |   Owned composition: Not run in this operation
+    |   Kind classification: Not run in this operation
+    |   Projections: Not run in this operation
+    |   Objects in the pool: 629
+Remap domain  [OK]  629 objects
+  Remap instances (no download)  [OK]  629 objects
+      | Datasource plan: 18 binding(s): 2 Wikidata id (QID), 2 Label, 2 Also known as, 1 Members by explicit list, 11 Statement property. Compiled and checked, not executed — Remap transforms the saved graph without acquiring class populations, names or field values.
+      | Reusing 676 downloaded objects from the previous run.
+      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.
+      | Invert OfficeHolding.source -> Person.offices
+      | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 72 of 72 role member(s) eligible from evidence producers.
+      | Canonicalization: scanned=676 withModel=448 withSpec=448 derived=140 changed=0  sample: type=OfficeHolding field= value=[null] 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)' -> 'Joseph II, Holy Roman Emperor — Holy Roman Emperor (1765–1790)'
+      | Built vocabulary 'Type' from the served pool -> 2 distinct value(s)
+      | Remap (idempotent transforms only): 676 objects re-materialized, 0 projected field(s) filled, 0 entity kind(s) assigned, 0 dropped (required-field).
+      | This run was loaded rather than generated in this session, so it no longer has the pre-reification pool: reify, companion match cannot re-run and changes to them will NOT be applied. Run Generate to apply those.
+Log message  [OK]  Done
+    | 1 vocabulary(ies) filled from the generated data — use "Save domain" to persist them.
+Log message  [OK]  Done
+    | Generated 629 objects (in memory — use "Save domain" to persist to history.snapshot.json).
+1 ambiguous entity name(s) across 1 class(es) — 2 instances involved  [OK]  distinct datasource entities; open "Name collisions (1)" to inspect.
+  Person  [OK]  1 shared label(s) — most repeated 2 times
+      Eleonora Gonzaga  [OK]  2 entities
+1 repeated owned-part label(s) across 1 class(es) — 2 instances involved  [OK]  owned parts whose display name is inherited from their owner.
+  Name  [OK]  1 shared label(s) — most repeated 2 times
+      Eleonora Gonzaga — Structured Name  [OK]  2 owned parts
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: No field-expectation gaps, self-reference decisions, newly created owned parts, restamped kinds or projected fields. Each rule's audit status is reported separately; other rules do not report here yet.
+    |   Self-reference: Not run in this operation
+    |   Owned composition: Ran; every owned part already existed and was reused
+    |   Kind classification: Ran; every kind was already settled
+    |   Projections: Ran; no projected field value changed
+    |   Objects in the pool: 629
+Log message  [OK]  Done
+    | Saved domain "History":
+    | Config:    data/wikidata/history/history.model.json
+    | Rule tree: data/wikidata/history/history.ruletree.json
+    | Instances: 676 -> data/wikidata/history/history.snapshot.json
+    | Registry:  data/wikidata/datasets.json
+    | Counts:    data/wikidata/history/history.counts.tsv
