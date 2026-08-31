@@ -146,4 +146,28 @@ class SingleRootClassModelPanelTest {
         }
         throw new AssertionError("No button " + text);
     }
+
+    /**
+     * The tree's root row spelled "Domain:" whatever the project was, so a model created
+     * through New… was labelled as the kind the dialog had just been used to reject. The
+     * kind names itself; nothing else should spell it.
+     */
+    @Test void theTreeRootNamesTheProjectKindItActuallyIs() {
+        for (GeneratedProjectModel.ProjectKind kind
+                : GeneratedProjectModel.ProjectKind.values()) {
+            GeneratedProjectModel project = new GeneratedProjectModel();
+            project.name("People");
+            project.projectKind(kind);
+            project.rootClass(new GeneratedClassModel("Person"));
+
+            SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+            JTree tree = find(panel, JTree.class);
+            DefaultMutableTreeNode root =
+                    (DefaultMutableTreeNode) tree.getModel().getRoot();
+            java.awt.Component rendered = tree.getCellRenderer()
+                    .getTreeCellRendererComponent(tree, root, false, false, false, 0, false);
+
+            assertEquals(kind + ": People", ((javax.swing.JLabel) rendered).getText());
+        }
+    }
 }

@@ -1765,7 +1765,7 @@ public class ModelBuilderFrame extends JFrame {
 
     private void refreshProjectKindUi() {
         boolean model = projectModel.isModel();
-        projectKindLabel.setText(model ? "Model:" : "Domain:");
+        projectKindLabel.setText(projectModel.projectKind() + ":");
         newDomainButton.setText("New…");
         renameDomainButton.setText(model ? "Rename model" : "Rename domain");
         deleteDomainButton.setText(model ? "Delete model" : "Delete domain");

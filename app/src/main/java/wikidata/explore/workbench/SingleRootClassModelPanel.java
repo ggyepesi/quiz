@@ -644,7 +644,10 @@ public class SingleRootClassModelPanel extends JPanel {
             Object uo = value instanceof DefaultMutableTreeNode dn
                     ? dn.getUserObject() : null;
             if (uo instanceof GeneratedProjectModel model) {
-                setText("Domain: " + model.name());
+                // The kind names itself. Spelling it here made the tree call every
+                // project a Domain, including the models the New… dialog had just
+                // asked the user to choose.
+                setText(model.projectKind() + ": " + model.name());
                 setFont(getFont().deriveFont(Font.BOLD));
             } else if (uo instanceof GeneratedClassModel cls) {
                 // The display alias when set; the real className follows in
