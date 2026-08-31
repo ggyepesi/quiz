@@ -11,6 +11,7 @@ import java.util.List;
  */
 public final class AggregateClassSource {
     private String sourceClassName = "";
+    private String sourceClassId = "";
     private String membersField = "";
     private MissingKeyPolicy missingKeyPolicy = MissingKeyPolicy.EXCLUDE;
     private final List<Key> keys = new ArrayList<>();
@@ -23,7 +24,16 @@ public final class AggregateClassSource {
     }
 
     public String sourceClassName() { return clean(sourceClassName); }
-    public void sourceClassName(String value) { sourceClassName = clean(value); }
+    public void sourceClassName(String value) {
+        sourceClassName = clean(value);
+        sourceClassId = "";
+    }
+    public String sourceClassId() { return DeclarationIds.clean(sourceClassId); }
+    public void sourceClassId(String value) { sourceClassId = DeclarationIds.clean(value); }
+    void sourceClassReference(String id, String name) {
+        sourceClassId = DeclarationIds.clean(id);
+        sourceClassName = clean(name);
+    }
     public String membersField() { return clean(membersField); }
     public void membersField(String value) { membersField = clean(value); }
     public List<Key> keys() { return keys; }
@@ -38,6 +48,7 @@ public final class AggregateClassSource {
     }
     public AggregateClassSource copy() {
         AggregateClassSource copy = new AggregateClassSource(sourceClassName(), membersField());
+        copy.sourceClassId = sourceClassId;
         copy.missingKeyPolicy = missingKeyPolicy();
         keys.stream().filter(java.util.Objects::nonNull)
                 .forEach(key -> copy.keys.add(new Key(key.targetField(), key.sourceField())));

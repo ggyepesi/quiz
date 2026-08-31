@@ -14,6 +14,8 @@ import java.util.Set;
 
 public class GeneratedClassModel {
 
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private String declarationId = "";
     private String className;
 
     // Single-inheritance base class (by name, resolved against the owning
@@ -22,6 +24,8 @@ public class GeneratedClassModel {
     // Person base can be extended per domain (OscarActor adds filmography).
     // Blank = no base. Deliberately minimal: no private/final/abstract.
     private String baseClassName = "";
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private String baseClassId = "";
 
     // A subclass discriminator: a (property, value) pair that NARROWS the
     // inherited membership to instances that ALSO have ?value wdt:<pid> wd:<qid>
@@ -71,11 +75,20 @@ public class GeneratedClassModel {
     private CanonicalSpec canonical = new CanonicalSpec();
 
     public GeneratedClassModel() {
-        this("GeneratedClass");
+        className("GeneratedClass");
     }
 
     public GeneratedClassModel(String className) {
+        declarationId = DeclarationIds.create();
         className(className);
+    }
+
+    public String declarationId() { return DeclarationIds.clean(declarationId); }
+    public void declarationId(String value) { declarationId = DeclarationIds.clean(value); }
+    void ensureDeclarationId(String projectName) {
+        if (declarationId().isBlank()) {
+            declarationId = DeclarationIds.legacy(projectName, "class", className());
+        }
     }
 
     public String className() {
@@ -150,6 +163,14 @@ public class GeneratedClassModel {
 
     public void baseClassName(String value) {
         baseClassName = clean(value);
+        baseClassId = "";
+    }
+
+    public String baseClassId() { return DeclarationIds.clean(baseClassId); }
+    public void baseClassId(String value) { baseClassId = DeclarationIds.clean(value); }
+    void baseClassReference(String id, String name) {
+        baseClassId = DeclarationIds.clean(id);
+        baseClassName = clean(name);
     }
 
     public boolean hasBase() {
@@ -346,8 +367,10 @@ public class GeneratedClassModel {
         GeneratedClassModel copy =
                 new GeneratedClassModel(className);
 
+        copy.declarationId = declarationId;
         copy.generationDepth = generationDepth;
         copy.baseClassName = baseClassName;
+        copy.baseClassId = baseClassId;
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
         copy.alias = alias;

@@ -34,6 +34,7 @@ public final class GeneratedProjectModelValidator {
         }
 
         validateUniqueClassNames(project, problems);
+        validateUniqueDeclarationIds(project, problems);
         validateSelectionsAndKindRules(project, problems);
         validateOwnedComponentCycles(project, problems);
         validateAggregateCycles(project, problems);
@@ -62,6 +63,27 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateUniqueDeclarationIds(
+            GeneratedProjectModel project, List<Problem> problems) {
+        Set<String> ids = new HashSet<>();
+        for (GeneratedClassModel clazz : project.classes()) {
+            if (clazz == null || clazz.declarationId().isBlank()) continue;
+            if (!ids.add(clazz.declarationId())) {
+                problems.add(Problem.error(clazz.className(),
+                        "Declaration identity is also used by another class or selection: "
+                                + clazz.declarationId()));
+            }
+        }
+        for (Selection selection : project.selections()) {
+            if (selection == null || selection.declarationId().isBlank()) continue;
+            if (!ids.add(selection.declarationId())) {
+                problems.add(Problem.error(selection.name(),
+                        "Declaration identity is also used by another class or selection: "
+                                + selection.declarationId()));
+            }
+        }
     }
 
     private static void validateAggregateCycles(GeneratedProjectModel project,

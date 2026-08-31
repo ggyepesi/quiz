@@ -46,6 +46,7 @@ public final class ProjectModelCompiler {
 
         // Never normalize the object currently owned by Swing controls.
         GeneratedProjectModel snapshot = editable.copy();
+        snapshot.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(snapshot);
         if (!validation.valid()) {
@@ -60,6 +61,7 @@ public final class ProjectModelCompiler {
         return new CompiledProjectModel(
                 snapshot.name(),
                 snapshot.generationDepth(),
+                snapshot.rootClass().declarationId(),
                 snapshot.rootClass().className(),
                 classes,
                 snapshot.selections());
@@ -71,14 +73,15 @@ public final class ProjectModelCompiler {
 
         GeneratedClassModel base =
                 clazz.hasBase()
-                        ? project.findClass(clazz.baseClassName())
+                        ? project.resolveClass(clazz.baseClassId(), clazz.baseClassName())
                         : null;
 
         StatementClassSource statement = clazz.statementSource();
         GeneratedClassModel statementSource =
                 statement == null
                         ? null
-                        : project.findClass(statement.sourceClassName());
+                        : project.resolveClass(
+                                statement.sourceClassId(), statement.sourceClassName());
 
         List<CompiledField> ownFields =
                 compileFields(project, clazz.fields(), newIdentitySet());
@@ -95,6 +98,7 @@ public final class ProjectModelCompiler {
                         clazz.className());
 
         return new CompiledClass(
+                clazz.declarationId(),
                 clazz.className(),
                 clazz.displayClassName(),
                 clazz.baseClassName(),
@@ -217,7 +221,8 @@ public final class ProjectModelCompiler {
                 GeneratedClassModel referenced =
                         field.entityClassName().isBlank()
                                 ? null
-                                : project.findClass(field.entityClassName());
+                                : project.resolveClass(
+                                        field.entityDeclarationId(), field.entityClassName());
 
                 String resolvedSort =
                         resolveSortField(project, field, referenced);

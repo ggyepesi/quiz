@@ -289,17 +289,26 @@ need not when it only adds or renames a field.
 
 ## Implementation milestones
 
-### Milestone 0 — decide what a reference is
+### Milestone 0 — stable declaration identities (implemented)
 
-Either references become stable declaration identities, or the first slice accepts
-name-based references and their consequence. Nothing else can be sequenced until this is
-answered, because the module format encodes it.
+References use persisted declaration identities. Names remain editable, readable hints
+and the current runtime type keys; they are no longer the authority used to resolve a
+model reference. Old models acquire deterministic identities on load, so merely opening
+and saving a model does not invent a different identity on every run.
 
-- If identities: migrate the six reference sites `renameClass` already knows about, and
-  settle how a declaration identity relates to the class/selection namespace.
-- If names: state that an import cannot shadow a local class or vocabulary of the same
-  name, and make that a validation error at import time rather than a surprise at compile
-  time.
+The migration covers class inheritance, entity-valued fields, statement source classes
+and value selections, aggregate source classes, entity-kind rules, role-selection
+owners, source-binding owners and the project root. The compiler resolves by identity
+first and refreshes the readable name hints. Duplicate declaration identities are a
+validation error.
+
+Classes and selections retain their existing shared, unique-name UI namespace for this
+slice. Stable identity therefore does not introduce shadowing: the first module import
+replaces an adopted same-name local declaration rather than allowing both to coexist.
+That keeps current runtime type stamps unambiguous while removing names from durable
+reference semantics. If module composition later needs two visible declarations with
+the same name, that requires an explicit qualified-name/runtime-type-key design rather
+than an accidental relaxation of the existing namespace guard.
 
 ### Milestone 1 — module format and compiler
 

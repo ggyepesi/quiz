@@ -21,7 +21,8 @@ public class VocabularySelection extends Selection {
     private String valueTypeQid = "";
 
     public VocabularySelection() {
-        super("", Kind.VOCABULARY);
+        super();
+        kind(Kind.VOCABULARY);
     }
 
     public VocabularySelection(String name) {
@@ -57,6 +58,7 @@ public class VocabularySelection extends Selection {
     @Override
     public VocabularySelection copy() {
         VocabularySelection c = new VocabularySelection(name());
+        copyIdentityTo(c);
         c.valueTypeQid = valueTypeQid;
         c.valueQids.addAll(valueQids);
         return c;

@@ -9,6 +9,7 @@ import java.util.*;
  */
 public final class CompiledClass {
 
+    private final String declarationId;
     private final String className;
     private final String displayClassName;
     private final String configuredBaseClassName;
@@ -35,6 +36,7 @@ public final class CompiledClass {
     private final Map<String, CompiledField> fieldsByLowerName;
 
     public CompiledClass(
+            String declarationId,
             String className,
             String displayClassName,
             String configuredBaseClassName,
@@ -51,6 +53,7 @@ public final class CompiledClass {
             List<CompiledField> ownFields,
             List<CompiledField> effectiveFields) {
 
+        this.declarationId = clean(declarationId);
         this.className = clean(className);
         this.displayClassName = clean(displayClassName);
         this.configuredBaseClassName = clean(configuredBaseClassName);
@@ -82,6 +85,7 @@ public final class CompiledClass {
         fieldsByLowerName = Collections.unmodifiableMap(index);
     }
 
+    public String declarationId() { return declarationId; }
     public String className() { return className; }
     public String displayClassName() { return displayClassName; }
     public String configuredBaseClassName() { return configuredBaseClassName; }

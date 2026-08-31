@@ -7,16 +7,20 @@ import wikidata.explore.model.StatementClassSource;
  */
 public record CompiledStatementSource(
         String configuredSourceClassName,
+        String sourceClassId,
         String sourceClassName,
         String propertyPid,
         String valueField,
+        String valueSelectionId,
         String valueSelectionName) {
 
     public CompiledStatementSource {
         configuredSourceClassName = clean(configuredSourceClassName);
+        sourceClassId = clean(sourceClassId);
         sourceClassName = clean(sourceClassName);
         propertyPid = clean(propertyPid);
         valueField = clean(valueField);
+        valueSelectionId = clean(valueSelectionId);
         valueSelectionName = clean(valueSelectionName);
     }
 
@@ -51,9 +55,11 @@ public record CompiledStatementSource(
         }
         return new CompiledStatementSource(
                 source.sourceClassName(),
+                source.sourceClassId(),
                 resolvedClassName,
                 source.propertyPid(),
                 valueField,
+                source.valueSelectionId(),
                 source.valueSelectionName());
     }
 

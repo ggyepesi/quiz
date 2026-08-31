@@ -17,6 +17,7 @@ public record CompiledField(
         String name,
         FieldType type,
         String configuredEntityClassName,
+        String entityDeclarationId,
         String entityClassName,
         FieldCardinality cardinality,
         FieldRenderMode renderMode,
@@ -36,6 +37,7 @@ public record CompiledField(
         name = clean(name);
         type = type == null ? FieldType.AUTO : type;
         configuredEntityClassName = clean(configuredEntityClassName);
+        entityDeclarationId = clean(entityDeclarationId);
         entityClassName = clean(entityClassName);
         cardinality = cardinality == null
                 ? FieldCardinality.AUTO
@@ -84,6 +86,7 @@ public record CompiledField(
                 field.name(),
                 field.type(),
                 field.entityClassName(),
+                field.entityDeclarationId(),
                 resolvedEntityClassName,
                 field.cardinality(),
                 field.renderMode(),

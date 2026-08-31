@@ -9,9 +9,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public final class RoleSelection extends Selection {
 
     private String ownerClassName = "";
+    private String ownerClassId = "";
     private String fieldName = "";
 
-    public RoleSelection() { super("", Kind.ROLE); }
+    public RoleSelection() {
+        super();
+        kind(Kind.ROLE);
+    }
 
     public RoleSelection(String name, String ownerClassName, String fieldName) {
         super(name, Kind.ROLE);
@@ -22,6 +26,13 @@ public final class RoleSelection extends Selection {
     public String ownerClassName() { return ownerClassName; }
     public void ownerClassName(String value) {
         ownerClassName = value == null ? "" : value.trim();
+        ownerClassId = "";
+    }
+    public String ownerClassId() { return DeclarationIds.clean(ownerClassId); }
+    public void ownerClassId(String value) { ownerClassId = DeclarationIds.clean(value); }
+    void ownerReference(String id, String name) {
+        ownerClassId = DeclarationIds.clean(id);
+        ownerClassName = name == null ? "" : name.trim();
     }
 
     public String fieldName() { return fieldName; }
@@ -40,6 +51,9 @@ public final class RoleSelection extends Selection {
     }
 
     @Override public RoleSelection copy() {
-        return new RoleSelection(name(), ownerClassName, fieldName);
+        RoleSelection copy = new RoleSelection(name(), ownerClassName, fieldName);
+        copyIdentityTo(copy);
+        copy.ownerClassId = ownerClassId;
+        return copy;
     }
 }

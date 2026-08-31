@@ -42,18 +42,31 @@ public class Selection {
     }
 
     private String name = "";
+    private String declarationId = "";
     private Kind kind = Kind.VOCABULARY;
 
     public Selection() {
     }
 
     public Selection(String name, Kind kind) {
+        declarationId = DeclarationIds.create();
         name(name);
         kind(kind);
     }
 
     public String name() {
         return name == null ? "" : name;
+    }
+
+    public String declarationId() { return DeclarationIds.clean(declarationId); }
+    public void declarationId(String value) { declarationId = DeclarationIds.clean(value); }
+    void ensureDeclarationId(String projectName) {
+        if (declarationId().isBlank()) {
+            declarationId = DeclarationIds.legacy(projectName, "selection", name());
+        }
+    }
+    protected void copyIdentityTo(Selection target) {
+        target.declarationId = declarationId;
     }
 
     public void name(String value) {
@@ -76,7 +89,9 @@ public class Selection {
 
     /** A base copy carrying only identity; subtypes override to copy their data. */
     public Selection copy() {
-        return new Selection(name(), kind());
+        Selection copy = new Selection(name(), kind());
+        copyIdentityTo(copy);
+        return copy;
     }
 
     /** Appends the QID-shaped, trimmed entries of {@code values} to {@code into}

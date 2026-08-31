@@ -5,9 +5,10 @@ import java.util.List;
 
 /** Immutable, name-resolved aggregate recipe. */
 public record CompiledAggregateSource(
-        String sourceClassName, String membersField, List<Key> keys,
+        String sourceClassId, String sourceClassName, String membersField, List<Key> keys,
         AggregateClassSource.MissingKeyPolicy missingKeyPolicy) {
     public CompiledAggregateSource {
+        sourceClassId = clean(sourceClassId);
         sourceClassName = clean(sourceClassName);
         membersField = clean(membersField);
         keys = keys == null ? List.of() : List.copyOf(keys);
@@ -20,7 +21,8 @@ public record CompiledAggregateSource(
     public record Key(String targetField, String sourceField) {}
     public static CompiledAggregateSource from(AggregateClassSource source) {
         if (source == null) return null;
-        return new CompiledAggregateSource(source.sourceClassName(), source.membersField(),
+        return new CompiledAggregateSource(source.sourceClassId(), source.sourceClassName(),
+                source.membersField(),
                 source.keys().stream().map(k -> new Key(k.targetField(), k.sourceField())).toList(),
                 source.missingKeyPolicy());
     }

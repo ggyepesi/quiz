@@ -20,7 +20,8 @@ public class PopulationSelection extends Selection {
     private final List<String> targetQids = new ArrayList<>();
 
     public PopulationSelection() {
-        super("", Kind.POPULATION);
+        super();
+        kind(Kind.POPULATION);
     }
 
     public PopulationSelection(String name) {
@@ -52,6 +53,7 @@ public class PopulationSelection extends Selection {
     @Override
     public PopulationSelection copy() {
         PopulationSelection c = new PopulationSelection(name());
+        copyIdentityTo(c);
         c.relationPid = relationPid;
         c.targetQids.addAll(targetQids);
         return c;

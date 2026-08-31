@@ -24,12 +24,14 @@ import datasource.graph.GraphExpansionPolicy;
 public final class StatementClassSource {
 
     private String sourceClassName = "";
+    private String sourceClassId = "";
     private String propertyPid = "";
 
     // Optional: a VOCABULARY Selection whose values are the reify's value domain
     // (the allowed statement values + their labels), replacing the value filter
     // otherwise inherited from a source class. Blank = derive as before.
     private String valueSelectionName = "";
+    private String valueSelectionId = "";
     // Explicit graph participation. Statement structure alone must not silently
     // turn a relation into an expandable knowledge-graph frontier.
     private GraphExpansionPolicy graphExpansionPolicy = GraphExpansionPolicy.NONE;
@@ -66,6 +68,13 @@ public final class StatementClassSource {
 
     public void sourceClassName(String value) {
         sourceClassName = clean(value);
+        sourceClassId = "";
+    }
+    public String sourceClassId() { return DeclarationIds.clean(sourceClassId); }
+    public void sourceClassId(String value) { sourceClassId = DeclarationIds.clean(value); }
+    void sourceClassReference(String id, String name) {
+        sourceClassId = DeclarationIds.clean(id);
+        sourceClassName = clean(name);
     }
 
     /**
@@ -86,6 +95,15 @@ public final class StatementClassSource {
 
     public void valueSelectionName(String value) {
         valueSelectionName = clean(value);
+        valueSelectionId = "";
+    }
+    public String valueSelectionId() { return DeclarationIds.clean(valueSelectionId); }
+    public void valueSelectionId(String value) {
+        valueSelectionId = DeclarationIds.clean(value);
+    }
+    void valueSelectionReference(String id, String name) {
+        valueSelectionId = DeclarationIds.clean(id);
+        valueSelectionName = clean(name);
     }
 
     public boolean hasValueSelection() {
@@ -130,7 +148,9 @@ public final class StatementClassSource {
         StatementClassSource c = new StatementClassSource(
                 sourceClassName,
                 propertyPid);
+        c.sourceClassId = sourceClassId;
         c.valueSelectionName = valueSelectionName;
+        c.valueSelectionId = valueSelectionId;
         c.graphExpansionPolicy = graphExpansionPolicy();
         return c;
     }

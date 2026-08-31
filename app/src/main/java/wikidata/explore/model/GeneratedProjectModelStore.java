@@ -50,6 +50,7 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
+        model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);
 
@@ -63,6 +64,7 @@ public final class GeneratedProjectModelStore {
         PopulationSourceBindings.synchronize(model);
         ClassSourceBindings.synchronize(model);
         FieldSourceBindings.synchronizeForSave(model);
+        model.ensureDeclarationIdentities();
 
         File parent = file.getParentFile();
         if (parent != null) {
@@ -80,6 +82,7 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
+        model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);
 
@@ -93,6 +96,7 @@ public final class GeneratedProjectModelStore {
         PopulationSourceBindings.synchronize(model);
         ClassSourceBindings.synchronize(model);
         FieldSourceBindings.synchronizeForSave(model);
+        model.ensureDeclarationIdentities();
 
         return mapper.writeValueAsString(model);
     }
@@ -104,10 +108,12 @@ public final class GeneratedProjectModelStore {
         migrateRemovedCanonicalKind(tree);
         GeneratedProjectModel model = mapper.treeToValue(tree, GeneratedProjectModel.class);
         OwnedClassSemantics.migrateLegacy(model);
+        model.ensureDeclarationIdentities();
         model.reconcileSourceBindingTargets();
         PopulationSourceBindings.synchronize(model);
         ClassSourceBindings.synchronize(model);
         FieldSourceBindings.migrateOnLoad(model);
+        model.ensureDeclarationIdentities();
         return model;
     }
 

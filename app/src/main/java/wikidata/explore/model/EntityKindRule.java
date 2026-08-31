@@ -9,6 +9,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public final class EntityKindRule {
     private String className = "";
+    private String classId = "";
     private String propertyPid = "P31";
     private final List<String> evidenceQids = new ArrayList<>();
 
@@ -19,7 +20,16 @@ public final class EntityKindRule {
     }
 
     public String className() { return className; }
-    public void className(String value) { className = clean(value); }
+    public void className(String value) {
+        className = clean(value);
+        classId = "";
+    }
+    public String classId() { return DeclarationIds.clean(classId); }
+    public void classId(String value) { classId = DeclarationIds.clean(value); }
+    void classReference(String id, String name) {
+        classId = DeclarationIds.clean(id);
+        className = clean(name);
+    }
     public String propertyPid() { return propertyPid; }
     public void propertyPid(String value) {
         String cleaned = clean(value);
@@ -37,6 +47,7 @@ public final class EntityKindRule {
     }
     public EntityKindRule copy() {
         EntityKindRule copy = new EntityKindRule(className, evidenceQids);
+        copy.classId = classId;
         copy.propertyPid(propertyPid);
         return copy;
     }

@@ -12,6 +12,9 @@ public class GeneratedFieldModel {
     private String name;
     private FieldType type = FieldType.AUTO;
     private String entityClassName = "";
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+    private String entityDeclarationId = "";
     /** ENTITY values whose class the model deliberately does not name — see
      *  {@link FieldDefinition#unclassedEntity()}. */
     private boolean unclassedEntity;
@@ -122,7 +125,10 @@ public class GeneratedFieldModel {
 
     public void unclassedEntity(boolean value) {
         this.unclassedEntity = value;
-        if (value) entityClassName = "";
+        if (value) {
+            entityClassName = "";
+            entityDeclarationId = "";
+        }
     }
 
     public String entityClassName() { return entityClassName; }
@@ -130,6 +136,18 @@ public class GeneratedFieldModel {
     public void entityClassName(String entityClassName) {
         this.entityClassName =
                 entityClassName == null ? "" : entityClassName.trim();
+        this.entityDeclarationId = "";
+    }
+
+    public String entityDeclarationId() {
+        return entityDeclarationId == null ? "" : entityDeclarationId.trim();
+    }
+    public void entityDeclarationId(String value) {
+        entityDeclarationId = value == null ? "" : value.trim();
+    }
+    void entityReference(String id, String name) {
+        entityDeclarationId = DeclarationIds.clean(id);
+        entityClassName = name == null ? "" : name.trim();
     }
 
     public FieldCardinality cardinality() { return cardinality; }
@@ -233,6 +251,7 @@ public class GeneratedFieldModel {
                 new GeneratedFieldModel(name, type, cardinality);
 
         c.entityClassName = entityClassName;
+        c.entityDeclarationId = entityDeclarationId;
         c.unclassedEntity = unclassedEntity;
         c.renderMode = renderMode;
         c.graphExpansionPolicy = graphExpansionPolicy;

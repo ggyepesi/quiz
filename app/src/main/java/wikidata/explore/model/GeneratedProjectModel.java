@@ -175,6 +175,14 @@ public class GeneratedProjectModel {
         return null;
     }
 
+    public Selection findSelectionById(String declarationId) {
+        String id = DeclarationIds.clean(declarationId);
+        if (id.isBlank()) return null;
+        return selections.stream().filter(java.util.Objects::nonNull)
+                .filter(selection -> id.equals(selection.declarationId()))
+                .findFirst().orElse(null);
+    }
+
     public List<EntityKindRule> entityKindRules() {
         return Collections.unmodifiableList(entityKindRules);
     }
@@ -211,7 +219,8 @@ public class GeneratedProjectModel {
         // root isn't duplicated (which showed Constellation twice in the tree).
         GeneratedClassModel root = other.rootClass;
         if (root != null) {
-            GeneratedClassModel inList = findClass(root.className());
+            GeneratedClassModel inList = findClassById(root.declarationId());
+            if (inList == null) inList = findClass(root.className());
             if (inList != null) {
                 root = inList;
             }
@@ -225,6 +234,7 @@ public class GeneratedProjectModel {
         if (!classes.contains(rootClass)) {
             classes.addFirst(rootClass);
         }
+        ensureDeclarationIdentities();
     }
 
     /**
@@ -250,44 +260,50 @@ public class GeneratedProjectModel {
         target.className(to);
         for (GeneratedClassModel clazz : classes) {
             if (clazz == null) continue;
-            if (from.equals(clean(clazz.baseClassName()))) {
-                clazz.baseClassName(to);
+            if (references(target.declarationId(), clazz.baseClassId(),
+                    from, clazz.baseClassName())) {
+                clazz.baseClassReference(target.declarationId(), to);
             }
             StatementClassSource statement = clazz.statementSource();
-            if (statement != null && from.equals(clean(statement.sourceClassName()))) {
-                statement.sourceClassName(to);
+            if (statement != null && references(target.declarationId(),
+                    statement.sourceClassId(), from, statement.sourceClassName())) {
+                statement.sourceClassReference(target.declarationId(), to);
             }
             AggregateClassSource aggregate = clazz.aggregateSource();
-            if (aggregate != null && from.equals(clean(aggregate.sourceClassName()))) {
-                aggregate.sourceClassName(to);
+            if (aggregate != null && references(target.declarationId(),
+                    aggregate.sourceClassId(), from, aggregate.sourceClassName())) {
+                aggregate.sourceClassReference(target.declarationId(), to);
             }
-            renameBindingTargets(clazz.sourceBindings(), from, to);
-            renameFieldTargets(clazz.fields(), from, to);
+            renameBindingTargets(clazz.sourceBindings(), from, to, target.declarationId());
+            renameFieldTargets(clazz.fields(), from, to, target.declarationId());
         }
         for (EntityKindRule rule : entityKindRules) {
-            if (rule != null && from.equals(clean(rule.className()))) {
-                rule.className(to);
+            if (rule != null && references(target.declarationId(), rule.classId(),
+                    from, rule.className())) {
+                rule.classReference(target.declarationId(), to);
             }
         }
         for (Selection selection : selections) {
             if (selection instanceof RoleSelection role
-                    && from.equals(clean(role.ownerClassName()))) {
-                role.ownerClassName(to);
+                    && references(target.declarationId(), role.ownerClassId(),
+                            from, role.ownerClassName())) {
+                role.ownerReference(target.declarationId(), to);
             }
         }
         return true;
     }
 
     private static void renameFieldTargets(
-            List<GeneratedFieldModel> fields, String from, String to) {
+            List<GeneratedFieldModel> fields, String from, String to, String targetId) {
         if (fields == null) return;
         for (GeneratedFieldModel field : fields) {
             if (field == null) continue;
-            if (from.equals(clean(field.entityClassName()))) {
-                field.entityClassName(to);
+            if (references(targetId, field.entityDeclarationId(),
+                    from, field.entityClassName())) {
+                field.entityReference(targetId, to);
             }
-            renameBindingTargets(field.sourceBindings(), from, to);
-            renameFieldTargets(field.fields(), from, to);
+            renameBindingTargets(field.sourceBindings(), from, to, targetId);
+            renameFieldTargets(field.fields(), from, to, targetId);
         }
     }
 
@@ -295,17 +311,28 @@ public class GeneratedProjectModel {
      * with every other name reference. Leaving the old address causes synchronization
      * to add a second binding under the new name while the stale one remains. */
     private static void renameBindingTargets(
-            List<datasource.api.SourceBinding> bindings, String from, String to) {
+            List<datasource.api.SourceBinding> bindings, String from, String to,
+            String targetId) {
         if (bindings == null) return;
         for (int i = 0; i < bindings.size(); i++) {
             datasource.api.SourceBinding binding = bindings.get(i);
-            if (binding == null || !from.equals(binding.target().className())) continue;
+            if (binding == null || !references(targetId,
+                    binding.target().classDeclarationId(), from,
+                    binding.target().className())) continue;
             datasource.api.SourceBindingTarget target = binding.target();
             bindings.set(i, new datasource.api.SourceBinding(
                     new datasource.api.SourceBindingTarget(target.scope(), to,
-                            target.fieldPath(), target.slot()),
+                            target.fieldPath(), target.slot(), targetId),
                     binding.recipe()));
         }
+    }
+
+    private static boolean references(String declarationId, String referenceId,
+            String oldName, String nameHint) {
+        String id = DeclarationIds.clean(declarationId);
+        String ref = DeclarationIds.clean(referenceId);
+        return (!id.isBlank() && id.equals(ref))
+                || (ref.isBlank() && oldName.equals(clean(nameHint)));
     }
 
     /** Repairs models saved by the pre-rename binding leak. A binding is stored on
@@ -344,7 +371,8 @@ public class GeneratedProjectModel {
             }
             bindings.set(i, new datasource.api.SourceBinding(
                     new datasource.api.SourceBindingTarget(target.scope(), owner,
-                            expectedPath, target.slot()), binding.recipe()));
+                            expectedPath, target.slot(), target.classDeclarationId()),
+                    binding.recipe()));
         }
         // A save after the old rename leak could already contain both the stale and
         // newly synchronized address. Once retargeted they occupy the same semantic
@@ -382,6 +410,7 @@ public class GeneratedProjectModel {
             return;
         }
         int index = classes.indexOf(existing);
+        replacement.declarationId(existing.declarationId());
         classes.set(index, replacement);
         if (rootClass == existing) rootClass = replacement;
     }
@@ -393,6 +422,7 @@ public class GeneratedProjectModel {
             addSelection(replacement);
             return;
         }
+        replacement.declarationId(existing.declarationId());
         selections.set(selections.indexOf(existing), replacement);
     }
 
@@ -411,10 +441,14 @@ public class GeneratedProjectModel {
         selection.name(next);
         for (GeneratedClassModel clazz : classes) {
             if (clazz.statementSource() != null
-                    && clazz.statementSource().valueSelectionName().equalsIgnoreCase(previous)) {
-                clazz.statementSource().valueSelectionName(next);
+                    && references(selection.declarationId(),
+                            clazz.statementSource().valueSelectionId(), previous,
+                            clazz.statementSource().valueSelectionName())) {
+                clazz.statementSource().valueSelectionReference(
+                        selection.declarationId(), next);
             }
-            if (fieldsPointHere) renameFieldSelection(clazz.fields(), previous, next);
+            if (fieldsPointHere) renameFieldSelection(
+                    clazz.fields(), previous, next, selection.declarationId());
         }
         return true;
     }
@@ -449,10 +483,13 @@ public class GeneratedProjectModel {
     }
 
     private static void renameFieldSelection(List<GeneratedFieldModel> fields,
-            String previous, String next) {
+            String previous, String next, String selectionId) {
         for (GeneratedFieldModel field : fields) {
-            if (field.entityClassName().equalsIgnoreCase(previous)) field.entityClassName(next);
-            renameFieldSelection(field.fields(), previous, next);
+            if (references(selectionId, field.entityDeclarationId(),
+                    previous, field.entityClassName())) {
+                field.entityReference(selectionId, next);
+            }
+            renameFieldSelection(field.fields(), previous, next, selectionId);
         }
     }
 
@@ -497,6 +534,106 @@ public class GeneratedProjectModel {
         }
 
         return null;
+    }
+
+    public GeneratedClassModel findClassById(String declarationId) {
+        String id = DeclarationIds.clean(declarationId);
+        if (id.isBlank()) return null;
+        return classes.stream().filter(java.util.Objects::nonNull)
+                .filter(clazz -> id.equals(clazz.declarationId()))
+                .findFirst().orElse(null);
+    }
+
+    public GeneratedClassModel resolveClass(String declarationId, String nameHint) {
+        GeneratedClassModel byId = findClassById(declarationId);
+        return byId == null ? findClass(nameHint) : byId;
+    }
+
+    public Selection resolveSelection(String declarationId, String nameHint) {
+        Selection byId = findSelectionById(declarationId);
+        return byId == null ? findSelection(nameHint) : byId;
+    }
+
+    /**
+     * Migrates legacy name references to stable declaration identities and refreshes
+     * their readable name hints. This is deliberately provider-independent and runs on
+     * the compiler's snapshot, never halfway through a UI edit.
+     */
+    public void ensureDeclarationIdentities() {
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz != null) clazz.ensureDeclarationId(name());
+        }
+        for (Selection selection : selections) {
+            if (selection != null) selection.ensureDeclarationId(name());
+        }
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null) continue;
+            GeneratedClassModel base = resolveClass(clazz.baseClassId(), clazz.baseClassName());
+            if (base != null) clazz.baseClassReference(base.declarationId(), base.className());
+            StatementClassSource statement = clazz.statementSource();
+            if (statement != null) {
+                GeneratedClassModel source = resolveClass(
+                        statement.sourceClassId(), statement.sourceClassName());
+                if (source != null) statement.sourceClassReference(
+                        source.declarationId(), source.className());
+                Selection value = resolveSelection(
+                        statement.valueSelectionId(), statement.valueSelectionName());
+                if (value != null) statement.valueSelectionReference(
+                        value.declarationId(), value.name());
+            }
+            AggregateClassSource aggregate = clazz.aggregateSource();
+            if (aggregate != null) {
+                GeneratedClassModel source = resolveClass(
+                        aggregate.sourceClassId(), aggregate.sourceClassName());
+                if (source != null) aggregate.sourceClassReference(
+                        source.declarationId(), source.className());
+            }
+            normalizeFields(clazz.fields(), clazz);
+            normalizeBindings(clazz.sourceBindings(), clazz);
+        }
+        for (EntityKindRule rule : entityKindRules) {
+            if (rule == null) continue;
+            GeneratedClassModel target = resolveClass(rule.classId(), rule.className());
+            if (target != null) rule.classReference(target.declarationId(), target.className());
+        }
+        for (Selection selection : selections) {
+            if (!(selection instanceof RoleSelection role)) continue;
+            GeneratedClassModel owner = resolveClass(role.ownerClassId(), role.ownerClassName());
+            if (owner != null) role.ownerReference(owner.declarationId(), owner.className());
+        }
+    }
+
+    private void normalizeFields(List<GeneratedFieldModel> fields,
+            GeneratedClassModel owner) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            GeneratedClassModel clazz = resolveClass(
+                    field.entityDeclarationId(), field.entityClassName());
+            if (clazz != null) field.entityReference(clazz.declarationId(), clazz.className());
+            else {
+                Selection selection = resolveSelection(
+                        field.entityDeclarationId(), field.entityClassName());
+                if (selection != null) field.entityReference(
+                        selection.declarationId(), selection.name());
+            }
+            normalizeBindings(field.sourceBindings(), owner);
+            normalizeFields(field.fields(), owner);
+        }
+    }
+
+    private static void normalizeBindings(List<datasource.api.SourceBinding> bindings,
+            GeneratedClassModel owner) {
+        if (bindings == null || owner == null) return;
+        for (int i = 0; i < bindings.size(); i++) {
+            datasource.api.SourceBinding binding = bindings.get(i);
+            if (binding == null) continue;
+            datasource.api.SourceBindingTarget target = binding.target();
+            bindings.set(i, new datasource.api.SourceBinding(
+                    new datasource.api.SourceBindingTarget(target.scope(), owner.className(),
+                            target.fieldPath(), target.slot(), owner.declarationId()),
+                    binding.recipe()));
+        }
     }
 
     /** True when {@code candidate} is {@code expected} or extends it, following the
