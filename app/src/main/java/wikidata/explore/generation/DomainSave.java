@@ -60,9 +60,31 @@ public final class DomainSave {
      * <p>Best effort: a model that cannot be compiled has no signature, and an empty
      * signature means no drift claim rather than a claim of drift.
      */
+    /**
+     * Declaration identities: stable names for a declaration, minted per declaration and
+     * carried on disk so a reference survives a rename. They say nothing about what a
+     * model would GENERATE, and they are unique per constructed object, so hashing them
+     * would make two structurally identical models sign differently and every run report
+     * its own instances as stale.
+     *
+     * <p>Named explicitly rather than matched by shape: {@code operationId} and
+     * {@code providerId} also end in "Id" and decide which provider runs which operation,
+     * so a rule over the spelling would drop exactly the fields the fingerprint is for.
+     */
+    private static final java.util.Set<String> DECLARATION_IDENTITY_FIELDS = java.util.Set.of(
+            "declarationId", "classDeclarationId", "entityDeclarationId",
+            "baseClassId", "classId", "ownerClassId", "sourceClassId",
+            "valueSelectionId", "referenceId");
+
+    /** The excluded names, so a guard test can hold this list complete. */
+    public static java.util.Set<String> declarationIdentityFields() {
+        return DECLARATION_IDENTITY_FIELDS;
+    }
+
     public static String signature(GeneratedProjectModel model) {
         try {
-            String json = new GeneratedProjectModelStore().toJson(persistedModel(model));
+            String json = withoutDeclarationIdentities(
+                    new GeneratedProjectModelStore().toJson(persistedModel(model)));
             byte[] hash = MessageDigest.getInstance("SHA-256")
                     .digest(json.getBytes(StandardCharsets.UTF_8));
             StringBuilder out = new StringBuilder();
@@ -71,6 +93,22 @@ public final class DomainSave {
         } catch (Exception uncompilable) {
             return "";
         }
+    }
+
+    /** The same JSON with every declaration identity removed, at any depth. */
+    private static String withoutDeclarationIdentities(String json) throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode tree = mapper.readTree(json);
+        strip(tree);
+        return mapper.writeValueAsString(tree);
+    }
+
+    private static void strip(com.fasterxml.jackson.databind.JsonNode node) {
+        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
+            object.remove(DECLARATION_IDENTITY_FIELDS);
+        }
+        node.forEach(DomainSave::strip);
     }
 
     /**
