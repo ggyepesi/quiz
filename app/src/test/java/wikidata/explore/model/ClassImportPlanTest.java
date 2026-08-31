@@ -102,4 +102,85 @@ class ClassImportPlanTest {
         assertNotSame(old, target.findClass("Person"));
         assertEquals("Event", target.rootClass().className());
     }
+
+    private static GeneratedProjectModel emptyModel() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.name("People");
+        model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        return model;
+    }
+
+    /**
+     * The reason models exist: a class configured while building one domain becomes
+     * reusable configuration. Copy is the route, and it does not care that the target
+     * acquires nothing.
+     */
+    @Test void aDomainsClassCanBeCopiedIntoAModel() {
+        GeneratedProjectModel model = emptyModel();
+
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+
+        assertNotNull(model.findClass("Person"));
+        assertNotNull(model.findClass("Name"));
+        assertEquals("Name",
+                model.findClass("Person").fields().getFirst().entityClassName());
+        assertEquals(GeneratedProjectModel.ProjectKind.MODEL, model.projectKind(),
+                "copying configuration in does not turn a model into a domain");
+    }
+
+    /**
+     * One class at a time works, but only in dependency order: Name first, then Person
+     * reusing it. Person first refuses, because it would land pointing at nothing.
+     */
+    @Test void oneClassAtATimeWorksInDependencyOrder() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel model = emptyModel();
+
+        ClassImportPlan.of(source, model, "Name")
+                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+        assertNotNull(model.findClass("Name"));
+
+        ClassImportPlan.of(source, model, "Person")
+                .apply(Set.of("Person"), ClassImportPlan.ConflictPolicy.REUSE_TARGET);
+
+        assertNotNull(model.findClass("Person"));
+        assertEquals("Name",
+                model.findClass("Person").fields().getFirst().entityClassName());
+    }
+
+    /**
+     * The Nobel shape: a prize reaches its laureates, a laureate its person, a person its
+     * structured name. One copy takes the whole chain, at any depth — the closure is a
+     * worklist, not a single hop — so "one class at a time" is a choice rather than a
+     * ceiling.
+     */
+    @Test void copyReachesTheWholeChainNotJustTheFirstHop() {
+        GeneratedProjectModel source = oscarPeople();
+
+        GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
+        laureate.addField("person", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        source.addClass(laureate);
+
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.addField("laureates", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Laureate");
+        source.addClass(prize);
+
+        ClassImportPlan plan = ClassImportPlan.of(source, emptyModel(), "NobelPrize");
+
+        assertEquals(Set.of("Laureate", "Person", "Name"), plan.dependencyClassNames(),
+                "three hops from the requested class, all reached");
+
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(source, model, "NobelPrize").apply(
+                Set.of("NobelPrize", "Laureate", "Person", "Name"),
+                ClassImportPlan.ConflictPolicy.REPLACE);
+
+        for (String name : java.util.List.of(
+                "NobelPrize", "Laureate", "Person", "Name")) {
+            assertNotNull(model.findClass(name), name + " arrived");
+        }
+    }
 }
