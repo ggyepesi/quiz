@@ -177,6 +177,48 @@ public final class DomainStorage {
         return models;
     }
 
+    /**
+     * Whether the saved project of this name is a model rather than a domain. Read from
+     * the file, since the kind is the project's own answer and nothing else records it.
+     * An unreadable or missing file is not a model: a copy source has to identify itself.
+     */
+    public boolean isModelKind(String name) {
+        File model = modelFileOf(name);
+        if (model == null || !model.isFile()) return false;
+        try {
+            return "MODEL".equalsIgnoreCase(
+                    JSON.readTree(model).path("projectKind").asText("").trim());
+        } catch (Exception unreadable) {
+            return false;
+        }
+    }
+
+    /** The saved models, in the order {@link #modelBackedNames()} gives them. */
+    public List<String> modelKindNames() {
+        return modelBackedNames().stream().filter(this::isModelKind).toList();
+    }
+
+    /**
+     * The projects {@code projectName} may copy class configuration from.
+     *
+     * <p>A domain copies from models only. Adopting from a model is what using one
+     * means; a domain-to-domain copy would duplicate a configuration with no model
+     * between them to own it, which is the divergence models exist to prevent.
+     *
+     * <p>A model may copy from anything, including a domain. Factoring a class out of a
+     * domain that already has it configured is how a model gets started, so restricting
+     * a model to other models would leave the first one with nothing to draw on.
+     *
+     * <p>A project never lists itself.
+     */
+    public List<String> copySourcesFor(String projectName, boolean intoModel) {
+        String own = key(projectName == null ? "" : projectName);
+        return modelBackedNames().stream()
+                .filter(name -> !key(name).equals(own))
+                .filter(name -> intoModel || isModelKind(name))
+                .toList();
+    }
+
     private static String modelName(File model) {
         if (model == null || !model.isFile()) return "";
         try {

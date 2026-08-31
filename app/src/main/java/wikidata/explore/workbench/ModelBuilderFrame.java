@@ -1599,19 +1599,24 @@ public class ModelBuilderFrame extends JFrame {
     private void importClassConfiguration() {
         try {
             sourceWorkbench.applyEdits();
-            java.util.List<String> domains = storage.modelBackedNames().stream()
-                    .filter(name -> !dataset.DomainStorage.key(name).equals(
-                            dataset.DomainStorage.key(projectModel.name())))
-                    .toList();
-            if (domains.isEmpty()) {
+            boolean intoModel = projectModel.isModel();
+            java.util.List<String> sources =
+                    storage.copySourcesFor(projectModel.name(), intoModel);
+            if (sources.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        "No other saved model is available.",
+                        intoModel
+                                ? "No other saved project is available to copy from."
+                                : "No saved model is available.\n\n"
+                                        + "A domain adopts its classes from a model. "
+                                        + "Create a model and copy the classes into it "
+                                        + "first — a model may take them from a domain.",
                         "Copy class", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             String domain = (String) JOptionPane.showInputDialog(
-                    this, "Copy from domain:", "Copy class configuration",
-                    JOptionPane.PLAIN_MESSAGE, null, domains.toArray(), domains.getFirst());
+                    this, intoModel ? "Copy from project:" : "Copy from model:",
+                    "Copy class configuration",
+                    JOptionPane.PLAIN_MESSAGE, null, sources.toArray(), sources.getFirst());
             if (domain == null) return;
 
             File sourceFile = storage.modelFileOf(domain);

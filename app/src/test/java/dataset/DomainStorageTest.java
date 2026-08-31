@@ -233,4 +233,56 @@ class DomainStorageTest {
 
         assertEquals(odd, storage.modelFileOf("Hungarian Rulers"));
     }
+
+    private static void writeProject(DomainStorage storage, String name, String kind)
+            throws IOException {
+        write(storage.modelFile(name),
+                "{\"name\":\"" + name + "\",\"projectKind\":\"" + kind + "\"}");
+    }
+
+    @Test void theKindIsReadFromTheProjectItself(@TempDir Path root) throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        writeProject(storage, "People", "MODEL");
+        writeProject(storage, "Nobel", "DOMAIN");
+        write(storage.modelFile("Oscars"), "{\"name\":\"Oscars\"}");
+
+        assertTrue(storage.isModelKind("People"));
+        assertFalse(storage.isModelKind("Nobel"));
+        assertFalse(storage.isModelKind("Oscars"),
+                "a project saved before kinds existed is a domain");
+        assertFalse(storage.isModelKind("Nothing saved under this name"));
+        assertEquals(List.of("People"), storage.modelKindNames());
+    }
+
+    /**
+     * A domain adopts from models only: copying between domains would duplicate a
+     * configuration with no model owning it. A model may take from anything, because
+     * factoring a class out of a domain is how the first model gets built.
+     */
+    @Test void aDomainCopiesFromModelsAndAModelFromAnything(@TempDir Path root)
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        writeProject(storage, "People", "MODEL");
+        writeProject(storage, "Places", "MODEL");
+        writeProject(storage, "Nobel", "DOMAIN");
+        writeProject(storage, "Oscars", "DOMAIN");
+
+        assertEquals(List.of("People", "Places"),
+                storage.copySourcesFor("Nobel", false),
+                "a domain is offered models, not other domains");
+        assertEquals(List.of("Nobel", "Oscars", "Places"),
+                storage.copySourcesFor("People", true),
+                "a model may draw on domains, and never on itself");
+    }
+
+    @Test void aProjectIsNeverOfferedAsItsOwnCopySource(@TempDir Path root)
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        writeProject(storage, "People", "MODEL");
+
+        assertEquals(List.of(), storage.copySourcesFor("People", false));
+        assertEquals(List.of(), storage.copySourcesFor("  people  ", true),
+                "the folder key decides identity, so punctuation and case cannot "
+                        + "smuggle a project into its own source list");
+    }
 }

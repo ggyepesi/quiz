@@ -1,7 +1,7 @@
 # Models and domains
 
-Status: the first step, model configuration, is implemented. Model use and instance
-ownership are deliberately deferred.
+Status: model configuration and model use are implemented — the latter as adoption, see
+step 2. Instance ownership is deliberately deferred.
 
 ## Rule number 1: keep it simple
 
@@ -77,19 +77,43 @@ The former Shared modules panel and shortcut are not part of this design. The co
 version/pin implementation is not exposed by the first-step UI and will be removed as model use
 is implemented rather than carried forward as a compatibility contract.
 
-## Step 2: model use (next)
+## Step 2: model use (implemented as adoption)
 
-Specify how a model is explicitly used by another model or a domain:
+A class is **adopted** into another project: it lands there as a real class that records
+where it came from, in `GeneratedClassModel.originModel`. The stamp is applied at the one
+point a class crosses projects and only when absent, so a class adopted from People and
+relayed onward still names People — the project in the middle passed it along rather than
+authoring it. `qualifiedClassName()` renders `People.Person` from that stamp; no qualified
+name is stored, so none can drift from the class it names.
 
-- present available models;
-- add and remove a model explicitly;
-- make its classes available in class selectors;
-- store and display qualified references such as `People.Person`;
-- distinguish an available class from one actually referenced by a field, rule or relationship;
-- reject circular use and name collisions.
+**The origin owns the field configuration.** `fieldsLocked()` is the one place that is
+decided, and Add field, Remove and the field editor all ask it rather than testing for an
+origin themselves. Removing the class is still allowed: dropping an adoption is the
+adopting project's decision, not the origin's. How an adopting project may override fields
+is deliberately open until there is experience with models — and nothing generated so far
+is expensive enough to regenerate to force the decision now.
 
-Importing a model shares configuration only. It must not decide where instances live.
-Extending imported classes and omitting fields are later work.
+**Which models a project uses is derived, not declared.** A project uses a model exactly
+when it holds a class adopted from it, which the stamps already record; `ModelUse` computes
+it. A declared list beside them would be a second way to know one fact, free to disagree
+with the classes actually present. The consequence is accepted: a use begins with the first
+adopted class and ends with the last, and a model cannot be declared as used before
+anything is adopted from it. If something later needs that, it is a new construct with a
+reason.
+
+**Who may copy from whom.** A domain adopts from models only — a domain-to-domain copy
+would duplicate a configuration with no model between them to own it. A model may copy from
+anything, since factoring a class out of a domain that already has it configured is how the
+first model gets built. `DomainStorage.copySourcesFor` is where that rule lives.
+
+Two bullets of the original plan dissolved rather than being built. **Circular use** cannot
+arise: adoption is a copy, and a copy does not recurse. **Stored qualified references** are
+unnecessary: a field targets a local class by its own name, and the qualified form is
+display. Name collisions were already handled by the import plan's replace/reuse choice.
+
+Still open: nothing yet reports that an origin has moved since a class was adopted from it.
+The domain signature mechanism answers the equivalent question for instances, and the same
+shape would answer this one, but no measurement forces it yet.
 
 ## Step 3: instance ownership and reuse
 
