@@ -20,6 +20,7 @@ final class DomainOverviewPanel extends JPanel {
     private final JLabel classes = new JLabel();
     private final JLabel selections = new JLabel();
     private final JLabel kinds = new JLabel();
+    private final JLabel imports = new JLabel();
     private final JLabel modelFile = new JLabel();
     private final JLabel snapshot = new JLabel();
     private final JLabel generated = new JLabel();
@@ -41,6 +42,7 @@ final class DomainOverviewPanel extends JPanel {
         GridBagUtils.labeledRow(this, c, row++, "Classes:", classes);
         GridBagUtils.labeledRow(this, c, row++, "Vocabularies / populations:", selections);
         GridBagUtils.labeledRow(this, c, row++, "Entity-kind rules:", kinds);
+        GridBagUtils.labeledRow(this, c, row++, "Shared modules:", imports);
         GridBagUtils.labeledRow(this, c, row++, "Model:", modelFile);
         GridBagUtils.labeledRow(this, c, row++, "Snapshot:", snapshot);
         GridBagUtils.labeledRow(this, c, row++, "Current generated objects:", generated);
@@ -68,6 +70,9 @@ final class DomainOverviewPanel extends JPanel {
         long configuredKinds = project.entityKindRules().stream()
                 .filter(rule -> rule != null && rule.isConfigured()).count();
         kinds.setText(configuredKinds + " configured / " + project.entityKindRules().size());
+        imports.setText(project.imports().isEmpty() ? "none"
+                : project.imports().stream().map(wikidata.explore.model.ModelModuleImport::coordinate)
+                        .collect(java.util.stream.Collectors.joining(", ")));
         modelFile.setText(current.modelSaved() ? "saved" : "not saved yet");
         snapshot.setText(current.snapshotSaved() ? "saved" : "not generated yet");
         generated.setText(Integer.toString(current.generatedObjects()));

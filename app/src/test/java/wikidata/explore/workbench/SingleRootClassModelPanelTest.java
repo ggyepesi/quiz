@@ -8,6 +8,9 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.ModelModule;
+import wikidata.explore.model.ModelModuleImport;
+import wikidata.explore.model.ModelModuleStore;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -17,8 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 
 class SingleRootClassModelPanelTest {
+
+    @TempDir Path temp;
 
     @Test void onlyModelLeavesOpenConfigurationEditors() {
         assertTrue(SingleRootClassModelPanel.isConfigurable(new GeneratedProjectModel()));
@@ -116,6 +123,44 @@ class SingleRootClassModelPanelTest {
 
         assertEquals("NobelPrize", prize.className(),
                 "a transient empty tree selection must not reapply the old editor name");
+    }
+
+    @Test void importedClassesShowTheirOriginAndCannotUseStructuralActions()
+            throws Exception {
+        ModelModuleStore modules = new ModelModuleStore(temp.resolve("modules"));
+        ModelModule people = new ModelModule("people", "1");
+        people.addClass(new GeneratedClassModel("Person"));
+        ModelModuleImport pin = modules.save(people);
+        GeneratedProjectModel project = modelWithEdition();
+        project.addImport(pin);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project, modules);
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode imported = findNode((DefaultMutableTreeNode)
+                tree.getModel().getRoot(), SingleRootClassModelPanel.ImportedClass.class);
+
+        tree.setSelectionPath(new javax.swing.tree.TreePath(imported.getPath()));
+        panel.refresh();
+
+        assertTrue(panel.selectedUserObject()
+                instanceof SingleRootClassModelPanel.ImportedClass);
+        SingleRootClassModelPanel.ImportedClass selected =
+                (SingleRootClassModelPanel.ImportedClass) panel.selectedUserObject();
+        assertEquals("people@1", selected.origin().coordinate());
+        assertFalse(button(panel, "Rename class").isEnabled());
+        assertFalse(button(panel, "Add field").isEnabled());
+        assertFalse(button(panel, "Remove").isEnabled());
+        assertTrue(button(panel, "Shared modules…").isEnabled());
+    }
+
+    private static DefaultMutableTreeNode findNode(DefaultMutableTreeNode node,
+            Class<?> type) {
+        if (type.isInstance(node.getUserObject())) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode found = findNode(
+                    (DefaultMutableTreeNode) node.getChildAt(i), type);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private static <T extends java.awt.Component> T find(

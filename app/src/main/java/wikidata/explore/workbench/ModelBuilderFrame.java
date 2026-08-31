@@ -661,6 +661,8 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.afterChange(v -> modelChanged());
         classModelPanel.onImportClass(this::importClassConfiguration);
+        classModelPanel.onManageModules(() -> classModelPanel.selectConfigurationSection(
+                SingleRootClassModelPanel.ConfigurationSection.SHARED_MODULES));
 
         sourceWorkbench.afterApplyField(f -> {
             modelChanged();
