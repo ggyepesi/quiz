@@ -73,7 +73,7 @@ public final class DomainSave {
     private static final java.util.Set<String> DECLARATION_IDENTITY_FIELDS = java.util.Set.of(
             "declarationId", "classDeclarationId", "entityDeclarationId",
             "baseClassId", "classId", "ownerClassId", "sourceClassId",
-            "valueSelectionId");
+            "valueSelectionId", "declarationIds");
 
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {

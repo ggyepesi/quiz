@@ -4,8 +4,10 @@ import datasource.schema.FieldType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -34,6 +36,8 @@ public final class GeneratedProjectModelValidator {
         }
 
         validateUniqueClassNames(project, problems);
+        validateImports(project, problems);
+        validateModulePresentationOverlays(project, problems);
         validateUniqueDeclarationIds(project, problems);
         validateSelectionsAndKindRules(project, problems);
         validateOwnedComponentCycles(project, problems);
@@ -63,6 +67,50 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateModulePresentationOverlays(
+            GeneratedProjectModel project, List<Problem> problems) {
+        Set<String> targets = new HashSet<>();
+        for (ModelClassPresentationOverlay overlay
+                : project.modulePresentationOverlays()) {
+            if (overlay == null || overlay.classDeclarationId().isBlank()) {
+                problems.add(Problem.error(project.name(),
+                        "Imported-class presentation overlay requires a class identity."));
+                continue;
+            }
+            if (!targets.add(overlay.classDeclarationId())) {
+                problems.add(Problem.error(project.name(),
+                        "Imported class has more than one presentation overlay: "
+                                + overlay.classDeclarationId()));
+            }
+        }
+    }
+
+    private static void validateImports(
+            GeneratedProjectModel project, List<Problem> problems) {
+        Set<String> coordinates = new HashSet<>();
+        Map<String, String> versions = new HashMap<>();
+        for (ModelModuleImport dependency : project.imports()) {
+            if (dependency == null || !dependency.complete()) {
+                problems.add(Problem.error(project.name(),
+                        "Model-module imports require id, version, digest and declarations."));
+                continue;
+            }
+            if (!coordinates.add(dependency.coordinate())) {
+                problems.add(Problem.error(project.name(),
+                        "Model module is imported more than once: "
+                                + dependency.coordinate()));
+            }
+            String previous = versions.putIfAbsent(
+                    dependency.moduleId(), dependency.version());
+            if (previous != null && !previous.equals(dependency.version())) {
+                problems.add(Problem.error(project.name(),
+                        "Model module has incompatible imported versions: "
+                                + dependency.moduleId() + "@" + previous + " and "
+                                + dependency.coordinate()));
+            }
+        }
     }
 
     private static void validateUniqueDeclarationIds(

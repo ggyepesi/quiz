@@ -19,6 +19,18 @@ public final class DeclarationIds {
         return PREFIX + UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** Stable identity minted when a declaration first enters a shared module. */
+    public static String module(String moduleId, String kind, String initialName) {
+        String owner = clean(moduleId);
+        String declarationKind = clean(kind);
+        String name = clean(initialName);
+        if (owner.isBlank() || declarationKind.isBlank() || name.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Module id, declaration kind and initial name are required");
+        }
+        return "module:" + owner + ":" + declarationKind + ":" + name;
+    }
+
     public static String clean(String value) {
         return value == null ? "" : value.trim();
     }

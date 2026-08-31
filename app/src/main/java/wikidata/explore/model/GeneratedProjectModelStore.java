@@ -22,9 +22,20 @@ import java.io.IOException;
 public final class GeneratedProjectModelStore {
 
     private final ObjectMapper mapper;
+    private final ModelModuleResolver modules;
 
     public GeneratedProjectModelStore() {
-        mapper = new ObjectMapper();
+        this(ModelModuleStore.standard());
+    }
+
+    public GeneratedProjectModelStore(ModelModuleResolver modules) {
+        mapper = modelMapper();
+        this.modules = modules;
+    }
+
+    /** One serialization contract for domain models and shared model modules. */
+    static ObjectMapper modelMapper() {
+        ObjectMapper mapper = new ObjectMapper();
         mapper.setVisibility(
                 PropertyAccessor.ALL,
                 JsonAutoDetect.Visibility.NONE);
@@ -39,6 +50,7 @@ public final class GeneratedProjectModelStore {
                 ObjectMapper.DefaultTyping.NON_FINAL,
                 "@class");
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        return mapper;
     }
 
     public void save(
@@ -52,7 +64,7 @@ public final class GeneratedProjectModelStore {
 
         model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
-                GeneratedProjectModelValidator.validate(model);
+                validateResolved(model);
 
         if (!validation.valid()) {
             throw new IOException(
@@ -84,7 +96,7 @@ public final class GeneratedProjectModelStore {
 
         model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
-                GeneratedProjectModelValidator.validate(model);
+                validateResolved(model);
 
         if (!validation.valid()) {
             throw new IOException(
@@ -99,6 +111,17 @@ public final class GeneratedProjectModelStore {
         model.ensureDeclarationIdentities();
 
         return mapper.writeValueAsString(model);
+    }
+
+    private GeneratedProjectModelValidator.ValidationResult validateResolved(
+            GeneratedProjectModel model) throws IOException {
+        try {
+            return GeneratedProjectModelValidator.validate(
+                    ModelImportResolver.resolve(model, modules));
+        } catch (RuntimeException unresolved) {
+            throw new IOException("Cannot resolve model imports: "
+                    + unresolved.getMessage(), unresolved);
+        }
     }
 
     public GeneratedProjectModel load(

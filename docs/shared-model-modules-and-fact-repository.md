@@ -303,28 +303,66 @@ first and refreshes the readable name hints. Duplicate declaration identities ar
 validation error.
 
 Classes and selections retain their existing shared, unique-name UI namespace for this
-slice. Stable identity therefore does not introduce shadowing: the first module import
-replaces an adopted same-name local declaration rather than allowing both to coexist.
+slice. Stable identity therefore does not introduce shadowing: an import that would
+collide with a local declaration — by identity OR by name, in either direction between
+classes and selections — is REFUSED, naming what it collided with. Adopting or replacing
+the local declaration is an explicit step taken first, not a side effect of adding an
+import; replacing one silently is the failure this codebase has removed from the type
+registry and the model reference layer already. The same rule covers entity-kind rules,
+which are identified by the class they stamp and the property they read.
+
 That keeps current runtime type stamps unambiguous while removing names from durable
 reference semantics. If module composition later needs two visible declarations with
 the same name, that requires an explicit qualified-name/runtime-type-key design rather
 than an accidental relaxation of the existing namespace guard.
 
-### Milestone 1 — module format and compiler
+### Milestone 1 — module format and compiler (implemented)
 
-- Define module identity, version and declaration identities.
-- Persist domain import declarations.
-- Resolve imports before validation and compilation.
-- Reject missing, cyclic or incompatible imports.
-- Add forcing tests showing imported and locally authored classes compile identically.
+`ModelModule` is the persisted schema unit. A module has a logical id, an immutable
+version, a SHA-256 content digest, stable class/selection declaration identities, and
+optional exact module dependencies. Every declaration is exported in this first format;
+selective exports are deliberately deferred until a consumer forces them.
 
-### Milestone 2 — ModelBuilder imports
+A domain persists `ModelModuleImport`, not copied declarations. The pin contains the
+module id, version, digest and resolved declaration-id set. The standard local repository
+is `data/wikidata/modules/<module-id>/<version>.model-module.json` (overridable with the
+`quiz.model.modules` system property). Saving different content over an existing
+id/version is refused.
 
-- Show imported classes and their origin visibly.
-- Make structural controls read-only.
-- Provide the explicit local overlay controls.
-- Add an import/update/remove workflow with an impact preview.
-- Ensure copying remains a separate migration action, not import semantics.
+The compiler resolves dependencies depth-first before validation, then compiles the
+composed snapshot without mutating the editor model. Resolution rejects missing modules,
+coordinate or digest mismatches, changed declaration sets, cycles, two versions of one
+module, and class/selection namespace collisions. A local declaration is not silently
+shadowed; adopting/replacing it remains an explicit Milestone 2/3 action.
+
+Forcing tests show imported and locally authored `Person`/`Name` declarations compile to
+the same structural shape and cover persistence, immutable versions and every refusal
+above. The real `people` module is intentionally not published here: reconciling the
+three divergent `Person` declarations remains Milestone 3 rather than letting the file
+format choose that product decision accidentally.
+
+### Milestone 2 — ModelBuilder imports (implemented)
+
+The configuration tree has a **Shared modules** section. It shows every resolved imported
+class, field and vocabulary with its exact module coordinate; selecting one opens a
+read-only structural description rather than the local class/field editor. Rename, Add
+field and Remove stay disabled for imported declarations.
+
+The section's editor provides explicit **Add module**, **Update** and **Remove** actions.
+Each action resolves and validates the proposed domain first, then previews named classes,
+fields, vocabularies and possible identity/display-rule changes. Merely selecting a module
+does nothing. Accepting the preview changes only the exact pin; generated instances remain
+unchanged until regeneration or remap.
+
+The first local overlay is deliberately narrow: an importing domain may choose an imported
+class's display-name mode and field/template. It is persisted by stable class identity and
+applied only to the composed compiler snapshot; it cannot change identity keys, class kind,
+field type/cardinality, mappings or ownership. Acquisition currently takes the other
+explicitly documented first-slice position: every field declared by the module is acquired.
+Optional-field demand is deferred until a real module field forces that policy and UI.
+
+**Copy class…** remains the pre-existing domain-to-domain migration action. It does not add
+an import, and importing never copies module declarations into the domain.
 
 ### Milestone 3 — reconcile and adopt `people`
 

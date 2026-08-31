@@ -24,6 +24,9 @@ public class GeneratedProjectModel {
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
+    private final List<ModelModuleImport> imports = new ArrayList<>();
+    private final List<ModelClassPresentationOverlay> modulePresentationOverlays =
+            new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -187,6 +190,61 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(entityKindRules);
     }
 
+    public List<ModelModuleImport> imports() {
+        return Collections.unmodifiableList(imports);
+    }
+
+    public void addImport(ModelModuleImport dependency) {
+        if (dependency != null) imports.add(dependency);
+    }
+
+    public void imports(List<ModelModuleImport> dependencies) {
+        imports.clear();
+        if (dependencies != null) dependencies.stream().filter(java.util.Objects::nonNull)
+                .map(ModelModuleImport::copy).forEach(imports::add);
+    }
+
+    public boolean removeImport(String moduleId) {
+        String id = moduleId == null ? "" : moduleId.trim();
+        return imports.removeIf(item -> item != null && item.moduleId().equals(id));
+    }
+
+    public void replaceImport(ModelModuleImport replacement) {
+        if (replacement == null) return;
+        for (int i = 0; i < imports.size(); i++) {
+            if (imports.get(i).moduleId().equals(replacement.moduleId())) {
+                imports.set(i, replacement.copy());
+                return;
+            }
+        }
+        imports.add(replacement.copy());
+    }
+
+    public List<ModelClassPresentationOverlay> modulePresentationOverlays() {
+        return Collections.unmodifiableList(modulePresentationOverlays);
+    }
+
+    public void modulePresentationOverlays(List<ModelClassPresentationOverlay> values) {
+        modulePresentationOverlays.clear();
+        if (values != null) values.stream().filter(java.util.Objects::nonNull)
+                .map(ModelClassPresentationOverlay::copy)
+                .forEach(modulePresentationOverlays::add);
+    }
+
+    public ModelClassPresentationOverlay modulePresentationOverlay(String classId) {
+        String id = DeclarationIds.clean(classId);
+        return modulePresentationOverlays.stream()
+                .filter(value -> value.classDeclarationId().equals(id))
+                .findFirst().orElse(null);
+    }
+
+    public void replaceModulePresentationOverlay(ModelClassPresentationOverlay replacement) {
+        if (replacement == null || replacement.classDeclarationId().isBlank()) return;
+        modulePresentationOverlays.removeIf(value -> value.classDeclarationId()
+                .equals(replacement.classDeclarationId()));
+        modulePresentationOverlays.add(replacement.copy());
+    }
+
     public void addEntityKindRule(EntityKindRule rule) {
         if (rule != null) entityKindRules.add(rule);
     }
@@ -212,6 +270,12 @@ public class GeneratedProjectModel {
         this.selections.addAll(other.selections);
         this.entityKindRules.clear();
         this.entityKindRules.addAll(other.entityKindRules);
+        this.imports.clear();
+        other.imports.stream().map(ModelModuleImport::copy).forEach(this.imports::add);
+        this.modulePresentationOverlays.clear();
+        other.modulePresentationOverlays.stream()
+                .map(ModelClassPresentationOverlay::copy)
+                .forEach(this.modulePresentationOverlays::add);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -505,8 +569,7 @@ public class GeneratedProjectModel {
         if (replacement == null) return;
         for (int i = 0; i < entityKindRules.size(); i++) {
             EntityKindRule existing = entityKindRules.get(i);
-            if (existing.className().equals(replacement.className())
-                    && existing.propertyPid().equals(replacement.propertyPid())) {
+            if (existing.sameTarget(replacement)) {
                 entityKindRules.set(i, replacement);
                 return;
             }
@@ -714,6 +777,12 @@ public class GeneratedProjectModel {
         }
         for (EntityKindRule rule : entityKindRules) {
             if (rule != null) c.entityKindRules.add(rule.copy());
+        }
+        for (ModelModuleImport dependency : imports) {
+            if (dependency != null) c.imports.add(dependency.copy());
+        }
+        for (ModelClassPresentationOverlay overlay : modulePresentationOverlays) {
+            if (overlay != null) c.modulePresentationOverlays.add(overlay.copy());
         }
 
         return c;
