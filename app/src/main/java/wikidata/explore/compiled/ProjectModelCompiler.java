@@ -28,14 +28,9 @@ public final class ProjectModelCompiler {
      */
     public static Optional<CompiledProjectModel> compileIfValid(
             GeneratedProjectModel editable) {
-        return compileIfValid(editable, ModelModuleStore.standard());
-    }
-
-    public static Optional<CompiledProjectModel> compileIfValid(
-            GeneratedProjectModel editable, ModelModuleResolver modules) {
         if (editable == null) return Optional.empty();
         try {
-            return Optional.of(compile(editable, modules));
+            return Optional.of(compile(editable));
         } catch (ModelCompilationException invalid) {
             return Optional.empty();
         }
@@ -43,24 +38,14 @@ public final class ProjectModelCompiler {
 
     public static CompiledProjectModel compile(
             GeneratedProjectModel editable) {
-        return compile(editable, ModelModuleStore.standard());
-    }
-
-    public static CompiledProjectModel compile(
-            GeneratedProjectModel editable, ModelModuleResolver modules) {
 
         if (editable == null) {
             throw new IllegalArgumentException(
                     "editable project must not be null");
         }
 
-        // Never normalize or compose into the object currently owned by Swing controls.
-        GeneratedProjectModel snapshot;
-        try {
-            snapshot = ModelImportResolver.resolve(editable, modules);
-        } catch (RuntimeException unresolved) {
-            throw new ModelCompilationException(unresolved.getMessage());
-        }
+        // Never normalize the object currently owned by Swing controls.
+        GeneratedProjectModel snapshot = editable.copy();
         snapshot.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(snapshot);

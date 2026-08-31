@@ -60,6 +60,12 @@ wrong and why this is the answer.
 Hard-won from the provenance/`source` refactor. Each fires at a decision point; the trigger is
 the tell that you are about to make the mistake again.
 
+**Rule number 1 — keep it simple.** Start with the smallest model that expresses what the user
+can see and control. Do not introduce hidden identities, parallel names, versions, lifecycle
+states or indirection until a concrete requirement forces each one. A simple concept must remain
+simple in the UI, persistence and explanation. *(Trigger: explaining an intrinsically simple
+construct requires a vocabulary of implementation terms.)*
+
 **Capstone — introduce nothing without a forcing reason.** The test is never "would this be
 more complete, more honest, more future-proof" — it is "is there a forcing reason NOW". No
 forcing reason, don't build it. Over-modelling, compatibility layers and speculative
@@ -94,6 +100,10 @@ construct per thing produced:
    (for example, “Use selected property as edge”), and every command produces an immediate
    visible result or explains why it had no effect. *(Trigger: a selection listener writes state
    outside the view that owns the selection.)*
+10. **The UI is the authority for user-authored configuration.** If a change can be made through
+   the UI, an agent or background process must not make it on the user's behalf without explicit
+   approval of that exact change. Inspection, validation and preview may not mutate.
+   *(Trigger: "the user could configure this, but I can save them the step.")*
 
 ## Working agreements
 

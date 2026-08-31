@@ -34,8 +34,8 @@ class SignatureIgnoresDeclarationIdentitiesTest {
      * is a method — {@code ensureDeclarationId(…)} names an identity without being one.
      */
     private static final Pattern IDENTITY_FIELD = Pattern.compile(
-            "(?:[a-z][A-Za-z]*(?:DeclarationIds?|ClassId|SelectionId)"
-                    + "|declarationIds?|classId)");
+            "(?:[a-z][A-Za-z]*(?:DeclarationId|ClassId|SelectionId)"
+                    + "|declarationId|classId)");
 
     /**
      * Only what is SERIALIZED into a model can reach the fingerprint. The compiled shape

@@ -17,7 +17,6 @@ import java.util.List;
 public class SingleRootClassModelPanel extends JPanel {
 
     public enum ConfigurationSection {
-        SHARED_MODULES("Shared modules"),
         VOCABULARIES("Vocabularies / populations");
         private final String label;
         ConfigurationSection(String label) { this.label = label; }
@@ -25,7 +24,6 @@ public class SingleRootClassModelPanel extends JPanel {
     }
 
     private final GeneratedProjectModel projectModel;
-    private final ModelModuleResolver modules;
     private DefaultMutableTreeNode rootTreeNode;
     private final DefaultTreeModel treeModel;
     private final JTree tree;
@@ -40,28 +38,14 @@ public class SingleRootClassModelPanel extends JPanel {
     private final JButton importClassButton = new JButton("Copy class…");
     private final JButton addFieldButton = new JButton("Add field");
     private final JButton removeButton = new JButton("Remove");
-    private final JButton modulesButton = new JButton("Shared modules…");
-
-    public record ImportedClass(GeneratedClassModel declaration,
-                                ModelModuleImport origin) { }
-    public record ImportedField(GeneratedFieldModel declaration,
-                                ImportedClass owner) { }
-    public record ImportedSelection(Selection declaration,
-                                    ModelModuleImport origin) { }
 
     public SingleRootClassModelPanel(GeneratedProjectModel projectModel) {
-        this(projectModel, ModelModuleStore.standard());
-    }
-
-    public SingleRootClassModelPanel(GeneratedProjectModel projectModel,
-            ModelModuleResolver modules) {
         super(new BorderLayout(4, 4));
 
         this.projectModel =
                 projectModel == null
                         ? GeneratedProjectModel.constellationDemo()
                         : projectModel;
-        this.modules = modules;
 
         this.rootTreeNode = buildTree();
         this.treeModel = new DefaultTreeModel(rootTreeNode);
@@ -106,13 +90,6 @@ public class SingleRootClassModelPanel extends JPanel {
         if (action != null) importClassButton.addActionListener(e -> action.run());
     }
 
-    public void onManageModules(Runnable action) {
-        for (java.awt.event.ActionListener listener : modulesButton.getActionListeners()) {
-            modulesButton.removeActionListener(listener);
-        }
-        if (action != null) modulesButton.addActionListener(e -> action.run());
-    }
-
     public Object selectedUserObject() {
         DefaultMutableTreeNode n =
                 (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
@@ -125,9 +102,6 @@ public class SingleRootClassModelPanel extends JPanel {
         return value instanceof GeneratedClassModel
                 || value instanceof GeneratedFieldModel
                 || value instanceof Selection
-                || value instanceof ImportedClass
-                || value instanceof ImportedField
-                || value instanceof ImportedSelection
                 || value instanceof ConfigurationSection
                 || value instanceof GeneratedProjectModel;
     }
@@ -142,9 +116,6 @@ public class SingleRootClassModelPanel extends JPanel {
         if (selected instanceof GeneratedFieldModel f) {
             return owningClassOf(f);
         }
-
-        if (selected instanceof ImportedClass imported) return imported.declaration();
-        if (selected instanceof ImportedField imported) return imported.owner().declaration();
 
         return projectModel.rootClass();
     }
@@ -161,14 +132,6 @@ public class SingleRootClassModelPanel extends JPanel {
         String selFieldName = selected instanceof GeneratedFieldModel f ? f.name() : null;
         String selSelectionName = selected instanceof Selection selection
                 ? selection.name() : null;
-        String importedClassId = selected instanceof ImportedClass imported
-                ? imported.declaration().declarationId()
-                : selected instanceof ImportedField imported
-                        ? imported.owner().declaration().declarationId() : null;
-        String importedFieldName = selected instanceof ImportedField imported
-                ? imported.declaration().name() : null;
-        String importedSelectionId = selected instanceof ImportedSelection imported
-                ? imported.declaration().declarationId() : null;
         ConfigurationSection selSection = selected instanceof ConfigurationSection section
                 ? section : null;
         boolean selDomain = selected instanceof GeneratedProjectModel;
@@ -183,11 +146,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
             restoreExpanded(expanded);
 
-            if (importedSelectionId != null) {
-                selectImported(importedSelectionId, null);
-            } else if (importedClassId != null) {
-                selectImported(importedClassId, importedFieldName);
-            } else if (selDomain) {
+            if (selDomain) {
                 selectNode(rootTreeNode);
             } else if (selSection != null) {
                 selectSection(selSection);
@@ -217,29 +176,6 @@ public class SingleRootClassModelPanel extends JPanel {
             }
         }
         updateActionState();
-    }
-
-    private void selectImported(String declarationId, String fieldName) {
-        DefaultMutableTreeNode node = findImportedNode(rootTreeNode, declarationId, fieldName);
-        if (node != null) selectNode(node);
-    }
-
-    private static DefaultMutableTreeNode findImportedNode(DefaultMutableTreeNode node,
-            String declarationId, String fieldName) {
-        Object value = node.getUserObject();
-        if (fieldName == null && value instanceof ImportedClass imported
-                && imported.declaration().declarationId().equals(declarationId)) return node;
-        if (fieldName == null && value instanceof ImportedSelection imported
-                && imported.declaration().declarationId().equals(declarationId)) return node;
-        if (fieldName != null && value instanceof ImportedField imported
-                && imported.owner().declaration().declarationId().equals(declarationId)
-                && imported.declaration().name().equals(fieldName)) return node;
-        for (int i = 0; i < node.getChildCount(); i++) {
-            DefaultMutableTreeNode found = findImportedNode(
-                    (DefaultMutableTreeNode) node.getChildAt(i), declarationId, fieldName);
-            if (found != null) return found;
-        }
-        return null;
     }
 
     // The class name of the current selection: a class node directly, or the class
@@ -320,17 +256,10 @@ public class SingleRootClassModelPanel extends JPanel {
         if (node != null) selectNode(node);
     }
 
-    public void selectConfigurationSection(ConfigurationSection section) {
-        selectSection(section);
-    }
-
     private void updateActionState() {
         Object selected = selectedUserObject();
         boolean classContext = selected instanceof GeneratedClassModel
                 || selected instanceof GeneratedFieldModel;
-        boolean imported = selected instanceof ImportedClass
-                || selected instanceof ImportedField
-                || selected instanceof ImportedSelection;
         boolean vocabulary = selected instanceof VocabularySelection;
         boolean vocabularyContext = vocabulary
                 || selected == ConfigurationSection.VOCABULARIES;
@@ -338,14 +267,11 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
         addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
 
-        renameClassButton.setEnabled(editingEnabled && !imported
-                && (classContext || vocabulary));
+        renameClassButton.setEnabled(editingEnabled && (classContext || vocabulary));
         addClassButton.setEnabled(editingEnabled);
-        importClassButton.setEnabled(editingEnabled && !imported && classContext);
-        addFieldButton.setEnabled(editingEnabled && !imported && classContext);
-        removeButton.setEnabled(editingEnabled && !imported
-                && (classContext || vocabulary));
-        modulesButton.setEnabled(editingEnabled);
+        importClassButton.setEnabled(editingEnabled && classContext);
+        addFieldButton.setEnabled(editingEnabled && classContext);
+        removeButton.setEnabled(editingEnabled && (classContext || vocabulary));
     }
 
     private void buildUi() {
@@ -362,7 +288,6 @@ public class SingleRootClassModelPanel extends JPanel {
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
         buttons.add(importClassButton);
-        buttons.add(modulesButton);
         buttons.add(addFieldButton);
         buttons.add(removeButton);
 
@@ -451,32 +376,6 @@ public class SingleRootClassModelPanel extends JPanel {
 
             projectNode.add(classNode);
         }
-
-        DefaultMutableTreeNode importsNode = new DefaultMutableTreeNode(
-                ConfigurationSection.SHARED_MODULES);
-        try {
-            for (ModelImportResolver.ResolvedModule resolved
-                    : ModelImportResolver.modules(projectModel, modules)) {
-                for (GeneratedClassModel cls : resolved.module().classes()) {
-                    ImportedClass imported = new ImportedClass(
-                            cls.copy(), resolved.pin().copy());
-                    DefaultMutableTreeNode classNode = new DefaultMutableTreeNode(imported);
-                    for (GeneratedFieldModel field : imported.declaration().fields()) {
-                        classNode.add(new DefaultMutableTreeNode(
-                                new ImportedField(field, imported)));
-                    }
-                    importsNode.add(classNode);
-                }
-                for (Selection selection : resolved.module().selections()) {
-                    importsNode.add(new DefaultMutableTreeNode(new ImportedSelection(
-                            selection.copy(), resolved.pin().copy())));
-                }
-            }
-        } catch (RuntimeException unresolved) {
-            importsNode.add(new DefaultMutableTreeNode(
-                    "Unavailable: " + unresolved.getMessage()));
-        }
-        projectNode.add(importsNode);
 
         // Always present: this is also how an empty domain creates its FIRST
         // vocabulary now that configuration lives in the tree rather than a header button.
@@ -761,16 +660,6 @@ public class SingleRootClassModelPanel extends JPanel {
                 setText(t.toString());
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(60, 90, 120));
-            } else if (uo instanceof ImportedClass imported) {
-                setText("↳ " + imported.declaration().displayClassName()
-                        + "   [imported from " + imported.origin().coordinate() + "]");
-                setForeground(sel ? getTextSelectionColor() : new Color(90, 90, 130));
-            } else if (uo instanceof ImportedField imported) {
-                setText(imported.declaration().name() + "   [read-only]");
-                setForeground(sel ? getTextSelectionColor() : new Color(105, 105, 125));
-            } else if (uo instanceof ImportedSelection imported) {
-                setText("◇ " + imported.declaration().name() + "   [imported from "
-                        + imported.origin().coordinate() + "]");
             } else if (uo instanceof Selection seln) {
                 String detail;
                 if (seln instanceof VocabularySelection v) {

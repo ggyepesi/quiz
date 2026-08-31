@@ -8,7 +8,16 @@ import java.util.List;
 
 public class GeneratedProjectModel {
 
+    public enum ProjectKind {
+        DOMAIN("Domain"), MODEL("Model");
+        private final String label;
+        ProjectKind(String label) { this.label = label; }
+        @Override public String toString() { return label; }
+    }
+
     private String name = "Generated Wikidata Project";
+    private ProjectKind projectKind = ProjectKind.DOMAIN;
+    private boolean staticModel;
     private GeneratedClassModel rootClass;
 
     // How many levels of child-object edges generation should traverse. Stored
@@ -24,9 +33,6 @@ public class GeneratedProjectModel {
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
-    private final List<ModelModuleImport> imports = new ArrayList<>();
-    private final List<ModelClassPresentationOverlay> modulePresentationOverlays =
-            new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -100,6 +106,30 @@ public class GeneratedProjectModel {
     public String name() {
         return name;
     }
+
+    public ProjectKind projectKind() {
+        return projectKind == null ? ProjectKind.DOMAIN : projectKind;
+    }
+
+    /**
+     * Whether this project acquires instances. A DOMAIN does; a MODEL is configuration
+     * and has no generation, so a rule that exists to bound acquisition has nothing to
+     * bound here. Asked by name rather than by comparing the enum, so the reason a rule
+     * is skipped is stated where it is skipped.
+     */
+    public boolean acquiresInstances() {
+        return projectKind() == ProjectKind.DOMAIN;
+    }
+
+    public void projectKind(ProjectKind value) {
+        projectKind = value == null ? ProjectKind.DOMAIN : value;
+        if (projectKind == ProjectKind.DOMAIN) staticModel = false;
+    }
+
+    public boolean isModel() { return projectKind() == ProjectKind.MODEL; }
+    public boolean supportsExecution() { return projectKind() == ProjectKind.DOMAIN; }
+    public boolean staticModel() { return isModel() && staticModel; }
+    public void staticModel(boolean value) { staticModel = isModel() && value; }
 
     public int generationDepth() {
         return generationDepth;
@@ -190,61 +220,6 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(entityKindRules);
     }
 
-    public List<ModelModuleImport> imports() {
-        return Collections.unmodifiableList(imports);
-    }
-
-    public void addImport(ModelModuleImport dependency) {
-        if (dependency != null) imports.add(dependency);
-    }
-
-    public void imports(List<ModelModuleImport> dependencies) {
-        imports.clear();
-        if (dependencies != null) dependencies.stream().filter(java.util.Objects::nonNull)
-                .map(ModelModuleImport::copy).forEach(imports::add);
-    }
-
-    public boolean removeImport(String moduleId) {
-        String id = moduleId == null ? "" : moduleId.trim();
-        return imports.removeIf(item -> item != null && item.moduleId().equals(id));
-    }
-
-    public void replaceImport(ModelModuleImport replacement) {
-        if (replacement == null) return;
-        for (int i = 0; i < imports.size(); i++) {
-            if (imports.get(i).moduleId().equals(replacement.moduleId())) {
-                imports.set(i, replacement.copy());
-                return;
-            }
-        }
-        imports.add(replacement.copy());
-    }
-
-    public List<ModelClassPresentationOverlay> modulePresentationOverlays() {
-        return Collections.unmodifiableList(modulePresentationOverlays);
-    }
-
-    public void modulePresentationOverlays(List<ModelClassPresentationOverlay> values) {
-        modulePresentationOverlays.clear();
-        if (values != null) values.stream().filter(java.util.Objects::nonNull)
-                .map(ModelClassPresentationOverlay::copy)
-                .forEach(modulePresentationOverlays::add);
-    }
-
-    public ModelClassPresentationOverlay modulePresentationOverlay(String classId) {
-        String id = DeclarationIds.clean(classId);
-        return modulePresentationOverlays.stream()
-                .filter(value -> value.classDeclarationId().equals(id))
-                .findFirst().orElse(null);
-    }
-
-    public void replaceModulePresentationOverlay(ModelClassPresentationOverlay replacement) {
-        if (replacement == null || replacement.classDeclarationId().isBlank()) return;
-        modulePresentationOverlays.removeIf(value -> value.classDeclarationId()
-                .equals(replacement.classDeclarationId()));
-        modulePresentationOverlays.add(replacement.copy());
-    }
-
     public void addEntityKindRule(EntityKindRule rule) {
         if (rule != null) entityKindRules.add(rule);
     }
@@ -263,6 +238,8 @@ public class GeneratedProjectModel {
             return;
         }
         this.name = other.name;
+        this.projectKind = other.projectKind();
+        this.staticModel = other.staticModel();
         this.generationDepth = other.generationDepth;
         this.classes.clear();
         this.classes.addAll(other.classes);
@@ -270,12 +247,6 @@ public class GeneratedProjectModel {
         this.selections.addAll(other.selections);
         this.entityKindRules.clear();
         this.entityKindRules.addAll(other.entityKindRules);
-        this.imports.clear();
-        other.imports.stream().map(ModelModuleImport::copy).forEach(this.imports::add);
-        this.modulePresentationOverlays.clear();
-        other.modulePresentationOverlays.stream()
-                .map(ModelClassPresentationOverlay::copy)
-                .forEach(this.modulePresentationOverlays::add);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -569,7 +540,8 @@ public class GeneratedProjectModel {
         if (replacement == null) return;
         for (int i = 0; i < entityKindRules.size(); i++) {
             EntityKindRule existing = entityKindRules.get(i);
-            if (existing.sameTarget(replacement)) {
+            if (existing.className().equals(replacement.className())
+                    && existing.propertyPid().equals(replacement.propertyPid())) {
                 entityKindRules.set(i, replacement);
                 return;
             }
@@ -737,6 +709,8 @@ public class GeneratedProjectModel {
     public GeneratedProjectModel copy() {
         GeneratedProjectModel c = new GeneratedProjectModel();
         c.name = name;
+        c.projectKind = projectKind();
+        c.staticModel = staticModel();
         c.generationDepth = generationDepth;
         c.classes.clear();
         c.rootClass = null;
@@ -777,12 +751,6 @@ public class GeneratedProjectModel {
         }
         for (EntityKindRule rule : entityKindRules) {
             if (rule != null) c.entityKindRules.add(rule.copy());
-        }
-        for (ModelModuleImport dependency : imports) {
-            if (dependency != null) c.imports.add(dependency.copy());
-        }
-        for (ModelClassPresentationOverlay overlay : modulePresentationOverlays) {
-            if (overlay != null) c.modulePresentationOverlays.add(overlay.copy());
         }
 
         return c;

@@ -63,8 +63,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
     private final DomainOverviewPanel domainOverview;
-    private final SharedModulesPanel sharedModules;
-    private final ImportedDeclarationPanel importedDeclaration;
     private SelectionViewerPanel selectionEditor;
 
     private final JTabbedPane helperTabs =
@@ -113,9 +111,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
         this.domainOverview = new DomainOverviewPanel(projectModel);
-        this.importedDeclaration = new ImportedDeclarationPanel(projectModel);
-        this.sharedModules = new SharedModulesPanel(
-                projectModel, wikidata.explore.model.ModelModuleStore.standard());
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
@@ -126,8 +121,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.discoveryPanel.selections(selections);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
-        this.sharedModules.afterChange(() -> afterChange.accept(null));
-        this.importedDeclaration.afterChange(() -> afterChange.accept(null));
 
         classSourcePanel.baseClassCandidates(
                 () -> projectModel.classes()
@@ -360,18 +353,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             kindHeader.setVisible(false);
             domainOverview.refresh();
             layout.show(cardPanel, "domain");
-        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.SHARED_MODULES) {
-            kindBox.setEnabled(editingEnabled);
-            kindHeader.setVisible(false);
-            sharedModules.refresh();
-            layout.show(cardPanel, "modules");
-        } else if (selected instanceof SingleRootClassModelPanel.ImportedClass
-                || selected instanceof SingleRootClassModelPanel.ImportedField
-                || selected instanceof SingleRootClassModelPanel.ImportedSelection) {
-            kindBox.setEnabled(false);
-            kindHeader.setVisible(false);
-            importedDeclaration.edit(selected);
-            layout.show(cardPanel, "imported");
         } else {
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
@@ -741,8 +722,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private void buildUi() {
         cardPanel.add(domainOverview, "domain");
-        cardPanel.add(sharedModules, "modules");
-        cardPanel.add(importedDeclaration, "imported");
         cardPanel.add(
                 classSourcePanel,
                 "class");

@@ -45,16 +45,6 @@ public final class EntityKindRule {
         return !className.isBlank() && wikidata.WikidataIds.isPid(propertyPid)
                 && !evidenceQids.isEmpty();
     }
-
-    /** Whether two rules address the same modeled kind and evidence property. */
-    public boolean sameTarget(EntityKindRule other) {
-        if (other == null || !propertyPid().equals(other.propertyPid())) return false;
-        boolean bothIdentified = !classId().isBlank() && !other.classId().isBlank();
-        return bothIdentified
-                ? classId().equals(other.classId())
-                : className().equalsIgnoreCase(other.className());
-    }
-
     public EntityKindRule copy() {
         EntityKindRule copy = new EntityKindRule(className, evidenceQids);
         copy.classId = classId;

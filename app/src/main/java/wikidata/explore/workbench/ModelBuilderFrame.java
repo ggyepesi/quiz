@@ -174,6 +174,8 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton newDomainButton = new JButton("New domain");
     private final JButton renameDomainButton = new JButton("Rename domain");
     private final JButton deleteDomainButton = new JButton("Delete domain");
+    private JPanel runSection;
+    private JLabel projectKindLabel;
     // Guards the combo's listener while we repopulate/select it programmatically.
     private boolean updatingDomainBox = false;
 
@@ -283,13 +285,11 @@ public class ModelBuilderFrame extends JFrame {
     // LEFT panel: the selected domain, its classes, and the run controls.
     private JPanel buildDomainClassPanel() {
         // Domain section (top): selector + domain-level actions.
-        domainBox.setToolTipText("The domain (project) being edited. Every class "
-                                         + "below belongs to it. Switch to load another saved domain.");
-        saveEverythingButton.setToolTipText("Save this domain — its model, rule "
-                                                    + "tree and generated instances — together.");
+        domainBox.setToolTipText("The domain or model being edited.");
 
         JPanel domainPick = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        domainPick.add(new JLabel("Domain:"));
+        projectKindLabel = new JLabel("Domain:");
+        domainPick.add(projectKindLabel);
         domainPick.add(domainBox);
         domainPick.add(newDomainButton);
         domainPick.add(renameDomainButton);
@@ -349,7 +349,7 @@ public class ModelBuilderFrame extends JFrame {
         runRow2.add(showQueryLogsButton);
         runRow2.add(openSavedRunButton);
 
-        JPanel runSection = new JPanel(new GridLayout(0, 1, 0, 0));
+        runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
         runSection.add(runRowReuse);
         runSection.add(runRow2);
@@ -661,8 +661,6 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.afterChange(v -> modelChanged());
         classModelPanel.onImportClass(this::importClassConfiguration);
-        classModelPanel.onManageModules(() -> classModelPanel.selectConfigurationSection(
-                SingleRootClassModelPanel.ConfigurationSection.SHARED_MODULES));
 
         sourceWorkbench.afterApplyField(f -> {
             modelChanged();
@@ -952,7 +950,7 @@ public class ModelBuilderFrame extends JFrame {
                 switchToDomain(sel.toString());
             }
         });
-        newDomainButton.addActionListener(e -> newDomain());
+        newDomainButton.addActionListener(e -> newProject());
         renameDomainButton.addActionListener(e -> renameDomain());
         deleteDomainButton.addActionListener(e -> deleteDomain());
 
@@ -978,6 +976,7 @@ public class ModelBuilderFrame extends JFrame {
         });
 
         sourceWorkbench.edit(projectModel.rootClass());
+        refreshProjectKindUi();
     }
 
     private static java.util.List<String> enrichmentDetails(
@@ -1733,14 +1732,16 @@ public class ModelBuilderFrame extends JFrame {
 
         domainBox.setEnabled(!locked);
         newDomainButton.setEnabled(!locked);
-        renameDomainButton.setEnabled(!locked);
+        renameDomainButton.setEnabled(!locked
+                && !(projectModel.isModel() && projectModel.staticModel()));
         deleteDomainButton.setEnabled(!locked);
         loadModelButton.setEnabled(!locked);
         loadSavedButton.setEnabled(!locked);
         saveEverythingButton.setEnabled(!locked);
         depthSpinner.setEnabled(!locked);
-        classModelPanel.setEditingEnabled(!locked);
-        sourceWorkbench.setEditingEnabled(!locked);
+        boolean editable = !locked && !(projectModel.isModel() && projectModel.staticModel());
+        classModelPanel.setEditingEnabled(editable);
+        sourceWorkbench.setEditingEnabled(editable);
         showEntityKindsButton.setEnabled(!locked);
         showGuideButton.setEnabled(!locked);
 
@@ -1758,6 +1759,27 @@ public class ModelBuilderFrame extends JFrame {
             EditableComponents.setEditable(guideWindow.getContentPane(), !locked);
         }
 
+        revalidate();
+        repaint();
+    }
+
+    private void refreshProjectKindUi() {
+        boolean model = projectModel.isModel();
+        projectKindLabel.setText(model ? "Model:" : "Domain:");
+        newDomainButton.setText("New…");
+        renameDomainButton.setText(model ? "Rename model" : "Rename domain");
+        deleteDomainButton.setText(model ? "Delete model" : "Delete domain");
+        saveEverythingButton.setText(model ? "Save model" : "Save domain");
+        saveEverythingButton.setToolTipText(model
+                ? "Save this model's reusable configuration. Models have no instances."
+                : "Save this domain's configuration and generated instances together.");
+        runSection.setVisible(projectModel.supportsExecution());
+        loadSavedButton.setVisible(projectModel.supportsExecution());
+        boolean editable = !configurationLocked
+                && !(model && projectModel.staticModel());
+        renameDomainButton.setEnabled(editable);
+        classModelPanel.setEditingEnabled(editable);
+        sourceWorkbench.setEditingEnabled(editable);
         revalidate();
         repaint();
     }
@@ -1918,8 +1940,10 @@ public class ModelBuilderFrame extends JFrame {
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
+            refreshProjectKindUi();
             rememberCurrentDomain();
-            logWindow.info("Loaded domain \"" + projectModel.name() + "\".");
+            logWindow.info("Loaded " + (projectModel.isModel() ? "model" : "domain")
+                    + " \"" + projectModel.name() + "\".");
             return true;
         } catch (Exception ex) {
             reportGenerationError(ex);
@@ -1927,35 +1951,46 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
-    private void newDomain() {
-        String name = JOptionPane.showInputDialog(
-                this, "New domain name:", "New domain",
-                JOptionPane.QUESTION_MESSAGE);
-        if (name == null) {
-            return;
-        }
-        name = name.trim();
+    private void newProject() {
+        JTextField nameField = new JTextField(22);
+        JComboBox<GeneratedProjectModel.ProjectKind> kind = new JComboBox<>(
+                GeneratedProjectModel.ProjectKind.values());
+        JPanel form = new JPanel(new GridLayout(0, 2, 6, 6));
+        form.add(new JLabel("Name:"));
+        form.add(nameField);
+        form.add(new JLabel("Kind:"));
+        form.add(kind);
+        if (JOptionPane.showConfirmDialog(this, form, "New domain or model",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        String name = nameField.getText().trim();
         if (name.isBlank()) {
             return;
         }
-        if (findDataset(name) != null) {
+        String requestedKey = dataset.DomainStorage.key(name);
+        String existingName = storage.modelBackedNames().stream()
+                .filter(candidate -> dataset.DomainStorage.key(candidate).equals(requestedKey))
+                .findFirst().orElse(null);
+        if (existingName != null) {
             int c = JOptionPane.showConfirmDialog(this,
-                                                  "A domain \"" + name + "\" already exists. Switch to it?",
-                                                  "Domain exists", JOptionPane.OK_CANCEL_OPTION);
+                                                  "A project \"" + existingName
+                                                          + "\" already uses this name. Switch to it?",
+                                                  "Project exists", JOptionPane.OK_CANCEL_OPTION);
             if (c == JOptionPane.OK_OPTION) {
-                switchToDomain(name);
+                switchToDomain(existingName);
             } else {
                 refreshDomainBox();
             }
             return;
         }
-        if (!confirmDiscardChanges("New domain")) {
+        if (!confirmDiscardChanges("New project")) {
             refreshDomainBox();
             return;
         }
 
         GeneratedProjectModel fresh = new GeneratedProjectModel();
         fresh.name(name);
+        fresh.projectKind((GeneratedProjectModel.ProjectKind) kind.getSelectedItem());
         // Start with one neutrally-named root class the user then configures.
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
@@ -1967,8 +2002,9 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.edit(projectModel.rootClass());
         syncDepthSpinnerToActiveClass();
         refreshDomainBox();
-        logWindow.info("Created new domain \"" + name + "\". Configure its "
-                               + "classes, then \"Save domain\" to persist + register it.");
+        refreshProjectKindUi();
+        logWindow.info("Created new " + (fresh.isModel() ? "model" : "domain")
+                + " \"" + name + "\". Configure its classes, then save it.");
     }
 
     // Rename in place: move the domain folder and re-key the files inside, then
@@ -1976,8 +2012,9 @@ public class ModelBuilderFrame extends JFrame {
     private void renameDomain() {
         String oldName = projectModel.name();
         String oldKey = projectKey();
+        String kind = projectModel.isModel() ? "model" : "domain";
         String name = (String) JOptionPane.showInputDialog(
-                this, "Rename domain:", "Rename domain",
+                this, "Rename " + kind + ":", "Rename " + kind,
                 JOptionPane.QUESTION_MESSAGE, null, null, oldName);
         if (name == null) {
             return;
@@ -1989,9 +2026,9 @@ public class ModelBuilderFrame extends JFrame {
 
         switch (storage.rename(oldName, name)) {
             case dataset.DomainStorage.Rename.FolderTaken taken -> JOptionPane.showMessageDialog(
-                    this, "A domain folder already exists at\n" + taken.existing().getPath()
+                    this, "A project folder already exists at\n" + taken.existing().getPath()
                             + "\nChoose a different name.",
-                    "Rename domain", JOptionPane.WARNING_MESSAGE);
+                    "Rename " + kind, JOptionPane.WARNING_MESSAGE);
             case dataset.DomainStorage.Rename.Failed failed ->
                     reportGenerationError(failed.cause());
             case dataset.DomainStorage.Rename.Done done -> {
@@ -1999,19 +2036,21 @@ public class ModelBuilderFrame extends JFrame {
                 rememberCurrentDomain();
                 modelChanged();
                 refreshDomainBox();
-                logWindow.info("Renamed domain \"" + oldName + "\" -> \"" + done.name() + "\".");
+                logWindow.info("Renamed " + kind + " \"" + oldName + "\" -> \""
+                        + done.name() + "\".");
             }
         }
     }
 
     private void deleteDomain() {
         String name = projectModel.name();
+        String kind = projectModel.isModel() ? "model" : "domain";
         File dir = projectDataDir();
         int c = JOptionPane.showConfirmDialog(this,
-                                              "Delete domain \"" + name + "\"?\n\n"
+                                              "Delete " + kind + " \"" + name + "\"?\n\n"
                                                       + "Removes it from the registry and deletes:\n"
                                                       + dir.getPath() + "\n\nThis cannot be undone.",
-                                              "Delete domain",
+                                              "Delete " + kind,
                                               JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         if (c != JOptionPane.OK_OPTION) {
             refreshDomainBox();
@@ -2019,7 +2058,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         try {
             storage.delete(name);
-            logWindow.info("Deleted domain \"" + name + "\".");
+            logWindow.info("Deleted " + kind + " \"" + name + "\".");
         } catch (Exception ex) {
             reportGenerationError(ex);
         }
@@ -2376,6 +2415,10 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void saveEverything() {
+        if (projectModel.isModel()) {
+            saveModelOnly();
+            return;
+        }
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
         try {
@@ -2528,6 +2571,29 @@ public class ModelBuilderFrame extends JFrame {
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             reportGenerationError(ex);
+        }
+    }
+
+    private void saveModelOnly() {
+        try {
+            sourceWorkbench.applyEdits();
+            String plan = "Save the model \"" + projectModel.name() + "\"?\n\n"
+                    + "Configuration: " + modelFile().getPath()
+                    + "\n\nModels do not generate or save instances.";
+            if (JOptionPane.showConfirmDialog(this, plan, "Save model",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
+                    != JOptionPane.OK_OPTION) return;
+            modelFile().getParentFile().mkdirs();
+            new GeneratedProjectModelStore().save(projectModel, modelFile());
+            rememberCurrentDomain();
+            sourceWorkbench.refreshDomainOverview();
+            refreshDomainBox();
+            logWindow.info("Saved model \"" + projectModel.name() + "\" to "
+                    + modelFile().getPath());
+            JOptionPane.showMessageDialog(this, "Configuration: " + modelFile().getPath(),
+                    "Saved model", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception failure) {
+            reportGenerationError(failure);
         }
     }
 

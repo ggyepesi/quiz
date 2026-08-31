@@ -15,12 +15,12 @@ final class DomainOverviewPanel extends JPanel {
 
     private final GeneratedProjectModel project;
     private Supplier<Status> status = () -> Status.EMPTY;
-    private final JLabel domain = new JLabel();
+    private final JLabel projectName = new JLabel();
+    private final JLabel projectKind = new JLabel();
     private final JLabel rootClass = new JLabel();
     private final JLabel classes = new JLabel();
     private final JLabel selections = new JLabel();
     private final JLabel kinds = new JLabel();
-    private final JLabel imports = new JLabel();
     private final JLabel modelFile = new JLabel();
     private final JLabel snapshot = new JLabel();
     private final JLabel generated = new JLabel();
@@ -34,15 +34,15 @@ final class DomainOverviewPanel extends JPanel {
         c.anchor = GridBagConstraints.NORTHWEST;
         c.fill = GridBagConstraints.HORIZONTAL;
         int row = 0;
-        JLabel title = new JLabel("Domain overview");
+        JLabel title = new JLabel("Project overview");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 17f));
         GridBagUtils.wideRow(this, row++, title);
-        GridBagUtils.labeledRow(this, c, row++, "Domain:", domain);
-        GridBagUtils.labeledRow(this, c, row++, "Root class:", rootClass);
+        GridBagUtils.labeledRow(this, c, row++, "Name:", projectName);
+        GridBagUtils.labeledRow(this, c, row++, "Kind:", projectKind);
+        GridBagUtils.labeledRow(this, c, row++, "Generation root:", rootClass);
         GridBagUtils.labeledRow(this, c, row++, "Classes:", classes);
         GridBagUtils.labeledRow(this, c, row++, "Vocabularies / populations:", selections);
         GridBagUtils.labeledRow(this, c, row++, "Entity-kind rules:", kinds);
-        GridBagUtils.labeledRow(this, c, row++, "Shared modules:", imports);
         GridBagUtils.labeledRow(this, c, row++, "Model:", modelFile);
         GridBagUtils.labeledRow(this, c, row++, "Snapshot:", snapshot);
         GridBagUtils.labeledRow(this, c, row++, "Current generated objects:", generated);
@@ -63,18 +63,19 @@ final class DomainOverviewPanel extends JPanel {
     void refresh() {
         Status current = status.get();
         if (current == null) current = Status.EMPTY;
-        domain.setText(project.name());
-        rootClass.setText(project.rootClass() == null ? "—" : project.rootClass().className());
+        projectName.setText(project.name());
+        projectKind.setText(project.isModel() ? "Model" : "Domain");
+        rootClass.setText(project.isModel() ? "not applicable"
+                : project.rootClass() == null ? "—" : project.rootClass().className());
         classes.setText(Integer.toString(project.classes().size()));
         selections.setText(Integer.toString(project.selections().size()));
         long configuredKinds = project.entityKindRules().stream()
                 .filter(rule -> rule != null && rule.isConfigured()).count();
         kinds.setText(configuredKinds + " configured / " + project.entityKindRules().size());
-        imports.setText(project.imports().isEmpty() ? "none"
-                : project.imports().stream().map(wikidata.explore.model.ModelModuleImport::coordinate)
-                        .collect(java.util.stream.Collectors.joining(", ")));
         modelFile.setText(current.modelSaved() ? "saved" : "not saved yet");
-        snapshot.setText(current.snapshotSaved() ? "saved" : "not generated yet");
-        generated.setText(Integer.toString(current.generatedObjects()));
+        snapshot.setText(project.isModel() ? "not applicable"
+                : current.snapshotSaved() ? "saved" : "not generated yet");
+        generated.setText(project.isModel() ? "not applicable"
+                : Integer.toString(current.generatedObjects()));
     }
 }
