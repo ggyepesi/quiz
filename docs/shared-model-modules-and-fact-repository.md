@@ -10,6 +10,12 @@ across three domains (Milestone 3), declaration-level coverage already exists an
 re-keying rather than building (Layer 2, Milestone 5), and deciding what a reference IS
 gates everything else (Milestone 0).
 
+The repository key is a ⟨namespace, entity, **selector**⟩, not a Wikidata property — most
+of what the pipeline already acquires is not property-shaped. A pin is only reproducible
+against an immutable version, so an import records a content digest. And a domain
+subtracts acquisition by declaring module fields optional, never by deriving a class:
+inheritance adds structure and cannot remove a field's demand.
+
 ## Motivation
 
 `Person` and its owned `Name` structure are useful in several domains. Copying their
@@ -80,9 +86,12 @@ The initial overlay should be deliberately narrow, and it is two different thing
 **Acquisition overlay** — whether an expensive optional field is acquired for this
 domain. This one is not presentation: it changes the domain's fact demand, and therefore
 what the repository is asked for and what "covered" means for a shared source entity. It
-is listed separately so it is not slipped in as a display preference, and the first slice
-may reasonably omit it — a domain that wants fewer facts can declare a derived class
-until the repository's coverage semantics are settled.
+is listed separately so it is not slipped in as a display preference.
+
+For the first slice, take one of two positions: acquire every field the module declares,
+or let the module mark selected fields explicitly optional and let a domain opt in. A
+derived class is NOT the way to subtract — inheritance adds structure, it does not remove
+an inherited field or the demand that field creates.
 
 An overlay must not silently redefine identity, field type, cardinality, property
 mapping or ownership. A domain that needs a structural difference should declare an
@@ -106,6 +115,18 @@ places a name is a reference grows with the model vocabulary, and every addition
 place an import has to be resolved. Several defects this month came
 from exactly that arrangement.
 
+Pinning also has to mean something. `people@1` is reproducible only if version 1 can
+never be overwritten and stays available, so a saved import records four things:
+
+- module id;
+- declared version;
+- content digest of the resolved declarations;
+- the resolved declaration identities themselves.
+
+A declaration identity is stable ACROSS versions — `shared.people.Person` is the same
+declaration in `people@1` and `people@2`. The version says which definition of it a
+domain resolved. The digest is what makes a pin verifiable rather than trusted.
+
 It also cannot be deferred quietly: `shared.people.Person` imported into a domain that
 already has a local `Person`, or a vocabulary of that name, is precisely the collision the
 namespace guards were written for. Either it becomes Milestone 0 below, or the first slice
@@ -118,7 +139,7 @@ The repository stores reusable source evidence, not generated domain instances. 
 conceptual key is:
 
 ```text
-⟨source namespace, source entity identifier, fact/property kind⟩
+⟨source namespace, source entity, fact selector⟩
 ```
 
 For a Wikidata person it may retain:
@@ -137,6 +158,18 @@ Wikidata · QID
 Each retained fact carries acquisition coverage and provenance: what was requested,
 whether the source answered, retrieval/version information, and whether the result was
 empty. An empty answer is therefore reusable and is not requested forever.
+
+**A property is one kind of selector, not the key.** A Wikidata property covers P18 and
+P569 well and covers little else the pipeline already acquires: labels and aliases are
+per language, sitelinks are per site, and Wikipedia category memberships, infobox
+parameters, statement qualifiers and retrieved documents are none of those. A snapshot
+entity today carries `aliases`, `wikipediaCategories`, `wikipediaInfoboxTemplate`,
+`wikipediaInfoboxParameters` and their source documents alongside its claims, so a
+property-shaped key would leave most of that uncacheable.
+
+The selector is therefore provider-owned and opaque to the repository: a property, a
+metadata kind, a language, a category membership, an infobox parameter. The repository
+stores and compares selectors; only the provider constructs and interprets them.
 
 The repository is datasource-neutral at its boundary. Provider adapters translate
 their native identifiers, properties, documents and version markers into the common
@@ -170,9 +203,11 @@ empty-answer banking of acceptance criterion 5, working today.
 Two things separate it from this repository, and naming them keeps the remaining work
 honest:
 
-1. **Scope.** It lives in one domain's snapshot, so nothing crosses a run or a domain.
+1. **Scope.** It survives later runs that continue from the same domain snapshot, and
+   already stops those runs refetching what a previous Enrich covered. What it cannot do
+   is serve an independently generated snapshot, or another domain.
 2. **Key.** It is keyed by ⟨class, field, property⟩ — DOMAIN coordinates. The repository
-   needs ⟨source namespace, entity identifier, property⟩ — SOURCE coordinates. That
+   needs ⟨source namespace, source entity, fact selector⟩ — SOURCE coordinates. That
    re-keying is what makes one acquired fact reusable by a domain that calls the class
    something else, and it is the substance of Layer 2.
 
@@ -218,17 +253,24 @@ The default policy for Nobel should be:
 - do not serve them as laureates or top-level People;
 - allow a later explicit graph policy to expand selected relations.
 
-## Open question: imported classes in local identity
+## Imported classes in local identity
 
-A local statement or aggregate class will reference an imported one — Nobel's
-`LaureatesWithMotivation.laureates → Laureate`, where `Laureate` and `Person` become
-imports. May an imported class take part in a LOCAL canonical or aggregate key?
+A local statement or aggregate class will reference an imported one, and the answer is
+less alarming than it first looks.
 
-Probably yes, and the mechanics already work: a key component is rendered by its
-identifier, and an imported class's instances have source identity like any other. But it
-means a domain's record identity now spans a version pin, so the answer has to be explicit
-before Milestone 1 fixes the module format. If it is yes, updating an import must report
-identity impact, not only schema impact.
+`Laureate` stays LOCAL. The module contains `Person` and `Name`; Nobel's `Laureate` is the
+domain's own participation class — it holds the 33 organisations that are not people —
+and it should extend or classify as the imported `Person` rather than be replaced by it.
+
+A canonical or aggregate key containing a Person-valued field is rendered by that
+INSTANCE's source identity, not by anything about its class: `StableIdentity` reads a
+reference's identifier, so the key component is the QID. A record's identity therefore
+does not span a version pin merely because the class it references was re-versioned.
+
+What DOES threaten record identity is a module version that changes identity DERIVATION —
+a different canonical key, a changed ownership regime, a field that stops being
+single-valued. So an import update must report identity impact when it changes those, and
+need not when it only adds or renames a field.
 
 ## Nobel proving sequence
 
@@ -284,7 +326,7 @@ classes and have diverged, which is the proposal's own motivation observed in th
 |---|---|---|
 | History | 10 fields: `structuredName`, `birthName` P1477, `nativeName` P1559, `pseudonyms` P742, `dateOfBirth` P569, **`offices`**, `dateOfDeath` P570, `type` P31, `spouse` P26, `image` P18 | `givenName` P735, `familyName` P734 |
 | Oscars | 6 fields: the same first five, then **`deathDate`** P570 | identical |
-| Nobel | none | — |
+| Nobel | 0 fields; identity/label/aliases bindings and a `Q5` entity-kind rule | — |
 
 `Name` is identical in both — same fields, types, cardinalities and property mappings —
 and extracts unchanged; the only difference in the saved JSON is unset values written as
@@ -300,8 +342,15 @@ anything moves:
   impossible to leave undecided, since one domain's saved data uses each.
 
 Then: migrate Nobel first, since it declares no `Person` fields at all and so cannot
-regress; prove Oscars generates equivalently; migrate History last, because it carries
-the fields the module will not take.
+regress; prove Oscars generates equivalently; migrate History last, because it carries the
+fields the module will not take.
+
+History's migration has one decision the others do not. If `HistoricalPerson` extends
+`shared.people.Person`, existing fields and entity-kind rules that target `Person` do not
+begin producing `HistoricalPerson` on their own — they name `Person` and will keep
+naming it. The milestone has to say, field by field and population by population, which
+target the shared base and which receive the local subtype. Getting this wrong is silent:
+the model still compiles and the subtype simply stays empty.
 
 ### Milestone 4 — enrich Person
 
@@ -315,7 +364,8 @@ the fields the module will not take.
 Coverage is not a new mechanism here; `LoadedDeclaration` already banks it per snapshot,
 exact QIDs and empty answers included. This milestone re-keys and outlives it.
 
-- Re-key coverage from ⟨class, field, property⟩ to ⟨source namespace, entity, property⟩.
+- Re-key coverage from ⟨class, field, property⟩ to ⟨source namespace, source entity,
+  fact selector⟩.
   This is the substantive change: it is what lets a fact acquired for one domain answer
   another domain's demand for the same source entity.
 - Define the datasource-neutral fact and coverage records at that key.
