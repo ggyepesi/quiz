@@ -133,6 +133,22 @@ class GeneratedSourceGroupingTest {
     }
 
     @Test
+    void compatibilityRegistrationReportsATypeConflict(@TempDir Path dir)
+            throws Exception {
+        File snapshot = dir.resolve("state.snapshot.json").toFile();
+        ReflectionDomain domain = new ReflectionDomain(List.of(new State("Austria")));
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                ViewableToWdo.pool(domain.memberRoots(), domain), snapshot, domain);
+        quiz.web.ViewableStore store = new quiz.web.ViewableStore();
+
+        GeneratedSource.registerAll(store, "State", snapshot);
+
+        IllegalStateException conflict = assertThrows(IllegalStateException.class,
+                () -> GeneratedSource.registerAll(store, "State", snapshot));
+        assertTrue(conflict.getMessage().contains("State"), conflict.getMessage());
+    }
+
+    @Test
     void ordinaryViewableGroupGraphRebuildsWithoutStructuralMetadata(
             @TempDir Path dir) throws Exception {
         State austria = new State("Austria");

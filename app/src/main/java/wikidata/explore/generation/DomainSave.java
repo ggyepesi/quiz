@@ -59,9 +59,8 @@ public final class DomainSave {
      *
      * <p>Best effort: a model that cannot be compiled has no signature, and an empty
      * signature means no drift claim rather than a claim of drift.
-     */
-    /**
-     * Declaration identities: stable names for a declaration, minted per declaration and
+     *
+     * <p>Declaration identities are stable names for a declaration, minted per declaration and
      * carried on disk so a reference survives a rename. They say nothing about what a
      * model would GENERATE, and they are unique per constructed object, so hashing them
      * would make two structurally identical models sign differently and every run report
@@ -74,7 +73,7 @@ public final class DomainSave {
     private static final java.util.Set<String> DECLARATION_IDENTITY_FIELDS = java.util.Set.of(
             "declarationId", "classDeclarationId", "entityDeclarationId",
             "baseClassId", "classId", "ownerClassId", "sourceClassId",
-            "valueSelectionId", "referenceId");
+            "valueSelectionId");
 
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {

@@ -184,12 +184,12 @@ public class GeneratedSource implements ViewableSource {
      */
     public static void registerAll(ViewableStore store, String defaultType, File file)
             throws Exception {
-        registerAll(store, defaultType, file, null, "");
+        requireNoConflicts(registerAll(store, defaultType, file, null, ""));
     }
 
     public static void registerAll(ViewableStore store, String defaultType,
                                    File file, File modelFile) throws Exception {
-        registerAll(store, defaultType, file, modelFile, "");
+        requireNoConflicts(registerAll(store, defaultType, file, modelFile, ""));
     }
 
 
@@ -222,6 +222,12 @@ public class GeneratedSource implements ViewableSource {
             }
         }
         return conflicts;
+    }
+
+    private static void requireNoConflicts(java.util.List<String> conflicts) {
+        if (conflicts != null && !conflicts.isEmpty()) {
+            throw new IllegalStateException(String.join(System.lineSeparator(), conflicts));
+        }
     }
 
     @Override

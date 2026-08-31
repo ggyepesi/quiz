@@ -78,12 +78,11 @@ public class ViewableStore {
     }
 
     public synchronized Viewable get(String type, String id) throws Exception {
-        String key = key(type, id);
-        if (index.containsKey(key)) {
-            return index.get(key);
-        }
+        // A registered source owns its type. Load it before consulting references
+        // indexed while another type was loaded; otherwise request order decides which
+        // domain's copy of Person wins.
         ensureLoaded(type);
-        return index.get(key);
+        return index.get(key(type, id));
     }
 
     private void ensureLoaded(String type) throws Exception {
@@ -102,7 +101,7 @@ public class ViewableStore {
         for (Viewable q : source.load()) {
             if (q != null) {
                 top.add(q);
-                indexReachable(q, visited);
+                indexTopLevel(q, visited);
             }
         }
 
@@ -188,6 +187,19 @@ public class ViewableStore {
             }
         }
         return null;
+    }
+
+    private void indexTopLevel(Viewable q, Set<Object> visited) {
+        if (q == null || !visited.add(q)) {
+            return;
+        }
+
+        // Unlike a merely reachable reference, this value came from the source
+        // registered for its type and is therefore authoritative for that address.
+        index.put(key(q.typeName(), q.getIdentifier()), q);
+        for (Viewable child : children(q)) {
+            indexReachable(child, visited);
+        }
     }
 
     /** Index q and, recursively, every Viewable reachable through its fields. */

@@ -1,6 +1,7 @@
 package quiz.web;
 
 import objectview.Viewable;
+import objectview.ViewableAdapter;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
@@ -20,6 +21,24 @@ class ViewableStoreTypeConflictTest {
 
     private record Fake(String type, List<Viewable> items) implements ViewableSource {
         @Override public Collection<? extends Viewable> load() { return items; }
+    }
+
+    private static final class Item extends ViewableAdapter {
+        private final String type;
+        private final String id;
+        private final String label;
+        private final Viewable related;
+
+        private Item(String type, String id, String label, Viewable related) {
+            this.type = type;
+            this.id = id;
+            this.label = label;
+            this.related = related;
+        }
+
+        @Override public String typeName() { return type; }
+        @Override public String getIdentifier() { return id; }
+        @Override public String getDisplayName() { return label; }
     }
 
     @Test void twoSourcesCannotServeOneTypeName() {
@@ -65,5 +84,22 @@ class ViewableStoreTypeConflictTest {
         store.register(new Fake("Nomination", List.of()), "oscarnominations");
 
         assertEquals(List.of("NobelPrize", "Nomination"), store.types());
+    }
+
+    @Test void aRegisteredTypeOutranksACopyReachedFromAnotherDataset()
+            throws Exception {
+        ViewableStore store = new ViewableStore();
+        Item oscarPerson = new Item("Person", "Q1", "Oscar person", null);
+        Item historyPerson = new Item("Person", "Q1", "History person", null);
+        Item holding = new Item("OfficeHolding", "H1", "Holding", historyPerson);
+        store.register(new Fake("Person", List.of(oscarPerson)), "oscarnominations");
+        store.register(new Fake("OfficeHolding", List.of(holding)), "History");
+
+        // Loading the holding first used to let its reachable Person occupy Q1.
+        assertEquals(List.of(holding), store.list("OfficeHolding"));
+
+        assertEquals(oscarPerson, store.get("Person", "Q1"),
+                "the source registered for Person owns Person addresses regardless of "
+                        + "which other dataset was requested first");
     }
 }
