@@ -1625,15 +1625,29 @@ public class ModelBuilderFrame extends JFrame {
                                         + "comes from. Create a model and put the classes "
                                         + "there first — a model may copy them from a "
                                         + "domain."
-                                : "No other saved project is available to copy from.",
+                                : "There is no other saved domain or model to copy "
+                                        + "from.",
                         importing ? "Import class" : "Copy class",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
-            String domain = (String) JOptionPane.showInputDialog(
-                    this, importing ? "Import from model:" : "Copy from project:",
-                    importing ? "Import class" : "Copy class configuration",
-                    JOptionPane.PLAIN_MESSAGE, null, sources.toArray(), sources.getFirst());
+            // The reader is already in a domain or a model, and those are the only two
+            // words for this. A third one — "project" — names the same thing again and
+            // reads as if it might mean the one they are in. Each entry says its own
+            // kind instead, which also shows why the import list is shorter.
+            java.util.LinkedHashMap<String, String> labelled =
+                    new java.util.LinkedHashMap<>();
+            for (String name : sources) {
+                labelled.put(name + (storage.isModelKind(name) ? "  (model)"
+                        : "  (domain)"), name);
+            }
+            Object[] sourceChoices = labelled.keySet().toArray();
+            String chosen = (String) JOptionPane.showInputDialog(
+                    this, importing ? "Import a class from:" : "Copy a class from:",
+                    importing ? "Import class" : "Copy class",
+                    JOptionPane.PLAIN_MESSAGE, null, sourceChoices, sourceChoices[0]);
+            if (chosen == null) return;
+            String domain = labelled.get(chosen);
             if (domain == null) return;
 
             File sourceFile = storage.modelFileOf(domain);
@@ -1659,21 +1673,6 @@ public class ModelBuilderFrame extends JFrame {
                 dependencies.setSelectionInterval(0, dependencyModel.size() - 1);
             }
 
-            JComboBox<ClassImportPlan.ConflictPolicy> conflictPolicy =
-                    new JComboBox<>(ClassImportPlan.ConflictPolicy.values());
-            conflictPolicy.setRenderer(new DefaultListCellRenderer() {
-                @Override public Component getListCellRendererComponent(
-                        JList<?> list, Object value, int index,
-                        boolean selected, boolean focus) {
-                    super.getListCellRendererComponent(
-                            list, value, index, selected, focus);
-                    setText(value == ClassImportPlan.ConflictPolicy.REPLACE
-                            ? "Replace conflicting target declarations"
-                            : "Keep and reuse target declarations");
-                    return this;
-                }
-            });
-
             JTextArea preview = new JTextArea(8, 52);
             preview.setEditable(false);
             preview.setLineWrap(true);
@@ -1690,9 +1689,12 @@ public class ModelBuilderFrame extends JFrame {
                     + "Supporting declarations: " + plan.selections().size()
                     + " selection(s), " + plan.kindRules().size()
                     + " entity-kind rule(s).\n"
-                    + "Conflicts: " + (plan.conflicts().isEmpty()
-                            ? "none" : String.join(", ", plan.conflicts()))
-                    + ".\n\nGenerated instances, observed vocabulary values, counts "
+                    + (plan.conflicts().isEmpty() ? ""
+                            : "\nAlready configured here and REPLACED by this: "
+                                    + String.join(", ", plan.conflicts())
+                                    + ".\nWhat is here now is lost. Rename it first if "
+                                    + "you want to keep both.\n")
+                    + "\nGenerated instances, observed vocabulary values, counts "
                     + "and curation are not copied.");
 
             JPanel choices = new JPanel();
@@ -1703,25 +1705,21 @@ public class ModelBuilderFrame extends JFrame {
                 choices.add(new JLabel("Dependent classes (selected = copy):"));
                 choices.add(new JScrollPane(dependencies));
             }
-            if (!plan.conflicts().isEmpty()) {
-                choices.add(Box.createVerticalStrut(8));
-                choices.add(new JLabel("If a name already exists:"));
-                choices.add(conflictPolicy);
-            }
-
+            // Replace or cancel, asked once. A second control offering to keep the
+            // existing declaration asked the same question a different way, and the
+            // answer it added is better reached by renaming what is here first.
             int accepted = JOptionPane.showConfirmDialog(this, choices,
-                    importing ? "Import class" : "Copy class configuration",
+                    importing ? "Import class" : "Copy class",
                     JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE);
+                    plan.conflicts().isEmpty()
+                            ? JOptionPane.PLAIN_MESSAGE : JOptionPane.WARNING_MESSAGE);
             if (accepted != JOptionPane.OK_OPTION) return;
 
             java.util.LinkedHashSet<String> selected =
                     new java.util.LinkedHashSet<>(dependencies.getSelectedValuesList());
             selected.add(className);
-            ClassImportPlan.ConflictPolicy policy =
-                    (ClassImportPlan.ConflictPolicy) conflictPolicy.getSelectedItem();
             java.util.List<GeneratedClassModel> imported =
-                    plan.apply(selected, policy, ownership);
+                    plan.apply(selected, ownership);
             modelChanged();
             GeneratedClassModel copied = projectModel.findClass(className);
             if (copied != null) classModelPanel.selectClass(copied);

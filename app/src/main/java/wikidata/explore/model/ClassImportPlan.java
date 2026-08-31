@@ -14,7 +14,10 @@ import java.util.Set;
  */
 public final class ClassImportPlan {
 
-    public enum ConflictPolicy { REPLACE, REUSE_TARGET }
+    // A name already here is replaced, or the whole thing is cancelled — the two
+    // answers an ordinary copy/paste offers. A third, "keep what is here and reuse it",
+    // was a second way to ask the same question, and what it achieved is reached more
+    // plainly by deselecting the dependency or renaming what is here first.
 
     private final GeneratedProjectModel source;
     private final GeneratedProjectModel target;
@@ -124,15 +127,12 @@ public final class ClassImportPlan {
      */
     public enum Ownership { COPY, IMPORT }
 
-    public List<GeneratedClassModel> apply(
-            Set<String> selectedClassNames,
-            ConflictPolicy policy) {
-        return apply(selectedClassNames, policy, Ownership.COPY);
+    public List<GeneratedClassModel> apply(Set<String> selectedClassNames) {
+        return apply(selectedClassNames, Ownership.COPY);
     }
 
     public List<GeneratedClassModel> apply(
             Set<String> selectedClassNames,
-            ConflictPolicy policy,
             Ownership ownership) {
         LinkedHashSet<String> selected = new LinkedHashSet<>();
         if (selectedClassNames != null) selected.addAll(selectedClassNames);
@@ -147,8 +147,6 @@ public final class ClassImportPlan {
         List<GeneratedClassModel> imported = new ArrayList<>();
         for (GeneratedClassModel sourceClass : classes) {
             if (!selected.contains(sourceClass.className())) continue;
-            GeneratedClassModel existing = candidate.findClass(sourceClass.className());
-            if (existing != null && policy == ConflictPolicy.REUSE_TARGET) continue;
             GeneratedClassModel copy = sourceClass.copy();
             // An import is owned by the model it names, and that ownership survives
             // being passed along: importing a class the source had itself imported
@@ -166,17 +164,10 @@ public final class ClassImportPlan {
         Set<String> requiredSelections = requiredSelectionNames(selected);
         for (Selection selection : selections) {
             if (!requiredSelections.contains(selection.name())) continue;
-            if (candidate.findSelection(selection.name()) != null
-                    && policy == ConflictPolicy.REUSE_TARGET) continue;
             candidate.replaceSelection(selection.copy());
         }
         for (EntityKindRule rule : kindRules) {
             if (!selected.contains(rule.className())) continue;
-            if (policy == ConflictPolicy.REUSE_TARGET
-                    && candidate.findClass(rule.className()) != null
-                    && imported.stream().noneMatch(c -> c.className().equals(rule.className()))) {
-                continue;
-            }
             candidate.replaceEntityKindRule(rule.copy());
         }
 

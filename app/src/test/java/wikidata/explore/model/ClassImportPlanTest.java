@@ -52,7 +52,7 @@ class ClassImportPlanTest {
         assertEquals(java.util.List.of("Nominees"),
                 plan.selections().stream().map(Selection::name).toList());
 
-        plan.apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+        plan.apply(Set.of("Person", "Name"));
 
         assertNotNull(target.findClass("Person"));
         assertNotNull(target.findClass("Name"));
@@ -68,13 +68,18 @@ class ClassImportPlanTest {
         ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), history(), "Person");
 
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> plan.apply(Set.of("Person"),
-                        ClassImportPlan.ConflictPolicy.REPLACE));
+                () -> plan.apply(Set.of("Person")));
 
         assertTrue(failure.getMessage().contains("Person → Name"));
     }
 
-    @Test void aTargetDependencyMayBeReusedWithoutCopyingIt() {
+    /**
+     * Keeping a dependency this project already has is reached by deselecting it, not
+     * by a policy: what is copied is what is selected. That is the honest form of the
+     * question — the reader sees the class named and chooses — and it is why the
+     * "keep and reuse" option was not worth a control of its own.
+     */
+    @Test void deselectingADependencyKeepsTheOneAlreadyHere() {
         GeneratedProjectModel target = history();
         GeneratedClassModel localName = new GeneratedClassModel("Name");
         localName.classKind(ClassKind.OWNED);
@@ -82,10 +87,11 @@ class ClassImportPlanTest {
         target.addClass(localName);
         ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), target, "Person");
 
-        plan.apply(Set.of("Person"), ClassImportPlan.ConflictPolicy.REUSE_TARGET);
+        plan.apply(Set.of("Person"));
 
         assertEquals("local", target.findClass("Name").fields().getFirst().name(),
-                "reuse keeps the target declaration rather than the source dependency");
+                "the class already here is untouched by a copy that did not "
+                        + "select it");
         assertNotNull(target.findClass("Person"));
     }
 
@@ -97,7 +103,7 @@ class ClassImportPlanTest {
         target.addClass(old);
 
         ClassImportPlan.of(source, target, "Person").apply(
-                Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                Set.of("Person", "Name"));
 
         assertNotSame(old, target.findClass("Person"));
         assertEquals("Event", target.rootClass().className());
@@ -119,7 +125,7 @@ class ClassImportPlanTest {
         GeneratedProjectModel model = emptyModel();
 
         ClassImportPlan.of(oscarPeople(), model, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Person", "Name"));
 
         assertNotNull(model.findClass("Person"));
         assertNotNull(model.findClass("Name"));
@@ -138,11 +144,11 @@ class ClassImportPlanTest {
         GeneratedProjectModel model = emptyModel();
 
         ClassImportPlan.of(source, model, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Name"));
         assertNotNull(model.findClass("Name"));
 
         ClassImportPlan.of(source, model, "Person")
-                .apply(Set.of("Person"), ClassImportPlan.ConflictPolicy.REUSE_TARGET);
+                .apply(Set.of("Person"));
 
         assertNotNull(model.findClass("Person"));
         assertEquals("Name",
@@ -175,8 +181,7 @@ class ClassImportPlanTest {
 
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(source, model, "NobelPrize").apply(
-                Set.of("NobelPrize", "Laureate", "Person", "Name"),
-                ClassImportPlan.ConflictPolicy.REPLACE);
+                Set.of("NobelPrize", "Laureate", "Person", "Name"));
 
         for (String name : java.util.List.of(
                 "NobelPrize", "Laureate", "Person", "Name")) {
@@ -192,7 +197,7 @@ class ClassImportPlanTest {
     @Test void aCopiedClassBelongsToTheProjectThatCopiedIt() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Person", "Name"));
 
         assertEquals("", model.findClass("Person").importedFrom());
         assertFalse(model.findClass("Person").isImported());
@@ -215,7 +220,7 @@ class ClassImportPlanTest {
     @Test void anImportedClassStaysOwnedByTheModelItComesFrom() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertEquals("Oscars", model.findClass("Person").importedFrom());
@@ -239,13 +244,13 @@ class ClassImportPlanTest {
         GeneratedProjectModel relay = emptyModel();
         relay.name("Relay");
         ClassImportPlan.of(oscarPeople(), relay, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         GeneratedProjectModel destination = emptyModel();
         destination.name("Nobel");
         ClassImportPlan.of(relay, destination, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertEquals("Oscars", destination.findClass("Person").importedFrom());
@@ -260,14 +265,14 @@ class ClassImportPlanTest {
         GeneratedProjectModel relay = emptyModel();
         relay.name("Relay");
         ClassImportPlan.of(oscarPeople(), relay, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Name"),
                         ClassImportPlan.Ownership.IMPORT);
         assertTrue(relay.findClass("Name").isImported());
 
         GeneratedProjectModel destination = emptyModel();
         destination.name("Nobel");
         ClassImportPlan.of(relay, destination, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE);
+                .apply(Set.of("Name"));
 
         assertFalse(destination.findClass("Name").isImported(),
                 "a copy claims nothing, whatever it was copied from");
@@ -278,7 +283,7 @@ class ClassImportPlanTest {
         GeneratedProjectModel source = oscarPeople();
         GeneratedProjectModel importer = emptyModel();
         ClassImportPlan.of(source, importer, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(importer.findClass("Name").isImported());
@@ -294,7 +299,7 @@ class ClassImportPlanTest {
     @Test void anImportedClassCannotBeRenamedByTheProjectThatImportedIt() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Person")
-                .apply(Set.of("Person", "Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(model.findClass("Name").isImported());
@@ -313,7 +318,7 @@ class ClassImportPlanTest {
     @Test void savingAnImportedClassUnchangedIsNotARenameFailure() {
         GeneratedProjectModel model = emptyModel();
         ClassImportPlan.of(oscarPeople(), model, "Name")
-                .apply(Set.of("Name"), ClassImportPlan.ConflictPolicy.REPLACE,
+                .apply(Set.of("Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(model.renameClass("Name", "Name"),
