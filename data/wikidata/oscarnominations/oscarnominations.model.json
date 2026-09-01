@@ -101,9 +101,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P1411",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -252,9 +252,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P166",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -416,9 +416,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P1411",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -567,9 +567,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P166",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -723,9 +723,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P31",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -881,9 +881,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P136",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -1038,9 +1038,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P585",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],

@@ -483,9 +483,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "",
-            "valueLanguage" : "",
             "property" : "P166",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
