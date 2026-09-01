@@ -1,7 +1,8 @@
 # Models and domains
 
 Status: model configuration and model use are implemented — the latter as copy and
-import, see step 2. Instance ownership is deliberately deferred.
+import, see step 2. Instance ownership is decided: instances stay per-domain, and nothing
+is shared between domains.
 
 ## Rule number 1: keep it simple
 
@@ -161,24 +162,47 @@ enough to regenerate.
 Separately open, and smaller: whether an importing project may ever override an imported
 class, and in what form. That wants experience with models first.
 
-## Step 3: instance ownership and reuse
+## Step 3: instance ownership — instances stay per-domain
 
-After model use works, decide separately:
+**Decided: a domain owns its instances, and two domains that import the same class hold
+their own.** If Nobel and Oscars both import `People.Person`, each generates its own Marie
+Curie. Nothing is shared, and importing a class says nothing about where its instances
+live — which is what kept step 2 small and is why this stayed a separate decision.
 
-- where instances conforming to model classes are stored;
-- whether two domains retain separate projections of the same source entity;
-- how shared source facts are reused;
-- how model-derived instances enter a domain snapshot;
-- how conflicts, provenance and domain membership are represented.
+The reason is reproducibility. A domain's snapshot is currently derivable from that
+domain's own model, and every part of the pipeline leans on it: regenerating is the answer
+to almost every kind of drift, and it works because nothing outside the domain contributes
+to its contents. Sharing instances would trade that away first and hardest, and a shared
+store is recoverable later while reproducibility, once lost, is not.
 
-No storage or merge policy is implied by configuring or using a model.
+The cost is accepted and worth stating plainly: identity work is repeated per domain, and
+the same real entity drifts as each domain curates its own copy.
+
+A model still generates nothing. It has no instances, no snapshot, and no store. "A
+model's class" only ever means configuration; instances of it belong to the domain that
+generated them.
+
+### What sharing would have to answer first
+
+Not built, and not to be started without a forcing reason — a measured cost of the
+duplication above, not the observation that it exists:
+
+- if two domains curate the same entity differently, which wins, and where is that
+  recorded;
+- what a snapshot means once part of its content came from outside the domain, and how it
+  is then reproduced;
+- how provenance survives a value produced in one domain and read in another;
+- how domain membership is expressed for an instance no single domain owns.
+
+Each of those is a mechanism this codebase does not have. Together they are the reason
+this is a decision rather than a default.
 
 ## Explicitly deferred
 
 - model versions;
 - update pins and content digests;
 - extension and field omission;
-- shared instance repositories;
+- shared instance repositories — decided against, not merely postponed (see step 3);
 - automatic extraction of classes from a domain;
 - automatic configuration changes of any kind;
 - any record, in a model, of the projects that import it (see *What a model owes its
