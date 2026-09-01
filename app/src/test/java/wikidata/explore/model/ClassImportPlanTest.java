@@ -339,4 +339,23 @@ class ClassImportPlanTest {
         assertTrue(project.renameClass("Ceremony", "Edition"));
         assertNotNull(project.findClass("Edition"));
     }
+
+    /**
+     * A new project's root class counts as already here. Creating a model named Person
+     * gives it a root class called Person, so pasting Person into it replaces the root —
+     * the case that has to be reported, and the one that reads as a fresh empty model.
+     */
+    @Test void aNewProjectsRootClassIsAConflictLikeAnyOther() {
+        GeneratedProjectModel fresh = new GeneratedProjectModel();
+        fresh.name("Person");
+        fresh.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        fresh.rootClass().className("Person");
+
+        ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), fresh, "Person");
+
+        assertEquals(java.util.Set.of("Person"), plan.conflicts(),
+                "the root class is in classes(), so it conflicts like any other");
+        assertEquals(java.util.Set.of("Name"), plan.dependencyClassNames(),
+                "and the dependency is still reported alongside it");
+    }
 }

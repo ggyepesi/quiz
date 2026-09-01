@@ -1719,21 +1719,33 @@ public class ModelBuilderFrame extends JFrame {
                     + "Supporting declarations: " + plan.selections().size()
                     + " selection(s), " + plan.kindRules().size()
                     + " entity-kind rule(s).\n"
-                    + (plan.conflicts().isEmpty() ? ""
-                            : importing
-                                    ? "\nCannot import while these names already exist here: "
-                                            + String.join(", ", plan.conflicts())
-                                            + ".\nRename or remove them first.\n"
-                                    : "\nAlready configured here and REPLACED by this: "
-                                            + String.join(", ", plan.conflicts())
-                                            + ".\nWhat is here now is lost. Rename it first if "
-                                            + "you want to keep both.\n")
                     + "\nGenerated instances, observed vocabulary values, counts "
                     + "and curation are not copied.");
 
             JPanel choices = new JPanel();
             choices.setLayout(new BoxLayout(choices, BoxLayout.Y_AXIS));
-            choices.add(new JScrollPane(preview));
+            // First, and outside the preview. Inside it the warning sat below a screenful
+            // of description in a scrolling area, so the one question that loses work was
+            // the one thing a reader had to go looking for.
+            if (!plan.conflicts().isEmpty()) {
+                JLabel warning = new JLabel("<html><b>"
+                        + (importing
+                                ? "Already here, so this import is refused: "
+                                : "Already here and REPLACED, losing what is here now: ")
+                        + String.join(", ", plan.conflicts())
+                        + "</b><br>"
+                        + (importing
+                                ? "Rename or remove them first."
+                                : "Cancel and rename it first if you want to keep both.")
+                        + "</html>");
+                warning.setForeground(new java.awt.Color(150, 40, 40));
+                warning.setBorder(BorderFactory.createEmptyBorder(2, 2, 8, 2));
+                warning.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+                choices.add(warning);
+            }
+            JScrollPane previewScroll = new JScrollPane(preview);
+            previewScroll.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            choices.add(previewScroll);
             if (!dependencyModel.isEmpty()) {
                 choices.add(Box.createVerticalStrut(8));
                 choices.add(new JLabel(importing
