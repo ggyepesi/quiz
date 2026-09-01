@@ -39,6 +39,14 @@ public final class GeneratedProjectModelStore {
                 ObjectMapper.DefaultTyping.NON_FINAL,
                 "@class");
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        // A model must serialize to the same bytes every time it is written. Map.copyOf
+        // — which SourceRecipe.parameters is — iterates in an order the JVM randomizes
+        // per process, so an untouched model produced a different file, and a different
+        // SHA-256, on each restart. DomainSave.signature is that hash, so a domain could
+        // report its instances stale purely because the workbench had been reopened.
+        // Parameters are read by name and their order means nothing, so fixing it costs
+        // nothing and makes the signature answer the question it claims to.
+        mapper.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
     }
 
     public void save(
