@@ -287,6 +287,9 @@ public class SingleRootClassModelPanel extends JPanel {
                 ? c
                 : selected instanceof GeneratedFieldModel f ? owningClassOf(f) : null;
         boolean imported = owningClass != null && owningClass.isImported();
+        if (selected instanceof wikidata.explore.model.Selection selection) {
+            imported = selection.isImported();
+        }
 
         renameClassButton.setEnabled(
                 editingEnabled && (classContext || vocabulary) && !imported);
@@ -551,6 +554,9 @@ public class SingleRootClassModelPanel extends JPanel {
                 return;
             }
 
+            if (c.isImported()) {
+                projectModel.removeImportedClass(c.importedFrom(), c.className());
+            }
             projectModel.removeClass(c);
             refresh();
             return;
@@ -562,13 +568,7 @@ public class SingleRootClassModelPanel extends JPanel {
             return null;
         }
 
-        for (GeneratedClassModel cls : projectModel.classes()) {
-            if (cls.fields().contains(f)) {
-                return cls;
-            }
-        }
-
-        return null;
+        return projectModel.declaringClass(f);
     }
 
     private void selectNode(DefaultMutableTreeNode node) {

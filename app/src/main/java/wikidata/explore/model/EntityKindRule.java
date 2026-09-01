@@ -11,6 +11,7 @@ public final class EntityKindRule {
     private String className = "";
     private String classId = "";
     private String propertyPid = "P31";
+    private String importedFrom = "";
     private final List<String> evidenceQids = new ArrayList<>();
 
     public EntityKindRule() {}
@@ -45,10 +46,14 @@ public final class EntityKindRule {
         return !className.isBlank() && wikidata.WikidataIds.isPid(propertyPid)
                 && !evidenceQids.isEmpty();
     }
+    public String importedFrom() { return importedFrom == null ? "" : importedFrom; }
+    public void importedFrom(String value) { importedFrom = clean(value); }
+    public boolean isImported() { return !importedFrom().isBlank(); }
     public EntityKindRule copy() {
         EntityKindRule copy = new EntityKindRule(className, evidenceQids);
         copy.classId = classId;
         copy.propertyPid(propertyPid);
+        copy.importedFrom = importedFrom;
         return copy;
     }
     private static String clean(String value) { return value == null ? "" : value.trim(); }

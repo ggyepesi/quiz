@@ -137,6 +137,9 @@ public final class ClassImportPlan {
         LinkedHashSet<String> selected = new LinkedHashSet<>();
         if (selectedClassNames != null) selected.addAll(selectedClassNames);
         selected.add(requestedClass);
+        if (ownership == Ownership.IMPORT) {
+            classes.stream().map(GeneratedClassModel::className).forEach(selected::add);
+        }
         validateSelectedClosure(selected);
 
         GeneratedProjectModel candidate = target.copy();
@@ -145,8 +148,19 @@ public final class ClassImportPlan {
                 .collect(java.util.stream.Collectors.toSet());
 
         List<GeneratedClassModel> imported = new ArrayList<>();
+        LinkedHashMap<String, List<String>> references = new LinkedHashMap<>();
         for (GeneratedClassModel sourceClass : classes) {
             if (!selected.contains(sourceClass.className())) continue;
+            String owner = sourceClass.isImported()
+                    ? sourceClass.importedFrom() : source.name();
+            GeneratedClassModel existing = candidate.findClass(sourceClass.className());
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import " + owner + "."
+                        + sourceClass.className() + ": a local or differently owned class "
+                        + "already has that name. Rename or remove it explicitly first.");
+            }
             GeneratedClassModel copy = sourceClass.copy();
             // An import is owned by the model it names, and that ownership survives
             // being passed along: importing a class the source had itself imported
@@ -154,8 +168,10 @@ public final class ClassImportPlan {
             // nothing, so it arrives owned by nobody but this project.
             if (ownership == Ownership.COPY) {
                 copy.importedFrom("");
-            } else if (!copy.isImported()) {
-                copy.importedFrom(source.name());
+            } else {
+                copy.importedFrom(owner);
+                references.computeIfAbsent(owner, ignored -> new ArrayList<>())
+                        .add(copy.className());
             }
             candidate.replaceClass(copy);
             imported.add(copy);
@@ -164,11 +180,43 @@ public final class ClassImportPlan {
         Set<String> requiredSelections = requiredSelectionNames(selected);
         for (Selection selection : selections) {
             if (!requiredSelections.contains(selection.name())) continue;
-            candidate.replaceSelection(selection.copy());
+            Selection existing = candidate.findSelection(selection.name());
+            String owner = selection.isImported()
+                    ? selection.importedFrom() : source.name();
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import " + owner + "."
+                        + selection.name() + ": a local or differently owned selection "
+                        + "already has that name. Rename or remove it explicitly first.");
+            }
+            Selection copy = selection.copy();
+            if (ownership == Ownership.COPY) copy.importedFrom("");
+            else copy.importedFrom(owner);
+            candidate.replaceSelection(copy);
         }
         for (EntityKindRule rule : kindRules) {
             if (!selected.contains(rule.className())) continue;
-            candidate.replaceEntityKindRule(rule.copy());
+            EntityKindRule existing = candidate.entityKindRules().stream()
+                    .filter(item -> item.className().equals(rule.className())
+                            && item.propertyPid().equals(rule.propertyPid()))
+                    .findFirst().orElse(null);
+            String owner = rule.isImported() ? rule.importedFrom() : source.name();
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import the " + owner
+                        + " entity-kind rule for " + rule.className()
+                        + ": a local or differently owned rule already targets it.");
+            }
+            EntityKindRule copy = rule.copy();
+            if (ownership == Ownership.COPY) copy.importedFrom("");
+            else copy.importedFrom(owner);
+            candidate.replaceEntityKindRule(copy);
+        }
+        if (ownership == Ownership.IMPORT) {
+            references.forEach((owner, names) ->
+                    candidate.addImport(new ModelImport(owner, names)));
         }
 
         List<GeneratedProjectModelValidator.Problem> introduced =

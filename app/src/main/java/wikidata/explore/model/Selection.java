@@ -44,6 +44,7 @@ public class Selection {
     private String name = "";
     private String declarationId = "";
     private Kind kind = Kind.VOCABULARY;
+    private String importedFrom = "";
 
     public Selection() {
     }
@@ -67,7 +68,14 @@ public class Selection {
     }
     protected void copyIdentityTo(Selection target) {
         target.declarationId = declarationId;
+        target.importedFrom = importedFrom;
     }
+
+    public String importedFrom() { return importedFrom == null ? "" : importedFrom; }
+    public void importedFrom(String value) {
+        importedFrom = value == null ? "" : value.trim();
+    }
+    public boolean isImported() { return !importedFrom().isBlank(); }
 
     public void name(String value) {
         name = value == null ? "" : value.trim();

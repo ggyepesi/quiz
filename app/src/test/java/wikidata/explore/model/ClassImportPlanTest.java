@@ -227,6 +227,9 @@ class ClassImportPlanTest {
         assertEquals("Oscars", model.findClass("Name").importedFrom());
         assertTrue(model.findClass("Person").isImported());
         assertEquals("Oscars.Person", model.findClass("Person").qualifiedClassName());
+        assertTrue(model.findSelection("Nominees").isImported());
+        assertEquals("Oscars", model.findSelection("Nominees").importedFrom());
+        assertTrue(model.entityKindRules().getFirst().isImported());
     }
 
     /** A class this project wrote is owned by nobody else. */

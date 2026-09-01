@@ -71,7 +71,7 @@ public final class GeneratedProjectModelStore {
             parent.mkdirs();
         }
 
-        mapper.writeValue(file, model);
+        mapper.writeValue(file, model.withoutResolvedImports());
     }
 
     public String toJson(
@@ -103,6 +103,25 @@ public final class GeneratedProjectModelStore {
 
     public GeneratedProjectModel load(
             File file) throws IOException {
+
+        GeneratedProjectModel authored = loadRaw(file);
+        if (authored.imports().isEmpty()) return authored;
+        File root = file.getParentFile() == null ? null : file.getParentFile().getParentFile();
+        try {
+            return ModelImportResolver.resolve(authored, name -> {
+                if (root == null) throw new IOException("Model directory is unavailable");
+                File source = dataset.DomainStorage.in(root).modelFileOf(name);
+                if (source == null || !source.isFile()) {
+                    throw new IOException("Saved model not found: " + name);
+                }
+                return loadRaw(source);
+            });
+        } catch (IllegalStateException failure) {
+            throw new IOException(failure.getMessage(), failure);
+        }
+    }
+
+    GeneratedProjectModel loadRaw(File file) throws IOException {
 
         JsonNode tree = mapper.readTree(file);
         migrateRemovedCanonicalKind(tree);

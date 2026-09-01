@@ -1671,6 +1671,7 @@ public class ModelBuilderFrame extends JFrame {
                     ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
             if (!dependencyModel.isEmpty()) {
                 dependencies.setSelectionInterval(0, dependencyModel.size() - 1);
+                dependencies.setEnabled(!importing);
             }
 
             JTextArea preview = new JTextArea(8, 52);
@@ -1690,10 +1691,14 @@ public class ModelBuilderFrame extends JFrame {
                     + " selection(s), " + plan.kindRules().size()
                     + " entity-kind rule(s).\n"
                     + (plan.conflicts().isEmpty() ? ""
-                            : "\nAlready configured here and REPLACED by this: "
-                                    + String.join(", ", plan.conflicts())
-                                    + ".\nWhat is here now is lost. Rename it first if "
-                                    + "you want to keep both.\n")
+                            : importing
+                                    ? "\nCannot import while these names already exist here: "
+                                            + String.join(", ", plan.conflicts())
+                                            + ".\nRename or remove them first.\n"
+                                    : "\nAlready configured here and REPLACED by this: "
+                                            + String.join(", ", plan.conflicts())
+                                            + ".\nWhat is here now is lost. Rename it first if "
+                                            + "you want to keep both.\n")
                     + "\nGenerated instances, observed vocabulary values, counts "
                     + "and curation are not copied.");
 
@@ -1702,7 +1707,9 @@ public class ModelBuilderFrame extends JFrame {
             choices.add(new JScrollPane(preview));
             if (!dependencyModel.isEmpty()) {
                 choices.add(Box.createVerticalStrut(8));
-                choices.add(new JLabel("Dependent classes (selected = copy):"));
+                choices.add(new JLabel(importing
+                        ? "Required dependent classes:"
+                        : "Dependent classes (selected = copy):"));
                 choices.add(new JScrollPane(dependencies));
             }
             // Replace or cancel, asked once. A second control offering to keep the
@@ -1727,14 +1734,17 @@ public class ModelBuilderFrame extends JFrame {
             JOptionPane.showMessageDialog(this,
                     imported.isEmpty()
                             ? "The selected target declarations were reused."
-                            : "Copied " + imported.size() + " class configuration(s): "
+                            : (importing ? "Imported " : "Copied ") + imported.size()
+                                    + " class configuration(s): "
                                     + imported.stream().map(GeneratedClassModel::className)
                                             .collect(java.util.stream.Collectors.joining(", ")),
-                    "Copy class", JOptionPane.INFORMATION_MESSAGE);
+                    importing ? "Import class" : "Copy class",
+                    JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception failure) {
             JOptionPane.showMessageDialog(this,
                     failure.getMessage() == null ? failure.toString() : failure.getMessage(),
-                    "Could not copy class", JOptionPane.ERROR_MESSAGE);
+                    importing ? "Could not import class" : "Could not copy class",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -1760,14 +1770,13 @@ public class ModelBuilderFrame extends JFrame {
 
         domainBox.setEnabled(!locked);
         newDomainButton.setEnabled(!locked);
-        renameDomainButton.setEnabled(!locked
-                && !(projectModel.isModel() && projectModel.staticModel()));
+        renameDomainButton.setEnabled(!locked);
         deleteDomainButton.setEnabled(!locked);
         loadModelButton.setEnabled(!locked);
         loadSavedButton.setEnabled(!locked);
         saveEverythingButton.setEnabled(!locked);
         depthSpinner.setEnabled(!locked);
-        boolean editable = !locked && !(projectModel.isModel() && projectModel.staticModel());
+        boolean editable = !locked;
         classModelPanel.setEditingEnabled(editable);
         sourceWorkbench.setEditingEnabled(editable);
         showEntityKindsButton.setEnabled(!locked);
@@ -1803,8 +1812,7 @@ public class ModelBuilderFrame extends JFrame {
                 : "Save this domain's configuration and generated instances together.");
         runSection.setVisible(projectModel.supportsExecution());
         loadSavedButton.setVisible(projectModel.supportsExecution());
-        boolean editable = !configurationLocked
-                && !(model && projectModel.staticModel());
+        boolean editable = !configurationLocked;
         renameDomainButton.setEnabled(editable);
         classModelPanel.setEditingEnabled(editable);
         sourceWorkbench.setEditingEnabled(editable);

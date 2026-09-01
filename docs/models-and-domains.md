@@ -47,13 +47,10 @@ The user supplies the model's unique name when creating it. The exact name is it
 Class names are unique inside their owning model. A later reference from another project will
 use the visible qualified form `Model.Class`, for example `People.Person`.
 
-A model stays editable. Freezing one after its first use would make the first typo
-permanent, and a schema that cannot be corrected gets copied instead — the divergence this
-exists to prevent. The problem freezing would solve is already solved: a domain records the
-signature of the configuration it generated against, so a model that moves afterwards makes
-its domains report that their instances are stale, and regenerating settles it. That is the
-same mechanism a domain's own edits already use, and it needs no new state, no used-yet flag
-and no acceptance dialog.
+A model stays editable. An importing project resolves its current configuration when it is
+loaded, so a model correction becomes the configuration its importers use. This first version
+does not inspect or rewrite their saved snapshots; how a changed model and an older snapshot
+should be reconciled is deliberately left to experience with real imports.
 
 ## Domain
 
@@ -88,8 +85,10 @@ renamable, no lasting relationship, no record of where it came from. A copy may 
 from any saved project. Where it was copied from constrains nothing, so nothing needs to
 be remembered about it.
 
-**Import** uses a model's class where it stands. The class stays owned by the model named
-in `GeneratedClassModel.importedFrom`, and is not edited in the importing project at all
+**Import** uses a model's class where it stands. The importing project persists only the
+model name and selected class names. On load those references resolve the model's current
+class configuration and its required declarations. The resolved class is marked with its
+owner for presentation and is not edited in the importing project at all
 — not its fields, not its name, not its membership. It is edited in the model that owns
 it. Only a model can be imported from.
 
@@ -106,22 +105,15 @@ The UI marks the difference: an imported class shows `imported from People` on i
 row and a notice above its disabled editor naming the owning model, so a locked editor
 reads as owned rather than broken. A copy carries no mark, because it claims nothing.
 
-**Which models a project uses is derived, not declared.** A project uses a model exactly
-when it holds a class imported from it, which `importedFrom` already records; `ModelUse`
-computes it and the Uses section reports it. Copies never appear there. A declared list
-beside the imports would be a second way to know one fact, free to disagree with the
-classes actually present. The accepted consequence: a use begins with the first imported
-class and ends with the last, and a model cannot be declared as used before anything is
-imported from it.
+**The import reference is the source of truth.** `ModelUse` derives the Uses section from
+those references; the resolved classes are their current view, not a second declaration.
+Copies never appear there. A use begins with the first selected imported class and ends
+with the last.
 
-**Circular use** cannot arise — import materialises a copy of the configuration, and a
-copy does not recurse. **Stored qualified references** are unnecessary: a field targets a
+Circular imports are refused when references are resolved. **Stored qualified class names**
+are unnecessary: a field targets a
 class by its own name, and `qualifiedClassName()` derives `People.Person` for display.
-Name collisions are handled by the import plan's replace/reuse choice.
-
-Still open: nothing reports that an owning model has moved since a class was imported
-from it. The domain signature mechanism answers the equivalent question for instances and
-the same shape would answer this one, but no measurement forces it yet.
+An import refuses a local name collision; Copy remains the explicit replacement operation.
 
 Also deliberately open: whether an importing project may ever override an imported class,
 and in what form. That decision wants experience with models, and nothing generated so far

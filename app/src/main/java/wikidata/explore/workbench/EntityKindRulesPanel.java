@@ -71,7 +71,16 @@ final class EntityKindRulesPanel extends JPanel {
         remove.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
-                rows.remove(table.convertRowIndexToModel(row));
+                int modelRow = table.convertRowIndexToModel(row);
+                if (rows.get(modelRow).isImported()) {
+                    JOptionPane.showMessageDialog(this,
+                            "This rule is imported from "
+                                    + rows.get(modelRow).importedFrom()
+                                    + " and is edited there.",
+                            "Imported rule", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                rows.remove(modelRow);
                 tableModel.fireTableDataChanged();
             }
         });
@@ -120,7 +129,15 @@ final class EntityKindRulesPanel extends JPanel {
                     "No rule selected", JOptionPane.INFORMATION_MESSAGE);
             return null;
         }
-        return rows.get(table.convertRowIndexToModel(row));
+        EntityKindRule selected = rows.get(table.convertRowIndexToModel(row));
+        if (selected.isImported()) {
+            JOptionPane.showMessageDialog(this,
+                    "This rule is imported from " + selected.importedFrom()
+                            + " and is edited there.",
+                    "Imported rule", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        return selected;
     }
 
     private void addEvidence(EntityKindRule rule, List<String> qids) {
@@ -290,20 +307,25 @@ final class EntityKindRulesPanel extends JPanel {
     }
 
     private final class RulesModel extends AbstractTableModel {
-        private final String[] columns = {"Modeled kind", "Evidence PID", "Evidence QIDs"};
+        private final String[] columns = {
+                "Modeled kind", "Evidence PID", "Evidence QIDs", "Owned by"};
         @Override public int getRowCount() { return rows.size(); }
         @Override public int getColumnCount() { return columns.length; }
         @Override public String getColumnName(int column) { return columns[column]; }
-        @Override public boolean isCellEditable(int row, int column) { return true; }
+        @Override public boolean isCellEditable(int row, int column) {
+            return column < 3 && !rows.get(row).isImported();
+        }
         @Override public Object getValueAt(int row, int column) {
             EntityKindRule rule = rows.get(row);
             return switch (column) {
                 case 0 -> rule.className();
                 case 1 -> rule.propertyPid();
-                default -> String.join(", ", rule.evidenceQids());
+                case 2 -> String.join(", ", rule.evidenceQids());
+                default -> rule.isImported() ? rule.importedFrom() : "This project";
             };
         }
         @Override public void setValueAt(Object value, int row, int column) {
+            if (column >= 3) return;
             EntityKindRule rule = rows.get(row);
             String text = value == null ? "" : value.toString().trim();
             switch (column) {

@@ -309,11 +309,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     /** The class declaring this field, or null when it belongs to none. */
     private GeneratedClassModel owningClassOf(GeneratedFieldModel field) {
-        if (field == null || projectModel == null) return null;
-        for (GeneratedClassModel clazz : projectModel.classes()) {
-            if (clazz != null && clazz.fields().contains(field)) return clazz;
-        }
-        return null;
+        return projectModel == null ? null : projectModel.declaringClass(field);
     }
 
     public void setEditingEnabled(boolean enabled) {
@@ -377,10 +373,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             layout.show(cardPanel, "field");
         } else if (selected instanceof wikidata.explore.model.Selection selection
                 && selectionEditor != null) {
-            kindBox.setEnabled(editingEnabled);
+            kindBox.setEnabled(editingEnabled && !selection.isImported());
             kindHeader.setVisible(false);
-            showImportedNotice(null);
+            importedNotice.setVisible(selection.isImported());
+            if (selection.isImported()) importedNotice.setText("Imported from "
+                    + selection.importedFrom() + " — owned and edited there.");
             selectionEditor.edit(selection);
+            EditableComponents.setEditable(selectionEditor,
+                    editingEnabled && !selection.isImported());
             layout.show(cardPanel, "selection");
         } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
                 && selectionEditor != null) {

@@ -7,11 +7,8 @@ import java.util.List;
 /**
  * Which models a project uses, and what it took from each.
  *
- * <p>This is derived, never stored. A project uses a model exactly when it holds a class
- * imported from it, and imported classes already record that in {@link
- * GeneratedClassModel#importedFrom()}. A second, declared list would be a second way to
- * know the same fact, free to disagree with the classes actually present — the project
- * keeps only one discovery path per fact, so this one is computed.
+ * <p>This is derived from the durable live references. Resolved classes are a view of
+ * those references, not a second declaration of what the project uses.
  *
  * <p>Copied classes are deliberately absent. A copy is the copying project's own and
  * carries no claim from where it came, so it is not a use of anything.
@@ -36,12 +33,12 @@ public record ModelUse(String modelName, List<String> classNames) {
         if (project == null) return List.of();
 
         LinkedHashMap<String, List<String>> byModel = new LinkedHashMap<>();
-        for (GeneratedClassModel clazz : project.classes()) {
-            if (clazz == null) continue;
-            String origin = clazz.importedFrom();
-            if (origin.isBlank()) continue;
-            byModel.computeIfAbsent(origin, key -> new ArrayList<>())
-                    .add(clazz.className());
+        for (ModelImport reference : project.imports()) {
+            if (reference == null || !reference.complete()) continue;
+            List<String> classes = byModel.computeIfAbsent(
+                    reference.modelName(), key -> new ArrayList<>());
+            reference.classNames().stream().filter(name -> !classes.contains(name))
+                    .forEach(classes::add);
         }
 
         List<ModelUse> uses = new ArrayList<>();

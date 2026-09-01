@@ -17,7 +17,6 @@ public class GeneratedProjectModel {
 
     private String name = "Generated Wikidata Project";
     private ProjectKind projectKind = ProjectKind.DOMAIN;
-    private boolean staticModel;
     private GeneratedClassModel rootClass;
 
     // How many levels of child-object edges generation should traverse. Stored
@@ -33,6 +32,7 @@ public class GeneratedProjectModel {
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
+    private final List<ModelImport> imports = new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -123,13 +123,10 @@ public class GeneratedProjectModel {
 
     public void projectKind(ProjectKind value) {
         projectKind = value == null ? ProjectKind.DOMAIN : value;
-        if (projectKind == ProjectKind.DOMAIN) staticModel = false;
     }
 
     public boolean isModel() { return projectKind() == ProjectKind.MODEL; }
     public boolean supportsExecution() { return projectKind() == ProjectKind.DOMAIN; }
-    public boolean staticModel() { return isModel() && staticModel; }
-    public void staticModel(boolean value) { staticModel = isModel() && value; }
 
     public int generationDepth() {
         return generationDepth;
@@ -180,9 +177,17 @@ public class GeneratedProjectModel {
     public GeneratedClassModel declaringClass(GeneratedFieldModel field) {
         if (field == null) return null;
         for (GeneratedClassModel clazz : classes) {
-            if (clazz != null && clazz.fields().contains(field)) return clazz;
+            if (clazz != null && containsField(clazz.fields(), field)) return clazz;
         }
         return null;
+    }
+
+    private static boolean containsField(
+            List<GeneratedFieldModel> fields, GeneratedFieldModel sought) {
+        for (GeneratedFieldModel field : fields) {
+            if (field == sought || containsField(field.fields(), sought)) return true;
+        }
+        return false;
     }
 
     /** The domain's named non-product Selections (vocabularies/populations). */
@@ -230,6 +235,42 @@ public class GeneratedProjectModel {
                 .map(EntityKindRule::copy).forEach(entityKindRules::add);
     }
 
+    public List<ModelImport> imports() {
+        return Collections.unmodifiableList(imports);
+    }
+
+    public void imports(List<ModelImport> values) {
+        imports.clear();
+        if (values != null) values.stream().filter(java.util.Objects::nonNull)
+                .map(ModelImport::copy).forEach(imports::add);
+    }
+
+    public void addImport(ModelImport value) {
+        if (value == null || !value.complete()) return;
+        ModelImport existing = imports.stream()
+                .filter(item -> item.modelName().equalsIgnoreCase(value.modelName()))
+                .findFirst().orElse(null);
+        if (existing == null) {
+            imports.add(value.copy());
+            return;
+        }
+        java.util.LinkedHashSet<String> names =
+                new java.util.LinkedHashSet<>(existing.classNames());
+        names.addAll(value.classNames());
+        existing.classNames(new java.util.ArrayList<>(names));
+    }
+
+    public void removeImportedClass(String modelName, String className) {
+        for (int i = imports.size() - 1; i >= 0; i--) {
+            ModelImport item = imports.get(i);
+            if (!item.modelName().equalsIgnoreCase(modelName)) continue;
+            java.util.ArrayList<String> kept =
+                    new java.util.ArrayList<>(item.classNames());
+            kept.removeIf(name -> name.equalsIgnoreCase(className));
+            if (kept.isEmpty()) imports.remove(i); else item.classNames(kept);
+        }
+    }
+
     /** Replaces this model's contents (name + classes) with another's, in
      *  place — so references held to this instance (the workbench panels) keep
      *  pointing at the same object after loading a saved model. */
@@ -239,7 +280,6 @@ public class GeneratedProjectModel {
         }
         this.name = other.name;
         this.projectKind = other.projectKind();
-        this.staticModel = other.staticModel();
         this.generationDepth = other.generationDepth;
         this.classes.clear();
         this.classes.addAll(other.classes);
@@ -247,6 +287,8 @@ public class GeneratedProjectModel {
         this.selections.addAll(other.selections);
         this.entityKindRules.clear();
         this.entityKindRules.addAll(other.entityKindRules);
+        this.imports.clear();
+        other.imports.stream().map(ModelImport::copy).forEach(this.imports::add);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -714,7 +756,6 @@ public class GeneratedProjectModel {
         GeneratedProjectModel c = new GeneratedProjectModel();
         c.name = name;
         c.projectKind = projectKind();
-        c.staticModel = staticModel();
         c.generationDepth = generationDepth;
         c.classes.clear();
         c.rootClass = null;
@@ -756,8 +797,23 @@ public class GeneratedProjectModel {
         for (EntityKindRule rule : entityKindRules) {
             if (rule != null) c.entityKindRules.add(rule.copy());
         }
+        for (ModelImport dependency : imports) {
+            if (dependency != null) c.imports.add(dependency.copy());
+        }
 
         return c;
+    }
+
+    /** The authored project written to disk; imported declarations are resolved afresh. */
+    public GeneratedProjectModel withoutResolvedImports() {
+        GeneratedProjectModel authored = copy();
+        authored.classes.removeIf(GeneratedClassModel::isImported);
+        authored.selections.removeIf(Selection::isImported);
+        authored.entityKindRules.removeIf(EntityKindRule::isImported);
+        if (authored.rootClass != null && authored.rootClass.isImported()) {
+            throw new IllegalStateException("A project's root class must be authored locally");
+        }
+        return authored;
     }
 
     public void removeClass(GeneratedClassModel c) {

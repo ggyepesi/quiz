@@ -287,6 +287,8 @@ class SingleRootClassModelPanelTest {
         GeneratedClassModel imported = new GeneratedClassModel("Name");
         imported.importedFrom("People");
         project.addClass(imported);
+        project.addImport(new wikidata.explore.model.ModelImport(
+                "People", java.util.List.of("Name")));
 
         SingleRootClassModelPanel after = new SingleRootClassModelPanel(project);
         DefaultMutableTreeNode uses = nodeFor((DefaultMutableTreeNode)

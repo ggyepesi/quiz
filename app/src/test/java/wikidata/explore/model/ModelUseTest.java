@@ -25,9 +25,8 @@ class ModelUseTest {
     @Test void classesImportedFromOneModelAreReportedTogether() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.addClass(new GeneratedClassModel("Prize"));
-        project.addClass(imported("Person", "People"));
-        project.addClass(imported("Name", "People"));
-        project.addClass(imported("Place", "Geography"));
+        project.addImport(new ModelImport("People", List.of("Person", "Name")));
+        project.addImport(new ModelImport("Geography", List.of("Place")));
 
         List<ModelUse> uses = ModelUse.of(project);
 
@@ -41,17 +40,17 @@ class ModelUseTest {
     }
 
     /**
-     * The use is the adopted classes, so it cannot disagree with them. Removing the last
-     * class adopted from a model ends the use with no second record to update — which is
-     * the whole reason this is derived rather than declared.
+     * The reference is the use. Removing its last selected class ends that use.
      */
     @Test void aUseEndsWhenItsLastImportedClassGoes() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
         GeneratedClassModel name = imported("Name", "People");
         project.addClass(name);
+        project.addImport(new ModelImport("People", List.of("Name")));
         assertTrue(ModelUse.uses(project, "People"));
 
+        project.removeImportedClass("People", "Name");
         project.removeClass(name);
 
         assertFalse(ModelUse.uses(project, "People"));
@@ -60,7 +59,7 @@ class ModelUseTest {
 
     @Test void aUseIsFoundWhateverTheCaseTheNameIsAskedIn() {
         GeneratedProjectModel project = new GeneratedProjectModel();
-        project.addClass(imported("Name", "People"));
+        project.addImport(new ModelImport("People", List.of("Name")));
 
         assertTrue(ModelUse.uses(project, "people"));
         assertTrue(ModelUse.uses(project, "  People  "));
