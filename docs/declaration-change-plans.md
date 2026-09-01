@@ -1,6 +1,10 @@
 # Declaration change plans
 
-Status: design agreed; implementation deliberately follows after review.
+Status: reviewed against the code; corrected below. Implementation follows.
+
+The first version is deliberately smaller than the design that was agreed. Four things
+were cut because the code already answers them, answers them differently, or was never
+asked: see *What review changed* at the end.
 
 ## Purpose
 
@@ -69,12 +73,23 @@ a second name-only interpretation of class, field or selection ownership.
 Each effect contains:
 
 - declaration kind and visible name;
-- action: `ADD`, `REPLACE`, `REMOVE`, `RETAIN`, or `BLOCK`;
+- action: `ADD`, `REPLACE`, `REMOVE`, `RETAIN`, `ORPHAN`, or `BLOCK`;
 - reason;
 - the dependency path from the requested class.
 
-`BLOCK` is an answer, not an exception discovered after confirmation. A plan with blocking
-effects cannot be applied.
+`RETAIN` is what a dependency the target already has is called when the user chooses not
+to bring it — the existing declaration stays and the copy binds to it. That choice is the
+dependency checkbox, which already exists and is tested. `RETAIN` is not a policy, not a
+compatibility check between two declarations, and not a third answer to "this name is
+already here": that question has two answers, replace or cancel.
+
+`ORPHAN` reports a reference that will be left pointing at nothing. It does not stop the
+operation — see *Orphaned references* below.
+
+`BLOCK` is reserved for what genuinely cannot be done, and is an answer rather than an
+exception discovered after confirmation. Today that is exactly two things: removing the
+root class, and importing a class whose name a local declaration already holds. A plan
+with blocking effects cannot be applied.
 
 ## Copy semantics
 
@@ -93,8 +108,12 @@ The target owns everything copied. There is no remaining relationship to the sou
 
 For every same-name target declaration, the plan says `REPLACE`; otherwise it says `ADD`.
 Replacement is never implicit in the dialog. The user either confirms the shown replacement
-or cancels. A required dependency may be `RETAIN` only when the existing target declaration
-is explicitly chosen and satisfies the same reference contract.
+or cancels — the two answers an ordinary paste offers. A dependency the user deselects is
+`RETAIN`: what is already there stays, and the copy binds to it.
+
+A class the source only IMPORTS cannot be copied from it. The source does not own that
+class, so the copy is taken from the model that does. This is already how the workbench
+behaves and the plan states it rather than re-deriving it.
 
 Example:
 
@@ -123,18 +142,45 @@ Owned consequences are safe members of the same removal:
 - its entity-kind rules;
 - role selections owned exclusively by its fields.
 
-Incoming references are not silently deleted. They are reported as orphaning impacts. The
-first implementation should block confirmation until the user has either:
+### Orphaned references
 
-- removed or redirected the referencing declaration beforehand; or
-- explicitly selected a cascade, causing its owning class to join the removal plan.
+Incoming references are never silently deleted, and they do not block the removal either.
+They are listed as `ORPHAN` effects, in full, before Apply.
 
-Cascade is recursive and uses the same graph. If removing `Name` requires removing `Person`,
-and removing `Person` would orphan another class, all of those effects appear before Apply.
-A root class is a blocking boundary and can never silently enter a cascade.
+Blocking them would take a stricter position than the model itself holds. An entity field
+whose target class is gone is a WARNING and the project stays valid:
+
+```text
+AFTER removal, valid=true
+WARNING: Award.recipient: Referenced entity class 'Person' is not modeled;
+         the field renders as a string.
+```
+
+That is a recoverable state the validator already describes, with a stated consequence.
+Refusing the removal would be a second, stricter reading of one fact — the thing this
+design forbids itself two sections earlier. So Remove shows every orphan path and lets the
+reader decide, and the warning that follows is the standing reminder.
+
+If orphaning should instead be fatal, the fix is to make the validator say so; it is not to
+disagree with it here.
+
+### Cascade is not in the first version
+
+Removing the referencing classes too, recursively, is deliberately left out. With orphans
+reported rather than blocking, nothing forces it: the reader can remove what they meant to
+remove and see exactly what it cost. Cascade is also the part most likely to take away
+declarations the reader was not thinking about, which is a poor thing to build before
+anyone has asked for it. A root class can never be removed at all.
 
 Shared declarations are not removed merely because they become unused. An unreferenced
 vocabulary can be cleaned up later by an explicit Remove action; unused is not owned.
+
+### Removing an imported class
+
+Removing a class this project IMPORTS is a different operation and the plan must say so. It
+drops the import reference; it removes nothing from the model that owns the class, and it
+has no owned consequences here, because the declarations belong to that model. Its effects
+are the reference itself and any local `ORPHAN` left behind.
 
 Example:
 
@@ -147,20 +193,28 @@ Classes
 Rules
   REMOVE   P31 = Q5 → Person      owned by Person
 
-References that would be orphaned
-  BLOCK    Award.recipient        field targets Person
+References left pointing at nothing
+  ORPHAN   Award.recipient        field targets Person
+                                  renders as a string until retargeted
 ```
 
-With an explicitly approved cascade:
+The removal applies. `Award.recipient` keeps its name and becomes a string field, and the
+project's own validation carries the reminder from then on.
+
+Removing an imported class is the reference and nothing else:
 
 ```text
-Classes
-  REMOVE   Person                 requested
-  REMOVE   Award                  Award.recipient → Person
+Remove Person   (imported from the People model)
 
-Rules
-  REMOVE   P31 = Q5 → Person      owned by Person
+Imports
+  REMOVE   People.Person          this project stops using it
+
+References left pointing at nothing
+  ORPHAN   Award.recipient        field targets Person
 ```
+
+Nothing is removed from People. Its Person, its fields and its rules are untouched, because
+they were never this project's to remove.
 
 ## Dialogs
 
@@ -168,25 +222,39 @@ Copy and Remove use the same plan renderer with operation-specific wording. Sect
 actual declarations, never only counts:
 
 - requested class;
-- dependent or cascading classes;
+- dependent classes;
 - rules;
 - selections;
 - replacements;
-- orphaned references or other blockers.
+- references left pointing at nothing;
+- blockers, when there are any.
+
+Replacements and orphans are stated where they will be read, not below a screenful of
+description in a scrolling box. The line that says work will be lost is the one a reader
+must not have to go looking for.
 
 The confirmation button names the action (`Copy 2 classes`, `Remove Person and 1 rule`) and
-is disabled when the plan contains `BLOCK` effects. Nothing mutates while the dialog is open.
+is disabled only when the plan contains `BLOCK` effects — never for an orphan, which is a
+consequence to be seen rather than a refusal. Nothing mutates while the dialog is open.
 
 ## Application
 
 The plan applies to a deep copy of the target model, validates the complete result, and only
-then replaces the live model. Preview and Apply must not recompute different closures. If the
-model changed after the plan was built, application refuses and asks the user to review a new
-plan rather than executing stale consequences.
+then replaces the live model. Preview and Apply must not recompute different closures.
+
+There is no stale-plan guard. The dialogs are modal and nothing else writes to the model
+while one is open, so the state it would detect cannot arise; detecting it would need a
+model version that does not exist. If a background writer ever appears, this is where it
+would be answered.
 
 `ClassImportPlan` must not remain as a second dependency derivation. Its closure logic is
-factored into `ModelDeclarationGraph` and Copy delegates to `DeclarationChangePlan`. Import
-uses the same forward closure but persists a live model reference instead of copied effects.
+factored into `ModelDeclarationGraph` and Copy delegates to `DeclarationChangePlan`.
+
+That closure has THREE callers, not two. Besides Copy and Remove, `ModelImportResolver`
+asks it for `dependencyClassNames()` every time an importing project is loaded — so it is
+on the path that opens Nobel and Oscars, and a change in what it returns changes what those
+domains resolve. Import uses the same forward closure but persists a live model reference
+instead of copied effects.
 
 ## Forcing tests
 
@@ -201,7 +269,30 @@ At minimum, tests establish that:
 - a shared selection is retained;
 - conflicts are visible as `REPLACE`, never discovered only during Apply;
 - preview and Apply use the same effects;
-- a changed model invalidates an already-built plan without partial mutation.
+- an orphaned reference is reported and the removal still applies;
+- removing an imported class drops the reference and touches the owning model not at all;
+- copying is refused from a project that only imports the class;
+- the root class cannot be removed;
+- resolving an importing project yields the same classes as before the closure moved,
+  since `ModelImportResolver` shares it — Nobel and Oscars are the cases that matter.
+
+## What review changed
+
+The design was written before the reference-import work landed and against assumptions the
+code does not share. Four things were cut:
+
+- **`RETAIN` as a policy.** It was `ConflictPolicy.REUSE_TARGET` under another name, and
+  that was deleted deliberately: a name already here is replaced or the operation is
+  cancelled. `RETAIN` survives only as the word for a deselected dependency.
+- **Blocking on orphans.** The validator calls an orphaned reference a warning and keeps
+  the model valid. Blocking would have been a second opinion about one fact.
+- **Cascade.** Not forced once orphans are reported, and the most likely of these to remove
+  something the reader did not intend.
+- **The stale-plan guard.** Modal dialogs; the state cannot arise.
+
+Two things were added: imported classes appear in both Copy and Remove, which the original
+did not mention although the workbench already treats them differently; and the closure's
+third caller is named, because it runs on every load of an importing project.
 
 ## Deliberately outside this design
 
