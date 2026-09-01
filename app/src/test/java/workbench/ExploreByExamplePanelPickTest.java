@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** The picker emits the visibly-selected candidate, not a stale explored entity. */
@@ -54,6 +55,13 @@ class ExploreByExamplePanelPickTest {
         assertEquals(List.of("Q80061", "Q38104", "Q44585"),
                 selections.entities().stream()
                         .map(WorkbenchSelections.Entity::qid).toList());
+    }
+
+    @Test void relationActionsNameTheInputTheyConsume() {
+        ExploreByExamplePanel panel = new ExploreByExamplePanel();
+
+        assertNotNull(button(panel, "Explore QID relations"));
+        assertNotNull(button(panel, "Explore selected entity relations"));
     }
 
     private static JButton button(Container root, String text) {

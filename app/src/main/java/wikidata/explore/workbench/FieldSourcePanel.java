@@ -553,7 +553,7 @@ public class FieldSourcePanel extends JPanel {
         roleKindBox.setSelectedItem(m.roleKind());
         refreshStatementFieldControls();
         expectationBox.setSelectedItem(field.expectation());
-        propertyLabel.setText(m.displayProperty());
+        propertyLabel.setText(m.propertyLabel());
 
         limitSpinner.setValue(Math.max(1, m.limit()));
 
@@ -662,7 +662,7 @@ public class FieldSourcePanel extends JPanel {
         field.mapping().propertyLabel(label);
 
         propertyPidField.setText(field.mapping().propertyPid());
-        propertyLabel.setText(field.mapping().displayProperty());
+        propertyLabel.setText(field.mapping().propertyLabel());
 
         autoAdjustFromProperty(pid, label);
 
@@ -1077,7 +1077,7 @@ public class FieldSourcePanel extends JPanel {
         m.inverseField(m.productionKind() == FieldProductionKind.INVERT
                 && inverseFieldBox.getSelectedItem() != null
                 ? inverseFieldBox.getSelectedItem().toString() : "");
-        propertyLabel.setText(m.displayProperty());
+        propertyLabel.setText(m.propertyLabel());
 
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
                 owner,

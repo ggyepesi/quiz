@@ -36,12 +36,16 @@ public class ExploreByExamplePanel extends JPanel {
 
     private final JTextField searchField = new JTextField(22);
     private final JTextField qidField = new JTextField(8);
-    private final JButton openQidButton = new JButton("Open QID");
+    private final JButton openQidButton = new JButton("Explore QID relations");
     private final JButton searchButton = new JButton("Search");
     private final EntityResultPanel candidates =
             new EntityResultPanel(List.of("QID", "Label", "Description"), 0, true);
 
-    private final JButton exploreButton = new JButton("Explore entity relations");
+    private final JButton exploreButton = new JButton("Explore selected entity relations");
+    private final JLabel relationCostHint = new JLabel(
+            "<html><i>Incoming relations scan all Wikidata statements pointing to the entity. "
+                    + "For broad classes, use Wikidata → Discover to profile a bounded sample "
+                    + "instead.</i></html>");
     private final JButton useSourceButton = new JButton("Use as class type (P31)");
     private final JPanel selectionsButtonHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private WorkbenchSelections workbenchSelections;
@@ -58,7 +62,7 @@ public class ExploreByExamplePanel extends JPanel {
     private final JButton addSeedsButton = new JButton("Add as Seed QIDs");
     private final JButton usePropertyButton = new JButton("Use selected property");
     private final JLabel hint = new JLabel(
-            "<html>Search → pick an entity → Explore relations → pick a "
+            "<html>Search → pick an entity → Explore selected entity relations → pick a "
                     + "relation: <b>Show members</b> (then double-click a member to "
                     + "<b>follow</b> it and explore further), or <b>add members as "
                     + "Seed QIDs</b>. <b>◀ Back</b> retraces your path.</html>");
@@ -191,7 +195,7 @@ public class ExploreByExamplePanel extends JPanel {
         addTargetsButton.setVisible(false);
         addSeedsButton.setVisible(false);
         hint.setText(
-                "<html>Search → pick an entity → Explore relations → pick a "
+                "<html>Search → pick an entity → Explore selected entity relations → pick a "
                         + "relation and <b>Show members</b>. Double-click a member to "
                         + "follow it; <b>◀ Back</b> retraces your path.</html>");
     }
@@ -215,7 +219,7 @@ public class ExploreByExamplePanel extends JPanel {
         addTargetsButton.setVisible(false);
         addSeedsButton.setVisible(false);
         if (relationPanelNeeded) {
-            hint.setText("<html>Search (or Explore relations to verify) → pick an entity in the "
+            hint.setText("<html>Search (or explore relations to verify) → pick an entity in the "
                     + "top list → <b>" + label + "</b>. Double-click a member to follow it; "
                     + "<b>◀ Back</b> retraces.</html>");
         }
@@ -356,12 +360,22 @@ public class ExploreByExamplePanel extends JPanel {
 
         useSourceButton.setToolTipText("Make the selected entity the selected "
                 + "class's membership type (instance-of / P31).");
+        String relationTip = "Incoming relation discovery is a global reverse scan. "
+                + "For a broad class, use Wikidata > Discover with a bounded sample.";
+        openQidButton.setToolTipText(relationTip);
+        exploreButton.setToolTipText(relationTip);
+        relationCostHint.setForeground(UIManager.getColor("Label.disabledForeground"));
 
-        // Entity tab: search / pick the entity, then Explore. currentLabel shows what will be
-        // (or is being) explored, right next to the Explore button.
+        // Both entry paths perform the same operation: explore an entity's relations. Their
+        // labels state which visible input they consume (typed QID vs selected search result).
+        // currentLabel shows what will be (or is being) explored next to the selected-result
+        // action.
         JPanel entitySouth = new JPanel(new BorderLayout(4, 2));
         entitySouth.add(midRow, BorderLayout.NORTH);
-        entitySouth.add(currentLabel, BorderLayout.SOUTH);
+        JPanel entityGuidance = new JPanel(new GridLayout(0, 1, 0, 2));
+        entityGuidance.add(currentLabel);
+        entityGuidance.add(relationCostHint);
+        entitySouth.add(entityGuidance, BorderLayout.SOUTH);
         JPanel top = new JPanel(new BorderLayout(4, 2));
         top.add(searchRow, BorderLayout.NORTH);
         top.add(candidates, BorderLayout.CENTER);
@@ -425,8 +439,8 @@ public class ExploreByExamplePanel extends JPanel {
         updateButtons();
     }
 
-    /** Open a pasted QID: fetch its real label (via the API) so it isn't shown/emitted as
-     *  its own label, then explore it. Falls back to the bare QID if there's no runner. */
+    /** Explore a pasted QID: fetch its real label (via the API) so it isn't shown/emitted as
+     *  its own label, then run the same relation exploration used for a selected search result. */
     private void openQid() {
         String qid = qidField.getText().trim().toUpperCase(java.util.Locale.ROOT);
         if (!WikidataIds.isQid(qid)) {

@@ -1,30 +1,24 @@
 {
   "@class" : "wikidata.explore.model.GeneratedProjectModel",
-  "name" : "oscarnominations",
-  "projectKind" : "DOMAIN",
+  "name" : "Person",
+  "projectKind" : "MODEL",
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7",
-    "className" : "Nomination",
+    "declarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613",
+    "className" : "Person",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
-    "statementSource" : {
-      "propertyPid" : "P1411",
-      "valueSelectionName" : "OscarCategories",
-      "valueSelectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
-      "graphExpansionPolicy" : "NONE"
-    },
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P1411",
-      "propertyLabel" : "",
+      "propertyPid" : "P31",
+      "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "subjectField" : "",
       "matchValueField" : "",
@@ -35,7 +29,7 @@
       "labelLanguage" : "en",
       "valueLanguage" : "",
       "requireSitelink" : false,
-      "limit" : 20000,
+      "limit" : 200,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -47,17 +41,17 @@
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "category",
+      "name" : "structuredName",
       "type" : "ENTITY",
-      "entityClassName" : "OscarCategories",
-      "entityDeclarationId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
+      "entityClassName" : "Name",
+      "entityDeclarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295",
       "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
-      "edgeMembership" : "INHERIT",
+      "edgeMembership" : "NONE",
       "sortFieldName" : "",
       "sortDescending" : false,
       "unit" : "",
@@ -65,8 +59,50 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P1411",
+        "propertyPid" : "",
         "propertyLabel" : "",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "OWNED_COMPONENT",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "birthName",
+      "type" : "STRING",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "NONE",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P1477",
+        "propertyLabel" : "birth name",
         "qualifierPid" : "",
         "subjectField" : "",
         "matchValueField" : "",
@@ -90,19 +126,19 @@
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
           "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "category",
+          "className" : "Person",
+          "fieldPath" : "birthName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "birth name",
             "valueLanguage" : "",
-            "label" : "",
-            "property" : "P1411",
+            "property" : "P1477",
             "sourceType" : "SPARQL"
           }
         }
@@ -110,105 +146,16 @@
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "forWork",
-      "type" : "ENTITY",
-      "entityClassName" : "ForWork",
-      "entityDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "",
-        "propertyLabel" : "",
-        "qualifierPid" : "P1686",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "nominee",
-      "type" : "ENTITY",
-      "entityClassName" : "Nominee",
-      "entityDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "",
-        "propertyLabel" : "",
-        "qualifierPid" : "P2453",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
-        "roleKind" : "IDENTITY",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "won",
-      "type" : "BOOLEAN",
+      "name" : "nativeName",
+      "type" : "STRING",
       "entityClassName" : "",
       "unclassedEntity" : false,
-      "cardinality" : "AUTO",
+      "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
-      "required" : true,
+      "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
-      "edgeMembership" : "INHERIT",
+      "edgeMembership" : "NONE",
       "sortFieldName" : "",
       "sortDescending" : false,
       "unit" : "",
@@ -216,12 +163,12 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P166",
-        "propertyLabel" : "",
-        "qualifierPid" : "P1686",
-        "subjectField" : "nominee",
-        "matchValueField" : "category",
-        "matchRoleField" : "forWork",
+        "propertyPid" : "P1559",
+        "propertyLabel" : "name in native language",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
         "inverseField" : "",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
@@ -231,7 +178,7 @@
         "limit" : 200,
         "rankBy" : "",
         "rankDescending" : true,
-        "productionKind" : "COMPANION_MATCH",
+        "productionKind" : "AUTO",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
@@ -241,19 +188,19 @@
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
           "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "won",
+          "className" : "Person",
+          "fieldPath" : "nativeName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "name in native language",
             "valueLanguage" : "",
-            "label" : "",
-            "property" : "P166",
+            "property" : "P1559",
             "sourceType" : "SPARQL"
           }
         }
@@ -261,17 +208,16 @@
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "ceremony",
-      "type" : "ENTITY",
-      "entityClassName" : "Ceremony",
-      "entityDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8",
+      "name" : "pseudonyms",
+      "type" : "STRING",
+      "entityClassName" : "",
       "unclassedEntity" : false,
-      "cardinality" : "SINGLE",
-      "renderMode" : "AUTO",
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE",
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
-      "edgeMembership" : "INHERIT",
+      "edgeMembership" : "NONE",
       "sortFieldName" : "",
       "sortDescending" : false,
       "unit" : "",
@@ -279,14 +225,13 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "",
-        "propertyLabel" : "",
-        "qualifierPid" : "P805",
+        "propertyPid" : "P742",
+        "propertyLabel" : "pseudonym",
+        "qualifierPid" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
         "inverseField" : "",
-        "missingQualifierPolicy" : "MISSING",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
@@ -302,15 +247,329 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "pseudonyms",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "pseudonym",
+            "valueLanguage" : "",
+            "property" : "P742",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "dateOfBirth",
+      "type" : "DATE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P569",
+        "propertyLabel" : "date of birth",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "structuredName",
+        "matchRoleField" : "structuredName",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "dateOfBirth",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "date of birth",
+            "valueLanguage" : "",
+            "property" : "P569",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "deathDate",
+      "type" : "DATE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P570",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "structuredName",
+        "matchRoleField" : "structuredName",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "deathDate",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
+            "valueLanguage" : "",
+            "property" : "P570",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "image",
+      "type" : "IMAGE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P18",
+        "propertyLabel" : "image",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "INLINE_VALUE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "valueLanguage" : "",
+            "property" : "P18",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "citizenship",
+      "type" : "ENTITY",
+      "entityClassName" : "CountryOfCitizenship",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P27",
+        "propertyLabel" : "country of citizenship",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "citizenship",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "country of citizenship",
+            "valueLanguage" : "",
+            "property" : "P27",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Person",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Person",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Person",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
-      "displayNameMode" : "FIELD",
-      "displayNameField" : "nominee",
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
       "displayNameTemplate" : "",
       "labelLanguage" : "en",
       "primaryListField" : ""
@@ -319,27 +578,21 @@
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7",
-    "className" : "Nomination",
+    "declarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613",
+    "className" : "Person",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
-    "statementSource" : {
-      "propertyPid" : "P1411",
-      "valueSelectionName" : "OscarCategories",
-      "valueSelectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
-      "graphExpansionPolicy" : "NONE"
-    },
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P1411",
-      "propertyLabel" : "",
+      "propertyPid" : "P31",
+      "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "subjectField" : "",
       "matchValueField" : "",
@@ -350,7 +603,7 @@
       "labelLanguage" : "en",
       "valueLanguage" : "",
       "requireSitelink" : false,
-      "limit" : 20000,
+      "limit" : 200,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -362,231 +615,17 @@
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "category",
+      "name" : "structuredName",
       "type" : "ENTITY",
-      "entityClassName" : "OscarCategories",
-      "entityDeclarationId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "P1411",
-        "propertyLabel" : "",
-        "qualifierPid" : "",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "category",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
-            "label" : "",
-            "property" : "P1411",
-            "sourceType" : "SPARQL"
-          }
-        }
-      } ] ],
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "forWork",
-      "type" : "ENTITY",
-      "entityClassName" : "ForWork",
-      "entityDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "",
-        "propertyLabel" : "",
-        "qualifierPid" : "P1686",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "nominee",
-      "type" : "ENTITY",
-      "entityClassName" : "Nominee",
-      "entityDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "",
-        "propertyLabel" : "",
-        "qualifierPid" : "P2453",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "missingQualifierPolicy" : "STATEMENT_SUBJECT",
-        "roleKind" : "IDENTITY",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "won",
-      "type" : "BOOLEAN",
-      "entityClassName" : "",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "INLINE",
-      "required" : true,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "P166",
-        "propertyLabel" : "",
-        "qualifierPid" : "P1686",
-        "subjectField" : "nominee",
-        "matchValueField" : "category",
-        "matchRoleField" : "forWork",
-        "inverseField" : "",
-        "direction" : "ITEM_TO_ROOT",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "COMPANION_MATCH",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "won",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
-            "label" : "",
-            "property" : "P166",
-            "sourceType" : "SPARQL"
-          }
-        }
-      } ] ],
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "ceremony",
-      "type" : "ENTITY",
-      "entityClassName" : "Ceremony",
-      "entityDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8",
+      "entityClassName" : "Name",
+      "entityDeclarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295",
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
-      "renderMode" : "AUTO",
+      "renderMode" : "INLINE",
       "required" : false,
       "filterOperator" : null,
       "filterValue" : null,
-      "edgeMembership" : "INHERIT",
+      "edgeMembership" : "NONE",
       "sortFieldName" : "",
       "sortDescending" : false,
       "unit" : "",
@@ -596,12 +635,53 @@
         "sourceLabel" : "",
         "propertyPid" : "",
         "propertyLabel" : "",
-        "qualifierPid" : "P805",
+        "qualifierPid" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
         "inverseField" : "",
-        "missingQualifierPolicy" : "MISSING",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "OWNED_COMPONENT",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "birthName",
+      "type" : "STRING",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "NONE",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P1477",
+        "propertyLabel" : "birth name",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
@@ -617,64 +697,344 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "birthName",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "birth name",
+            "valueLanguage" : "",
+            "property" : "P1477",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
-    } ] ],
-    "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
-      "displayNameMode" : "FIELD",
-      "displayNameField" : "nominee",
-      "displayNameTemplate" : "",
-      "labelLanguage" : "en",
-      "primaryListField" : ""
-    }
-  }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d",
-    "className" : "Nominee",
-    "baseClassName" : "",
-    "discriminatorPid" : "P31",
-    "discriminatorQid" : "",
-    "alias" : "",
-    "importedFrom" : "",
-    "classKind" : "SOURCE",
-    "generationDepth" : 1,
-    "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "",
-      "sourceLabel" : "",
-      "propertyPid" : "P31",
-      "propertyLabel" : "instance of",
-      "qualifierPid" : "",
-      "subjectField" : "",
-      "matchValueField" : "",
-      "matchRoleField" : "",
-      "inverseField" : "",
-      "direction" : "ITEM_TO_ROOT",
-      "requireLabel" : true,
-      "labelLanguage" : "en",
-      "valueLanguage" : "",
-      "requireSitelink" : false,
-      "limit" : 200,
-      "rankBy" : "",
-      "rankDescending" : true,
-      "productionKind" : "AUTO",
-      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "sourceType" : "SPARQL"
-    },
-    "fields" : [ "java.util.ArrayList", [ {
+    }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "type",
-      "type" : "ENTITY",
-      "entityClassName" : "NomineeType",
-      "entityDeclarationId" : "decl:aa66b987-573a-35ac-bac9-ca70bdbe3814",
+      "name" : "nativeName",
+      "type" : "STRING",
+      "entityClassName" : "",
       "unclassedEntity" : false,
-      "cardinality" : "AUTO",
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "NONE",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P1559",
+        "propertyLabel" : "name in native language",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "nativeName",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "name in native language",
+            "valueLanguage" : "",
+            "property" : "P1559",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "pseudonyms",
+      "type" : "STRING",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "NONE",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P742",
+        "propertyLabel" : "pseudonym",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "pseudonyms",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "pseudonym",
+            "valueLanguage" : "",
+            "property" : "P742",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "dateOfBirth",
+      "type" : "DATE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P569",
+        "propertyLabel" : "date of birth",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "structuredName",
+        "matchRoleField" : "structuredName",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "dateOfBirth",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "date of birth",
+            "valueLanguage" : "",
+            "property" : "P569",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "deathDate",
+      "type" : "DATE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P570",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "structuredName",
+        "matchRoleField" : "structuredName",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "deathDate",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
+            "valueLanguage" : "",
+            "property" : "P570",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "image",
+      "type" : "IMAGE",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P18",
+        "propertyLabel" : "image",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "INLINE_VALUE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Person",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "valueLanguage" : "",
+            "property" : "P18",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "citizenship",
+      "type" : "ENTITY",
+      "entityClassName" : "CountryOfCitizenship",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
       "filterOperator" : null,
@@ -687,8 +1047,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P31",
-        "propertyLabel" : "",
+        "propertyPid" : "P27",
+        "propertyLabel" : "country of citizenship",
         "qualifierPid" : "",
         "subjectField" : "",
         "matchValueField" : "",
@@ -712,19 +1072,19 @@
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
           "scope" : "FIELD_VALUE",
-          "className" : "Nominee",
-          "fieldPath" : "type",
+          "className" : "Person",
+          "fieldPath" : "citizenship",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d"
+          "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "country of citizenship",
             "valueLanguage" : "",
-            "label" : "",
-            "property" : "P31",
+            "property" : "P27",
             "sourceType" : "SPARQL"
           }
         }
@@ -735,10 +1095,10 @@
     "sourceBindings" : [ "java.util.ArrayList", [ {
       "target" : {
         "scope" : "CLASS_IDENTITY",
-        "className" : "Nominee",
+        "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d"
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -750,10 +1110,10 @@
     }, {
       "target" : {
         "scope" : "CLASS_NAMES",
-        "className" : "Nominee",
+        "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d"
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -765,10 +1125,10 @@
     }, {
       "target" : {
         "scope" : "CLASS_NAMES",
-        "className" : "Nominee",
+        "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d"
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -790,172 +1150,14 @@
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c",
-    "className" : "ForWork",
-    "baseClassName" : "",
-    "discriminatorPid" : "P31",
-    "discriminatorQid" : "",
-    "alias" : "",
-    "importedFrom" : "",
-    "classKind" : "SOURCE",
-    "generationDepth" : 1,
-    "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "",
-      "sourceLabel" : "",
-      "propertyPid" : "P31",
-      "propertyLabel" : "instance of",
-      "qualifierPid" : "",
-      "subjectField" : "",
-      "matchValueField" : "",
-      "matchRoleField" : "",
-      "inverseField" : "",
-      "direction" : "ITEM_TO_ROOT",
-      "requireLabel" : true,
-      "labelLanguage" : "en",
-      "valueLanguage" : "",
-      "requireSitelink" : false,
-      "limit" : 200,
-      "rankBy" : "",
-      "rankDescending" : true,
-      "productionKind" : "AUTO",
-      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "sourceType" : "SPARQL"
-    },
-    "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "genre",
-      "type" : "ENTITY",
-      "entityClassName" : "WorkGenre",
-      "entityDeclarationId" : "decl:224408ea-69d7-3271-97d2-69a2e4471488",
-      "unclassedEntity" : false,
-      "cardinality" : "AUTO",
-      "renderMode" : "REFERENCE",
-      "required" : false,
-      "filterOperator" : null,
-      "filterValue" : null,
-      "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
-      "sortDescending" : false,
-      "unit" : "",
-      "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
-        "sourceQid" : "",
-        "sourceLabel" : "",
-        "propertyPid" : "P136",
-        "propertyLabel" : "",
-        "qualifierPid" : "",
-        "subjectField" : "",
-        "matchValueField" : "",
-        "matchRoleField" : "",
-        "inverseField" : "",
-        "direction" : "ROOT_TO_ITEM",
-        "requireLabel" : true,
-        "labelLanguage" : "en",
-        "valueLanguage" : "",
-        "requireSitelink" : false,
-        "limit" : 200,
-        "rankBy" : "",
-        "rankDescending" : true,
-        "productionKind" : "AUTO",
-        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
-      },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "ForWork",
-          "fieldPath" : "genre",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
-            "label" : "",
-            "property" : "P136",
-            "sourceType" : "SPARQL"
-          }
-        }
-      } ] ],
-      "fields" : [ "java.util.ArrayList", [ ] ]
-    } ] ],
-    "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "sourceBindings" : [ "java.util.ArrayList", [ {
-      "target" : {
-        "scope" : "CLASS_IDENTITY",
-        "className" : "ForWork",
-        "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "identifier",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "ForWork",
-        "fieldPath" : "",
-        "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "label",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "ForWork",
-        "fieldPath" : "",
-        "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "aliases",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    } ] ],
-    "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ ] ],
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
-      "displayNameMode" : "LABEL",
-      "displayNameField" : "",
-      "displayNameTemplate" : "",
-      "labelLanguage" : "en",
-      "primaryListField" : ""
-    }
-  }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8",
-    "className" : "Ceremony",
+    "declarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295",
+    "className" : "Name",
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
-    "classKind" : "SOURCE",
+    "classKind" : "OWNED",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -985,11 +1187,11 @@
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "year",
-      "type" : "DATE",
+      "name" : "familyName",
+      "type" : "ENTITY",
       "entityClassName" : "",
-      "unclassedEntity" : false,
-      "cardinality" : "SINGLE",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
       "renderMode" : "INLINE",
       "required" : false,
       "filterOperator" : null,
@@ -1002,14 +1204,14 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P585",
+        "propertyPid" : "P734",
         "propertyLabel" : "",
         "qualifierPid" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
         "inverseField" : "",
-        "direction" : "ITEM_TO_ROOT",
+        "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
         "valueLanguage" : "",
@@ -1027,19 +1229,81 @@
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
           "scope" : "FIELD_VALUE",
-          "className" : "Ceremony",
-          "fieldPath" : "year",
+          "className" : "Name",
+          "fieldPath" : "familyName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8"
+          "classDeclarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
-            "property" : "P585",
+            "valueLanguage" : "",
+            "property" : "P734",
+            "sourceType" : "SPARQL"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "givenName",
+      "type" : "ENTITY",
+      "entityClassName" : "",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "NONE",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P735",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Name",
+          "fieldPath" : "givenName",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "",
+            "valueLanguage" : "",
+            "property" : "P735",
             "sourceType" : "SPARQL"
           }
         }
@@ -1047,52 +1311,6 @@
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "sourceBindings" : [ "java.util.ArrayList", [ {
-      "target" : {
-        "scope" : "CLASS_IDENTITY",
-        "className" : "Ceremony",
-        "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "identifier",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "Ceremony",
-        "fieldPath" : "",
-        "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "label",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "Ceremony",
-        "fieldPath" : "",
-        "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "aliases",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
@@ -1104,26 +1322,12 @@
       "primaryListField" : ""
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ {
-    "@class" : "wikidata.explore.model.VocabularySelection",
-    "name" : "OscarCategories",
-    "declarationId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
-    "kind" : "VOCABULARY",
-    "valueQids" : [ "java.util.ArrayList", [ "Q102427", "Q103360", "Q103618", "Q103916", "Q105304", "Q106291", "Q106301", "Q106800", "Q107258", "Q111332", "Q112243", "Q131520", "Q1425151", "Q1699048", "Q2032630", "Q277536", "Q277751", "Q281939", "Q3298549", "Q393686", "Q3451157", "Q487136", "Q488651", "Q489705", "Q498690", "Q501004", "Q3886463", "Q3886464", "Q3886486", "Q4671338", "Q22117120", "Q727328", "Q21995139", "Q21995136", "Q21995338", "Q22120066", "Q22120095", "Q22235305", "Q22235329", "Q22253131", "Q22253133", "Q22335251", "Q22344608", "Q22752734", "Q22752811", "Q22752868", "Q22917729", "Q830079", "Q844273", "Q917808", "Q8250869", "Q137423654", "Q31193514", "Q8624", "Q41417", "Q111210907", "Q8610", "Q8636", "Q116197098" ] ]
-  }, {
-    "@class" : "wikidata.explore.model.VocabularySelection",
-    "name" : "NomineeType",
-    "declarationId" : "decl:aa66b987-573a-35ac-bac9-ca70bdbe3814",
-    "kind" : "VOCABULARY"
-  }, {
-    "@class" : "wikidata.explore.model.VocabularySelection",
-    "name" : "WorkGenre",
-    "declarationId" : "decl:224408ea-69d7-3271-97d2-69a2e4471488",
-    "kind" : "VOCABULARY"
+  "selections" : [ "java.util.ArrayList", [ ] ],
+  "entityKindRules" : [ "java.util.ArrayList", [ {
+    "className" : "Person",
+    "classId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613",
+    "propertyPid" : "P31",
+    "evidenceQids" : [ "java.util.ArrayList", [ "Q5" ] ]
   } ] ],
-  "entityKindRules" : [ "java.util.ArrayList", [ ] ],
-  "imports" : [ "java.util.ArrayList", [ {
-    "modelName" : "Person",
-    "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]
-  } ] ]
+  "imports" : [ "java.util.ArrayList", [ ] ]
 }

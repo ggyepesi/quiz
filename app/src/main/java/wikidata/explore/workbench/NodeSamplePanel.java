@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import workbench.EntityResultPanel;
+import workbench.WorkbenchSelections;
 
 public class NodeSamplePanel extends JPanel {
 
@@ -76,6 +78,13 @@ public class NodeSamplePanel extends JPanel {
 
     private final JTable table =
             new JTable(tableModel);
+
+    /** Class samples are entities, so they use the same QID/label presentation as
+     * Explore and reusable selections instead of a sample-specific table shape. */
+    private final EntityResultPanel classResults =
+            new EntityResultPanel(List.of("QID", "Label"), 0, false);
+
+    private final JPanel resultCards = new JPanel(new CardLayout());
 
     private final JTextArea sparqlArea =
             new JTextArea();
@@ -139,7 +148,9 @@ public class NodeSamplePanel extends JPanel {
         JTabbedPane tabs =
                 new JTabbedPane();
 
-        tabs.addTab("Results", new JScrollPane(table));
+        resultCards.add(classResults, "class");
+        resultCards.add(new JScrollPane(table), "field");
+        tabs.addTab("Results", resultCards);
         tabs.addTab("SPARQL", new JScrollPane(sparqlArea));
 
         contextLabel.setFont(contextLabel.getFont().deriveFont(Font.BOLD));
@@ -236,10 +247,8 @@ public class NodeSamplePanel extends JPanel {
                         + nodeName
                         + sourceQid);
 
-        tableModel.setColumnIdentifiers(
-                new Object[]{"QID", nodeName, "", ""});
-
-        tableModel.setRowCount(0);
+        classResults.setEntities(List.of());
+        ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
         cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Running class sample...");
         sparqlArea.setText("");
@@ -298,6 +307,7 @@ public class NodeSamplePanel extends JPanel {
         });
 
         tableModel.setRowCount(0);
+        ((CardLayout) resultCards.getLayout()).show(resultCards, "field");
         cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Sampling field values...");
         sparqlArea.setText("");
@@ -307,11 +317,14 @@ public class NodeSamplePanel extends JPanel {
 
     private void acceptClassSample(TableQueryResult result) {
         SwingUtilities.invokeLater(() -> {
-            fillTable(result);
+            classResults.setEntities(result == null ? List.of() : result.rows().stream()
+                    .map(row -> new WorkbenchSelections.Entity(
+                            value(row, 0), value(row, 1), ""))
+                    .toList());
             statusLabel.setText(
-                    result.size()
+                    (result == null ? 0 : result.size())
                             + " class row"
-                            + (result.size() == 1 ? "" : "s"));
+                            + (result != null && result.size() == 1 ? "" : "s"));
         });
     }
 

@@ -72,16 +72,14 @@ public class SampleClassQuery implements Query<TableQueryResult> {
                         if (qid != null && WikidataIds.isQid(qid)) {
                             rows.add(List.of(
                                     qid,
-                                    label == null ? "" : label,
-                                    "",
-                                    ""));
+                                    label == null ? "" : label));
                         }
                     }
 
                     step.summary(rows.size() + " sampled");
 
                     return new TableQueryResult(
-                            List.of("QID", node.name(), "", ""),
+                            List.of("QID", "Label"),
                             rows);
                 });
     }

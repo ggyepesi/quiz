@@ -173,16 +173,16 @@ public class ModelBuilderFrame extends JFrame {
     // Domain = the whole project (name + its classes), keyed by name. The combo
     // lists every domain in the dataset registry; New/Rename/Delete manage them.
     private final JComboBox<String> domainBox = new JComboBox<>();
+    private final JComboBox<String> modelBox = new JComboBox<>();
     private final JButton newDomainButton = new JButton("New domain");
     private final JButton renameDomainButton = new JButton("Rename domain");
     private final JButton deleteDomainButton = new JButton("Delete domain");
     private JPanel runSection;
-    private JLabel projectKindLabel;
     // Guards the combo's listener while we repopulate/select it programmatically.
     private boolean updatingDomainBox = false;
 
-    private final JButton loadModelButton =
-            new JButton("Load model");
+    private final JButton loadProjectButton =
+            new JButton("Load project");
 
     private final JButton loadSavedButton =
             new JButton("Load saved");
@@ -287,26 +287,36 @@ public class ModelBuilderFrame extends JFrame {
     // LEFT panel: the selected domain, its classes, and the run controls.
     private JPanel buildDomainClassPanel() {
         // Domain section (top): selector + domain-level actions.
-        domainBox.setToolTipText("The domain or model being edited.");
+        domainBox.setToolTipText("Saved domains. Selecting one opens it.");
+        modelBox.setToolTipText("Saved models. Selecting one opens it.");
 
         JPanel domainPick = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        projectKindLabel = new JLabel("Domain:");
-        domainPick.add(projectKindLabel);
+        domainPick.add(new JLabel("Domain:"));
         domainPick.add(domainBox);
+        domainPick.add(new JLabel("Model:"));
+        domainPick.add(modelBox);
         domainPick.add(newDomainButton);
         domainPick.add(renameDomainButton);
         domainPick.add(deleteDomainButton);
 
         JPanel domainFiles = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         domainFiles.add(saveEverythingButton);
-        domainFiles.add(loadModelButton);
+        domainFiles.add(loadProjectButton);
         domainFiles.add(loadSavedButton);
 
         JPanel domainSection = new JPanel(new GridLayout(0, 1, 0, 0));
         domainSection.add(domainPick);
         domainSection.add(domainFiles);
+        // Generation, Explorer and sampling share the process/query runners. Their
+        // activity controls stay visible for both project kinds, above the class tree.
+        JPanel activity = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        activity.add(new JLabel("Activity:"));
+        activity.add(cancelButton);
+        activity.add(showQueryLogsButton);
+        activity.add(openSavedRunButton);
+        domainSection.add(activity);
 
-        // Run section (bottom): generate + see the results/logs + depth.
+        // Domain-only run section (bottom): generate, reuse and inspect instances.
         JLabel depthLabel = new JLabel("Depth:");
         String depthTip = "<html>How many levels of <b>child-object</b> reference "
                 + "edges to follow when generating.<br>"
@@ -325,7 +335,6 @@ public class ModelBuilderFrame extends JFrame {
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
-        runRow1.add(cancelButton);
         runRow1.add(depthLabel);
         runRow1.add(depthSpinner);
 
@@ -348,8 +357,6 @@ public class ModelBuilderFrame extends JFrame {
                                                     + "instances' statements — property → values with qualifiers nested, "
                                                     + "plus coverage badges (example-first field discovery, #91).");
         runRow2.add(showStatementsButton);
-        runRow2.add(showQueryLogsButton);
-        runRow2.add(openSavedRunButton);
 
         runSection = new JPanel(new GridLayout(0, 1, 0, 0));
         runSection.add(runRow1);
@@ -955,11 +962,18 @@ public class ModelBuilderFrame extends JFrame {
                 switchToDomain(sel.toString());
             }
         });
+        modelBox.addActionListener(e -> {
+            if (updatingDomainBox) return;
+            Object sel = modelBox.getSelectedItem();
+            if (sel != null && !sel.toString().equals(projectModel.name())) {
+                switchToDomain(sel.toString());
+            }
+        });
         newDomainButton.addActionListener(e -> newProject());
         renameDomainButton.addActionListener(e -> renameDomain());
         deleteDomainButton.addActionListener(e -> deleteDomain());
 
-        loadModelButton.addActionListener(e -> loadModel());
+        loadProjectButton.addActionListener(e -> loadProject());
 
         loadSavedButton.addActionListener(e -> loadSavedInstances());
 
@@ -1810,10 +1824,11 @@ public class ModelBuilderFrame extends JFrame {
         configurationLockLabel.setVisible(locked);
 
         domainBox.setEnabled(!locked);
+        modelBox.setEnabled(!locked);
         newDomainButton.setEnabled(!locked);
         renameDomainButton.setEnabled(!locked);
         deleteDomainButton.setEnabled(!locked);
-        loadModelButton.setEnabled(!locked);
+        loadProjectButton.setEnabled(!locked);
         loadSavedButton.setEnabled(!locked);
         saveEverythingButton.setEnabled(!locked);
         depthSpinner.setEnabled(!locked);
@@ -1843,7 +1858,6 @@ public class ModelBuilderFrame extends JFrame {
 
     private void refreshProjectKindUi() {
         boolean model = projectModel.isModel();
-        projectKindLabel.setText(projectModel.projectKind() + ":");
         newDomainButton.setText("New…");
         renameDomainButton.setText(model ? "Rename model" : "Rename domain");
         deleteDomainButton.setText(model ? "Delete model" : "Delete domain");
@@ -1942,22 +1956,42 @@ public class ModelBuilderFrame extends JFrame {
     // manage them and "Save domain" persists the selected one.
     // ------------------------------------------------------------------
 
-    // Repopulate the combo from the registry plus the current (possibly unsaved)
-    // domain, selecting the current one. Guarded so it doesn't fire a switch.
+    // Repopulate the separate domain/model selectors from storage plus the current
+    // (possibly unsaved) project. Guarded so neither selector fires a switch while
+    // both are being rebuilt.
     private void refreshDomainBox() {
         updatingDomainBox = true;
         try {
-            java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
-            names.add(projectModel.name());
-            names.addAll(storage.modelBackedNames());
+            Object previousDomain = domainBox.getSelectedItem();
+            Object previousModel = modelBox.getSelectedItem();
+            java.util.LinkedHashSet<String> domains =
+                    new java.util.LinkedHashSet<>(storage.domainKindNames());
+            java.util.LinkedHashSet<String> models =
+                    new java.util.LinkedHashSet<>(storage.modelKindNames());
+            (projectModel.isModel() ? models : domains).add(projectModel.name());
             domainBox.removeAllItems();
-            for (String n : names) {
-                domainBox.addItem(n);
+            modelBox.removeAllItems();
+            domains.forEach(domainBox::addItem);
+            models.forEach(modelBox::addItem);
+            // Rebuilding a JComboBox selects its first entry. Keep that meaningful
+            // choice in the other-kind selector rather than blanking it: Domain and
+            // Model are two usable project pickers, not one active picker plus an empty
+            // category. The currently open project is selected in its own picker.
+            if (projectModel.isModel()) {
+                modelBox.setSelectedItem(projectModel.name());
+                if (previousDomain != null && domains.contains(previousDomain.toString())) {
+                    domainBox.setSelectedItem(previousDomain);
+                }
+            } else {
+                domainBox.setSelectedItem(projectModel.name());
+                if (previousModel != null && models.contains(previousModel.toString())) {
+                    modelBox.setSelectedItem(previousModel);
+                }
             }
-            domainBox.setSelectedItem(projectModel.name());
         } finally {
             updatingDomainBox = false;
         }
+        logWindow.saveContext(projectModel.name(), projectDataDir().toPath());
     }
 
     private quiz.DatasetRegistry.Dataset findDataset(String name) {
@@ -2015,7 +2049,7 @@ public class ModelBuilderFrame extends JFrame {
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
             modelChanged();
-            sourceWorkbench.edit(projectModel.rootClass());
+            classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             refreshProjectKindUi();
             rememberCurrentDomain();
@@ -2076,7 +2110,7 @@ public class ModelBuilderFrame extends JFrame {
         graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
         instancesPanel.clear();
         modelChanged();
-        sourceWorkbench.edit(projectModel.rootClass());
+        classModelPanel.selectClass(projectModel.rootClass());
         syncDepthSpinnerToActiveClass();
         refreshDomainBox();
         refreshProjectKindUi();
@@ -2154,7 +2188,7 @@ public class ModelBuilderFrame extends JFrame {
             graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
             modelChanged();
-            sourceWorkbench.edit(projectModel.rootClass());
+            classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             // Deleting a model and landing on a domain changes the kind, and every
             // control labelled by it.
@@ -2204,9 +2238,10 @@ public class ModelBuilderFrame extends JFrame {
 
     // Loads a project model (config) from a chosen *.model.json, replacing the
     // current one. (Instances are reloaded separately via "Load saved".)
-    // A domain is one folder under data/wikidata/ holding its .model/.ruletree/
-    // .snapshot files; the user picks the FOLDER (files are shown but not
-    // selectable — which file is a technical detail) and we derive the file.
+    // A project is one folder under data/wikidata/. A domain may also hold its
+    // .ruletree/.snapshot files; a model holds configuration only. The user picks the
+    // FOLDER (files are shown but not selectable — which file is a technical detail)
+    // and we derive the model file.
     private File chooseDomainDir(String title) {
         JFileChooser chooser =
                 new JFileChooser(new File(Constants.wikidataDataDirectory));
@@ -2245,8 +2280,8 @@ public class ModelBuilderFrame extends JFrame {
         return null;
     }
 
-    private void loadModel() {
-        File dir = chooseDomainDir("Load domain — pick its folder under data/wikidata/");
+    private void loadProject() {
+        File dir = chooseDomainDir("Load project — pick its folder under data/wikidata/");
         if (dir == null) {
             return;
         }
@@ -2254,7 +2289,7 @@ public class ModelBuilderFrame extends JFrame {
         if (model == null) {
             JOptionPane.showMessageDialog(this,
                                           "No *.model.json found in\n" + dir.getPath(),
-                                          "Load domain", JOptionPane.WARNING_MESSAGE);
+                                          "Load project", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
@@ -2266,10 +2301,11 @@ public class ModelBuilderFrame extends JFrame {
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
             modelChanged();
-            sourceWorkbench.edit(projectModel.rootClass());
+            classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             refreshDomainBox();
-            logWindow.info("Loaded domain model from " + model.getName());
+            refreshProjectKindUi();
+            logWindow.info("Loaded project configuration from " + model.getName());
         } catch (Exception ex) {
             reportGenerationError(ex);
         }

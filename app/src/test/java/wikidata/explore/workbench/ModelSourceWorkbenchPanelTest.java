@@ -12,6 +12,9 @@ import wikidata.explore.model.VocabularySelection;
 
 import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.UIManager;
+import javax.swing.text.JTextComponent;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,8 +23,80 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class ModelSourceWorkbenchPanelTest {
+
+    @Test void enablingTheWorkbenchDoesNotReopenAnImportedClassOrItsFields() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel local = new GeneratedClassModel("Nominee");
+        model.rootClass(local);
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("Person");
+        imported.alias("Structured name");
+        var familyName = imported.addField(
+                "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        familyName.mapping().propertyPid("P734");
+        model.addClass(imported);
+
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(imported);
+        panel.setEditingEnabled(true); // process/domain refresh: the former regression
+        assertFalse(anyEditableText(component(panel, ClassSourcePanel.class)),
+                "class name, alias and membership remain owned by the imported model");
+        JTextComponent importedName = textContaining(
+                component(panel, ClassSourcePanel.class), "Name");
+        if (UIManager.getColor("TextField.inactiveBackground") != null) {
+            assertEquals(UIManager.getColor("TextField.inactiveBackground"),
+                    importedName.getBackground(),
+                    "read-only text uses the platform's inactive appearance");
+        }
+
+        panel.edit(familyName);
+        panel.setEditingEnabled(true);
+        assertFalse(anyEditableText(component(panel, FieldSourcePanel.class)),
+                "field name and property remain owned by the imported model");
+
+        panel.edit(local);
+        panel.setEditingEnabled(true);
+        assertTrue(anyEditableText(component(panel, ClassSourcePanel.class)),
+                "moving back to a local declaration restores its editor");
+    }
+
+    @Test void readOnlyTextRestoresItsOriginalAppearanceWhenUnlocked() {
+        JTextField text = new JTextField("value");
+        java.awt.Color originalBackground = text.getBackground();
+        java.awt.Color originalForeground = text.getForeground();
+
+        EditableComponents.setEditable(text, false);
+        assertFalse(text.isEditable());
+        EditableComponents.setEditable(text, true);
+
+        assertTrue(text.isEditable());
+        assertEquals(originalBackground, text.getBackground());
+        assertEquals(originalForeground, text.getForeground());
+    }
+
+    private static boolean anyEditableText(Container root) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JTextComponent text && text.isEditable()) return true;
+            if (child instanceof Container container && anyEditableText(container)) return true;
+        }
+        return false;
+    }
+
+    private static JTextComponent textContaining(Container root, String value) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JTextComponent text && value.equals(text.getText())) {
+                return text;
+            }
+            if (child instanceof Container container) {
+                try { return textContaining(container, value); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No text component contains " + value);
+    }
 
     @Test void theDomainNodeHasAnOverviewRatherThanAStaleClassEditor() {
         GeneratedProjectModel model = new GeneratedProjectModel();

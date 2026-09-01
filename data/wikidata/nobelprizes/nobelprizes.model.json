@@ -1,16 +1,20 @@
 {
   "@class" : "wikidata.explore.model.GeneratedProjectModel",
   "name" : "NobelPrizes",
+  "projectKind" : "DOMAIN",
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:2684d85b-8579-321d-9833-5906349bcbee",
     "className" : "NobelPrize",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "AGGREGATE",
     "aggregateSource" : {
       "sourceClassName" : "LaureatesWithMotivation",
+      "sourceClassId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "membersField" : "laureatesWithMotivation",
       "missingKeyPolicy" : "EXCLUDE",
       "keys" : [ "java.util.ArrayList", [ {
@@ -53,6 +57,7 @@
       "name" : "category",
       "type" : "ENTITY",
       "entityClassName" : "Categories",
+      "entityDeclarationId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
@@ -137,6 +142,7 @@
       "name" : "laureatesWithMotivation",
       "type" : "ENTITY",
       "entityClassName" : "LaureatesWithMotivation",
+      "entityDeclarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -190,14 +196,17 @@
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:2684d85b-8579-321d-9833-5906349bcbee",
     "className" : "NobelPrize",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "AGGREGATE",
     "aggregateSource" : {
       "sourceClassName" : "LaureatesWithMotivation",
+      "sourceClassId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "membersField" : "laureatesWithMotivation",
       "missingKeyPolicy" : "EXCLUDE",
       "keys" : [ "java.util.ArrayList", [ {
@@ -240,6 +249,7 @@
       "name" : "category",
       "type" : "ENTITY",
       "entityClassName" : "Categories",
+      "entityDeclarationId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
@@ -324,6 +334,7 @@
       "name" : "laureatesWithMotivation",
       "type" : "ENTITY",
       "entityClassName" : "LaureatesWithMotivation",
+      "entityDeclarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -375,15 +386,18 @@
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
     "className" : "LaureatesWithMotivation",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "SOURCE",
     "statementSource" : {
       "propertyPid" : "P166",
       "valueSelectionName" : "Categories",
+      "valueSelectionId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
       "graphExpansionPolicy" : "NONE"
     },
     "generationDepth" : 1,
@@ -418,6 +432,7 @@
       "name" : "category",
       "type" : "ENTITY",
       "entityClassName" : "Categories",
+      "entityDeclarationId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
@@ -459,7 +474,8 @@
           "scope" : "FIELD_VALUE",
           "className" : "LaureatesWithMotivation",
           "fieldPath" : "category",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f"
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -522,6 +538,7 @@
       "name" : "laureates",
       "type" : "ENTITY",
       "entityClassName" : "Laureate",
+      "entityDeclarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -615,11 +632,13 @@
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc",
     "className" : "Laureate",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -655,7 +674,8 @@
         "scope" : "CLASS_IDENTITY",
         "className" : "Laureate",
         "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY"
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -669,7 +689,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Laureate",
         "fieldPath" : "",
-        "slot" : "CLASS_LABEL"
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -683,97 +704,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Laureate",
         "fieldPath" : "",
-        "slot" : "CLASS_ALIASES"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "aliases",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    } ] ],
-    "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ ] ],
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
-      "displayNameMode" : "LABEL",
-      "displayNameField" : "",
-      "displayNameTemplate" : "",
-      "labelLanguage" : "en",
-      "primaryListField" : ""
-    }
-  }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "className" : "Person",
-    "baseClassName" : "",
-    "discriminatorPid" : "P31",
-    "discriminatorQid" : "",
-    "alias" : "",
-    "classKind" : "SOURCE",
-    "generationDepth" : 1,
-    "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "",
-      "sourceLabel" : "",
-      "propertyPid" : "P31",
-      "propertyLabel" : "instance of",
-      "qualifierPid" : "",
-      "subjectField" : "",
-      "matchValueField" : "",
-      "matchRoleField" : "",
-      "inverseField" : "",
-      "direction" : "ITEM_TO_ROOT",
-      "requireLabel" : true,
-      "labelLanguage" : "en",
-      "valueLanguage" : "",
-      "requireSitelink" : false,
-      "limit" : 200,
-      "rankBy" : "",
-      "rankDescending" : true,
-      "productionKind" : "AUTO",
-      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "sourceType" : "SPARQL"
-    },
-    "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "sourceBindings" : [ "java.util.ArrayList", [ {
-      "target" : {
-        "scope" : "CLASS_IDENTITY",
-        "className" : "Person",
-        "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "identifier",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "Person",
-        "fieldPath" : "",
-        "slot" : "CLASS_LABEL"
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "label",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN"
-        }
-      }
-    }, {
-      "target" : {
-        "scope" : "CLASS_NAMES",
-        "className" : "Person",
-        "fieldPath" : "",
-        "slot" : "CLASS_ALIASES"
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -797,12 +729,13 @@
   "selections" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.VocabularySelection",
     "name" : "Categories",
+    "declarationId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
     "kind" : "VOCABULARY",
     "valueQids" : [ "java.util.ArrayList", [ "Q37922", "Q80061", "Q35637", "Q44585", "Q38104", "Q47170" ] ]
   } ] ],
-  "entityKindRules" : [ "java.util.ArrayList", [ {
-    "className" : "Person",
-    "propertyPid" : "P31",
-    "evidenceQids" : [ "java.util.ArrayList", [ "Q5" ] ]
+  "entityKindRules" : [ "java.util.ArrayList", [ ] ],
+  "imports" : [ "java.util.ArrayList", [ {
+    "modelName" : "Person",
+    "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]
   } ] ]
 }

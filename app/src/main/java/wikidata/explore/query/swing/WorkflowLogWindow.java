@@ -24,6 +24,9 @@ public class WorkflowLogWindow implements LogListener {
     private final List<LogNode> workflows =
             new ArrayList<>();
     private final List<RegisteredPipeline> pipelines = new ArrayList<>();
+    /** The project currently open in the owning application. Ad-hoc Explorer queries
+     *  have no generation pipeline, but their saved log still belongs here. */
+    private RegisteredPipeline saveContext;
 
     private CardListView view;
     private JFrame frame;
@@ -191,6 +194,14 @@ public class WorkflowLogWindow implements LogListener {
         registerPipeline(title, pipeline, null, null);
     }
 
+    /** Names where an ad-hoc query log should be saved. A project is broader than a
+     *  domain: models run Explorer and sampling queries too. */
+    public synchronized void saveContext(String project, Path directory) {
+        saveContext = project == null || project.isBlank() ? null
+                : new RegisteredPipeline("Project", null, project.trim(),
+                        directory == null ? null : directory.toAbsolutePath().normalize());
+    }
+
     /** Associates the run with the domain it belongs to and the directory containing
      *  its eventual snapshot. The domain is stated, not recovered from {@code title}:
      *  a title is a display string, and a domain whose own name contains the separator
@@ -243,6 +254,7 @@ public class WorkflowLogWindow implements LogListener {
      *  where it belongs. Name and folder are read from the SAME run — taken from
      *  different ones, a log could be named after one domain inside another's folder. */
     synchronized RegisteredPipeline destination() {
+        if (saveContext != null) return saveContext;
         for (int i = pipelines.size() - 1; i >= 0; i--) {
             RegisteredPipeline candidate = pipelines.get(i);
             if (!candidate.domain().isBlank()) {

@@ -314,9 +314,29 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void setEditingEnabled(boolean enabled) {
         editingEnabled = enabled;
-        EditableComponents.setEditable(cardPanel, enabled);
-        EditableComponents.setEditable(kindHeader, enabled);
         EditableComponents.setEditable(helperTabs, enabled);
+        applySelectionEditability();
+    }
+
+    /**
+     * Applies both reasons an editor may be read-only: a process-wide lock and
+     * declaration ownership.  They must be combined here.  Applying the former to the
+     * whole card with {@code true} used to reopen an imported declaration after a
+     * domain load or process-state refresh.
+     */
+    private void applySelectionEditability() {
+        boolean declarationOwnedHere = selected == null || switch (selected) {
+            case GeneratedClassModel clazz -> !clazz.isImported();
+            case GeneratedFieldModel field -> {
+                GeneratedClassModel owner = owningClassOf(field);
+                yield owner == null || !owner.isImported();
+            }
+            case wikidata.explore.model.Selection selection -> !selection.isImported();
+            default -> true;
+        };
+        boolean editable = editingEnabled && declarationOwnedHere;
+        EditableComponents.setEditable(cardPanel, editable);
+        EditableComponents.setEditable(kindHeader, editable);
     }
 
     public void edit(Object selected) {
@@ -408,10 +428,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         reusableSelectionsPanel.setVisible(!(selected instanceof GeneratedClassModel clazz)
                 || clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE);
 
-        // The editors for the newly shown card are built (or rebuilt) enabled. The lock
-        // is a property of THIS panel, so re-applying it here keeps every caller of
-        // edit() from having to remember it — which is how a lock quietly springs open.
-        if (!editingEnabled) setEditingEnabled(false);
+        // Editors update their own conditional enablement while loading a declaration.
+        // Ownership and the process-wide lock are the final authority and therefore run
+        // afterwards on every selection, including when editing is globally enabled.
+        applySelectionEditability();
     }
 
     /**

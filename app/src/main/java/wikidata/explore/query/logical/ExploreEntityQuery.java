@@ -7,6 +7,7 @@ import wikidata.explore.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import work.LogStep;
+import work.LogNode;
 import wikidata.explore.query.result.TableQueryResult;
 
 import java.util.ArrayList;
@@ -116,25 +117,34 @@ public class ExploreEntityQuery implements Query<TableQueryResult> {
     private void runDirection(QueryContext context, LogStep step,
                               boolean incoming, List<List<Object>> rows) throws Exception {
         String sparql = sparql(incoming);
-        step.subquery(incoming ? "Incoming relations" : "Outgoing relations",
-                sparql, null);
-        for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
-            String pid = b.qid("p");
-            if (pid == null || !WikidataIds.isPid(pid)) {
-                continue;
+        String title = incoming ? "Incoming relations" : "Outgoing relations";
+        LogNode child = step.beginSubquery(title, sparql);
+        int before = rows.size();
+        try {
+            for (WikidataBinding b : WikidataAccess.sparql(
+                    context, Datasource.WIKIDATA).query(sparql)) {
+                String pid = b.qid("p");
+                if (pid == null || !WikidataIds.isPid(pid)) {
+                    continue;
+                }
+                String label = b.value("pl");
+                String count = b.value("n");
+                String[] kindEx = classify(b.value("ex"), b.value("exLabel"));
+                String exampleQid = "entity".equals(kindEx[0]) ? b.qid("ex") : "";
+                rows.add(new ArrayList<>(List.of(
+                        incoming ? "← in" : "→ out",
+                        pid,
+                        label == null ? pid : label,
+                        count == null ? "0" : count,
+                        kindEx[1],    // Example (display)
+                        kindEx[0],
+                        exampleQid == null ? "" : exampleQid)));
             }
-            String label = b.value("pl");
-            String count = b.value("n");
-            String[] kindEx = classify(b.value("ex"), b.value("exLabel"));
-            String exampleQid = "entity".equals(kindEx[0]) ? b.qid("ex") : "";
-            rows.add(new ArrayList<>(List.of(
-                    incoming ? "← in" : "→ out",
-                    pid,
-                    label == null ? pid : label,
-                    count == null ? "0" : count,
-                    kindEx[1],    // Example (display)
-                    kindEx[0],
-                    exampleQid == null ? "" : exampleQid)));
+            int found = rows.size() - before;
+            step.completeSubquery(child, found + " relation" + (found == 1 ? "" : "s"));
+        } catch (Exception failure) {
+            step.failSubquery(child, failure.getMessage());
+            throw failure;
         }
     }
 

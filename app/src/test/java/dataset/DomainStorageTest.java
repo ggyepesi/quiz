@@ -283,6 +283,7 @@ class DomainStorageTest {
                 "a project saved before kinds existed is a domain");
         assertFalse(storage.isModelKind("Nothing saved under this name"));
         assertEquals(List.of("People"), storage.modelKindNames());
+        assertEquals(List.of("Nobel", "Oscars"), storage.domainKindNames());
     }
 
     /** An import leaves the class owned by the model it names, so only a model can be

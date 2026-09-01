@@ -198,6 +198,11 @@ public final class DomainStorage {
         return modelBackedNames().stream().filter(this::isModelKind).toList();
     }
 
+    /** The saved domains, complementary to {@link #modelKindNames()}. */
+    public List<String> domainKindNames() {
+        return modelBackedNames().stream().filter(name -> !isModelKind(name)).toList();
+    }
+
     /**
      * The models {@code projectName} may import a class from. Only models: importing is
      * using a model's class where it stands, and a domain does not own configuration on

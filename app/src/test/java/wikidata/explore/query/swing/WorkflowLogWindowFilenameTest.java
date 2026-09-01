@@ -75,6 +75,19 @@ class WorkflowLogWindowFilenameTest {
                 "an unnamed run still gets a usable filename");
     }
 
+    @Test void aModelProvidesTheDestinationForItsExplorerQueries() {
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        Path modelDirectory = directory.resolve("person");
+        window.saveContext("Person", modelDirectory);
+
+        assertEquals("Person", window.destination().domain());
+        assertEquals(modelDirectory.toAbsolutePath().normalize(),
+                window.destination().snapshotDirectory());
+        assertEquals(modelDirectory.resolve("query-log-person-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(
+                        modelDirectory, window.destination().domain()));
+    }
+
     @Test void terminalStatusRefreshesEvenWhenTheReaderScrolledUp() {
         assertFalse(WorkflowLogWindow.refreshFully(false, work.LogStatus.RUNNING, false));
         assertTrue(WorkflowLogWindow.refreshFully(false, work.LogStatus.OK, false));

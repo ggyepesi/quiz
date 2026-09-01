@@ -115,6 +115,42 @@ The UI marks the difference: an imported class shows `imported from People` on i
 row and a notice above its disabled editor naming the owning model, so a locked editor
 reads as owned rather than broken. A copy carries no mark, because it claims nothing.
 
+The lock applies to the declaration as a whole. In particular:
+
+- the class name and alias cannot be changed in the importer;
+- its membership/source configuration, including a Wikidata subtype/P31 declaration,
+  cannot be changed in the importer;
+- field names, types, cardinalities and source properties cannot be changed in the
+  importer;
+- the complete configuration is nevertheless shown, rather than being replaced by a
+  read-only summary.
+
+This is an ownership rule, not merely disabled Swing controls. The editor combines it
+with the temporary global lock used during generation: returning the workbench to its
+ordinary editable state must not reopen imported declarations. New controls inherit the
+same rule through the enclosing editor instead of each remembering to implement it.
+
+**Imported field names are deliberately stable.** Renaming `Person.familyName` in one
+domain would create a local schema fork while still appearing to use the same model. It
+would also make a future union of `Person` instances from several domains require a
+per-domain field-name translation. The first version therefore forbids it. A project that
+needs a different shape must copy the class and own the divergence explicitly.
+
+**A subtype refinement may be useful later, but is not an ordinary edit.** An importing
+domain may eventually need a population narrower than the model's declaration—for
+example, a domain-specific restriction layered over an imported `Person`. If introduced,
+this should be a separately named and visibly local refinement stored by the importer,
+not an unlocked P31 box that appears to modify the imported class. It must only narrow
+the imported population, leave the shared schema and field names unchanged, and make its
+effect on generated domain instances explicit. Until that construct exists, subtype/P31
+remains read-only with the rest of the class.
+
+The importer also preserves presentation metadata exactly; it does not invent missing
+labels. The first `Person` test exposed old fields whose PIDs were saved without property
+labels (`P570`, `P734`, `P735`). That is corrected in the owning model, not patched in each
+importer. The UI should show an absent label as absent rather than repeat the PID and
+pretend it is a label.
+
 **The import reference is the source of truth.** `ModelUse` derives the Uses section from
 those references; the resolved classes are their current view, not a second declaration.
 Copies never appear there. A use begins with the first selected imported class and ends
@@ -124,6 +160,78 @@ Circular imports are refused when references are resolved. **Stored qualified cl
 are unnecessary: a field targets a
 class by its own name, and `qualifiedClassName()` derives `People.Person` for display.
 An import refuses a local name collision; Copy remains the explicit replacement operation.
+
+### Example: a reusable statement class
+
+An `OfficeHolding` class is a useful example because the statement structure is reusable
+while the population to search is domain-specific.
+
+The model owns the meaning and shape of one P39 statement:
+
+```text
+Model: Public office
+
+OfficeHolding                         Statement class, reifies P39
+  person       Person                statement subject
+  position     Position              statement value
+  startDate    Date                  qualifier P580
+  endDate      Date                  qualifier P582
+  replaces     Person                qualifier P155
+  replacedBy   Person                qualifier P156
+
+Identity: Wikidata statement identifier
+Display:  {person} — {position}
+```
+
+`Person` and `Position` are class dependencies of `OfficeHolding`. Importing the statement
+class therefore shows them in its deep dependency closure. The model may own them itself or
+import them from other models; that does not change the statement shape.
+
+What the reusable class deliberately does **not** say is “download every P39 statement from
+Wikidata”. The importing domain supplies a bounded acquisition binding. History might say:
+
+```text
+History domain
+
+Selection: RelevantPositions
+  Apostolic King of Hungary
+  Holy Roman Emperor
+  ...
+
+Binding for imported OfficeHolding
+  statement values come from RelevantPositions
+```
+
+Execution then reads:
+
+```text
+RelevantPositions
+        ↓ bounded values
+P39 statement acquisition
+        ↓
+OfficeHolding instances shaped by the imported model
+```
+
+This binding is neither an entity-kind rule nor a field mapping:
+
+- an entity-kind rule classifies an encountered entity, such as `P31 = Q5 → Person`;
+- the statement binding decides which statements are acquired;
+- a field consumes the resulting statement instances.
+
+For example, History may configure:
+
+```text
+Person.offices = inverse of OfficeHolding.person
+```
+
+That inverse field presents the holdings belonging to a Person. It does not silently launch
+P39 discovery; acquisition remains the explicit domain binding above.
+
+The first model-import slice does not yet provide this domain-side binding editor for an
+imported read-only statement class. Consequently, a statement class can currently be imported
+only when its acquisition configuration is already complete and reusable. If its population
+is domain-specific, it must currently be copied and configured locally. This example identifies
+the missing construct without implementing an overlay or exception prematurely.
 
 ## Open: what a model owes its importers
 
@@ -169,7 +277,8 @@ time, which is late but honest, and cheap to recover from: nothing here is expen
 enough to regenerate.
 
 Separately open, and smaller: whether an importing project may ever override an imported
-class, and in what form. That wants experience with models first.
+class, and in what form. The possible narrowing refinement described above is the first
+concrete case; arbitrary field or identity overrides are explicitly not implied by it.
 
 ## Step 3: instance ownership — instances stay per-domain
 
