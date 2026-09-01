@@ -100,8 +100,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P1411",
             "sourceType" : "SPARQL"
           }
@@ -251,8 +251,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P166",
             "sourceType" : "SPARQL"
           }
@@ -415,8 +415,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P1411",
             "sourceType" : "SPARQL"
           }
@@ -566,8 +566,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P166",
             "sourceType" : "SPARQL"
           }
@@ -722,8 +722,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P31",
             "sourceType" : "SPARQL"
           }
@@ -880,8 +880,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P136",
             "sourceType" : "SPARQL"
           }
@@ -1037,8 +1037,8 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "valueLanguage" : "",
             "label" : "",
+            "valueLanguage" : "",
             "property" : "P585",
             "sourceType" : "SPARQL"
           }
