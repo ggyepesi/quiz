@@ -309,16 +309,17 @@ class SingleRootClassModelPanelTest {
     }
 
     /**
-     * Copy and import are separate commands because they are separate acts. Offering
-     * one control that quietly decides which one happened is how the two got conflated
-     * in the first place.
+     * Copy, paste and import are separate commands because they are separate acts.
+     * Copy takes the class in front of the reader and asks nothing; paste is where the
+     * decision is; import is not a copy at all.
      */
     @Test void copyAndImportAreDistinctCommands() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Prize"));
         SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
 
-        assertNotNull(button(panel, "Copy class…"));
+        assertNotNull(button(panel, "Copy class"));
+        assertNotNull(button(panel, "Paste class…"));
         assertNotNull(button(panel, "Import class…"));
     }
 
@@ -340,5 +341,25 @@ class SingleRootClassModelPanelTest {
                         find(panel, JTree.class).getModel().getRoot(),
                 SingleRootClassModelPanel.ConfigurationSection.USES),
                 "a copy is not a use of anything");
+    }
+
+    /** Paste needs something copied, not a class selected — it is not about the tree. */
+    @Test void pasteIsOfferedOnlyWhenSomethingHasBeenCopied() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton paste = button(panel, "Paste class…");
+
+        panel.selectClass(project.rootClass());
+        assertFalse(paste.isEnabled(), "nothing copied yet");
+
+        boolean[] copied = {false};
+        panel.pasteAvailable(() -> copied[0]);
+        copied[0] = true;
+        // What the frame does after a copy, and the only thing that re-asks: selecting
+        // the already-selected node fires nothing.
+        panel.refresh();
+
+        assertTrue(paste.isEnabled(), "something copied, so there is something to paste");
     }
 }

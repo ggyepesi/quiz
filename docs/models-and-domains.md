@@ -80,11 +80,20 @@ is implemented rather than carried forward as a compatibility contract.
 These are two different acts sharing one mechanism, and keeping them apart is the whole
 of this step.
 
-**Copy** eases configuring a class that is the same as, or similar to, one already
-configured elsewhere. The result belongs to the project that copied it: freely editable,
-renamable, no lasting relationship, no record of where it came from. A copy may start
-from any saved project. Where it was copied from constrains nothing, so nothing needs to
-be remembered about it.
+**Copy and paste**, as anywhere else. Copy takes the class in front of the reader — the
+source is where they are, so there is nothing to choose and nothing is asked. Paste puts
+it into whichever domain or model they have opened since. The result belongs to the
+project pasted into: freely editable, renamable, no lasting relationship, no record of
+where it came from.
+
+Pasting back into the project a class was copied from is refused. That is pasting a class
+onto itself; wanting a second one is answered by renaming the first and pasting then, not
+by the paste inventing a name. Where a name already exists in the target, the answer is
+replace or cancel — the two an ordinary paste offers.
+
+The clipboard holds a snapshot, not a live reference. Editing the source after copying
+does not change what a pending paste produces; following later changes is what an import
+does, and this is the other one.
 
 **Import** uses a model's class where it stands. The importing project persists only the
 model name and selected class names. On load those references resolve the model's current

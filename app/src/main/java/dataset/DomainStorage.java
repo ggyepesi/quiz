@@ -199,16 +199,6 @@ public final class DomainStorage {
     }
 
     /**
-     * The projects {@code projectName} may copy a class from — any other saved project.
-     * Copying eases configuring a class that resembles one already configured; the copy
-     * is this project's own, so where it was copied from constrains nothing.
-     */
-    public List<String> copySourcesFor(String projectName) {
-        String own = key(projectName == null ? "" : projectName);
-        return modelBackedNames().stream().filter(name -> !key(name).equals(own)).toList();
-    }
-
-    /**
      * The models {@code projectName} may import a class from. Only models: importing is
      * using a model's class where it stands, and a domain does not own configuration on
      * another project's behalf. A project never imports from itself.

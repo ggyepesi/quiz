@@ -25,6 +25,7 @@ public class SingleRootClassModelPanel extends JPanel {
     }
 
     private final GeneratedProjectModel projectModel;
+    private java.util.function.BooleanSupplier pasteAvailable = () -> false;
     private DefaultMutableTreeNode rootTreeNode;
     private final DefaultTreeModel treeModel;
     private final JTree tree;
@@ -36,7 +37,11 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
-    private final JButton copyClassButton = new JButton("Copy class…");
+    // Copy takes the selected class and asks nothing: the class being copied is the one
+    // in front of the reader. Paste is where a decision is made, so it is the one with
+    // the dialog.
+    private final JButton copyClassButton = new JButton("Copy class");
+    private final JButton pasteClassButton = new JButton("Paste class…");
     private final JButton importClassButton = new JButton("Import class…");
     private final JButton addFieldButton = new JButton("Add field");
     private final JButton removeButton = new JButton("Remove");
@@ -81,6 +86,7 @@ public class SingleRootClassModelPanel extends JPanel {
         editingEnabled = enabled;
         addClassButton.setEnabled(enabled);
         copyClassButton.setEnabled(enabled);
+        pasteClassButton.setEnabled(enabled);
         importClassButton.setEnabled(enabled);
         updateActionState();
     }
@@ -91,6 +97,20 @@ public class SingleRootClassModelPanel extends JPanel {
             copyClassButton.removeActionListener(listener);
         }
         if (action != null) copyClassButton.addActionListener(e -> action.run());
+    }
+
+    public void onPasteClass(Runnable action) {
+        for (java.awt.event.ActionListener listener
+                : pasteClassButton.getActionListeners()) {
+            pasteClassButton.removeActionListener(listener);
+        }
+        if (action != null) pasteClassButton.addActionListener(e -> action.run());
+    }
+
+    /** Whether anything can be pasted here — the frame owns the copied class. */
+    public void pasteAvailable(java.util.function.BooleanSupplier available) {
+        this.pasteAvailable = available;
+        updateActionState();
     }
 
     public void onImportClass(Runnable action) {
@@ -294,7 +314,10 @@ public class SingleRootClassModelPanel extends JPanel {
         renameClassButton.setEnabled(
                 editingEnabled && (classContext || vocabulary) && !imported);
         addClassButton.setEnabled(editingEnabled);
+        // Copying needs a class to copy. Pasting needs something copied and somewhere to
+        // put it, and neither is about what happens to be selected.
         copyClassButton.setEnabled(editingEnabled && classContext);
+        pasteClassButton.setEnabled(editingEnabled && pasteAvailable.getAsBoolean());
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !imported);
         removeButton.setEnabled(editingEnabled && (classContext || vocabulary)
@@ -315,6 +338,7 @@ public class SingleRootClassModelPanel extends JPanel {
         buttons.add(renameClassButton);
         buttons.add(addClassButton);
         buttons.add(copyClassButton);
+        buttons.add(pasteClassButton);
         buttons.add(importClassButton);
         buttons.add(addFieldButton);
         buttons.add(removeButton);

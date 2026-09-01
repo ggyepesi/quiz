@@ -254,33 +254,24 @@ class DomainStorageTest {
         assertEquals(List.of("People"), storage.modelKindNames());
     }
 
-    /**
-     * Copying and importing are different acts with different reach. A copy is a
-     * convenience and may start from any project. An import leaves the class owned by
-     * the model it names, so only a model can be imported from.
-     */
-    @Test void copyReachesAnyProjectAndImportOnlyModels(@TempDir Path root)
-            throws Exception {
+    /** An import leaves the class owned by the model it names, so only a model can be
+     *  imported from. Copying needs no such list: it takes the class already open. */
+    @Test void onlyAModelCanBeImportedFrom(@TempDir Path root) throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());
         writeProject(storage, "People", "MODEL");
         writeProject(storage, "Places", "MODEL");
         writeProject(storage, "Nobel", "DOMAIN");
         writeProject(storage, "Oscars", "DOMAIN");
 
-        assertEquals(List.of("Nobel", "Oscars", "People", "Places"),
-                storage.copySourcesFor("Constellations"),
-                "a copy may start from any saved project");
         assertEquals(List.of("People", "Places"),
                 storage.importSourcesFor("Nobel"),
                 "an import names a model that keeps owning the class");
     }
 
-    @Test void aProjectIsNeitherCopiedNorImportedFromItself(@TempDir Path root)
-            throws Exception {
+    @Test void aProjectIsNotImportedFromItself(@TempDir Path root) throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());
         writeProject(storage, "People", "MODEL");
 
-        assertEquals(List.of(), storage.copySourcesFor("People"));
         assertEquals(List.of(), storage.importSourcesFor("People"));
         assertEquals(List.of(), storage.importSourcesFor("  people  "),
                 "the folder key decides identity, so punctuation and case cannot "

@@ -56,6 +56,8 @@ public class ModelBuilderFrame extends JFrame {
             new WikidataApiClient("QuizProject/1.0");
 
     private final dataset.DomainStorage storage = dataset.DomainStorage.inDefaultLocation();
+    /** Survives switching domains: copying here and pasting there is the point. */
+    private final ClassClipboard classClipboard = new ClassClipboard();
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
 
@@ -661,7 +663,9 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.afterChange(v -> modelChanged());
         classModelPanel.onCopyClass(this::copyClassConfiguration);
+        classModelPanel.onPasteClass(this::pasteClassConfiguration);
         classModelPanel.onImportClass(this::importClassConfiguration);
+        classModelPanel.pasteAvailable(() -> classClipboard.canPasteInto(projectModel));
 
         sourceWorkbench.afterApplyField(f -> {
             modelChanged();
@@ -1597,54 +1601,63 @@ public class ModelBuilderFrame extends JFrame {
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
+    /**
+     * Copy takes the class in front of the reader. There is nothing to choose: the source
+     * is where they are, which is what makes paste — not copy — the operation that asks.
+     */
     private void copyClassConfiguration() {
-        bringInClass(ClassImportPlan.Ownership.COPY);
+        sourceWorkbench.applyEdits();
+        GeneratedClassModel selected = classModelPanel.selectedClassOrRoot();
+        if (selected == null) return;
+        if (selected.isImported()) {
+            JOptionPane.showMessageDialog(this,
+                    selected.className() + " is imported from " + selected.importedFrom()
+                            + ".\n\nCopy it from that model, so the copy is of the class "
+                            + "as its owner defines it.",
+                    "Copy class", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        classClipboard.copy(projectModel, selected.className());
+        classModelPanel.refresh();
+        JOptionPane.showMessageDialog(this,
+                selected.className() + " copied from " + projectModel.name()
+                        + ".\n\nOpen the domain or model to put it in, then Paste class.",
+                "Copy class", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** Paste puts the copied class where the reader now is. */
+    private void pasteClassConfiguration() {
+        if (!classClipboard.canPasteInto(projectModel)) {
+            JOptionPane.showMessageDialog(this,
+                    classClipboard.refusalFor(projectModel),
+                    "Paste class", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        bringIn(classClipboard.snapshot(), classClipboard.className(),
+                classClipboard.sourceName(), ClassImportPlan.Ownership.COPY);
     }
 
     private void importClassConfiguration() {
-        bringInClass(ClassImportPlan.Ownership.IMPORT);
-    }
-
-    /**
-     * Copy and import are the same mechanism and different acts. Copying takes a class
-     * from any project and the result is this project's own. Importing uses a model's
-     * class where it stands: it stays that model's, and is not edited here.
-     */
-    private void bringInClass(ClassImportPlan.Ownership ownership) {
-        boolean importing = ownership == ClassImportPlan.Ownership.IMPORT;
+        boolean importing = true;
         try {
             sourceWorkbench.applyEdits();
-            java.util.List<String> sources = importing
-                    ? storage.importSourcesFor(projectModel.name())
-                    : storage.copySourcesFor(projectModel.name());
+            java.util.List<String> sources =
+                    storage.importSourcesFor(projectModel.name());
             if (sources.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
-                        importing
-                                ? "No saved model is available to import from.\n\n"
-                                        + "An imported class stays owned by the model it "
-                                        + "comes from. Create a model and put the classes "
-                                        + "there first — a model may copy them from a "
-                                        + "domain."
-                                : "There is no other saved domain or model to copy "
-                                        + "from.",
-                        importing ? "Import class" : "Copy class",
-                        JOptionPane.INFORMATION_MESSAGE);
+                        "No saved model is available to import from.\n\n"
+                                + "An imported class stays owned by the model it comes "
+                                + "from. Create a model and put the classes there first "
+                                + "— copy and paste them in from a domain.",
+                        "Import class", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
-            // The reader is already in a domain or a model, and those are the only two
-            // words for this. A third one — "project" — names the same thing again and
-            // reads as if it might mean the one they are in. Each entry says its own
-            // kind instead, which also shows why the import list is shorter.
             java.util.LinkedHashMap<String, String> labelled =
                     new java.util.LinkedHashMap<>();
-            for (String name : sources) {
-                labelled.put(name + (storage.isModelKind(name) ? "  (model)"
-                        : "  (domain)"), name);
-            }
+            for (String name : sources) labelled.put(name + "  (model)", name);
             Object[] sourceChoices = labelled.keySet().toArray();
             String chosen = (String) JOptionPane.showInputDialog(
-                    this, importing ? "Import a class from:" : "Copy a class from:",
-                    importing ? "Import class" : "Copy class",
+                    this, "Import a class from:", "Import class",
                     JOptionPane.PLAIN_MESSAGE, null, sourceChoices, sourceChoices[0]);
             if (chosen == null) return;
             String domain = labelled.get(chosen);
@@ -1655,12 +1668,28 @@ public class ModelBuilderFrame extends JFrame {
             java.util.List<String> classNames = source.classes().stream()
                     .map(GeneratedClassModel::className).toList();
             String className = (String) JOptionPane.showInputDialog(
-                    this, "Class:",
-                    (importing ? "Import from " : "Copy from ") + domain,
+                    this, "Class:", "Import from " + domain,
                     JOptionPane.PLAIN_MESSAGE, null, classNames.toArray(),
                     classNames.getFirst());
             if (className == null) return;
+            bringIn(source, className, domain, ClassImportPlan.Ownership.IMPORT);
+        } catch (Exception failure) {
+            JOptionPane.showMessageDialog(this,
+                    failure.getMessage() == null ? failure.toString() : failure.getMessage(),
+                    "Could not import class", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
+    /**
+     * Brings one class from {@code source} into this project — the half paste and import
+     * share. What differs is where the source came from and whether the result is this
+     * project's own, and both are settled before this is called.
+     */
+    private void bringIn(GeneratedProjectModel source, String className,
+            String domain, ClassImportPlan.Ownership ownership) {
+        boolean importing = ownership == ClassImportPlan.Ownership.IMPORT;
+        try {
+            sourceWorkbench.applyEdits();
             ClassImportPlan plan = ClassImportPlan.of(source, projectModel, className);
             DefaultListModel<String> dependencyModel = new DefaultListModel<>();
             plan.dependencyClassNames().forEach(dependencyModel::addElement);
@@ -1678,7 +1707,7 @@ public class ModelBuilderFrame extends JFrame {
             preview.setEditable(false);
             preview.setLineWrap(true);
             preview.setWrapStyleWord(true);
-            preview.setText((importing ? "Import " : "Copy ") + className + " from "
+            preview.setText((importing ? "Import " : "Paste ") + className + " from "
                     + domain + " into " + projectModel.name() + ".\n\n"
                     + (importing
                             ? "The class stays owned by " + domain
@@ -1716,7 +1745,7 @@ public class ModelBuilderFrame extends JFrame {
             // existing declaration asked the same question a different way, and the
             // answer it added is better reached by renaming what is here first.
             int accepted = JOptionPane.showConfirmDialog(this, choices,
-                    importing ? "Import class" : "Copy class",
+                    importing ? "Import class" : "Paste class",
                     JOptionPane.OK_CANCEL_OPTION,
                     plan.conflicts().isEmpty()
                             ? JOptionPane.PLAIN_MESSAGE : JOptionPane.WARNING_MESSAGE);
@@ -1734,16 +1763,16 @@ public class ModelBuilderFrame extends JFrame {
             JOptionPane.showMessageDialog(this,
                     imported.isEmpty()
                             ? "The selected target declarations were reused."
-                            : (importing ? "Imported " : "Copied ") + imported.size()
+                            : (importing ? "Imported " : "Pasted ") + imported.size()
                                     + " class configuration(s): "
                                     + imported.stream().map(GeneratedClassModel::className)
                                             .collect(java.util.stream.Collectors.joining(", ")),
-                    importing ? "Import class" : "Copy class",
+                    importing ? "Import class" : "Paste class",
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception failure) {
             JOptionPane.showMessageDialog(this,
                     failure.getMessage() == null ? failure.toString() : failure.getMessage(),
-                    importing ? "Could not import class" : "Could not copy class",
+                    importing ? "Could not import class" : "Could not paste class",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
