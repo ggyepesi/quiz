@@ -456,7 +456,7 @@
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "citizenShip",
+      "name" : "citizenship",
       "type" : "ENTITY",
       "entityClassName" : "CountryOfCitizenship",
       "unclassedEntity" : false,
@@ -499,7 +499,7 @@
         "target" : {
           "scope" : "FIELD_VALUE",
           "className" : "Person",
-          "fieldPath" : "citizenShip",
+          "fieldPath" : "citizenship",
           "slot" : "PRIMARY_FIELD_VALUE",
           "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
         },
@@ -1030,7 +1030,7 @@
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
-      "name" : "citizenShip",
+      "name" : "citizenship",
       "type" : "ENTITY",
       "entityClassName" : "CountryOfCitizenship",
       "unclassedEntity" : false,
@@ -1073,7 +1073,7 @@
         "target" : {
           "scope" : "FIELD_VALUE",
           "className" : "Person",
-          "fieldPath" : "citizenShip",
+          "fieldPath" : "citizenship",
           "slot" : "PRIMARY_FIELD_VALUE",
           "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
         },
