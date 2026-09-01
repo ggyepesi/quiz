@@ -2140,11 +2140,15 @@ public class ModelBuilderFrame extends JFrame {
             reportGenerationError(ex);
         }
 
-        // Switch to another registered domain, or fall back to a fresh demo.
-        String next = storage.anyRegisteredNameOtherThan(name);
-        if (next != null) {
-            doLoadDomain(domainModelFile(next));
-        } else {
+        // Switch to whatever else is saved — the same list the picker shows, so a model
+        // is a candidate even though nothing registered it. Falling through to the demo
+        // when that fails matters as much as the switch itself: the picker re-adds the
+        // open project by name, so leaving the deleted one loaded puts it back in the
+        // list it was just removed from.
+        String next = storage.anySavedNameOtherThan(name);
+        File nextFile = next == null ? null : domainModelFile(next);
+        boolean switched = nextFile != null && nextFile.isFile() && doLoadDomain(nextFile);
+        if (!switched) {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
             replaceGenerationRun(null);
             graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
@@ -2152,6 +2156,9 @@ public class ModelBuilderFrame extends JFrame {
             modelChanged();
             sourceWorkbench.edit(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
+            // Deleting a model and landing on a domain changes the kind, and every
+            // control labelled by it.
+            refreshProjectKindUi();
         }
         refreshDomainBox();
     }

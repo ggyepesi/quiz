@@ -221,11 +221,17 @@ public final class DomainStorage {
         }
     }
 
-    /** Something to open after a domain is deleted, or null when nothing is registered. */
-    public String anyRegisteredNameOtherThan(String name) {
-        for (DatasetRegistry.Dataset dataset : registry().datasets()) {
-            String candidate = dataset.name();
-            if (candidate != null && !candidate.isBlank() && !candidate.equals(name)) {
+    /**
+     * Something to open after a domain or model is deleted, or null when nothing else is
+     * saved. Drawn from {@link #modelBackedNames()} — the list the picker shows — rather
+     * than the registry: a model that has never generated is not registered anywhere,
+     * so a registry-only answer skips every model on disk and can be empty while the
+     * picker plainly lists several.
+     */
+    public String anySavedNameOtherThan(String name) {
+        String key = key(name == null ? "" : name);
+        for (String candidate : modelBackedNames()) {
+            if (candidate != null && !candidate.isBlank() && !key(candidate).equals(key)) {
                 return candidate;
             }
         }

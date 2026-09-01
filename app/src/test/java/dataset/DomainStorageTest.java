@@ -127,11 +127,42 @@ class DomainStorageTest {
         register(storage, "Greek Myth");
         register(storage, "Constellations");
 
-        assertEquals("Constellations", storage.anyRegisteredNameOtherThan("Greek Myth"));
+        assertEquals("Constellations", storage.anySavedNameOtherThan("Greek Myth"));
 
         storage.delete("Constellations");
-        assertNull(storage.anyRegisteredNameOtherThan("Greek Myth"),
+        assertNull(storage.anySavedNameOtherThan("Greek Myth"),
                 "nothing left but the one being closed");
+    }
+
+    /**
+     * Deleting says it cannot be undone, so the deleted project must not still be on
+     * screen afterwards — which means there has to be something to open instead. A model
+     * that never generated is registered nowhere and exists only as a file, so an answer
+     * drawn from the registry reports nothing while the picker lists it.
+     */
+    @Test void aModelIsSomethingToOpenEvenThoughNothingRegisteredIt(@TempDir Path root)
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        writeProject(storage, "People", "MODEL");
+        writeProject(storage, "Places", "MODEL");
+
+        assertNull(storage.find("Places"),
+                "a model that never generated is registered nowhere, which is why a "
+                        + "registry-only answer reported nowhere to go and left the "
+                        + "deleted project on screen");
+        assertEquals("Places", storage.anySavedNameOtherThan("People"),
+                "while a saved model is plainly something to open");
+    }
+
+    @Test void whatIsBeingDeletedIsNeverOfferedBackToItself(@TempDir Path root)
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        writeProject(storage, "U.S. Presidents", "DOMAIN");
+
+        assertNull(storage.anySavedNameOtherThan("U.S. Presidents"));
+        assertNull(storage.anySavedNameOtherThan("us presidents"),
+                "the folder key decides identity, so a differently punctuated spelling "
+                        + "of the deleted project is not a candidate either");
     }
 
     /** ModelBuilder can only open what it could also regenerate. A dataset saved from a
@@ -168,7 +199,7 @@ class DomainStorageTest {
 
         assertEquals(List.of(), storage.modelBackedNames());
         assertNull(storage.find("Anything"));
-        assertNull(storage.anyRegisteredNameOtherThan("Anything"));
+        assertNull(storage.anySavedNameOtherThan("Anything"));
         assertEquals(storage.modelFile("Anything"), storage.modelFileOf("Anything"),
                 "with no entry, the layout says where the model would be");
     }
