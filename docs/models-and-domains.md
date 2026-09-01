@@ -115,9 +115,51 @@ are unnecessary: a field targets a
 class by its own name, and `qualifiedClassName()` derives `People.Person` for display.
 An import refuses a local name collision; Copy remains the explicit replacement operation.
 
-Also deliberately open: whether an importing project may ever override an imported class,
-and in what form. That decision wants experience with models, and nothing generated so far
-is expensive enough to regenerate to force it now.
+## Open: what a model owes its importers
+
+Tracked as [#136](https://github.com/ggyepesi/quiz/issues/136).
+
+Only the importer knows about an import. A model records nothing about who uses it, and
+nothing asks it to. That is deliberate and it is the whole of the first version — it also
+leaves one problem unsolved, named here so it is not mistaken for an oversight.
+
+**The problem.** A model's classes can be changed, renamed or removed while other projects
+import them. Nothing prevents it, nothing warns about it, and nothing records that it
+happened. An importer finds out only when it next resolves:
+
+- a class that **changed** resolves to its new shape, silently — which is the feature, and
+  is also how a domain's generated instances can stop matching the configuration that
+  produced them;
+- a class that was **removed** fails with `Cannot import People.Person`;
+- a class that was **renamed** is indistinguishable from one that was removed, because the
+  import names it by name and nothing followed the rename.
+
+The removal failure is legible on purpose. Legible is not the same as decided: it says what
+went wrong, not what should have happened.
+
+**What has to be answered.** Roughly in the order the questions bite:
+
+- Does a model know which projects import it, or is that discovered by scanning them? A
+  file that lists its own importers is book-keeping in two places that can disagree — the
+  failure this design avoided for the use list.
+- Is a rename followed, so importers retarget, or refused while the class is imported?
+  Following it means writing to files the reader did not open.
+- Is a removal refused while something imports the class, or allowed, leaving importers to
+  fail? Refusing needs the answer to the first question.
+- Is a change reported at all? Live resolution is the point, so most changes should pass
+  through silently — but a change that invalidates generated instances is not the same
+  kind of event as one that does not.
+- Where does any of this get recorded, given a model is one file and its importers are
+  others that may not be present?
+
+**The constraint on any answer.** Every option that has a model track its importers adds
+exactly the book-keeping this version does without. That needs a forcing reason, and
+"a model ought to know" is not one. Until then a broken import is discovered at resolve
+time, which is late but honest, and cheap to recover from: nothing here is expensive
+enough to regenerate.
+
+Separately open, and smaller: whether an importing project may ever override an imported
+class, and in what form. That wants experience with models first.
 
 ## Step 3: instance ownership and reuse
 
@@ -138,7 +180,9 @@ No storage or merge policy is implied by configuring or using a model.
 - extension and field omission;
 - shared instance repositories;
 - automatic extraction of classes from a domain;
-- automatic configuration changes of any kind.
+- automatic configuration changes of any kind;
+- any record, in a model, of the projects that import it (see *What a model owes its
+  importers*).
 
 Factoring classes from a domain into a model remains a desired explicit workflow, but it belongs
 after model use is defined. It must preview its exact changes and run only after user approval.
