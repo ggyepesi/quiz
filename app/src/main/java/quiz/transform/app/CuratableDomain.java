@@ -178,10 +178,10 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         try {
             wikidata.explore.model.GeneratedProjectModel model = loadModel();
             if (model == null) return null;
-            return model.entityKindRules().stream()
-                    .filter(rule -> rule != null && className.equals(rule.className()))
-                    .filter(wikidata.explore.model.EntityKindRule::isConfigured)
-                    .findFirst().map(wikidata.explore.model.EntityKindRule::copy).orElse(null);
+            wikidata.explore.model.EntityKindRule rule =
+                    wikidata.explore.model.MembershipPattern.kindRule(
+                            model.findClass(className), model);
+            return rule == null ? null : rule.copy();
         } catch (Exception ignored) {
             return null;
         }

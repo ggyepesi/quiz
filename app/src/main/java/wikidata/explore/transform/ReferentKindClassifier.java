@@ -4,7 +4,6 @@ import objectview.Viewable;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.EntityRepresentations;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.api.FactDemand;
@@ -45,18 +44,12 @@ public final class ReferentKindClassifier {
                                Set<String> candidateQids,
                                Collection<FactDemand.EntityMetadata> metadata) {
         if (model == null || pool == null || api == null) return new Result(0, 0, 0);
-        Set<String> representedClasses = model.entityRepresentationRules().stream()
-                .filter(java.util.Objects::nonNull)
-                .map(wikidata.explore.model.EntityRepresentationRule::representationClassName)
-                .collect(java.util.stream.Collectors.toSet());
-        List<EntityKindRule> rules = model.entityKindRules().stream()
-                .filter(EntityKindRule::isConfigured)
-                .filter(rule -> representedClasses.contains(rule.className()))
-                .filter(rule -> model.findClass(rule.className()) != null).toList();
-        if (rules.isEmpty()) return new Result(0, 0, 0);
+        List<EntityRepresentations.Admission> admissions =
+                EntityRepresentations.admissions(model);
+        if (admissions.isEmpty()) return new Result(0, 0, 0);
 
         EntityKindCandidates.Plan candidatePlan =
-                EntityKindCandidates.compile(model, pool, rules);
+                EntityKindCandidates.compile(model, pool, admissions);
         LinkedHashMap<String, WikidataDynamicObject> candidates = new LinkedHashMap<>();
         candidatePlan.candidateQids().stream()
                 .filter(qid -> candidateQids == null || candidateQids.contains(qid))
@@ -67,7 +60,8 @@ public final class ReferentKindClassifier {
         if (candidates.isEmpty()) return new Result(0, 0, 0);
 
         Set<String> properties = new LinkedHashSet<>();
-        rules.forEach(rule -> properties.add(rule.propertyPid()));
+        admissions.forEach(admission -> properties.add(
+                admission.evidence().propertyPid()));
         // Bank what a classified entity will be asked for next. wbgetentities returns
         // the whole document either way, so this costs nothing to fetch and saves the
         // fetch that would otherwise follow classification — for a model that does not
@@ -78,14 +72,15 @@ public final class ReferentKindClassifier {
             // Eligibility is per ADMITTED CLASS now, so the population for a property is
             // the union over the rules that use it.
             Set<String> eligible = new LinkedHashSet<>();
-            rules.stream().filter(rule -> pid.equals(rule.propertyPid()))
-                    .forEach(rule -> eligible.addAll(candidatePlan.qidsByKindClass()
-                            .getOrDefault(rule.className(), Set.of())));
+            admissions.stream()
+                    .filter(admission -> pid.equals(admission.evidence().propertyPid()))
+                    .forEach(admission -> eligible.addAll(candidatePlan.qidsByKindClass()
+                            .getOrDefault(admission.className(), Set.of())));
             eligible.retainAll(candidates.keySet());
             api.facts().recordDemand("entity-kind evidence", eligible, List.of(pid));
         }
         properties.addAll(ReferentFieldLoad.kindPropertyClosure(model,
-                rules.stream().map(EntityKindRule::className).toList()));
+                admissions.stream().map(EntityRepresentations.Admission::className).toList()));
         FactDemandBinder.bind(FactDemand.of(
                         "entity-kind evidence", "kind candidates", properties,
                         "retain evidence and possible classified-kind closure"),
@@ -123,15 +118,16 @@ public final class ReferentKindClassifier {
             }
             Set<String> matchedClasses = new LinkedHashSet<>();
             boolean changed = false;
-            for (EntityKindRule rule : rules) {
-                if (!candidatePlan.eligible(candidate.qid(), rule)) continue;
+            for (EntityRepresentations.Admission admission : admissions) {
+                if (!candidatePlan.eligible(candidate.qid(), admission)) continue;
+                var rule = admission.evidence();
                 if (entity != null && entity.entityQids(rule.propertyPid()).stream()
                         .anyMatch(rule.evidenceQids()::contains)) {
-                    if (!candidate.directClassNames().contains(rule.className())) {
-                        candidate.assignClass(rule.className());
+                    if (!candidate.directClassNames().contains(admission.className())) {
+                        candidate.assignClass(admission.className());
                         changed = true;
                     }
-                    matchedClasses.add(rule.className());
+                    matchedClasses.add(admission.className());
                 }
             }
             if (!matchedClasses.isEmpty()) {

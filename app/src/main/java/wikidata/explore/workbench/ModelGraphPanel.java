@@ -26,7 +26,8 @@ import java.util.function.Consumer;
  * Read-only graph view of a {@link GeneratedProjectModel}: each class is a node,
  * each entity-reference field whose target is another class in the project is an
  * edge (labelled with the field name). Dashed edges show explicit contextual
- * representations. Scalar fields are listed inside the node.
+ * representations and dotted edges show inheritance, including imported bases.
+ * Scalar fields are listed inside the node.
  *
  * <p>The model <i>is</i> the rule-tree (classes = nodes, reference fields =
  * edges), so this is the structural view of what you've configured. Clicking a
@@ -43,7 +44,8 @@ public class ModelGraphPanel extends JPanel {
     private static final int LINE_H = 15;
     private static final int HEAD_H = 41;
 
-    private record Edge(String from, String to, String field, boolean representation) {}
+    private enum EdgeKind { REFERENCE, REPRESENTATION, INHERITANCE }
+    private record Edge(String from, String to, String field, EdgeKind kind) {}
     private record FieldLine(String name, String display) {}
     private record FieldKey(String className, String fieldName) {}
 
@@ -157,12 +159,16 @@ public class ModelGraphPanel extends JPanel {
                     boolean coll = f.cardinality() == FieldCardinality.COLLECTION;
                     edges.add(new Edge(c.className(), target,
                                        f.name() + (coll ? " [*]" : "")
-                                               + " · " + sourceCue(f), false));
+                                               + " · " + sourceCue(f), EdgeKind.REFERENCE));
                 } else {
                     scalars.add(new FieldLine(f.name(), f.name() + "  " + sourceCue(f)));
                 }
             }
             scalarFields.put(c.className(), scalars);
+            if (c.hasBase() && classes.containsKey(c.baseClassName())) {
+                edges.add(new Edge(c.className(), c.baseClassName(), "extends",
+                        EdgeKind.INHERITANCE));
+            }
         }
         for (var representation : model.entityRepresentationRules()) {
             if (representation == null
@@ -175,7 +181,7 @@ public class ModelGraphPanel extends JPanel {
                             + String.join(", ", admission.evidenceQids());
             edges.add(new Edge(representation.roleClassName(),
                     representation.representationClassName(),
-                    "represents as · " + condition, true));
+                    "represents as · " + condition, EdgeKind.REPRESENTATION));
         }
 
         String root = model.rootClass() != null ? model.rootClass().className() : null;
@@ -262,17 +268,24 @@ public class ModelGraphPanel extends JPanel {
                 y1 = a.y; // leave from top when target is above/level
             }
             Stroke previousStroke = g.getStroke();
-            if (e.representation()) {
+            if (e.kind() == EdgeKind.REPRESENTATION) {
                 g.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_BUTT,
                         BasicStroke.JOIN_MITER, 10f, new float[]{6f, 5f}, 0f));
+            } else if (e.kind() == EdgeKind.INHERITANCE) {
+                g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND,
+                        BasicStroke.JOIN_ROUND, 10f, new float[]{2f, 4f}, 0f));
             }
-            g.setColor(e.representation() ? new Color(0x7A, 0x45, 0x9A)
-                    : new Color(0x90, 0x90, 0x90));
+            Color edgeColor = switch (e.kind()) {
+                case REPRESENTATION -> new Color(0x7A, 0x45, 0x9A);
+                case INHERITANCE -> new Color(0x2E, 0x6F, 0x7E);
+                case REFERENCE -> new Color(0x90, 0x90, 0x90);
+            };
+            g.setColor(edgeColor);
             g.drawLine(x1, y1, x2, y2);
             drawArrowHead(g, x1, y1, x2, y2);
             g.setStroke(previousStroke);
-            g.setColor(e.representation() ? new Color(0x7A, 0x45, 0x9A)
-                    : new Color(0x33, 0x66, 0x99));
+            g.setColor(e.kind() == EdgeKind.REFERENCE
+                    ? new Color(0x33, 0x66, 0x99) : edgeColor);
             int mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
             g.drawString(e.field(), mx + 3, my);
         }

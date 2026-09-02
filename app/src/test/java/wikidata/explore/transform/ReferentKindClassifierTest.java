@@ -7,7 +7,9 @@ import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.StatementClassSource;
 
 import java.util.List;
@@ -17,6 +19,42 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentKindClassifierTest {
+    @Test void aLocalSubclassUsesItsImportedBasesAdmission() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel event = new GeneratedClassModel("Event");
+        event.addField("participant", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Participant");
+        model.rootClass(event);
+        GeneratedClassModel role = new GeneratedClassModel("Participant");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.importedFrom("People");
+        person.addField("birthName", FieldType.STRING, FieldCardinality.SINGLE);
+        GeneratedClassModel historicalPerson = new GeneratedClassModel("HistoricalPerson");
+        historicalPerson.baseClassName("Person");
+        historicalPerson.addField("offices", FieldType.STRING, FieldCardinality.COLLECTION);
+        model.addClass(role);
+        model.addClass(person);
+        model.addClass(historicalPerson);
+        EntityKindRule admission = new EntityKindRule("Person", List.of("Q5"));
+        admission.importedFrom("People");
+        model.addEntityKindRule(admission);
+        model.representationClasses(role, List.of("HistoricalPerson"));
+
+        WikidataDynamicObject participant = new WikidataDynamicObject("Q1", "Human");
+        participant.type("Participant");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "Human", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(participant), api, null);
+
+        assertEquals(1, result.classified());
+        assertEquals("HistoricalPerson", participant.typeName());
+        assertEquals(java.util.Set.of("HistoricalPerson"), participant.directClassNames());
+        assertEquals(admission, MembershipPattern.kindRule(historicalPerson, model));
+        assertEquals(List.of("birthName", "offices"), historicalPerson.effectiveFields(model)
+                .stream().map(GeneratedFieldModel::name).toList());
+    }
+
     @Test void admissionAloneDoesNotChooseARepresentation() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");

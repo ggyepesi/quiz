@@ -7,6 +7,26 @@ import java.util.Set;
 public final class EntityRepresentations {
     private EntityRepresentations() { }
 
+    /** A representation target together with its nearest inherited admission rule. */
+    public record Admission(String className, EntityKindRule evidence) { }
+
+    public static java.util.List<Admission> admissions(GeneratedProjectModel model) {
+        if (model == null) return java.util.List.of();
+        java.util.LinkedHashMap<String, Admission> found = new java.util.LinkedHashMap<>();
+        for (EntityRepresentationRule representation : model.entityRepresentationRules()) {
+            if (representation == null || !representation.isConfigured()) continue;
+            GeneratedClassModel target = model.resolveClass(
+                    representation.representationClassId(),
+                    representation.representationClassName());
+            EntityKindRule evidence = MembershipPattern.kindRule(target, model);
+            if (target != null && evidence != null) {
+                found.putIfAbsent(target.className(),
+                        new Admission(target.className(), evidence));
+            }
+        }
+        return java.util.List.copyOf(found.values());
+    }
+
     /** The first explicitly configured representation whose admission matched. */
     public static String preferredClass(GeneratedProjectModel model,
                                         Set<String> matchedClasses) {

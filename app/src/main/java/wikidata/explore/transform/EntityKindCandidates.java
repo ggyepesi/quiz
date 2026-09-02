@@ -3,8 +3,8 @@ package wikidata.explore.transform;
 import objectview.Viewable;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.EntityRepresentationRule;
+import wikidata.explore.model.EntityRepresentations;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.RoleSelection;
 
@@ -26,9 +26,9 @@ final class EntityKindCandidates {
                 Map<String, Set<String>> membersByRoleClass,
                 Map<String, WikidataDynamicObject> objectsByQid,
                 int allRoleMembers) {
-        boolean eligible(String qid, EntityKindRule rule) {
-            return rule != null && qidsByKindClass
-                    .getOrDefault(rule.className(), Set.of()).contains(qid);
+        boolean eligible(String qid, EntityRepresentations.Admission admission) {
+            return admission != null && qidsByKindClass
+                    .getOrDefault(admission.className(), Set.of()).contains(qid);
         }
     }
 
@@ -36,7 +36,7 @@ final class EntityKindCandidates {
 
     static Plan compile(GeneratedProjectModel model,
                         Collection<WikidataDynamicObject> pool,
-                        Collection<EntityKindRule> rules) {
+                        Collection<EntityRepresentations.Admission> admissions) {
         Map<String, List<Viewable>> materialized = RoleSelections.materialize(model, pool);
         Map<String, Set<String>> membersByRoleClass = new LinkedHashMap<>();
         Map<String, WikidataDynamicObject> objectsByQid = new LinkedHashMap<>();
@@ -64,7 +64,8 @@ final class EntityKindCandidates {
             }
         }
 
-        Set<String> admittedClasses = rules.stream().map(EntityKindRule::className)
+        Set<String> admittedClasses = admissions.stream()
+                .map(EntityRepresentations.Admission::className)
                 .collect(java.util.stream.Collectors.toSet());
         Map<String, Set<String>> byKind = new LinkedHashMap<>();
         Set<String> candidates = new LinkedHashSet<>();

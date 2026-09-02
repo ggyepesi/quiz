@@ -226,11 +226,17 @@ public enum MembershipPattern {
     /** The configured evidence rule naming this class, or null. */
     public static EntityKindRule kindRule(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
+        return kindRule(clazz, project, new java.util.HashSet<>());
+    }
+
+    private static EntityKindRule kindRule(
+            GeneratedClassModel clazz, GeneratedProjectModel project,
+            java.util.Set<String> visited) {
         if (clazz == null || project == null) {
             return null;
         }
         String name = clean(clazz.className());
-        if (name.isEmpty()) {
+        if (name.isEmpty() || !visited.add(name)) {
             return null;
         }
         for (EntityKindRule rule : project.entityKindRules()) {
@@ -238,7 +244,9 @@ public enum MembershipPattern {
                 return rule;
             }
         }
-        return null;
+        return clazz.hasBase()
+                ? kindRule(project.findClass(clazz.baseClassName()), project, visited)
+                : null;
     }
 
     /** Classify a class's membership configuration. */

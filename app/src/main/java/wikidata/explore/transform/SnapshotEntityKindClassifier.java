@@ -5,7 +5,7 @@ import wikidata.WikidataIds;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataObjectGraph;
-import wikidata.explore.model.EntityKindRule;
+import wikidata.explore.model.EntityRepresentations;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
@@ -64,15 +64,15 @@ public final class SnapshotEntityKindClassifier {
         if (model == null || targetPool == null || evidencePool == null) {
             return new Result(0, 0, 0);
         }
-        List<EntityKindRule> rules = model.entityKindRules().stream()
-                .filter(EntityKindRule::isConfigured)
-                .filter(rule -> model.findClass(rule.className()) != null).toList();
-        if (rules.isEmpty()) return new Result(0, 0, 0);
+        List<EntityRepresentations.Admission> admissions =
+                EntityRepresentations.admissions(model);
+        if (admissions.isEmpty()) return new Result(0, 0, 0);
 
         Map<String, List<Producer>> producers = producers(model);
         EntityKindCandidates.Plan candidatePlan =
-                EntityKindCandidates.compile(model, targetPool, rules);
-        Set<String> kindClasses = rules.stream().map(EntityKindRule::className)
+                EntityKindCandidates.compile(model, targetPool, admissions);
+        Set<String> kindClasses = admissions.stream()
+                .map(EntityRepresentations.Admission::className)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
         Map<String, Map<String, Set<String>>> evidence =
                 evidence(evidencePool, producers, candidatePlan.membersByRoleClass(),
@@ -102,10 +102,10 @@ public final class SnapshotEntityKindClassifier {
         for (WikidataDynamicObject candidate : candidates.values()) {
             List<WikidataDynamicObject> copies =
                     copiesByQid.getOrDefault(candidate.qid(), List.of());
-            boolean hasUnsettledKind = rules.stream()
-                    .filter(rule -> candidatePlan.eligible(candidate.qid(), rule))
-                    .anyMatch(rule -> copies.stream().noneMatch(copy ->
-                            copy.directClassNames().contains(rule.className())));
+            boolean hasUnsettledKind = admissions.stream()
+                    .filter(admission -> candidatePlan.eligible(candidate.qid(), admission))
+                    .anyMatch(admission -> copies.stream().noneMatch(copy ->
+                            copy.directClassNames().contains(admission.className())));
             // A settled kind is not an evidence miss. Asking the remote classifier
             // to prove it again can rewrite a production-site typeKey on every pass,
             // making an otherwise fixed graph look productive forever.
@@ -114,30 +114,34 @@ public final class SnapshotEntityKindClassifier {
             }
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
             boolean hasEvidence = false;
-            boolean matched = false;
+            Set<String> matchedClasses = new LinkedHashSet<>();
             boolean changed = false;
-            for (EntityKindRule rule : rules) {
-                if (!candidatePlan.eligible(candidate.qid(), rule)) continue;
+            for (EntityRepresentations.Admission admission : admissions) {
+                if (!candidatePlan.eligible(candidate.qid(), admission)) continue;
+                var rule = admission.evidence();
                 Set<String> values = byPid == null ? null : byPid.get(rule.propertyPid());
                 if (values == null || values.isEmpty()) continue;
                 hasEvidence = true;
                 if (values.stream().anyMatch(rule.evidenceQids()::contains)) {
                     for (WikidataDynamicObject copy : copies) {
-                        if (!copy.directClassNames().contains(rule.className())) {
-                            copy.assignClass(rule.className());
+                        if (!copy.directClassNames().contains(admission.className())) {
+                            copy.assignClass(admission.className());
                             changed = true;
                         }
                     }
-                    matched = true;
+                    matchedClasses.add(admission.className());
                 }
             }
-            if (matched) {
+            if (!matchedClasses.isEmpty()) {
                 for (WikidataDynamicObject copy : copies) {
-                    for (String legacyRole : RoleSelections.legacyRoleClassNames(model)) {
-                        if (copy.directClassNames().contains(legacyRole)) changed = true;
-                        copy.removeClass(legacyRole);
+                    for (String role : EntityRepresentations.replacedRoleClasses(
+                            model, matchedClasses)) {
+                        if (copy.directClassNames().contains(role)) changed = true;
+                        copy.removeClass(role);
                     }
-                    String carrier = carrier(copy.directClassNames(), model);
+                    String carrier = EntityRepresentations.preferredClass(
+                            model, matchedClasses);
+                    if (carrier == null) carrier = carrier(copy.directClassNames(), model);
                     if (carrier != null) {
                         if (!carrier.equals(copy.typeName())
                                 || !carrier.equals(copy.typeKey())) changed = true;

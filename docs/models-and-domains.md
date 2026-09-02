@@ -280,6 +280,26 @@ Separately open, and smaller: whether an importing project may ever override an 
 class, and in what form. The possible narrowing refinement described above is the first
 concrete case; arbitrary field or identity overrides are explicitly not implied by it.
 
+### Extending an imported class
+
+A domain or model may author a local subclass whose `Extends` target is imported. For
+example, History can declare `HistoricalPerson extends Person` and add `offices`, while the
+imported `Person` remains live and read-only. The subclass inherits the base's fields and
+its class-admission evidence, so it can be the explicit target of a contextual
+representation without repeating `Person: P31 = Q5`.
+
+Population is **not** inherited. Nothing walks the base for membership, seeds or an
+instance mapping, so a subclass declaring no population of its own generates nothing —
+it is a shape entities are represented as, not a class that acquires them. Admission
+inherits as a fallback rather than an override: a subclass that declares its own rule
+uses it, so the inherited one narrows where that is wanted.
+
+Another model may import `HistoricalPerson`; resolving that import also resolves the model
+that owns `Person`. Ownership remains exact at every level: `HistoricalPerson` belongs to
+the intermediary model and `Person` to the original one. Domains and models use the same
+mechanism. Field subtraction is deliberately not part of inheritance; a concrete need must
+force an omission construct before one is added.
+
 ## Step 3: instance ownership — instances stay per-domain
 
 **Decided: a domain owns its instances, and two domains that import the same class hold

@@ -1269,12 +1269,12 @@ public class ClassSourcePanel extends JPanel {
 
     private String representationDescription(String className) {
         if (projectModel == null) return className;
-        EntityKindRule rule = projectModel.entityKindRules().stream()
-                .filter(EntityKindRule::isConfigured)
-                .filter(candidate -> className.equals(candidate.className()))
-                .findFirst().orElse(null);
+        GeneratedClassModel target = projectModel.findClass(className);
+        EntityKindRule rule = MembershipPattern.kindRule(target, projectModel);
         return rule == null ? className : className + " — "
-                + rule.propertyPid() + " = " + String.join(", ", rule.evidenceQids());
+                + rule.propertyPid() + " = " + String.join(", ", rule.evidenceQids())
+                + (target != null && !className.equals(rule.className())
+                        ? " (inherited from " + rule.className() + ")" : "");
     }
 
     private record SearchResult(

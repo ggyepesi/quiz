@@ -165,4 +165,40 @@ class ModelImportResolverTest {
         assertTrue(failure.getMessage().toLowerCase(java.util.Locale.ROOT)
                 .contains("cyclic"), failure.getMessage());
     }
+
+    @Test void aModelCanPublishALocalSubclassOfAnImportedClass() {
+        GeneratedProjectModel people = model("People");
+        people.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        GeneratedProjectModel history = new GeneratedProjectModel();
+        history.name("HistoryPeople");
+        history.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        history.addImport(new ModelImport("People", List.of("Person")));
+        GeneratedClassModel historical = new GeneratedClassModel("HistoricalPerson");
+        historical.baseClassName("Person");
+        historical.addField("offices", FieldType.STRING, FieldCardinality.COLLECTION);
+        history.addClass(historical);
+
+        GeneratedProjectModel effectiveHistory = ModelImportResolver.resolve(
+                history, repository(people, history));
+        assertEquals(List.of("birthName", "offices"), effectiveHistory
+                .findClass("HistoricalPerson").effectiveFields(effectiveHistory)
+                .stream().map(GeneratedFieldModel::name).toList());
+        assertEquals("Person", MembershipPattern.kindRule(
+                effectiveHistory.findClass("HistoricalPerson"), effectiveHistory).className());
+
+        GeneratedProjectModel domain = domainImporting(
+                "HistoryPeople", "HistoricalPerson");
+        GeneratedProjectModel resolved = ModelImportResolver.resolve(
+                domain, repository(people, history));
+
+        assertNotNull(resolved.findClass("HistoricalPerson"));
+        assertNotNull(resolved.findClass("Person"));
+        assertEquals("HistoryPeople",
+                resolved.findClass("HistoricalPerson").importedFrom());
+        assertEquals("People", resolved.findClass("Person").importedFrom());
+        assertEquals(List.of("birthName", "offices"), resolved
+                .findClass("HistoricalPerson").effectiveFields(resolved)
+                .stream().map(GeneratedFieldModel::name).toList());
+    }
 }

@@ -46,6 +46,8 @@ An evidence rule such as `Person: P31 = Q5` declares non-exclusive membership ad
 must never globally choose the carrier used by a consuming role. That choice is an explicit,
 ordered contextual representation on the role (`Laureate -> Person`); importing or inspecting
 an admission alone performs no retyping. See `docs/contextual-entity-representation.md`.
+An authored subclass inherits its base's admission, including across a model import; it does
+not duplicate that declaration merely to participate in contextual representation.
 
 # Generation order
 

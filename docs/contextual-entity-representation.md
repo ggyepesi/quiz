@@ -50,6 +50,11 @@ In the class editor, each alternative is displayed together with the admission i
 example `Person — P31 = Q5`. Up and Down make carrier precedence explicit; merely importing,
 selecting, or inspecting an admission never creates this rule.
 
+A local representation class may extend an imported one. `HistoricalPerson extends Person`
+inherits Person's admission as well as its fields, so a History role may explicitly choose
+`HistoricalPerson` without copying the `P31 = Q5` declaration. The admitted entity is stamped
+as HistoricalPerson and receives the subclass's effective inherited-plus-local schema.
+
 ## Persistence and regeneration
 
 Contextual representations are authored model declarations and use stable class references.

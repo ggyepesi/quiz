@@ -18,6 +18,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnapshotEntityKindClassifierTest {
 
+    @Test void remapUsesTheImportedBasesAdmissionForALocalSubclass() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel person = model.findClass("Person");
+        person.importedFrom("People");
+        GeneratedClassModel historical = new GeneratedClassModel("HistoricalPerson");
+        historical.baseClassName("Person");
+        historical.addField("offices", FieldType.STRING, FieldCardinality.COLLECTION);
+        model.addClass(historical);
+        model.representationClasses(model.findClass("Nominee"),
+                List.of("HistoricalPerson"));
+
+        WikidataDynamicObject target = entity("Q1", "Nominee");
+        WikidataDynamicObject nomination = entity("N1", "Nomination");
+        nomination.put("nominee", target);
+        WikidataDynamicObject saved = entity("Q1", "Nominee");
+        saved.put("type", new WikidataDynamicObject("Q5", "human"));
+
+        var result = SnapshotEntityKindClassifier.apply(model,
+                List.of(nomination, target), List.of(saved), null);
+
+        assertEquals(1, result.classified());
+        assertEquals("HistoricalPerson", target.typeName());
+        assertEquals(java.util.Set.of("HistoricalPerson"), target.directClassNames());
+    }
+
     @Test void remapAssignsKindFromPersistedFieldEvidenceWithoutAnApi() {
         GeneratedProjectModel model = model();
         WikidataDynamicObject target = entity("Q1", "Nominee");
