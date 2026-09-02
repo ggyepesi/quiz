@@ -19,19 +19,26 @@ public record GraphDiscoveryState(
         coverage = coverage == null ? List.of() : List.copyOf(coverage);
     }
 
-    /** Coverage for one exact traversal and terminal state. */
+    /**
+     * Coverage for one exact traversal and terminal state.
+     *
+     * <p>Takes the edge contract rather than the statement pattern: what a node has
+     * expanded is decided by the edge's identity, relation and direction, and a field
+     * step has all three. Coverage of a field-derived walk is the same fact recorded the
+     * same way, so it is not a second ledger.
+     */
     public List<GraphExpansionCoverage> coverage(
-            GraphExpansionPattern pattern, GraphExpansionCoverage.State state) {
-        if (pattern == null || state == null) return List.of();
-        return coverage.stream().filter(item -> item.patternId().equals(pattern.id()))
-                .filter(item -> item.relation().equals(pattern.relation()))
-                .filter(item -> item.direction() == pattern.direction())
+            GraphEdgeDefinition edge, GraphExpansionCoverage.State state) {
+        if (edge == null || state == null) return List.of();
+        return coverage.stream().filter(item -> item.patternId().equals(edge.id()))
+                .filter(item -> item.relation().equals(edge.relation()))
+                .filter(item -> item.direction() == edge.direction())
                 .filter(item -> item.state() == state)
                 .toList();
     }
 
-    public List<GraphExpansionCoverage> frontier(GraphExpansionPattern pattern) {
-        return coverage(pattern, GraphExpansionCoverage.State.ENCOUNTERED);
+    public List<GraphExpansionCoverage> frontier(GraphEdgeDefinition edge) {
+        return coverage(edge, GraphExpansionCoverage.State.ENCOUNTERED);
     }
 
     /** Queue a discovered node without turning execution history into model configuration. */

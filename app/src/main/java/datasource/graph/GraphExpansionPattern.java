@@ -13,7 +13,7 @@ public record GraphExpansionPattern(
         String statementClass,
         String sourceField,
         String targetField,
-        GraphTraversalDirection direction) {
+        GraphTraversalDirection direction) implements GraphEdgeDefinition {
 
     public GraphExpansionPattern {
         id = required(id, "Pattern id is required");

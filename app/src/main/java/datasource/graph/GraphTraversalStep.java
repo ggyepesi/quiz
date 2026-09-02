@@ -8,7 +8,7 @@ public record GraphTraversalStep(
         String sourceField,
         GraphRelation relation,
         GraphTraversalDirection direction,
-        GraphExpansionPolicy policy) {
+        GraphExpansionPolicy policy) implements GraphEdgeDefinition {
     public GraphTraversalStep {
         id = required(id, "Step id is required");
         sourceNodeClass = required(sourceNodeClass, "Source node class is required");
