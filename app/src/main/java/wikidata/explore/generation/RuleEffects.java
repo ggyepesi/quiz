@@ -90,19 +90,32 @@ public final class RuleEffects {
      * @param instances what the rule accounts for
      */
     public record Effect(RunPhase phase, String rule, String detail, Kind kind,
-                         List<Viewable> instances) {
+                         int accountedInstances, List<Viewable> instances) {
         public Effect {
             phase = phase == null ? RunPhase.FINALIZE : phase;
+            if (accountedInstances < 0) {
+                throw new IllegalArgumentException("accountedInstances must not be negative");
+            }
             instances = List.copyOf(instances == null ? List.of() : instances);
+            if (accountedInstances < instances.size()) {
+                throw new IllegalArgumentException(
+                        "accountedInstances cannot be smaller than inspectable instances");
+            }
+        }
+
+        public Effect(RunPhase phase, String rule, String detail, Kind kind,
+                      List<Viewable> instances) {
+            this(phase, rule, detail, kind,
+                    instances == null ? 0 : instances.size(), instances);
         }
 
         public int size() {
-            return instances.size();
+            return accountedInstances;
         }
 
         /** The bucket's label, carrying its own count so a tab reads without opening. */
         public String title() {
-            return rule + " (" + instances.size() + ")";
+            return rule + " (" + accountedInstances + ")";
         }
     }
 
@@ -227,15 +240,45 @@ public final class RuleEffects {
         }
         Moment when = moment == null ? Moment.RESULT : moment;
         List<Viewable> created = new ArrayList<>(audit.created());
+        List<Viewable> inspectable = created.stream()
+                .filter(RuleEffects::hasConfiguredValue).toList();
+        int omitted = created.size() - inspectable.size();
         List<Effect> effects = new ArrayList<>();
         effects.add(new Effect(
                 RunPhase.SEMANTIC,
                 "Owned parts newly created",
                 created.size() + (when == Moment.PLAN ? " will be" : " were")
                         + " manufactured because no existing part was found for their "
-                        + "owner and site — on a settled domain this is normally none",
-                Kind.CHANGED, created));
+                        + "owner and site — on a settled domain this is normally none"
+                        + (omitted == 0 ? "" : "; " + omitted
+                        + " without configured values are counted but omitted from review"),
+                Kind.CHANGED, created.size(), inspectable));
         return effects;
+    }
+
+    /** A generated owned shell is part of the audit, but an empty card cannot be
+     * inspected. Keep it in the action count while leaving it out of the card list. */
+    private static boolean hasConfiguredValue(Viewable view) {
+        // Through FieldSet, which picks the backing. Asking whether the view happens to
+        // be DynamicFields answered "yes, inspectable" for every declared Viewable
+        // without looking at it — the two backings gave different answers to one
+        // question, which is the fork #87 exists to stop.
+        //
+        // Identity and title are excluded by ROLE, not by name: a manufactured shell
+        // always has a name, so counting it would make every empty part look configured.
+        objectview.field.FieldSet fields = objectview.field.FieldSet.of(view);
+        return fields.fields().stream()
+                .filter(field -> field.role() == objectview.field.FieldRole.NONE)
+                .map(field -> fields.read(field.name()))
+                .anyMatch(RuleEffects::nonEmpty);
+    }
+
+    private static boolean nonEmpty(Object value) {
+        if (value == null) return false;
+        if (value instanceof CharSequence text) return !text.toString().isBlank();
+        if (value instanceof java.util.Collection<?> values) return !values.isEmpty();
+        if (value instanceof java.util.Map<?, ?> values) return !values.isEmpty();
+        return true;
     }
 
     /**

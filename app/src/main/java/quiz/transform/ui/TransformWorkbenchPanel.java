@@ -438,7 +438,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return null;
         }
         if (wikidata.WikidataIds.isStatementId(member.getIdentifier())) {
-            return IdentityChip.statement();
+            return IdentityChip.statement(member.getIdentifier());
         }
         String qid = currentQid(curation, member.typeName(), member);
         // A native QID needs no curation sidecar. Conversely, do not label every member of a

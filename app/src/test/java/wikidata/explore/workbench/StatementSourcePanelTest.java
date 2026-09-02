@@ -19,6 +19,49 @@ import java.lang.reflect.Field;
 
 class StatementSourcePanelTest {
 
+    @Test void statementAnatomyNamesTheContainingEntityAndInverseCollection() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        StatementClassSource source = new StatementClassSource("P39");
+        source.valueSelectionName("Positions");
+        holding.statementSource(source);
+        var subject = holding.addField("source", FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+        subject.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        var position = holding.addField("position", FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        position.entityClassName("Position");
+        position.mapping().propertyPid("P39");
+        position.mapping().propertyLabel("position held");
+        var start = holding.addField("startDate", FieldType.DATE,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        start.mapping().qualifierPid("P580");
+        start.mapping().propertyLabel("start time");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var offices = person.addField("offices", FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        offices.entityClassName("OfficeHolding");
+        offices.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.INVERT);
+        offices.mapping().inverseField("source");
+        project.addClass(holding);
+        project.addClass(person);
+
+        StatementAnatomyPanel panel = new StatementAnatomyPanel();
+        panel.show(project, holding);
+
+        assertTrue(panel.meaningText().contains("position held (P39)"));
+        assertTrue(panel.meaningText().contains("stored on a Person entity"));
+        assertTrue(panel.meaningText().contains("Positions"));
+        assertTrue(panel.mappingsText().contains("subject entity  → source (Person)"));
+        assertTrue(panel.mappingsText().contains("statement value → position (Position)"));
+        assertTrue(panel.mappingsText().contains("qualifier start time (P580) → startDate"));
+        assertTrue(panel.mappingsText().contains(
+                "records whose source is a Person → Person.offices (list)"));
+    }
+
     @Test void duplicatePolicyIsEditableAndAppliedWithTheCanonicalControls()
             throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();

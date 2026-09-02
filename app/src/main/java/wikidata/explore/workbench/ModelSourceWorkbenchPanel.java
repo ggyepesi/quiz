@@ -682,6 +682,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         field.mapping().qualifierPid(
                 RuleNode.cleanPid(qualifierPid));
+        // A discovered qualifier is the same semantic property everywhere it is
+        // rendered. Keep its resolved label with its PID, as useProperty does.
+        field.mapping().propertyLabel(label);
 
         fieldSourcePanel.edit(field);
         onFieldAddedFromTool.accept(field);

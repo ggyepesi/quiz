@@ -65,6 +65,7 @@ public class StatementSourcePanel extends JPanel {
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
     private final JLabel graphPatternValue = new JLabel(" ");
+    private final StatementAnatomyPanel anatomy = new StatementAnatomyPanel();
 
     private final JPanel keyFieldsPanel =
             new JPanel(new GridBagLayout());
@@ -429,6 +430,7 @@ public class StatementSourcePanel extends JPanel {
         if (clazz == null) {
             return;
         }
+        anatomy.show(projectModel, clazz);
 
         Reification reification = null;
         if (projectModel != null) {
@@ -630,6 +632,7 @@ public class StatementSourcePanel extends JPanel {
         valueTypeField.setText("");
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
         graphPatternValue.setText(" ");
+        anatomy.show(null, null);
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
         duplicatePolicyBox.setSelectedItem(CanonicalSpec.DuplicatePolicy.KEEP_ONE);
@@ -669,6 +672,7 @@ public class StatementSourcePanel extends JPanel {
                 explanation.getFont()
                            .deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, row++, explanation);
+        GridBagUtils.wideRow(form, row++, anatomy);
 
         GridBagUtils.labeledRow(form, row++,
             "Class name:",

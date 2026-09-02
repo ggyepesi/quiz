@@ -216,6 +216,21 @@ class RuleEffectsTest {
         assertTrue(effect.detail().contains("normally none"), effect.detail());
     }
 
+    @Test void valuelessOwnedPartsAreCountedWithoutRenderingEmptyCards() {
+        WikidataDynamicObject empty = atom("emptyName");
+        WikidataDynamicObject populated = atom("populatedName");
+        populated.put("givenName", "Ada");
+
+        RuleEffects.Effect effect = RuleEffects.fromOwnedComposition(
+                GenerationRun.OwnedCompositionAudit.ran(List.of(empty, populated)),
+                RuleEffects.Moment.RESULT).getFirst();
+
+        assertEquals(2, effect.size(), "both creations remain in the audit count");
+        assertEquals(List.of(populated), effect.instances(),
+                "a valueless owned shell is not an inspectable result card");
+        assertTrue(effect.detail().contains("1 without configured values"), effect.detail());
+    }
+
     @Test void compositionThatDidNotRunIsNotCompositionThatCreatedNothing() {
         assertTrue(RuleEffects.fromOwnedComposition(
                 GenerationRun.OwnedCompositionAudit.notRun(),

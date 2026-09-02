@@ -36,12 +36,24 @@ public final class IdentityChip {
     /** A reified Wikidata statement is already anchored, but is not an entity whose
      * label can be identity-resolved. Keep it visibly distinct from "unidentified". */
     public static JComponent statement() {
-        JLabel statement = new JLabel("statement");
+        return statement(null);
+    }
+
+    /** A statement chip that links to the entity which CONTAINS the claim. */
+    public static JComponent statement(String statementId) {
+        String subject = wikidata.WikidataIds.statementSubject(statementId);
+        JLabel statement = new JLabel(subject == null ? "statement" : "statement on " + subject);
         statement.setForeground(Color.GRAY);
         statement.setFont(statement.getFont().deriveFont(
                 Font.ITALIC, statement.getFont().getSize2D() - 1f));
-        statement.setToolTipText(
-                "Wikidata statement — already anchored; no entity identity to resolve");
+        if (subject != null) {
+            WikidataLinks.linkify(statement, () -> subject);
+            statement.setToolTipText("Wikidata statement stored on " + subject
+                    + " — open the containing entity");
+        } else {
+            statement.setToolTipText(
+                    "Wikidata statement — already anchored; no entity identity to resolve");
+        }
         return statement;
     }
 
@@ -56,7 +68,7 @@ public final class IdentityChip {
      */
     public static JComponent ofInstance(objectview.Viewable instance) {
         String id = instance == null ? null : instance.getIdentifier();
-        if (wikidata.WikidataIds.isStatementId(id)) return statement();
+        if (wikidata.WikidataIds.isStatementId(id)) return statement(id);
         return quiz.source.WikidataSource.isQid(id) ? of(id) : null;
     }
 }
