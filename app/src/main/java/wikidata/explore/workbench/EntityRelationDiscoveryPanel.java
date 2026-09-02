@@ -16,6 +16,10 @@ import workbench.WorkbenchSelections;
 
 /** Explorer controls for bounded QID traversal through the selected property. */
 final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable {
+    // The PID is typed OR handed over from Selections, and the field is the single
+    // answer either way: a separate variable set only by the hand-off made a property
+    // the reader already knew reachable solely by a detour through Selections.
+    private final JTextField propertyPid = new JTextField(10);
     private final JLabel property = new JLabel("No property selected");
     private final JTextField startingQid = new JTextField(12);
     private final JComboBox<DiscoverEntityRelationQuery.Direction> direction =
@@ -26,7 +30,6 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JLabel status = new JLabel("Enter one or more starting QIDs.");
     private final InteractiveGraphView diagram = new InteractiveGraphView();
-    private String pid = "";
     private String propertyLabel = "";
     private boolean wired;
     private WorkbenchSelections selections;
@@ -37,7 +40,11 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         super(new BorderLayout(6,6));
         JPanel controls = new JPanel(new GridBagLayout()); controls.setBorder(BorderFactory.createEmptyBorder(8,8,2,8));
         GridBagConstraints c = new GridBagConstraints(); c.insets = new Insets(3,4,3,4); c.fill = GridBagConstraints.HORIZONTAL;
-        GridBagUtils.labeledRow(controls,c,0,"Edge property:",property);
+        JPanel propertyRow = new JPanel(new BorderLayout(6,0));
+        propertyRow.add(propertyPid, BorderLayout.WEST);
+        propertyRow.add(property, BorderLayout.CENTER);
+        propertyPid.setToolTipText("A PID such as P279, or use Selections to hand one over.");
+        GridBagUtils.labeledRow(controls,c,0,"Edge property:",propertyRow);
         GridBagUtils.labeledRow(controls,c,1,"Starting QID:",startingQid);
         GridBagUtils.labeledRow(controls,c,2,"Direction:",direction);
         GridBagUtils.labeledRow(controls,c,3,"Maximum depth:",depth);
@@ -47,6 +54,24 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         GridBagUtils.wideRow(controls,5,actions);
         GridBagUtils.wideRow(controls,6,new JLabel("<html>QIDs are nodes; the selected PID is the edge. "
                 + "Use several levels for hierarchical relations such as P279, or depth 1 for constraints such as P1001.</html>"));
+        propertyPid.getDocument().addDocumentListener(
+                new javax.swing.event.DocumentListener() {
+                    @Override public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                        typed();
+                    }
+                    @Override public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                        typed();
+                    }
+                    @Override public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                        typed();
+                    }
+                    private void typed() {
+                        // Typed over a handed-over property, so its name no longer
+                        // belongs to what is in the box.
+                        propertyLabel = "";
+                        updateProperty();
+                    }
+                });
         add(controls,BorderLayout.NORTH); add(diagram,BorderLayout.CENTER); discover.setEnabled(false);
         diagram.onSelectionChanged(selected -> {
             selectedNodeQids = selected;
@@ -62,7 +87,30 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
     void setQueryRunner(SwingQueryRunner runner) {
         if (wired || runner == null) return; wired=true;
         runner.wireButton(discover,this::accept,this::query,e -> status.setText("Discovery failed: "+message(e)));
-        discover.setEnabled(!pid.isBlank());
+        updateProperty();
+    }
+
+    /** The edge property as typed, or blank when it is not a PID. */
+    private String pid() {
+        String typed = propertyPid.getText() == null ? "" : propertyPid.getText().trim();
+        return wikidata.WikidataIds.isPid(typed) ? typed.toUpperCase(java.util.Locale.ROOT) : "";
+    }
+
+    private void updateProperty() {
+        String pid = pid();
+        discover.setEnabled(wired && !pid.isBlank());
+        // A name handed over by Selections describes the PID it came with. Once the
+        // reader types a different one it describes nothing, so it stops being shown
+        // rather than labelling the wrong property.
+        if (pid.isBlank()) {
+            propertyLabel = "";
+            property.setText(propertyPid.getText() == null || propertyPid.getText().isBlank()
+                    ? "No property selected" : "Not a PID");
+        } else if (propertyLabel.isBlank()) {
+            property.setText(pid);
+        } else {
+            property.setText(propertyLabel + " (" + pid + ")");
+        }
     }
     void selections(WorkbenchSelections value) {
         selections = value;
@@ -79,7 +127,7 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                     () -> !selectedNodeQids.isEmpty(),
                     this::setSelectedEntity).addProperties(
                     "Add selected edge property",
-                    () -> !pid.isBlank(),
+                    () -> !pid().isBlank(),
                     this::setSelectedProperty));
         }
         selectionsHolder.revalidate();
@@ -91,11 +139,17 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         status.setText(entity.qid() + " is now the starting QID.");
     }
 
+    /** The hand-off, reachable from a test in this package. */
+    void useSelectedPropertyForTest(WorkbenchSelections.Property selected) {
+        useSelectedProperty(selected);
+    }
+
     private void useSelectedProperty(WorkbenchSelections.Property selected) {
-        pid = selected.pid();
+        // setText fires the document listener, which drops the name because a typed
+        // PID no longer has one. So the name is assigned after, not before.
+        propertyPid.setText(selected.pid());
         propertyLabel = selected.label();
-        property.setText(selected.label() + " (" + selected.pid() + ")");
-        discover.setEnabled(wired);
+        updateProperty();
         status.setText(selected.pid() + " is now the edge property.");
     }
     private void setSelectedEntity() {
@@ -104,12 +158,13 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
                 .forEach(node -> selections.entity(node.qid(), node.label()));
     }
     private void setSelectedProperty() {
+        String pid = pid();
         if (selections == null || pid.isBlank()) return;
         selections.property(pid, propertyLabel.isBlank() ? pid : propertyLabel);
     }
     private DiscoverEntityRelationQuery query() {
         String qid = startingQid.getText() == null ? "" : startingQid.getText().trim();
-        return new DiscoverEntityRelationQuery(pid,List.of(qid),(DiscoverEntityRelationQuery.Direction)direction.getSelectedItem(),
+        return new DiscoverEntityRelationQuery(pid(),List.of(qid),(DiscoverEntityRelationQuery.Direction)direction.getSelectedItem(),
                 ((Number)depth.getValue()).intValue(),((Number)nodes.getValue()).intValue());
     }
     private void accept(DiscoverEntityRelationQuery.Result r) {
