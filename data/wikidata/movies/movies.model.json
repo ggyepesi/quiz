@@ -1,13 +1,16 @@
 {
   "@class" : "wikidata.explore.model.GeneratedProjectModel",
   "name" : "Movies",
+  "projectKind" : "DOMAIN",
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8",
     "className" : "Movies",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -17,12 +20,15 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
+      "inverseField" : "",
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "valueLanguage" : "",
       "requireSitelink" : true,
       "limit" : 20000,
       "rankBy" : "__sitelinks",
@@ -54,14 +60,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P840",
-        "propertyLabel" : "",
+        "propertyLabel" : "narrative location",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -78,16 +87,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "locations",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "narrative location",
             "property" : "P840",
-            "label" : "",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -114,12 +125,15 @@
         "propertyPid" : "P577",
         "propertyLabel" : "publication date",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "locations",
         "matchRoleField" : "locations",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -136,16 +150,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "publicationDate",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P577",
             "label" : "publication date",
-            "sourceType" : "SPARQL"
+            "property" : "P577",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -172,12 +188,15 @@
         "propertyPid" : "P57",
         "propertyLabel" : "director",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -194,16 +213,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "director",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P57",
             "label" : "director",
-            "sourceType" : "SPARQL"
+            "property" : "P57",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -230,12 +251,15 @@
         "propertyPid" : "P58",
         "propertyLabel" : "screenwriter",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -252,16 +276,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "screenwriter",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P58",
             "label" : "screenwriter",
-            "sourceType" : "SPARQL"
+            "property" : "P58",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -288,12 +314,15 @@
         "propertyPid" : "P86",
         "propertyLabel" : "composer",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -310,16 +339,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "composer",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P86",
             "label" : "composer",
-            "sourceType" : "SPARQL"
+            "property" : "P86",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -331,9 +362,9 @@
       "operationId" : "statement-membership",
       "parameters" : {
         "@class" : "java.util.ImmutableCollections$MapN",
-        "values" : "Q11424",
+        "includeSubclasses" : "false",
         "property" : "P31",
-        "includeSubclasses" : "false"
+        "values" : "Q11424"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -341,7 +372,8 @@
         "scope" : "CLASS_IDENTITY",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY"
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -355,7 +387,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_LABEL"
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -369,7 +402,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_ALIASES"
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -383,22 +417,24 @@
         "scope" : "CLASS_POPULATION",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_POPULATION"
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
         "operationId" : "statement-membership",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$MapN",
-          "values" : "Q11424",
+          "includeSubclasses" : "false",
           "property" : "P31",
-          "includeSubclasses" : "false"
+          "values" : "Q11424"
         }
       }
     } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -409,11 +445,13 @@
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8",
     "className" : "Movies",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -423,12 +461,15 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
+      "inverseField" : "",
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "valueLanguage" : "",
       "requireSitelink" : true,
       "limit" : 20000,
       "rankBy" : "__sitelinks",
@@ -460,14 +501,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P840",
-        "propertyLabel" : "",
+        "propertyLabel" : "narrative location",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -484,16 +528,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "locations",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "narrative location",
             "property" : "P840",
-            "label" : "",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -520,12 +566,15 @@
         "propertyPid" : "P577",
         "propertyLabel" : "publication date",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "locations",
         "matchRoleField" : "locations",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -542,16 +591,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "publicationDate",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P577",
             "label" : "publication date",
-            "sourceType" : "SPARQL"
+            "property" : "P577",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -578,12 +629,15 @@
         "propertyPid" : "P57",
         "propertyLabel" : "director",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -600,16 +654,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "director",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P57",
             "label" : "director",
-            "sourceType" : "SPARQL"
+            "property" : "P57",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -636,12 +692,15 @@
         "propertyPid" : "P58",
         "propertyLabel" : "screenwriter",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -658,16 +717,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "screenwriter",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P58",
             "label" : "screenwriter",
-            "sourceType" : "SPARQL"
+            "property" : "P58",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -694,12 +755,15 @@
         "propertyPid" : "P86",
         "propertyLabel" : "composer",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -716,16 +780,18 @@
           "scope" : "FIELD_VALUE",
           "className" : "Movies",
           "fieldPath" : "composer",
-          "slot" : "PRIMARY_FIELD_VALUE"
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
         },
         "recipe" : {
           "providerId" : "wikidata",
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "property" : "P86",
             "label" : "composer",
-            "sourceType" : "SPARQL"
+            "property" : "P86",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -737,9 +803,9 @@
       "operationId" : "statement-membership",
       "parameters" : {
         "@class" : "java.util.ImmutableCollections$MapN",
-        "values" : "Q11424",
+        "includeSubclasses" : "false",
         "property" : "P31",
-        "includeSubclasses" : "false"
+        "values" : "Q11424"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -747,7 +813,8 @@
         "scope" : "CLASS_IDENTITY",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_IDENTITY"
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -761,7 +828,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_LABEL"
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -775,7 +843,8 @@
         "scope" : "CLASS_NAMES",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_ALIASES"
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -789,22 +858,24 @@
         "scope" : "CLASS_POPULATION",
         "className" : "Movies",
         "fieldPath" : "",
-        "slot" : "CLASS_POPULATION"
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:f53422f4-43a1-3279-b2d0-c9ae26394ca8"
       },
       "recipe" : {
         "providerId" : "wikidata",
         "operationId" : "statement-membership",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$MapN",
-          "values" : "Q11424",
+          "includeSubclasses" : "false",
           "property" : "P31",
-          "includeSubclasses" : "false"
+          "values" : "Q11424"
         }
       }
     } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -813,5 +884,7 @@
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ ] ],
-  "entityKindRules" : [ "java.util.ArrayList", [ ] ]
+  "entityKindRules" : [ "java.util.ArrayList", [ ] ],
+  "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
+  "imports" : [ "java.util.ArrayList", [ ] ]
 }

@@ -331,10 +331,10 @@ public enum MembershipPattern {
         return switch (p) {
             case REIFIED -> {
                 StatementClassSource s = clazz.statementSource();
-                String prop = s == null ? "" : clean(s.propertyPid());
+                String prop = s == null ? "" : s.describeProperty();
                 String origin = s != null && s.hasSourceClass()
                         ? " of " + s.sourceClassName()
-                        : " · discovered";
+                        : " · subjects found from the property itself";
                 String domain = s != null && s.hasValueSelection()
                         ? " → Selection '" + s.valueSelectionName() + "'"
                         : "";

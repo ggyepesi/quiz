@@ -124,9 +124,15 @@ final class EffectiveClassPanel extends JPanel {
         if (all.isEmpty()) return;
         out.append("<li><b>").append(title).append("</b><ul>");
         for (var field : all) {
-            out.append("<li>").append(esc(field.name())).append(" — ")
-                    .append(esc(field.type())).append(" · ")
-                    .append(esc(field.origin())).append("</li>");
+            // What fills it comes first: a reader asking about a field wants the
+            // property, not where the declaration happens to live.
+            out.append("<li>").append(esc(field.name()));
+            if (!field.filledBy().isBlank()) {
+                out.append(" ← ").append(esc(field.filledBy()));
+            }
+            out.append(" <i>(").append(esc(field.type()));
+            if (!field.origin().isBlank()) out.append(", ").append(esc(field.origin()));
+            out.append(")</i></li>");
         }
         out.append("</ul></li>");
     }

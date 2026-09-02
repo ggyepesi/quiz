@@ -37,10 +37,11 @@ public final class EffectiveClassExplanations {
         String inheritedFrom = compiled.hasBase() ? compiled.baseClassName() : "";
         List<EffectiveClassExplanation.Field> fields = compiled.effectiveFields().stream()
                 .map(field -> new EffectiveClassExplanation.Field(
-                        field.name(), field.type() + (field.collection() ? " list" : ""),
+                        field.name(), fieldType(field),
                         ownNames.contains(field.name()) ? declarationOrigin(declaration)
                                 : "inherited through " + inheritedFrom,
-                        partOf(declaration, field.name())))
+                        partOf(declaration, field.name()),
+                        filledBy(declaration, field.name())))
                 .toList();
 
         return new EffectiveClassExplanation(
@@ -157,6 +158,51 @@ public final class EffectiveClassExplanations {
             return EffectiveClassExplanation.Part.SUBJECT;
         }
         return EffectiveClassExplanation.Part.DESCRIBING;
+    }
+
+    /** The class an entity field points at, which says more than "Entity/Object". */
+    private static String fieldType(wikidata.explore.compiled.CompiledField field) {
+        String target = field.entityClassName();
+        String base = target == null || target.isBlank()
+                ? String.valueOf(field.type()) : target;
+        return base + (field.collection() ? " list" : "");
+    }
+
+    /**
+     * What puts a value in this field — the question a reader asks of a field, and the
+     * one the declaration origin ("this project") does not answer. For a statement
+     * class each part is filled differently: the subject comes from the statement, the
+     * value from the statement's own property, a qualifier from its own PID.
+     */
+    private static String filledBy(GeneratedClassModel declaration, String fieldName) {
+        GeneratedFieldModel field = declaration.fields().stream()
+                .filter(candidate -> candidate != null && candidate.name().equals(fieldName))
+                .findFirst().orElse(null);
+        if (field == null) return "";
+        return switch (partOf(declaration, fieldName)) {
+            case SUBJECT -> "the entity the statement is about";
+            case VALUE -> {
+                var source = declaration.statementSource();
+                if (source == null) yield "";
+                // The value field carries the same property as the statement, and a
+                // field mapping has remembered its name for longer — so prefer the one
+                // that actually knows it rather than showing a bare PID beside it.
+                String named = field.mapping().displayProperty();
+                String described = "(not selected)".equals(named)
+                        || named.equals(field.mapping().propertyPid())
+                        ? source.describeProperty() : named;
+                yield "the statement's value · " + described;
+            }
+            case DISTINGUISHING, DESCRIBING -> {
+                String qualifier = field.mapping().displayQualifier();
+                yield qualifier.isBlank() ? field.mapping().displayProperty()
+                        : "qualifier · " + qualifier;
+            }
+            case PLAIN -> {
+                String property = field.mapping().displayProperty();
+                yield "(not selected)".equals(property) ? "" : property;
+            }
+        };
     }
 
     private static Set<String> keyFields(GeneratedClassModel declaration) {

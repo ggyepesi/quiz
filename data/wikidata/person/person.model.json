@@ -20,6 +20,7 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
@@ -62,6 +63,7 @@
         "propertyPid" : "",
         "propertyLabel" : "",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -104,6 +106,7 @@
         "propertyPid" : "P1477",
         "propertyLabel" : "birth name",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -137,9 +140,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "birth name",
-            "valueLanguage" : "",
             "property" : "P1477",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -166,6 +169,7 @@
         "propertyPid" : "P1559",
         "propertyLabel" : "name in native language",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -199,9 +203,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "name in native language",
-            "valueLanguage" : "",
             "property" : "P1559",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -228,6 +232,7 @@
         "propertyPid" : "P742",
         "propertyLabel" : "pseudonym",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -261,9 +266,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "pseudonym",
-            "valueLanguage" : "",
             "property" : "P742",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -290,6 +295,7 @@
         "propertyPid" : "P569",
         "propertyLabel" : "date of birth",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "structuredName",
         "matchRoleField" : "structuredName",
@@ -323,9 +329,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "date of birth",
-            "valueLanguage" : "",
             "property" : "P569",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -350,8 +356,9 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P570",
-        "propertyLabel" : "",
+        "propertyLabel" : "date of death",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "structuredName",
         "matchRoleField" : "structuredName",
@@ -384,10 +391,10 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
-            "valueLanguage" : "",
+            "label" : "date of death",
             "property" : "P570",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -414,6 +421,7 @@
         "propertyPid" : "P18",
         "propertyLabel" : "image",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -447,9 +455,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "image",
-            "valueLanguage" : "",
             "property" : "P18",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -476,6 +484,7 @@
         "propertyPid" : "P27",
         "propertyLabel" : "country of citizenship",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -509,9 +518,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "country of citizenship",
-            "valueLanguage" : "",
             "property" : "P27",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -594,6 +603,7 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
@@ -636,6 +646,7 @@
         "propertyPid" : "",
         "propertyLabel" : "",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -678,6 +689,7 @@
         "propertyPid" : "P1477",
         "propertyLabel" : "birth name",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -711,9 +723,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "birth name",
-            "valueLanguage" : "",
             "property" : "P1477",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -740,6 +752,7 @@
         "propertyPid" : "P1559",
         "propertyLabel" : "name in native language",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -773,9 +786,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "name in native language",
-            "valueLanguage" : "",
             "property" : "P1559",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -802,6 +815,7 @@
         "propertyPid" : "P742",
         "propertyLabel" : "pseudonym",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -835,9 +849,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "pseudonym",
-            "valueLanguage" : "",
             "property" : "P742",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -864,6 +878,7 @@
         "propertyPid" : "P569",
         "propertyLabel" : "date of birth",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "structuredName",
         "matchRoleField" : "structuredName",
@@ -897,9 +912,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "date of birth",
-            "valueLanguage" : "",
             "property" : "P569",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -924,8 +939,9 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P570",
-        "propertyLabel" : "",
+        "propertyLabel" : "date of death",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "structuredName",
         "matchRoleField" : "structuredName",
@@ -958,10 +974,10 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
-            "valueLanguage" : "",
+            "label" : "date of death",
             "property" : "P570",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -988,6 +1004,7 @@
         "propertyPid" : "P18",
         "propertyLabel" : "image",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -1021,9 +1038,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "image",
-            "valueLanguage" : "",
             "property" : "P18",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -1050,6 +1067,7 @@
         "propertyPid" : "P27",
         "propertyLabel" : "country of citizenship",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -1083,9 +1101,9 @@
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "label" : "country of citizenship",
-            "valueLanguage" : "",
             "property" : "P27",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -1166,6 +1184,7 @@
       "propertyPid" : "",
       "propertyLabel" : "",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
@@ -1205,8 +1224,9 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P734",
-        "propertyLabel" : "",
+        "propertyLabel" : "family name",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -1239,10 +1259,10 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
-            "valueLanguage" : "",
+            "label" : "family name",
             "property" : "P734",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -1267,8 +1287,9 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P735",
-        "propertyLabel" : "",
+        "propertyLabel" : "given name",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
@@ -1301,10 +1322,10 @@
           "operationId" : "property-value",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "",
-            "valueLanguage" : "",
+            "label" : "given name",
             "property" : "P735",
-            "sourceType" : "SPARQL"
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],
@@ -1329,5 +1350,6 @@
     "propertyPid" : "P31",
     "evidenceQids" : [ "java.util.ArrayList", [ "Q5" ] ]
   } ] ],
+  "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
   "imports" : [ "java.util.ArrayList", [ ] ]
 }

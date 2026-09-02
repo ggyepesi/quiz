@@ -1,13 +1,17 @@
 {
   "@class" : "wikidata.explore.model.GeneratedProjectModel",
   "name" : "Periodic Table",
+  "projectKind" : "DOMAIN",
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9",
     "className" : "Element",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -16,12 +20,15 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
+      "inverseField" : "",
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "valueLanguage" : "",
       "requireSitelink" : false,
       "limit" : 200,
       "rankBy" : "",
@@ -38,6 +45,7 @@
       "name" : "symbol",
       "type" : "STRING",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -52,14 +60,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P246",
-        "propertyLabel" : "",
+        "propertyLabel" : "element symbol",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -71,12 +82,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "symbol",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "element symbol",
+            "property" : "P246",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "atomicNumber",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -91,14 +123,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1086",
-        "propertyLabel" : "",
+        "propertyLabel" : "atomic number",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -110,12 +145,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "atomicNumber",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "atomic number",
+            "property" : "P1086",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "mass",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -130,14 +186,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2067",
-        "propertyLabel" : "",
+        "propertyLabel" : "mass",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -149,12 +208,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "mass",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "mass",
+            "property" : "P2067",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "electronegativity",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -169,14 +249,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1108",
-        "propertyLabel" : "",
+        "propertyLabel" : "electronegativity",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -188,12 +271,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "electronegativity",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "electronegativity",
+            "property" : "P1108",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "meltingPoint",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -208,14 +312,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2101",
-        "propertyLabel" : "",
+        "propertyLabel" : "melting point",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -227,12 +334,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "meltingPoint",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "melting point",
+            "property" : "P2101",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "boilingPoint",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -247,14 +375,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2102",
-        "propertyLabel" : "",
+        "propertyLabel" : "boiling point",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -266,12 +397,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "boilingPoint",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "boiling point",
+            "property" : "P2102",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "density",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -286,14 +438,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2054",
-        "propertyLabel" : "",
+        "propertyLabel" : "density",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -305,12 +460,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "density",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "density",
+            "property" : "P2054",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "oxidationStates",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "INLINE",
       "required" : false,
@@ -325,14 +501,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1121",
-        "propertyLabel" : "",
+        "propertyLabel" : "oxidation state",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -344,12 +523,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "oxidationStates",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "oxidation state",
+            "property" : "P1121",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "discoveryDate",
       "type" : "DATE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -364,14 +564,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P575",
-        "propertyLabel" : "",
+        "propertyLabel" : "time of discovery or invention",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -383,12 +586,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "discoveryDate",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "time of discovery or invention",
+            "property" : "P575",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "discoverer",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -403,14 +627,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P61",
-        "propertyLabel" : "",
+        "propertyLabel" : "discoverer or inventor",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -422,12 +649,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "discoverer",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "discoverer or inventor",
+            "property" : "P61",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "namedAfter",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -442,14 +690,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P138",
-        "propertyLabel" : "",
+        "propertyLabel" : "named after",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -461,12 +712,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "namedAfter",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "named after",
+            "property" : "P138",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "partOf",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -481,14 +753,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P361",
-        "propertyLabel" : "",
+        "propertyLabel" : "part of",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -500,12 +775,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "partOf",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "part of",
+            "property" : "P361",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "image",
       "type" : "IMAGE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -520,14 +816,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P18",
-        "propertyLabel" : "",
+        "propertyLabel" : "image",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -539,26 +838,125 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "property" : "P18",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q11344"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q11344"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   },
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9",
     "className" : "Element",
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
     "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -567,12 +965,15 @@
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
+      "qualifierLabel" : "",
       "subjectField" : "",
       "matchValueField" : "",
       "matchRoleField" : "",
+      "inverseField" : "",
       "direction" : "ITEM_TO_ROOT",
       "requireLabel" : true,
       "labelLanguage" : "en",
+      "valueLanguage" : "",
       "requireSitelink" : false,
       "limit" : 200,
       "rankBy" : "",
@@ -589,6 +990,7 @@
       "name" : "symbol",
       "type" : "STRING",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -603,14 +1005,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P246",
-        "propertyLabel" : "",
+        "propertyLabel" : "element symbol",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -622,12 +1027,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "symbol",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "element symbol",
+            "property" : "P246",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "atomicNumber",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -642,14 +1068,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1086",
-        "propertyLabel" : "",
+        "propertyLabel" : "atomic number",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -661,12 +1090,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "atomicNumber",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "atomic number",
+            "property" : "P1086",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "mass",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -681,14 +1131,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2067",
-        "propertyLabel" : "",
+        "propertyLabel" : "mass",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -700,12 +1153,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "mass",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "mass",
+            "property" : "P2067",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "electronegativity",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -720,14 +1194,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1108",
-        "propertyLabel" : "",
+        "propertyLabel" : "electronegativity",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -739,12 +1216,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "electronegativity",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "electronegativity",
+            "property" : "P1108",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "meltingPoint",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -759,14 +1257,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2101",
-        "propertyLabel" : "",
+        "propertyLabel" : "melting point",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -778,12 +1279,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "meltingPoint",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "melting point",
+            "property" : "P2101",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "boilingPoint",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -798,14 +1320,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2102",
-        "propertyLabel" : "",
+        "propertyLabel" : "boiling point",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -817,12 +1342,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "boilingPoint",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "boiling point",
+            "property" : "P2102",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "density",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -837,14 +1383,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P2054",
-        "propertyLabel" : "",
+        "propertyLabel" : "density",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -856,12 +1405,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "density",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "density",
+            "property" : "P2054",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "oxidationStates",
       "type" : "NUMBER",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "INLINE",
       "required" : false,
@@ -876,14 +1446,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1121",
-        "propertyLabel" : "",
+        "propertyLabel" : "oxidation state",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -895,12 +1468,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "oxidationStates",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "oxidation state",
+            "property" : "P1121",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "discoveryDate",
       "type" : "DATE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -915,14 +1509,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P575",
-        "propertyLabel" : "",
+        "propertyLabel" : "time of discovery or invention",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -934,12 +1531,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "discoveryDate",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "time of discovery or invention",
+            "property" : "P575",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "discoverer",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -954,14 +1572,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P61",
-        "propertyLabel" : "",
+        "propertyLabel" : "discoverer or inventor",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -973,12 +1594,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "discoverer",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "discoverer or inventor",
+            "property" : "P61",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "namedAfter",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -993,14 +1635,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P138",
-        "propertyLabel" : "",
+        "propertyLabel" : "named after",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -1012,12 +1657,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "namedAfter",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "named after",
+            "property" : "P138",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "partOf",
       "type" : "ENTITY",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
       "required" : false,
@@ -1032,14 +1698,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P361",
-        "propertyLabel" : "",
+        "propertyLabel" : "part of",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ITEM_TO_ROOT",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -1051,12 +1720,33 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "partOf",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "part of",
+            "property" : "P361",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "image",
       "type" : "IMAGE",
       "entityClassName" : "",
+      "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
       "required" : false,
@@ -1071,14 +1761,17 @@
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P18",
-        "propertyLabel" : "",
+        "propertyLabel" : "image",
         "qualifierPid" : "",
+        "qualifierLabel" : "",
         "subjectField" : "",
         "matchValueField" : "",
         "matchRoleField" : "",
+        "inverseField" : "",
         "direction" : "ROOT_TO_ITEM",
         "requireLabel" : true,
         "labelLanguage" : "en",
+        "valueLanguage" : "",
         "requireSitelink" : false,
         "limit" : 200,
         "rankBy" : "",
@@ -1090,17 +1783,116 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Element",
+          "fieldPath" : "image",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "image",
+            "property" : "P18",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q11344"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "Element",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q11344"
+        }
+      }
+    } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
-      "labelLanguage" : "en"
+      "labelLanguage" : "en",
+      "primaryListField" : ""
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ ] ]
+  "selections" : [ "java.util.ArrayList", [ ] ],
+  "entityKindRules" : [ "java.util.ArrayList", [ ] ],
+  "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
+  "imports" : [ "java.util.ArrayList", [ ] ]
 }

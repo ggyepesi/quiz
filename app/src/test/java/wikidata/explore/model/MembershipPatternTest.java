@@ -87,7 +87,7 @@ class MembershipPatternTest {
         s.valueSelectionName("OscarCategories");
         c.statementSource(s);
         assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
-        assertEquals("Reified statements (P1411 · discovered → Selection 'OscarCategories')",
+        assertEquals("Reified statements (P1411 · subjects found from the property itself → Selection 'OscarCategories')",
                 MembershipPattern.describe(c));
     }
 

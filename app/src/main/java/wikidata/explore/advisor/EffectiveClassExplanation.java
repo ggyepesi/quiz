@@ -37,12 +37,18 @@ public record EffectiveClassExplanation(
         PLAIN
     }
 
-    public record Field(String name, String type, String origin, Part part) {
+    public record Field(String name, String type, String origin, Part part,
+                        String filledBy) {
         public Field(String name, String type, String origin) {
-            this(name, type, origin, Part.PLAIN);
+            this(name, type, origin, Part.PLAIN, "");
+        }
+
+        public Field(String name, String type, String origin, Part part) {
+            this(name, type, origin, part, "");
         }
 
         public Field {
+            filledBy = clean(filledBy);
             name = clean(name);
             type = clean(type);
             origin = clean(origin);
