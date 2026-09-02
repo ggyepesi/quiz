@@ -113,13 +113,7 @@ public final class DomainFinalization {
                         wikidata.explore.transform.ConsistencyReport.check(
                                 compiled, new java.util.ArrayList<>(consistencyRecords), log);
                     }
-                }),
-                // Coverage answers whether a reference field is filled. This answers
-                // whether what filled it is here — a field pointing at entities the
-                // domain never loaded reads as complete and resolves to nothing.
-                stage("references", "Audit declared reference targets", () ->
-                        wikidata.explore.transform.ReferenceResolutionReport.check(
-                                model, pool, log)));
+                }));
         for (GenerationStage stage : stages) stage.execute();
         return new Result(counts[0], counts[1], counts[2], counts[3], counts[4],
                 counts[5], coverage);
