@@ -11,6 +11,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
 
+    @Test void representationRequiresAnExplicitTargetAdmission() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("Prize");
+        GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(prize);
+        project.addClass(laureate);
+        project.addClass(person);
+        project.representationClasses(laureate, java.util.List.of("Person"));
+
+        ValidationResult missingAdmission = GeneratedProjectModelValidator.validate(project);
+        assertFalse(missingAdmission.valid());
+        assertTrue(missingAdmission.format().contains(
+                "Representation class 'Person' has no configured admission rule"));
+
+        project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+    }
+
     @Test void monolingualTextRequiresACodeRatherThanAForeignLanguageQid() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");

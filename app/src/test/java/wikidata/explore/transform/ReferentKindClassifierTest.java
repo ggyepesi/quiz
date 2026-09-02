@@ -17,6 +17,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentKindClassifierTest {
+    @Test void admissionAloneDoesNotChooseARepresentation() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        model.rootClass(nomination);
+        model.addClass(new GeneratedClassModel("Nominee"));
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject nominee = new WikidataDynamicObject("Q1", "Human");
+        nominee.type("Nominee");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "Human", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(nominee), api, null);
+
+        assertEquals(0, result.classified());
+        assertEquals(java.util.Set.of("Nominee"), nominee.directClassNames());
+    }
+
     @Test void replacesRoleClassesOnlyWhenEvidenceProvidesAReplacementKind() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
@@ -26,12 +48,14 @@ class ReferentKindClassifierTest {
         nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("ForWork");
         model.rootClass(nomination);
-        model.addClass(new GeneratedClassModel("Nominee"));
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        model.addClass(nominee);
         model.addClass(new GeneratedClassModel("ForWork"));
         model.addClass(new GeneratedClassModel("Person"));
         model.addClass(new GeneratedClassModel("Film"));
         model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
         model.addEntityKindRule(new EntityKindRule("Film", List.of("Q11424")));
+        model.representationClasses(nominee, List.of("Person", "Film"));
 
         WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
         person.type("Nominee");
@@ -49,11 +73,12 @@ class ReferentKindClassifierTest {
                 List.of(event, person, unknown), api, null);
 
         assertEquals(1, result.classified());
-        assertEquals(1, result.unknown());
+        assertEquals(0, result.unknown(),
+                "an unconfigured role is outside contextual representation");
         assertEquals(java.util.Set.of("Person", "Film"), person.directClassNames());
-        assertEquals("Film", person.typeName(),
-                "equal-depth kinds use the shared alphabetical carrier rule");
-        assertEquals("Film", person.typeKey());
+        assertEquals("Person", person.typeName(),
+                "the first explicit matching representation is the carrier");
+        assertEquals("Person", person.typeKey());
         assertTrue(unknown.hasTypeStamp(),
                 "an unknown thin referent must remain protected from string collapse");
         assertEquals(java.util.Set.of("ForWork"), unknown.directClassNames());
@@ -87,6 +112,7 @@ class ReferentKindClassifierTest {
         model.addClass(workClass);
         model.addClass(new GeneratedClassModel("Person"));
         model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        model.representationClasses(nomineeClass, List.of("Person"));
 
         WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
         person.type("Nominee");

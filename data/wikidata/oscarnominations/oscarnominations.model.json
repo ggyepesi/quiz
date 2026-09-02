@@ -1122,6 +1122,12 @@
     "kind" : "VOCABULARY"
   } ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
+  "entityRepresentationRules" : [ "java.util.ArrayList", [ {
+    "roleClassName" : "Nominee",
+    "roleClassId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d",
+    "representationClassName" : "Person",
+    "representationClassId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+  } ] ],
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Person",
     "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]

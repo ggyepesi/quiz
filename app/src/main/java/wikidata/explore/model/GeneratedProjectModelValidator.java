@@ -435,6 +435,37 @@ public final class GeneratedProjectModelValidator {
                         + rule.className() + "' does not exist."));
             }
         }
+        java.util.HashSet<String> representations = new java.util.HashSet<>();
+        for (EntityRepresentationRule rule : project.entityRepresentationRules()) {
+            if (rule == null || !rule.isConfigured()) {
+                problems.add(Problem.error("Entity representations",
+                        "Representation rule is incomplete."));
+                continue;
+            }
+            GeneratedClassModel role = project.resolveClass(
+                    rule.roleClassId(), rule.roleClassName());
+            GeneratedClassModel target = project.resolveClass(
+                    rule.representationClassId(), rule.representationClassName());
+            if (role == null) {
+                problems.add(Problem.error("Entity representations", "Role class '"
+                        + rule.roleClassName() + "' does not exist."));
+            }
+            if (target == null) {
+                problems.add(Problem.error("Entity representations",
+                        "Representation class '" + rule.representationClassName()
+                                + "' does not exist."));
+            } else if (MembershipPattern.kindRule(target, project) == null) {
+                problems.add(Problem.error("Entity representations",
+                        "Representation class '" + target.className()
+                                + "' has no configured admission rule."));
+            }
+            String key = rule.roleClassName() + "\0" + rule.representationClassName();
+            if (!representations.add(key)) {
+                problems.add(Problem.error("Entity representations",
+                        "Duplicate representation " + rule.roleClassName() + " -> "
+                                + rule.representationClassName() + "."));
+            }
+        }
     }
 
     private static void validateUniqueClassNames(

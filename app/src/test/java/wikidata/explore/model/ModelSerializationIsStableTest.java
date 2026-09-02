@@ -49,6 +49,10 @@ class ModelSerializationIsStableTest {
                 datasource.api.SourceBindingTarget.fieldValue("Person", "birthName",
                         datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
                 new SourceRecipe("wikidata", "property-value", parameters)));
+        GeneratedClassModel role = new GeneratedClassModel("Laureate");
+        project.addClass(role);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        project.representationClasses(role, List.of("Person"));
         return project;
     }
 
@@ -77,6 +81,17 @@ class ModelSerializationIsStableTest {
                 parameters);
         assertTrue(parameters.indexOf("\"property\"") < parameters.indexOf("\"sourceType\""),
                 parameters);
+    }
+
+    @Test void contextualRepresentationIsPersistedWithStableReferences() throws Exception {
+        String json = new GeneratedProjectModelStore().toJson(modelWithRecipes());
+
+        JsonNode rule = new ObjectMapper().readTree(json)
+                .path("entityRepresentationRules").path(1).path(0);
+        assertEquals("Laureate", rule.path("roleClassName").asText());
+        assertFalse(rule.path("roleClassId").asText().isBlank());
+        assertEquals("Person", rule.path("representationClassName").asText());
+        assertFalse(rule.path("representationClassId").asText().isBlank());
     }
 
     /**

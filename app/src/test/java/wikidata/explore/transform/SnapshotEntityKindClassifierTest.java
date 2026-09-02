@@ -231,6 +231,7 @@ class SnapshotEntityKindClassifierTest {
         model.addClass(nomineeClass);
         model.addClass(new GeneratedClassModel("Person"));
         model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        model.representationClasses(nomineeClass, List.of("Person"));
         return model;
     }
 

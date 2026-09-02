@@ -40,6 +40,13 @@ Object identity is ⟨typeKey, id⟩, not name — that is what stops a State an
 "France" from merging, and it acts at SAVE time. A VALUE object has no id and is inlined; an
 ENTITY has an id, is pooled and referenced. `@Inline` is the explicit opt-in.
 
+# Admission is not representation
+
+An evidence rule such as `Person: P31 = Q5` declares non-exclusive membership admission. It
+must never globally choose the carrier used by a consuming role. That choice is an explicit,
+ordered contextual representation on the role (`Laureate -> Person`); importing or inspecting
+an admission alone performs no retyping. See `docs/contextual-entity-representation.md`.
+
 # Generation order
 
 The pipeline's order encodes real dependencies. Changing it means checking these:

@@ -32,6 +32,7 @@ public class GeneratedProjectModel {
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
+    private final List<EntityRepresentationRule> entityRepresentationRules = new ArrayList<>();
     private final List<ModelImport> imports = new ArrayList<>();
 
     public GeneratedProjectModel() {
@@ -225,6 +226,33 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(entityKindRules);
     }
 
+    public List<EntityRepresentationRule> entityRepresentationRules() {
+        return Collections.unmodifiableList(entityRepresentationRules);
+    }
+
+    public void entityRepresentationRules(List<EntityRepresentationRule> rules) {
+        entityRepresentationRules.clear();
+        if (rules != null) rules.stream().filter(java.util.Objects::nonNull)
+                .map(EntityRepresentationRule::copy).forEach(entityRepresentationRules::add);
+    }
+
+    /** Replaces the ordered alternatives owned by one role class. */
+    public void representationClasses(GeneratedClassModel role, List<String> classNames) {
+        if (role == null) return;
+        entityRepresentationRules.removeIf(rule -> references(role.declarationId(),
+                rule.roleClassId(), role.className(), rule.roleClassName()));
+        if (classNames == null) return;
+        java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>(classNames);
+        for (String name : unique) {
+            GeneratedClassModel target = findClass(name);
+            if (target == null || target == role) continue;
+            EntityRepresentationRule rule = new EntityRepresentationRule();
+            rule.roleClassReference(role.declarationId(), role.className());
+            rule.representationClassReference(target.declarationId(), target.className());
+            entityRepresentationRules.add(rule);
+        }
+    }
+
     public void addEntityKindRule(EntityKindRule rule) {
         if (rule != null) entityKindRules.add(rule);
     }
@@ -287,6 +315,9 @@ public class GeneratedProjectModel {
         this.selections.addAll(other.selections);
         this.entityKindRules.clear();
         this.entityKindRules.addAll(other.entityKindRules);
+        this.entityRepresentationRules.clear();
+        other.entityRepresentationRules.stream().map(EntityRepresentationRule::copy)
+                .forEach(this.entityRepresentationRules::add);
         this.imports.clear();
         other.imports.stream().map(ModelImport::copy).forEach(this.imports::add);
 
@@ -362,6 +393,17 @@ public class GeneratedProjectModel {
             if (rule != null && references(target.declarationId(), rule.classId(),
                     from, rule.className())) {
                 rule.classReference(target.declarationId(), to);
+            }
+        }
+        for (EntityRepresentationRule rule : entityRepresentationRules) {
+            if (rule == null) continue;
+            if (references(target.declarationId(), rule.roleClassId(),
+                    from, rule.roleClassName())) {
+                rule.roleClassReference(target.declarationId(), to);
+            }
+            if (references(target.declarationId(), rule.representationClassId(),
+                    from, rule.representationClassName())) {
+                rule.representationClassReference(target.declarationId(), to);
             }
         }
         for (Selection selection : selections) {
@@ -677,6 +719,16 @@ public class GeneratedProjectModel {
             GeneratedClassModel target = resolveClass(rule.classId(), rule.className());
             if (target != null) rule.classReference(target.declarationId(), target.className());
         }
+        for (EntityRepresentationRule rule : entityRepresentationRules) {
+            if (rule == null) continue;
+            GeneratedClassModel role = resolveClass(
+                    rule.roleClassId(), rule.roleClassName());
+            if (role != null) rule.roleClassReference(role.declarationId(), role.className());
+            GeneratedClassModel target = resolveClass(
+                    rule.representationClassId(), rule.representationClassName());
+            if (target != null) rule.representationClassReference(
+                    target.declarationId(), target.className());
+        }
         for (Selection selection : selections) {
             if (!(selection instanceof RoleSelection role)) continue;
             GeneratedClassModel owner = resolveClass(role.ownerClassId(), role.ownerClassName());
@@ -796,6 +848,9 @@ public class GeneratedProjectModel {
         }
         for (EntityKindRule rule : entityKindRules) {
             if (rule != null) c.entityKindRules.add(rule.copy());
+        }
+        for (EntityRepresentationRule rule : entityRepresentationRules) {
+            if (rule != null) c.entityRepresentationRules.add(rule.copy());
         }
         for (ModelImport dependency : imports) {
             if (dependency != null) c.imports.add(dependency.copy());

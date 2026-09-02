@@ -148,7 +148,7 @@ public class ModelBuilderFrame extends JFrame {
             new JButton("Model graph");
 
     private final JButton showEntityKindsButton =
-            new JButton("Entity kinds");
+            new JButton("Class admissions");
 
     private final JButton showGuideButton =
             new JButton("Guide…");
@@ -496,7 +496,7 @@ public class ModelBuilderFrame extends JFrame {
     // vocabulary and see its members.
     private void showEntityKindsWindow() {
         if (entityKindsWindow == null) {
-            entityKindsWindow = new JFrame("Evidence-derived entity kinds");
+            entityKindsWindow = new JFrame("Class admission evidence");
             entityKindsWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             entityKindsWindow.setSize(700, 420);
             entityKindsWindow.setLocationByPlatform(true);

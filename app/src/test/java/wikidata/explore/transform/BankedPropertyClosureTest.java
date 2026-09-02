@@ -169,6 +169,10 @@ class BankedPropertyClosureTest {
         model.addClass(nameClass);
 
         model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        // Admission alone no longer retypes anyone: the domain says which role uses the
+        // admitted class, and that role also supplies the population the rule is tested
+        // against. Without this, Person admits nothing here because nothing is asked.
+        model.representationClasses(model.findClass("Nominee"), List.of("Person"));
         return model;
     }
 }

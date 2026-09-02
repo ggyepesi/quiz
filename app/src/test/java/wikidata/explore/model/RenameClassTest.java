@@ -46,6 +46,7 @@ class RenameClassTest {
         project.addClass(statement);
         project.addSelection(new RoleSelection("names", "Name", "familyName"));
         project.addEntityKindRule(new EntityKindRule("Name", List.of("Q82799")));
+        project.representationClasses(person, List.of("Name"));
 
         assertTrue(project.renameClass("Name", "BirthName"));
 
@@ -63,6 +64,9 @@ class RenameClassTest {
                 "the role owner follows");
         assertEquals("BirthName",
                 project.entityKindRules().getFirst().className(), "the kind rule follows");
+        assertEquals("BirthName",
+                project.entityRepresentationRules().getFirst().representationClassName(),
+                "the contextual representation follows");
         // …so the class is still produced where it was, rather than orphaned.
         assertEquals(MembershipPattern.OWNED_COMPONENT,
                 MembershipPattern.of(project.findClass("BirthName"), project));

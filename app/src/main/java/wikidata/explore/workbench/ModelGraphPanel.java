@@ -6,6 +6,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.FieldProductionKind;
+import wikidata.explore.model.MembershipPattern;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,7 +25,8 @@ import java.util.function.Consumer;
 /**
  * Read-only graph view of a {@link GeneratedProjectModel}: each class is a node,
  * each entity-reference field whose target is another class in the project is an
- * edge (labelled with the field name). Scalar fields are listed inside the node.
+ * edge (labelled with the field name). Dashed edges show explicit contextual
+ * representations. Scalar fields are listed inside the node.
  *
  * <p>The model <i>is</i> the rule-tree (classes = nodes, reference fields =
  * edges), so this is the structural view of what you've configured. Clicking a
@@ -41,7 +43,7 @@ public class ModelGraphPanel extends JPanel {
     private static final int LINE_H = 15;
     private static final int HEAD_H = 41;
 
-    private record Edge(String from, String to, String field) {}
+    private record Edge(String from, String to, String field, boolean representation) {}
     private record FieldLine(String name, String display) {}
     private record FieldKey(String className, String fieldName) {}
 
@@ -155,12 +157,25 @@ public class ModelGraphPanel extends JPanel {
                     boolean coll = f.cardinality() == FieldCardinality.COLLECTION;
                     edges.add(new Edge(c.className(), target,
                                        f.name() + (coll ? " [*]" : "")
-                                               + " · " + sourceCue(f)));
+                                               + " · " + sourceCue(f), false));
                 } else {
                     scalars.add(new FieldLine(f.name(), f.name() + "  " + sourceCue(f)));
                 }
             }
             scalarFields.put(c.className(), scalars);
+        }
+        for (var representation : model.entityRepresentationRules()) {
+            if (representation == null
+                    || !classes.containsKey(representation.roleClassName())
+                    || !classes.containsKey(representation.representationClassName())) continue;
+            var target = model.findClass(representation.representationClassName());
+            var admission = MembershipPattern.kindRule(target, model);
+            String condition = admission == null ? "admission missing"
+                    : admission.propertyPid() + " = "
+                            + String.join(", ", admission.evidenceQids());
+            edges.add(new Edge(representation.roleClassName(),
+                    representation.representationClassName(),
+                    "represents as · " + condition, true));
         }
 
         String root = model.rootClass() != null ? model.rootClass().className() : null;
@@ -246,10 +261,18 @@ public class ModelGraphPanel extends JPanel {
             if (b.y <= a.y) {
                 y1 = a.y; // leave from top when target is above/level
             }
-            g.setColor(new Color(0x90, 0x90, 0x90));
+            Stroke previousStroke = g.getStroke();
+            if (e.representation()) {
+                g.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_BUTT,
+                        BasicStroke.JOIN_MITER, 10f, new float[]{6f, 5f}, 0f));
+            }
+            g.setColor(e.representation() ? new Color(0x7A, 0x45, 0x9A)
+                    : new Color(0x90, 0x90, 0x90));
             g.drawLine(x1, y1, x2, y2);
             drawArrowHead(g, x1, y1, x2, y2);
-            g.setColor(new Color(0x33, 0x66, 0x99));
+            g.setStroke(previousStroke);
+            g.setColor(e.representation() ? new Color(0x7A, 0x45, 0x9A)
+                    : new Color(0x33, 0x66, 0x99));
             int mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
             g.drawString(e.field(), mx + 3, my);
         }

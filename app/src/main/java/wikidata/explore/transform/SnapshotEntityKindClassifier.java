@@ -103,8 +103,7 @@ public final class SnapshotEntityKindClassifier {
             List<WikidataDynamicObject> copies =
                     copiesByQid.getOrDefault(candidate.qid(), List.of());
             boolean hasUnsettledKind = rules.stream()
-                    .filter(rule -> candidatePlan.eligible(
-                            candidate.qid(), rule.propertyPid()))
+                    .filter(rule -> candidatePlan.eligible(candidate.qid(), rule))
                     .anyMatch(rule -> copies.stream().noneMatch(copy ->
                             copy.directClassNames().contains(rule.className())));
             // A settled kind is not an evidence miss. Asking the remote classifier
@@ -118,7 +117,7 @@ public final class SnapshotEntityKindClassifier {
             boolean matched = false;
             boolean changed = false;
             for (EntityKindRule rule : rules) {
-                if (!candidatePlan.eligible(candidate.qid(), rule.propertyPid())) continue;
+                if (!candidatePlan.eligible(candidate.qid(), rule)) continue;
                 Set<String> values = byPid == null ? null : byPid.get(rule.propertyPid());
                 if (values == null || values.isEmpty()) continue;
                 hasEvidence = true;

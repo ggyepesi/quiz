@@ -5,6 +5,7 @@ import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.EntityKindRule;
+import wikidata.explore.model.EntityRepresentations;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.api.FactDemand;
 import wikidata.api.FactDemandBinder;
@@ -44,8 +45,13 @@ public final class ReferentKindClassifier {
                                Set<String> candidateQids,
                                Collection<FactDemand.EntityMetadata> metadata) {
         if (model == null || pool == null || api == null) return new Result(0, 0, 0);
+        Set<String> representedClasses = model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(wikidata.explore.model.EntityRepresentationRule::representationClassName)
+                .collect(java.util.stream.Collectors.toSet());
         List<EntityKindRule> rules = model.entityKindRules().stream()
                 .filter(EntityKindRule::isConfigured)
+                .filter(rule -> representedClasses.contains(rule.className()))
                 .filter(rule -> model.findClass(rule.className()) != null).toList();
         if (rules.isEmpty()) return new Result(0, 0, 0);
 
@@ -69,8 +75,12 @@ public final class ReferentKindClassifier {
         // can be banked, because no field load asks about these entities first.
         int evidencePids = properties.size();
         for (String pid : properties) {
-            Set<String> eligible = new LinkedHashSet<>(
-                    candidatePlan.qidsByProperty().getOrDefault(pid, Set.of()));
+            // Eligibility is per ADMITTED CLASS now, so the population for a property is
+            // the union over the rules that use it.
+            Set<String> eligible = new LinkedHashSet<>();
+            rules.stream().filter(rule -> pid.equals(rule.propertyPid()))
+                    .forEach(rule -> eligible.addAll(candidatePlan.qidsByKindClass()
+                            .getOrDefault(rule.className(), Set.of())));
             eligible.retainAll(candidates.keySet());
             api.facts().recordDemand("entity-kind evidence", eligible, List.of(pid));
         }
@@ -111,29 +121,33 @@ public final class ReferentKindClassifier {
                 unavailable++;
                 continue; // retain the compatibility role stamp; evidence was unavailable
             }
-            boolean matched = false;
+            Set<String> matchedClasses = new LinkedHashSet<>();
             boolean changed = false;
             for (EntityKindRule rule : rules) {
-                if (!candidatePlan.eligible(candidate.qid(), rule.propertyPid())) continue;
+                if (!candidatePlan.eligible(candidate.qid(), rule)) continue;
                 if (entity != null && entity.entityQids(rule.propertyPid()).stream()
                         .anyMatch(rule.evidenceQids()::contains)) {
                     if (!candidate.directClassNames().contains(rule.className())) {
                         candidate.assignClass(rule.className());
                         changed = true;
                     }
-                    matched = true;
+                    matchedClasses.add(rule.className());
                 }
             }
-            if (matched) {
+            if (!matchedClasses.isEmpty()) {
                 // Retract the compatibility role stamp only after a genuine kind keeps
                 // the entity typed. An unknown thin referent must remain an object:
                 // without a stamp BareReferenceCollapse can turn it into a String on
                 // reload, losing canonical identity and role-selection membership.
-                for (String legacyRole : RoleSelections.legacyRoleClassNames(model)) {
-                    if (candidate.directClassNames().contains(legacyRole)) changed = true;
-                    candidate.removeClass(legacyRole);
+                for (String role : EntityRepresentations.replacedRoleClasses(
+                        model, matchedClasses)) {
+                    if (candidate.directClassNames().contains(role)) {
+                        candidate.removeClass(role);
+                        changed = true;
+                    }
                 }
-                String carrier = carrier(candidate.directClassNames(), model);
+                String carrier = EntityRepresentations.preferredClass(model, matchedClasses);
+                if (carrier == null) carrier = carrier(candidate.directClassNames(), model);
                 if (carrier != null) {
                     if (!carrier.equals(candidate.typeName())
                             || !carrier.equals(candidate.typeKey())) changed = true;

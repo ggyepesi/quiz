@@ -16,6 +16,9 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.EntityRepresentationRule;
+import wikidata.explore.model.EntityKindRule;
+import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.StatementClassSource;
 import datasource.api.SourceBindingSlot;
@@ -64,6 +67,13 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField discriminatorPidField = new JTextField("P31", 5);
     private final JTextField discriminatorQidField = new JTextField(8);
     private final JLabel discriminatorLabel = new JLabel(" ");
+    private final DefaultListModel<String> representationModel = new DefaultListModel<>();
+    private final JList<String> representationList = new JList<>(representationModel);
+    private final JComboBox<String> representationClassBox = new JComboBox<>();
+    private final JButton addRepresentationButton = new JButton("Add");
+    private final JButton removeRepresentationButton = new JButton("Remove selected");
+    private final JButton moveRepresentationUpButton = new JButton("Up");
+    private final JButton moveRepresentationDownButton = new JButton("Down");
     // STATEMENT reification: instances of this class are the statements of the
     // relation property on each member of the named class (e.g. Nomination = the
     // P1411 statements of Oscarnominations). Its fields draw from the value (ps:)
@@ -208,6 +218,7 @@ public class ClassSourcePanel extends JPanel {
         searchTextField.setText(clazz.className());
 
         populateBaseClasses();
+        populateRepresentations();
 
         typeQidField.setText(m.sourceQid());
         typeLabel.setText(m.displaySource());
@@ -349,6 +360,42 @@ public class ClassSourcePanel extends JPanel {
         discRow.add(discriminatorQidField);
         discRow.add(discriminatorLabel);
         GridBagUtils.labeledRow(form, c, y++, "Subtype:", discRow);
+
+        representationList.setVisibleRowCount(3);
+        representationList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        representationList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, selected, focus);
+                label.setText(representationDescription(String.valueOf(value)));
+                return label;
+            }
+        });
+        addRepresentationButton.addActionListener(e -> {
+            Object selected = representationClassBox.getSelectedItem();
+            if (selected != null && !contains(representationModel, selected.toString())) {
+                representationModel.addElement(selected.toString());
+            }
+        });
+        removeRepresentationButton.addActionListener(e -> {
+            int selected = representationList.getSelectedIndex();
+            if (selected >= 0) representationModel.remove(selected);
+        });
+        moveRepresentationUpButton.addActionListener(e -> moveRepresentation(-1));
+        moveRepresentationDownButton.addActionListener(e -> moveRepresentation(1));
+        JPanel representationActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        representationActions.add(representationClassBox);
+        representationActions.add(addRepresentationButton);
+        representationActions.add(removeRepresentationButton);
+        representationActions.add(moveRepresentationUpButton);
+        representationActions.add(moveRepresentationDownButton);
+        JPanel representations = new JPanel(new BorderLayout(4, 2));
+        representations.add(new JScrollPane(representationList), BorderLayout.CENTER);
+        representations.add(representationActions, BorderLayout.SOUTH);
+        representations.setToolTipText("Explicit alternatives for this role. A target is used "
+                + "only when its class admission rule matches; this class is the fallback.");
+        GridBagUtils.labeledRow(form, c, y++, "Represent matching entities as:", representations);
 
         statementSourceField.setToolTipText("<html>Make this a <b>statement "
                 + "reification</b>: instances are the statements of the "
@@ -986,6 +1033,11 @@ public class ClassSourcePanel extends JPanel {
             }
         }
 
+        if (projectModel != null) {
+            projectModel.representationClasses(clazz,
+                    java.util.Collections.list(representationModel.elements()));
+        }
+
         titleLabel.setText("Class: " + clazz.className());
         typeLabel.setText(m.displaySource());
 
@@ -1172,9 +1224,57 @@ public class ClassSourcePanel extends JPanel {
         typeQidField.setText("");
         typeLabel.setText("(not selected)");
         relationPidField.setText("P31");
+        representationModel.clear();
+        representationClassBox.removeAllItems();
         summaryLabel.setText(" ");
         searchModel.setRows(List.of());
         updateSearchButtonState();
+    }
+
+    private void populateRepresentations() {
+        representationModel.clear();
+        representationClassBox.removeAllItems();
+        if (clazz == null || projectModel == null) return;
+        for (EntityRepresentationRule rule : projectModel.entityRepresentationRules()) {
+            if (rule != null && projectModel.resolveClass(
+                    rule.roleClassId(), rule.roleClassName()) == clazz) {
+                representationModel.addElement(rule.representationClassName());
+            }
+        }
+        for (GeneratedClassModel candidate : projectModel.classes()) {
+            if (candidate == null || candidate == clazz
+                    || MembershipPattern.kindRule(candidate, projectModel) == null) continue;
+            representationClassBox.addItem(candidate.className());
+        }
+        boolean available = representationClassBox.getItemCount() > 0;
+        representationClassBox.setEnabled(available);
+        addRepresentationButton.setEnabled(available);
+    }
+
+    private static boolean contains(DefaultListModel<String> model, String value) {
+        for (int i = 0; i < model.size(); i++) {
+            if (model.get(i).equals(value)) return true;
+        }
+        return false;
+    }
+
+    private void moveRepresentation(int delta) {
+        int from = representationList.getSelectedIndex();
+        int to = from + delta;
+        if (from < 0 || to < 0 || to >= representationModel.size()) return;
+        String value = representationModel.remove(from);
+        representationModel.add(to, value);
+        representationList.setSelectedIndex(to);
+    }
+
+    private String representationDescription(String className) {
+        if (projectModel == null) return className;
+        EntityKindRule rule = projectModel.entityKindRules().stream()
+                .filter(EntityKindRule::isConfigured)
+                .filter(candidate -> className.equals(candidate.className()))
+                .findFirst().orElse(null);
+        return rule == null ? className : className + " — "
+                + rule.propertyPid() + " = " + String.join(", ", rule.evidenceQids());
     }
 
     private record SearchResult(

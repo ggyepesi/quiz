@@ -4,11 +4,8 @@ import objectview.Viewable;
 import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.EntityKindRule;
-import datasource.schema.FieldType;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFieldModel;
+import wikidata.explore.model.EntityRepresentationRule;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.RoleSelection;
 
 import java.util.Collection;
@@ -19,19 +16,19 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Compiles the population on which each entity-kind evidence property is meaningful.
- * A modeled producer such as {@code Nominee.type -> P31} scopes P31 kind rules to the
- * Nominee role. Without a referenced producer, the historical all-role behavior is
- * retained so a standalone kind rule remains valid.
+ * Compiles the population on which each class admission is meaningful. Admission alone
+ * never opts a role into a representation: an explicit {@link EntityRepresentationRule}
+ * supplies the role population and names the admitted target class.
  */
 final class EntityKindCandidates {
-    record Plan(Map<String, Set<String>> qidsByProperty,
+    record Plan(Map<String, Set<String>> qidsByKindClass,
                 Set<String> candidateQids,
                 Map<String, Set<String>> membersByRoleClass,
                 Map<String, WikidataDynamicObject> objectsByQid,
                 int allRoleMembers) {
-        boolean eligible(String qid, String propertyPid) {
-            return qidsByProperty.getOrDefault(propertyPid, Set.of()).contains(qid);
+        boolean eligible(String qid, EntityKindRule rule) {
+            return rule != null && qidsByKindClass
+                    .getOrDefault(rule.className(), Set.of()).contains(qid);
         }
     }
 
@@ -54,37 +51,36 @@ final class EntityKindCandidates {
                         role.name(), ignored -> new LinkedHashSet<>()).add(object.qid());
             }
         }
-
-        Map<String, Set<String>> producerRolesByPid = new LinkedHashMap<>();
-        for (GeneratedClassModel owner : model.classes()) {
-            if (owner == null || MembershipPattern.of(owner, model)
-                    != MembershipPattern.REFERENCED) continue;
-            for (GeneratedFieldModel field : owner.fields()) {
-                if (field == null || field.type() != FieldType.ENTITY) continue;
-                String pid = field.mapping().propertyPid();
-                if (WikidataIds.isPid(pid)) {
-                    producerRolesByPid.computeIfAbsent(
-                            pid, ignored -> new LinkedHashSet<>()).add(owner.className());
-                }
+        // A directly stamped population is also a valid contextual source. The role
+        // materialization above is still needed after a previous pass has replaced its
+        // compatibility stamp: the owning field remains the durable source of membership.
+        for (WikidataDynamicObject object : wikidata.explore.extract.WikidataObjectGraph
+                .reachable(pool)) {
+            if (object == null || object.isPart() || !WikidataIds.isQid(object.qid())) continue;
+            objectsByQid.putIfAbsent(object.qid(), object);
+            for (String className : object.directClassNames()) {
+                membersByRoleClass.computeIfAbsent(
+                        className, ignored -> new LinkedHashSet<>()).add(object.qid());
             }
         }
 
-        Map<String, Set<String>> byPid = new LinkedHashMap<>();
+        Set<String> admittedClasses = rules.stream().map(EntityKindRule::className)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<String, Set<String>> byKind = new LinkedHashMap<>();
         Set<String> candidates = new LinkedHashSet<>();
-        for (EntityKindRule rule : rules) {
-            String pid = rule.propertyPid();
-            Set<String> owners = producerRolesByPid.getOrDefault(pid, Set.of());
-            Set<String> eligible = byPid.computeIfAbsent(pid, ignored -> new LinkedHashSet<>());
-            if (owners.isEmpty()) {
-                eligible.addAll(all); // compatibility for rules with no modeled producer
-            } else {
-                owners.forEach(owner -> eligible.addAll(
-                        membersByRoleClass.getOrDefault(owner, Set.of())));
-            }
+        for (EntityRepresentationRule representation : model.entityRepresentationRules()) {
+            if (representation == null || !representation.isConfigured()
+                    || !admittedClasses.contains(
+                            representation.representationClassName())) continue;
+            Set<String> eligible = byKind.computeIfAbsent(
+                    representation.representationClassName(),
+                    ignored -> new LinkedHashSet<>());
+            eligible.addAll(membersByRoleClass.getOrDefault(
+                    representation.roleClassName(), Set.of()));
             candidates.addAll(eligible);
         }
         Map<String, Set<String>> frozen = new LinkedHashMap<>();
-        byPid.forEach((pid, qids) -> frozen.put(pid, Set.copyOf(qids)));
+        byKind.forEach((name, qids) -> frozen.put(name, Set.copyOf(qids)));
         Map<String, Set<String>> frozenMembers = new LinkedHashMap<>();
         membersByRoleClass.forEach((name, qids) ->
                 frozenMembers.put(name, Set.copyOf(qids)));

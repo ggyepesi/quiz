@@ -734,6 +734,12 @@
     "valueQids" : [ "java.util.ArrayList", [ "Q37922", "Q80061", "Q35637", "Q44585", "Q38104", "Q47170" ] ]
   } ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
+  "entityRepresentationRules" : [ "java.util.ArrayList", [ {
+    "roleClassName" : "Laureate",
+    "roleClassId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc",
+    "representationClassName" : "Person",
+    "representationClassId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+  } ] ],
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Person",
     "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]
