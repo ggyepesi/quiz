@@ -114,7 +114,12 @@ public final class SwingProcessWorkflow {
             JButton cancel = new JButton("Cancel process");
             cancel.addActionListener(e -> runner.cancel());
             panel.add(buttons(cancel), BorderLayout.SOUTH);
-            install(action.process().plan().title(), panel);
+            // The window is named for what the reader started, not for whichever
+            // component is currently talking. Expanding graph-frontier nodes runs a
+            // generation, so the process called this "Generate domain" and the reason
+            // the reader gave it — the two nodes they chose — disappeared exactly when
+            // the work they were watching began. The phase is already on the page.
+            install(action.plan().title(), panel);
             // SwingProcessRunner.done() already invokes both callbacks on the EDT.
             // Re-queueing completion detached exceptions from the runner's guard and
             // could strand a completed result behind the stale Running page forever.
@@ -237,14 +242,23 @@ public final class SwingProcessWorkflow {
             buildSelectedTab.run(); // Summary is normally first and intentionally small.
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton("Close without applying");
-            JButton applyAll = new JButton(
-                    results.applyVerb() + " all safe results (" + bulk.size() + ")");
-            applyAll.setEnabled(applicationAllowed && !bulk.isEmpty());
             close.addActionListener(e -> dialog.dispose());
             applySelected.addActionListener(e -> apply(selected.get()));
-            applyAll.addActionListener(e -> apply(bulk));
-            panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
-            install(results.title(), panel);
+            // Offered only when some result opted into it. A workflow whose every
+            // decision is deliberate marks none — expanding the whole graph frontier
+            // is the growth a curated frontier exists to prevent — and a permanently
+            // dead button reading "all safe results (0)" reads as "no results" rather
+            // than "this action is not on offer here".
+            if (bulk.isEmpty()) {
+                panel.add(buttons(close, applySelected), BorderLayout.SOUTH);
+            } else {
+                JButton applyAll = new JButton(
+                        results.applyVerb() + " all safe results (" + bulk.size() + ")");
+                applyAll.setEnabled(applicationAllowed);
+                applyAll.addActionListener(e -> apply(bulk));
+                panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
+            }
+            install(action.plan().title(), panel);
         }
 
         private JComponent resultTab(
