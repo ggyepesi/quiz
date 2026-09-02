@@ -41,6 +41,7 @@ public class QualifierLoader {
 
     private WikidataApiClient api;
     private boolean deferLabels;
+    private int discoveryLimit;
     private StatementFactDemands factDemands = StatementFactDemands.EMPTY;
 
     /** Override the action-API client (share one / inject a stub for tests). */
@@ -51,6 +52,13 @@ public class QualifierLoader {
 
     public QualifierLoader deferLabels(boolean defer) {
         deferLabels = defer;
+        return this;
+    }
+
+    /** Bounds only reverse subject discovery for inspection. Zero means production's
+     * complete population, preserving generation semantics. */
+    public QualifierLoader discoveryLimit(int limit) {
+        discoveryLimit = Math.max(0, limit);
         return this;
     }
 
@@ -123,7 +131,8 @@ public class QualifierLoader {
             List<WikidataDynamicObject> discovered =
                     new PopulationSubjectLoader().discover(
                             pool, cfg.propertyPid(), discoveryValues,
-                            cfg.entityType(), cfg.valueDomainLabel(), client, log);
+                            cfg.entityType(), cfg.valueDomainLabel(), client, log,
+                            discoveryLimit);
 
             // SPARQL discovery yields QIDs only. Acquire the statement property, the
             // prospective role closure, and exactly the entity metadata those later

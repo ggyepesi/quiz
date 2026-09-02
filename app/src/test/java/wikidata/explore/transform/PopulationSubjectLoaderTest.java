@@ -52,6 +52,25 @@ class PopulationSubjectLoaderTest {
         assertEquals("done:0 subjects", events.get(2));
     }
 
+    @Test void inspectionCanBoundSubjectDiscoveryWithoutChangingProductionDefault() {
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                return List.of();
+            }
+        };
+
+        new PopulationSubjectLoader().discover(new ArrayList<>(), "P166", Set.of("Q38104"),
+                "__subject", "Categories", sparql, null, 9);
+        new PopulationSubjectLoader().discover(new ArrayList<>(), "P166", Set.of("Q38104"),
+                "__subject", "Categories", sparql, null);
+
+        assertTrue(requests.getFirst().endsWith("LIMIT 9"));
+        assertFalse(requests.get(1).contains("LIMIT"),
+                "generation keeps complete discovery unless a caller explicitly bounds it");
+    }
+
     private static final class RecordingApi extends FakeWikidataApiClient {
         List<String> requestedPids = List.of();
         Set<FactDemand.EntityMetadata> requestedMetadata = Set.of();

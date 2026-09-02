@@ -58,6 +58,33 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
         return p;
     }
 
+    /**
+     * Why this field cannot be sampled on its own, said to whoever asked rather than
+     * about the precondition that failed.
+     *
+     * <p>Sampling a field means taking members of a population and asking what a
+     * property returns for them. A statement class has no population to take members
+     * from: its instances ARE the statements, discovered from the property, and its
+     * fields are roles carved out of each one. A role cannot be acquired apart from
+     * the statement it is a role of, so there is no narrower query than sampling the
+     * class — which shows every role at once.
+     */
+    private String explainUnsampleable() {
+        String owner = sampleContext.ownerClass().className();
+        String field = sampleContext.field().name();
+        if (sampleContext.ownerClass().reifiesStatements()) {
+            return field + " is a role of the " + owner + " statement, not a property "
+                    + "of it. Each " + owner + " is one statement, and its roles are "
+                    + "filled together when that statement is read — so sample the "
+                    + owner + " class and every sampled record shows " + field
+                    + " alongside its other roles.";
+        }
+        return "Cannot sample " + owner + "." + field + ": " + owner
+                + " has no population to sample members from. A field sample asks what "
+                + "a property returns for members of a class, so the class needs a "
+                + "configured population or a classification rule that establishes one.";
+    }
+
     @Override
     public TableQueryResult execute(QueryContext context) throws Exception {
         if (sampleContext == null || sampleContext.field() == null) {
@@ -74,10 +101,7 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
             parentSample.sourceQid(clean(sampleContext.ownerTypeQid()));
         }
         if (!WikidataIds.isQid(parentSample.sourceQid())) {
-            throw new IllegalStateException(
-                    "Cannot sample " + sampleContext.ownerClass().className()
-                            + "." + sampleContext.field().name()
-                            + ": the owning class has no population QID");
+            throw new IllegalStateException(explainUnsampleable());
         }
 
         RuleIncludedField includedField =

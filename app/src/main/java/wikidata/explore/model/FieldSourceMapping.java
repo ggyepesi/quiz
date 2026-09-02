@@ -23,6 +23,10 @@ public class FieldSourceMapping {
     // reified statement (e.g. P585 → year, P1686 → for work) rather than a direct
     // claim. Blank = not a qualifier field.
     private String qualifierPid = "";
+    // A qualifier is a property too, and was the only one with nowhere to keep its
+    // name: a statement class could say its value role is "position held (P39)" while
+    // every qualifier role could say only "P580".
+    private String qualifierLabel = "";
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private QualifierDateMode qualifierDateMode;
@@ -116,6 +120,21 @@ public class FieldSourceMapping {
 
     public String qualifierPid() {
         return qualifierPid;
+    }
+
+    public String qualifierLabel() {
+        return qualifierLabel == null ? "" : qualifierLabel;
+    }
+
+    public void qualifierLabel(String value) {
+        this.qualifierLabel = clean(value);
+    }
+
+    /** "start time (P580)" when the name is known, otherwise just the PID. */
+    public String displayQualifier() {
+        String pid = qualifierPid();
+        if (pid == null || pid.isBlank()) return "";
+        return qualifierLabel().isBlank() ? pid : qualifierLabel() + " (" + pid + ")";
     }
 
     public void qualifierPid(String qualifierPid) {
@@ -306,6 +325,7 @@ public class FieldSourceMapping {
         propertyPid = other.propertyPid;
         propertyLabel = other.propertyLabel;
         qualifierPid = other.qualifierPid;
+        qualifierLabel = other.qualifierLabel;
         qualifierDateMode = other.qualifierDateMode;
 
         subjectField = other.subjectField;

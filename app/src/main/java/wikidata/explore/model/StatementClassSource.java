@@ -26,6 +26,11 @@ public final class StatementClassSource {
     private String sourceClassName = "";
     private String sourceClassId = "";
     private String propertyPid = "";
+    // The property's own name, remembered when it is chosen, exactly as a field
+    // mapping remembers it. Without this a statement class can only ever explain
+    // itself as "P39", and the catalogue that knows the name is a workbench concern
+    // this package must not reach into.
+    private String propertyLabel = "";
 
     // Optional: a VOCABULARY Selection whose values are the reify's value domain
     // (the allowed statement values + their labels), replacing the value filter
@@ -80,6 +85,21 @@ public final class StatementClassSource {
     /**
      * Wikidata property whose statements become instances of the statement class.
      */
+    public String propertyLabel() {
+        return propertyLabel == null ? "" : propertyLabel;
+    }
+
+    public void propertyLabel(String value) {
+        propertyLabel = clean(value);
+    }
+
+    /** "position held (P39)" when the name is known, otherwise just the PID. */
+    public String describeProperty() {
+        String pid = propertyPid();
+        if (pid.isBlank()) return "";
+        return propertyLabel().isBlank() ? pid : propertyLabel() + " (" + pid + ")";
+    }
+
     public String propertyPid() {
         return propertyPid;
     }
@@ -149,6 +169,7 @@ public final class StatementClassSource {
                 sourceClassName,
                 propertyPid);
         c.sourceClassId = sourceClassId;
+        c.propertyLabel = propertyLabel;
         c.valueSelectionName = valueSelectionName;
         c.valueSelectionId = valueSelectionId;
         c.graphExpansionPolicy = graphExpansionPolicy();

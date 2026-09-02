@@ -78,6 +78,8 @@ public class ModelBuilderFrame extends JFrame {
     // Generated instances live in their own window (like the query logs), so
     // the main window is all about configuration.
     private JFrame instancesWindow;
+    private final QueryObjectResultPanel sampleInstancesPanel = new QueryObjectResultPanel();
+    private JFrame sampleInstancesWindow;
 
     // Name collisions from the last run (names mapping to >1 entity), shown on
     // demand in their own panel from the instances window.
@@ -274,7 +276,7 @@ public class ModelBuilderFrame extends JFrame {
         JSplitPane main =
                 SplitPaneUtils.horizontal(
                         titled("Domain & Classes", buildDomainClassPanel()),
-                        titled("Configuration", buildConfigPanel()),
+                        buildConfigPanel(),
                         0.34);
 
         main.setResizeWeight(0.34);
@@ -427,6 +429,25 @@ public class ModelBuilderFrame extends JFrame {
         // there's no on-screen indication of which class you're looking at.
         instancesWindow.setTitle(instancesTitle());
         showAndFocus(instancesWindow);
+    }
+
+    /** Presents bounded samples with the same Instances component without replacing
+     * the generated domain result that the main Instances window owns. */
+    private void showClassSample(
+            wikidata.explore.query.result.ClassSampleResult sample) {
+        if (sampleInstancesWindow == null) {
+            sampleInstancesWindow = new JFrame("Sample class instances");
+            sampleInstancesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            sampleInstancesWindow.setLayout(new BorderLayout());
+            sampleInstancesWindow.add(sampleInstancesPanel, BorderLayout.CENTER);
+            sampleInstancesWindow.setSize(1000, 760);
+            sampleInstancesWindow.setLocationByPlatform(true);
+        }
+        sampleInstancesPanel.accept(sample.instances());
+        sampleInstancesWindow.setTitle("Sample: " + sample.requestedClass()
+                + " — " + sample.size() + " of " + sample.requestedLimit()
+                + (sample.truncated() ? " (more available)" : " (complete)"));
+        showAndFocus(sampleInstancesWindow);
     }
 
     // Lazily-created window hosting the discovery tools moved out of the main
@@ -666,6 +687,10 @@ public class ModelBuilderFrame extends JFrame {
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
         sourceWorkbench.setQueryRunner(queryRunner);
+        sourceWorkbench.onClassSample(sample -> {
+            if (sample == null || sample.instances() == null) return;
+            showClassSample(sample);
+        });
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());

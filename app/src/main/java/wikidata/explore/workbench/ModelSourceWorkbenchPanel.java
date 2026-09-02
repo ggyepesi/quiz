@@ -10,6 +10,9 @@ import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.query.swing.SwingQueryRunner;
+import wikidata.explore.query.logical.SampleEffectiveClassQuery;
+import wikidata.explore.query.logical.SampleStatementClassQuery;
+import wikidata.explore.query.result.ClassSampleResult;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.rule.RuleTreeCompiler;
 
@@ -38,6 +41,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             new StatementSourcePanel();
     private final OwnedClassPanel ownedClassPanel;
     private final AggregateClassPanel aggregateClassPanel;
+    private final EffectiveClassPanel effectiveClassPanel = new EffectiveClassPanel();
+    private final JTabbedPane editorTabs = new JTabbedPane();
 
     private final JComboBox<String> kindBox =
             new JComboBox<>(
@@ -106,6 +111,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             field -> {};
     private Consumer<GeneratedFieldModel> onFieldAddedFromTool =
             field -> {};
+    private Consumer<ClassSampleResult> onClassSample = ignored -> {};
     private Runnable onShowHelperTools =
             () -> {};
 
@@ -166,6 +172,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         Consumer<Void> downstream = afterChange == null ? ignored -> {} : afterChange;
         this.afterChange = ignored -> {
             graphConfigurationDiagram.refresh();
+            if (selected instanceof GeneratedClassModel clazz) {
+                effectiveClassPanel.showClass(projectModel, clazz);
+            } else if (selected instanceof GeneratedFieldModel field) {
+                effectiveClassPanel.showField(projectModel, owningClassOf(field), field);
+            }
             downstream.accept(null);
         };
 
@@ -240,6 +251,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 consumer == null
                         ? field -> {}
                         : consumer;
+    }
+
+    public void onClassSample(Consumer<ClassSampleResult> consumer) {
+        onClassSample = consumer == null ? ignored -> {} : consumer;
     }
 
     public void onGraphSelection(Consumer<Object> consumer) {
@@ -346,6 +361,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 (CardLayout) cardPanel.getLayout();
 
         if (selected instanceof GeneratedClassModel clazz) {
+            effectiveClassPanel.showClass(projectModel, clazz);
             updatingKind = true;
             MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
             kindBox.setSelectedIndex(clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE
@@ -379,6 +395,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             showImportedNotice(clazz);
         } else if (selected
                 instanceof GeneratedFieldModel field) {
+            effectiveClassPanel.showField(projectModel, owningClassOf(field), field);
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             showImportedNotice(null);
@@ -393,6 +410,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             layout.show(cardPanel, "field");
         } else if (selected instanceof wikidata.explore.model.Selection selection
                 && selectionEditor != null) {
+            effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled && !selection.isImported());
             kindHeader.setVisible(false);
             importedNotice.setVisible(selection.isImported());
@@ -404,18 +422,21 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             layout.show(cardPanel, "selection");
         } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
                 && selectionEditor != null) {
+            effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             showImportedNotice(null);
             selectionEditor.edit(null);
             layout.show(cardPanel, "selection");
         } else if (selected instanceof GeneratedProjectModel) {
+            effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             showImportedNotice(null);
             domainOverview.refresh();
             layout.show(cardPanel, "domain");
         } else {
+            effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
             kindHeader.setVisible(false);
             showImportedNotice(null);
@@ -826,8 +847,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     samplePanel.triggerFieldSample();
                 });
 
-        samplePanel.setNodeSupplier(
-                this::temporaryRuleNodeForSelected);
+        samplePanel.setClassSampleSupplier(this::classSampleQueryForSelected);
+        samplePanel.setClassSampleUnavailableReason(this::classSampleUnavailableReason);
+        samplePanel.onClassSample(result -> onClassSample.accept(result));
         samplePanel.setFieldSampleSupplier(
                 this::fieldSampleContextForSelected);
 
@@ -952,7 +974,50 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         config.add(graphConfigurationDiagram, BorderLayout.SOUTH);
 
-        add(config, BorderLayout.CENTER);
+        editorTabs.addTab("Configuration", config);
+        editorTabs.addTab("Explanation", effectiveClassPanel);
+        add(editorTabs, BorderLayout.CENTER);
+    }
+
+    private work.Query<ClassSampleResult> classSampleQueryForSelected() {
+        GeneratedClassModel requested = selected instanceof GeneratedClassModel clazz
+                ? clazz : selected instanceof GeneratedFieldModel field
+                ? projectModel.declaringClass(field) : null;
+        GeneratedClassModel sampled = samplingClass();
+        if (requested == null || sampled == null) return null;
+        MembershipPattern pattern = MembershipPattern.of(requested, projectModel);
+        // Statement and aggregate production need their own adapters; returning null is
+        // an explicit unsupported state rather than quietly sampling their source class
+        // and presenting those entities as produced records.
+        if (pattern == MembershipPattern.REIFIED) {
+            return new SampleStatementClassQuery(projectModel, requested.className(),
+                    MembershipPattern.describe(requested, projectModel),
+                    NodeSamplePanel.SAMPLE_LIMIT);
+        }
+        if (pattern == MembershipPattern.AGGREGATED
+                || pattern == MembershipPattern.OWNED_COMPONENT) {
+            return null;
+        }
+        RuleNode preview = temporaryRuleNodeForSelected();
+        if (preview == null || preview.sourceQid().isBlank()
+                && preview.additionalSourceQids().isEmpty()
+                && preview.includedQids().isEmpty()) return null;
+        return new SampleEffectiveClassQuery(projectModel, requested.className(),
+                sampled.className(), MembershipPattern.describe(requested, projectModel),
+                NodeSamplePanel.SAMPLE_LIMIT);
+    }
+
+    private String classSampleUnavailableReason() {
+        GeneratedClassModel requested = selected instanceof GeneratedClassModel clazz
+                ? clazz : selected instanceof GeneratedFieldModel field
+                ? projectModel.declaringClass(field) : null;
+        if (requested == null) return "Select a class to sample instances.";
+        return switch (MembershipPattern.of(requested, projectModel)) {
+            case REIFIED -> "This statement class has no executable reification recipe.";
+            case AGGREGATED -> "Aggregate class sampling is not implemented yet.";
+            case OWNED_COMPONENT -> "Owned class sampling is not implemented yet.";
+            default -> "This class has no population or classification evidence to sample.";
+        };
     }
 
     private boolean canUseSelectedProperty() {

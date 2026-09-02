@@ -37,6 +37,21 @@ public final class PopulationSubjectLoader {
             String domainLabel,
             WikidataSparqlClient client,
             GenerationLog log) {
+        return discover(pool, relationPid, targetValues, entityType, domainLabel,
+                client, log, 0);
+    }
+
+    /** Bounded form used by inspection workflows. Zero keeps production's complete
+     * discovery semantics; a positive limit is rendered into the remote query. */
+    public List<WikidataDynamicObject> discover(
+            Collection<WikidataDynamicObject> pool,
+            String relationPid,
+            Set<String> targetValues,
+            String entityType,
+            String domainLabel,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            int limit) {
 
         List<WikidataDynamicObject> created = new ArrayList<>();
         if (client == null
@@ -59,7 +74,7 @@ public final class PopulationSubjectLoader {
 
         String label = domainLabel == null || domainLabel.isBlank()
                 ? "its value domain" : domainLabel;
-        String query = buildQuery(relationPid, targetValues);
+        String query = buildQuery(relationPid, targetValues, limit);
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
                 "Discover subjects: " + relationPid + " into " + label)) {
@@ -109,7 +124,8 @@ public final class PopulationSubjectLoader {
         return created;
     }
 
-    private static String buildQuery(String relationPid, Set<String> targetValues) {
+    private static String buildQuery(
+            String relationPid, Set<String> targetValues, int limit) {
         StringBuilder q = new StringBuilder(
                 "SELECT DISTINCT ?subject WHERE {\n  ?subject wdt:")
                 .append(relationPid).append(" ?value .\n  VALUES ?value {");
@@ -119,6 +135,7 @@ public final class PopulationSubjectLoader {
             }
         }
         q.append(" }\n}");
+        if (limit > 0) q.append("\nLIMIT ").append(limit);
         return q.toString();
     }
 }

@@ -5,9 +5,8 @@ import wikidata.WikidataIds;
 import wikidata.explore.model.FieldSampleContext;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleIncludedField;
-import wikidata.explore.rule.RuleNode;
 import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.query.logical.SampleClassQuery;
+import wikidata.explore.query.result.ClassSampleResult;
 import wikidata.explore.query.logical.SampleFieldQuery;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
@@ -20,8 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import workbench.EntityResultPanel;
-import workbench.WorkbenchSelections;
+import work.Query;
 
 public class NodeSamplePanel extends JPanel {
 
@@ -31,8 +29,10 @@ public class NodeSamplePanel extends JPanel {
 
     private Runnable applyEdits = () -> {};
 
-    private Supplier<RuleNode> nodeSupplier =
+    private Supplier<Query<ClassSampleResult>> classSampleSupplier =
             () -> null;
+    private Supplier<String> classSampleUnavailableReason =
+            () -> "Select the class to sample instances.";
 
     private Supplier<FieldSampleContext> fieldSampleSupplier =
             () -> null;
@@ -79,10 +79,10 @@ public class NodeSamplePanel extends JPanel {
     private final JTable table =
             new JTable(tableModel);
 
-    /** Class samples are entities, so they use the same QID/label presentation as
-     * Explore and reusable selections instead of a sample-specific table shape. */
-    private final EntityResultPanel classResults =
-            new EntityResultPanel(List.of("QID", "Label"), 0, false);
+    private final JLabel classResultNotice =
+            new JLabel("Class samples open in the Instances window.", SwingConstants.CENTER);
+
+    private Consumer<ClassSampleResult> onClassSample = ignored -> { };
 
     private final JPanel resultCards = new JPanel(new CardLayout());
 
@@ -104,9 +104,18 @@ public class NodeSamplePanel extends JPanel {
                 applyEdits == null ? () -> {} : applyEdits;
     }
 
-    public void setNodeSupplier(Supplier<RuleNode> supplier) {
-        this.nodeSupplier =
+    public void setClassSampleSupplier(Supplier<Query<ClassSampleResult>> supplier) {
+        this.classSampleSupplier =
                 supplier == null ? () -> null : supplier;
+    }
+
+    public void onClassSample(Consumer<ClassSampleResult> consumer) {
+        onClassSample = consumer == null ? ignored -> { } : consumer;
+    }
+
+    public void setClassSampleUnavailableReason(Supplier<String> supplier) {
+        classSampleUnavailableReason = supplier == null
+                ? () -> "Class sampling is unavailable." : supplier;
     }
 
     public void setFieldSampleSupplier(
@@ -148,7 +157,7 @@ public class NodeSamplePanel extends JPanel {
         JTabbedPane tabs =
                 new JTabbedPane();
 
-        resultCards.add(classResults, "class");
+        resultCards.add(classResultNotice, "class");
         resultCards.add(new JScrollPane(table), "field");
         tabs.addTab("Results", resultCards);
         tabs.addTab("SPARQL", new JScrollPane(sparqlArea));
@@ -222,38 +231,23 @@ public class NodeSamplePanel extends JPanel {
         fieldSampleButton.doClick();
     }
 
-    private SampleClassQuery buildClassSampleQuery() {
+    private Query<ClassSampleResult> buildClassSampleQuery() {
         applyEdits.run();
-
-        RuleNode node =
-                nodeSupplier.get();
-
-        if (node == null) {
-            statusLabel.setText("Select the class to sample instances.");
-            log.accept("SAMPLE class skipped: no class selected.\n");
+        Query<ClassSampleResult> query = classSampleSupplier.get();
+        if (query == null) {
+            String reason = classSampleUnavailableReason.get();
+            statusLabel.setText(reason);
+            log.accept("SAMPLE class skipped: " + reason + "\n");
             return null;
         }
-
-        String nodeName =
-                node.name() != null ? node.name() : "?";
-
-        String sourceQid =
-                node.sourceQid() != null && !node.sourceQid().isBlank()
-                        ? " (" + node.sourceQid() + ")"
-                        : "";
-
-        contextLabel.setText(
-                "Class instances:  "
-                        + nodeName
-                        + sourceQid);
-
-        classResults.setEntities(List.of());
+        contextLabel.setText("Class instances: "
+                + query.parameters().getOrDefault("class", "?"));
         ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
         cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Running class sample...");
         sparqlArea.setText("");
 
-        return new SampleClassQuery(node, SAMPLE_LIMIT);
+        return query;
     }
 
     private SampleFieldQuery buildFieldSampleQuery() {
@@ -315,16 +309,12 @@ public class NodeSamplePanel extends JPanel {
         return new SampleFieldQuery(context, SAMPLE_LIMIT);
     }
 
-    private void acceptClassSample(TableQueryResult result) {
+    void acceptClassSample(ClassSampleResult result) {
         SwingUtilities.invokeLater(() -> {
-            classResults.setEntities(result == null ? List.of() : result.rows().stream()
-                    .map(row -> new WorkbenchSelections.Entity(
-                            value(row, 0), value(row, 1), ""))
-                    .toList());
             statusLabel.setText(
-                    (result == null ? 0 : result.size())
-                            + " class row"
-                            + (result != null && result.size() == 1 ? "" : "s"));
+                    (result == null ? 0 : result.size()) + " sampled instance(s)"
+                            + (result != null && result.truncated() ? "; more available" : ""));
+            if (result != null) onClassSample.accept(result);
         });
     }
 

@@ -335,6 +335,14 @@ public final class RuleTreeCompiler {
         return compileClass(project.rootClass(), project, new HashSet<>());
     }
 
+    /** Compiles one effective class while resolving its referenced classes from the
+     * same immutable project. Used by bounded class sampling as well as full roots. */
+    public static RuleNode compileClass(
+            CompiledClass clazz, CompiledProjectModel project) {
+        if (clazz == null || project == null) return null;
+        return compileClass(clazz, project, new HashSet<>());
+    }
+
     private static RuleNode compileClass(
             CompiledClass clazz,
             CompiledProjectModel project,
