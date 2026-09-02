@@ -38,8 +38,13 @@ public class ViewableStore {
             type = type == null ? "" : type.trim();
         }
 
+        /** How the address travels: {@code NobelPrizes:Person}. Not a slash — the
+         *  detail route is {@code /api/viewable/{type}/{id}}, and a type carrying a
+         *  slash silently became a domain plus an id that started with the type. */
+        public static final char SEPARATOR = ':';
+
         @Override public String toString() {
-            return domain.isBlank() ? type : domain + "/" + type;
+            return domain.isBlank() ? type : domain + SEPARATOR + type;
         }
     }
 

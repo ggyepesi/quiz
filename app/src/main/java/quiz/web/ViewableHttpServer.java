@@ -136,12 +136,11 @@ public class ViewableHttpServer {
         if (domain != null && !domain.isBlank()) {
             return new ViewableStore.Address(domain, type);
         }
-        // The address the client was handed, sent back whole. A type name never contains
-        // a slash, so the last one separates a domain that may.
-        int slash = type == null ? -1 : type.lastIndexOf('/');
-        if (slash > 0) {
+        // The address the client was handed, sent back whole.
+        int mark = type == null ? -1 : type.lastIndexOf(ViewableStore.Address.SEPARATOR);
+        if (mark > 0) {
             return new ViewableStore.Address(
-                    type.substring(0, slash), type.substring(slash + 1));
+                    type.substring(0, mark), type.substring(mark + 1));
         }
         return store.resolve(type);
     }
@@ -669,8 +668,9 @@ public class ViewableHttpServer {
         if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
             com.fasterxml.jackson.databind.JsonNode type = object.get("type");
             if (type != null && type.isTextual() && !type.asText().isBlank()
-                    && !type.asText().contains("/")) {
-                object.put("type", domain + "/" + type.asText());
+                    && type.asText().indexOf(ViewableStore.Address.SEPARATOR) < 0) {
+                object.put("type",
+                        domain + ViewableStore.Address.SEPARATOR + type.asText());
             }
             object.fields().forEachRemaining(e -> qualifyTypes(e.getValue(), domain));
         } else if (node.isArray()) {

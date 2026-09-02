@@ -87,7 +87,7 @@ class ViewableStoreTypeConflictTest {
         IllegalStateException conflict = assertThrows(IllegalStateException.class,
                 () -> store.register(new Fake("Person", List.of()), "History"));
 
-        assertTrue(conflict.getMessage().contains("History/Person"),
+        assertTrue(conflict.getMessage().contains("History:Person"),
                 conflict.getMessage());
     }
 
@@ -151,5 +151,29 @@ class ViewableStoreTypeConflictTest {
         assertEquals(oscarPerson,
                 store.get(new ViewableStore.Address("oscarnominations", "Person"), "Q1"),
                 "the Person source owns Person in ITS domain, whatever was loaded first");
+    }
+
+    /**
+     * The address goes into {@code /api/viewable/{type}/{id}}, which splits on the first
+     * slash. An address containing one made the type "NobelPrizes" and the id
+     * "LaureatesWithMotivation/Q317877$…", so every instance came back 404.
+     */
+    @Test void anAddressSurvivesBeingPutInAPath() {
+        ViewableStore.Address address =
+                new ViewableStore.Address("NobelPrizes", "LaureatesWithMotivation");
+
+        String printed = address.toString();
+        assertEquals("NobelPrizes:LaureatesWithMotivation", printed);
+        assertTrue(printed.indexOf('/') < 0,
+                "a slash here is read as the boundary between type and id: " + printed);
+
+        String path = printed + "/Q317877$d843d205";
+        int slash = path.indexOf('/');
+        assertEquals(printed, path.substring(0, slash));
+        assertEquals("Q317877$d843d205", path.substring(slash + 1));
+    }
+
+    @Test void aDomainlessAddressIsJustTheType() {
+        assertEquals("Person", new ViewableStore.Address("", "Person").toString());
     }
 }

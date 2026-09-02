@@ -73,7 +73,7 @@ public class ViewableServerMain {
             java.util.List<String> ts = new java.util.ArrayList<>();
             for (String t : d.types()) {
                 if (served.contains(d.name() + '\0' + t)) {
-                    ts.add(d.name() + "/" + t);
+                    ts.add(new ViewableStore.Address(d.name(), t).toString());
                     claimed.add(d.name() + '\0' + t);
                 }
             }
