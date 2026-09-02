@@ -112,8 +112,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private Consumer<GeneratedFieldModel> onFieldAddedFromTool =
             field -> {};
     private Consumer<ClassSampleResult> onClassSample = ignored -> {};
-    private Runnable onShowHelperTools =
-            () -> {};
 
     public ModelSourceWorkbenchPanel(
             GeneratedProjectModel projectModel) {
@@ -230,15 +228,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return categoryPanel;
     }
 
-    public void onShowHelperTools(
-            Runnable runnable) {
-
-        onShowHelperTools =
-                runnable == null
-                        ? () -> {}
-                        : runnable;
-    }
-
     /** See {@link FieldSourcePanel#onReloadField}. */
     public void onReloadField(java.util.function.Consumer<String> consumer) {
         fieldSourcePanel.onReloadField(consumer);
@@ -309,9 +298,13 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         wikidataTools.setSelectedComponent(tool);
     }
 
-    /** Locks every mutation surface owned by the workbench, including helper tools
-     * currently hosted in the separate Explorer window. Labels and containers remain
-     * enabled so the selected configuration can still be read. */
+    /** Brings the sample into view where it now lives, beside the class's editor.
+     * Unlike a helper tool this needs no separate window, so the Explorer is left
+     * alone rather than opened over the panel showing the result. */
+    private void showSample() {
+        editorTabs.setSelectedComponent(samplePanel);
+    }
+
     /** Names the owning model above a disabled editor, or hides the notice. */
     private void showImportedNotice(GeneratedClassModel clazz) {
         boolean imported = clazz != null && clazz.isImported();
@@ -327,9 +320,18 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return projectModel == null ? null : projectModel.declaringClass(field);
     }
 
+    /** Locks every mutation surface owned by the workbench, including helper tools
+     * currently hosted in the separate Explorer window. Labels and containers remain
+     * enabled so the selected configuration can still be read.
+     *
+     * <p>The sample is named separately because it no longer sits under
+     * {@code helperTabs}. It runs a query rather than editing the model, but a run
+     * already in progress is exactly when a second one must not be startable — which
+     * is the lock it inherited while it was a helper tool. */
     public void setEditingEnabled(boolean enabled) {
         editingEnabled = enabled;
         EditableComponents.setEditable(helperTabs, enabled);
+        EditableComponents.setEditable(samplePanel, enabled);
         applySelectionEditability();
     }
 
@@ -673,12 +675,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         if (field.cardinality()
                 == FieldCardinality.AUTO) {
-            onShowHelperTools.run();
             // Discovery is a sequence: inspect several properties and add the useful
             // ones. Cardinality sampling may run without tearing the reader out of
             // that sequence. Direct property-catalogue actions retain the historical
             // behaviour of opening Sample so the result is visible immediately.
-            if (showSampleTab) showWikidataTool(samplePanel);
+            if (showSampleTab) showSample();
             samplePanel.triggerFieldSample();
         } else {
             onFieldAddedFromTool.accept(field);
@@ -842,8 +843,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         fieldSourcePanel.onSampleRequested(
                 () -> {
-                    onShowHelperTools.run();
-                    showWikidataTool(samplePanel);
+                    showSample();
                     samplePanel.triggerFieldSample();
                 });
 
@@ -855,10 +855,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         // Success stays out of the reader's way; a failure does not, or the message
         // naming the unsampleable field lands on a tab nobody is looking at.
-        samplePanel.onSampleFailed(() -> {
-            onShowHelperTools.run();
-            showWikidataTool(samplePanel);
-        });
+        samplePanel.onSampleFailed(this::showSample);
         samplePanel.onCardinalitySuggested(
                 cardinality -> {
                     if (selected
@@ -929,9 +926,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 "Entity",
                 explorePanel);
         wikidataTools.addTab(
-                "Sample",
-                samplePanel);
-        wikidataTools.addTab(
                 "Discover",
                 discoveryPanel);
         wikidataTools.addTab(
@@ -976,6 +970,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         editorTabs.addTab("Configuration", config);
         editorTabs.addTab("Explanation", effectiveClassPanel);
+        // Sampling asks what the SELECTED CLASS produces: it compiles the effective
+        // class and runs its own production route. Explorer tools explore Wikidata and
+        // know nothing about this model, which is the opposite question — so the sample
+        // belongs beside the class's editor and its explanation.
+        editorTabs.addTab("Sample", samplePanel);
         add(editorTabs, BorderLayout.CENTER);
     }
 

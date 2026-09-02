@@ -266,6 +266,49 @@ class ModelSourceWorkbenchPanelTest {
         throw new AssertionError("No combo contains " + item);
     }
 
+    /** Sampling asks what the selected class produces — it compiles that class and runs
+     * its production route. The Explorer tools ask Wikidata about things the model does
+     * not contain yet, which is the opposite question, so the sample belongs beside the
+     * class's editor and explanation. Asserting the SIBLING tab titles is what makes
+     * this a guard: moving the panel back under the Explorer fails it. */
+    @Test void theSampleSitsBesideTheExplanationRatherThanAmongTheExplorerTools() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel history = new GeneratedClassModel("History");
+        model.addClass(history);
+        model.rootClass(history);
+
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+
+        JTabbedPane hosting = tabsHosting(panel, panel.samplePanel());
+        assertEquals("Sample", hosting.getTitleAt(
+                hosting.indexOfComponent(panel.samplePanel())));
+        assertTrue(titles(hosting).contains("Explanation"),
+                "the sample should sit with the class's own panels, but its siblings are "
+                        + titles(hosting));
+        assertTrue(titles(hosting).contains("Configuration"),
+                "the sample should sit with the class's own panels, but its siblings are "
+                        + titles(hosting));
+    }
+
+    /** The tabbed pane a component is a direct tab of. */
+    private static JTabbedPane tabsHosting(Container root, Component tab) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JTabbedPane tabs
+                    && tabs.indexOfComponent(tab) >= 0) return tabs;
+            if (child instanceof Container container) {
+                try { return tabsHosting(container, tab); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No tabbed pane hosts " + tab.getClass().getSimpleName());
+    }
+
+    private static java.util.List<String> titles(JTabbedPane tabs) {
+        java.util.List<String> titles = new java.util.ArrayList<>();
+        for (int i = 0; i < tabs.getTabCount(); i++) titles.add(tabs.getTitleAt(i));
+        return titles;
+    }
+
     private static <T extends Component> T component(Container root, Class<T> type) {
         for (Component child : root.getComponents()) {
             if (type.isInstance(child)) return type.cast(child);

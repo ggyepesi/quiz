@@ -978,7 +978,6 @@ public class ModelBuilderFrame extends JFrame {
         cat.onAddSeedQids(qids -> addSeedQids(qids, false));
         cat.onReplaceSeedQids(qids -> addSeedQids(qids, true));
 
-        sourceWorkbench.onShowHelperTools(this::showExplorerWindow);
 
         domainBox.addActionListener(e -> {
             if (updatingDomainBox) return;
