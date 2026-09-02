@@ -1225,11 +1225,16 @@ public class ModelBuilderFrame extends JFrame {
                         wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
                                 run.modelSnapshot(), run.dynamicObjects());
                 graphDiscoveryLedger = previousGraph.reconcile(
-                        observed, run.quality().complete());
+                        observed,
+                        wikidata.explore.generation.WikidataGraphExpansionPlan
+                                .compile(run.modelSnapshot()).edges(),
+                        run.quality().complete());
                 // Graph state is presentation metadata, like the QID chip: show it in
                 // card titles without inventing stored fields or affecting search/sort.
                 instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
-                        graphDiscoveryState()));
+                        graphDiscoveryState(),
+                        wikidata.explore.generation.WikidataGraphExpansionPlan
+                                .compile(run.modelSnapshot()).edges()));
                 instancesPanel.accept(run.objectResult());
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
@@ -1271,10 +1276,21 @@ public class ModelBuilderFrame extends JFrame {
                 ? datasource.graph.GraphDiscoveryState.EMPTY : graphDiscoveryLedger;
     }
 
+    /**
+     * Every edge with a reviewable frontier. A statement pattern is persisted in the
+     * ledger; a field edge is derived from the model, so both are asked for here and
+     * the two callers cannot disagree about which edges exist.
+     */
+    private java.util.List<datasource.graph.GraphEdgeDefinition> reviewableEdges() {
+        if (lastRun == null) return java.util.List.of();
+        return wikidata.explore.generation.WikidataGraphExpansionPlan
+                .compile(projectModel).edges();
+    }
+
     private void updateGraphFrontierButton() {
         datasource.graph.GraphDiscoveryState state = graphDiscoveryState();
-        int count = state.patterns().stream().mapToInt(
-                pattern -> state.frontier(pattern).size()).sum();
+        int count = reviewableEdges().stream().mapToInt(
+                edge -> state.frontier(edge).size()).sum();
         graphFrontierButton.setText(count == 0
                 ? "Graph frontier" : "Graph frontier (" + count + ")");
         graphFrontierButton.setEnabled(lastRun != null && count > 0);
@@ -1290,8 +1306,8 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                graphDiscoveryState(), lastRun.dynamicObjects(), this::applyGraphFrontier,
-                generateDomainButton::doClick);
+                graphDiscoveryState(), reviewableEdges(), lastRun.dynamicObjects(),
+                this::applyGraphFrontier, generateDomainButton::doClick);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
 
@@ -1301,15 +1317,22 @@ public class ModelBuilderFrame extends JFrame {
         int queued = 0;
         for (GraphFrontierWorkflowAction.Decision decision : decisions) {
             if (WikidataIds.isQid(decision.qid())) {
+                // Resolved against the edges offered for review, not the persisted
+                // patterns: a field edge is derived from the model and is not in there,
+                // so an id lookup could only ever find a statement pattern.
+                datasource.graph.GraphEdgeDefinition edge = reviewableEdges().stream()
+                        .filter(candidate -> candidate.id().equals(decision.patternId()))
+                        .findFirst().orElse(null);
                 datasource.graph.GraphDiscoveryState next = graphDiscoveryLedger.queue(
-                        decision.patternId(), datasource.EntityRef.wikidata(decision.qid()));
+                        edge, datasource.EntityRef.wikidata(decision.qid()));
                 if (next != graphDiscoveryLedger) {
                     graphDiscoveryLedger = next;
                     queued++;
                 }
             }
         }
-        instancesPanel.cardDecorator(new GraphCoverageCardDecorator(graphDiscoveryLedger));
+        instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
+                graphDiscoveryLedger, reviewableEdges()));
         updateGraphFrontierButton();
         pendingGenerationReason = "Expand " + decisions.size()
                 + " graph-frontier node(s)";

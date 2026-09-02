@@ -6,6 +6,8 @@ import datasource.graph.GraphExpansionCoverage;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
+import datasource.graph.GraphTraversalStep;
+import datasource.graph.GraphExpansionPolicy;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -23,6 +25,24 @@ class GraphCoverageCardDecoratorTest {
 
         assertEquals("frontier", decorator.coverageLabel(stamped));
         assertEquals("unstamped", decorator.coverageLabel(unstamped));
+    }
+
+    @Test void aFieldEdgeGetsTheSameCoverageChipAsAStatementEdge() {
+        GraphRelation relation = new GraphRelation("wikidata", "P279");
+        GraphTraversalStep step = new GraphTraversalStep(
+                "Position.broader", "Position", "Position", "broader",
+                relation, GraphTraversalDirection.OUTGOING,
+                GraphExpansionPolicy.CURATED);
+        GraphDiscoveryState state = new GraphDiscoveryState(List.of(), List.of(
+                new GraphExpansionCoverage(step.id(), EntityRef.wikidata("Q116"),
+                        relation, step.direction(),
+                        GraphExpansionCoverage.State.ENCOUNTERED)));
+        WikidataDynamicObject position = new WikidataDynamicObject("Q116", "monarch");
+        position.type("Position");
+
+        assertEquals("frontier",
+                new GraphCoverageCardDecorator(state, List.of(step))
+                        .coverageLabel(position));
     }
 
     private static GraphDiscoveryState state() {

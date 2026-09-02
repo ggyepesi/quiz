@@ -14,4 +14,13 @@ public record GraphExpansionPlan(
     public boolean isEmpty() {
         return patterns.isEmpty() && traversalSteps.isEmpty();
     }
+
+    /** Every configured edge, independent of how that edge is materialized. */
+    public List<GraphEdgeDefinition> edges() {
+        java.util.ArrayList<GraphEdgeDefinition> result =
+                new java.util.ArrayList<>(patterns.size() + traversalSteps.size());
+        result.addAll(patterns);
+        result.addAll(traversalSteps);
+        return List.copyOf(result);
+    }
 }

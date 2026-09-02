@@ -35,7 +35,8 @@ class GraphFrontierWorkflowActionTest {
 
         AtomicBoolean continued = new AtomicBoolean();
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                state, List.of(holding), ignored -> { }, () -> continued.set(true));
+                state, List.of(pattern), List.of(holding),
+                ignored -> { }, () -> continued.set(true));
         var results = action.results(ProcessOutcome.succeeded(state, "ready"));
 
         assertEquals(1, results.tabs().get(1).cards().size());

@@ -32,7 +32,7 @@ public record GraphExpansionCoverage(
      * about it — they differ in how far they looked, never in what they mean.
      */
     public static java.util.List<GraphExpansionCoverage> of(
-            GraphExpansionPattern pattern,
+            GraphEdgeDefinition pattern,
             java.util.Collection<datasource.EntityRef> expanded,
             java.util.Collection<datasource.EntityRef> reached) {
         java.util.Set<datasource.EntityRef> settled =

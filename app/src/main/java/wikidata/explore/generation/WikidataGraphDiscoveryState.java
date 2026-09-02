@@ -54,7 +54,25 @@ public final class WikidataGraphDiscoveryState {
                     nodes(encounteredValues(
                             objects, load.statementType(), pattern.targetField()))));
         }
+        // A field edge reaches its nodes through the field itself: no statement class
+        // stands between the two ends, so the values of the source field ARE what the
+        // walk encountered. The statement loop above needs a reification to find them;
+        // this needs only the class the field is on.
+        for (datasource.graph.GraphTraversalStep step
+                : WikidataFieldGraphTraversal.derive(model)) {
+            if (step.policy() != GraphExpansionPolicy.CURATED) continue;
+            coverage.addAll(GraphExpansionCoverage.of(step,
+                    nodes(seedQids(model, step.sourceNodeClass())),
+                    nodes(encounteredValues(
+                            objects, step.sourceNodeClass(), step.sourceField()))));
+        }
         return new GraphDiscoveryState(patterns, coverage);
+    }
+
+    /** What this class was already told to acquire — the walk's expanded nodes. */
+    private static Set<String> seedQids(GeneratedProjectModel model, String className) {
+        GeneratedClassModel clazz = model.findClass(className);
+        return clazz == null ? Set.of() : new LinkedHashSet<>(clazz.seedQids());
     }
 
     /**
@@ -73,19 +91,34 @@ public final class WikidataGraphDiscoveryState {
                             && candidate.direction() == pattern.direction())) continue;
             GeneratedClassModel target = model.findClass(pattern.targetNodeClass());
             if (target == null) continue;
-            ledger.coverage().stream()
-                    .filter(item -> item.patternId().equals(pattern.id()))
-                    .filter(item -> item.relation().equals(pattern.relation()))
-                    .filter(item -> item.direction() == pattern.direction())
-                    .filter(item -> item.state() == GraphExpansionCoverage.State.QUEUED
-                            || item.state() == GraphExpansionCoverage.State.EXPANDED
-                            || item.state() == GraphExpansionCoverage.State.INCOMPLETE)
-                    .map(GraphExpansionCoverage::node)
-                    .filter(node -> EntityRef.WIKIDATA.equals(node.namespace()))
-                    .map(EntityRef::id).filter(WikidataIds::isQid)
-                    .filter(qid -> !target.seedQids().contains(qid))
-                    .forEach(target.seedQids()::add);
+            seedFromCoverage(ledger, pattern, target);
         }
+        // The same for a field edge. Its definition is derived from the model rather
+        // than persisted, so it is re-derived here and matched by id — which is what
+        // the pattern loop above already does with its own active list.
+        for (datasource.graph.GraphTraversalStep step
+                : WikidataFieldGraphTraversal.derive(model)) {
+            if (step.policy() != GraphExpansionPolicy.CURATED) continue;
+            GeneratedClassModel target = model.findClass(step.targetNodeClass());
+            if (target != null) seedFromCoverage(ledger, step, target);
+        }
+    }
+
+    /** Nodes this edge has settled on become the target class's acquisition seeds. */
+    private static void seedFromCoverage(GraphDiscoveryState ledger,
+            datasource.graph.GraphEdgeDefinition edge, GeneratedClassModel target) {
+        ledger.coverage().stream()
+                .filter(item -> item.patternId().equals(edge.id()))
+                .filter(item -> item.relation().equals(edge.relation()))
+                .filter(item -> item.direction() == edge.direction())
+                .filter(item -> item.state() == GraphExpansionCoverage.State.QUEUED
+                        || item.state() == GraphExpansionCoverage.State.EXPANDED
+                        || item.state() == GraphExpansionCoverage.State.INCOMPLETE)
+                .map(GraphExpansionCoverage::node)
+                .filter(node -> EntityRef.WIKIDATA.equals(node.namespace()))
+                .map(EntityRef::id).filter(WikidataIds::isQid)
+                .filter(qid -> !target.seedQids().contains(qid))
+                .forEach(target.seedQids()::add);
     }
 
     /**
@@ -149,9 +182,13 @@ public final class WikidataGraphDiscoveryState {
                 .distinct().map(EntityRef::wikidata).toList();
     }
 
+    /** The nodes an edge reached: values of {@code valueField} on every object stamped
+     *  with {@code ownerClass}. For a statement pattern the owner is the statement
+     *  class and the field is its target role; for a field edge the owner is the class
+     *  the field is on. */
     private static Set<String> encounteredValues(
-            Collection<WikidataDynamicObject> objects, String statementClass,
-            String targetField) {
+            Collection<WikidataDynamicObject> objects, String ownerClass,
+            String valueField) {
         Map<String, String> values = new LinkedHashMap<>();
         if (objects == null) return values.keySet();
         // A statement or its target may exist only as a nested reference. Coverage
@@ -160,9 +197,9 @@ public final class WikidataGraphDiscoveryState {
             // Membership must inspect the explicit stamp. typeName() falls back to the
             // Java class for an unstamped object and must never answer this question.
             if (object == null || !object.hasTypeStamp()
-                    || !object.directClassNames().contains(statementClass)) continue;
+                    || !object.directClassNames().contains(ownerClass)) continue;
             collect(FieldAccess.getPathValues(object,
-                    objectview.field.FieldPath.parse(targetField)), values);
+                    objectview.field.FieldPath.parse(valueField)), values);
         }
         return new LinkedHashSet<>(values.keySet());
     }

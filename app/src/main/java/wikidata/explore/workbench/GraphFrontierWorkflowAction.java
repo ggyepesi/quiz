@@ -33,14 +33,21 @@ final class GraphFrontierWorkflowAction
     private final int frontierCount;
     private final GraphCoverageCardDecorator decorator;
 
+    /** Every edge whose frontier is reviewable: statement patterns and field steps
+     *  alike. A field edge is derived from the model rather than persisted, so the
+     *  caller supplies the current set instead of the ledger remembering it. */
+    private final List<datasource.graph.GraphEdgeDefinition> edges;
+
     GraphFrontierWorkflowAction(GraphDiscoveryState state,
+                                List<datasource.graph.GraphEdgeDefinition> edges,
                                 Collection<WikidataDynamicObject> objects,
                                 Consumer<List<Decision>> apply,
                                 Runnable afterApply) {
         this.state = Objects.requireNonNull(state, "state");
+        this.edges = edges == null ? List.of() : List.copyOf(edges);
         this.apply = Objects.requireNonNull(apply, "apply");
         this.afterApply = Objects.requireNonNull(afterApply, "afterApply");
-        decorator = new GraphCoverageCardDecorator(state);
+        decorator = new GraphCoverageCardDecorator(state, this.edges);
         byQid = new LinkedHashMap<>();
         // Frontier targets are commonly reference-only objects nested in a statement;
         // use the same reachable graph the snapshot writer saves, not served roots only.
@@ -49,8 +56,8 @@ final class GraphFrontierWorkflowAction
                 byQid.putIfAbsent(object.qid(), object);
             }
         }
-        frontierCount = state.patterns().stream()
-                .mapToInt(pattern -> frontier(pattern).size()).sum();
+        frontierCount = this.edges.stream()
+                .mapToInt(edge -> frontier(edge).size()).sum();
     }
 
     @Override public String id() { return "graph-frontier"; }
@@ -74,7 +81,7 @@ final class GraphFrontierWorkflowAction
     @Override public ProcessWorkflowResults<Decision> results(
             ProcessOutcome<GraphDiscoveryState> outcome) {
         List<ProcessWorkflowResults.Tab<Decision>> tabs = new ArrayList<>();
-        for (GraphExpansionPattern pattern : outcome.result().patterns()) {
+        for (datasource.graph.GraphEdgeDefinition pattern : edges) {
             var expandedCards = views(expanded(pattern)).stream()
                     .map(view -> new ProcessWorkflowResults.Card<Decision>(
                             view, () -> null, false, () -> decorator.apply(view))).toList();
@@ -99,12 +106,14 @@ final class GraphFrontierWorkflowAction
         afterApply.run();
     }
 
-    private List<GraphExpansionCoverage> expanded(GraphExpansionPattern pattern) {
-        return state.coverage(pattern, GraphExpansionCoverage.State.EXPANDED);
+    private List<GraphExpansionCoverage> expanded(
+            datasource.graph.GraphEdgeDefinition edge) {
+        return state.coverage(edge, GraphExpansionCoverage.State.EXPANDED);
     }
 
-    private List<GraphExpansionCoverage> frontier(GraphExpansionPattern pattern) {
-        return state.frontier(pattern);
+    private List<GraphExpansionCoverage> frontier(
+            datasource.graph.GraphEdgeDefinition edge) {
+        return state.frontier(edge);
     }
 
     private List<WikidataDynamicObject> views(List<GraphExpansionCoverage> coverage) {

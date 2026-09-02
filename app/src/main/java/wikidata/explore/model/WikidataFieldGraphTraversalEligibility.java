@@ -50,17 +50,30 @@ public final class WikidataFieldGraphTraversalEligibility {
             GeneratedProjectModel project, GeneratedFieldModel field) {
         return field != null
                 && hasTypedModeledTarget(project, field)
+                && hasRecursiveTarget(project, field)
                 && hasPropertySource(field);
+    }
+
+    /** A frontier node can be expanded through the same field only when it is again
+     * an instance of the field's owner class. Cross-class paths belong to a composed
+     * graph plan; treating their target seeds as coverage of this edge would be false. */
+    public static boolean hasRecursiveTarget(
+            GeneratedProjectModel project, GeneratedFieldModel field) {
+        GeneratedClassModel owner = project == null || field == null
+                ? null : project.declaringClass(field);
+        return owner != null && owner.className().equals(field.entityClassName());
     }
 
     /** The same declaration question asked from an editor's live controls. */
     public static boolean canDeclare(
             GeneratedProjectModel project,
+            String ownerClassName,
             FieldType type,
             String entityClassName,
             FieldSourceType sourceType,
             String pid) {
         return hasTypedModeledTarget(project, type, entityClassName)
+                && ownerClassName != null && ownerClassName.equals(entityClassName)
                 && hasPropertySource(sourceType, pid);
     }
 }

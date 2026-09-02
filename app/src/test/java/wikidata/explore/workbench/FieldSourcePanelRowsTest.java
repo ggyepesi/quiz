@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -55,14 +56,30 @@ class FieldSourcePanelRowsTest {
                 "an INVERT field must be asked the one thing it needs");
     }
 
-    @Test void aTypedEntityFieldWithAPropertyMayDeclareGraphExpansion() {
+    /**
+     * Expansion follows an edge and then follows it again, so it is offered only where
+     * the target is the owner's own class. A cross-class target reaches instances of
+     * something else, and treating their seeds as coverage of this edge would be false.
+     */
+    @Test void aFieldPointingAtItsOwnClassMayDeclareGraphExpansion() {
+        GeneratedFieldModel broader =
+                field("broader", FieldType.ENTITY, FieldProductionKind.AUTO, "Owner");
+        broader.mapping().sourceType(FieldSourceType.SPARQL);
+        broader.mapping().propertyPid("P279");
+
+        assertTrue(visibleRowLabels(editing(broader)).contains("Graph expansion:"),
+                "the row appears exactly where the traversal rule says it could apply");
+    }
+
+    @Test void aFieldPointingAtAnotherClassMayNot() {
         GeneratedFieldModel spouse =
                 field("spouse", FieldType.ENTITY, FieldProductionKind.AUTO, "Person");
         spouse.mapping().sourceType(FieldSourceType.SPARQL);
         spouse.mapping().propertyPid("P26");
 
-        assertTrue(visibleRowLabels(editing(spouse)).contains("Graph expansion:"),
-                "the row appears exactly where the traversal rule says it could apply");
+        assertFalse(visibleRowLabels(editing(spouse)).contains("Graph expansion:"),
+                "Person is not the owner's class, so following the edge twice would "
+                        + "leave the population this edge is about");
     }
 
     @Test void aVocabularyTargetIsNotOfferedEntityGraphExpansion() {
@@ -141,6 +158,9 @@ class FieldSourcePanelRowsTest {
             GeneratedFieldModel field, boolean includeTargetClass) {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel owner = new GeneratedClassModel("Owner");
+        // The field has to be IN this project, or it has no declaring class here and
+        // every rule that asks who owns it answers null.
+        owner.fields().add(field);
         project.addClass(owner);
         project.rootClass(owner);
         if (includeTargetClass && !field.entityClassName().isBlank()

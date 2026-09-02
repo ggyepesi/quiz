@@ -1506,11 +1506,15 @@ public class FieldSourcePanel extends JPanel {
     private void refreshGraphExpansionControl() {
         FieldDefinition definition = fieldDefinitionPanel.definition();
         FieldSourceType source = (FieldSourceType) sourceTypeBox.getSelectedItem();
+        // Through ownerClass(), which already answers this with both nulls handled: the
+        // editor is constructed before a model is set and edit() runs in between.
+        GeneratedClassModel owner = ownerClass();
         // The editor decides from live controls, so it cannot pass a saved field —
         // but the RULE is the one validation and compilation use, asked, not restated.
         boolean eligible = definition != null
                 && WikidataFieldGraphTraversalEligibility.canDeclare(
                         projectModel,
+                        owner == null ? "" : owner.className(),
                         definition.type(),
                         definition.entityClassName(),
                         source,
@@ -1518,7 +1522,8 @@ public class FieldSourcePanel extends JPanel {
         applicable(graphExpansionRow, eligible);
         graphExpansionBox.setToolTipText(eligible
                 ? "Expose values reached through this field as a curated graph frontier."
-                : "Graph expansion requires a typed Wikidata entity field with a Pxx property.");
+                : "Graph expansion requires a recursive typed Wikidata entity field "
+                + "with a Pxx property.");
     }
 
     private String entityClassForDisplay() {

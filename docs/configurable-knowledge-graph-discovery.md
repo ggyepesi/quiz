@@ -4,6 +4,9 @@ For the product direction, cross-datasource architecture and development order, 
 [Graph Discovery as a Primary ModelBuilder Capability](graph-discovery-product-direction.md).
 The provider contract, correspondence rule and staged second-provider plan are in
 [Cross-Datasource Graph Discovery](cross-datasource-graph-discovery.md).
+Candidate paths that need shared-jurisdiction or common-ancestor admission are
+described in
+[Constraining Discovered Graph Relations](graph-relation-constraints.md).
 
 ## Status
 

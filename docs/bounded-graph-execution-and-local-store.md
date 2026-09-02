@@ -12,6 +12,7 @@ Related documents:
 - [Graph Discovery as a Primary ModelBuilder Capability](graph-discovery-product-direction.md)
 - [Configurable Knowledge-Graph Discovery](configurable-knowledge-graph-discovery.md)
 - [Cross-Datasource Graph Discovery](cross-datasource-graph-discovery.md)
+- [Constraining Discovered Graph Relations](graph-relation-constraints.md)
 
 ## Objective
 

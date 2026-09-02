@@ -27,9 +27,14 @@ final class GraphCoverageCardDecorator implements Function<Viewable, JComponent>
     private final Map<String, GraphExpansionCoverage.State> coveredIds = new HashMap<>();
 
     GraphCoverageCardDecorator(GraphDiscoveryState graph) {
+        this(graph, graph == null ? java.util.List.of() : graph.patterns());
+    }
+
+    GraphCoverageCardDecorator(GraphDiscoveryState graph,
+            java.util.Collection<? extends datasource.graph.GraphEdgeDefinition> edges) {
         if (graph == null) return;
         Map<String, String> targetByPattern = new HashMap<>();
-        graph.patterns().forEach(pattern ->
+        if (edges != null) edges.forEach(pattern ->
                 targetByPattern.put(pattern.id(), pattern.targetNodeClass()));
         graph.coverage().forEach(item -> {
             String target = targetByPattern.get(item.patternId());

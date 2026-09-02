@@ -98,6 +98,21 @@ class GraphExpansionCoverageTest {
         assertEquals(node, whileDisabled.coverage().getFirst().node());
     }
 
+    @Test void anActiveFieldEdgeTurnsAnUnfinishedQueueIntoIncompleteCoverage() {
+        GraphTraversalStep step = new GraphTraversalStep(
+                "Position.broader", "Position", "Position", "broader",
+                PATTERN.relation(), GraphTraversalDirection.OUTGOING,
+                GraphExpansionPolicy.CURATED);
+        EntityRef node = new EntityRef("catalogue-a", "position-2");
+        GraphDiscoveryState queued = GraphDiscoveryState.EMPTY.queue(step, node);
+
+        GraphDiscoveryState afterIncompleteRun = queued.reconcile(
+                GraphDiscoveryState.EMPTY, List.of(step), false);
+
+        assertEquals(GraphExpansionCoverage.State.INCOMPLETE,
+                afterIncompleteRun.coverage().getFirst().state());
+    }
+
     private static GraphExpansionCoverage item(
             EntityRef node, GraphRelation relation,
             GraphTraversalDirection direction) {

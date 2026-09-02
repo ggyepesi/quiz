@@ -532,6 +532,12 @@ public final class GeneratedProjectModelValidator {
                             "Graph expansion requires a typed entity field targeting "
                                     + "a modeled class."));
                 }
+                if (!WikidataFieldGraphTraversalEligibility
+                        .hasRecursiveTarget(project, field)) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "A field frontier must target its own declaring class; "
+                                    + "cross-class traversal requires a composed graph plan."));
+                }
                 if (!WikidataFieldGraphTraversalEligibility.hasPropertySource(field)) {
                     problems.add(Problem.error(path(clazz, field),
                             "Wikidata graph expansion requires a Pxx property source."));

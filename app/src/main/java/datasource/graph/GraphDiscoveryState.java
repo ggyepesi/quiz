@@ -43,11 +43,20 @@ public record GraphDiscoveryState(
 
     /** Queue a discovered node without turning execution history into model configuration. */
     public GraphDiscoveryState queue(String patternId, EntityRef node) {
-        if (patternId == null || node == null) return this;
-        GraphExpansionPattern pattern = patterns.stream()
+        if (patternId == null) return this;
+        return queue(patterns.stream()
                 .filter(candidate -> patternId.equals(candidate.id()))
-                .findFirst().orElse(null);
-        if (pattern == null) return this;
+                .findFirst().orElse(null), node);
+    }
+
+    /**
+     * Queues a node against the EDGE, not against an id looked up in the persisted
+     * patterns. A field edge is derived from the model and never stored here, so
+     * resolving by id could only ever find a statement pattern — the caller knows which
+     * edge the decision came from and says so.
+     */
+    public GraphDiscoveryState queue(GraphEdgeDefinition pattern, EntityRef node) {
+        if (pattern == null || node == null) return this;
         List<GraphExpansionCoverage> next = new ArrayList<>(coverage.size() + 1);
         boolean replaced = false;
         for (GraphExpansionCoverage item : coverage) {
@@ -72,7 +81,21 @@ public record GraphDiscoveryState(
      * remains explicit work rather than masquerading as settled coverage.
      */
     public GraphDiscoveryState reconcile(GraphDiscoveryState observed, boolean runComplete) {
+        return reconcile(observed,
+                observed == null ? List.of() : observed.patterns(), runComplete);
+    }
+
+    /**
+     * Merge observed coverage while being told which configured edges actually ran.
+     * Persisted patterns alone cannot answer that question: ordinary field edges are
+     * compiled from the model and deliberately are not copied into this state.
+     */
+    public GraphDiscoveryState reconcile(GraphDiscoveryState observed,
+            java.util.Collection<? extends GraphEdgeDefinition> activeEdges,
+            boolean runComplete) {
         if (observed == null) observed = EMPTY;
+        java.util.List<? extends GraphEdgeDefinition> active = activeEdges == null
+                ? List.of() : List.copyOf(activeEdges);
         List<GraphExpansionPattern> reconciledPatterns = new ArrayList<>(observed.patterns);
         for (GraphExpansionPattern priorPattern : patterns) {
             if (reconciledPatterns.stream().noneMatch(candidate ->
@@ -86,7 +109,7 @@ public record GraphDiscoveryState(
             // A disabled pattern is dormant, not deleted. It did not execute in this
             // run, so neither its coverage nor its queued state may change. Re-enabling
             // the policy must resume from the same durable ledger.
-            if (observed.patterns.stream().noneMatch(pattern -> samePattern(prior, pattern))) {
+            if (active.stream().noneMatch(edge -> samePattern(prior, edge))) {
                 merged.putIfAbsent(Key.of(prior), prior);
                 continue;
             }
@@ -113,12 +136,12 @@ public record GraphDiscoveryState(
     }
 
     private static boolean sameKey(
-            GraphExpansionCoverage item, GraphExpansionPattern pattern, EntityRef node) {
+            GraphExpansionCoverage item, GraphEdgeDefinition pattern, EntityRef node) {
         return samePattern(item, pattern) && item.node().equals(node);
     }
 
     private static boolean samePattern(
-            GraphExpansionCoverage item, GraphExpansionPattern pattern) {
+            GraphExpansionCoverage item, GraphEdgeDefinition pattern) {
         return item.patternId().equals(pattern.id())
                 && item.relation().equals(pattern.relation())
                 && item.direction() == pattern.direction();
