@@ -238,8 +238,22 @@ public final class SwingProcessWorkflow {
                             ? failure.getClass().getSimpleName() : failure.getMessage())));
                 }
             };
-            tabs.addChangeListener(e -> buildSelectedTab.run());
+            Runnable syncApplyToTab = () -> {
+                int index = tabs.getSelectedIndex() - resultTabOffset;
+                boolean actionable = index >= 0 && index < results.tabs().size()
+                        && actionable(results.tabs().get(index));
+                selected.set(List.of());
+                applySelected.setEnabled(false);
+                // Hidden, not greyed. A disabled Expand beside expanded nodes reads as
+                // "you may not do this yet"; there is nothing to do here at all.
+                applySelected.setVisible(actionable);
+            };
+            tabs.addChangeListener(e -> {
+                buildSelectedTab.run();
+                syncApplyToTab.run();
+            });
             buildSelectedTab.run(); // Summary is normally first and intentionally small.
+            syncApplyToTab.run();
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton("Close without applying");
             close.addActionListener(e -> dialog.dispose());
@@ -259,6 +273,11 @@ public final class SwingProcessWorkflow {
                 panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
             }
             install(action.plan().title(), panel);
+        }
+
+        /** Whether applying from this tab could do anything: some card decides. */
+        private boolean actionable(ProcessWorkflowResults.Tab<D> tab) {
+            return tab.cards().stream().anyMatch(card -> card.decision().get() != null);
         }
 
         private JComponent resultTab(
@@ -302,7 +321,11 @@ public final class SwingProcessWorkflow {
                 });
             }
             SearchableView view = builder.build();
-            if (!action.multipleResultSelection()) return view;
+            // A tab whose cards carry no decision cannot be applied from — the listeners
+            // above already filter those out, so selecting there moves nothing. Showing
+            // Select all beside cards that answer nothing is an offer the workflow
+            // cannot keep.
+            if (!action.multipleResultSelection() || !actionable(tab)) return view;
             JPanel panel = new JPanel(new BorderLayout(4, 4));
             JPanel selection = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
             JButton selectAll = new JButton("Select all");
