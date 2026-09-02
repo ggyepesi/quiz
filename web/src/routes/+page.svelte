@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getList, getViewable, getDimensions, getGroups } from '$lib/api.js';
+  import { getDomains, getList, getViewable, getDimensions, getGroups, typeLabel } from '$lib/api.js';
   import ViewableCard from '$lib/ViewableCard.svelte';
 
   let domains = $state([]);
@@ -99,7 +99,7 @@
           >
             {#if !d.types.includes(type)}<option value="" disabled>Class…</option>{/if}
             {#each d.types as t}
-              <option value={t}>{t}</option>
+              <option value={t}>{typeLabel(t)}</option>
             {/each}
           </select>
         </label>

@@ -24,6 +24,20 @@ async function json(url) {
   return r.json();
 }
 
+/**
+ * The part of a served address a reader should see. An address is `domain/Type` —
+ * a bare type name stopped identifying one collection once domains began sharing
+ * models, so the domain travels with it — but the domain is already the heading it
+ * is listed under, so showing it again just makes the name longer.
+ * @param {string} address
+ * @returns {string}
+ */
+export function typeLabel(address) {
+  if (!address) return '';
+  const slash = address.lastIndexOf('/');
+  return slash > 0 ? address.slice(slash + 1) : address;
+}
+
 /** @returns {Promise<string[]>} registered type names */
 export function getTypes() {
   return json(`${apiBase()}/api/types`);

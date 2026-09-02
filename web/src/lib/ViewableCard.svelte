@@ -1,4 +1,5 @@
 <script>
+  import { typeLabel } from './api.js';
   import ViewableChip from './ViewableChip.svelte';
   import Self from './ViewableCard.svelte';
   import ZoomableImage from './ZoomableImage.svelte';
@@ -23,7 +24,7 @@
   {#if heading}
     <div class="title">
       <span class="name">{view.name}</span>
-      <span class="badge">{view.type}</span>
+      <span class="badge">{typeLabel(view.type)}</span>
     </div>
   {/if}
 

@@ -126,6 +126,26 @@ public class ViewableHttpServer {
         }
     }
 
+    /**
+     * Which served collection a request means. A bare type name is enough while only one
+     * domain serves it; once several do — which is what importing a shared model makes
+     * ordinary — the request has to say, and {@code resolve} refuses rather than picking.
+     */
+    private ViewableStore.Address addressed(HttpExchange ex, String type) {
+        String domain = queryParam(ex, "domain");
+        if (domain != null && !domain.isBlank()) {
+            return new ViewableStore.Address(domain, type);
+        }
+        // The address the client was handed, sent back whole. A type name never contains
+        // a slash, so the last one separates a domain that may.
+        int slash = type == null ? -1 : type.lastIndexOf('/');
+        if (slash > 0) {
+            return new ViewableStore.Address(
+                    type.substring(0, slash), type.substring(slash + 1));
+        }
+        return store.resolve(type);
+    }
+
     private void handleTypes(HttpExchange ex) throws IOException {
         writeJson(ex, 200, store.types());
     }
@@ -139,9 +159,10 @@ public class ViewableHttpServer {
         String group = queryParam(ex, "group");   // optional: a dimension bucket fullName
 
         try {
+            ViewableStore.Address listed = addressed(ex, type);
             Collection<Viewable> qs = group == null || group.isBlank()
-                    ? store.list(type)
-                    : store.members(type, group);   // live re-facet: bucket members only
+                    ? store.list(addressed(ex, type))
+                    : store.members(addressed(ex, type), group);   // live re-facet: bucket members only
             if (qs == null) {
                 writeJson(ex, 404, Map.of("error", "unknown type: " + type));
                 return;
@@ -153,7 +174,7 @@ public class ViewableHttpServer {
                         q.getIdentifier(), q.getDisplayName(), q.typeName(),
                         ViewableJson.thumbUrl(q), null));
             }
-            writeJson(ex, 200, items);
+            writeJson(ex, 200, items, listed);
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
@@ -171,12 +192,12 @@ public class ViewableHttpServer {
         String id = urlDecode(path.substring(slash + 1));
 
         try {
-            Viewable q = store.get(type, id);
+            Viewable q = store.get(addressed(ex, type), id);
             if (q == null) {
                 writeJson(ex, 404, Map.of("error", "not found: " + type + "/" + id));
                 return;
             }
-            writeJson(ex, 200, ViewableJson.of(q));
+            writeJson(ex, 200, ViewableJson.of(q), addressed(ex, type));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
@@ -198,7 +219,7 @@ public class ViewableHttpServer {
         Integer index = parts.length >= 4 ? parseIndex(urlDecode(parts[3])) : null;
 
         try {
-            Viewable q = store.get(type, id);
+            Viewable q = store.get(addressed(ex, type), id);
             Object value = q == null ? null : fieldValue(q, field);
             ImageRef ref = imageRefAt(value, index);
 
@@ -341,7 +362,7 @@ public class ViewableHttpServer {
         String path = queryParam(ex, "path");
 
         try {
-            Collection<Viewable> qs = store.list(type);
+            Collection<Viewable> qs = store.list(addressed(ex, type));
             if (qs == null) {
                 writeJson(ex, 404, Map.of("error", "unknown type: " + type));
                 return;
@@ -399,7 +420,7 @@ public class ViewableHttpServer {
     private void handleDimensions(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
         try {
-            writeJson(ex, 200, store.dimensions(type));
+            writeJson(ex, 200, store.dimensions(addressed(ex, type)));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
@@ -410,7 +431,7 @@ public class ViewableHttpServer {
     private void handleCoverage(HttpExchange ex) throws IOException {
         String type = queryParam(ex, "type");
         try {
-            writeJson(ex, 200, store.coverage(type));
+            writeJson(ex, 200, store.coverage(addressed(ex, type)));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
@@ -423,7 +444,8 @@ public class ViewableHttpServer {
         String path = queryParam(ex, "path");
         int limit = intParam(ex, "limit", 200);
         try {
-            writeJson(ex, 200, store.missing(type, path, limit));
+            writeJson(ex, 200, store.missing(addressed(ex, type), path, limit),
+                    addressed(ex, type));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }
@@ -479,7 +501,7 @@ public class ViewableHttpServer {
                     queryParam(ex, "equalValues"), EqualValuePolicy.class,
                     EqualValuePolicy.EQUIVALENT);
 
-            Collection<Viewable> members = store.members(type, group);
+            Collection<Viewable> members = store.members(addressed(ex, type), group);
             if (members == null) {
                 writeJson(ex, 404, Map.of("error", "unknown type: " + type));
                 return;
@@ -619,6 +641,40 @@ public class ViewableHttpServer {
             return Integer.parseInt(v.trim());
         } catch (NumberFormatException e) {
             return def;
+        }
+    }
+
+    /**
+     * Writes a response whose type names address a served collection rather than name a
+     * class: every {@code type} becomes {@code domain/Type}.
+     *
+     * <p>Done here, at the wire, and not in {@link ViewableJson}: within a domain a bare
+     * type name is exactly right, and threading a domain through view building would put
+     * a serving concern into the rendering of every field. What the client needs is an
+     * address it can send back, which is a property of the wire.
+     */
+    private void writeJson(HttpExchange ex, int code, Object body,
+            ViewableStore.Address address) throws IOException {
+        if (address == null || address.domain().isBlank()) {
+            writeJson(ex, code, body);
+            return;
+        }
+        com.fasterxml.jackson.databind.JsonNode tree = mapper.valueToTree(body);
+        qualifyTypes(tree, address.domain());
+        writeJson(ex, code, tree);
+    }
+
+    private static void qualifyTypes(
+            com.fasterxml.jackson.databind.JsonNode node, String domain) {
+        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
+            com.fasterxml.jackson.databind.JsonNode type = object.get("type");
+            if (type != null && type.isTextual() && !type.asText().isBlank()
+                    && !type.asText().contains("/")) {
+                object.put("type", domain + "/" + type.asText());
+            }
+            object.fields().forEachRemaining(e -> qualifyTypes(e.getValue(), domain));
+        } else if (node.isArray()) {
+            node.forEach(child -> qualifyTypes(child, domain));
         }
     }
 

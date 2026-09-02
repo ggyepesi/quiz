@@ -7,15 +7,20 @@ import org.junit.jupiter.api.Test;
 import java.util.Collection;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * A served type name is what a URL asks for and what the client lists, so it resolves to
- * ONE source. Registering a second used to replace the first without a word: Oscars and
- * History both declare a served {@code Person}, History loads later, and browsing Person
- * returned its 142 people where Oscars' 6,863 belonged — under a heading naming Oscars.
+ * A served collection is addressed by domain AND type.
+ *
+ * <p>A type name alone used to be the address, and registering a second source for one
+ * name replaced the first without a word: Oscars and History both serve {@code Person},
+ * History loaded later, and browsing Person returned its 142 people where Oscars' 6,863
+ * belonged — under a heading naming Oscars. Refusing the second registration made that
+ * visible but left one of them unservable.
+ *
+ * <p>Neither is right now that domains import shared models. Three domains serve Person
+ * because all three import the same Person model; what they do not share is the
+ * instances, since a domain owns its own. The domain is the missing half of the address.
  */
 class ViewableStoreTypeConflictTest {
 
@@ -41,32 +46,49 @@ class ViewableStoreTypeConflictTest {
         @Override public String getDisplayName() { return label; }
     }
 
-    @Test void twoSourcesCannotServeOneTypeName() {
+    @Test void severalDomainsMayServeOneTypeName() {
         ViewableStore store = new ViewableStore();
         store.register(new Fake("Person", List.of()), "oscarnominations");
+        store.register(new Fake("Person", List.of()), "History");
+        store.register(new Fake("Person", List.of()), "NobelPrizes");
+
+        assertEquals(List.of("Person"), store.types(),
+                "one name, which is why it cannot be the whole address");
+        assertEquals(
+                List.of(new ViewableStore.Address("oscarnominations", "Person"),
+                        new ViewableStore.Address("History", "Person"),
+                        new ViewableStore.Address("NobelPrizes", "Person")),
+                store.addresses());
+    }
+
+    /** The bug that started this: each domain's people are its own. */
+    @Test void eachDomainServesItsOwnInstancesUnderTheSharedName() throws Exception {
+        ViewableStore store = new ViewableStore();
+        Item oscarPerson = new Item("Person", "Q1", "Oscar person", null);
+        Item historyPerson = new Item("Person", "Q1", "History person", null);
+        store.register(new Fake("Person", List.of(oscarPerson)), "oscarnominations");
+        store.register(new Fake("Person", List.of(historyPerson)), "History");
+
+        ViewableStore.Address oscars =
+                new ViewableStore.Address("oscarnominations", "Person");
+        ViewableStore.Address history = new ViewableStore.Address("History", "Person");
+
+        assertEquals(oscarPerson, store.get(oscars, "Q1"));
+        assertEquals(historyPerson, store.get(history, "Q1"),
+                "same type, same id, different domain — and no load order decides it");
+        assertEquals(List.of(oscarPerson), store.list(oscars));
+        assertEquals(List.of(historyPerson), store.list(history));
+    }
+
+    @Test void oneDomainStillServesEachTypeOnce() {
+        ViewableStore store = new ViewableStore();
+        store.register(new Fake("Person", List.of()), "History");
 
         IllegalStateException conflict = assertThrows(IllegalStateException.class,
                 () -> store.register(new Fake("Person", List.of()), "History"));
 
-        assertTrue(conflict.getMessage().contains("oscarnominations")
-                        && conflict.getMessage().contains("History"),
-                "the conflict names both claimants, or it cannot be acted on: "
-                        + conflict.getMessage());
-        assertTrue(conflict.getMessage().contains("Person"));
-    }
-
-    @Test void theFirstClaimantKeepsTheType() throws Exception {
-        ViewableStore store = new ViewableStore();
-        ViewableSource first = new Fake("Person", List.of());
-        store.register(first, "oscarnominations");
-        try {
-            store.register(new Fake("Person", List.of()), "History");
-        } catch (IllegalStateException expected) {
-            // the point of the next assertion
-        }
-
-        assertEquals(List.of("Person"), store.types(),
-                "a refused registration leaves the store as it was, not half-changed");
+        assertTrue(conflict.getMessage().contains("History/Person"),
+                conflict.getMessage());
     }
 
     @Test void registeringTheSameSourceTwiceIsNotAConflict() {
@@ -78,6 +100,30 @@ class ViewableStoreTypeConflictTest {
         assertEquals(List.of("Person"), store.types());
     }
 
+    @Test void abareNameResolvesWhileItIsUnambiguous() {
+        ViewableStore store = new ViewableStore();
+        store.register(new Fake("Nomination", List.of()), "oscarnominations");
+
+        assertEquals(new ViewableStore.Address("oscarnominations", "Nomination"),
+                store.resolve("Nomination"));
+        assertNull(store.resolve("Nothing serves this"));
+    }
+
+    /** Asked for a name several domains serve, the store says so rather than choosing. */
+    @Test void anAmbiguousNameNamesTheDomainsItCouldMean() {
+        ViewableStore store = new ViewableStore();
+        store.register(new Fake("Person", List.of()), "oscarnominations");
+        store.register(new Fake("Person", List.of()), "History");
+
+        IllegalStateException ambiguous = assertThrows(IllegalStateException.class,
+                () -> store.resolve("Person"));
+
+        assertTrue(ambiguous.getMessage().contains("oscarnominations")
+                        && ambiguous.getMessage().contains("History"),
+                "the caller has to pick, so it is told what the choices are: "
+                        + ambiguous.getMessage());
+    }
+
     @Test void differentTypesFromDifferentDomainsCoexist() {
         ViewableStore store = new ViewableStore();
         store.register(new Fake("NobelPrize", List.of()), "NobelPrizes");
@@ -86,8 +132,12 @@ class ViewableStoreTypeConflictTest {
         assertEquals(List.of("NobelPrize", "Nomination"), store.types());
     }
 
-    @Test void aRegisteredTypeOutranksACopyReachedFromAnotherDataset()
-            throws Exception {
+    /**
+     * A value reached through another domain's object is that domain's, so it can no
+     * longer occupy the address of a registered source. This used to depend on which
+     * type was requested first.
+     */
+    @Test void aReachedCopyCannotOccupyAnotherDomainsAddress() throws Exception {
         ViewableStore store = new ViewableStore();
         Item oscarPerson = new Item("Person", "Q1", "Oscar person", null);
         Item historyPerson = new Item("Person", "Q1", "History person", null);
@@ -95,11 +145,11 @@ class ViewableStoreTypeConflictTest {
         store.register(new Fake("Person", List.of(oscarPerson)), "oscarnominations");
         store.register(new Fake("OfficeHolding", List.of(holding)), "History");
 
-        // Loading the holding first used to let its reachable Person occupy Q1.
-        assertEquals(List.of(holding), store.list("OfficeHolding"));
+        assertEquals(List.of(holding),
+                store.list(new ViewableStore.Address("History", "OfficeHolding")));
 
-        assertEquals(oscarPerson, store.get("Person", "Q1"),
-                "the source registered for Person owns Person addresses regardless of "
-                        + "which other dataset was requested first");
+        assertEquals(oscarPerson,
+                store.get(new ViewableStore.Address("oscarnominations", "Person"), "Q1"),
+                "the Person source owns Person in ITS domain, whatever was loaded first");
     }
 }

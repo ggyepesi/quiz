@@ -61,13 +61,20 @@ public class ViewableServerMain {
         // any type not claimed by a dataset's declared types goes under "Other".
         java.util.LinkedHashMap<String, java.util.List<String>> domains =
                 new java.util.LinkedHashMap<>();
+        // Types are listed as the ADDRESS the client sends back — domain/Type — because a
+        // bare name no longer identifies one collection. Three domains import the same
+        // Person model and each serves its own people; the domain is what says whose.
         java.util.Set<String> claimed = new java.util.HashSet<>();
+        java.util.Set<String> served = new java.util.HashSet<>();
+        for (ViewableStore.Address a : store.addresses()) {
+            served.add(a.domain() + '\0' + a.type());
+        }
         for (quiz.DatasetRegistry.Dataset d : registry.datasets()) {
             java.util.List<String> ts = new java.util.ArrayList<>();
             for (String t : d.types()) {
-                if (store.types().contains(t)) {
-                    ts.add(t);
-                    claimed.add(t);
+                if (served.contains(d.name() + '\0' + t)) {
+                    ts.add(d.name() + "/" + t);
+                    claimed.add(d.name() + '\0' + t);
                 }
             }
             if (!ts.isEmpty()) {
@@ -75,9 +82,9 @@ public class ViewableServerMain {
             }
         }
         java.util.List<String> other = new java.util.ArrayList<>();
-        for (String t : store.types()) {
-            if (!claimed.contains(t)) {
-                other.add(t);
+        for (ViewableStore.Address a : store.addresses()) {
+            if (!claimed.contains(a.domain() + '\0' + a.type())) {
+                other.add(a.toString());
             }
         }
         if (!other.isEmpty()) {
