@@ -147,8 +147,8 @@ public class WorkflowLogWindow implements LogListener {
 
         // Save the whole log, fully expanded, to a text file — for diffing two runs
         // offline regardless of what's collapsed in the UI.
-        JButton saveButton = new JButton("Save log…");
-        saveButton.setToolTipText("Save the entire log (fully expanded) to a text file");
+        JButton saveButton = new JButton("Save query log + run…");
+        saveButton.setToolTipText("Save the readable query log and its restorable pipeline run");
         saveButton.addActionListener(e -> saveLog(f));
         JPanel north = new JPanel(new BorderLayout(6, 6));
         north.add(search, BorderLayout.CENTER);

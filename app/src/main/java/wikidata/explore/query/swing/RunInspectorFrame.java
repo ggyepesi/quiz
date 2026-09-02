@@ -18,14 +18,20 @@ public final class RunInspectorFrame extends JFrame {
     private final JTextArea log = new JTextArea();
     private final JTextField search = new JTextField(26);
     private final JLabel matchCount = new JLabel(" ");
+    private final Path preferredDirectory;
     private SavedRunArtifact artifact;
 
     public RunInspectorFrame() {
+        this(Path.of(aux.Constants.dataDirectory));
+    }
+
+    public RunInspectorFrame(Path preferredDirectory) {
         super("Run Inspector");
+        this.preferredDirectory = usableDirectory(preferredDirectory);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(6, 6));
 
-        JButton open = new JButton("Open saved run…");
+        JButton open = new JButton("Open saved query log…");
         open.addActionListener(e -> chooseAndOpen(this));
         pipelines.addActionListener(e -> showPipeline(pipelines.getSelectedIndex()));
         JPanel top = new JPanel(new BorderLayout(6, 6));
@@ -83,11 +89,20 @@ public final class RunInspectorFrame extends JFrame {
     }
 
     public void chooseAndOpen(Component parent) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Open query log or saved run");
+        JFileChooser chooser = new JFileChooser(preferredDirectory.toFile());
+        chooser.setDialogTitle("Open saved query log");
         if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
             open(chooser.getSelectedFile().toPath());
         }
+    }
+
+    static Path usableDirectory(Path preferred) {
+        Path candidate = preferred == null ? null
+                : preferred.toAbsolutePath().normalize();
+        if (candidate != null && java.nio.file.Files.isDirectory(candidate)) {
+            return candidate;
+        }
+        return Path.of(aux.Constants.dataDirectory).toAbsolutePath().normalize();
     }
 
     private void showPipeline(int index) {

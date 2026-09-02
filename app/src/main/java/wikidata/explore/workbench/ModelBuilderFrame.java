@@ -139,7 +139,7 @@ public class ModelBuilderFrame extends JFrame {
             new JButton("Show query logs");
 
     private final JButton openSavedRunButton =
-            new JButton("Open saved run…");
+            new JButton("Open saved query log…");
 
     private final JButton showExplorerButton =
             new JButton("Explorer tools");
@@ -988,7 +988,8 @@ public class ModelBuilderFrame extends JFrame {
         showQueryLogsButton.addActionListener(e -> querySession.showLogs(this));
         openSavedRunButton.addActionListener(e -> {
             wikidata.explore.query.swing.RunInspectorFrame inspector =
-                    new wikidata.explore.query.swing.RunInspectorFrame();
+                    new wikidata.explore.query.swing.RunInspectorFrame(
+                            projectDataDir().toPath());
             inspector.setLocationRelativeTo(this);
             inspector.setVisible(true);
             inspector.chooseAndOpen(this);
