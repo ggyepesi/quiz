@@ -120,17 +120,42 @@ semantics.
 A key is an ordered list of explicit components. A component is either:
 
 - a configured field path; or
-- a named structural identity supplied by production, such as
-  **source identity** or **owner + production site**.
+- a named structural identity supplied by production:
 
-Source identity is provider-qualified (`namespace + id`), so identifiers from two
-datasources cannot collide accidentally. A Statement's subject and object are ordinary
-fields and become key components only when selected by the modeller. No editor,
-compiler or execution path derives a key from field roles.
+| component | the instance is | today |
+|---|---|---|
+| **source identity** | the datasource's own entity, provider-qualified (`namespace + id`) so two datasources cannot collide | `ClassKind.identityFromSource()`, hard-coded for Source |
+| **owner + production site** | the part produced for one owner at one site — `⟨Name@Person.structuredName, Q42⟩` | `OwnedComponents`, composed and not configurable |
+| **source occurrence** | exactly what the datasource produced, one instance per occurrence | nothing; it is what an empty key accidentally means |
 
-An empty key is an explicit validation error for a generatable class unless its
-construct supplies a mandatory structural key (Owned is the first such case). It must
-never mean “guess a key from the current fields”.
+A Statement's subject and object are ordinary fields and become key components only when
+selected by the modeller. No editor, compiler or execution path derives a key from field
+roles.
+
+**There is no such thing as "no key".** What has been called surrogate identity is a key —
+on the candidate's own source occurrence identity, which is distinct by construction.
+Naming it removes the hole where blankness had to mean something: an empty key is now an
+explicit validation error for a generatable class, because every real intent has a name
+and blankness can only mean *not yet decided*.
+
+Choosing the source-occurrence component is not the confusion this document warns about
+elsewhere. The candidate contract keeps occurrence identity "for diagnostics, never
+confused with the final modeled identity" — that warns against INFERRING it, and a
+modeller selecting it is the opposite of an inference.
+
+**Required, and offered.** The key must be authored: nothing writes one. The editor
+offers source occurrence as the proposed component for a new class, so the ordinary case
+is one accepted choice rather than a form to fill. Offering and writing are different
+acts — the previous mechanism wrote a key on class creation and rewrote it from unrelated
+field edits, which is why nobody could say what the key in the editor meant.
+
+An empty key does NOT mean "collapse the class into one instance", although keyed
+reduction read literally says so — group by nothing is one group. That operation is
+real, but it is **aggregation**: it needs `sum`, `max` and similar over a partition,
+which is a vocabulary this document deliberately does not give reducers, and it produces
+a coarser-grained result which aggregation already models as a separate class-producing
+step. Reaching it by leaving a field blank would be the most surprising possible reading
+of that blank.
 
 ### 3. Field reduction
 
@@ -314,18 +339,7 @@ Three intents hide under "no key":
 | one instance per class | every candidate is the same thing | a key of `()` — never wanted, but expressible |
 | not decided yet | the modeller has not chosen | a validation error |
 
-So the resolution is: **there is no such thing as "no key".** What is called surrogate
-identity IS a key — on the candidate's own occurrence identity, which is distinct by
-construction. That makes it a third named structural component beside `SOURCE_IDENTITY`
-and `OWNER_SITE_IDENTITY`, and it makes this document's "an empty key is a validation
-error" rule land cleanly: an empty key is an error precisely because every real intent
-now has a name, so blankness can only mean "not decided".
-
-One line above needs adjusting to allow it. The candidate contract says occurrence
-identity is "for diagnostics, never confused with the final modeled identity". Choosing
-it as an explicit key component is not that confusion — it is the modeller saying one
-instance per source occurrence. The warning should be against INFERRING it, not against
-naming it.
+So there is no such thing as "no key" — see axis 2, where this is now the rule.
 
 ### A collection-valued key component has no single value to key on
 
@@ -371,7 +385,9 @@ piecemeal now would build the parallel path milestone 7 exists to delete.
 
 ### Milestone 0 — make the current statement declaration truthful
 
-- Remove all automatic key seeding and require the user to select statement keys.
+- Remove all automatic key seeding. The key becomes required and authored; the editor
+  OFFERS the source-occurrence component for a class that has none, which is one accepted
+  choice rather than a silent write (axis 2).
 - Resolve vocabulary bounds for both ends during compilation.
 - Preserve the full `EntityBound` through compilation and execution; do not reconstruct
   a narrower P31-only approximation.
