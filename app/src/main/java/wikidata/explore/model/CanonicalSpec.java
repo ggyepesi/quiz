@@ -40,6 +40,15 @@ public class CanonicalSpec {
     // Identity for STATEMENT classes: the natural-key fields (the grain), in order.
     // Empty => surrogate. SOURCE and OWNED obtain identity elsewhere.
     private final List<String> keyFields = new ArrayList<>();
+    // What happens to a non-key field when several candidates share a key. Absent means
+    // nobody chose, and the cardinality default applies — which is safe precisely
+    // because both defaults can only keep or report. See canonical.Reduction.
+    private final java.util.Map<String, canonical.Reduction> reductions =
+            new java.util.LinkedHashMap<>();
+    // What becomes of a candidate whose key cannot be computed. Beside the key, because
+    // it decides whether the candidate takes part at all.
+    private canonical.MissingKeyPolicy missingKeyPolicy =
+            canonical.MissingKeyPolicy.defaultPolicy();
     private DuplicatePolicy duplicatePolicy = DuplicatePolicy.KEEP_ONE;
 
     private DisplayNameMode displayNameMode = DisplayNameMode.LABEL;
@@ -57,6 +66,21 @@ public class CanonicalSpec {
 
 
     /** The natural-key fields for a STATEMENT class (mutable). */
+    /** The chosen reduction per field; absent means the cardinality default applies. */
+    public java.util.Map<String, canonical.Reduction> reductions() {
+        return reductions;
+    }
+
+    public canonical.MissingKeyPolicy missingKeyPolicy() {
+        return missingKeyPolicy == null
+                ? canonical.MissingKeyPolicy.defaultPolicy() : missingKeyPolicy;
+    }
+
+    public void missingKeyPolicy(canonical.MissingKeyPolicy value) {
+        missingKeyPolicy = value == null
+                ? canonical.MissingKeyPolicy.defaultPolicy() : value;
+    }
+
     public List<String> keyFields() { return keyFields; }
 
     public DuplicatePolicy duplicatePolicy() {
@@ -127,6 +151,8 @@ public class CanonicalSpec {
         c.displayNameTemplate = displayNameTemplate;
         c.labelLanguage = labelLanguage;
         c.primaryListField = primaryListField;
+        c.reductions.putAll(reductions);
+        c.missingKeyPolicy = missingKeyPolicy();
         return c;
     }
 }
