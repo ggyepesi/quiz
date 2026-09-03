@@ -21,16 +21,16 @@ class EntityBoundTest {
 
     @Test void anEndIsBoundedOneWayAndTheOtherStatesAreUnrepresentable() {
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "P31", false),
+                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "P31", "", false),
                 "an explicit set is not also a relation");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.RELATION, List.of("Q1"), "", false),
+                () -> new EntityBound(EntityBound.Kind.RELATION, List.of("Q1"), "", "", false),
                 "a relation bound without a property is not a bound");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.UNBOUNDED, List.of("Q1"), "", false),
+                () -> new EntityBound(EntityBound.Kind.UNBOUNDED, List.of("Q1"), "", "", false),
                 "an unbounded end carries no values");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of(), "", false),
+                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of(), "", "", false),
                 "a bounded end with nothing in it is not bounded");
     }
 
@@ -75,5 +75,32 @@ class EntityBoundTest {
         assertEquals("P279", relation.relationId());
         assertTrue(relation.includeDescendants(),
                 "P279 closure the single-QID type filter could not express at all");
+    }
+
+    /**
+     * A vocabulary bound is a REFERENCE. Resolving it to its members here would freeze
+     * them, so editing the vocabulary would stop reaching the ends bounded by it — the
+     * same reason an import is a live reference and not a copy.
+     */
+    @Test void aVocabularyBoundNamesItsSelectionRatherThanCopyingIt() {
+        EntityBound bound = EntityBound.vocabulary("OscarCategories");
+
+        assertEquals(EntityBound.Kind.VOCABULARY, bound.kind());
+        assertEquals("OscarCategories", bound.selectionName());
+        assertEquals(List.of(), bound.qids(), "a reference carries no values of its own");
+        assertTrue(bound.toRequest("wikidata").isEmpty(),
+                "only the project knows a vocabulary's members, so compilation resolves "
+                        + "it — this record cannot");
+    }
+
+    @Test void theOtherKindsDoNotNameASelection() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "",
+                        "OscarCategories", false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EntityBound(EntityBound.Kind.VOCABULARY, List.of("Q1"), "",
+                        "OscarCategories", false),
+                "a vocabulary bound is a reference, not a copy of its values");
+        assertFalse(EntityBound.vocabulary("  ").bounded());
     }
 }

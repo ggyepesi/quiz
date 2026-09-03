@@ -116,6 +116,13 @@ public class QualifierLoader {
             case RELATION -> client == null ? null : new HashSet<>(
                     fetchValueQids(client, cfg.objectBound().qids().get(0), log));
             case UNBOUNDED -> null;
+            // A vocabulary is a REFERENCE, and only the project knows its members, so
+            // compilation resolves it before anything executes. Arriving here means it
+            // did not, which is a wiring fault rather than a data condition — silently
+            // treating it as unbounded would scan Wikidata instead of saying so.
+            case VOCABULARY -> throw new IllegalStateException(
+                    "Vocabulary bound '" + cfg.objectBound().selectionName()
+                            + "' reached the loader unresolved");
         };
 
         // Discovery and materialization are separate graph operations. An explicit

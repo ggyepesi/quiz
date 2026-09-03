@@ -187,6 +187,7 @@ public class StatementSourcePanel extends JPanel {
         subjectBoundMode.setSelectedItem(switch (subject.kind()) {
             case EXPLICIT -> THESE_ENTITIES;
             case RELATION -> INSTANCES_OF;
+            case VOCABULARY -> A_VOCABULARY;
             case UNBOUNDED -> ANY;
         });
         subjectBoundValue.setText(String.join(" ", subject.qids()));

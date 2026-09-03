@@ -26,6 +26,7 @@ public record EntityBound(
         Kind kind,
         List<String> qids,
         String relationPid,
+        String selectionName,
         boolean includeDescendants) {
 
     public enum Kind {
@@ -34,15 +35,37 @@ public record EntityBound(
         /** Exactly these entities. */
         EXPLICIT,
         /** The entities carrying {@code relationPid} into {@link #qids()}. */
-        RELATION
+        RELATION,
+        /**
+         * The members of a named VOCABULARY Selection.
+         *
+         * <p>A reference, not a copy. Resolving a vocabulary to its QIDs here would
+         * freeze them: editing the vocabulary would stop reaching the models bounded by
+         * it, which is the same reason an import is a live reference rather than a copy.
+         */
+        VOCABULARY
     }
 
     public EntityBound {
         if (kind == null) throw new IllegalArgumentException("An entity bound needs a kind");
         qids = List.copyOf(qids == null ? List.of() : qids);
         relationPid = relationPid == null ? "" : relationPid.trim();
-        if (kind == Kind.UNBOUNDED && (!qids.isEmpty() || !relationPid.isBlank())) {
+        selectionName = selectionName == null ? "" : selectionName.trim();
+        if (kind == Kind.UNBOUNDED
+                && (!qids.isEmpty() || !relationPid.isBlank() || !selectionName.isBlank())) {
             throw new IllegalArgumentException("An unbounded end carries no values");
+        }
+        if (kind != Kind.VOCABULARY && !selectionName.isBlank()) {
+            throw new IllegalArgumentException("Only a vocabulary bound names a selection");
+        }
+        if (kind == Kind.VOCABULARY) {
+            if (selectionName.isBlank()) {
+                throw new IllegalArgumentException("A vocabulary bound needs a name");
+            }
+            if (!qids.isEmpty() || !relationPid.isBlank()) {
+                throw new IllegalArgumentException(
+                        "A vocabulary bound is a reference, not a copy of its values");
+            }
         }
         if (kind == Kind.EXPLICIT && !relationPid.isBlank()) {
             throw new IllegalArgumentException("An explicit bound has no relation");
@@ -50,20 +73,23 @@ public record EntityBound(
         if (kind == Kind.RELATION && !relationPid.matches("(?i)P\\d+")) {
             throw new IllegalArgumentException("A relation bound needs a property");
         }
-        if (kind != Kind.UNBOUNDED && qids.isEmpty()) {
-            throw new IllegalArgumentException("A bounded end needs at least one entity");
+        if (kind == Kind.EXPLICIT || kind == Kind.RELATION) {
+            if (qids.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A bounded end needs at least one entity");
+            }
         }
     }
 
     public static EntityBound unbounded() {
-        return new EntityBound(Kind.UNBOUNDED, List.of(), "", false);
+        return new EntityBound(Kind.UNBOUNDED, List.of(), "", "", false);
     }
 
     /** Exactly these entities; {@link #unbounded()} when none of them is a QID. */
     public static EntityBound explicit(List<String> qids) {
         List<String> clean = onlyQids(qids);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.EXPLICIT, clean, "", false);
+                : new EntityBound(Kind.EXPLICIT, clean, "", "", false);
     }
 
     /** The entities carrying {@code relationPid} into {@code targets}. */
@@ -71,7 +97,17 @@ public record EntityBound(
             String relationPid, List<String> targets, boolean includeDescendants) {
         List<String> clean = onlyQids(targets);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.RELATION, clean, relationPid, includeDescendants);
+                : new EntityBound(Kind.RELATION, clean, relationPid, "", includeDescendants);
+    }
+
+    /**
+     * The members of a named VOCABULARY Selection — by reference, so editing the
+     * vocabulary still reaches every end bounded by it.
+     */
+    public static EntityBound vocabulary(String selectionName) {
+        String name = selectionName == null ? "" : selectionName.trim();
+        return name.isEmpty() ? unbounded()
+                : new EntityBound(Kind.VOCABULARY, List.of(), "", name, false);
     }
 
     /** The entities that are {@code P31} of {@code typeQid}. */
@@ -88,7 +124,9 @@ public record EntityBound(
      * nothing to request, which is not the same as requesting nothing.
      */
     public java.util.Optional<PopulationRequest> toRequest(String namespace) {
-        if (!bounded()) return java.util.Optional.empty();
+        // A vocabulary names a Selection, and only the project can say what is in it.
+        // Resolving it here would need a model this record deliberately does not have.
+        if (!bounded() || kind == Kind.VOCABULARY) return java.util.Optional.empty();
         List<EntityRef> refs = new ArrayList<>();
         for (String qid : qids) refs.add(new EntityRef(namespace, qid));
         return java.util.Optional.of(kind == Kind.RELATION
