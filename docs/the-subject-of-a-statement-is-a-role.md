@@ -229,10 +229,85 @@ The object is not universally a "role". It is a role entity for P39 (`Position`)
 award/category for P166, and a nomination category for P1411. The general name in the
 configuration is therefore **Object entity/value**.
 
+### Three independent axes, and three different owners
+
+Configuring a statement triple is three separable decisions. They are **orthogonal** —
+any combination is legal — and, crucially, they are not owned by the same party:
+
+| axis | what it decides | owner | rule |
+|---|---|---|---|
+| **shape** | which field receives the subject and the object, and what placeholder class each is typed as | the model | the importer **fills** what the model left open; it never **changes** what the model settled |
+| **bounds** | the QIDs: which entities may be subject or object at all | the domain | the model may carry a default; an importer overrides it freely |
+| **representation** | `PositionHolder` represented as `Person` when P31 contains Q5 | the importing project | each importer chooses independently; already true today |
+
+The middle row is not a preference, it is forced. **Instances stay per-domain** — that
+was decided when models and domains were split. Bounds are what produce a population, so
+if bounds were model-owned and locked, every importer would be obliged to generate the
+same population, which contradicts that decision outright. Bounds must be domain-owned.
+
+Representation already works this way: `ClassImportPlan` carries an imported class and its
+admission rule (`EntityKindRule`) but not representations, which live on the importing
+project. That is what lets Oscars say `Nominee -> Person` without Nobel or History being
+opted in — see [[contextual-entity-representation.md]].
+
+So the odd one out is *shape*, not bounds — and even there the rule is narrower than it
+looks. "Owned there, edited there" is about **changing a decision the model made**. A leg
+the model never configured was never authored there, so an importer configuring it
+overrides nothing; it fills a hole. That distinction is what makes this implementable
+without reopening "may an importer override an imported class" (#132):
+
+```text
+fill     the model left the leg open      the importer configures it     allowed
+change   the model settled the leg        the importer overrides it      #132, still open
+```
+
+The QIDs are in four places, and "override the bounds" has to mean all four or it leaks:
+
+```text
+StatementClassSource.sourceClassName          the subject population
+StatementClassSource.valueSelectionName/Id    allowed objects (a vocabulary)
+GeneratedClassModel.seedQids                  a class's own seeds
+FieldSourceMapping.allowedQids / sourceQid    per-field allowed values
+```
+
+**An override must be visible.** Once two domains bound the same imported class
+differently, *"why does this Position have 28 members and that one 400?"* is only
+answerable if the editor distinguishes the model's default from this domain's override.
+Silent divergence looks exactly like a bug. And per directive 9, showing the difference
+must not be what creates it.
+
+### Neither leg has to be configured
+
+A statement class may leave its subject, its object, or both **unconfigured**. A model
+declares shape and does not generate, so requiring it to settle both ends would make a
+model answer a question only a domain has.
+
+This is the same sentence the codebase already says about bounding — *"bounding an
+acquisition is not a model's problem"* (`ModelValidationScopeTest`) — applied to the other
+leg. So the rule is the sibling of the bounding rule, not an exception to it:
+
+```text
+MODEL    subject and object may be unconfigured
+DOMAIN   both must be configured before it generates
+```
+
+An unconfigured leg is still **shown**, in the editor and in the explanation, as an
+explicit *unconfigured* state rather than as absence. An unconfigured placeholder class
+yields a **reference**: instances carrying identity and label and nothing else — the
+referenced-only class of [[modelbuilder-constructs.md]]. Specialization is what gives it
+fields, and it is optional.
+
+One consequence must be taken deliberately: if a domain could generate with the subject
+unconfigured, the subject would still have to land somewhere, and today
+`ModelStatementReifications` falls back to inventing a field named `source` — exactly the
+invisible convention this work removes. Requiring the destination **at domain level** is
+what allows that fallback to be deleted rather than leant on.
+
 ### Explicit subject projections
 
-Every acquired statement has exactly one subject. A modeled Statement class must say
-explicitly where that entity goes. The supported forms are:
+Every acquired statement has exactly one subject. **Where a statement class does say
+where that entity goes** — always, before a domain generates it; optionally in a model —
+these are the supported forms:
 
 1. one direct subject field, such as `OfficeHolding.holder -> PositionHolder`;
 2. an entity qualifier field whose explicit missing-value policy copies the statement
@@ -291,7 +366,8 @@ Before generation, validation must require:
 
 - a valid relation/property;
 - one resolvable object/value field;
-- explicit subject handling through one of the supported forms;
+- explicit subject handling through one of the supported forms, **in a domain**; a model
+  may leave it open (see *Neither leg has to be configured*);
 - every subject destination to be entity-valued;
 - at most one direct subject field;
 - no direct subject-fed target whose membership requires evidence the statement does not
