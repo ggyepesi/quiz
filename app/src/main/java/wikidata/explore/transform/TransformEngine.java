@@ -37,6 +37,7 @@ public class TransformEngine {
     // witness) — with the exact identity fields the decision keyed on, so it can be
     // double-checked in the generation log.
     private final List<SelfRefFinding> selfRefFindings = new ArrayList<>();
+    private final List<IdentityCollision> identityCollisions = new ArrayList<>();
 
     /** Whether a fully self-referential atom was dropped as a witnessed phantom. */
     public enum SelfRefDecision { DROPPED, KEPT }
@@ -60,6 +61,28 @@ public class TransformEngine {
     /** Structured audit of the self-referential phantom drop (#99). */
     public List<SelfRefFinding> selfReferenceFindings() {
         return selfRefFindings;
+    }
+
+    /**
+     * Records that two statement records shared a key and became one.
+     *
+     * <p>A key is a decision about grain, and this is that decision's consequence made
+     * visible. It was invisible: the loser was dropped or folded in silently, so a key
+     * too coarse for its data shrank the population with no symptom beyond a smaller
+     * number in counts.tsv. Nobel MEANS to collapse — two laureates sharing one prize
+     * are one award — so this is reported as a fact, never as an error.
+     *
+     * @param kept the record that survived
+     * @param collapsed the record that did not, merged into it or dropped
+     */
+    public record IdentityCollision(String type, String key,
+                                    WikidataDynamicObject kept,
+                                    WikidataDynamicObject collapsed,
+                                    boolean merged) { }
+
+    /** What collapsed on the key in the last call, in encounter order. */
+    public List<IdentityCollision> identityCollisions() {
+        return identityCollisions;
     }
 
     /**
@@ -119,16 +142,62 @@ public class TransformEngine {
         java.util.Set<WikidataDynamicObject> allDemoted =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<SelfRefFinding> allFindings = new ArrayList<>();
+        List<IdentityCollision> allCollisions = new ArrayList<>();
         for (ReifyConstruct c : config.reifies) {
             created.addAll(applyReify(pool, c, valueFieldByList.get(c.listField())));
             allDemoted.addAll(demoted);
             allFindings.addAll(selfRefFindings);
+            allCollisions.addAll(identityCollisions);
         }
         demoted.clear();
         demoted.addAll(allDemoted);
         selfRefFindings.clear();
         selfRefFindings.addAll(allFindings);
+        identityCollisions.clear();
+        identityCollisions.addAll(allCollisions);
+        logIdentityCollisions(allCollisions, log);
         return created;
+    }
+
+    /**
+     * Says, per class, how many records shared a key and what happened to them.
+     *
+     * <p>Stated as a count and not as a problem: a coarse key can be exactly what the
+     * modeller wants — Nobel identifies an award, so two laureates sharing one prize
+     * SHOULD collapse into one record. The same line reading "6 collapsed" on a class
+     * that meant one record per statement is the prompt to add a qualifier to the key.
+     * Either way it was invisible before, and a shrinking population had no symptom.
+     */
+    private static void logIdentityCollisions(
+            List<IdentityCollision> collisions, GenerationLog log) {
+        if (log == null || collisions == null || collisions.isEmpty()) return;
+        java.util.Map<String, List<IdentityCollision>> byType =
+                new java.util.LinkedHashMap<>();
+        for (IdentityCollision collision : collisions) {
+            byType.computeIfAbsent(collision.type(), ignored -> new ArrayList<>())
+                    .add(collision);
+        }
+        for (var entry : byType.entrySet()) {
+            List<IdentityCollision> found = entry.getValue();
+            long merged = found.stream().filter(IdentityCollision::merged).count();
+            StringBuilder message = new StringBuilder()
+                    .append(entry.getKey()).append(": ").append(found.size())
+                    .append(found.size() == 1 ? " record shared" : " records shared")
+                    .append(" an identity and ")
+                    .append(merged == found.size() ? "were merged into it"
+                            : merged == 0 ? "were dropped"
+                            : merged + " merged, " + (found.size() - merged) + " dropped")
+                    .append(". Add a qualifier to the key to keep them apart.\n");
+            int shown = 0;
+            for (IdentityCollision collision : found) {
+                if (shown++ == 5) {
+                    message.append("    +").append(found.size() - 5).append(" more\n");
+                    break;
+                }
+                message.append("    ").append(collision.key()).append("\n");
+            }
+            log.message(message.toString());
+        }
     }
 
     /**
@@ -273,6 +342,7 @@ public class TransformEngine {
         // several applyReify calls must collect after each call (see reify()).
         demoted.clear();
         selfRefFindings.clear();
+        identityCollisions.clear();
         List<WikidataDynamicObject> created = new ArrayList<>();
         if (pool == null || c == null || c.sourceType() == null
                 || c.listField() == null || c.targetType() == null) {
@@ -374,7 +444,7 @@ public class TransformEngine {
         // the qualifiers were loaded.
         if (!c.dedupBy().isEmpty()) {
             result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField,
-                    c.roles(), c.duplicatePolicy());
+                    c.roles(), c.duplicatePolicy(), c.targetType(), identityCollisions);
         }
 
         // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
@@ -726,7 +796,8 @@ public class TransformEngine {
     private static List<WikidataDynamicObject> dedupPreferringWorkAnchored(
             List<WikidataDynamicObject> objs, List<String> keyFields,
             String srcField, List<ReifyConstruct.Role> roles,
-            wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy) {
+            wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy,
+            String type, List<IdentityCollision> collisions) {
         java.util.Map<String, WikidataDynamicObject> byKey =
                 new java.util.LinkedHashMap<>();
         for (WikidataDynamicObject o : objs) {
@@ -738,14 +809,19 @@ public class TransformEngine {
             }
             boolean replace = !workAnchored(cur, srcField, roles)
                     && workAnchored(o, srcField, roles);
+            boolean merged = duplicatePolicy
+                    == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS;
+            // Two records shared the key, so one of them stops existing. Recorded
+            // BEFORE the merge, while both are still distinguishable — afterwards the
+            // survivor carries the other's fields and the fact is unrecoverable.
+            if (collisions != null) {
+                collisions.add(new IdentityCollision(
+                        type, k, replace ? o : cur, replace ? cur : o, merged));
+            }
             if (replace) {
-                if (duplicatePolicy
-                        == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS) {
-                    mergePartialRecord(o, cur);
-                }
+                if (merged) mergePartialRecord(o, cur);
                 byKey.put(k, o);
-            } else if (duplicatePolicy
-                    == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS) {
+            } else if (merged) {
                 mergePartialRecord(cur, o);
             }
         }
