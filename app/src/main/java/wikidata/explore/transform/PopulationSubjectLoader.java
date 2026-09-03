@@ -76,11 +76,11 @@ public final class PopulationSubjectLoader {
         if (client == null
                 || relationPid == null || !relationPid.matches("(?i)P\\d+")
                 || entityType == null || entityType.isBlank()
-                || !(objectsBounded || subjects.bounded())) {
-            // The guard: refuse unless at least ONE end is bounded, rather than run an
-            // all-of-Wikidata membership scan. It used to demand the OBJECT end
-            // specifically, which was not the real requirement — it was the only end
-            // that could be bounded. Either side pins the join.
+                || !(objectsBounded || pinsTheJoin(subjects))) {
+            // The guard: refuse unless at least ONE end actually PINS the join, rather
+            // than run an all-of-Wikidata membership scan. Asking bounded() was a
+            // different question — a vocabulary bound IS bounded and pins nothing here,
+            // because only the project can say what is in it.
             return created;
         }
 
@@ -155,6 +155,13 @@ public final class PopulationSubjectLoader {
      * unbounded subject simply contributes no pattern — the query is exactly what it
      * was before.
      */
+    /** Whether this bound contributes a pattern to the query — which is what stops the
+     *  scan, and is not the same as merely being configured. */
+    private static boolean pinsTheJoin(EntityBound bound) {
+        return bound.kind() == EntityBound.Kind.EXPLICIT
+                || bound.kind() == EntityBound.Kind.RELATION;
+    }
+
     static String buildQuery(
             String relationPid, Set<String> targetValues, EntityBound subjects, int limit) {
         StringBuilder q = new StringBuilder(
@@ -177,6 +184,16 @@ public final class PopulationSubjectLoader {
                 q.append(" }\n");
             }
             case UNBOUNDED -> { }
+            // A vocabulary is a REFERENCE and only the project can resolve it, so it
+            // must never arrive here. It could: this switch is a STATEMENT, not an
+            // expression, so adding the kind compiled without covering it and the
+            // missing case emitted no pattern at all — while bounded() still answered
+            // true, so the guard let the query run unpinned. That is the
+            // all-of-Wikidata scan the guard exists to prevent, produced by the
+            // mechanism meant to prevent it.
+            case VOCABULARY -> throw new IllegalStateException(
+                    "Subject vocabulary bound '" + subjectBound.selectionName()
+                            + "' reached the loader unresolved");
         }
         if (targetValues != null && !targetValues.isEmpty()) {
             q.append("  VALUES ?value {");

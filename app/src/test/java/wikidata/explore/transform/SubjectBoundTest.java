@@ -8,6 +8,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -77,5 +78,32 @@ class SubjectBoundTest {
                 "__Holding", "", null, null, 0);
 
         assertEquals(List.of(), discovered);
+    }
+
+    /**
+     * A vocabulary bound must never reach the loader. It did: the switch that builds the
+     * subject pattern is a STATEMENT, so adding the kind compiled without covering it,
+     * and the missing case emitted nothing — while bounded() still answered true, so the
+     * guard let the query run unpinned. That is the all-of-Wikidata scan the guard
+     * exists to prevent, produced BY the mechanism meant to prevent it.
+     */
+    @Test void anUnresolvedVocabularySubjectIsRefusedRatherThanIgnored() {
+        assertThrows(IllegalStateException.class,
+                () -> PopulationSubjectLoader.buildQuery(
+                        "P39", Set.of("Q6412254"),
+                        EntityBound.vocabulary("Positions"), 0));
+    }
+
+    /**
+     * And being configured is not the same as pinning the join, which is what the guard
+     * has to ask. A vocabulary bound is bounded() and pins nothing here.
+     */
+    @Test void aVocabularySubjectDoesNotCountAsPinningTheJoin() {
+        List<?> discovered = new PopulationSubjectLoader().discover(
+                new java.util.ArrayList<>(), "P39", Set.of(),
+                EntityBound.vocabulary("Positions"), "__Holding", "", null, null, 0);
+
+        assertEquals(List.of(), discovered,
+                "unresolved, it bounds nothing — so this must refuse, not scan");
     }
 }

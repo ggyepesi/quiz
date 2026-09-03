@@ -103,4 +103,35 @@ class EntityBoundTest {
                 "a vocabulary bound is a reference, not a copy of its values");
         assertFalse(EntityBound.vocabulary("  ").bounded());
     }
+
+    /**
+     * Resolving a bound must not reshape one that needed no resolving.
+     *
+     * <p>Compilation used to take the authored bound apart into a QID list and a type
+     * QID and rebuild it from those, so it could only express what those two variables
+     * could: a RELATION on anything but P31 was dropped entirely, and includeDescendants
+     * with it. A bound that is already executable comes back identical.
+     */
+    @Test void resolvingLeavesAnExecutableBoundExactlyAsItWas() {
+        EntityBound viaSubclass = EntityBound.relation("P279", List.of("Q5"), true);
+        assertEquals(viaSubclass, viaSubclass.resolved(List.of("Q1"), "Q2"),
+                "a non-P31 relation survives, and so does its closure flag");
+
+        EntityBound explicit = EntityBound.explicit(List.of("Q30", "Q20"));
+        assertEquals(explicit, explicit.resolved(List.of("Q99"), "Q98"));
+        assertEquals(EntityBound.unbounded(),
+                EntityBound.unbounded().resolved(List.of("Q99"), ""));
+    }
+
+    @Test void aVocabularyResolvesToItsMembersOrItsType() {
+        assertEquals(EntityBound.explicit(List.of("Q1", "Q2")),
+                EntityBound.vocabulary("Categories").resolved(List.of("Q1", "Q2"), "Q9"),
+                "members win: they are the tighter, deterministic bound (R16)");
+        assertEquals(EntityBound.instancesOf("Q9"),
+                EntityBound.vocabulary("Categories").resolved(List.of(), "Q9"),
+                "a vocabulary with only a type still bounds by that type");
+        assertEquals(EntityBound.unbounded(),
+                EntityBound.vocabulary("Missing").resolved(List.of(), ""),
+                "a vocabulary naming nothing bounds nothing — and says so");
+    }
 }

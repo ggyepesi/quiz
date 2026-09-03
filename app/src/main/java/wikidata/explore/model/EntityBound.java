@@ -129,6 +129,26 @@ public record EntityBound(
                         DeclarationIds.clean(selectionId), false);
     }
 
+    /**
+     * This bound with any vocabulary reference replaced by what it names.
+     *
+     * <p>The one crossing from authored to executable, for BOTH ends. A vocabulary is a
+     * reference the project resolves; everything downstream then sees a bound it can
+     * act on, and never has to know a reference existed. Anything else is returned
+     * unchanged — a resolution must not quietly reshape a bound that needed none, which
+     * is how a non-P31 relation and includeDescendants were being lost.
+     *
+     * @param values the vocabulary's members, empty if it has none
+     * @param valueTypeQid the vocabulary's own type, blank if it has none
+     */
+    public EntityBound resolved(List<String> values, String valueTypeQid) {
+        if (kind != Kind.VOCABULARY) return this;
+        List<String> members = onlyQids(values);
+        if (!members.isEmpty()) return explicit(members);
+        String type = valueTypeQid == null ? "" : valueTypeQid.trim();
+        return type.isEmpty() ? unbounded() : instancesOf(type);
+    }
+
     /** The same bound, rebound to a selection that has been renamed. */
     public EntityBound rebound(String id, String name) {
         return kind == Kind.VOCABULARY ? vocabulary(name, id) : this;

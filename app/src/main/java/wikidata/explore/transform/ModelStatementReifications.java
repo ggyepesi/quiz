@@ -203,47 +203,26 @@ public final class ModelStatementReifications {
         List<String> dedup =
                 canonicalKey(statementClass.canonical().keyFields());
 
-        // The object's type filter comes from the authored objectBound, falling back to
-        // the class's own sourceQid for models saved before the bound existed. The
-        // fallback is a READ of old data, not a second place to write one.
-        EntityBound authoredObject = statementSource.objectBound();
-        String valueTypeQid =
-                authoredObject.kind() == EntityBound.Kind.RELATION
-                        && "P31".equalsIgnoreCase(authoredObject.relationPid())
-                        && !authoredObject.qids().isEmpty()
-                        ? authoredObject.qids().get(0)
-                        : clean(statementClass.sourceMapping().sourceQid());
-        if (authoredObject.kind() == EntityBound.Kind.EXPLICIT) {
-            valueQids = new ArrayList<>(authoredObject.qids());
-            discoveryValueQids = new ArrayList<>(authoredObject.qids());
+        // Each authored bound is resolved ONCE, as a bound, for both ends. It used to
+        // be taken apart into a QID list and a type QID and then rebuilt, which could
+        // only express what those two variables could: a RELATION on anything but P31
+        // was silently dropped, and includeDescendants with it. A bound stays a bound.
+        EntityBound objectBound = resolve(statementSource.objectBound(), project);
+        if (objectBound.kind() == EntityBound.Kind.EXPLICIT) {
+            valueQids = new ArrayList<>(objectBound.qids());
+            discoveryValueQids = new ArrayList<>(objectBound.qids());
+        } else if (!objectBound.bounded()) {
+            // No authored bound. Two older sources of the same fact, in order: values
+            // already derived from the field or the source class's membership, then the
+            // class's own sourceQid, which is where a statement class used to keep its
+            // object type filter. Both are READS of what a model already says, not
+            // second places to write a bound.
+            objectBound = !valueQids.isEmpty()
+                    ? EntityBound.explicit(valueQids)
+                    : EntityBound.instancesOf(
+                            clean(statementClass.sourceMapping().sourceQid()));
         }
-
-        // A referenced VOCABULARY Selection IS the value domain (production →
-        // Selection): its values/type override the class-derived filter. Blank
-        // valueSelectionName keeps the classic behavior.
-        if (statementSource.hasValueSelection()) {
-            wikidata.explore.model.Selection sel =
-                    project.findSelection(statementSource.valueSelectionName())
-                           .orElse(null);
-            if (sel instanceof wikidata.explore.model.VocabularySelection vs) {
-                if (!vs.valueQids().isEmpty()) {
-                    valueQids = new ArrayList<>(vs.valueQids());
-                    discoveryValueQids = new ArrayList<>(vs.valueQids());
-                }
-                if (vs.hasValueType()) {
-                    valueTypeQid = vs.valueTypeQid();
-                }
-            }
-        }
-
-        // The one place two authored inputs become one bound. Compilation is where
-        // that belongs: the loader used to make this choice at query time and without
-        // saying so, which is why a type filter beside an explicit set did nothing.
-        // An explicit set IS the bound; a type is a way of producing one. Configuring
-        // both is a model error for validation to report, not something to rank here.
-        EntityBound objectBound = !valueQids.isEmpty()
-                ? EntityBound.explicit(valueQids)
-                : EntityBound.instancesOf(valueTypeQid);
+        EntityBound subjectBound = resolve(statementSource.subjectBound(), project);
 
         QualifierLoadConfig load = new QualifierLoadConfig(
                 sourceClassName,
@@ -252,7 +231,7 @@ public final class ModelStatementReifications {
                 statementClass.className(),
                 valueField,
                 objectBound,
-                statementSource.subjectBound(),
+                subjectBound,
                 qualifiers,
                 discoveryValueQids,
                 discoverSubjects,
@@ -299,6 +278,18 @@ public final class ModelStatementReifications {
         }
 
         return "value";
+    }
+
+    /** An authored bound as something executable: a vocabulary becomes what it names. */
+    private static EntityBound resolve(EntityBound bound, CompiledProjectModel project) {
+        if (bound == null || bound.kind() != EntityBound.Kind.VOCABULARY) {
+            return bound == null ? EntityBound.unbounded() : bound;
+        }
+        wikidata.explore.model.Selection selection = project == null ? null
+                : project.findSelection(bound.selectionName()).orElse(null);
+        return selection instanceof wikidata.explore.model.VocabularySelection vocabulary
+                ? bound.resolved(vocabulary.valueQids(), vocabulary.valueTypeQid())
+                : bound.resolved(List.of(), "");
     }
 
     private static List<String> valueQids(
