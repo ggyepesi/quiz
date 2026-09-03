@@ -111,7 +111,7 @@ class StatementPartsTest {
      * tests hit by hand-building roles the saved data never contains. This is the
      * unmarked shape.
      */
-    @Test void theSubjectIsFoundOnAModelThatNeverMarkedOne() {
+    @Test void anUnmarkedSubjectIsRejectedRatherThanInferred() {
         var project = history();
         var holding = project.findClass("OfficeHolding");
         holding.fields().stream()
@@ -120,11 +120,9 @@ class StatementPartsTest {
 
         var explanation = EffectiveClassExplanations.explain(project, holding);
 
-        assertTrue(explanation.available(), explanation.unavailableReason());
-        assertEquals(List.of("source"), names(explanation, Part.SUBJECT),
-                "the subject reads no property of its own, which is what identifies it");
-        assertEquals("the entity the statement is about",
-                explanation.fields(Part.SUBJECT).get(0).filledBy());
+        assertFalse(explanation.available());
+        assertTrue(explanation.unavailableReason().contains("explicitly expose its subject"),
+                explanation.unavailableReason());
     }
 
     /** An ordinary class has no parts, and is not made to look as though it does. */

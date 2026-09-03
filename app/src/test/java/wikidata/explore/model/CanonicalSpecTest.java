@@ -69,6 +69,12 @@ class CanonicalSpecTest {
         nomination.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.FIELD)
                 .displayNameField("nominee");
         nomination.canonical().keyFields().add("nominee");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nomination);
 
         java.io.File file = java.io.File.createTempFile("model-canonical", ".json");

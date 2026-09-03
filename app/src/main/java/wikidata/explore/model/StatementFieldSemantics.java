@@ -90,43 +90,20 @@ public final class StatementFieldSemantics {
      * statement, and every consumer must read it from one place or each will invent a
      * different idea of which field it is.
      *
-     * <p>An explicit {@link FieldProductionKind#STATEMENT_SUBJECT} wins. Otherwise the
-     * subject is the runtime entity field that reads nothing: it is not a qualifier,
-     * it is not the value field, and it configures no property of its own — because it
-     * is filled from the statement's own item rather than from anything the statement
-     * says. That is a rule, not a guess.
-     *
-     * <p>Returns {@code ""} when no field qualifies, and — like
-     * {@link #statementValueFieldName} — also when SEVERAL do. Two unmapped entity
-     * fields make the subject genuinely ambiguous, and the modeller resolves it by
-     * marking one, which is a validation matter rather than something to guess wrong.
+     * <p>The subject is an authored role, not a shape inferred from an otherwise
+     * unmapped entity field. Returns {@code ""} when no direct subject field is
+     * configured. A statement may instead expose its subject through explicit
+     * subject-fallback or participant fields; see
+     * {@link #receivesStatementSubject(GeneratedClassModel, GeneratedFieldModel)}.
      */
     public static String statementSubjectFieldName(GeneratedClassModel owner) {
         if (owner == null || !owner.reifiesStatements()) {
             return "";
         }
-        for (GeneratedFieldModel field : owner.fields()) {
-            if (isStatementSubjectField(owner, field)) {
-                return field.name();
-            }
-        }
-        String valueField = statementValueFieldName(owner);
-        String found = "";
-        for (GeneratedFieldModel field : owner.fields()) {
-            if (!isRuntimeStatementField(field)
-                    || field.mapping().isQualifier()
-                    || field.type() != FieldType.ENTITY
-                    || field.name() == null
-                    || field.name().equals(valueField)
-                    || !trim(field.mapping().propertyPid()).isEmpty()) {
-                continue;
-            }
-            if (!found.isEmpty()) {
-                return "";
-            }
-            found = field.name();
-        }
-        return found;
+        return owner.fields().stream()
+                .filter(field -> isStatementSubjectField(owner, field))
+                .map(GeneratedFieldModel::name)
+                .findFirst().orElse("");
     }
 
     /** True when {@code field} plays the subject role — see
@@ -135,6 +112,32 @@ public final class StatementFieldSemantics {
             GeneratedClassModel owner, GeneratedFieldModel field) {
         return field != null && field.name() != null
                 && field.name().equals(statementSubjectFieldName(owner));
+    }
+
+    /**
+     * Whether this declared field can receive the statement's subject entity.
+     *
+     * <p>This is the complete authored vocabulary: a direct subject field, a scalar
+     * qualifier explicitly falling back to the subject, or a participants collection
+     * that explicitly combines the subject with qualifier values. No field shape is
+     * interpreted as a subject implicitly.
+     */
+    public static boolean receivesStatementSubject(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        if (isStatementSubjectField(owner, field)) return true;
+        if (owner == null || !owner.reifiesStatements() || field == null) return false;
+        if (field.mapping().productionKind()
+                == FieldProductionKind.STATEMENT_PARTICIPANTS) return true;
+        return supportsMissingQualifierPolicy(owner, field)
+                && effectiveMissingQualifierPolicy(
+                        field.mapping().missingQualifierPolicy())
+                        == MissingQualifierPolicy.STATEMENT_SUBJECT;
+    }
+
+    /** Whether the statement declares any visible destination for its subject. */
+    public static boolean hasStatementSubjectBinding(GeneratedClassModel owner) {
+        return owner != null && owner.fields().stream()
+                .anyMatch(field -> receivesStatementSubject(owner, field));
     }
 
     /** True when {@code field} plays the value role — see

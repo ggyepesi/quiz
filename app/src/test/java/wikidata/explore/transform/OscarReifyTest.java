@@ -102,6 +102,12 @@ class OscarReifyTest {
         nom.instanceMapping().sourceQid("Q19020");   // the wrong value-type filter
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");     // value field, no allowedQids
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -127,6 +133,12 @@ class OscarReifyTest {
         var cat = nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         cat.mapping().propertyPid("P1411");
         cat.mapping().allowedQids().add("Q102427");   // explicit, but MISSES Q103360
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -150,6 +162,12 @@ class OscarReifyTest {
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -511,6 +529,12 @@ class OscarReifyTest {
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
         wikidata.explore.model.StatementCanonicalDefaults
                 .replaceWithSuggestion(nom);
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         ModelStatementReifications.Reification editable =

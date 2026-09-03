@@ -29,6 +29,11 @@ class EnrichKeepsKindTest {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.instanceMapping().propertyPid("P1411");
         nomination.statementSource(new StatementClassSource("OscarBackbone", "P1411"));
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes.
+        nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         GeneratedClassModel backbone = new GeneratedClassModel("OscarBackbone");
         backbone.instanceMapping().sourceQid("Q19020");
         GeneratedFieldModel nominee = nomination.addField(

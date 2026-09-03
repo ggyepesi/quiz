@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -187,6 +188,12 @@ class WikidataGraphDiscoveryStateTest {
                 FieldCardinality.SINGLE);
         target.entityClassName("Position");
         target.mapping().propertyPid("P39");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         model.addClass(holding);
         return model;
     }

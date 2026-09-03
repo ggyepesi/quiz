@@ -9,6 +9,7 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelValidator;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
 
@@ -40,6 +41,11 @@ class SourceClasslessReifyTest {
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");
+        // Declared, not implied: reification used to invent a "source" field for the
+        // subject, so every fixture inherited one it never wrote down. A statement now
+        // has to say where its subject goes, and this is the field it was always using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
         return project;
     }
@@ -87,6 +93,11 @@ class SourceClasslessReifyTest {
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         value.entityClassName("Position");
         value.mapping().propertyPid("P39");
+        // Declared, not implied: reification used to invent a "source" field for the
+        // subject, so fixtures inherited one they never wrote down. A statement now has
+        // to say where its subject goes, and this is the field it was always using.
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(holding);
 
         assertFalse(GeneratedProjectModelValidator.validate(project).format()

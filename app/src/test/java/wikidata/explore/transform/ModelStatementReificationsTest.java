@@ -99,6 +99,9 @@ class ModelStatementReificationsTest {
 
         for (ModelStatementReifications.Reification result
                 : List.of(editable, immutable)) {
+            assertEquals("laureate", result.reify().sourceField(),
+                    "runtime must write the subject into the compiled subject field, "
+                            + "not an undeclared field literally named source");
             assertTrue(result.load().qualifiers().stream().noneMatch(
                     q -> q.fieldName().equals("laureate")));
             assertTrue(result.reify().roles().stream().anyMatch(
@@ -115,6 +118,10 @@ class ModelStatementReificationsTest {
         GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
         prize.statementSource(new StatementClassSource("Laureate", "P166"));
         prize.fields().add(field("category", FieldType.ENTITY, "P166", ""));
+        GeneratedFieldModel laureate = field("laureate", FieldType.ENTITY, "", "");
+        laureate.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        prize.fields().add(laureate);
         GeneratedFieldModel motivation = field(
                 "motivation", FieldType.TEXT, "", "P6208");
         motivation.mapping().valueLanguage("Q1860");
@@ -165,6 +172,10 @@ class ModelStatementReificationsTest {
         statement.statementSource(new StatementClassSource("People", "P39"));
         statement.instanceMapping().propertyPid("P39");
         statement.fields().add(field("position", FieldType.ENTITY, "P39", ""));
+        GeneratedFieldModel holder = field("holder", FieldType.ENTITY, "", "");
+        holder.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        statement.fields().add(holder);
         GeneratedFieldModel start = field("start", FieldType.DATE, "", "P580");
         start.mapping().qualifierDateMode(QualifierDateMode.DATE);
         statement.fields().add(start);
@@ -194,7 +205,10 @@ class ModelStatementReificationsTest {
         nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
         nom.instanceMapping().propertyPid("P1411");
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));
-        nom.fields().add(field("forWork", FieldType.ENTITY, "", "P1686"));
+        GeneratedFieldModel forWork = field("forWork", FieldType.ENTITY, "", "P1686");
+        forWork.mapping().missingQualifierPolicy(
+                wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
+        nom.fields().add(forWork);
         GeneratedFieldModel won = field("won", FieldType.BOOLEAN, "P166", "P1686");
         won.mapping().productionKind(
                 wikidata.explore.model.FieldProductionKind.COMPANION_MATCH);
@@ -228,7 +242,10 @@ class ModelStatementReificationsTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));
-        nom.fields().add(field("nominee", FieldType.ENTITY, "", "P2453"));
+        GeneratedFieldModel nominee = field("nominee", FieldType.ENTITY, "", "P2453");
+        nominee.mapping().missingQualifierPolicy(
+                wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
+        nom.fields().add(nominee);
         // Deliberately do not call StatementCanonicalDefaults: this represents an
         // explicitly stored empty/surrogate key, not an old model needing repair.
 

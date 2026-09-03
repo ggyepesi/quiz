@@ -146,6 +146,8 @@ class GeneratedProjectModelValidatorTest {
         nomination.instanceMapping().propertyPid("P1411");
         nomination.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE)
                   .entityClassName("Edition");
+        nomination.fields().get(nomination.fields().size() - 1).mapping()
+                .productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         project.addClass(new GeneratedClassModel("Edition"));
         project.addClass(nomination);
@@ -433,6 +435,45 @@ class GeneratedProjectModelValidatorTest {
         assertTrue(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("at most one Statement subject")),
                 result.format());
+    }
+
+    @Test void aStatementClassMustExplicitlyBindItsSubject() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        prize.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P166");
+        project.rootClass(people);
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("explicitly expose its subject")), result.format());
+    }
+
+    @Test void aStatementSubjectCannotAssertAnEvidenceAdmittedClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("People", "P39"));
+        GeneratedFieldModel subject = holding.addField(
+                "source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        project.rootClass(people);
+        project.addClass(person);
+        project.addClass(holding);
+        project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Target a role class")), result.format());
     }
 
     /**

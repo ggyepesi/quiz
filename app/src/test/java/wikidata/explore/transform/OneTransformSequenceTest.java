@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -55,6 +56,11 @@ class OneTransformSequenceTest {
                 nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         category.mapping().propertyPid("P1411");
         category.mapping().allowedQids().add("Q106301");
+        // Declared, not implied: reification used to invent a "source" field for the
+        // subject, so fixtures inherited one they never wrote down. A statement now has
+        // to say where its subject goes, and this is the field it was always using.
+        nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nomination);
 
         return ProjectModelCompiler.compile(project);

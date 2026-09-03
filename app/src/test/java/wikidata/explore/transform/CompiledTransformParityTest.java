@@ -123,6 +123,12 @@ class CompiledTransformParityTest {
         GeneratedFieldModel year =
                 nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
         year.expectation(FieldExpectation.EXPECTED);
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
@@ -163,6 +169,12 @@ class CompiledTransformParityTest {
                 .displayNameField("nominee");
         spec.keyFields().add("nominee");
         nom.canonical(spec);   // EXPLICIT spec
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
@@ -233,6 +245,12 @@ class CompiledTransformParityTest {
         won.mapping().subjectField("nominee");
         won.mapping().matchValueField("category");
         won.mapping().matchRoleField("forWork");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);

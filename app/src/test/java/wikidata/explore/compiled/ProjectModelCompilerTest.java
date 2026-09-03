@@ -39,6 +39,12 @@ class ProjectModelCompilerTest {
         GeneratedProjectModel p = project("kinds");
         GeneratedClassModel statement = new GeneratedClassModel("Statement");
         statement.statementSource(new StatementClassSource("Root", "P1411"));
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        statement.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         p.addClass(statement);
         GeneratedClassModel owned = new GeneratedClassModel("Part");
         owned.classKind(ClassKind.OWNED);
@@ -108,6 +114,12 @@ class ProjectModelCompilerTest {
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
         StatementCanonicalDefaults.replaceWithSuggestion(nom);
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         p.addClass(nom);
 
         CompiledClass cn = ProjectModelCompiler.compile(p)
@@ -130,6 +142,12 @@ class ProjectModelCompilerTest {
                 .mapping().propertyPid("P1411");        // value field on the statement PID
         nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P585");        // qualifier, not the value
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         p.addClass(nom);
 
         CompiledClass cn = ProjectModelCompiler.compile(p)
@@ -167,6 +185,12 @@ class ProjectModelCompilerTest {
         GeneratedProjectModel p = project("invalid");
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("DoesNotExist", "P1411"));
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         p.addClass(nom);
 
         ModelCompilationException ex = assertThrows(

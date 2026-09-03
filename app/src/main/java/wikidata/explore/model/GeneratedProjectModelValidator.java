@@ -50,7 +50,7 @@ public final class GeneratedProjectModelValidator {
             validateInverseFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
             validateCanonical(clazz, problems);
-            validateStatementSubjectFields(clazz, problems);
+            validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
             validateAggregateClass(project, clazz, problems);
 
@@ -180,7 +180,9 @@ public final class GeneratedProjectModelValidator {
     }
 
     private static void validateStatementSubjectFields(
-            GeneratedClassModel owner, List<Problem> problems) {
+            GeneratedProjectModel project,
+            GeneratedClassModel owner,
+            List<Problem> problems) {
         int subjects = 0;
         for (GeneratedFieldModel field : owner.fields()) {
             if (field == null) {
@@ -226,6 +228,23 @@ public final class GeneratedProjectModelValidator {
             problems.add(Problem.error(owner.className(),
                     "A Statement class must declare at most one Statement subject field; "
                             + subjects + " are configured."));
+        }
+        if (owner.reifiesStatements()
+                && !StatementFieldSemantics.hasStatementSubjectBinding(owner)) {
+            problems.add(Problem.error(owner.className(),
+                    "A Statement class must explicitly expose its subject as a single "
+                            + "ENTITY field, a subject-fallback field, or a participants list."));
+        }
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (!StatementFieldSemantics.receivesStatementSubject(owner, field)
+                    || field.entityClassName().isBlank()) continue;
+            GeneratedClassModel target = project.findClass(field.entityClassName());
+            if (target != null && MembershipPattern.kindRule(target, project) != null) {
+                problems.add(Problem.error(path(owner, field),
+                        "A statement subject cannot directly assert the evidence-admitted class '"
+                                + target.className() + "'. Target a role class and represent it as "
+                                + target.className() + " when its admission evidence matches."));
+            }
         }
     }
 

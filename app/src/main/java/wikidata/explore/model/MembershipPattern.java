@@ -253,7 +253,7 @@ public enum MembershipPattern {
             GeneratedClassModel owner, GeneratedFieldModel field, String className) {
         boolean self = className.equals(clean(owner.className()));
         if (owner.reifiesStatements()
-                && (StatementFieldSemantics.isStatementSubject(owner, field)
+                && (StatementFieldSemantics.receivesStatementSubject(owner, field)
                     || StatementFieldSemantics.isStatementValueField(owner, field))) {
             return self ? 3 : 0;
         }

@@ -187,6 +187,7 @@ class MembershipPatternTest {
         GeneratedFieldModel subject = holding.addField(
                 "source", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
         subject.entityClassName("Person");
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         GeneratedFieldModel held = holding.addField(
                 "position", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
         held.entityClassName("Position");

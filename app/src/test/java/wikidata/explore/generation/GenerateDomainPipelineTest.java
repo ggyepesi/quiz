@@ -56,6 +56,12 @@ class GenerateDomainPipelineTest {
         var nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.COLLECTION);
         nominee.mapping().qualifierPid("P2453");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes.
+        nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(
+                        wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
         model.rootClass(nomination);
 
         ProcessWorkflowPipeline pipeline = GenerateDomainPipeline.configured(model);

@@ -240,7 +240,8 @@ public final class ModelStatementReifications {
                 sourceClassName,
                 "__" + statementClass.className(),
                 statementClass.className(),
-                "source",
+                statementSource.subjectField().isBlank()
+                        ? "source" : statementSource.subjectField(),
                 "value",
                 true,
                 roles,
@@ -368,8 +369,7 @@ public final class ModelStatementReifications {
         List<ReifyConstruct.Role> roles = new ArrayList<>();
 
         for (CompiledField field : statementClass.ownFields()) {
-            if (field.source().productionKind()
-                    == FieldProductionKind.STATEMENT_SUBJECT) {
+            if (field.name().equals(statementClass.statementSource().subjectField())) {
                 roles.add(new ReifyConstruct.Role(
                         field.name(), field.name(), true,
                         wikidata.explore.model.RoleKind.IDENTITY));

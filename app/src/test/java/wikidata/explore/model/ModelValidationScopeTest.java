@@ -22,6 +22,13 @@ class ModelValidationScopeTest {
         project.projectKind(kind);
         GeneratedClassModel award = new GeneratedClassModel("Award");
         award.statementSource(new StatementClassSource("P166"));
+        // A model may leave its ACQUISITION unbounded — which entities get fetched is
+        // the domain's problem, as this test asserts. Where the subject GOES is not
+        // acquisition: it is the shape of the triple, which is exactly what a model
+        // declares. So the structural rule applies here while the bounding rule does not.
+        award.addField("source", datasource.schema.FieldType.ENTITY,
+                        FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.rootClass(award);
         return project;
     }

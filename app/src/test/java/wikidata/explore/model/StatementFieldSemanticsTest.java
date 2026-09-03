@@ -265,15 +265,16 @@ class StatementFieldSemanticsTest {
      * only honours an explicit mark answers "no subject" for real saved data.
      */
     @Test
-    void theSubjectIsResolvedWithoutBeingMarked() {
+    void anUnmarkedEntityFieldIsNotSilentlyMadeTheSubject() {
         GeneratedClassModel nom = reifyingClass();
         GeneratedFieldModel subject =
                 nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE);
         subject.entityClassName("Person");
 
-        assertEquals("source",
+        assertEquals("",
                 StatementFieldSemantics.statementSubjectFieldName(nom));
-        assertTrue(StatementFieldSemantics.isStatementSubject(nom, subject));
+        assertFalse(StatementFieldSemantics.isStatementSubject(nom, subject));
+        assertFalse(StatementFieldSemantics.receivesStatementSubject(nom, subject));
     }
 
     @Test

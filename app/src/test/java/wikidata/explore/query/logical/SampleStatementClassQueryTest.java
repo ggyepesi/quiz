@@ -4,6 +4,7 @@ import datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -33,6 +34,12 @@ class SampleStatementClassQueryTest {
         nomination.instanceMapping().propertyPid("P1411");
         nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");
+        // Declared, not implied: reification used to invent a "source" field for
+        // the subject, so fixtures inherited one they never wrote down. A
+        // statement must now say where its subject goes, and this is the field
+        // it was already using.
+        nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.addClass(nomination);
 
         RecordingSparql sparql = new RecordingSparql();

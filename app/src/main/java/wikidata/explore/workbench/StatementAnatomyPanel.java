@@ -56,7 +56,7 @@ final class StatementAnatomyPanel extends JPanel {
         List<String> lines = new ArrayList<>();
         String valueField = StatementFieldSemantics.statementValueFieldName(clazz);
         for (GeneratedFieldModel field : clazz.fields()) {
-            if (StatementFieldSemantics.isStatementSubjectField(clazz, field)) {
+            if (StatementFieldSemantics.isStatementSubject(clazz, field)) {
                 lines.add("subject entity  → " + field.name() + type(field));
             } else if (field.name().equals(valueField)) {
                 lines.add("statement value → " + field.name() + type(field));
@@ -102,7 +102,7 @@ final class StatementAnatomyPanel extends JPanel {
 
     private static String subjectEntityClass(GeneratedClassModel clazz) {
         for (GeneratedFieldModel field : clazz.fields()) {
-            if (StatementFieldSemantics.isStatementSubjectField(clazz, field)) {
+            if (StatementFieldSemantics.isStatementSubject(clazz, field)) {
                 return field.entityClassName() == null ? "" : field.entityClassName();
             }
         }
