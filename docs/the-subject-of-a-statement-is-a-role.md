@@ -261,6 +261,9 @@ fill     the model left the leg open      the importer configures it     allowed
 change   the model settled the leg        the importer overrides it      #132, still open
 ```
 
+How an end is bounded is worked out in [[bounding-an-entity-end.md]] — one construct
+used for both ends, with the alternatives mutually exclusive rather than silently ranked.
+
 The QIDs are in four places, and "override the bounds" has to mean all four or it leaks:
 
 ```text
