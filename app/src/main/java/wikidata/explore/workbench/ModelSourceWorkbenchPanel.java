@@ -358,6 +358,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void edit(Object selected) {
         this.selected = selected;
+        // A disabled Sample button must reflect what is selected NOW: the reasons are
+        // computed from the current selection, and asking them once at wiring time made
+        // them permanently stale.
+        samplePanel.refreshAvailability();
 
         CardLayout layout =
                 (CardLayout) cardPanel.getLayout();

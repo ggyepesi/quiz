@@ -21,14 +21,22 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class NodeSamplePanelTest {
 
-    @Test void thePanelDoesNotRenderASecondPresentationOfItsOwn() {
+    /**
+     * A sampled instance must not be rendered unlike a generated one — the same intent
+     * this test always had. It used to be satisfied by rendering nothing here and
+     * pointing at a separate Instances window, which made sense while sampling lived
+     * among the Explorer tools. Beside the class's own editor, sending the result
+     * elsewhere is the odd part, so the panel now shows it through the SAME renderer
+     * that window used.
+     */
+    @Test void aSampledInstanceIsRenderedTheWayAGeneratedOneIs() {
         NodeSamplePanel sample = new NodeSamplePanel();
 
         assertNull(find(sample, workbench.EntityResultPanel.class),
-                "a result table here would be a sampled instance rendered unlike a "
-                        + "generated one");
-        JLabel notice = labelContaining(sample, "Instances");
-        assertNotNull(notice, "and the reader is told where the result appears instead");
+                "a bespoke result table here would be a second presentation");
+        assertNotNull(
+                find(sample, wikidata.explore.query.swing.QueryObjectResultPanel.class),
+                "the shared Viewable renderer, the one the Instances window uses");
     }
 
     /** Whoever owns the Instances view receives the result, exactly once. */
@@ -87,5 +95,45 @@ class NodeSamplePanelTest {
             }
         }
         return null;
+    }
+
+    /**
+     * Sampling compiles the model first, so its usual failure IS the validation report —
+     * several lines naming the class and what it lacks. "Class sample failed." reduced
+     * that to three words and left the rest in a log nobody was looking at, which is how
+     * sampling OfficeHolding managed to say nothing about the subject it has not
+     * declared.
+     */
+    @Test void aFailureShowsWhatTheModelSaidRatherThanThatItFailed() throws Exception {
+        NodeSamplePanel sample = new NodeSamplePanel();
+        String report = "Cannot compile invalid model:\n"
+                + "ERROR: OfficeHolding: A Statement class must explicitly expose its "
+                + "subject as a single ENTITY field, a subject-fallback field, or a "
+                + "participants list.";
+
+        java.lang.reflect.Method show = NodeSamplePanel.class.getDeclaredMethod(
+                "showFailure", String.class, Throwable.class);
+        show.setAccessible(true);
+        show.invoke(sample, "Class sample failed", new IllegalStateException(report));
+
+        String shown = allText(sample);
+        assertTrue(shown.contains("must explicitly expose its subject"),
+                "the reason has to be readable where the reader is looking: " + shown);
+    }
+
+    private static String allText(java.awt.Container root) {
+        StringBuilder text = new StringBuilder();
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof JLabel label && label.getText() != null) {
+                text.append(label.getText()).append('\n');
+            }
+            if (child instanceof javax.swing.JTextArea area && area.getText() != null) {
+                text.append(area.getText()).append('\n');
+            }
+            if (child instanceof java.awt.Container container) {
+                text.append(allText(container));
+            }
+        }
+        return text.toString();
     }
 }

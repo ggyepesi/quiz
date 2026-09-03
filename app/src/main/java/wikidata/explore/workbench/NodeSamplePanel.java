@@ -2,6 +2,7 @@ package wikidata.explore.workbench;
 
 import wikidata.WikidataIds;
 
+import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.model.FieldSampleContext;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleIncludedField;
@@ -79,8 +80,15 @@ public class NodeSamplePanel extends JPanel {
     private final JTable table =
             new JTable(tableModel);
 
-    private final JLabel classResultNotice =
-            new JLabel("Class samples open in the Instances window.", SwingConstants.CENTER);
+    // The same renderer the Instances window uses — the shared Viewable path, not a
+    // second table. The panel used to say "Class samples open in the Instances window",
+    // which was true when sampling lived among the Explorer tools; now that it sits
+    // beside the class's own editor, sending its result somewhere else is the odd part.
+    private final QueryObjectResultPanel classResultPanel = new QueryObjectResultPanel();
+
+    // (5) A failure is not a status line. Compilation refuses with the model's whole
+    // validation report, and "Class sample failed." threw all of it away.
+    private final JTextArea failureArea = new JTextArea();
 
     private Consumer<ClassSampleResult> onClassSample = ignored -> { };
 
@@ -157,7 +165,11 @@ public class NodeSamplePanel extends JPanel {
         JTabbedPane tabs =
                 new JTabbedPane();
 
-        resultCards.add(classResultNotice, "class");
+        failureArea.setEditable(false);
+        failureArea.setLineWrap(true);
+        failureArea.setWrapStyleWord(true);
+        resultCards.add(classResultPanel, "class");
+        resultCards.add(new JScrollPane(failureArea), "failure");
         resultCards.add(new JScrollPane(table), "field");
         tabs.addTab("Results", resultCards);
         tabs.addTab("SPARQL", new JScrollPane(sparqlArea));
@@ -205,12 +217,7 @@ public class NodeSamplePanel extends JPanel {
                 classSampleButton,
                 this::acceptClassSample,
                 this::buildClassSampleQuery,
-                ex -> {
-                    statusLabel.setText("Class sample failed.");
-                    log.accept("SAMPLE class error: "
-                                       + ex.getMessage()
-                                       + "\n");
-                });
+                ex -> showFailure("Class sample failed", ex));
 
         queryRunner.wireButton(
                 fieldSampleButton,
@@ -218,13 +225,10 @@ public class NodeSamplePanel extends JPanel {
                 this::buildFieldSampleQuery,
                 ex -> {
                     onSampleFailed.run();
-                    statusLabel.setText("Field sample failed.");
-                    log.accept("SAMPLE field error: "
-                                       + ex.getMessage()
-                                       + "\n");
+                    showFailure("Field sample failed", ex);
                 });
 
-        updateButtonState();
+        refreshAvailability();
     }
 
     public void triggerFieldSample() {
@@ -314,8 +318,38 @@ public class NodeSamplePanel extends JPanel {
             statusLabel.setText(
                     (result == null ? 0 : result.size()) + " sampled instance(s)"
                             + (result != null && result.truncated() ? "; more available" : ""));
-            if (result != null) onClassSample.accept(result);
+            if (result == null) return;
+            if (result.instances() != null) {
+                classResultPanel.accept(result.instances());
+                ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
+            }
+            onClassSample.accept(result);
         });
+    }
+
+    /**
+     * Says what went wrong, in full.
+     *
+     * <p>Sampling compiles the model first, so its usual failure is the validation
+     * report — several lines naming the class and what it is missing. "Class sample
+     * failed." reduced that to three words and put the rest in a log the reader was not
+     * looking at, which is how sampling OfficeHolding came to say nothing about the
+     * subject it has not declared.
+     */
+    private void showFailure(String what, Throwable failure) {
+        String detail = failure == null || failure.getMessage() == null
+                ? "No detail available." : failure.getMessage().trim();
+        statusLabel.setText(what + " — " + firstLine(detail));
+        failureArea.setText(detail);
+        failureArea.setCaretPosition(0);
+        ((CardLayout) resultCards.getLayout()).show(resultCards, "failure");
+        log.accept("SAMPLE error: " + detail + "\n");
+    }
+
+    private static String firstLine(String text) {
+        int newline = text.indexOf('\n');
+        String first = newline < 0 ? text : text.substring(0, newline);
+        return first.isBlank() ? "see Results" : first;
     }
 
     private void acceptFieldSample(TableQueryResult result) {
@@ -421,12 +455,45 @@ public class NodeSamplePanel extends JPanel {
         onCardinalitySuggested.accept(detected);
     }
 
-    private void updateButtonState() {
-        boolean enabled =
-                queryRunner != null;
+    /**
+     * Each button is enabled only where it can do something, and a disabled one says
+     * why on hover.
+     *
+     * <p>Both used to be enabled whenever a query runner existed, so pressing one with
+     * nothing selected — or on a class that cannot be sampled — was answered with a
+     * refusal after the fact. The reasons already existed; nothing asked them.
+     */
+    public void refreshAvailability() {
+        // Whether a class can be sampled is answered by BUILDING its query, because
+        // that is the same question the button asks a moment later. A reason string
+        // alone could not answer it: classSampleUnavailableReason only ever returns a
+        // reason, since it exists to explain a refusal that has already happened.
+        String classReason = "Sampling needs a query runner.";
+        if (queryRunner != null) {
+            try {
+                classReason = classSampleSupplier.get() == null
+                        ? classSampleUnavailableReason.get() : "";
+            } catch (RuntimeException refused) {
+                // An invalid model refuses at compile. That is a real reason not to
+                // offer the button, and the message is the validation report.
+                classReason = refused.getMessage() == null
+                        ? "This class cannot be sampled." : refused.getMessage();
+            }
+        }
+        boolean canSampleClass = classReason.isBlank();
+        classSampleButton.setEnabled(canSampleClass);
+        classSampleButton.setToolTipText(canSampleClass
+                ? "Produce this class's instances and show them here." : classReason);
 
-        classSampleButton.setEnabled(enabled);
-        fieldSampleButton.setEnabled(enabled);
+        String fieldReason = queryRunner == null
+                ? "Sampling needs a query runner."
+                : fieldSampleSupplier.get() == null
+                        ? "Select a field to sample its values." : "";
+        boolean canSampleField = fieldReason.isBlank();
+        fieldSampleButton.setEnabled(canSampleField);
+        fieldSampleButton.setToolTipText(canSampleField
+                ? "Read this field's real values, and detect its cardinality."
+                : fieldReason);
     }
 
     private void installLinkBehavior() {

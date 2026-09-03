@@ -814,7 +814,9 @@ public class StatementSourcePanel extends JPanel {
                 "Expansion policy:", graphExpansionBox);
         GridBagUtils.labeledRow(graphDiscovery, gc, 1,
                 "Resolved pattern:", graphPatternValue);
-        GridBagUtils.wideRow(form, row++, graphDiscovery);
+        // Added last, below. Graph discovery says how far generation walks OUT from
+        // this class; it is not part of saying what the statement IS, and sitting
+        // between the triple and the identity it separated two halves of one thought.
 
         JPanel canonical =
                 new JPanel(new GridBagLayout());
@@ -910,6 +912,7 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.wideRow(derived, derivedRow++,
              qualifiersArea);
         GridBagUtils.wideRow(form, row++, derived);
+        GridBagUtils.wideRow(form, row++, graphDiscovery);
 
         GridBagConstraints filler =
                 new GridBagConstraints();
