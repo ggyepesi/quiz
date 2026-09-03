@@ -5,6 +5,8 @@ import datasource.schema.FieldType;
 import objectview.utils.swing.GridBagUtils;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphExpansionPolicy;
+import wikidata.WikidataIds;
+import wikidata.explore.model.EntityBound;
 import wikidata.explore.generation.WikidataGraphDiscoveryState;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.FieldSourceMapping;
@@ -51,6 +53,11 @@ public class StatementSourcePanel extends JPanel {
     private BiPredicate<List<String>, List<String>> identityChangeConfirmation =
             this::confirmIdentityChange;
 
+    private static final String ANY = "Anything";
+    private static final String THESE_ENTITIES = "These entities";
+    private static final String INSTANCES_OF = "Instances of";
+    private static final String A_VOCABULARY = "A vocabulary";
+
     private final JLabel titleLabel = new JLabel("Statement class");
     /** The "no declaration — infer it" choice, shown instead of a blank row. */
     private static final String INFER_PRIMARY_LIST = "(infer)";
@@ -63,6 +70,16 @@ public class StatementSourcePanel extends JPanel {
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
     private final JLabel subjectValue = new JLabel(" ");
     private final JLabel objectValue = new JLabel(" ");
+    // One control per end, so the alternatives cannot be configured together. They used
+    // to be separate rows that looked combinable while the loader silently kept one.
+    private final JComboBox<String> subjectBoundMode = new JComboBox<>(new String[] {
+            ANY, THESE_ENTITIES, INSTANCES_OF });
+    private final JTextField subjectBoundValue = new JTextField(16);
+    private final JComboBox<String> objectBoundMode = new JComboBox<>(new String[] {
+            ANY, A_VOCABULARY, INSTANCES_OF });
+    // The object's value is a vocabulary NAME or a type QID depending on the mode, so
+    // one slot swaps its editor rather than two rows sitting there half-disabled.
+    private final JPanel objectValueHolder = new JPanel(new java.awt.CardLayout());
     private final JTextField valueTypeField = new JTextField(10);
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
@@ -154,9 +171,80 @@ public class StatementSourcePanel extends JPanel {
         graphExpansionBox.setSelectedItem(source == null
                 ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
+        showBounds(source, clazz);
         refreshTriple();
         rebuildCanonicalControls();
         refreshDerived();
+    }
+
+    /**
+     * Puts each end's bound into its one control.
+     *
+     * <p>The object's bound still lives in two authored places — a vocabulary name and
+     * the class's type QID — so this reads whichever is set. The control writes only
+     * one and clears the other, which is what makes "both configured" unreachable from
+     * here; a model that already has both is a validation error, not something this
+     * panel silently resolves.
+     */
+    private void showBounds(StatementClassSource source, GeneratedClassModel owner) {
+        EntityBound subject = source == null
+                ? EntityBound.unbounded() : source.subjectBound();
+        subjectBoundMode.setSelectedItem(switch (subject.kind()) {
+            case EXPLICIT -> THESE_ENTITIES;
+            case RELATION -> INSTANCES_OF;
+            case UNBOUNDED -> ANY;
+        });
+        subjectBoundValue.setText(String.join(" ", subject.qids()));
+
+        String vocabulary = source == null ? "" : source.valueSelectionName();
+        String typeQid = owner == null ? "" : owner.instanceMapping().sourceQid();
+        objectBoundMode.setSelectedItem(!vocabulary.isBlank() ? A_VOCABULARY
+                : WikidataIds.isQid(typeQid) ? INSTANCES_OF : ANY);
+        refreshBoundControls();
+    }
+
+    /** The bound a mode and its typed value describe; unbounded when nothing usable. */
+    private static EntityBound boundFromControls(String mode, String text) {
+        List<String> qids = new ArrayList<>();
+        for (String part : (text == null ? "" : text).split("[,\\s]+")) {
+            if (!part.isBlank()) qids.add(part.trim());
+        }
+        if (THESE_ENTITIES.equals(mode)) return EntityBound.explicit(qids);
+        if (INSTANCES_OF.equals(mode)) {
+            return qids.isEmpty() ? EntityBound.unbounded()
+                    : EntityBound.instancesOf(qids.get(0));
+        }
+        return EntityBound.unbounded();
+    }
+
+    /** A mode beside the value it takes, as one row. */
+    private static JPanel boundRow(JComboBox<String> mode, java.awt.Component value) {
+        JPanel row = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(0, 0, 0, 6);
+        c.gridx = 0;
+        row.add(mode, c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        row.add(value, c);
+        return row;
+    }
+
+    /**
+     * Shows only the value the selected mode actually takes.
+     *
+     * <p>The alternatives were separate rows that looked combinable — a vocabulary and a
+     * type filter, both visible, both editable — while only one of them ever reached the
+     * query. One mode with one value is what makes that state unreachable rather than
+     * merely discouraged.
+     */
+    private void refreshBoundControls() {
+        subjectBoundValue.setEnabled(!ANY.equals(selectedText(subjectBoundMode)));
+        String objectMode = selectedText(objectBoundMode);
+        ((java.awt.CardLayout) objectValueHolder.getLayout()).show(
+                objectValueHolder, A_VOCABULARY.equals(objectMode) ? "vocabulary"
+                        : INSTANCES_OF.equals(objectMode) ? "type" : "none");
     }
 
     /**
@@ -251,8 +339,17 @@ public class StatementSourcePanel extends JPanel {
                     : prior.copy();
             next.sourceClassName(sourceClass);
             next.propertyPid(statementPid);
+            next.subjectBound(boundFromControls(
+                    selectedText(subjectBoundMode), subjectBoundValue.getText()));
+
+            // ONE object bound is written and the other place is cleared. Writing both
+            // is how a model reached the state where a type filter sat beside a
+            // vocabulary doing nothing, so this control cannot produce it.
+            String objectMode = selectedText(objectBoundMode);
             String valueDomain = selectedText(valueDomainBox);
-            next.valueSelectionName(NO_VALUE_DOMAIN.equals(valueDomain) ? "" : valueDomain);
+            next.valueSelectionName(A_VOCABULARY.equals(objectMode)
+                    && !NO_VALUE_DOMAIN.equals(valueDomain) ? valueDomain : "");
+
             next.graphExpansionPolicy((GraphExpansionPolicy)
                     graphExpansionBox.getSelectedItem());
             clazz.statementSource(next);
@@ -269,9 +366,13 @@ public class StatementSourcePanel extends JPanel {
             rebuildCanonicalControls();
         }
 
+        // The object's type QID is written ONLY when that is the chosen mode, and
+        // cleared otherwise. Writing it unconditionally is how it came to sit beside a
+        // vocabulary doing nothing: both were set, and only one reached the query.
         clazz.instanceMapping().sourceQid(
-                RuleNode.cleanQid(
-                        valueTypeField.getText()));
+                INSTANCES_OF.equals(selectedText(objectBoundMode))
+                        ? RuleNode.cleanQid(valueTypeField.getText())
+                        : "");
 
         applyCanonicalControls();
         refreshDerived();
@@ -721,9 +822,22 @@ public class StatementSourcePanel extends JPanel {
         GridBagConstraints tc = new GridBagConstraints();
         tc.insets = new Insets(3, 4, 3, 4);
         GridBagUtils.labeledRow(triple, tc, 0, "Subject:", subjectValue);
-        GridBagUtils.labeledRow(triple, tc, 1, "Property:", statementPropField);
-        GridBagUtils.labeledRow(triple, tc, 2, "Object:", objectValue);
+        subjectBoundValue.setToolTipText(
+                "QIDs, separated by spaces or commas. For \"Instances of\", one QID.");
+        GridBagUtils.labeledRow(triple, tc, 1, "Subject entities:",
+                boundRow(subjectBoundMode, subjectBoundValue));
+        GridBagUtils.labeledRow(triple, tc, 2, "Property:", statementPropField);
+        GridBagUtils.labeledRow(triple, tc, 3, "Object:", objectValue);
+        GridBagUtils.labeledRow(triple, tc, 4, "Object entities:",
+                boundRow(objectBoundMode, objectValueHolder));
         GridBagUtils.wideRow(form, row++, triple);
+
+        objectValueHolder.add(new JPanel(), "none");
+        objectValueHolder.add(valueDomainBox, "vocabulary");
+        objectValueHolder.add(valueTypeField, "type");
+
+        subjectBoundMode.addActionListener(e -> refreshBoundControls());
+        objectBoundMode.addActionListener(e -> refreshBoundControls());
 
         reifyFromBox.setToolTipText(
                 "Optional: the already-extracted class whose statements are read, "
@@ -735,16 +849,10 @@ public class StatementSourcePanel extends JPanel {
             reifyFromBox);
 
 
-        valueDomainBox.setToolTipText("Optional vocabulary of allowed statement values. "
-                + "Required when subjects are discovered directly from the property.");
-        GridBagUtils.labeledRow(form, row++,
-            "Allowed objects:", valueDomainBox);
 
-        valueTypeField.setToolTipText(
-                "Optional P31 filter on the statement value.");
-        GridBagUtils.labeledRow(form, row++,
-            "Object type filter:",
-            valueTypeField);
+
+
+
 
         JPanel graphDiscovery = new JPanel(new GridBagLayout());
         graphDiscovery.setBorder(BorderFactory.createTitledBorder("Graph discovery"));

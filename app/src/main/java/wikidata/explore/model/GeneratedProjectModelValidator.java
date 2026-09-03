@@ -685,6 +685,20 @@ public final class GeneratedProjectModelValidator {
             // scans, so a class that is structurally sound but not independently
             // generatable is a legitimate thing for a model to declare — the domain
             // that gives it a population is where the bound has to exist.
+        // Two object bounds are not two constraints. Only one ever reached the query:
+        // an explicit set won and the type filter did nothing, without saying so. The
+        // editor writes one and clears the other, so this catches models made before
+        // that, or edited by hand.
+        if (source.hasValueSelection()
+                && clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")) {
+            problems.add(Problem.error(
+                    clazz.className(),
+                    "The objects are bounded twice — vocabulary '"
+                            + source.valueSelectionName() + "' and instances of "
+                            + clean(clazz.instanceMapping().sourceQid())
+                            + ". Only one applies; keep the one you mean."));
+        }
+
             // EITHER end bounded is enough: each pins one side of the join, which is
             // what stops the scan (R16). This demanded the OBJECT end specifically,
             // which was never the requirement — it was the only end that COULD be

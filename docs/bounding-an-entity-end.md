@@ -176,7 +176,12 @@ rather than left as a second way to say the same thing.
    the join (R16) instead of only the object side. Either end bounded now satisfies the
    discovery guard, in the loader and in validation — the old rule named the object end
    because it was the only end that could be bounded.
-5. One editor control per end, in the triple box, offering the modes as a list.
+5. ~~One editor control per end~~ — **done**: a mode list plus its one value, in the
+   triple box. Choosing a mode writes that authored place and clears the other, so the
+   doubly-bounded state is unreachable from the editor; validation reports it for models
+   made before this or edited by hand. The object's authored form is still two fields
+   behind one control — consolidating them into an authored `objectBound` is what
+   remains.
 6. Decide the fate of the model-side `PopulationSelection`.
 
 Steps 1–3 change no behaviour on a correctly configured model; step 3 changes behaviour

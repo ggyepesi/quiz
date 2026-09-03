@@ -4,6 +4,7 @@ import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
 import datasource.graph.GraphExpansionPolicy;
+import wikidata.explore.model.EntityBound;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
@@ -254,5 +255,78 @@ class StatementSourcePanelTest {
             }
         }
         return text.toString();
+    }
+
+    /**
+     * One control per end, so the alternatives cannot be set together.
+     *
+     * <p>They were separate rows — a vocabulary and a type filter, both visible and both
+     * editable — while only one ever reached the query. Choosing a mode writes that one
+     * and clears the other, which is what makes the doubly-bounded state unreachable
+     * from the editor rather than merely discouraged.
+     */
+    @Test void choosingAnObjectBoundClearsTheOneItReplaces() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        StatementClassSource source = new StatementClassSource("P1411");
+        source.valueSelectionName("OscarCategories");
+        nom.statementSource(source);
+        nom.instanceMapping().sourceQid("Q19020");        // both, as only a hand edit can
+        project.addClass(nom);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(nom);
+        setCombo(panel, "objectBoundMode", "Instances of");
+        setText(panel, "valueTypeField", "Q19020");
+        panel.applyEdits();
+
+        assertEquals("", nom.statementSource().valueSelectionName(),
+                "the vocabulary is cleared, not left beside the type it lost to");
+        assertEquals("Q19020", nom.instanceMapping().sourceQid());
+    }
+
+    @Test void aSubjectBoundIsSettableAndSurvivesReopening() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+        setCombo(panel, "subjectBoundMode", "Instances of");
+        setText(panel, "subjectBoundValue", "Q5");
+        panel.applyEdits();
+
+        EntityBound bound = holding.statementSource().subjectBound();
+        assertEquals(EntityBound.Kind.RELATION, bound.kind());
+        assertEquals(java.util.List.of("Q5"), bound.qids());
+
+        panel.edit(holding);
+        assertEquals("Instances of", comboValue(panel, "subjectBoundMode"),
+                "reopening shows what was configured, not the default");
+    }
+
+    private static void setCombo(StatementSourcePanel panel, String name, String value)
+            throws Exception {
+        Field f = StatementSourcePanel.class.getDeclaredField(name);
+        f.setAccessible(true);
+        ((JComboBox<?>) f.get(panel)).setSelectedItem(value);
+    }
+
+    private static String comboValue(StatementSourcePanel panel, String name)
+            throws Exception {
+        Field f = StatementSourcePanel.class.getDeclaredField(name);
+        f.setAccessible(true);
+        Object selected = ((JComboBox<?>) f.get(panel)).getSelectedItem();
+        return selected == null ? "" : selected.toString();
+    }
+
+    private static void setText(StatementSourcePanel panel, String name, String value)
+            throws Exception {
+        Field f = StatementSourcePanel.class.getDeclaredField(name);
+        f.setAccessible(true);
+        ((javax.swing.text.JTextComponent) f.get(panel)).setText(value);
     }
 }
