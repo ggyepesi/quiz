@@ -557,6 +557,36 @@ on configuration that does not mean what it displays.
 - Pin stable collection/map/date/reference semantics with tests using the existing
   `StableIdentity` owner rather than copying it.
 
+**Exit condition: parity, not a milestone number.** Between this milestone and milestone 7
+the old paths still exist — `TransformEngine.dedupPreferringWorkAnchored` with
+`mergePartialRecord`, `ModelAggregates`' own grouping loop, and `Canonicalizer`'s
+three-branch identity. For that stretch, "which code decides identity" would otherwise
+have no single answer, which is the failure this codebase keeps rediscovering.
+
+The pattern that solves it is already here. `CompiledTransformParityTest` was written for
+the same shape — *"the compiled-model overloads of the pool transforms behave identically
+to the editable-model ones on the same input"* — and it made a two-path window safe by
+running both and asserting they agree. Do that again: the new engine leaves this
+milestone when a parity test over the shipped models is green, and milestone 7 deletes an
+old path because ITS parity has held, not because the sequence reached 7.
+
+Without this the new engine's correctness is first proven at regeneration, which is also
+the acceptance test — one event asked to establish two different things.
+
+**Intended divergences, listed up front.** Parity cannot cover where the new engine is
+MEANT to differ, and an unlisted divergence reads as a broken test exactly where the
+design is working:
+
+| case | today | after |
+|---|---|---|
+| Nobel `laureates` | one bespoke statement merge path | union distinct, from the cardinality default |
+| a conflicting scalar | silently kept on the preferred record by `mergePartialRecord` | reported, and counted per class |
+| survivor of a collision | work-anchored preference, implicit and class-wide | the configured reducers; no survivor is "preferred" |
+| an entity class's key | source identity, hard-coded by `ClassKind` | a chosen component, source identity by default |
+
+Everything else must match, including counts. A difference outside this table is a
+regression until shown otherwise.
+
 ### Milestone 3 — adapt normalized Wikidata output
 
 - Put a narrow adapter after the existing Wikidata entity/statement normalization. It
@@ -608,7 +638,8 @@ mechanics can be factored without source-specific knowledge leaking across the b
 ### Milestone 7 — remove parallel paths and regenerate
 
 - Delete `DuplicatePolicy`, `primaryListField` inference and construct-specific merge
-  loops after all callers use the compiled plan.
+  loops after all callers use the compiled plan AND that path's parity test has held
+  (milestone 2). Deletion follows the evidence, not the sequence number.
 - Verify Generate class, Generate domain, Remap, Enrich and Sample consume the same plan.
 - Regenerate Nobel, Oscars and History; use their counts and collision reports as forcing
   acceptance tests rather than migrating old snapshots.
