@@ -550,7 +550,10 @@ on configuration that does not mean what it displays.
 
 - Introduce one engine that partitions neutral candidates by class and stable key.
 - Implement require-agreement, union-distinct and prefer-non-empty with deterministic
-  output and provenance retention.
+  output and provenance retention. Deterministic means ordered by the values, not by
+  arrival — see the divergence table. Provenance is retained by never decomposing a
+  value: reduction keeps or combines whole values, so it cannot separate one from its
+  evidence.
 - Report candidate count, partition count, reductions and conflicts before materializing
   instances — per class, with examples, joining the existing identity-collision report
   rather than starting a second one.
@@ -583,6 +586,16 @@ design is working:
 | a conflicting scalar | silently kept on the preferred record by `mergePartialRecord` | reported, and counted per class |
 | survivor of a collision | work-anchored preference, implicit and class-wide | the configured reducers; no survivor is "preferred" |
 | an entity class's key | source identity, hard-coded by `ClassKind` | a chosen component, source identity by default |
+| the order within a combined collection | encounter order — the order rows arrived | the values' own stable form |
+
+The last one will be the first difference a parity run over Nobel actually shows, and it
+is the one most likely to be mistaken for a regression, so it is worth saying why it is
+not. `appendDistinct` keeps values in the order candidates arrived. That order is not a
+property of the model: R18 records that WDQS can answer a partial result as a silent 200,
+so two runs of the same configuration can produce the same set in a different sequence. A
+snapshot is meant to be reproducible from its model, which requires an order the model
+fixes — so a union orders by the values' own stable form, and the same candidates in any
+sequence produce the same instance.
 
 Everything else must match, including counts. A difference outside this table is a
 regression until shown otherwise.
