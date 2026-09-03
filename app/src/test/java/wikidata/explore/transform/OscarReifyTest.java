@@ -533,8 +533,7 @@ class OscarReifyTest {
                 .mapping().qualifierPid("P2453");                    // the nominee list
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
-        wikidata.explore.model.StatementCanonicalDefaults
-                .replaceWithSuggestion(nom);
+        wikidata.explore.model.StatementIdentity.seedIfEmpty(nom);
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field

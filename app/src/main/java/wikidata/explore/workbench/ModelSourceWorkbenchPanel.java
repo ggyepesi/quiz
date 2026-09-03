@@ -1108,18 +1108,13 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             if (!clazz.reifiesStatements()) {
                 classSourcePanel.applyEdits();
 
-                String sourceClass =
-                        projectModel.classes()
-                                    .stream()
-                                    .map(
-                                            GeneratedClassModel::className)
-                                    .filter(
-                                            name -> name != null
-                                                    && !name.isBlank()
-                                                    && !name.equals(
-                                                    clazz.className()))
-                                    .findFirst()
-                                    .orElse("");
+                // Nothing is invented here. This used to take findFirst() over the
+                // project's classes — so switching a class to a statement class in
+                // History silently declared Person its subject population, purely
+                // because Person is declared first. An arbitrary pick presented as a
+                // decision is exactly what directive 10 forbids: the UI is the
+                // authority for authored configuration, and a blank is honest.
+                String sourceClass = "";
 
                 // Switching class kind now writes the explicit source object.
                 // It no longer creates a hidden dependency between the legacy
@@ -1130,14 +1125,15 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 // valid statement class — a blank source class yields a property-only
                 // source, refined in the statement panel. Previously a blank source
                 // produced a null here, so the kind couldn't switch at all.
+                // Nor the property. "P1411" is the Oscars nomination property, and it
+                // was being written into every new statement class in every domain.
                 clazz.statementSource(
-                        new StatementClassSource(
-                                sourceClass,
-                                "P1411"));
-                // Switching the class kind is an explicit creation operation.
-                // Persist the current proposal now; runtime code never infers it.
-                wikidata.explore.model.StatementCanonicalDefaults
-                        .replaceWithSuggestion(clazz);
+                        new StatementClassSource(sourceClass, ""));
+                // The triple's own key, and only when there is none. The previous
+                // call swept in every scalar entity/date qualifier as well, so a class
+                // arrived with an identity nobody had chosen — which is why nobody
+                // could say what the "Re-derive identity" button was for.
+                wikidata.explore.model.StatementIdentity.seedIfEmpty(clazz);
             }
 
             statementSourcePanel.edit(clazz);

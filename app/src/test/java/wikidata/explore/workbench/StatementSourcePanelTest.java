@@ -86,52 +86,11 @@ class StatementSourcePanelTest {
                 award.canonical().duplicatePolicy());
     }
 
-    @Test void rederivePreviewsAndRequiresConfirmationWithoutResettingOtherPolicies() {
-        GeneratedProjectModel project = new GeneratedProjectModel();
-        GeneratedClassModel award = new GeneratedClassModel("Award");
-        award.statementSource(new StatementClassSource("P166"));
-        award.addField("category", datasource.schema.FieldType.ENTITY,
-                        wikidata.explore.model.FieldCardinality.SINGLE)
-                .mapping().propertyPid("P166");
-        award.canonical().keyFields().add("customKey");
-        award.canonical()
-                .duplicatePolicy(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS)
-                .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
-                .displayNameTemplate("{category}");
-        project.addClass(award);
-
-        StatementSourcePanel panel = new StatementSourcePanel();
-        panel.setProjectModel(project);
-        panel.edit(award);
-
-        java.util.concurrent.atomic.AtomicReference<java.util.List<String>> seenCurrent =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        java.util.concurrent.atomic.AtomicReference<java.util.List<String>> seenProposed =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        panel.identityChangeConfirmation((current, proposed) -> {
-            seenCurrent.set(current);
-            seenProposed.set(proposed);
-            return false;
-        });
-        panel.rederiveIdentity();
-
-        assertEquals(java.util.List.of("customKey"), seenCurrent.get());
-        assertEquals(java.util.List.of("category"), seenProposed.get());
-        assertEquals(java.util.List.of("customKey"), award.canonical().keyFields(),
-                "cancel leaves identity unchanged");
-
-        panel.identityChangeConfirmation((current, proposed) -> true);
-        panel.rederiveIdentity();
-
-        assertEquals(java.util.List.of("category"), award.canonical().keyFields());
-        assertEquals(CanonicalSpec.DuplicatePolicy.MERGE_RECORDS,
-                award.canonical().duplicatePolicy(),
-                "re-derive identity must not reset duplicate handling");
-        assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
-                award.canonical().displayNameMode(),
-                "re-derive identity must not reset display policy");
-        assertEquals("{category}", award.canonical().displayNameTemplate());
-    }
+    // The "Re-derive identity" test went with the button. A key swept from the scalar
+    // AUTO fields was never a derivation: identity is configured, and a command that
+    // overwrites the configuration is not the same thing as deriving it. Subject,
+    // object and qualifiers are all components of the tuple an instance represents, and
+    // the key is whichever of them the modeller picks.
 
     @Test void applyingCompactEditorPreservesAnExistingDisplayTemplate() {
         GeneratedProjectModel project = new GeneratedProjectModel();

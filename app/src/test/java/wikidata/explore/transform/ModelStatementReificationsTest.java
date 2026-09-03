@@ -5,7 +5,7 @@ import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.model.StatementCanonicalDefaults;
+import wikidata.explore.model.StatementIdentity;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.QualifierDateMode;
@@ -39,7 +39,7 @@ class ModelStatementReificationsTest {
         nominee.mapping().missingQualifierPolicy(
                 wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
         nom.fields().add(nominee);    // qualifier → ENTITY (explicit subject role)
-        StatementCanonicalDefaults.replaceWithSuggestion(nom);
+        StatementIdentity.seedIfEmpty(nom);
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -67,10 +67,12 @@ class ModelStatementReificationsTest {
         // the explicitly configured ENTITY qualifier becomes a subject-fallback role
         assertTrue(reify.roles().stream().anyMatch(
                 r -> r.field().equals("nominee") && r.fallbackToSource()));
-        // Identity = value + scalar entity/date qualifiers. The explicit model
-        // still projects this legacy field to YEAR, but time remains part of the
-        // statement grain.
-        assertTrue(reify.dedupBy().containsAll(List.of("category", "nominee", "year")),
+        // Identity is what the fixture configured, not a sweep of the qualifiers. A
+        // class with no key gets the components a statement always has — its subject
+        // and its object — and "year" joins them only when a modeller says so. The old
+        // default added every scalar entity/date qualifier, which is how a class
+        // acquired an identity nobody had chosen.
+        assertTrue(reify.dedupBy().containsAll(List.of("category", "nominee")),
                 reify.dedupBy().toString());
     }
 
@@ -110,8 +112,9 @@ class ModelStatementReificationsTest {
                             && role.kind()
                             == wikidata.explore.model.RoleKind.IDENTITY));
         }
-        assertTrue(StatementCanonicalDefaults.suggest(prize)
-                .containsAll(List.of("category", "laureate")));
+        assertTrue(StatementIdentity.structuralKey(prize)
+                .containsAll(List.of("category", "laureate")),
+                "subject and object are the components a statement always has");
     }
 
     @Test void englishLanguageQidCompilesToTheLiteralLanguageCode() {
@@ -213,7 +216,7 @@ class ModelStatementReificationsTest {
         won.mapping().productionKind(
                 wikidata.explore.model.FieldProductionKind.COMPANION_MATCH);
         nom.fields().add(won);
-        StatementCanonicalDefaults.replaceWithSuggestion(nom);
+        StatementIdentity.seedIfEmpty(nom);
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -246,7 +249,7 @@ class ModelStatementReificationsTest {
         nominee.mapping().missingQualifierPolicy(
                 wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
         nom.fields().add(nominee);
-        // Deliberately do not call StatementCanonicalDefaults: this represents an
+        // Deliberately do not call StatementIdentity: this represents an
         // explicitly stored empty/surrogate key, not an old model needing repair.
 
         GeneratedProjectModel project = new GeneratedProjectModel();

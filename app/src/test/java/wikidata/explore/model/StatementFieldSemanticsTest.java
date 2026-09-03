@@ -17,10 +17,11 @@ class StatementFieldSemanticsTest {
                 new java.io.File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
         GeneratedClassModel award = model.findClass("LaureatesWithMotivation");
 
-        assertEquals(java.util.List.of("category", "year"),
-                StatementCanonicalDefaults.suggest(award),
-                "Re-derive must never present the saved Nobel statement class with "
-                        + "an empty proposal");
+        assertEquals(java.util.List.of("category"),
+                StatementIdentity.structuralKey(award),
+                "the object alone: Nobel's subject arrives in a participants "
+                        + "collection, which has no single value to key on, and its "
+                        + "real key adds year and motivation by choice");
     }
 
     static boolean nobelModelPresent() {
@@ -107,8 +108,11 @@ class StatementFieldSemanticsTest {
         won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
 
         assertEquals(
-                java.util.List.of("category", "nominee", "year"),
-                StatementCanonicalDefaults.suggest(nom));
+                java.util.List.of("category"),
+                StatementIdentity.structuralKey(nom),
+                "the object. Qualifiers are components of the tuple like any other, "
+                        + "and which of them join the key is the modeller's choice — "
+                        + "the old default swept in every scalar one");
     }
 
     @Test
@@ -124,7 +128,7 @@ class StatementFieldSemanticsTest {
         won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
 
         assertEquals("category",
-                StatementCanonicalDefaults.suggestDisplayField(nom),
+                StatementDisplayDefaults.suggestDisplayField(nom),
                 "a reified statement has no label; the first single-valued "
                         + "non-derived field is proposed instead");
     }
@@ -138,16 +142,18 @@ class StatementFieldSemanticsTest {
         qualifier(nom, "nominee", FieldType.ENTITY,
                 FieldCardinality.SINGLE, "P2453");
 
-        StatementCanonicalDefaults.replaceWithSuggestion(nom);
+        StatementIdentity.seedIfEmpty(nom);
+        StatementDisplayDefaults.replaceDisplayWithSuggestion(nom);
 
         CanonicalSpec spec = nom.canonical();
-        assertEquals(java.util.List.of("category", "nominee"), spec.keyFields());
+        assertEquals(java.util.List.of("category"), spec.keyFields(),
+                "the object. The qualifier joins the key only if the modeller says so");
         assertEquals(CanonicalSpec.DisplayNameMode.FIELD, spec.displayNameMode());
         assertEquals("category", spec.displayNameField());
     }
 
     @Test
-    void dateAndCollectionStatementValuesAreNotDefaultKeyFields() {
+    void aCollectionObjectCannotBeKeyedOnButADateOneCan() {
         GeneratedClassModel dateStatement = reifyingClass();
         GeneratedFieldModel date = dateStatement.addField(
                 "date", FieldType.DATE, FieldCardinality.SINGLE);
@@ -158,9 +164,11 @@ class StatementFieldSemanticsTest {
                 "values", FieldType.ENTITY, FieldCardinality.COLLECTION);
         values.mapping().propertyPid("P1411");
 
-        assertTrue(StatementCanonicalDefaults.suggest(dateStatement).isEmpty(),
-                "DATE values are attributes unless explicitly selected");
-        assertTrue(StatementCanonicalDefaults.suggest(collectionStatement).isEmpty(),
+        assertEquals(java.util.List.of("date"),
+                StatementIdentity.structuralKey(dateStatement),
+                "a DATE object is still the object; its type does not change its "
+                        + "place in the tuple");
+        assertTrue(StatementIdentity.structuralKey(collectionStatement).isEmpty(),
                 "a collection cannot be materialized as a canonical key field");
     }
 
@@ -174,7 +182,7 @@ class StatementFieldSemanticsTest {
                 .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
                 .displayNameTemplate("{category} · custom");
 
-        StatementCanonicalDefaults.replaceKeyWithSuggestion(nom);
+        StatementIdentity.seedIfEmpty(nom);
 
         assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
                 nom.canonical().displayNameMode());

@@ -965,23 +965,12 @@ public class FieldSourcePanel extends JPanel {
         }
 
         GeneratedClassModel owner = ownerClass();
-        // Remember whether the stored key still equals the OLD automatic
-        // proposal before changing this field's mapping. If it does, the user has
-        // not customized the key and we may advance it to the NEW proposal after
-        // the edit. If it differs — including an explicitly cleared key while a
-        // non-empty default exists — the user's decision is authoritative and is
-        // left untouched. This avoids a persistent "automatic" flag in the model.
-        List<String> priorSuggestedKey =
-                wikidata.explore.model.StatementCanonicalDefaults.suggest(owner);
-        boolean canonicalFollowedSuggestion = owner != null
-                && owner.canonical().keyFields().equals(priorSuggestedKey);
-        // Key and display are independent user decisions. In particular, a
-        // modeller often keeps the proposed grain but chooses a more useful
-        // display template; remember the display's own default-following state so
-        // advancing the key cannot erase that customization.
-        boolean displayFollowedSuggestion =
-                wikidata.explore.model.StatementCanonicalDefaults
-                        .usesSuggestedDisplay(owner);
+        // Nothing here reads or rewrites the owning class's identity. It used to: the
+        // stored key was compared with a fresh suggestion, and where they still matched
+        // it was advanced to a new one after the edit — so configuring "nominee" as a
+        // scalar entity qualifier silently changed the class's identity from [category]
+        // to [category, nominee]. A key is a decision; editing a field is not a licence
+        // to revisit it.
 
         FieldSourceMapping m = field.mapping();
         m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
@@ -1098,18 +1087,10 @@ public class FieldSourcePanel extends JPanel {
         StatementFieldSemantics.normalizeMissingQualifierPolicy(
                 owner,
                 field);
-        // For example: configuring category as the statement value changes the
-        // followed default [] -> [category]; subsequently configuring nominee as
-        // a scalar entity qualifier changes it to [category, nominee]. A DATE,
-        // collection or COMPANION_MATCH edit contributes nothing.
-        if (canonicalFollowedSuggestion) {
-            wikidata.explore.model.StatementCanonicalDefaults
-                    .replaceKeyWithSuggestion(owner);
-        }
-        if (displayFollowedSuggestion) {
-            wikidata.explore.model.StatementCanonicalDefaults
-                    .replaceDisplayWithSuggestion(owner);
-        }
+        // A class with NO key yet gets the one its triple implies — the subject and
+        // the object — because an empty key is not a decision to preserve. A key with
+        // anything in it is left exactly as it is.
+        wikidata.explore.model.StatementIdentity.seedIfEmpty(owner);
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
         refreshStatementFieldControls();

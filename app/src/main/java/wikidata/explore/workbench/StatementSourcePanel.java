@@ -15,7 +15,7 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
-import wikidata.explore.model.StatementCanonicalDefaults;
+import wikidata.explore.model.StatementDisplayDefaults;
 import wikidata.explore.model.StatementFieldSemantics;
 import wikidata.explore.rule.RuleNode;
 import wikidata.explore.transform.ModelStatementReifications;
@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
 /**
@@ -50,8 +49,6 @@ public class StatementSourcePanel extends JPanel {
 
     private Consumer<Void> afterChange = ignored -> {};
     private Supplier<List<String>> sourceClassCandidates = List::of;
-    private BiPredicate<List<String>, List<String>> identityChangeConfirmation =
-            this::confirmIdentityChange;
 
     private static final String ANY = "Anything";
     private static final String THESE_ENTITIES = "These entities";
@@ -64,8 +61,10 @@ public class StatementSourcePanel extends JPanel {
 
     private final JTextField classNameField = new JTextField(18);
     private final JComboBox<String> reifyFromBox = new JComboBox<>();
-    private final JTextField statementPropField =
-            new JTextField("P1411", 6);
+    // Blank, not "P1411". That is the Oscars nomination property, and it was the
+    // initial value, the fallback for a blank source, and what clear() restored — so
+    // every domain's new statement class started life claiming to be about Oscars.
+    private final JTextField statementPropField = new JTextField(6);
     private static final String NO_VALUE_DOMAIN = "(none)";
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
     private final JLabel subjectValue = new JLabel(" ");
@@ -156,11 +155,7 @@ public class StatementSourcePanel extends JPanel {
                         ? ""
                         : source.sourceClassName());
 
-        statementPropField.setText(
-                source == null
-                        || source.propertyPid().isBlank()
-                        ? "P1411"
-                        : source.propertyPid());
+        statementPropField.setText(source == null ? "" : source.propertyPid());
 
         refreshValueDomainChoices(source == null ? "" : source.valueSelectionName());
 
@@ -355,14 +350,12 @@ public class StatementSourcePanel extends JPanel {
             clazz.statementSource(next);
         }
 
-        // A kind transition is a model-creation event, so this is the correct
-        // place to materialize the initial proposal. Reopening or recompiling an
-        // existing statement class never runs this branch and therefore never
-        // overwrites a user-edited key. Rebuild the checkboxes so the newly stored
-        // fields are visible before applyCanonicalControls reads them back.
-        if (!wasStatementClass && clazz.reifiesStatements()
-                && clazz.canonical().keyFields().isEmpty()) {
-            StatementCanonicalDefaults.replaceWithSuggestion(clazz);
+        // A class with no key gets the one its triple implies. The guard is the empty
+        // key itself, not the kind transition: an empty key is not a decision, so
+        // filling it overrides nothing, and anything already there is left alone.
+        // Rebuild the checkboxes so the newly stored fields are visible before
+        // applyCanonicalControls reads them back.
+        if (wikidata.explore.model.StatementIdentity.seedIfEmpty(clazz)) {
             rebuildCanonicalControls();
         }
 
@@ -711,52 +704,6 @@ public class StatementSourcePanel extends JPanel {
                 + " values become a curated frontier.</html>");
     }
 
-    void identityChangeConfirmation(
-            BiPredicate<List<String>, List<String>> confirmation) {
-        identityChangeConfirmation = confirmation == null
-                ? this::confirmIdentityChange : confirmation;
-    }
-
-    void rederiveIdentity() {
-        if (clazz == null) {
-            return;
-        }
-
-        List<String> current = List.copyOf(clazz.canonical().keyFields());
-        List<String> proposed = StatementCanonicalDefaults.suggest(clazz);
-        if (current.equals(proposed)) {
-            JOptionPane.showMessageDialog(this,
-                    "Identity fields already match the derived proposal:\n"
-                            + displayIdentityFields(proposed),
-                    "Re-derive identity", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        if (!identityChangeConfirmation.test(current, proposed)) {
-            return;
-        }
-
-        // Identity is independent of display and duplicate handling. Re-deriving
-        // the grain must not reset a custom display template or MERGE_RECORDS — the
-        // old implementation replaced the whole CanonicalSpec despite this button
-        // promising only an identity change.
-        StatementCanonicalDefaults.replaceKeyWithSuggestion(clazz);
-        rebuildCanonicalControls();
-        refreshDerived();
-        afterChange.accept(null);
-    }
-
-    private boolean confirmIdentityChange(
-            List<String> current, List<String> proposed) {
-        String message = "Replace the identity fields for " + clazz.className() + "?\n\n"
-                + "Current:  " + displayIdentityFields(current) + "\n"
-                + "Proposed: " + displayIdentityFields(proposed) + "\n\n"
-                + "This changes which statement records are considered duplicates.\n"
-                + "Display-name and duplicate-merge settings will not change.";
-        return JOptionPane.showConfirmDialog(this, message, "Re-derive identity",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE)
-                == JOptionPane.OK_OPTION;
-    }
-
     private static String displayIdentityFields(List<String> fields) {
         return fields == null || fields.isEmpty()
                 ? "(no fields — surrogate identity)" : String.join(" + ", fields);
@@ -766,7 +713,7 @@ public class StatementSourcePanel extends JPanel {
         titleLabel.setText("Statement class");
         classNameField.setText("");
         reifyFromBox.removeAllItems();
-        statementPropField.setText("P1411");
+        statementPropField.setText("");
         valueTypeField.setText("");
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
         graphPatternValue.setText(" ");
@@ -801,12 +748,12 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, row++, titleLabel);
 
         JLabel explanation =
-                new JLabel("<html>Each instance is one statement — a <b>subject</b>, a "
+                new JLabel("<html><div width='560'>Each instance is one statement — a <b>subject</b>, a "
                         + "<b>property</b>, and an <b>object</b> — with its qualifiers "
                         + "said about that statement. Subject and object are named by a "
                         + "class, which is a placeholder: unnamed it is served as a "
                         + "reference (identity and label), and it is specialized by "
-                        + "evidence rather than asserted here.</html>");
+                        + "evidence rather than asserted here.</div></html>");
         explanation.setFont(
                 explanation.getFont()
                            .deriveFont(Font.ITALIC));
@@ -909,34 +856,15 @@ public class StatementSourcePanel extends JPanel {
             "Canonical list:",
             primaryListFieldBox);
 
-        JButton rederive =
-                new JButton("Re-derive identity");
-        rederive.setToolTipText(
-                "Infer the key again from the current scalar "
-                        + "AUTO-produced statement fields.");
-        rederive.addActionListener(
-                event -> rederiveIdentity());
-
-        GridBagUtils.wideRow(canonical, 4, rederive);
+        // No "Re-derive identity" button. It replaced the configured key with a
+        // guess swept from the scalar AUTO fields, which is why its purpose was
+        // unanswerable: identity is configured in this box, and a button that
+        // overwrites that configuration is not a derivation.
+        //
+        // No "Refresh derived view" either. It called applyEdits() and then a refresh
+        // that applyEdits() already ends with — an Apply button wearing an inspection
+        // label, which is directive 9 inverted.
         GridBagUtils.wideRow(form, row++, canonical);
-
-        JPanel buttons =
-                new JPanel(
-                        new FlowLayout(
-                                FlowLayout.LEFT,
-                                6,
-                                0));
-
-        JButton refresh =
-                new JButton("Refresh derived view");
-        refresh.addActionListener(
-                event -> {
-                    applyEdits();
-                    refreshDerived();
-                });
-
-        buttons.add(refresh);
-        GridBagUtils.wideRow(form, row++, buttons);
 
         JPanel derived =
                 new JPanel(new GridBagLayout());

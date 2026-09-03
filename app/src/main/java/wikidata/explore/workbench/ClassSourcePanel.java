@@ -1061,12 +1061,10 @@ public class ClassSourcePanel extends JPanel {
         // with the newly assigned statement source.
         if (!wasStatementClass && clazz.reifiesStatements()) {
             CanonicalSpec canonical = clazz.canonical();
-            if (canonical.keyFields().isEmpty()) {
-                wikidata.explore.model.StatementCanonicalDefaults
-                        .replaceKeyWithSuggestion(clazz);
-            }
+            // The key its triple implies, and only when there is none.
+            wikidata.explore.model.StatementIdentity.seedIfEmpty(clazz);
             if (canonical.displayNameMode() == CanonicalSpec.DisplayNameMode.LABEL) {
-                wikidata.explore.model.StatementCanonicalDefaults
+                wikidata.explore.model.StatementDisplayDefaults
                         .replaceDisplayWithSuggestion(clazz);
             }
         }

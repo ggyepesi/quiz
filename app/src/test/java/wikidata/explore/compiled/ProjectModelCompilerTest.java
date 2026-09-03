@@ -11,7 +11,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.model.StatementCanonicalDefaults;
+import wikidata.explore.model.StatementIdentity;
 
 import java.io.File;
 import java.util.List;
@@ -113,7 +113,7 @@ class ProjectModelCompilerTest {
                 .mapping().propertyPid("P1411");
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
-        StatementCanonicalDefaults.replaceWithSuggestion(nom);
+        StatementIdentity.seedIfEmpty(nom);
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field
