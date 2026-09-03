@@ -114,7 +114,7 @@ public class QualifierLoader {
         Set<String> allowedValues = switch (cfg.objectBound().kind()) {
             case EXPLICIT -> new HashSet<>(cfg.objectBound().qids());
             case RELATION -> client == null ? null : new HashSet<>(
-                    fetchValueQids(client, cfg.objectBound().qids().get(0), log));
+                    fetchValueQids(client, cfg.objectBound(), log));
             case UNBOUNDED -> null;
             // A vocabulary is a REFERENCE, and only the project knows its members, so
             // compilation resolves it before anything executes. Arriving here means it
@@ -470,11 +470,24 @@ public class QualifierLoader {
 
     // Fetch the value set (the instances of the value type, e.g. the Oscar
     // categories) so the reify can keep only statements whose value is one of them.
+    /**
+     * The members of a relation bound — ALL of its targets, through ITS relation.
+     *
+     * <p>This read only the first target and assumed P31, so a bound naming two types,
+     * or reaching through P279, or asking for descendants, executed as something
+     * narrower than it said. Compilation had already stopped narrowing the bound; this
+     * was the same loss one layer down.
+     */
     private static List<String> fetchValueQids(
-            WikidataSparqlClient client, String valueTypeQid, GenerationLog log) {
+            WikidataSparqlClient client, wikidata.explore.model.EntityBound bound,
+            GenerationLog log) {
         List<String> out = new ArrayList<>();
-        String q = "SELECT DISTINCT ?value WHERE { ?value wdt:P31 wd:"
-                + valueTypeQid + " }";
+        StringBuilder targets = new StringBuilder();
+        for (String qid : bound.qids()) targets.append(" wd:").append(qid);
+        String valueTypeQid = String.join(",", bound.qids());
+        String q = "SELECT DISTINCT ?value WHERE {\n  ?value wdt:" + bound.relationPid()
+                + (bound.includeDescendants() ? "/wdt:P279* " : " ")
+                + "?type .\n  VALUES ?type {" + targets + " }\n}";
         try {
             for (WikidataBinding b : client.query(q)) {
                 String qid = b.qid("value");

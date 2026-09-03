@@ -134,4 +134,18 @@ class EntityBoundTest {
                 EntityBound.vocabulary("Missing").resolved(List.of(), ""),
                 "a vocabulary naming nothing bounds nothing — and says so");
     }
+
+    /**
+     * A relation bound may name several targets, and the whole set is the bound. Reading
+     * only the first is the narrowing this construct exists to stop — it happened twice,
+     * at compilation and again in the query that fetches the members.
+     */
+    @Test void aRelationBoundKeepsEveryTargetItNames() {
+        EntityBound bound = EntityBound.relation("P31", List.of("Q5", "Q43229"), false);
+
+        assertEquals(List.of("Q5", "Q43229"), bound.qids(),
+                "both targets, in the order the modeller gave them");
+        assertEquals(bound, bound.resolved(List.of("Q1"), "Q2"),
+                "and resolution leaves an executable bound alone");
+    }
 }
