@@ -45,8 +45,16 @@ public final class EditableComponents {
         if (component == null) return;
 
         if (component instanceof JTextComponent text) {
-            text.setEditable(editable);
-            styleText(text, editable);
+            // Some look-and-feels change the background from inside setEditable(false).
+            // Remember the writable appearance before giving them that opportunity;
+            // otherwise unlocking faithfully restores the inactive grey it recorded.
+            if (!editable) {
+                styleText(text, false);
+                text.setEditable(false);
+            } else {
+                text.setEditable(true);
+                styleText(text, true);
+            }
         } else if (component instanceof JTable table) {
             if (editableCells(table)) {
                 table.setEnabled(editable);
