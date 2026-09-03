@@ -102,7 +102,7 @@ class SourceClasslessReifyTest {
         project.addClass(holding);
 
         assertFalse(GeneratedProjectModelValidator.validate(project).format()
-                        .contains("needs a bounded value domain"),
+                        .contains("at least one end of the triple must be bounded"),
                 "the seeded value class bounds direct subject discovery");
 
         var editable = ModelStatementReifications.deriveOne(holding, project);

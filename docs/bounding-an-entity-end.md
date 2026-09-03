@@ -171,7 +171,11 @@ rather than left as a second way to say the same thing.
    `objectBound` in place of the two fields that competed, resolved once at compile.
 3. ~~Delete the `if/else if` precedence~~ — **done**: `QualifierLoader` switches on the
    bound's kind, which is total and has nothing to rank.
-4. Give the subject end its bound, which is the new capability.
+4. ~~Give the subject end its bound~~ — **done**: `StatementClassSource.subjectBound`,
+   carried through compilation into the discovery query, which now pins BOTH sides of
+   the join (R16) instead of only the object side. Either end bounded now satisfies the
+   discovery guard, in the loader and in validation — the old rule named the object end
+   because it was the only end that could be bounded.
 5. One editor control per end, in the triple box, offering the modes as a list.
 6. Decide the fate of the model-side `PopulationSelection`.
 

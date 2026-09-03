@@ -1,6 +1,7 @@
 package wikidata.explore.transform;
 
 import wikidata.WikidataIds;
+import wikidata.explore.model.EntityBound;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
@@ -52,14 +53,34 @@ public final class PopulationSubjectLoader {
             WikidataSparqlClient client,
             GenerationLog log,
             int limit) {
+        return discover(pool, relationPid, targetValues, EntityBound.unbounded(),
+                entityType, domainLabel, client, log, limit);
+    }
+
+    /** As above, additionally bounding which entities may be the SUBJECT. */
+    public List<WikidataDynamicObject> discover(
+            Collection<WikidataDynamicObject> pool,
+            String relationPid,
+            Set<String> targetValues,
+            EntityBound subjectBound,
+            String entityType,
+            String domainLabel,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            int limit) {
 
         List<WikidataDynamicObject> created = new ArrayList<>();
+        EntityBound subjects = subjectBound == null
+                ? EntityBound.unbounded() : subjectBound;
+        boolean objectsBounded = targetValues != null && !targetValues.isEmpty();
         if (client == null
                 || relationPid == null || !relationPid.matches("(?i)P\\d+")
-                || targetValues == null || targetValues.isEmpty()
-                || entityType == null || entityType.isBlank()) {
-            // The guard: no bounded value set (or no relation) => refuse, rather
-            // than run an all-of-Wikidata membership scan.
+                || entityType == null || entityType.isBlank()
+                || !(objectsBounded || subjects.bounded())) {
+            // The guard: refuse unless at least ONE end is bounded, rather than run an
+            // all-of-Wikidata membership scan. It used to demand the OBJECT end
+            // specifically, which was not the real requirement — it was the only end
+            // that could be bounded. Either side pins the join.
             return created;
         }
 
@@ -74,7 +95,7 @@ public final class PopulationSubjectLoader {
 
         String label = domainLabel == null || domainLabel.isBlank()
                 ? "its value domain" : domainLabel;
-        String query = buildQuery(relationPid, targetValues, limit);
+        String query = buildQuery(relationPid, targetValues, subjects, limit);
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
                 "Discover subjects: " + relationPid + " into " + label)) {
@@ -124,17 +145,49 @@ public final class PopulationSubjectLoader {
         return created;
     }
 
-    private static String buildQuery(
-            String relationPid, Set<String> targetValues, int limit) {
+    /**
+     * Both ends of the join, pinned as far as each is bounded.
+     *
+     * <p>R16: a join anchored on one side only spans every subject of the property in
+     * Wikidata, soft-times-out, and returns a different partial row set each run. The
+     * object side has always been pinned here; the subject side could not be, because
+     * the model had no way to say which entities may be subjects. It does now, and an
+     * unbounded subject simply contributes no pattern — the query is exactly what it
+     * was before.
+     */
+    static String buildQuery(
+            String relationPid, Set<String> targetValues, EntityBound subjects, int limit) {
         StringBuilder q = new StringBuilder(
                 "SELECT DISTINCT ?subject WHERE {\n  ?subject wdt:")
-                .append(relationPid).append(" ?value .\n  VALUES ?value {");
-        for (String qid : targetValues) {
-            if (qid != null && qid.matches("(?i)Q\\d+")) {
-                q.append(" wd:").append(qid);
+                .append(relationPid).append(" ?value .\n");
+        EntityBound subjectBound = subjects == null ? EntityBound.unbounded() : subjects;
+        switch (subjectBound.kind()) {
+            case EXPLICIT -> {
+                q.append("  VALUES ?subject {");
+                for (String qid : subjectBound.qids()) q.append(" wd:").append(qid);
+                q.append(" }\n");
             }
+            case RELATION -> {
+                // Descendants are P279* on the TARGET, so "instances of Q5 or any
+                // subclass of it" is one pattern rather than a pre-expanded QID list.
+                q.append("  ?subject wdt:").append(subjectBound.relationPid())
+                 .append(subjectBound.includeDescendants() ? "/wdt:P279* " : " ")
+                 .append("?subjectKind .\n  VALUES ?subjectKind {");
+                for (String qid : subjectBound.qids()) q.append(" wd:").append(qid);
+                q.append(" }\n");
+            }
+            case UNBOUNDED -> { }
         }
-        q.append(" }\n}");
+        if (targetValues != null && !targetValues.isEmpty()) {
+            q.append("  VALUES ?value {");
+            for (String qid : targetValues) {
+                if (qid != null && qid.matches("(?i)Q\\d+")) {
+                    q.append(" wd:").append(qid);
+                }
+            }
+            q.append(" }\n");
+        }
+        q.append("}");
         if (limit > 0) q.append("\nLIMIT ").append(limit);
         return q.toString();
     }

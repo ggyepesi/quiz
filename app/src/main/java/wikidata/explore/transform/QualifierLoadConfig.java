@@ -27,10 +27,23 @@ public record QualifierLoadConfig(
         String statementType,
         String valueField,
         EntityBound objectBound,
+        EntityBound subjectBound,
         List<Qualifier> qualifiers,
         List<String> discoveryValueQids,
         boolean discoverSubjects,
         String valueDomainName) {
+
+    /** Full form with an unbounded subject — the shape everything had before a
+     *  subject could be bounded at all. */
+    public QualifierLoadConfig(String entityType, String propertyPid,
+            String statementField, String statementType, String valueField,
+            EntityBound objectBound, List<Qualifier> qualifiers,
+            List<String> discoveryValueQids, boolean discoverSubjects,
+            String valueDomainName) {
+        this(entityType, propertyPid, statementField, statementType, valueField,
+                objectBound, EntityBound.unbounded(), qualifiers, discoveryValueQids,
+                discoverSubjects, valueDomainName);
+    }
 
     /** Previous canonical form: one value domain both discovers subjects and filters
      *  their statements. Explicit vocabularies intentionally retain that behaviour. */
@@ -39,7 +52,7 @@ public record QualifierLoadConfig(
             EntityBound objectBound, List<Qualifier> qualifiers,
             boolean discoverSubjects, String valueDomainName) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                objectBound, qualifiers,
+                objectBound, EntityBound.unbounded(), qualifiers,
                 objectBound.kind() == EntityBound.Kind.EXPLICIT
                         ? objectBound.qids() : List.of(),
                 discoverSubjects, valueDomainName);

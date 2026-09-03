@@ -240,6 +240,7 @@ public final class ModelStatementReifications {
                 statementClass.className(),
                 valueField,
                 objectBound,
+                statementSource.subjectBound(),
                 qualifiers,
                 discoveryValueQids,
                 discoverSubjects,

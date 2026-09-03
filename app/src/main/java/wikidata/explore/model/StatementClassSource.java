@@ -41,6 +41,13 @@ public final class StatementClassSource {
     private String valueSelectionId = "";
     // Explicit graph participation. Statement structure alone must not silently
     // turn a relation into an expandable knowledge-graph frontier.
+    // Which entities may be the SUBJECT of these statements. Absent until now: the
+    // object end could be bounded by QIDs while the subject end could only be pointed
+    // at another class, so the two ends of one triple were not the same question. A
+    // subject bound is also the missing half of R16 — pinning both sides of the join
+    // is what makes discovery deterministic.
+    private EntityBound subjectBound = EntityBound.unbounded();
+
     private GraphExpansionPolicy graphExpansionPolicy = GraphExpansionPolicy.NONE;
 
     public StatementClassSource() {
@@ -166,6 +173,21 @@ public final class StatementClassSource {
         return isConfigured() && !hasSourceClass();
     }
 
+    /** Which entities may be the subject; unbounded unless the modeller says. */
+    public EntityBound subjectBound() {
+        return subjectBound == null ? EntityBound.unbounded() : subjectBound;
+    }
+
+    public void subjectBound(EntityBound value) {
+        subjectBound = value == null ? EntityBound.unbounded() : value;
+    }
+
+    /** Whether either end of the triple is bounded — what makes discovery safe to
+     *  run at all, since an unbounded join on both sides scans Wikidata. */
+    public boolean hasBoundedEnd(boolean objectBounded) {
+        return objectBounded || subjectBound().bounded();
+    }
+
     public StatementClassSource copy() {
         StatementClassSource c = new StatementClassSource(
                 sourceClassName,
@@ -175,6 +197,7 @@ public final class StatementClassSource {
         c.valueSelectionName = valueSelectionName;
         c.valueSelectionId = valueSelectionId;
         c.graphExpansionPolicy = graphExpansionPolicy();
+        c.subjectBound = subjectBound();
         return c;
     }
 

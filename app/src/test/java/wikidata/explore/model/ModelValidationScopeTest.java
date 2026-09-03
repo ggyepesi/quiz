@@ -41,7 +41,8 @@ class ModelValidationScopeTest {
 
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(problem ->
-                        problem.message().contains("bounded value domain")),
+                        problem.message().contains("at least one end of the triple must "
+                                + "be bounded")),
                 result.format());
     }
 
@@ -81,5 +82,25 @@ class ModelValidationScopeTest {
                         problem.message().contains("expose its subject")),
                 "the domain that generates it must say where the subject goes: "
                         + asDomain.format());
+    }
+
+    /**
+     * Bounding the SUBJECT is as good as bounding the object. Each pins one side of the
+     * join, which is what stops an all-of-Wikidata scan (R16). The old rule named the
+     * object end because it was the only end that could be bounded — a missing
+     * capability wearing a rule's clothes.
+     */
+    @Test void aBoundedSubjectSatisfiesDiscoveryJustAsBoundedObjectsDo() {
+        GeneratedProjectModel project = discoveringStatementClass(
+                GeneratedProjectModel.ProjectKind.DOMAIN);
+        var award = project.findClass("Award");
+        award.statementSource().subjectBound(
+                EntityBound.relation("P31", java.util.List.of("Q5"), false));
+
+        var result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().noneMatch(problem ->
+                        problem.message().contains("must be bounded")),
+                "a bounded subject pins the join: " + result.format());
     }
 }

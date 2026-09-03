@@ -685,14 +685,20 @@ public final class GeneratedProjectModelValidator {
             // scans, so a class that is structurally sound but not independently
             // generatable is a legitimate thing for a model to declare — the domain
             // that gives it a population is where the bound has to exist.
+            // EITHER end bounded is enough: each pins one side of the join, which is
+            // what stops the scan (R16). This demanded the OBJECT end specifically,
+            // which was never the requirement — it was the only end that COULD be
+            // bounded, so a missing capability read as a rule.
             if (project.acquiresInstances()
-                    && !hasBoundedValueDomain(project, clazz, source)) {
+                    && !source.hasBoundedEnd(
+                            hasBoundedValueDomain(project, clazz, source))) {
                 problems.add(Problem.error(
                         clazz.className(),
                         "A statement class with no source class discovers its "
-                                + "subjects and needs a bounded value domain "
-                                + "(value type, value set, seeded value class, "
-                                + "or a VOCABULARY)."));
+                                + "subjects, so at least one end of the triple must be "
+                                + "bounded: allowed objects (value type, value set, "
+                                + "seeded value class, or a VOCABULARY), or a bound on "
+                                + "which entities may be the subject."));
             }
             return;
         }

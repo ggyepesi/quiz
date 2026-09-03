@@ -129,10 +129,12 @@ public class QualifierLoader {
         // entities that carry the statement property into the value domain, stamp
         // them the load type, and index them — before the empty-pool bail. Guarded by
         // the value set (no unbounded membership scan).
-        if (cfg.discoverSubjects() && discoveryValues != null) {
+        if (cfg.discoverSubjects()
+                && (discoveryValues != null || cfg.subjectBound().bounded())) {
             List<WikidataDynamicObject> discovered =
                     new PopulationSubjectLoader().discover(
                             pool, cfg.propertyPid(), discoveryValues,
+                            cfg.subjectBound(),
                             cfg.entityType(), cfg.valueDomainLabel(), client, log,
                             discoveryLimit);
 
