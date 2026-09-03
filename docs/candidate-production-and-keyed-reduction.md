@@ -75,24 +75,41 @@ contract.
 
 ## The common pipeline
 
+The boundary this document exists to draw is the map/reduce one. **The datasource layer
+emits KEYED candidates — that is the map phase. The postprocess layer turns them into the
+user-facing instances — that is the reduce phase.**
+
 ```text
-normalized candidates from a datasource
-      |
-      v
-compute the configured key for every candidate
-      |
-      v
-partition candidates by <class, key>
-      |
-      v
-reduce every field with its configured rule
-      |
-      v
-materialize one canonical instance per partition
-      |
-      v
-resolve references, inverses, presentation and serving
+┌── map: the datasource layer ─────────────────────────────────┐
+│ acquire, parse, normalize                                    │
+│ apply the compiled key to each candidate                     │
+│                                    emits ⟨class, key⟩ → candidate │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+┌── reduce: the postprocess layer ─────────────────────────────┐
+│ partition by ⟨class, key⟩                                    │
+│ reduce every field with its configured rule                  │
+│ materialize one instance per partition                       │
+│ resolve references, inverses, presentation and serving       │
+└──────────────────────────────────────────────────────────────┘
 ```
+
+Keying at the point of production and not later is deliberate: the source values are
+freshest there, and the reduce phase never re-reads fields to work out what a candidate
+belongs to.
+
+**Applying a key is not owning one.** The datasource contract below says a provider does
+not own canonical keys, and that still holds: compilation resolves the authored key ONCE
+into a compiled key function, and the map phase applies it. Ownership stays with the
+model; only evaluation moves to where the values are. This is the same split the rest of
+this document uses — compile once, and let every consumer execute the compiled plan
+rather than re-deciding.
+
+One case cannot be keyed at map time: a key component whose value a LATER source
+contributes. Then the key is not knowable when the candidate is emitted, and the run must
+re-key. That is the invalidation rule already stated under compilation and execution
+ownership, and it is the reason enrichment of a key component is a different act from
+enrichment of any other field.
 
 The map/reduce wording is semantic, not a commitment to a distributed framework.
 The first implementation can remain an in-process transformation over the generated
@@ -224,6 +241,42 @@ might group them. In particular:
 
 The decision must use source-native evidence such as provider, document/entity,
 statement GUID or occurrence identity. It must not use the model's canonical key.
+
+### How two datasources reach the same instance
+
+Provider-qualified identities never collide by accident — which also means they never
+MEET by accident, so this needs saying rather than following from the qualification.
+
+**The provider resolves the correspondence and emits the primary identity.** DBpedia
+resolves `owl:sameAs` while normalizing and emits its candidate carrying
+`⟨wikidata, Q42⟩`. Merging then stays an ordinary partition on one key, and no engine has
+to know that two datasources were involved.
+
+This is chosen because it is what the code already does — `DbpediaDatasourceProvider`
+joins through `owl:sameAs` today — and because it needs no new algorithm. Its cost is an
+asymmetry: some source is primary, and that is a provider decision rather than a declared
+one.
+
+The alternative is on record because it is a FORK, not a setting. A candidate may carry
+"zero or more" source identities, so two candidates could be taken as one instance when
+they share ANY identity. That is symmetric and survives a missing `sameAs`, but sharing-
+any-identity is an equivalence relation, so merging becomes connected components over an
+identity graph rather than a hash partition — a different engine from the one milestone 2
+builds. Take it when a genuinely symmetric case appears, not before.
+
+**Production is a declared dependency, not a phase order.** "Every source produces, then
+everything merges" is explicitly not the model, and the live case shows why: DBpedia
+cannot produce anything without the QIDs to join from — `DBpediaFieldAcquisition` returns
+immediately on an empty pool. Independent production would make it enumerate its whole
+dataset and discard the remainder at merge time, which is the unbounded scan R16 forbids
+one datasource over. A provider states what it needs as input; the run orders the stages
+from that.
+
+**This layer is deliberately underspecified.** One provider has the problem, so there is
+no evidence yet about what generalizes. Any working arrangement is acceptable here until
+a second datasource presents the same question concretely; what must not drift is the
+BOUNDARY — the map phase emits keyed candidates, and identity and reduction belong to the
+model.
 
 A neutral candidate needs, at minimum:
 
@@ -372,6 +425,14 @@ destinations. Milestone 6's Identity section needs exactly that to offer them as
 components, and nothing else computes it.
 
 The seeding goes; the question it answers does not.
+
+### The second forcing example needed a rule of its own — RESOLVED
+
+"One entity through several sources" did not follow from anything else in this document.
+Provider-qualified source identity keeps two datasources apart, which is right for
+accidents and wrong for this case, so reaching one instance from two sources needed
+stating rather than deriving. It now is, under the datasource contract: the provider
+resolves the correspondence and emits the primary identity.
 
 ### On the two P2 findings
 
