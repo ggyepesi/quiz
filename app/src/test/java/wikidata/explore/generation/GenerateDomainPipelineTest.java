@@ -62,6 +62,9 @@ class GenerateDomainPipelineTest {
         nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(
                         wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         model.rootClass(nomination);
 
         ProcessWorkflowPipeline pipeline = GenerateDomainPipeline.configured(model);

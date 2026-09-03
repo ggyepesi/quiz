@@ -43,6 +43,10 @@ class RenameClassTest {
         project.rootClass(person);
         project.addClass(name);
         project.addClass(stageName);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        statement.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(statement));
         project.addClass(statement);
         project.addSelection(new RoleSelection("names", "Name", "familyName"));
         project.addEntityKindRule(new EntityKindRule("Name", List.of("Q82799")));

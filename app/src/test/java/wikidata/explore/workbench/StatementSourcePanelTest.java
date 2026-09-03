@@ -47,6 +47,10 @@ class StatementSourcePanelTest {
         offices.mapping().productionKind(
                 wikidata.explore.model.FieldProductionKind.INVERT);
         offices.mapping().inverseField("source");
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
         project.addClass(person);
 
@@ -68,6 +72,10 @@ class StatementSourcePanelTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel award = new GeneratedClassModel("Award");
         award.statementSource(new StatementClassSource("P166"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        award.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(award));
         project.addClass(award);
 
         StatementSourcePanel panel = new StatementSourcePanel();
@@ -217,6 +225,10 @@ class StatementSourcePanelTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         holding.statementSource(new StatementClassSource("P39"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
 
         StatementSourcePanel panel = new StatementSourcePanel();
@@ -237,6 +249,10 @@ class StatementSourcePanelTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         holding.statementSource(new StatementClassSource("P39"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
 
         StatementSourcePanel panel = new StatementSourcePanel();
@@ -270,6 +286,10 @@ class StatementSourcePanelTest {
         StatementClassSource source = new StatementClassSource("P1411");
         source.objectBound(EntityBound.vocabulary("OscarCategories"));
         nom.statementSource(source);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         StatementSourcePanel panel = new StatementSourcePanel();

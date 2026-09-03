@@ -35,6 +35,9 @@ class EnrichKeepsKindTest {
         nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         GeneratedClassModel backbone = new GeneratedClassModel("OscarBackbone");
+        // A statement class states its key; nothing chooses one for it.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         backbone.instanceMapping().sourceQid("Q19020");
         GeneratedFieldModel nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);

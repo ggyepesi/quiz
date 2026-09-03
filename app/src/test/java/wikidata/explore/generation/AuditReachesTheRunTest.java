@@ -68,6 +68,10 @@ class AuditReachesTheRunTest {
         forWork.mapping().qualifierPid("P1686");
         forWork.mapping().missingQualifierPolicy(
                 wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
         return project;
     }

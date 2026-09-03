@@ -142,7 +142,8 @@ class StatementFieldSemanticsTest {
         qualifier(nom, "nominee", FieldType.ENTITY,
                 FieldCardinality.SINGLE, "P2453");
 
-        StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         StatementDisplayDefaults.replaceDisplayWithSuggestion(nom);
 
         CanonicalSpec spec = nom.canonical();
@@ -182,7 +183,8 @@ class StatementFieldSemanticsTest {
                 .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
                 .displayNameTemplate("{category} · custom");
 
-        StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
 
         assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
                 nom.canonical().displayNameMode());

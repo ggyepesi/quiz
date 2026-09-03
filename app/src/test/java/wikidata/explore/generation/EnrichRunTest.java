@@ -34,6 +34,10 @@ class EnrichRunTest {
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.statementSource(new wikidata.explore.model.StatementClassSource(
                 "DoesNotExist", "P1411"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         invalid.addClass(nomination);
         WikidataDynamicObject person = new WikidataDynamicObject("Q42", "Douglas Adams");
         person.type("Person");

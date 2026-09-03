@@ -1087,10 +1087,6 @@ public class FieldSourcePanel extends JPanel {
         StatementFieldSemantics.normalizeMissingQualifierPolicy(
                 owner,
                 field);
-        // A class with NO key yet gets the one its triple implies — the subject and
-        // the object — because an empty key is not a decision to preserve. A key with
-        // anything in it is left exactly as it is.
-        wikidata.explore.model.StatementIdentity.seedIfEmpty(owner);
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
         refreshStatementFieldControls();

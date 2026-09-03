@@ -27,6 +27,10 @@ class GeneratedSourceModelTest {
                 .entityClassName("ForWork");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("OscarCategories");   // DIRECT vocab, not nested
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         m.addClass(nom);
 
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");

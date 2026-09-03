@@ -39,7 +39,8 @@ class ModelStatementReificationsTest {
         nominee.mapping().missingQualifierPolicy(
                 wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
         nom.fields().add(nominee);    // qualifier → ENTITY (explicit subject role)
-        StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -90,6 +91,9 @@ class ModelStatementReificationsTest {
         GeneratedClassModel target = new GeneratedClassModel("Laureate");
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(target);
+        // A statement class states its key; nothing chooses one for it.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
         project.addClass(prize);
 
         ModelStatementReifications.Reification editable =
@@ -132,6 +136,13 @@ class ModelStatementReificationsTest {
 
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Laureate"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
+        // A statement class states its key; nothing chooses one for it.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
         project.addClass(prize);
 
         QualifierLoadConfig.Qualifier qualifier = ModelStatementReifications
@@ -156,6 +167,10 @@ class ModelStatementReificationsTest {
 
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Laureate"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        share.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(share));
         project.addClass(share);
 
         ModelStatementReifications.Reification result =
@@ -185,6 +200,10 @@ class ModelStatementReificationsTest {
 
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(source);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        statement.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(statement));
         project.addClass(statement);
 
         assertTrue(ModelStatementReifications.derive(project).get(0).load()
@@ -216,7 +235,8 @@ class ModelStatementReificationsTest {
         won.mapping().productionKind(
                 wikidata.explore.model.FieldProductionKind.COMPANION_MATCH);
         nom.fields().add(won);
-        StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(oscar);
@@ -240,7 +260,14 @@ class ModelStatementReificationsTest {
         assertTrue(ModelStatementReifications.derive(p).isEmpty());
     }
 
-    @Test void emptyStoredCanonicalKeyIsNotInferredAtRuntime() {
+    /**
+     * Nothing invents a key while deriving. The premise has changed and the point has
+     * not: an empty key used to be read as "surrogate identity, stored deliberately",
+     * and it is now what a MODEL looks like before the domain that generates it chooses
+     * a grain. Either way runtime must not fill it in — that is the rule the editor's
+     * offer exists to keep, by making the choice an act instead of a default.
+     */
+    @Test void anUnchosenKeyIsNotInventedWhileDeriving() {
         GeneratedClassModel source = new GeneratedClassModel("Oscarnominations");
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
@@ -249,10 +276,11 @@ class ModelStatementReificationsTest {
         nominee.mapping().missingQualifierPolicy(
                 wikidata.explore.model.MissingQualifierPolicy.STATEMENT_SUBJECT);
         nom.fields().add(nominee);
-        // Deliberately do not call StatementIdentity: this represents an
-        // explicitly stored empty/surrogate key, not an old model needing repair.
+        // Deliberately no key: a model may leave the grain to the domain that
+        // generates the class, exactly as it may leave an acquisition unbounded.
 
         GeneratedProjectModel project = new GeneratedProjectModel();
+        project.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
         project.rootClass(source);
         project.addClass(nom);
 
@@ -264,7 +292,9 @@ class ModelStatementReificationsTest {
                         compiledProject.findClass("Nomination").orElseThrow(),
                         compiledProject);
 
-        assertTrue(editable.reify().dedupBy().isEmpty());
-        assertTrue(compiled.reify().dedupBy().isEmpty());
+        assertTrue(editable.reify().dedupBy().isEmpty(),
+                "no key was chosen, so none is derived");
+        assertTrue(compiled.reify().dedupBy().isEmpty(),
+                "and compilation does not fill one in either");
     }
 }

@@ -26,6 +26,10 @@ class ReferentClassStampTest {
         entityField(nom, "nominee", "Nominee");           // -> bare class
         entityField(nom, "category", "OscarCategories");  // -> VOCABULARY Selection
         entityField(nom, "forWork", "ForWork");           // -> neither: not stamped
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         p.addClass(nom);
 
         // Nominee is a bare referenced-only class (identity-only): it exists, so the

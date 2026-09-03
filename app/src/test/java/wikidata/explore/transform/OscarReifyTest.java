@@ -109,6 +109,10 @@ class OscarReifyTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -140,6 +144,10 @@ class OscarReifyTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -169,6 +177,10 @@ class OscarReifyTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         ModelStatementReifications.Reification r =
@@ -533,7 +545,8 @@ class OscarReifyTest {
                 .mapping().qualifierPid("P2453");                    // the nominee list
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
-        wikidata.explore.model.StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field

@@ -20,6 +20,10 @@ class SubjectBoundPersistenceTest {
         StatementClassSource source = new StatementClassSource("P39");
         source.subjectBound(EntityBound.relation("P31", List.of("Q5"), true));
         holding.statementSource(source);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
         project.rootClass(holding);
 

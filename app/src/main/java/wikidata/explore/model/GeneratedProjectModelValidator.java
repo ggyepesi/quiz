@@ -49,7 +49,7 @@ public final class GeneratedProjectModelValidator {
             validateOwnedComponentFields(project, clazz, problems);
             validateInverseFields(project, clazz, problems);
             validateBaseCycle(project, clazz, problems);
-            validateCanonical(clazz, problems);
+            validateCanonical(project, clazz, problems);
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
             validateAggregateClass(project, clazz, problems);
@@ -822,6 +822,7 @@ public final class GeneratedProjectModelValidator {
     }
 
     private static void validateCanonical(
+            GeneratedProjectModel project,
             GeneratedClassModel clazz,
             List<Problem> problems) {
 
@@ -831,9 +832,22 @@ public final class GeneratedProjectModelValidator {
 
         if (clazz.classKind().usesCanonicalKey()) {
             if (canonical.keyFields().isEmpty()) {
-                problems.add(Problem.warning(
-                        clazz.className(),
-                        "Derived class has no canonical key; surrogate identity will be used."));
+                // An empty key is no longer a state with a meaning. It used to be
+                // read as surrogate identity, but nothing produced that: keyOf over an
+                // empty field list returns the same value for every candidate, so what
+                // made records distinct was a guard skipping reduction entirely. The
+                // grain a class generates at is a decision, and this says nobody has
+                // made it — for a project that generates. A model may leave it open,
+                // as it may leave an acquisition unbounded.
+                problems.add(project.acquiresInstances()
+                        ? Problem.error(clazz.className(),
+                                "No identity: a statement class needs a key, and nothing "
+                                        + "will choose one for it. Tick the fields that "
+                                        + "tell two records apart — the editor offers the "
+                                        + "subject and object as a starting point.")
+                        : Problem.warning(clazz.className(),
+                                "No identity yet; the domain that generates this class "
+                                        + "must choose its key."));
             }
 
             Set<String> seen = new LinkedHashSet<>();

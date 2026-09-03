@@ -112,6 +112,10 @@ class ShippedModelReifyRolesTest {
         GeneratedFieldModel nominee =
                 nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.mapping().qualifierPid("P2453");          // no policy stated
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
 
         String report = GeneratedProjectModelValidator.validate(project).format();
@@ -132,6 +136,10 @@ class ShippedModelReifyRolesTest {
                 nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.mapping().qualifierPid("P2453");
         nominee.mapping().missingQualifierPolicy(MissingQualifierPolicy.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
 
         assertTrue(!GeneratedProjectModelValidator.validate(project).format()

@@ -47,6 +47,10 @@ class SelectionValueDomainTest {
         // to say where its subject goes, and this is the field it was always using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
         return project;
     }

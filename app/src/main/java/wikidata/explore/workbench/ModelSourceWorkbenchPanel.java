@@ -1133,11 +1133,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 // was being written into every new statement class in every domain.
                 clazz.statementSource(
                         new StatementClassSource(sourceClass, ""));
-                // The triple's own key, and only when there is none. The previous
-                // call swept in every scalar entity/date qualifier as well, so a class
-                // arrived with an identity nobody had chosen — which is why nobody
-                // could say what the "Re-derive identity" button was for.
-                wikidata.explore.model.StatementIdentity.seedIfEmpty(clazz);
+
             }
 
             statementSourcePanel.edit(clazz);

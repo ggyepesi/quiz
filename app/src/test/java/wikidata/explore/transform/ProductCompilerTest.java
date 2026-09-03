@@ -47,6 +47,10 @@ class ProductCompilerTest {
         // presenter targets a MODELED member class, but its referent won't be a member.
         ref(nom, "presenter", "OscarNominations", FieldCardinality.AUTO);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         m.addClass(nom);
 
         return m;

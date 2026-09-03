@@ -75,6 +75,10 @@ class DeclarationIdentityTest {
         EntityKindRule kind = new EntityKindRule("Person", List.of("Q5"));
         RoleSelection role = new RoleSelection("People", "Person", "spouse");
         model.rootClass(person);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holder.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holder));
         model.addClass(holder);
         model.addEntityKindRule(kind);
         model.addSelection(role);

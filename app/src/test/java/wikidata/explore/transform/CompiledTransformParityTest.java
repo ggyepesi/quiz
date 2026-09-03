@@ -129,6 +129,10 @@ class CompiledTransformParityTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
@@ -251,6 +255,10 @@ class CompiledTransformParityTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);

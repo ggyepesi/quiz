@@ -6,6 +6,7 @@ import objectview.utils.swing.GridBagUtils;
 import datasource.graph.GraphExpansionPattern;
 import datasource.graph.GraphExpansionPolicy;
 import wikidata.WikidataIds;
+import wikidata.explore.model.StatementIdentity;
 import wikidata.explore.model.EntityBound;
 import wikidata.explore.generation.WikidataGraphDiscoveryState;
 import wikidata.explore.model.CanonicalSpec;
@@ -81,6 +82,10 @@ public class StatementSourcePanel extends JPanel {
             new JComboBox<>(GraphExpansionPolicy.values());
     private final JLabel graphPatternValue = new JLabel(" ");
 
+    // The offer. A class with no key gets a proposal it can accept in one click — not a
+    // key written for it. Enabled only when there is something to propose, so it is
+    // absent rather than inert once the key is settled.
+    private final JButton acceptProposedKey = new JButton(" ");
     private final JPanel keyFieldsPanel =
             new JPanel(new GridBagLayout());
     private final Map<String, JCheckBox> keyFieldBoxes =
@@ -277,14 +282,6 @@ public class StatementSourcePanel extends JPanel {
             clazz.statementSource(next);
         }
 
-        // A class with no key gets the one its triple implies. The guard is the empty
-        // key itself, not the kind transition: an empty key is not a decision, so
-        // filling it overrides nothing, and anything already there is left alone.
-        // Rebuild the checkboxes so the newly stored fields are visible before
-        // applyCanonicalControls reads them back.
-        if (wikidata.explore.model.StatementIdentity.seedIfEmpty(clazz)) {
-            rebuildCanonicalControls();
-        }
 
         // The class's own sourceQid is no longer the object's type filter: that moved
         // into objectBound, where a bound belongs. It meant "this class's membership
@@ -350,7 +347,38 @@ public class StatementSourcePanel extends JPanel {
      * AUTO-production fields. COMPANION_MATCH fields such as Oscar
      * {@code won} are post-transform facts and must never enter identity.
      */
+    /**
+     * Writes the proposal, because the modeller asked for it.
+     *
+     * <p>The same fields the old seeding wrote, reached by an explicit act. That is the
+     * entire difference, and it is what makes the key answerable: whatever is in it,
+     * someone chose it.
+     */
+    private void acceptProposal() {
+        if (clazz == null) return;
+        List<String> proposal = StatementIdentity.proposedKey(clazz);
+        if (proposal.isEmpty()) return;
+        clazz.canonical().keyFields().addAll(proposal);
+        rebuildCanonicalControls();
+        afterChange.accept(null);
+    }
+
+    /** Shows what the triple would give, or hides the offer once there is a key. */
+    private void refreshKeyProposal() {
+        List<String> proposal = clazz == null ? List.of()
+                : StatementIdentity.proposedKey(clazz);
+        acceptProposedKey.setVisible(!proposal.isEmpty());
+        if (!proposal.isEmpty()) {
+            acceptProposedKey.setText(
+                    "Use the subject and object: " + String.join(" + ", proposal));
+            acceptProposedKey.setToolTipText(
+                    "A statement class needs a key, and nothing writes one. This is what "
+                            + "the triple implies; any other combination is yours to tick.");
+        }
+    }
+
     private void rebuildCanonicalControls() {
+        refreshKeyProposal();
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
 
@@ -776,6 +804,9 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.labeledRow(canonical, cc, 3,
             "Canonical list:",
             primaryListFieldBox);
+
+        acceptProposedKey.addActionListener(event -> acceptProposal());
+        GridBagUtils.wideRow(canonical, 4, acceptProposedKey);
 
         // No "Re-derive identity" button. It replaced the configured key with a
         // guess swept from the scalar AUTO fields, which is why its purpose was

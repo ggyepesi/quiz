@@ -164,6 +164,10 @@ class ModelSourceWorkbenchPanelTest {
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         holding.statementSource(new StatementClassSource("P39"));
         holding.addField("position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         model.addClass(holding);
         model.rootClass(holding);
         GeneratedClassModel person = new GeneratedClassModel("Person");

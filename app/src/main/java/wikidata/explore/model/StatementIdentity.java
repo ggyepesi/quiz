@@ -63,25 +63,24 @@ public final class StatementIdentity {
     }
 
     /**
-     * Gives a statement class the key its triple implies, but ONLY when it has none.
+     * The key the triple implies, OFFERED for a class that has none.
      *
-     * <p>An empty key is not a decision, so filling it overrides nothing. A key with
-     * anything in it is never touched — not when a field is edited, not when the class
-     * kind changes, not by a button. That is the whole mechanism, deliberately: the
-     * previous one kept a hidden "still matches the suggestion" state and rewrote the
-     * key from unrelated edits, so configuring a qualifier silently changed what
-     * counted as a duplicate.
+     * <p>Offering and writing are different acts, and the difference is the whole point.
+     * This used to write: on class creation, and again from the field editor whenever an
+     * unrelated edit happened to leave the key equal to a fresh suggestion. So a class
+     * carried an identity nobody had chosen, and no one could say what the key in the
+     * editor meant. Nothing writes a key now — a modeller accepts this proposal, or
+     * configures something else, and an empty key is a validation error rather than an
+     * invitation to guess.
      *
-     * @return true when a key was written
+     * @return the proposal, or empty when there is nothing to propose or a key already
+     *         exists — in both cases there is nothing to offer
      */
-    public static boolean seedIfEmpty(GeneratedClassModel owner) {
+    public static List<String> proposedKey(GeneratedClassModel owner) {
         if (owner == null || !owner.reifiesStatements()
                 || !owner.canonical().keyFields().isEmpty()) {
-            return false;
+            return List.of();
         }
-        List<String> structural = structuralKey(owner);
-        if (structural.isEmpty()) return false;
-        owner.canonical().keyFields().addAll(structural);
-        return true;
+        return structuralKey(owner);
     }
 }

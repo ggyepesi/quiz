@@ -32,6 +32,10 @@ class FieldExpectationsTest {
         GeneratedFieldModel edition =
                 nom.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE);
         edition.expectation(level);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         project.addClass(nom);
         return project;
     }

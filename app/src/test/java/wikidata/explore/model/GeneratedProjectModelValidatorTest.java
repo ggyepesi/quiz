@@ -150,6 +150,10 @@ class GeneratedProjectModelValidatorTest {
                 .productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         project.addClass(new GeneratedClassModel("Edition"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
         return project;
     }
@@ -356,6 +360,10 @@ class GeneratedProjectModelValidatorTest {
         GeneratedClassModel owned = new GeneratedClassModel("Name");
         owned.baseClassName("Nomination");
         owned.ownedClass(true);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        statement.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(statement));
         project.addClass(statement);
         project.addClass(owned);
 
@@ -406,6 +414,10 @@ class GeneratedProjectModelValidatorTest {
         laureate.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         laureate.mapping().propertyPid("P31");
         project.addClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
         project.addClass(prize);
 
         ValidationResult result = GeneratedProjectModelValidator.validate(project);
@@ -427,6 +439,10 @@ class GeneratedProjectModelValidatorTest {
             subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         }
         project.rootClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
         project.addClass(prize);
 
         ValidationResult result = GeneratedProjectModelValidator.validate(project);
@@ -445,6 +461,10 @@ class GeneratedProjectModelValidatorTest {
         prize.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P166");
         project.rootClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
         project.addClass(prize);
 
         ValidationResult result = GeneratedProjectModelValidator.validate(project);
@@ -466,6 +486,10 @@ class GeneratedProjectModelValidatorTest {
         subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.rootClass(people);
         project.addClass(person);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
         project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
 

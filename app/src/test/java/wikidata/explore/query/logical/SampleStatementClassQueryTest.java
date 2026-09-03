@@ -40,6 +40,10 @@ class SampleStatementClassQueryTest {
         // it was already using.
         nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
 
         RecordingSparql sparql = new RecordingSparql();

@@ -45,6 +45,10 @@ class ProjectModelCompilerTest {
         // it was already using.
         statement.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        statement.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(statement));
         p.addClass(statement);
         GeneratedClassModel owned = new GeneratedClassModel("Part");
         owned.classKind(ClassKind.OWNED);
@@ -113,7 +117,8 @@ class ProjectModelCompilerTest {
                 .mapping().propertyPid("P1411");
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
-        StatementIdentity.seedIfEmpty(nom);
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field
@@ -142,6 +147,9 @@ class ProjectModelCompilerTest {
                 .mapping().propertyPid("P1411");        // value field on the statement PID
         nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P585");        // qualifier, not the value
+        // A statement class states its key; nothing chooses one for it.
+        nom.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nom));
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field

@@ -47,6 +47,10 @@ class RuleEffectsTest {
                 nomination.addField("ceremony", FieldType.ENTITY, FieldCardinality.SINGLE);
         ceremony.mapping().qualifierPid("P805");
         ceremony.expectation(level);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
         return project;
     }
