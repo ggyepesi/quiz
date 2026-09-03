@@ -227,8 +227,46 @@ cardinality detection exists to find out. The default fails toward a question ra
 toward a wrong answer.
 
 One consequence to accept deliberately: making agreement the default means MORE conflicts
-surface, not fewer. That raises the value of settling what a conflict does at scale — see
-the open question below — rather than lowering it.
+surface, not fewer. What that costs is settled below, and the answer is that it costs
+almost nothing.
+
+#### What a conflict does
+
+**The reducer choice IS the per-field conflict policy.** There is no second setting.
+Require agreement says disagreement must not happen; prefer non-empty says tolerate an
+empty but not a contradiction; choose by policy says here is how to pick. A separate
+"action on conflict" beside each field would be a second way to say what the reducer
+already says.
+
+That is a different scope from the missing-key policy, which is why the two live in
+different places despite both describing an unresolvable situation. A missing key decides
+whether a candidate participates AT ALL — upstream of every field. A conflict is about
+one field of a partition that has already formed.
+
+**A conflict does not stop the run.** It is a finding about the data, like a name
+collision: History's predecessor and successor can genuinely contradict each other across
+two candidates, and losing the other 178 holdings to report it would be the wrong trade.
+R18 already sets this posture for a related failure — make it loud and visible, never
+silent, but a partial result is still a result.
+
+So a conflict is COUNTED and REPORTED, per class, with examples, the way an identity
+collision already is:
+
+```text
+OfficeHolding: 6 records shared an identity and were merged into it.
+OfficeHolding.predecessor: 4 conflicts — candidates disagreed on a single-valued field.
+    source=Q1001 position=Q6412254   Q900 vs Q901
+```
+
+The conflict count belongs with the collision count in the run report and in
+`counts.tsv`, and for the same reason: both are consequences of a configured grain that
+are invisible in the finished snapshot. A number that moves between runs is what tells a
+modeller their configuration changed meaning.
+
+No per-field "escalate to a failed run" setting is introduced. There is no forcing case
+for one, and a conflict that genuinely must not be tolerated is already expressible —
+put the field in the key, and candidates that disagree become different instances rather
+than a contradiction.
 
 Every accepted value retains its evidence lineage. A reducer combines values and their
 provenance; it never turns several source assertions into an unexplained value.
@@ -514,7 +552,8 @@ on configuration that does not mean what it displays.
 - Implement require-agreement, union-distinct and prefer-non-empty with deterministic
   output and provenance retention.
 - Report candidate count, partition count, reductions and conflicts before materializing
-  instances.
+  instances — per class, with examples, joining the existing identity-collision report
+  rather than starting a second one.
 - Pin stable collection/map/date/reference semantics with tests using the existing
   `StableIdentity` owner rather than copying it.
 
