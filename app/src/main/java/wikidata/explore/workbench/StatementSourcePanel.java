@@ -61,11 +61,12 @@ public class StatementSourcePanel extends JPanel {
             new JTextField("P1411", 6);
     private static final String NO_VALUE_DOMAIN = "(none)";
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
+    private final JLabel subjectValue = new JLabel(" ");
+    private final JLabel objectValue = new JLabel(" ");
     private final JTextField valueTypeField = new JTextField(10);
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
     private final JLabel graphPatternValue = new JLabel(" ");
-    private final StatementAnatomyPanel anatomy = new StatementAnatomyPanel();
 
     private final JPanel keyFieldsPanel =
             new JPanel(new GridBagLayout());
@@ -153,8 +154,45 @@ public class StatementSourcePanel extends JPanel {
         graphExpansionBox.setSelectedItem(source == null
                 ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
+        refreshTriple();
         rebuildCanonicalControls();
         refreshDerived();
+    }
+
+    /**
+     * The triple's two entity legs, shown whether or not they are configured.
+     *
+     * <p>An unconfigured leg is a STATE, not an absence: a model may legitimately declare
+     * a triple with neither end settled and leave that to the domain that generates it.
+     * Hiding an unset leg is what made the subject invisible in the editor named after
+     * the statement — every other leg was on screen and that one was configured, if at
+     * all, from the field editor.
+     */
+    private void refreshTriple() {
+        subjectValue.setText(describeLeg(
+                StatementFieldSemantics.statementSubjectFieldName(clazz),
+                "filled from the statement's own item"));
+        objectValue.setText(describeLeg(
+                StatementFieldSemantics.statementValueFieldName(clazz),
+                "the value the statement points at"));
+    }
+
+    /** "field — Class" for a settled leg, or what it would hold if it were settled. */
+    private String describeLeg(String fieldName, String whatItWouldHold) {
+        if (fieldName == null || fieldName.isBlank()) {
+            return "<html><i>Not configured</i> — " + whatItWouldHold
+                    + ". A domain must settle this before it can generate.</html>";
+        }
+        GeneratedFieldModel field = clazz.fields().stream()
+                .filter(candidate -> candidate != null
+                        && fieldName.equals(candidate.name()))
+                .findFirst().orElse(null);
+        String target = field == null ? "" : field.entityClassName();
+        return "<html><b>" + fieldName + "</b>"
+                + (target == null || target.isBlank()
+                        ? " — <i>any entity</i> (no class named; served as a reference)"
+                        : " — " + target)
+                + "</html>";
     }
 
     public void applyEdits() {
@@ -430,7 +468,6 @@ public class StatementSourcePanel extends JPanel {
         if (clazz == null) {
             return;
         }
-        anatomy.show(projectModel, clazz);
 
         Reification reification = null;
         if (projectModel != null) {
@@ -632,7 +669,6 @@ public class StatementSourcePanel extends JPanel {
         valueTypeField.setText("");
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
         graphPatternValue.setText(" ");
-        anatomy.show(null, null);
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
         duplicatePolicyBox.setSelectedItem(CanonicalSpec.DuplicatePolicy.KEEP_ONE);
@@ -664,44 +700,50 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, row++, titleLabel);
 
         JLabel explanation =
-                new JLabel(
-                        "Instances are statements of a property — on members of a "
-                                + "source class, or on subjects discovered from the "
-                                + "property itself (leave \"Reify from\" blank).");
+                new JLabel("<html>Each instance is one statement — a <b>subject</b>, a "
+                        + "<b>property</b>, and an <b>object</b> — with its qualifiers "
+                        + "said about that statement. Subject and object are named by a "
+                        + "class, which is a placeholder: unnamed it is served as a "
+                        + "reference (identity and label), and it is specialized by "
+                        + "evidence rather than asserted here.</html>");
         explanation.setFont(
                 explanation.getFont()
                            .deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, row++, explanation);
-        GridBagUtils.wideRow(form, row++, anatomy);
 
         GridBagUtils.labeledRow(form, row++,
             "Class name:",
             classNameField);
 
+        JPanel triple = new JPanel(new GridBagLayout());
+        triple.setBorder(BorderFactory.createTitledBorder(
+                "Statement triple — subject · property · object"));
+        GridBagConstraints tc = new GridBagConstraints();
+        tc.insets = new Insets(3, 4, 3, 4);
+        GridBagUtils.labeledRow(triple, tc, 0, "Subject:", subjectValue);
+        GridBagUtils.labeledRow(triple, tc, 1, "Property:", statementPropField);
+        GridBagUtils.labeledRow(triple, tc, 2, "Object:", objectValue);
+        GridBagUtils.wideRow(form, row++, triple);
+
         reifyFromBox.setToolTipText(
-                "Optional: the source class whose statements become instances of "
-                        + "this class. Leave blank to discover subjects directly "
-                        + "from the statement property.");
+                "Optional: the already-extracted class whose statements are read, "
+                        + "outgoing from its members. Leave blank to discover subjects "
+                        + "incoming from the property instead — which then requires the "
+                        + "objects to be bounded, since they become the starting set.");
         GridBagUtils.labeledRow(form, row++,
-            "Reify from:",
+            "Subject population:",
             reifyFromBox);
 
-        statementPropField.setToolTipText(
-                "The property whose statements are promoted "
-                        + "to records, e.g. P1411.");
-        GridBagUtils.labeledRow(form, row++,
-            "Statement property:",
-            statementPropField);
 
         valueDomainBox.setToolTipText("Optional vocabulary of allowed statement values. "
                 + "Required when subjects are discovered directly from the property.");
         GridBagUtils.labeledRow(form, row++,
-            "Value domain:", valueDomainBox);
+            "Allowed objects:", valueDomainBox);
 
         valueTypeField.setToolTipText(
                 "Optional P31 filter on the statement value.");
         GridBagUtils.labeledRow(form, row++,
-            "Value type filter:",
+            "Object type filter:",
             valueTypeField);
 
         JPanel graphDiscovery = new JPanel(new GridBagLayout());

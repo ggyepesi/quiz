@@ -22,13 +22,6 @@ class ModelValidationScopeTest {
         project.projectKind(kind);
         GeneratedClassModel award = new GeneratedClassModel("Award");
         award.statementSource(new StatementClassSource("P166"));
-        // A model may leave its ACQUISITION unbounded — which entities get fetched is
-        // the domain's problem, as this test asserts. Where the subject GOES is not
-        // acquisition: it is the shape of the triple, which is exactly what a model
-        // declares. So the structural rule applies here while the bounding rule does not.
-        award.addField("source", datasource.schema.FieldType.ENTITY,
-                        FieldCardinality.SINGLE)
-                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         project.rootClass(award);
         return project;
     }
@@ -67,4 +60,26 @@ class ModelValidationScopeTest {
         }
     }
 
+
+    /**
+     * The subject rule is the SIBLING of the bounding rule, not an exception to it.
+     * A model states the shape of a triple and never acquires, so where the subject
+     * lands is a question only a domain has to answer — and a domain must answer it,
+     * because otherwise the subject has nowhere to go and reification would have to
+     * invent a field name again.
+     */
+    @Test void wherTheSubjectGoesIsADomainsProblemJustAsBoundingIs() {
+        var asModel = GeneratedProjectModelValidator.validate(
+                discoveringStatementClass(GeneratedProjectModel.ProjectKind.MODEL));
+        assertTrue(asModel.errors().stream().noneMatch(problem ->
+                        problem.message().contains("expose its subject")),
+                "a model may declare a triple with neither leg settled: " + asModel.format());
+
+        var asDomain = GeneratedProjectModelValidator.validate(
+                discoveringStatementClass(GeneratedProjectModel.ProjectKind.DOMAIN));
+        assertTrue(asDomain.errors().stream().anyMatch(problem ->
+                        problem.message().contains("expose its subject")),
+                "the domain that generates it must say where the subject goes: "
+                        + asDomain.format());
+    }
 }

@@ -229,7 +229,13 @@ public final class GeneratedProjectModelValidator {
                     "A Statement class must declare at most one Statement subject field; "
                             + subjects + " are configured."));
         }
+        // Where the subject goes is required to GENERATE, not to declare. A model
+        // states shape and never acquires, so demanding it settle both ends of the
+        // triple would make it answer a question only a domain has — the same reason
+        // an unbounded acquisition is a domain's problem and not a model's. Asked
+        // through the same predicate, so the two rules cannot drift apart.
         if (owner.reifiesStatements()
+                && project.acquiresInstances()
                 && !StatementFieldSemantics.hasStatementSubjectBinding(owner)) {
             problems.add(Problem.error(owner.className(),
                     "A Statement class must explicitly expose its subject as a single "

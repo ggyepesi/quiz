@@ -206,4 +206,53 @@ class StatementSourcePanelTest {
         assertEquals("NobelPrize", laureate.fields().getFirst().entityClassName(),
                 "a field target must follow a rename performed in the Statement editor");
     }
+
+    /**
+     * A leg the model has not settled is a STATE, not an absence. The editor named after
+     * the statement used to show every part of it except the subject — which was
+     * configured, if at all, from the field editor — so a triple with an unfilled end
+     * looked like a triple with no such end.
+     */
+    @Test void bothEntityLegsAreShownWhetherOrNotTheyAreConfigured() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+
+        String shown = labelTexts(panel);
+        assertTrue(shown.contains("Subject:"), shown);
+        assertTrue(shown.contains("Object:"), shown);
+        assertTrue(shown.contains("Not configured"),
+                "an unsettled leg must say so rather than vanish: " + shown);
+
+        var subject = holding.addField("holder", FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        subject.entityClassName("PositionHolder");
+        subject.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        panel.edit(holding);
+
+        String settled = labelTexts(panel);
+        assertTrue(settled.contains("holder"), settled);
+        assertTrue(settled.contains("PositionHolder"),
+                "the placeholder class names the leg once it is settled: " + settled);
+    }
+
+    /** Every label the panel currently renders, joined. */
+    private static String labelTexts(java.awt.Container root) {
+        StringBuilder text = new StringBuilder();
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof javax.swing.JLabel label && label.getText() != null) {
+                text.append(label.getText()).append('\n');
+            }
+            if (child instanceof java.awt.Container container) {
+                text.append(labelTexts(container));
+            }
+        }
+        return text.toString();
+    }
 }
