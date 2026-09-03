@@ -257,4 +257,54 @@ class StatementFieldSemanticsTest {
         assertTrue(edition.mapping().missingQualifierPolicy()
                 == MissingQualifierPolicy.STATEMENT_SUBJECT);
     }
+
+    /**
+     * The subject is the field that reads NOTHING: not a qualifier, not the value, and
+     * carrying no property of its own, because it is filled from the item the statement
+     * sits on. Models built through the UI leave production kind AUTO, so a rule that
+     * only honours an explicit mark answers "no subject" for real saved data.
+     */
+    @Test
+    void theSubjectIsResolvedWithoutBeingMarked() {
+        GeneratedClassModel nom = reifyingClass();
+        GeneratedFieldModel subject =
+                nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+
+        assertEquals("source",
+                StatementFieldSemantics.statementSubjectFieldName(nom));
+        assertTrue(StatementFieldSemantics.isStatementSubject(nom, subject));
+    }
+
+    @Test
+    void anExplicitlyMarkedSubjectWins() {
+        GeneratedClassModel nom = reifyingClass();
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedFieldModel marked =
+                nom.addField("carrier", FieldType.ENTITY, FieldCardinality.SINGLE);
+        marked.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+
+        assertEquals("carrier",
+                StatementFieldSemantics.statementSubjectFieldName(nom),
+                "the modeller's explicit answer is never overruled by the rule");
+    }
+
+    /** Two unmapped entity fields make the subject genuinely ambiguous. Guessing one
+     *  would be silently wrong, so it is refused the way a missing value field is. */
+    @Test
+    void anAmbiguousSubjectIsRefusedRatherThanGuessed() {
+        GeneratedClassModel nom = reifyingClass();
+        nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("alsoUnmapped", FieldType.ENTITY, FieldCardinality.SINGLE);
+
+        assertEquals("", StatementFieldSemantics.statementSubjectFieldName(nom));
+    }
+
+    @Test
+    void anOrdinaryClassHasNoSubject() {
+        GeneratedClassModel plain = new GeneratedClassModel("Person");
+        plain.addField("spouse", FieldType.ENTITY, FieldCardinality.SINGLE);
+
+        assertEquals("", StatementFieldSemantics.statementSubjectFieldName(plain));
+    }
 }

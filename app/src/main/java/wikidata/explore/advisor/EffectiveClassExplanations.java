@@ -40,8 +40,8 @@ public final class EffectiveClassExplanations {
                         field.name(), fieldType(field),
                         ownNames.contains(field.name()) ? declarationOrigin(declaration)
                                 : "inherited through " + inheritedFrom,
-                        partOf(declaration, field.name()),
-                        filledBy(declaration, field.name())))
+                        partOf(compiled, field),
+                        filledBy(compiled, field)))
                 .toList();
 
         return new EffectiveClassExplanation(
@@ -89,14 +89,13 @@ public final class EffectiveClassExplanations {
             wikidata.explore.compiled.CompiledFieldSource source) {
         if (!source.inverseField().isBlank()) return "Inverse of " + source.inverseField();
         if (!source.qualifierPid().isBlank()) {
-            return source.sourceType() + " qualifier " + source.qualifierPid();
+            return source.sourceType() + " qualifier " + source.displayQualifier();
         }
         if (!source.propertyPid().isBlank()) {
             String direction = source.direction() == wikidata.explore.model.RuleDirection.ITEM_TO_ROOT
                     ? "incoming" : "outgoing";
-            String property = source.propertyLabel().isBlank() ? source.propertyPid()
-                    : source.propertyLabel() + " (" + source.propertyPid() + ")";
-            return source.sourceType() + " · " + property + " · " + direction;
+            return source.sourceType() + " · " + source.displayProperty()
+                    + " · " + direction;
         }
         return "No value source declared";
     }
@@ -125,37 +124,32 @@ public final class EffectiveClassExplanations {
     /**
      * Which job a field does on a reified statement.
      *
-     * <p>Read from what is declared, not guessed: the value role is the field carrying
-     * the statement's own property, a qualifier field is one carrying a qualifier PID,
-     * and the subject role is the remaining reference — the entity the statement is
-     * about, which is filled from the statement itself and so configures no property.
+     * <p>Read from compilation, not guessed again here: compilation delegates the
+     * subject/value decisions to {@code StatementFieldSemantics} and carries the
+     * resulting production kind and resolved value field. The explanation consumes
+     * those decisions so it cannot develop a second statement grammar.
      * Whether a qualifier also DISTINGUISHES two records is the canonical key's answer,
      * and it is a real difference: the same person held the same position twice, and
      * only the dates tell those two records apart.
      */
     private static EffectiveClassExplanation.Part partOf(
-            GeneratedClassModel declaration, String fieldName) {
-        if (!declaration.reifiesStatements()) return EffectiveClassExplanation.Part.PLAIN;
-        GeneratedFieldModel field = declaration.fields().stream()
-                .filter(candidate -> candidate != null && candidate.name().equals(fieldName))
-                .findFirst().orElse(null);
-        if (field == null) return EffectiveClassExplanation.Part.PLAIN;
-
-        var source = declaration.statementSource();
-        String statementPid = source == null ? "" : source.propertyPid();
-        String pid = field.mapping().propertyPid();
-        String qualifier = field.mapping().qualifierPid();
-
-        if (qualifier != null && !qualifier.isBlank()) {
-            return keyFields(declaration).contains(fieldName)
-                    ? EffectiveClassExplanation.Part.DISTINGUISHING
-                    : EffectiveClassExplanation.Part.DESCRIBING;
+            CompiledClass owner, wikidata.explore.compiled.CompiledField field) {
+        if (owner == null || field == null || !owner.statementClass()) {
+            return EffectiveClassExplanation.Part.PLAIN;
         }
-        if (pid != null && !pid.isBlank() && pid.equals(statementPid)) {
+        // The RESOLVED subject role, not the raw production kind. A model that never
+        // marked its subject explicitly still HAS one, and asking the stored kind alone
+        // dropped it into "said about it" with nothing filling it.
+        if (owner.statementSource().subjectField().equals(field.name())) {
+            return EffectiveClassExplanation.Part.SUBJECT;
+        }
+        if (owner.statementSource().valueField().equals(field.name())) {
             return EffectiveClassExplanation.Part.VALUE;
         }
-        if ((pid == null || pid.isBlank()) && field.type() == datasource.schema.FieldType.ENTITY) {
-            return EffectiveClassExplanation.Part.SUBJECT;
+        if (field.source().qualifier()) {
+            return owner.canonical().keyFields().contains(field.name())
+                    ? EffectiveClassExplanation.Part.DISTINGUISHING
+                    : EffectiveClassExplanation.Part.DESCRIBING;
         }
         return EffectiveClassExplanation.Part.DESCRIBING;
     }
@@ -174,33 +168,28 @@ public final class EffectiveClassExplanations {
      * class each part is filled differently: the subject comes from the statement, the
      * value from the statement's own property, a qualifier from its own PID.
      */
-    private static String filledBy(GeneratedClassModel declaration, String fieldName) {
-        GeneratedFieldModel field = declaration.fields().stream()
-                .filter(candidate -> candidate != null && candidate.name().equals(fieldName))
-                .findFirst().orElse(null);
-        if (field == null) return "";
-        return switch (partOf(declaration, fieldName)) {
+    private static String filledBy(
+            CompiledClass owner, wikidata.explore.compiled.CompiledField field) {
+        if (owner == null || field == null) return "";
+        return switch (partOf(owner, field)) {
             case SUBJECT -> "the entity the statement is about";
             case VALUE -> {
-                var source = declaration.statementSource();
-                if (source == null) yield "";
-                // The value field carries the same property as the statement, and a
-                // field mapping has remembered its name for longer — so prefer the one
-                // that actually knows it rather than showing a bare PID beside it.
-                String named = field.mapping().displayProperty();
-                String described = "(not selected)".equals(named)
-                        || named.equals(field.mapping().propertyPid())
-                        ? source.describeProperty() : named;
+                // No null check: VALUE is only returned for a statement class, and
+                // statementClass() already proved the source non-null.
+                var source = owner.statementSource();
+                String named = field.source().displayProperty();
+                String described = named.isBlank()
+                        || named.equals(field.source().propertyPid())
+                        ? source.displayProperty() : named;
                 yield "the statement's value · " + described;
             }
             case DISTINGUISHING, DESCRIBING -> {
-                String qualifier = field.mapping().displayQualifier();
-                yield qualifier.isBlank() ? field.mapping().displayProperty()
+                String qualifier = field.source().displayQualifier();
+                yield qualifier.isBlank() ? field.source().displayProperty()
                         : "qualifier · " + qualifier;
             }
             case PLAIN -> {
-                String property = field.mapping().displayProperty();
-                yield "(not selected)".equals(property) ? "" : property;
+                yield field.source().displayProperty();
             }
         };
     }

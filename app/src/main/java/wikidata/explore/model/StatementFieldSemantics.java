@@ -83,6 +83,60 @@ public final class StatementFieldSemantics {
         return "";
     }
 
+    /**
+     * The name of the field that plays the SUBJECT role — the entity the statement is
+     * made about ({@code the item carrying the statement}). Resolved the same way the
+     * value role is, and for the same reason: the subject is a real role on a reified
+     * statement, and every consumer must read it from one place or each will invent a
+     * different idea of which field it is.
+     *
+     * <p>An explicit {@link FieldProductionKind#STATEMENT_SUBJECT} wins. Otherwise the
+     * subject is the runtime entity field that reads nothing: it is not a qualifier,
+     * it is not the value field, and it configures no property of its own — because it
+     * is filled from the statement's own item rather than from anything the statement
+     * says. That is a rule, not a guess.
+     *
+     * <p>Returns {@code ""} when no field qualifies, and — like
+     * {@link #statementValueFieldName} — also when SEVERAL do. Two unmapped entity
+     * fields make the subject genuinely ambiguous, and the modeller resolves it by
+     * marking one, which is a validation matter rather than something to guess wrong.
+     */
+    public static String statementSubjectFieldName(GeneratedClassModel owner) {
+        if (owner == null || !owner.reifiesStatements()) {
+            return "";
+        }
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (isStatementSubjectField(owner, field)) {
+                return field.name();
+            }
+        }
+        String valueField = statementValueFieldName(owner);
+        String found = "";
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (!isRuntimeStatementField(field)
+                    || field.mapping().isQualifier()
+                    || field.type() != FieldType.ENTITY
+                    || field.name() == null
+                    || field.name().equals(valueField)
+                    || !trim(field.mapping().propertyPid()).isEmpty()) {
+                continue;
+            }
+            if (!found.isEmpty()) {
+                return "";
+            }
+            found = field.name();
+        }
+        return found;
+    }
+
+    /** True when {@code field} plays the subject role — see
+     *  {@link #statementSubjectFieldName}. */
+    public static boolean isStatementSubject(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        return field != null && field.name() != null
+                && field.name().equals(statementSubjectFieldName(owner));
+    }
+
     /** True when {@code field} plays the value role — see
      *  {@link #statementValueFieldName}. */
     public static boolean isStatementValueField(

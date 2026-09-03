@@ -118,6 +118,7 @@ public final class ProjectModelCompiler {
                         statementSource == null
                                 ? ""
                                 : statementSource.className(),
+                        StatementFieldSemantics.statementSubjectFieldName(clazz),
                         StatementFieldSemantics.statementValueFieldName(clazz)),
                 CompiledAggregateSource.from(clazz.aggregateSource()),
                 ownFields,

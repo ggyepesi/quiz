@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MembershipPatternTest {
 
@@ -155,6 +156,51 @@ class MembershipPatternTest {
         assertEquals(MembershipPattern.SINGLE_TYPE,
                 MembershipPattern.of(person, project));
         assertEquals("Single type (Q5)",
+                MembershipPattern.describe(person, project));
+    }
+
+    /**
+     * Where a class's instances come from is a fact about roles, not about which field
+     * happens to be declared first. History's Person was reported as "Derived from
+     * Person.spouse (P26)" — arbitrary, because Person is the first class and spouse its
+     * first entity field pointing back, and circular, because a self-reference
+     * presupposes the population it claims to explain. The P39 subject is what actually
+     * produces those people.
+     */
+    @Test void derivationPrefersTheStatementSubjectOverASelfReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel spouse = person.addField(
+                "spouse", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
+        spouse.entityClassName("Person");
+        spouse.mapping().propertyPid("P26");
+        project.addClass(person);
+        project.rootClass(person);
+
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.seedQids().add("Q6412254");
+        project.addClass(position);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        GeneratedFieldModel subject = holding.addField(
+                "source", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+        GeneratedFieldModel held = holding.addField(
+                "position", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
+        held.entityClassName("Position");
+        held.mapping().propertyPid("P39");
+        project.addClass(holding);
+
+        var derived = MembershipPattern.derivedFrom(person, project);
+
+        assertEquals("OfficeHolding", derived.ownerClass());
+        assertEquals("source", derived.fieldName());
+        assertEquals("P39", derived.pid(),
+                "the subject reads no property of its own, so the statement's is shown");
+        assertTrue(MembershipPattern.describe(person, project)
+                        .startsWith("Derived from OfficeHolding.source (P39)"),
                 MembershipPattern.describe(person, project));
     }
 }

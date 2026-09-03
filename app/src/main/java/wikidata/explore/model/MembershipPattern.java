@@ -203,6 +203,8 @@ public enum MembershipPattern {
         if (name.isEmpty()) {
             return null;
         }
+        DerivedFrom best = null;
+        int bestRank = Integer.MAX_VALUE;
         for (GeneratedClassModel owner : project.classes()) {
             if (owner == null) {
                 continue;
@@ -211,16 +213,51 @@ public enum MembershipPattern {
                 if (f == null || f.type() != FieldType.ENTITY) {
                     continue;
                 }
-                if (name.equals(clean(f.entityClassName()))) {
-                    String pid = clean(f.mapping().qualifierPid());
-                    if (!pid.matches("(?i)P\\d+")) {
-                        pid = clean(f.mapping().propertyPid());
-                    }
-                    return new DerivedFrom(owner.className(), f.name(), pid);
+                if (!name.equals(clean(f.entityClassName()))) {
+                    continue;
                 }
+                int rank = derivationRank(owner, f, name);
+                if (rank >= bestRank) {
+                    continue;
+                }
+                String pid = clean(f.mapping().qualifierPid());
+                if (!pid.matches("(?i)P\\d+")) {
+                    pid = clean(f.mapping().propertyPid());
+                }
+                if (pid.isEmpty() && owner.reifiesStatements()
+                        && StatementFieldSemantics.isStatementSubject(owner, f)) {
+                    // The subject reads no property of its own; the property that
+                    // reaches it is the statement's, which is what the reader means
+                    // by "derived from OfficeHolding.source (P39)".
+                    StatementClassSource statement = owner.statementSource();
+                    if (statement != null) pid = clean(statement.propertyPid());
+                }
+                best = new DerivedFrom(owner.className(), f.name(), pid);
+                bestRank = rank;
             }
         }
-        return null;
+        return best;
+    }
+
+    /**
+     * How well a field explains where a class's instances come from — lower is better.
+     *
+     * <p>The first field that happens to target a class is not the answer. Iteration
+     * order is declaration order, so Person was "Derived from Person.spouse": arbitrary,
+     * and circular — a self-reference cannot say where the class came from, because it
+     * presupposes it. The roles on a reified statement DO produce a population: the
+     * subject is the entity the statement was found on, the value is what the statement
+     * pointed at. Those are ranked first, a self-reference last.
+     */
+    private static int derivationRank(
+            GeneratedClassModel owner, GeneratedFieldModel field, String className) {
+        boolean self = className.equals(clean(owner.className()));
+        if (owner.reifiesStatements()
+                && (StatementFieldSemantics.isStatementSubject(owner, field)
+                    || StatementFieldSemantics.isStatementValueField(owner, field))) {
+            return self ? 3 : 0;
+        }
+        return self ? 4 : 1;
     }
 
     /** The configured evidence rule naming this class, or null. */

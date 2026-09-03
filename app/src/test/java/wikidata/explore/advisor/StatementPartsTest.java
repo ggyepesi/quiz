@@ -42,8 +42,10 @@ class StatementPartsTest {
         source.propertyLabel("position held");
         holding.statementSource(source);
 
-        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .entityClassName("Person");
+        GeneratedFieldModel subject = holding.addField(
+                "source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         GeneratedFieldModel position = holding.addField(
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         position.entityClassName("Position");
@@ -99,6 +101,30 @@ class StatementPartsTest {
 
         assertEquals("source + position + startDate + endDate; "
                 + "two records with the same key keep one", explanation.identity());
+    }
+
+    /**
+     * The saved History model marks no subject: OfficeHolding.source carries production
+     * kind AUTO, as every model built through the UI does. The fixture above DOES mark
+     * it, so asking the stored kind alone passed here while the real model dropped its
+     * subject into "said about it" with nothing filling it — the same trap the reify
+     * tests hit by hand-building roles the saved data never contains. This is the
+     * unmarked shape.
+     */
+    @Test void theSubjectIsFoundOnAModelThatNeverMarkedOne() {
+        var project = history();
+        var holding = project.findClass("OfficeHolding");
+        holding.fields().stream()
+                .filter(f -> f.name().equals("source")).findFirst().orElseThrow()
+                .mapping().productionKind(FieldProductionKind.AUTO);
+
+        var explanation = EffectiveClassExplanations.explain(project, holding);
+
+        assertTrue(explanation.available(), explanation.unavailableReason());
+        assertEquals(List.of("source"), names(explanation, Part.SUBJECT),
+                "the subject reads no property of its own, which is what identifies it");
+        assertEquals("the entity the statement is about",
+                explanation.fields(Part.SUBJECT).get(0).filledBy());
     }
 
     /** An ordinary class has no parts, and is not made to look as though it does. */

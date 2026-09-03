@@ -10,6 +10,8 @@ public record CompiledStatementSource(
         String sourceClassId,
         String sourceClassName,
         String propertyPid,
+        String propertyLabel,
+        String subjectField,
         String valueField,
         String valueSelectionId,
         String valueSelectionName) {
@@ -19,6 +21,8 @@ public record CompiledStatementSource(
         sourceClassId = clean(sourceClassId);
         sourceClassName = clean(sourceClassName);
         propertyPid = clean(propertyPid);
+        propertyLabel = clean(propertyLabel);
+        subjectField = clean(subjectField);
         valueField = clean(valueField);
         valueSelectionId = clean(valueSelectionId);
         valueSelectionName = clean(valueSelectionName);
@@ -39,7 +43,13 @@ public record CompiledStatementSource(
         return !sourceClassName.isBlank();
     }
 
+    public String displayProperty() {
+        return wikidata.LabelledId.display(propertyLabel, propertyPid);
+    }
+
     /**
+     * @param subjectField the field that plays the subject role, resolved ONCE at
+     *                     compile — see StatementFieldSemantics
      * @param valueField the field that plays the value role, resolved ONCE at compile
      *                   from the explicit value role
      *                   ({@code StatementFieldSemantics.statementValueFieldName}), so
@@ -49,6 +59,7 @@ public record CompiledStatementSource(
     public static CompiledStatementSource from(
             StatementClassSource source,
             String resolvedClassName,
+            String subjectField,
             String valueField) {
         if (source == null) {
             return null;
@@ -58,6 +69,8 @@ public record CompiledStatementSource(
                 source.sourceClassId(),
                 resolvedClassName,
                 source.propertyPid(),
+                source.propertyLabel(),
+                subjectField,
                 valueField,
                 source.valueSelectionId(),
                 source.valueSelectionName());

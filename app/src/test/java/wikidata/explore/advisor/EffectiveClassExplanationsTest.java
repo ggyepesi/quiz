@@ -6,15 +6,61 @@ import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.FieldProductionKind;
+import wikidata.explore.model.StatementClassSource;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EffectiveClassExplanationsTest {
+
+    @Test void aStatementUsesCompiledRolesAndNamesItsQualifier() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        StatementClassSource statement = new StatementClassSource("Person", "P39");
+        statement.propertyLabel("position held");
+        holding.statementSource(statement);
+
+        var person = holding.addField("person", FieldType.ENTITY, FieldCardinality.SINGLE);
+        person.entityClassName("Person");
+        person.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        var position = holding.addField(
+                "position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        position.entityClassName("Position");
+        position.mapping().propertyPid("P39");
+        position.mapping().propertyLabel("position held");
+        var start = holding.addField("startDate", FieldType.DATE, FieldCardinality.SINGLE);
+        start.mapping().qualifierPid("P580");
+        start.mapping().qualifierLabel("start time");
+        holding.canonical().keyFields().addAll(List.of("person", "position", "startDate"));
+
+        project.addClass(holding);
+        project.addClass(new GeneratedClassModel("Person"));
+        project.addClass(new GeneratedClassModel("Position"));
+        project.rootClass(holding);
+
+        EffectiveClassExplanation explanation =
+                EffectiveClassExplanations.explain(project, holding);
+
+        assertEquals(EffectiveClassExplanation.Part.SUBJECT,
+                explanation.fields().stream().filter(f -> f.name().equals("person"))
+                        .findFirst().orElseThrow().part());
+        assertEquals(EffectiveClassExplanation.Part.VALUE,
+                explanation.fields().stream().filter(f -> f.name().equals("position"))
+                        .findFirst().orElseThrow().part());
+        assertEquals(EffectiveClassExplanation.Part.DISTINGUISHING,
+                explanation.fields().stream().filter(f -> f.name().equals("startDate"))
+                        .findFirst().orElseThrow().part());
+        assertTrue(explanation.fields().stream().filter(f -> f.name().equals("startDate"))
+                .findFirst().orElseThrow().filledBy().contains("start time (P580)"));
+
+        EffectiveFieldExplanation selected =
+                EffectiveClassExplanations.explainField(project, holding, start);
+        assertTrue(selected.source().contains("start time (P580)"), selected.source());
+    }
 
     @Test void importedPersonExplainsShapePopulationAndEveryUseTogether() {
         GeneratedProjectModel project = new GeneratedProjectModel();
@@ -38,7 +84,11 @@ class EffectiveClassExplanationsTest {
 
         assertTrue(explanation.available(), explanation.unavailableReason());
         assertEquals("Imported from model 'Person'", explanation.declaration());
-        assertTrue(explanation.instances().contains("Derived from Person.spouse"));
+        // Not "Person.spouse": this fixture's OfficeHolding.source also targets Person,
+        // and a reference from ANOTHER class explains a population where a
+        // self-reference only presupposes it. The old expectation recorded the bug.
+        assertTrue(explanation.instances().contains("Derived from OfficeHolding.source"),
+                explanation.instances());
         assertTrue(explanation.instances().contains("represented as Person when P31 = Q5"));
         assertEquals(List.of("dateOfBirth", "spouse"),
                 explanation.fields().stream().map(EffectiveClassExplanation.Field::name).toList());
