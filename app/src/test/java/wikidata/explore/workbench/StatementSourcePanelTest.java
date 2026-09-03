@@ -167,40 +167,6 @@ class StatementSourcePanelTest {
                 "a field target must follow a rename performed in the Statement editor");
     }
 
-    /**
-     * A leg the model has not settled is a STATE, not an absence. The editor named after
-     * the statement used to show every part of it except the subject — which was
-     * configured, if at all, from the field editor — so a triple with an unfilled end
-     * looked like a triple with no such end.
-     */
-    @Test void bothEntityLegsAreShownWhetherOrNotTheyAreConfigured() {
-        GeneratedProjectModel project = new GeneratedProjectModel();
-        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
-        holding.statementSource(new StatementClassSource("P39"));
-        project.addClass(holding);
-
-        StatementSourcePanel panel = new StatementSourcePanel();
-        panel.setProjectModel(project);
-        panel.edit(holding);
-
-        String shown = labelTexts(panel);
-        assertTrue(shown.contains("Subject:"), shown);
-        assertTrue(shown.contains("Object:"), shown);
-        assertTrue(shown.contains("Not configured"),
-                "an unsettled leg must say so rather than vanish: " + shown);
-
-        var subject = holding.addField("holder", FieldType.ENTITY,
-                wikidata.explore.model.FieldCardinality.SINGLE);
-        subject.entityClassName("PositionHolder");
-        subject.mapping().productionKind(
-                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
-        panel.edit(holding);
-
-        String settled = labelTexts(panel);
-        assertTrue(settled.contains("holder"), settled);
-        assertTrue(settled.contains("PositionHolder"),
-                "the placeholder class names the leg once it is settled: " + settled);
-    }
 
     /** Every label the panel currently renders, joined. */
     private static String labelTexts(java.awt.Container root) {
@@ -216,56 +182,7 @@ class StatementSourcePanelTest {
         return text.toString();
     }
 
-    /**
-     * One control per end, so the alternatives cannot be set together.
-     *
-     * <p>They were separate rows — a vocabulary and a type filter, both visible and both
-     * editable — while only one ever reached the query. Choosing a mode writes that one
-     * and clears the other, which is what makes the doubly-bounded state unreachable
-     * from the editor rather than merely discouraged.
-     */
-    @Test void choosingAnObjectBoundClearsTheOneItReplaces() throws Exception {
-        GeneratedProjectModel project = new GeneratedProjectModel();
-        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        StatementClassSource source = new StatementClassSource("P1411");
-        source.valueSelectionName("OscarCategories");
-        nom.statementSource(source);
-        nom.instanceMapping().sourceQid("Q19020");        // both, as only a hand edit can
-        project.addClass(nom);
 
-        StatementSourcePanel panel = new StatementSourcePanel();
-        panel.setProjectModel(project);
-        panel.edit(nom);
-        setCombo(panel, "objectBoundMode", "Instances of");
-        setText(panel, "valueTypeField", "Q19020");
-        panel.applyEdits();
-
-        assertEquals("", nom.statementSource().valueSelectionName(),
-                "the vocabulary is cleared, not left beside the type it lost to");
-        assertEquals("Q19020", nom.instanceMapping().sourceQid());
-    }
-
-    @Test void aSubjectBoundIsSettableAndSurvivesReopening() throws Exception {
-        GeneratedProjectModel project = new GeneratedProjectModel();
-        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
-        holding.statementSource(new StatementClassSource("P39"));
-        project.addClass(holding);
-
-        StatementSourcePanel panel = new StatementSourcePanel();
-        panel.setProjectModel(project);
-        panel.edit(holding);
-        setCombo(panel, "subjectBoundMode", "Instances of");
-        setText(panel, "subjectBoundValue", "Q5");
-        panel.applyEdits();
-
-        EntityBound bound = holding.statementSource().subjectBound();
-        assertEquals(EntityBound.Kind.RELATION, bound.kind());
-        assertEquals(java.util.List.of("Q5"), bound.qids());
-
-        panel.edit(holding);
-        assertEquals("Instances of", comboValue(panel, "subjectBoundMode"),
-                "reopening shows what was configured, not the default");
-    }
 
     private static void setCombo(StatementSourcePanel panel, String name, String value)
             throws Exception {
@@ -287,5 +204,90 @@ class StatementSourcePanelTest {
         Field f = StatementSourcePanel.class.getDeclaredField(name);
         f.setAccessible(true);
         ((javax.swing.text.JTextComponent) f.get(panel)).setText(value);
+    }
+    /**
+     * Both ends are configured by the SAME editor, given a different word.
+     *
+     * <p>They were two sets of controls asking one question, and they had already
+     * drifted: only the object could be bounded by a vocabulary, only the subject by
+     * explicit QIDs. Asserting that two EntityEndEditors exist is what keeps a second
+     * hand-written end from reappearing beside the shared one.
+     */
+    @Test void eachEndIsConfiguredByTheSameEditor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+
+        java.util.List<EntityEndEditor> ends = new java.util.ArrayList<>();
+        collect(panel, EntityEndEditor.class, ends);
+        assertEquals(2, ends.size(), "one editor per end, and no more");
+
+        String shown = labelTexts(panel);
+        assertTrue(shown.contains("Not configured"),
+                "an unsettled end says so rather than vanishing: " + shown);
+    }
+
+    /** A bound set through the editor reaches the model, and comes back on reopening. */
+    @Test void aBoundSetOnAnEndIsStoredAndShownAgain() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+
+        java.util.List<EntityEndEditor> ends = new java.util.ArrayList<>();
+        collect(panel, EntityEndEditor.class, ends);
+        EntityEndEditor subject = ends.get(0);
+        subject.show(EntityBound.instancesOf("Q5"));
+        panel.applyEdits();
+
+        EntityBound stored = holding.statementSource().subjectBound();
+        assertEquals(EntityBound.Kind.RELATION, stored.kind());
+        assertEquals(java.util.List.of("Q5"), stored.qids());
+
+        panel.edit(holding);
+        collect(panel, EntityEndEditor.class, ends = new java.util.ArrayList<>());
+        assertEquals(EntityBound.Kind.RELATION, ends.get(0).bound().kind(),
+                "reopening shows what was configured, not the default");
+    }
+
+    /**
+     * A vocabulary this project cannot list is still a reference the model holds.
+     * Leaving the box on something else would DELETE it on the next apply, because what
+     * the control shows is what gets written.
+     */
+    @Test void aVocabularyTheProjectCannotListSurvivesAnApply() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        StatementClassSource source = new StatementClassSource("P1411");
+        source.objectBound(EntityBound.vocabulary("OscarCategories"));
+        nom.statementSource(source);
+        project.addClass(nom);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(nom);
+        panel.applyEdits();
+
+        assertEquals("OscarCategories",
+                nom.statementSource().objectBound().selectionName());
+    }
+
+    private static <T> void collect(
+            java.awt.Container root, Class<T> type, java.util.List<T> into) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (type.isInstance(child)) into.add(type.cast(child));
+            else if (child instanceof java.awt.Container container) {
+                collect(container, type, into);
+            }
+        }
     }
 }

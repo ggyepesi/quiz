@@ -203,8 +203,20 @@ public final class ModelStatementReifications {
         List<String> dedup =
                 canonicalKey(statementClass.canonical().keyFields());
 
+        // The object's type filter comes from the authored objectBound, falling back to
+        // the class's own sourceQid for models saved before the bound existed. The
+        // fallback is a READ of old data, not a second place to write one.
+        EntityBound authoredObject = statementSource.objectBound();
         String valueTypeQid =
-                clean(statementClass.sourceMapping().sourceQid());
+                authoredObject.kind() == EntityBound.Kind.RELATION
+                        && "P31".equalsIgnoreCase(authoredObject.relationPid())
+                        && !authoredObject.qids().isEmpty()
+                        ? authoredObject.qids().get(0)
+                        : clean(statementClass.sourceMapping().sourceQid());
+        if (authoredObject.kind() == EntityBound.Kind.EXPLICIT) {
+            valueQids = new ArrayList<>(authoredObject.qids());
+            discoveryValueQids = new ArrayList<>(authoredObject.qids());
+        }
 
         // A referenced VOCABULARY Selection IS the value domain (production →
         // Selection): its values/type override the class-derived filter. Blank

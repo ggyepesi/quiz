@@ -67,18 +67,15 @@ public class StatementSourcePanel extends JPanel {
     private final JTextField statementPropField = new JTextField(6);
     private static final String NO_VALUE_DOMAIN = "(none)";
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
-    private final JLabel subjectValue = new JLabel(" ");
-    private final JLabel objectValue = new JLabel(" ");
+    // One editor, twice. The two ends ask the same question, so writing the controls
+    // twice was writing one control twice — and they had already drifted: only the
+    // object could be bounded by a vocabulary, only the subject by explicit QIDs.
+    private final EntityEndEditor subjectEnd = new EntityEndEditor("Subject",
+            "Bounding the subject restricts WHOSE statements are collected.");
+    private final EntityEndEditor objectEnd = new EntityEndEditor("Object",
+            "Bounding the object restricts WHICH statements are collected.");
     // One control per end, so the alternatives cannot be configured together. They used
     // to be separate rows that looked combinable while the loader silently kept one.
-    private final JComboBox<String> subjectBoundMode = new JComboBox<>(new String[] {
-            ANY, THESE_ENTITIES, INSTANCES_OF });
-    private final JTextField subjectBoundValue = new JTextField(16);
-    private final JComboBox<String> objectBoundMode = new JComboBox<>(new String[] {
-            ANY, A_VOCABULARY, INSTANCES_OF });
-    // The object's value is a vocabulary NAME or a type QID depending on the mode, so
-    // one slot swaps its editor rather than two rows sitting there half-disabled.
-    private final JPanel objectValueHolder = new JPanel(new java.awt.CardLayout());
     private final JTextField valueTypeField = new JTextField(10);
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
@@ -166,82 +163,14 @@ public class StatementSourcePanel extends JPanel {
         graphExpansionBox.setSelectedItem(source == null
                 ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
-        showBounds(source, clazz);
         refreshTriple();
         rebuildCanonicalControls();
         refreshDerived();
     }
 
-    /**
-     * Puts each end's bound into its one control.
-     *
-     * <p>The object's bound still lives in two authored places — a vocabulary name and
-     * the class's type QID — so this reads whichever is set. The control writes only
-     * one and clears the other, which is what makes "both configured" unreachable from
-     * here; a model that already has both is a validation error, not something this
-     * panel silently resolves.
-     */
-    private void showBounds(StatementClassSource source, GeneratedClassModel owner) {
-        EntityBound subject = source == null
-                ? EntityBound.unbounded() : source.subjectBound();
-        subjectBoundMode.setSelectedItem(switch (subject.kind()) {
-            case EXPLICIT -> THESE_ENTITIES;
-            case RELATION -> INSTANCES_OF;
-            case VOCABULARY -> A_VOCABULARY;
-            case UNBOUNDED -> ANY;
-        });
-        subjectBoundValue.setText(String.join(" ", subject.qids()));
 
-        String vocabulary = source == null ? "" : source.valueSelectionName();
-        String typeQid = owner == null ? "" : owner.instanceMapping().sourceQid();
-        objectBoundMode.setSelectedItem(!vocabulary.isBlank() ? A_VOCABULARY
-                : WikidataIds.isQid(typeQid) ? INSTANCES_OF : ANY);
-        refreshBoundControls();
-    }
 
-    /** The bound a mode and its typed value describe; unbounded when nothing usable. */
-    private static EntityBound boundFromControls(String mode, String text) {
-        List<String> qids = new ArrayList<>();
-        for (String part : (text == null ? "" : text).split("[,\\s]+")) {
-            if (!part.isBlank()) qids.add(part.trim());
-        }
-        if (THESE_ENTITIES.equals(mode)) return EntityBound.explicit(qids);
-        if (INSTANCES_OF.equals(mode)) {
-            return qids.isEmpty() ? EntityBound.unbounded()
-                    : EntityBound.instancesOf(qids.get(0));
-        }
-        return EntityBound.unbounded();
-    }
 
-    /** A mode beside the value it takes, as one row. */
-    private static JPanel boundRow(JComboBox<String> mode, java.awt.Component value) {
-        JPanel row = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(0, 0, 0, 6);
-        c.gridx = 0;
-        row.add(mode, c);
-        c.gridx = 1;
-        c.weightx = 1;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        row.add(value, c);
-        return row;
-    }
-
-    /**
-     * Shows only the value the selected mode actually takes.
-     *
-     * <p>The alternatives were separate rows that looked combinable — a vocabulary and a
-     * type filter, both visible, both editable — while only one of them ever reached the
-     * query. One mode with one value is what makes that state unreachable rather than
-     * merely discouraged.
-     */
-    private void refreshBoundControls() {
-        subjectBoundValue.setEnabled(!ANY.equals(selectedText(subjectBoundMode)));
-        String objectMode = selectedText(objectBoundMode);
-        ((java.awt.CardLayout) objectValueHolder.getLayout()).show(
-                objectValueHolder, A_VOCABULARY.equals(objectMode) ? "vocabulary"
-                        : INSTANCES_OF.equals(objectMode) ? "type" : "none");
-    }
 
     /**
      * The triple's two entity legs, shown whether or not they are configured.
@@ -253,30 +182,33 @@ public class StatementSourcePanel extends JPanel {
      * all, from the field editor.
      */
     private void refreshTriple() {
-        subjectValue.setText(describeLeg(
-                StatementFieldSemantics.statementSubjectFieldName(clazz),
-                "filled from the statement's own item"));
-        objectValue.setText(describeLeg(
-                StatementFieldSemantics.statementValueFieldName(clazz),
-                "the value the statement points at"));
+        String subjectField = StatementFieldSemantics.statementSubjectFieldName(clazz);
+        subjectEnd.destination(subjectField, targetClassOf(subjectField),
+                "filled from the statement's own item");
+        String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
+        objectEnd.destination(objectField, targetClassOf(objectField),
+                "the value the statement points at");
+
+        java.util.List<String> vocabularies = projectModel == null ? java.util.List.of()
+                : projectModel.selections().stream()
+                        .filter(selection -> selection instanceof wikidata.explore.model.VocabularySelection)
+                        .map(wikidata.explore.model.Selection::name)
+                        .toList();
+        subjectEnd.vocabularies(() -> vocabularies);
+        objectEnd.vocabularies(() -> vocabularies);
+
+        StatementClassSource source = clazz == null ? null : clazz.statementSource();
+        subjectEnd.show(source == null ? null : source.subjectBound());
+        objectEnd.show(source == null ? null : source.objectBound());
     }
 
-    /** "field — Class" for a settled leg, or what it would hold if it were settled. */
-    private String describeLeg(String fieldName, String whatItWouldHold) {
-        if (fieldName == null || fieldName.isBlank()) {
-            return "<html><i>Not configured</i> — " + whatItWouldHold
-                    + ". A domain must settle this before it can generate.</html>";
-        }
-        GeneratedFieldModel field = clazz.fields().stream()
+    /** The placeholder class a leg's field is typed as, or blank when it names none. */
+    private String targetClassOf(String fieldName) {
+        if (clazz == null || fieldName == null || fieldName.isBlank()) return "";
+        return clazz.fields().stream()
                 .filter(candidate -> candidate != null
                         && fieldName.equals(candidate.name()))
-                .findFirst().orElse(null);
-        String target = field == null ? "" : field.entityClassName();
-        return "<html><b>" + fieldName + "</b>"
-                + (target == null || target.isBlank()
-                        ? " — <i>any entity</i> (no class named; served as a reference)"
-                        : " — " + target)
-                + "</html>";
+                .findFirst().map(GeneratedFieldModel::entityClassName).orElse("");
     }
 
     public void applyEdits() {
@@ -335,16 +267,10 @@ public class StatementSourcePanel extends JPanel {
                     : prior.copy();
             next.sourceClassName(sourceClass);
             next.propertyPid(statementPid);
-            next.subjectBound(boundFromControls(
-                    selectedText(subjectBoundMode), subjectBoundValue.getText()));
-
-            // ONE object bound is written and the other place is cleared. Writing both
-            // is how a model reached the state where a type filter sat beside a
-            // vocabulary doing nothing, so this control cannot produce it.
-            String objectMode = selectedText(objectBoundMode);
-            String valueDomain = selectedText(valueDomainBox);
-            next.valueSelectionName(A_VOCABULARY.equals(objectMode)
-                    && !NO_VALUE_DOMAIN.equals(valueDomain) ? valueDomain : "");
+            // Each end reports ONE value, from the same editor. There is no state in
+            // which two bounds compete, so nothing here has to clear the loser.
+            next.subjectBound(subjectEnd.bound());
+            next.objectBound(objectEnd.bound());
 
             next.graphExpansionPolicy((GraphExpansionPolicy)
                     graphExpansionBox.getSelectedItem());
@@ -360,13 +286,10 @@ public class StatementSourcePanel extends JPanel {
             rebuildCanonicalControls();
         }
 
-        // The object's type QID is written ONLY when that is the chosen mode, and
-        // cleared otherwise. Writing it unconditionally is how it came to sit beside a
-        // vocabulary doing nothing: both were set, and only one reached the query.
-        clazz.instanceMapping().sourceQid(
-                INSTANCES_OF.equals(selectedText(objectBoundMode))
-                        ? RuleNode.cleanQid(valueTypeField.getText())
-                        : "");
+        // The class's own sourceQid is no longer the object's type filter: that moved
+        // into objectBound, where a bound belongs. It meant "this class's membership
+        // type" everywhere else, and a statement class quietly reusing it for its object
+        // was one field with two meanings.
 
         applyCanonicalControls();
         refreshDerived();
@@ -769,23 +692,18 @@ public class StatementSourcePanel extends JPanel {
                 "Statement triple — subject · property · object"));
         GridBagConstraints tc = new GridBagConstraints();
         tc.insets = new Insets(3, 4, 3, 4);
-        GridBagUtils.labeledRow(triple, tc, 0, "Subject:", subjectValue);
-        subjectBoundValue.setToolTipText(
-                "QIDs, separated by spaces or commas. For \"Instances of\", one QID.");
-        GridBagUtils.labeledRow(triple, tc, 1, "Subject entities:",
-                boundRow(subjectBoundMode, subjectBoundValue));
-        GridBagUtils.labeledRow(triple, tc, 2, "Property:", statementPropField);
-        GridBagUtils.labeledRow(triple, tc, 3, "Object:", objectValue);
-        GridBagUtils.labeledRow(triple, tc, 4, "Object entities:",
-                boundRow(objectBoundMode, objectValueHolder));
+        GridBagConstraints wide = (GridBagConstraints) tc.clone();
+        wide.gridx = 0;
+        wide.gridwidth = 2;
+        wide.fill = GridBagConstraints.HORIZONTAL;
+        wide.weightx = 1;
+        wide.gridy = 0;
+        triple.add(subjectEnd, wide);
+        GridBagUtils.labeledRow(triple, tc, 1, "Property:", statementPropField);
+        GridBagConstraints objectCell = (GridBagConstraints) wide.clone();
+        objectCell.gridy = 2;
+        triple.add(objectEnd, objectCell);
         GridBagUtils.wideRow(form, row++, triple);
-
-        objectValueHolder.add(new JPanel(), "none");
-        objectValueHolder.add(valueDomainBox, "vocabulary");
-        objectValueHolder.add(valueTypeField, "type");
-
-        subjectBoundMode.addActionListener(e -> refreshBoundControls());
-        objectBoundMode.addActionListener(e -> refreshBoundControls());
 
         reifyFromBox.setToolTipText(
                 "Optional: the already-extracted class whose statements are read, "
