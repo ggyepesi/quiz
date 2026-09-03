@@ -191,6 +191,45 @@ Key components are not reduced: their normalized values created the partition. M
 key policy (reject candidate, form an incomplete group, or fail) is configured beside
 the key, not hidden inside a field reducer.
 
+#### Defaults, and why they are allowed here when a key default is not
+
+**A default may only be non-destructive.** That is the whole rule, and it is what
+separates this from the key. Union distinct keeps every value; require agreement keeps
+one and REPORTS when the candidates disagree. Neither can lose anything quietly. Prefer
+non-empty and choose by policy both discard a value, so neither is ever a default — they
+are chosen, or they do not happen.
+
+A key default is destructive by nature: it decides which instances exist, and History's
+179 holdings over 173 subject/object pairs is what a slightly-too-coarse key costs. That
+is why the key is required and offered while a reducer is defaulted. The two are not
+inconsistent; they follow from the same test.
+
+The default comes from cardinality, which mostly decides what is even valid:
+
+| declared cardinality | default | why |
+|---|---|---|
+| COLLECTION | **union distinct** | the field already holds many values, so combining them loses nothing |
+| SINGLE | **require agreement** | union would produce a list the field cannot hold — invalid, not merely unwanted |
+| AUTO | **require agreement** | the modeller has not committed, and this is the choice that cannot be wrong destructively |
+| a key component | none | its value created the partition |
+| produced after reduction (e.g. a companion match) | none | there is nothing to reduce |
+
+Applied to the shipped models this asks for almost nothing. Nobel's key is category,
+year and motivation, so those are not reduced at all and its only remaining field is
+`laureates`, a COLLECTION — one field, defaulted to union. That is precisely this
+document's acceptance criterion, reached with no configuration. History's key is all four
+of its scalar fields, leaving predecessor and successor to require agreement.
+
+AUTO is worth its own line because real models are full of it — three of Oscars' four key
+fields carry it. Defaulting AUTO to require agreement has an informative failure mode: a
+conflict on an AUTO field is evidence that the field IS a collection, which is what
+cardinality detection exists to find out. The default fails toward a question rather than
+toward a wrong answer.
+
+One consequence to accept deliberately: making agreement the default means MORE conflicts
+surface, not fewer. That raises the value of settling what a conflict does at scale — see
+the open question below — rather than lowering it.
+
 Every accepted value retains its evidence lineage. A reducer combines values and their
 provenance; it never turns several source assertions into an unexplained value.
 
@@ -520,7 +559,9 @@ mechanics can be factored without source-specific knowledge leaking across the b
 ### Milestone 6 — one class UI and explanatory preview
 
 - Factor the Identity and Same-key sections into one editor used by every class construct.
-- Offer only reducer choices valid for the field datatype/cardinality.
+- Offer only reducer choices valid for the field datatype/cardinality, with the
+  cardinality default preselected (axis 3), so an ordinary class asks for no reduction
+  decisions at all.
 - Add a sampled before/after reduction view and actionable conflict report.
 - Update effective-class explanations and the pipeline diagram to show production,
   grouping and reduction as separate stages.
@@ -539,7 +580,8 @@ mechanics can be factored without source-specific knowledge leaking across the b
   reducers.
 - The default entity configuration explicitly uses provider-qualified source identity.
 - Nobel declares category/year/motivation agreement and laureate union without a custom
-  statement merge path.
+  statement merge path — and reaches it from the defaults, since those three are key
+  components and `laureates` is the only field left to reduce.
 - A conflicting scalar is reported; encounter order never silently chooses it.
 - Aggregate construction uses the same key/reducer vocabulary while remaining a separate
   class-producing operation.
