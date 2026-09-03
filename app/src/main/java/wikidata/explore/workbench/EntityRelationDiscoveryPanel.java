@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.LabelledId;
+
 import graphview.GraphViewModel;
 import graphview.InteractiveGraphView;
 import objectview.utils.swing.GridBagUtils;
@@ -106,10 +108,8 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
             propertyLabel = "";
             property.setText(propertyPid.getText() == null || propertyPid.getText().isBlank()
                     ? "No property selected" : "Not a PID");
-        } else if (propertyLabel.isBlank()) {
-            property.setText(pid);
         } else {
-            property.setText(propertyLabel + " (" + pid + ")");
+            property.setText(LabelledId.display(propertyLabel, pid));
         }
     }
     void selections(WorkbenchSelections value) {

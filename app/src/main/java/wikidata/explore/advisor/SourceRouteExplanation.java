@@ -26,9 +26,7 @@ public record SourceRouteExplanation(
         if (propertyId.isBlank()) {
             return propertyLabel.isBlank() ? "(not configured)" : propertyLabel;
         }
-        return propertyLabel.isBlank()
-                ? propertyId
-                : propertyLabel + " (" + propertyId + ")";
+        return wikidata.LabelledId.display(propertyLabel, propertyId);
     }
 
     private static String clean(String value) {

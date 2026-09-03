@@ -15,6 +15,7 @@ public record CompiledFieldSource(
         String propertyPid,
         String propertyLabel,
         String qualifierPid,
+        String qualifierLabel,
         QualifierDateMode qualifierDateMode,
         String subjectField,
         String matchValueField,
@@ -43,6 +44,7 @@ public record CompiledFieldSource(
         propertyPid = clean(propertyPid);
         propertyLabel = clean(propertyLabel);
         qualifierPid = clean(qualifierPid);
+        qualifierLabel = clean(qualifierLabel);
         qualifierDateMode = qualifierDateMode == null
                 ? QualifierDateMode.YEAR : qualifierDateMode;
         subjectField = clean(subjectField);
@@ -74,6 +76,14 @@ public record CompiledFieldSource(
         return qualifierPid.matches("(?i)P\\d+");
     }
 
+    public String displayProperty() {
+        return wikidata.LabelledId.display(propertyLabel, propertyPid);
+    }
+
+    public String displayQualifier() {
+        return wikidata.LabelledId.display(qualifierLabel, qualifierPid);
+    }
+
     public static CompiledFieldSource from(FieldSourceMapping mapping) {
         FieldSourceMapping source =
                 mapping == null ? new FieldSourceMapping() : mapping;
@@ -83,6 +93,7 @@ public record CompiledFieldSource(
                 source.propertyPid(),
                 source.propertyLabel(),
                 source.qualifierPid(),
+                source.qualifierLabel(),
                 source.qualifierDateMode(),
                 source.subjectField(),
                 source.matchValueField(),

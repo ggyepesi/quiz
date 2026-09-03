@@ -136,9 +136,7 @@ public class RuleIncludedField {
     }
 
     public String displayName() {
-        String label = propertyLabel == null || propertyLabel.isBlank()
-                ? propertyPid
-                : propertyLabel + " (" + propertyPid + ")";
+        String label = wikidata.LabelledId.display(propertyLabel, propertyPid);
         return fieldName + " ← " + label;
     }
 

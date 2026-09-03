@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import wikidata.LabelledId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.LinkedHashSet;
@@ -134,7 +136,7 @@ public class FieldSourceMapping {
     public String displayQualifier() {
         String pid = qualifierPid();
         if (pid == null || pid.isBlank()) return "";
-        return qualifierLabel().isBlank() ? pid : qualifierLabel() + " (" + pid + ")";
+        return LabelledId.display(qualifierLabel(), pid);
     }
 
     public void qualifierPid(String qualifierPid) {
@@ -304,9 +306,7 @@ public class FieldSourceMapping {
         if (propertyPid.isBlank() && propertyLabel.isBlank()) {
             return "(not selected)";
         }
-        return propertyLabel.isBlank()
-                ? propertyPid
-                : propertyLabel + " (" + propertyPid + ")";
+        return LabelledId.display(propertyLabel, propertyPid);
     }
 
     public FieldSourceMapping copy() {

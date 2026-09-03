@@ -21,9 +21,7 @@ public record WikidataTripleSample(
 
     @Override
     public String toString() {
-        String property = propertyLabel == null || propertyLabel.isBlank()
-                ? propertyPid
-                : propertyLabel + " (" + propertyPid + ")";
+        String property = LabelledId.display(propertyLabel, propertyPid);
 
         String value = valueLabel == null || valueLabel.isBlank()
                 ? valueQid

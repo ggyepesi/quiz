@@ -1,5 +1,7 @@
 package wikidata.explore.model;
 
+import wikidata.LabelledId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import datasource.graph.GraphExpansionPolicy;
 
@@ -97,7 +99,7 @@ public final class StatementClassSource {
     public String describeProperty() {
         String pid = propertyPid();
         if (pid.isBlank()) return "";
-        return propertyLabel().isBlank() ? pid : propertyLabel() + " (" + pid + ")";
+        return LabelledId.display(propertyLabel(), pid);
     }
 
     public String propertyPid() {
