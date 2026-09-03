@@ -36,9 +36,11 @@ public final class StatementClassSource {
 
     // Optional: a VOCABULARY Selection whose values are the reify's value domain
     // (the allowed statement values + their labels), replacing the value filter
-    // otherwise inherited from a source class. Blank = derive as before.
-    private String valueSelectionName = "";
-    private String valueSelectionId = "";
+    // Which entities may be the OBJECT. One storage: the valueSelection accessors
+    // below are VIEWS onto it, kept because a vocabulary reference is rebound by name
+    // and id from several places and because saved models are written that way. They
+    // read and write this field, so there is one place the object's bound lives.
+    private EntityBound objectBound = EntityBound.unbounded();
     // Explicit graph participation. Statement structure alone must not silently
     // turn a relation into an expandable knowledge-graph frontier.
     // Which entities may be the SUBJECT of these statements. Absent until now: the
@@ -118,21 +120,51 @@ public final class StatementClassSource {
     }
 
     /** A VOCABULARY Selection supplying the reify's value domain; blank = none. */
-    public String valueSelectionName() {
-        return valueSelectionName == null ? "" : valueSelectionName;
+    /** Which entities may be the object; unbounded unless the modeller says. */
+    public EntityBound objectBound() {
+        return objectBound == null ? EntityBound.unbounded() : objectBound;
     }
 
+    public void objectBound(EntityBound value) {
+        objectBound = value == null ? EntityBound.unbounded() : value;
+    }
+
+    // A view onto objectBound, not a second field. Reading it stays as it was for the
+    // callers that ask by name; writing it sets a VOCABULARY bound. A saved model that
+    // carries valueSelectionName therefore loads straight into the bound, which is the
+    // migration — no translation layer, because the accessor IS the translation.
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public String valueSelectionName() {
+        return objectBound().kind() == EntityBound.Kind.VOCABULARY
+                ? objectBound().selectionName() : "";
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("valueSelectionName")
     public void valueSelectionName(String value) {
-        valueSelectionName = clean(value);
-        valueSelectionId = "";
+        objectBound(EntityBound.vocabulary(value));
     }
-    public String valueSelectionId() { return DeclarationIds.clean(valueSelectionId); }
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public String valueSelectionId() {
+        return objectBound().kind() == EntityBound.Kind.VOCABULARY
+                ? objectBound().selectionId() : "";
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("valueSelectionId")
     public void valueSelectionId(String value) {
-        valueSelectionId = DeclarationIds.clean(value);
+        if (objectBound().kind() != EntityBound.Kind.VOCABULARY) return;
+        objectBound(EntityBound.vocabulary(objectBound().selectionName(), value));
     }
+    /** Rebinds the object's vocabulary after the Selection it names was renamed. */
     void valueSelectionReference(String id, String name) {
-        valueSelectionId = DeclarationIds.clean(id);
-        valueSelectionName = clean(name);
+        objectBound(objectBound().rebound(id, name));
+    }
+
+    /** Rebinds the subject's vocabulary the same way — a rename must reach both ends,
+     *  or renaming a Selection would keep bounding one and quietly stop bounding the
+     *  other. */
+    void subjectSelectionReference(String id, String name) {
+        subjectBound(subjectBound().rebound(id, name));
     }
 
     public boolean hasValueSelection() {
@@ -194,10 +226,9 @@ public final class StatementClassSource {
                 propertyPid);
         c.sourceClassId = sourceClassId;
         c.propertyLabel = propertyLabel;
-        c.valueSelectionName = valueSelectionName;
-        c.valueSelectionId = valueSelectionId;
         c.graphExpansionPolicy = graphExpansionPolicy();
         c.subjectBound = subjectBound();
+        c.objectBound = objectBound();
         return c;
     }
 

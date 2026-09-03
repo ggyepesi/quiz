@@ -21,16 +21,16 @@ class EntityBoundTest {
 
     @Test void anEndIsBoundedOneWayAndTheOtherStatesAreUnrepresentable() {
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "P31", "", false),
+                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "P31", "", "", false),
                 "an explicit set is not also a relation");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.RELATION, List.of("Q1"), "", "", false),
+                () -> new EntityBound(EntityBound.Kind.RELATION, List.of("Q1"), "", "", "", false),
                 "a relation bound without a property is not a bound");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.UNBOUNDED, List.of("Q1"), "", "", false),
+                () -> new EntityBound(EntityBound.Kind.UNBOUNDED, List.of("Q1"), "", "", "", false),
                 "an unbounded end carries no values");
         assertThrows(IllegalArgumentException.class,
-                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of(), "", "", false),
+                () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of(), "", "", "", false),
                 "a bounded end with nothing in it is not bounded");
     }
 
@@ -96,10 +96,10 @@ class EntityBoundTest {
     @Test void theOtherKindsDoNotNameASelection() {
         assertThrows(IllegalArgumentException.class,
                 () -> new EntityBound(EntityBound.Kind.EXPLICIT, List.of("Q1"), "",
-                        "OscarCategories", false));
+                        "OscarCategories", "", false));
         assertThrows(IllegalArgumentException.class,
                 () -> new EntityBound(EntityBound.Kind.VOCABULARY, List.of("Q1"), "",
-                        "OscarCategories", false),
+                        "OscarCategories", "", false),
                 "a vocabulary bound is a reference, not a copy of its values");
         assertFalse(EntityBound.vocabulary("  ").bounded());
     }

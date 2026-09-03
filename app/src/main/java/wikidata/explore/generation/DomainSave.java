@@ -73,7 +73,11 @@ public final class DomainSave {
     private static final java.util.Set<String> DECLARATION_IDENTITY_FIELDS = java.util.Set.of(
             "declarationId", "classDeclarationId", "entityDeclarationId",
             "baseClassId", "classId", "ownerClassId", "sourceClassId",
-            "valueSelectionId", "roleClassId", "representationClassId");
+            // "selectionId" is where a vocabulary reference's identity now lives: the
+            // object's bound stopped being a pair of valueSelection fields and became
+            // an EntityBound, which the subject carries too. The name followed the
+            // field; the guard test is what noticed it had.
+            "selectionId", "roleClassId", "representationClassId");
 
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {

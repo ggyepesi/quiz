@@ -32,10 +32,16 @@ class SignatureIgnoresDeclarationIdentitiesTest {
     /**
      * How a declaration identity is spelled where it is DECLARED. A name followed by "("
      * is a method — {@code ensureDeclarationId(…)} names an identity without being one.
+     *
+     * <p>Bare {@code selectionId} counts, as bare {@code declarationId} and {@code
+     * classId} already did. It appeared when a vocabulary reference moved from a pair of
+     * valueSelection fields into EntityBound, and the prefixed spellings would not have
+     * matched it — so the identity would have entered fingerprints unexcluded, which is
+     * the whole failure this guard exists to prevent.
      */
     private static final Pattern IDENTITY_FIELD = Pattern.compile(
             "(?:[a-z][A-Za-z]*(?:DeclarationId|ClassId|SelectionId)"
-                    + "|declarationId|classId)");
+                    + "|declarationId|classId|selectionId)");
 
     /**
      * Only what is SERIALIZED into a model can reach the fingerprint. The compiled shape

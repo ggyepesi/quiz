@@ -563,12 +563,26 @@ public class GeneratedProjectModel {
         boolean fieldsPointHere = fieldTargetsResolveToSelection(previous);
         selection.name(next);
         for (GeneratedClassModel clazz : classes) {
-            if (clazz.statementSource() != null
-                    && references(selection.declarationId(),
-                            clazz.statementSource().valueSelectionId(), previous,
-                            clazz.statementSource().valueSelectionName())) {
-                clazz.statementSource().valueSelectionReference(
-                        selection.declarationId(), next);
+            // No early exit here: a class WITHOUT a statement source still has fields
+            // that may target this selection, and skipping them left a renamed
+            // vocabulary unreferenced from exactly those.
+            if (clazz.statementSource() != null) {
+                if (references(selection.declarationId(),
+                        clazz.statementSource().valueSelectionId(), previous,
+                        clazz.statementSource().valueSelectionName())) {
+                    clazz.statementSource().valueSelectionReference(
+                            selection.declarationId(), next);
+                }
+                // Both ends. A vocabulary can bound the subject as readily as the
+                // object, so a rename reaching only one would leave the other pointing
+                // at a name nothing answers to.
+                EntityBound subject = clazz.statementSource().subjectBound();
+                if (subject.kind() == EntityBound.Kind.VOCABULARY
+                        && references(selection.declarationId(), subject.selectionId(),
+                                previous, subject.selectionName())) {
+                    clazz.statementSource().subjectSelectionReference(
+                            selection.declarationId(), next);
+                }
             }
             if (fieldsPointHere) renameFieldSelection(
                     clazz.fields(), previous, next, selection.declarationId());
@@ -703,6 +717,13 @@ public class GeneratedProjectModel {
                         statement.valueSelectionId(), statement.valueSelectionName());
                 if (value != null) statement.valueSelectionReference(
                         value.declarationId(), value.name());
+                EntityBound subjectBound = statement.subjectBound();
+                if (subjectBound.kind() == EntityBound.Kind.VOCABULARY) {
+                    Selection subjectSelection = resolveSelection(
+                            subjectBound.selectionId(), subjectBound.selectionName());
+                    if (subjectSelection != null) statement.subjectSelectionReference(
+                            subjectSelection.declarationId(), subjectSelection.name());
+                }
             }
             AggregateClassSource aggregate = clazz.aggregateSource();
             if (aggregate != null) {

@@ -27,6 +27,7 @@ public record EntityBound(
         List<String> qids,
         String relationPid,
         String selectionName,
+        String selectionId,
         boolean includeDescendants) {
 
     public enum Kind {
@@ -51,9 +52,14 @@ public record EntityBound(
         qids = List.copyOf(qids == null ? List.of() : qids);
         relationPid = relationPid == null ? "" : relationPid.trim();
         selectionName = selectionName == null ? "" : selectionName.trim();
+        selectionId = DeclarationIds.clean(selectionId);
         if (kind == Kind.UNBOUNDED
-                && (!qids.isEmpty() || !relationPid.isBlank() || !selectionName.isBlank())) {
+                && (!qids.isEmpty() || !relationPid.isBlank()
+                        || !selectionName.isBlank() || !selectionId.isBlank())) {
             throw new IllegalArgumentException("An unbounded end carries no values");
+        }
+        if (kind != Kind.VOCABULARY && !selectionId.isBlank()) {
+            throw new IllegalArgumentException("Only a vocabulary bound has a selection id");
         }
         if (kind != Kind.VOCABULARY && !selectionName.isBlank()) {
             throw new IllegalArgumentException("Only a vocabulary bound names a selection");
@@ -82,14 +88,14 @@ public record EntityBound(
     }
 
     public static EntityBound unbounded() {
-        return new EntityBound(Kind.UNBOUNDED, List.of(), "", "", false);
+        return new EntityBound(Kind.UNBOUNDED, List.of(), "", "", "", false);
     }
 
     /** Exactly these entities; {@link #unbounded()} when none of them is a QID. */
     public static EntityBound explicit(List<String> qids) {
         List<String> clean = onlyQids(qids);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.EXPLICIT, clean, "", "", false);
+                : new EntityBound(Kind.EXPLICIT, clean, "", "", "", false);
     }
 
     /** The entities carrying {@code relationPid} into {@code targets}. */
@@ -97,7 +103,7 @@ public record EntityBound(
             String relationPid, List<String> targets, boolean includeDescendants) {
         List<String> clean = onlyQids(targets);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.RELATION, clean, relationPid, "", includeDescendants);
+                : new EntityBound(Kind.RELATION, clean, relationPid, "", "", includeDescendants);
     }
 
     /**
@@ -105,9 +111,27 @@ public record EntityBound(
      * vocabulary still reaches every end bounded by it.
      */
     public static EntityBound vocabulary(String selectionName) {
+        return vocabulary(selectionName, "");
+    }
+
+    /**
+     * A vocabulary reference, carrying the declaration id that survives a rename.
+     *
+     * <p>The id is why this is a reference and not a name: renaming a Selection rebinds
+     * every reference to it, and a bound holding only a name would silently stop
+     * matching. Both ends carry it, so a rename reaches the subject exactly as it
+     * reaches the object — the asymmetry that made this worth doing at all.
+     */
+    public static EntityBound vocabulary(String selectionName, String selectionId) {
         String name = selectionName == null ? "" : selectionName.trim();
         return name.isEmpty() ? unbounded()
-                : new EntityBound(Kind.VOCABULARY, List.of(), "", name, false);
+                : new EntityBound(Kind.VOCABULARY, List.of(), "", name,
+                        DeclarationIds.clean(selectionId), false);
+    }
+
+    /** The same bound, rebound to a selection that has been renamed. */
+    public EntityBound rebound(String id, String name) {
+        return kind == Kind.VOCABULARY ? vocabulary(name, id) : this;
     }
 
     /** The entities that are {@code P31} of {@code typeQid}. */
