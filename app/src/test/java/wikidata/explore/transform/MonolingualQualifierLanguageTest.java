@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.MonolingualTextCodec;
 import wikidata.api.WikidataApiClient;
@@ -59,11 +60,15 @@ class MonolingualQualifierLanguageTest {
                                 UNTAGGED))))));
 
         QualifierLoadConfig cfg = new QualifierLoadConfig(
-                "Laureate", "P166", "__Award", "NobelPrize", "category", "",
+                "Laureate",
+                "P166",
+                "__Award",
+                "NobelPrize",
+                "category",
+                EntityBound.explicit(List.of("Q38104")),
                 List.of(new QualifierLoadConfig.Qualifier(
                         "P6208", "motivation",
-                        QualifierLoadConfig.Kind.STRING, multi, language)),
-                List.of("Q38104"));
+                        QualifierLoadConfig.Kind.STRING, multi, language)));
 
         return new QualifierLoader().api(api)
                 .enrich(List.of(ashkin, physics), cfg, null, null).get(0)

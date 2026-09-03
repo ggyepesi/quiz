@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledProjectModel;
@@ -61,9 +62,9 @@ class SourceClasslessReifyTest {
         assertTrue(r.load().discoverSubjects(), "no source class => discover subjects");
         assertTrue(r.reify().sourceType().startsWith("__subject_"),
                 "subjects source on an internal load type, not a class");
-        assertEquals(List.of("Q102427", "Q106301"), r.load().valueQids(),
+        assertEquals(List.of("Q102427", "Q106301"), r.load().objectBound().qids(),
                 "value domain (bounding the discovery) comes from the vocabulary");
-        assertEquals(r.load().valueQids(), r.load().discoveryValueQids(),
+        assertEquals(r.load().objectBound().qids(), r.load().discoveryValueQids(),
                 "an explicit vocabulary both discovers and filters statements");
     }
 
@@ -76,8 +77,8 @@ class SourceClasslessReifyTest {
         assertNotNull(r);
         assertTrue(r.load().discoverSubjects());
         assertEquals("__subject_Nomination", r.reify().sourceType());
-        assertEquals(List.of("Q102427", "Q106301"), r.load().valueQids());
-        assertEquals(r.load().valueQids(), r.load().discoveryValueQids());
+        assertEquals(List.of("Q102427", "Q106301"), r.load().objectBound().qids());
+        assertEquals(r.load().objectBound().qids(), r.load().discoveryValueQids());
     }
 
     @Test void valueEntityClassOwnsTheDirectDiscoveryDomain() {
@@ -106,7 +107,7 @@ class SourceClasslessReifyTest {
 
         var editable = ModelStatementReifications.deriveOne(holding, project);
         assertNotNull(editable);
-        assertEquals(List.of(), editable.load().valueQids(),
+        assertEquals(List.of(), editable.load().objectBound().qids(),
                 "target seeds discover holders but do not filter their other positions");
         assertEquals(List.of("Q6412254"), editable.load().discoveryValueQids());
 
@@ -115,7 +116,7 @@ class SourceClasslessReifyTest {
         var compiledResult =
                 ModelStatementReifications.deriveOne(compiledHolding, compiled);
         assertNotNull(compiledResult);
-        assertEquals(List.of(), compiledResult.load().valueQids());
+        assertEquals(List.of(), compiledResult.load().objectBound().qids());
         assertEquals(List.of("Q6412254"),
                 compiledResult.load().discoveryValueQids());
     }
@@ -128,8 +129,13 @@ class SourceClasslessReifyTest {
         // says nothing about whether anything was discovered, and a label that
         // reads them alone calls a pure filter "seeds".
         QualifierLoadConfig filterOnly = new QualifierLoadConfig(
-                "T", "P1", "__S", "S", "value", "",
-                java.util.List.of(), java.util.List.of("Q1", "Q2"));
+                "T",
+                "P1",
+                "__S",
+                "S",
+                "value",
+                EntityBound.explicit(java.util.List.of("Q1", "Q2")),
+                java.util.List.of());
 
         assertFalse(filterOnly.discoverSubjects());
         assertEquals("2 allowed values", filterOnly.valueDomainLabel());
@@ -137,9 +143,16 @@ class SourceClasslessReifyTest {
 
     @Test void aDomainThatFindsSubjectsWithoutFilteringThemIsCalledSeeds() {
         QualifierLoadConfig discovery = new QualifierLoadConfig(
-                "T", "P1", "__S", "S", "value", "",
-                java.util.List.of(), java.util.List.of(),
-                java.util.List.of("Q6412254"), true, "");
+                "T",
+                "P1",
+                "__S",
+                "S",
+                "value",
+                EntityBound.unbounded(),
+                java.util.List.of(),
+                java.util.List.of("Q6412254"),
+                true,
+                "");
 
         assertTrue(discovery.discoversOnly());
         assertEquals("1 discovery seed(s)", discovery.valueDomainLabel());
@@ -148,8 +161,15 @@ class SourceClasslessReifyTest {
     @Test void aVocabularyKeepsItsOwnName() {
         // A named selection both discovers and filters; it is neither of the above.
         QualifierLoadConfig vocabulary = new QualifierLoadConfig(
-                "T", "P1", "__S", "S", "value", "",
-                java.util.List.of(), java.util.List.of("Q1"), true, "OscarCategories");
+                "T",
+                "P1",
+                "__S",
+                "S",
+                "value",
+                EntityBound.explicit(java.util.List.of("Q1")),
+                java.util.List.of(),
+                true,
+                "OscarCategories");
 
         assertFalse(vocabulary.discoversOnly());
         assertEquals("Selection 'OscarCategories'", vocabulary.valueDomainLabel());

@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -168,7 +169,12 @@ class SelfReferentialReifyDropTest {
         // The Load names the value field (category); its statementField matches the
         // reify's listField, which is how apply() recovers it.
         config.qualifierLoads.add(new QualifierLoadConfig(
-                "Src", "P1411", "nominations", "Statement", "category", "",
+                "Src",
+                "P1411",
+                "nominations",
+                "Statement",
+                "category",
+                EntityBound.unbounded(),
                 List.of()));
         config.reifies.add(new ReifyConstruct(
                 "Src", "nominations", "Nomination", "source", "value", true,

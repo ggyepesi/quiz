@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
@@ -114,9 +115,9 @@ class OscarReifyTest {
                 ModelStatementReifications.deriveOne(nom, project);
 
         assertNotNull(r);
-        assertTrue(r.load().hasValueQids(), "inherits an explicit value set");
-        assertTrue(r.load().valueQids().containsAll(List.of("Q102427", "Q103360")),
-                "value QIDs inherited from source membership: " + r.load().valueQids());
+        assertTrue(r.load().objectBound().bounded(), "inherits an explicit value set");
+        assertTrue(r.load().objectBound().qids().containsAll(List.of("Q102427", "Q103360")),
+                "value QIDs inherited from source membership: " + r.load().objectBound().qids());
     }
 
     @Test void valueFilterGapFlagsAMissedMembershipTarget() {
@@ -182,8 +183,13 @@ class OscarReifyTest {
         // it must make the subject-default fields (the self-reference trap) and the
         // dedup key visible.
         QualifierLoadConfig load = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of(
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.unbounded(),
+                List.of(
                         new QualifierLoadConfig.Qualifier(
                                 "P805", "edition", QualifierLoadConfig.Kind.ENTITY),
                         new QualifierLoadConfig.Qualifier(

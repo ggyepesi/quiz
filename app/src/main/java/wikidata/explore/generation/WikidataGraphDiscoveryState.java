@@ -151,7 +151,7 @@ public final class WikidataGraphDiscoveryState {
         // curated-frontier pattern. A vocabulary that filters values has no unseen
         // frontier by definition and remains an ordinary bounded reification.
         if (!load.discoverSubjects() || !load.hasDiscoveryValueQids()
-                || load.hasValueQids() || load.hasValueType()) return null;
+                || load.objectBound().bounded()) return null;
         GeneratedFieldModel target = statement.fields().stream()
                 .filter(field -> load.valueField().equals(field.name()))
                 .filter(field -> field.type() == FieldType.ENTITY)

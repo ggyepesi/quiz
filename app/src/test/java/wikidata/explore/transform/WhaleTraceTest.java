@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
@@ -59,8 +60,13 @@ class WhaleTraceTest {
 
         // Load the P1411 statements + qualifiers (forWork, edition) onto the members.
         QualifierLoadConfig load = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of(
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.unbounded(),
+                List.of(
                         new QualifierLoadConfig.Qualifier(
                                 "P1686", "forWork", QualifierLoadConfig.Kind.ENTITY),
                         new QualifierLoadConfig.Qualifier(

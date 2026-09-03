@@ -53,7 +53,7 @@ class ModelStatementReificationsTest {
         assertEquals("Oscarnominations", load.entityType());
         assertEquals("P1411", load.propertyPid());
         assertEquals("category", load.valueField());
-        assertEquals("Q19020", load.valueTypeQid());
+        assertEquals("Q19020", load.objectBound().qids().get(0));
         assertEquals(2, load.qualifiers().size());
         assertTrue(load.qualifiers().stream().anyMatch(
                 q -> q.pid().equals("P585") && q.kind() == QualifierLoadConfig.Kind.YEAR));

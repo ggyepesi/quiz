@@ -30,7 +30,7 @@ class QualifierLoadConfigsTest {
         assertTrue(c.valid());
         assertEquals("Oscarnominations", c.entityType());
         assertEquals("P1411", c.propertyPid());
-        assertEquals("Q19020", c.valueTypeQid());
+        assertEquals("Q19020", c.objectBound().qids().get(0));
         assertEquals(2, c.qualifiers().size());
         assertEquals("forWork", c.qualifiers().get(0).fieldName());
         assertEquals(QualifierLoadConfig.Kind.YEAR, c.qualifiers().get(1).kind());

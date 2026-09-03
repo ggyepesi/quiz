@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 
 import wikidata.explore.codegen.GeneratedViewableRuntimeBuilder;
@@ -267,7 +268,7 @@ public class GenerationPipeline {
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
                         snapshot.rootClass().className()));
         if (population != null && population.prepared().configuration(
-                datasource.api.acquisition.PopulationSelection.class) == null) {
+                PopulationRequest.class) == null) {
             if (log != null) log.message("Preview skipped: "
                     + population.prepared().description() + ".\n");
             GeneratedViewableRuntime runtime = buildRuntime(snapshot);

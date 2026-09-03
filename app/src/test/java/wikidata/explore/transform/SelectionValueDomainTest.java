@@ -58,7 +58,7 @@ class SelectionValueDomainTest {
 
         ModelStatementReifications.Reification r =
                 ModelStatementReifications.deriveOne(nom, project);
-        assertEquals(List.of("Q900", "Q901"), r.load().valueQids(),
+        assertEquals(List.of("Q900", "Q901"), r.load().objectBound().qids(),
                 "the vocabulary overrides the class-derived value filter");
     }
 
@@ -68,7 +68,7 @@ class SelectionValueDomainTest {
 
         ModelStatementReifications.Reification r =
                 ModelStatementReifications.deriveOne(nom, compiled);
-        assertEquals(List.of("Q900", "Q901"), r.load().valueQids(),
+        assertEquals(List.of("Q900", "Q901"), r.load().objectBound().qids(),
                 "compiled path matches the editable path");
     }
 }

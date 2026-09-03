@@ -6,7 +6,7 @@ import datasource.api.DatasourceProvider;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceRecipe;
 import datasource.api.acquisition.ClassPopulationOperation;
-import datasource.api.acquisition.PopulationSelection;
+import datasource.api.acquisition.PopulationRequest;
 import org.junit.jupiter.api.Test;
 import datasource.schema.FieldType;
 
@@ -93,19 +93,19 @@ class WikidataOfferingsTest {
     @Test void populationOfferingsExposeTheLogicalSelectionGenerationConsumes() {
         ClassPopulationOperation membership = (ClassPopulationOperation)
                 offering(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP);
-        PopulationSelection relation = membership.selection(new SourceRecipe(
+        PopulationRequest relation = membership.selection(new SourceRecipe(
                 "wikidata", "statement-membership",
                 Map.of("property", "P31", "values", "Q11424,Q202866")));
         ClassPopulationOperation seeds = (ClassPopulationOperation)
                 offering(WikidataDatasourceProvider.SEED_LIST);
-        PopulationSelection explicit = seeds.selection(new SourceRecipe(
+        PopulationRequest explicit = seeds.selection(new SourceRecipe(
                 "wikidata", "seed-list", Map.of("ids", "Q42,Q1")));
 
-        assertEquals(PopulationSelection.Kind.RELATION, relation.kind());
+        assertEquals(PopulationRequest.Kind.RELATION, relation.kind());
         assertEquals("P31", relation.relationId());
         assertEquals(List.of("Q11424", "Q202866"), relation.values().stream()
                 .map(datasource.EntityRef::id).toList());
-        assertEquals(PopulationSelection.Kind.EXPLICIT, explicit.kind());
+        assertEquals(PopulationRequest.Kind.EXPLICIT, explicit.kind());
         assertEquals(List.of("Q42", "Q1"), explicit.values().stream()
                 .map(datasource.EntityRef::id).toList());
     }

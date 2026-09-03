@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -80,14 +81,17 @@ class QualifierLoaderReifyTest {
         StubApi api = new StubApi(statements, Map.of("Q40", "Fresh Co-nominee"));
 
         QualifierLoadConfig cfg = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "",
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.explicit(List.of("Q102427")),
                 List.of(
                         new QualifierLoadConfig.Qualifier("P585", "year",
                                 QualifierLoadConfig.Kind.YEAR),
                         new QualifierLoadConfig.Qualifier("P2453", "coNominees",
-                                QualifierLoadConfig.Kind.ENTITY, true)),
-                List.of("Q102427"));   // allowed values: only Best Actor
+                                QualifierLoadConfig.Kind.ENTITY, true)));   // allowed values: only Best Actor
 
         List<WikidataDynamicObject> created = new QualifierLoader().api(api)
                 .enrich(List.of(nominee, category, pooledCo), cfg, null, null);
@@ -120,8 +124,13 @@ class QualifierLoaderReifyTest {
         WikidataDynamicObject nominee = obj("Q11", "Nobody", "OscarNominations");
         StubApi api = new StubApi(Map.of(), Map.of());
         QualifierLoadConfig cfg = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of(), List.of("Q102427"));
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.explicit(List.of("Q102427")),
+                List.of());
 
         List<WikidataDynamicObject> created = new QualifierLoader().api(api)
                 .enrich(List.of(nominee), cfg, null, null);

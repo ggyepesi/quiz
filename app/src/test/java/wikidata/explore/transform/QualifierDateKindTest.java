@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -61,9 +62,13 @@ class QualifierDateKindTest {
                         Map.of("P580", List.of(CROWNED))))));
 
         QualifierLoadConfig cfg = new QualifierLoadConfig(
-                "Ruler", "P39", "__Reign", "Reign", "position", "",
-                List.of(new QualifierLoadConfig.Qualifier("P580", "reignStart", kind)),
-                List.of("Q6412254"));
+                "Ruler",
+                "P39",
+                "__Reign",
+                "Reign",
+                "position",
+                EntityBound.explicit(List.of("Q6412254")),
+                List.of(new QualifierLoadConfig.Qualifier("P580", "reignStart", kind)));
 
         return new QualifierLoader().api(api)
                 .enrich(List.of(stephen, position), cfg, null, null).get(0);
@@ -109,10 +114,14 @@ class QualifierDateKindTest {
                 new WikidataApiClient.ApiStatement("Q170206$r", "Q6412254",
                         Map.of("P580", List.of(CROWNED, later))))));
         QualifierLoadConfig cfg = new QualifierLoadConfig(
-                "Ruler", "P39", "__Reign", "Reign", "position", "",
+                "Ruler",
+                "P39",
+                "__Reign",
+                "Reign",
+                "position",
+                EntityBound.explicit(List.of("Q6412254")),
                 List.of(new QualifierLoadConfig.Qualifier(
-                        "P580", "reignStart", QualifierLoadConfig.Kind.DATE, true)),
-                List.of("Q6412254"));
+                        "P580", "reignStart", QualifierLoadConfig.Kind.DATE, true)));
 
         Object value = new QualifierLoader().api(api)
                 .enrich(List.of(stephen, position), cfg, null, null)

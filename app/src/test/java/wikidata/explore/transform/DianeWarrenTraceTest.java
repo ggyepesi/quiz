@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
@@ -70,8 +71,13 @@ class DianeWarrenTraceTest {
                 new ArrayList<>(List.of(warren, marshall, bestSong));
 
         QualifierLoadConfig load = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of(
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.unbounded(),
+                List.of(
                         new QualifierLoadConfig.Qualifier(
                                 "P2453", "nominee", QualifierLoadConfig.Kind.ENTITY),
                         new QualifierLoadConfig.Qualifier(

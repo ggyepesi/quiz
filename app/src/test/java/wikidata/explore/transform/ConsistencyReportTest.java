@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.RoleKind;
@@ -35,8 +36,13 @@ class ConsistencyReportTest {
     // nominee = IDENTITY, forWork = REFERENCE, value(category) drives the slot.
     private static ModelStatementReifications.Reification reify() {
         QualifierLoadConfig load = new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of());
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.unbounded(),
+                List.of());
         ReifyConstruct rc = new ReifyConstruct(
                 "OscarNominations", "__Nomination", "Nomination", "source", "value", true,
                 List.of(new ReifyConstruct.Role("nominee", "nominee", true, RoleKind.IDENTITY),

@@ -8,7 +8,7 @@ import datasource.api.SourceBindingSlot;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.acquisition.ClassPopulationOperation;
-import datasource.api.acquisition.PopulationSelection;
+import datasource.api.acquisition.PopulationRequest;
 import datasource.api.SourceBinding;
 import datasource.api.SourceBindingTarget;
 import datasource.api.SourceExecutionPlan;
@@ -89,21 +89,21 @@ class PopulationSourceExecutionTest {
         RuleNode node = new RuleNode("Movie", "movie");
 
         assertThrows(IllegalArgumentException.class, () -> PopulationSourceExecution.apply(
-                node, saying(PopulationSelection.relation("dbpedia", "P31",
+                node, saying(PopulationRequest.relation("dbpedia", "P31",
                         List.of(new EntityRef("dbpedia", "Film")), false))),
                 "a population of identifiers this boundary cannot resolve");
 
         assertThrows(IllegalArgumentException.class, () -> PopulationSourceExecution.apply(
-                node, saying(PopulationSelection.relation(EntityRef.WIKIDATA, "P31",
+                node, saying(PopulationRequest.relation(EntityRef.WIKIDATA, "P31",
                         List.of(EntityRef.wikidata("Q11424")), true))),
                 "subclass closure, which the rule cannot carry");
     }
 
     /** A plan step whose operation reports the given selection. Built directly because
      *  no installed provider can produce one. */
-    private static SourceExecutionPlan.Step saying(PopulationSelection selection) {
+    private static SourceExecutionPlan.Step saying(PopulationRequest selection) {
         ClassPopulationOperation operation = new ClassPopulationOperation() {
-            @Override public PopulationSelection selection(SourceRecipe recipe) {
+            @Override public PopulationRequest selection(SourceRecipe recipe) {
                 return selection;
             }
             @Override public String id() { return "test-population"; }

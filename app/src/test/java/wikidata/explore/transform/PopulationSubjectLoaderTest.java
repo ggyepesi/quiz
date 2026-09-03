@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
@@ -91,8 +92,15 @@ class PopulationSubjectLoaderTest {
 
     private static QualifierLoadConfig cfg(boolean discover, List<String> valueQids) {
         return new QualifierLoadConfig(
-                "OscarNominations", "P1411", "__Nomination", "Nomination",
-                "category", "", List.of(), valueQids, discover);
+                "OscarNominations",
+                "P1411",
+                "__Nomination",
+                "Nomination",
+                "category",
+                EntityBound.explicit(valueQids),
+                List.of(),
+                discover,
+                "");
     }
 
     @Test void discoversSubjectsAndLoadsTheirStatements() {
@@ -129,9 +137,16 @@ class PopulationSubjectLoaderTest {
                 .statement("Q82686", "P39", "Q82686$ban", "Q253779", Map.of());
 
         QualifierLoadConfig config = new QualifierLoadConfig(
-                "__subject_OfficeHolding", "P39", "__OfficeHolding",
-                "OfficeHolding", "position", "", List.of(),
-                List.of(), List.of("Q6412254"), true, "");
+                "__subject_OfficeHolding",
+                "P39",
+                "__OfficeHolding",
+                "OfficeHolding",
+                "position",
+                EntityBound.unbounded(),
+                List.of(),
+                List.of("Q6412254"),
+                true,
+                "");
 
         List<WikidataDynamicObject> created = new QualifierLoader().api(api)
                 .enrich(new ArrayList<>(), config, sparql, null);

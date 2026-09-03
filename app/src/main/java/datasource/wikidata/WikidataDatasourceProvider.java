@@ -9,7 +9,7 @@ import datasource.api.SourceValueSchema;
 import datasource.api.SourceReferenceSchema;
 import datasource.api.SourceRecipe;
 import datasource.api.acquisition.ClassPopulationOperation;
-import datasource.api.acquisition.PopulationSelection;
+import datasource.api.acquisition.PopulationRequest;
 import datasource.EntityRef;
 import wikidata.WikidataIds;
 
@@ -163,13 +163,13 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         @Override public String id() { return STATEMENT_MEMBERSHIP; }
         @Override public String displayName() { return "Members by statement"; }
 
-        @Override public PopulationSelection selection(SourceRecipe recipe) {
+        @Override public PopulationRequest selection(SourceRecipe recipe) {
             SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
             String property = safe.parameter("property").trim().toUpperCase();
             List<String> values = qids(safe.parameter("values"));
             boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
             validateMembership(property, values, subclasses);
-            return PopulationSelection.relation(EntityRef.WIKIDATA, property,
+            return PopulationRequest.relation(EntityRef.WIKIDATA, property,
                     values.stream().map(EntityRef::wikidata).toList(), subclasses);
         }
 
@@ -184,9 +184,9 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         @Override public String id() { return SEED_LIST; }
         @Override public String displayName() { return "Members by explicit list"; }
 
-        @Override public PopulationSelection selection(SourceRecipe recipe) {
+        @Override public PopulationRequest selection(SourceRecipe recipe) {
             SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
-            return PopulationSelection.explicit(EntityRef.WIKIDATA,
+            return PopulationRequest.explicit(EntityRef.WIKIDATA,
                     qids(safe.parameter("ids")).stream()
                     .map(EntityRef::wikidata).toList());
         }

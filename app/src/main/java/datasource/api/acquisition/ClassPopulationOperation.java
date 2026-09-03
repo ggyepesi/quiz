@@ -11,12 +11,12 @@ import datasource.api.SourceRecipe;
  * boundary, preserving model filters, ranking, batching, caching and checkpoints.
  */
 public interface ClassPopulationOperation extends DatasourceOperation {
-    PopulationSelection selection(SourceRecipe recipe);
+    PopulationRequest selection(SourceRecipe recipe);
 
     @Override default PreparedSourceOperation prepare(SourceBinding binding) {
         if (binding == null) throw new IllegalArgumentException("binding is required");
         try {
-            PopulationSelection selection = selection(binding.recipe());
+            PopulationRequest selection = selection(binding.recipe());
             return new PreparedSourceOperation(binding.recipe().providerId(), displayName(),
                     PreparedSourceOperation.Execution.ACQUIRE, displayName(),
                     binding.recipe().parameters(), selection);

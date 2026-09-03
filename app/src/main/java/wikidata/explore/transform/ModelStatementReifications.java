@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataSparqlClient;
@@ -223,15 +224,23 @@ public final class ModelStatementReifications {
             }
         }
 
+        // The one place two authored inputs become one bound. Compilation is where
+        // that belongs: the loader used to make this choice at query time and without
+        // saying so, which is why a type filter beside an explicit set did nothing.
+        // An explicit set IS the bound; a type is a way of producing one. Configuring
+        // both is a model error for validation to report, not something to rank here.
+        EntityBound objectBound = !valueQids.isEmpty()
+                ? EntityBound.explicit(valueQids)
+                : EntityBound.instancesOf(valueTypeQid);
+
         QualifierLoadConfig load = new QualifierLoadConfig(
                 sourceClassName,
                 statementPid,
                 "__" + statementClass.className(),
                 statementClass.className(),
                 valueField,
-                WikidataIds.isQid(valueTypeQid) ? valueTypeQid : "",
+                objectBound,
                 qualifiers,
-                valueQids,
                 discoveryValueQids,
                 discoverSubjects,
                 statementSource.valueSelectionName());
@@ -733,14 +742,13 @@ public final class ModelStatementReifications {
                 project.findClass(config.entityType()).orElse(null);
 
         if (sourceClass == null
-                || config.valueQids() == null
-                || config.valueQids().isEmpty()
+                || !config.objectBound().bounded()
                 || !config.propertyPid().equals(
                 clean(sourceClass.sourceMapping().propertyPid()))) {
             return missed;
         }
 
-        Set<String> filter = new LinkedHashSet<>(config.valueQids());
+        Set<String> filter = new LinkedHashSet<>(config.objectBound().qids());
 
         String sourceQid = clean(sourceClass.sourceMapping().sourceQid());
         if (WikidataIds.isQid(sourceQid) && !filter.contains(sourceQid)) {

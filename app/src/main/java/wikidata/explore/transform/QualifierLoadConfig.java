@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import wikidata.WikidataIds;
 
 import java.util.List;
@@ -25,9 +26,8 @@ public record QualifierLoadConfig(
         String statementField,
         String statementType,
         String valueField,
-        String valueTypeQid,
+        EntityBound objectBound,
         List<Qualifier> qualifiers,
-        List<String> valueQids,
         List<String> discoveryValueQids,
         boolean discoverSubjects,
         String valueDomainName) {
@@ -36,44 +36,29 @@ public record QualifierLoadConfig(
      *  their statements. Explicit vocabularies intentionally retain that behaviour. */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
-            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids,
+            EntityBound objectBound, List<Qualifier> qualifiers,
             boolean discoverSubjects, String valueDomainName) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, valueQids, discoverSubjects,
-                valueDomainName);
+                objectBound, qualifiers,
+                objectBound.kind() == EntityBound.Kind.EXPLICIT
+                        ? objectBound.qids() : List.of(),
+                discoverSubjects, valueDomainName);
     }
 
-    /** Back-compat 9-arg form (no named value domain — used for logging only). */
+    /** Subjects already exist in the pool: no discovery, no named domain. */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
-            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids,
-            boolean discoverSubjects) {
+            EntityBound objectBound, List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, valueQids, discoverSubjects, "");
+                objectBound, qualifiers, false, "");
     }
 
-    /** Back-compat 8-arg form: subjects already exist in the pool (no discovery). */
-    public QualifierLoadConfig(String entityType, String propertyPid,
-            String statementField, String statementType, String valueField,
-            String valueTypeQid, List<Qualifier> qualifiers, List<String> valueQids) {
-        this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, valueQids, valueQids, false, "");
-    }
-
-    /** Back-compat 7-arg form (no explicit value QIDs). */
-    public QualifierLoadConfig(String entityType, String propertyPid,
-            String statementField, String statementType, String valueField,
-            String valueTypeQid, List<Qualifier> qualifiers) {
-        this(entityType, propertyPid, statementField, statementType, valueField,
-                valueTypeQid, qualifiers, List.of(), List.of(), false, "");
-    }
-
-    /** Back-compat 6-arg form (no value-type filter). */
+    /** An end with no bound at all: every value of the property is accepted. */
     public QualifierLoadConfig(String entityType, String propertyPid,
             String statementField, String statementType, String valueField,
             List<Qualifier> qualifiers) {
         this(entityType, propertyPid, statementField, statementType, valueField,
-                "", qualifiers, List.of(), List.of(), false, "");
+                EntityBound.unbounded(), qualifiers, false, "");
     }
 
     /** A human label for where the value domain came from (a VOCABULARY Selection
@@ -88,29 +73,27 @@ public record QualifierLoadConfig(
         // does not also filter them is what makes a value a seed.
         return discoversOnly()
                 ? discoveryValueQids.size() + " discovery seed(s)"
-                : valueQids.size() + " allowed values";
+                : objectBound.qids().size() + " allowed values";
     }
 
     /** Whether the value domain finds subjects without also filtering their
      *  statements — the seeded-target-class case, as opposed to a vocabulary that
      *  does both jobs. */
     public boolean discoversOnly() {
-        return discoverSubjects() && hasDiscoveryValueQids() && !hasValueQids();
+        return discoverSubjects() && hasDiscoveryValueQids() && !objectBound.bounded();
     }
 
-    /** When set (e.g. Q19020 "Academy Awards"), keep only statements whose main
-     *  value is {@code wdt:P31} this type — e.g. only Oscar categories, dropping
-     *  every other award a winner also received. */
-    public boolean hasValueType() {
-        return valueTypeQid != null && WikidataIds.isQid(valueTypeQid);
-    }
-
-    /** The EXPLICIT allowed value QIDs (e.g. the 59 Oscar categories). When
-     *  present, the loader pins {@code VALUES ?value { … }} — a tighter, more
-     *  deterministic join than the broad {@code wdt:P31} type filter, and it
-     *  drops statements whose value isn't one of these. */
-    public boolean hasValueQids() {
-        return valueQids != null && !valueQids.isEmpty();
+    /**
+     * How the object end is bounded — EXPLICIT QIDs (e.g. the 59 Oscar categories),
+     * the instances of a type (e.g. Q19020 "Academy Awards", dropping every other
+     * award a winner received), or unbounded.
+     *
+     * <p>These were two independent fields and both could be set, in which case the
+     * QIDs won and the type filter did nothing without saying so. One value cannot
+     * be in two states, so there is no longer a rule to get wrong.
+     */
+    public EntityBound objectBound() {
+        return objectBound;
     }
 
     /** Values used only to find the initial statement subjects. They need not be the

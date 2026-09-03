@@ -106,15 +106,17 @@ public class QualifierLoader {
         String stmtType = blankTo(cfg.statementType(), cfg.statementField());
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
 
-        // Allowed value set: explicit category QIDs, or the instances of the value
-        // type (one SPARQL query), or null = accept every value.
-        Set<String> allowedValues = null;
-        if (cfg.hasValueQids()) {
-            allowedValues = new HashSet<>(cfg.valueQids());
-        } else if (cfg.hasValueType() && client != null) {
-            allowedValues = new HashSet<>(
-                    fetchValueQids(client, cfg.valueTypeQid(), log));
-        }
+        // The allowed value set, read from ONE bound. This used to be an if/else over
+        // two independent fields, so a model that set both had its type filter silently
+        // ignored — a precedence nobody wrote down, applied at query time. The choice is
+        // now made once at compile, and here there is nothing left to rank: an end is
+        // bounded one way or it is not bounded at all (null = accept every value).
+        Set<String> allowedValues = switch (cfg.objectBound().kind()) {
+            case EXPLICIT -> new HashSet<>(cfg.objectBound().qids());
+            case RELATION -> client == null ? null : new HashSet<>(
+                    fetchValueQids(client, cfg.objectBound().qids().get(0), log));
+            case UNBOUNDED -> null;
+        };
 
         // Discovery and materialization are separate graph operations. An explicit
         // vocabulary normally supplies both sets; a seeded target class can supply

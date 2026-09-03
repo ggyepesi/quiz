@@ -1,5 +1,6 @@
 package wikidata.explore.advisor;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -71,8 +72,13 @@ class DecisionCatalogTest {
 
         TransformConfig t = new TransformConfig();
         t.qualifierLoads.add(new QualifierLoadConfig(
-                "Oscarnominations", "P1411", "nominations", "Nomination", "category",
-                "Q19020", List.of()));
+                "Oscarnominations",
+                "P1411",
+                "nominations",
+                "Nomination",
+                "category",
+                EntityBound.instancesOf("Q19020"),
+                List.of()));
         t.reifies.add(new wikidata.explore.transform.ReifyConstruct(
                 "Oscarnominations", "nominations", "Oscar", "source", "value", true));
 

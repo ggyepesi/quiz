@@ -47,7 +47,7 @@ public final class QualifierLoadConfigs {
                 "statements",            // generic container field
                 "Statement",             // generic per-statement type
                 "value",                 // the relation's main value
-                valueTypeQid == null ? "" : valueTypeQid,
+                wikidata.explore.model.EntityBound.instancesOf(valueTypeQid),
                 quals);
     }
 

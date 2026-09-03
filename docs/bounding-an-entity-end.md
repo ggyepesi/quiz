@@ -166,11 +166,11 @@ rather than left as a second way to say the same thing.
 
 ## Sequence
 
-1. Rename the datasource record; the collision makes everything after it harder to read.
-2. Introduce `EntityBound` and compile it into `PopulationSelection` — objects first,
-   since that path already exists end to end.
-3. Delete the `if/else if` precedence in `QualifierLoader`; with one value per end it has
-   nothing left to decide.
+1. ~~Rename the datasource record~~ — **done**: `PopulationRequest`.
+2. ~~Introduce `EntityBound`~~ — **done**: `QualifierLoadConfig` carries one
+   `objectBound` in place of the two fields that competed, resolved once at compile.
+3. ~~Delete the `if/else if` precedence~~ — **done**: `QualifierLoader` switches on the
+   bound's kind, which is total and has nothing to rank.
 4. Give the subject end its bound, which is the new capability.
 5. One editor control per end, in the triple box, offering the modes as a list.
 6. Decide the fate of the model-side `PopulationSelection`.

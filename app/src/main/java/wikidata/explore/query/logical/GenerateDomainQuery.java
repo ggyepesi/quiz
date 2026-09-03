@@ -1,5 +1,6 @@
 package wikidata.explore.query.logical;
 
+import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 
 import objectview.Viewable;
@@ -567,7 +568,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
             return false;
         }
         return population != null && population.prepared().configuration(
-                datasource.api.acquisition.PopulationSelection.class) != null;
+                PopulationRequest.class) != null;
     }
 
     private String populationReason(datasource.api.SourceExecutionPlan.Step population) {

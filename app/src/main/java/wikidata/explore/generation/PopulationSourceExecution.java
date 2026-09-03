@@ -2,7 +2,7 @@ package wikidata.explore.generation;
 
 import datasource.api.BindingScope;
 import datasource.api.SourceExecutionPlan;
-import datasource.api.acquisition.PopulationSelection;
+import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.rule.RuleNode;
@@ -16,8 +16,8 @@ public final class PopulationSourceExecution {
         if (step == null || step.target().scope() != BindingScope.CLASS_POPULATION) {
             throw new IllegalArgumentException("A class-population plan step is required");
         }
-        PopulationSelection selection = step.prepared().configuration(
-                PopulationSelection.class);
+        PopulationRequest selection = step.prepared().configuration(
+                PopulationRequest.class);
         if (selection == null) {
             throw new IllegalArgumentException("Datasource operation "
                     + step.recipe().providerId() + "." + step.recipe().operationId()
@@ -36,7 +36,7 @@ public final class PopulationSourceExecution {
 
         root.sourceQid("");
         root.additionalSourceQids().clear();
-        if (selection.kind() == PopulationSelection.Kind.RELATION) {
+        if (selection.kind() == PopulationRequest.Kind.RELATION) {
             String pid = selection.relationId().toUpperCase();
             if (!WikidataIds.isPid(pid)) {
                 throw new IllegalArgumentException("Invalid Wikidata population property: " + pid);
