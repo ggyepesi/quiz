@@ -123,17 +123,38 @@ class KeyedReductionTest {
         assertTrue(plan.onePerOccurrence());
     }
 
-    /** A candidate that cannot be keyed is dropped and counted, never dropped quietly. */
-    @Test void anUnkeyableCandidateIsCountedOut() {
+    /**
+     * A candidate missing a key component is KEPT and counted, not dropped.
+     *
+     * <p>Rejecting was the first default here, and running it over the shipped snapshots
+     * would have discarded 99 real records. A counted drop is still a drop, and the rule
+     * that lets a reducer default at all says a default may only be non-destructive.
+     */
+    @Test void aCandidateMissingAKeyComponentIsKeptAndCounted() {
         var plan = plan(List.of(KeyComponent.field("category")), Map.of());
 
         var result = KeyedReduction.reduce(plan, List.of(
                 row("s1", "category", "Physics"),
                 row("s2", "year", "1903")), STABLE);
 
-        assertEquals(1, result.instances().size());
+        assertEquals(2, result.instances().size(), "both records still exist");
         assertEquals(1, result.unkeyed().size());
         assertEquals("category", result.unkeyed().get(0).missing().fieldPath());
+        assertEquals(MissingKeyPolicy.INCOMPLETE_GROUP,
+                result.unkeyed().get(0).applied());
+    }
+
+    /** Rejecting stays available — it is a decision a class makes, not a default. */
+    @Test void rejectingIsAvailableForAClassThatMeansIt() {
+        var plan = new CanonicalizationPlan("Award",
+                List.of(KeyComponent.field("category")),
+                MissingKeyPolicy.REJECT_CANDIDATE, Map.of());
+
+        var result = KeyedReduction.reduce(plan, List.of(
+                row("s1", "category", "Physics"),
+                row("s2", "year", "1903")), STABLE);
+
+        assertEquals(1, result.instances().size());
         assertEquals(2, result.candidateCount(), "and the count still says what came in");
     }
 
@@ -172,7 +193,7 @@ class KeyedReductionTest {
                 row("s2", "category", "Physics", "motivation", "for radioactivity"),
                 row("s3", "year", "1903")), STABLE).report();
 
-        assertTrue(report.contains("3 candidate(s) became 1 instance(s)"), report);
+        assertTrue(report.contains("3 candidate(s) became 2 instance(s)"), report);
         assertTrue(report.contains("1 combined more than one"), report);
         assertTrue(report.contains("could not be keyed"), report);
         assertTrue(report.contains("for radiation vs for radioactivity"), report);

@@ -20,8 +20,21 @@ public enum MissingKeyPolicy {
     /** Stop: for this class, a candidate without a key means the run is wrong. */
     FAIL;
 
-    /** Rejecting is the default: it drops nothing silently, because it is counted. */
+    /**
+     * Grouping is the default, by the same rule that decides a reducer's: a default may
+     * only be non-destructive.
+     *
+     * <p>Rejecting was the first answer here, on the grounds that a counted drop is not
+     * a silent one. Run over the shipped snapshots it would have discarded 99 real
+     * records — 56 Oscar nominations with no ceremony, 36 office holdings with no dates,
+     * 7 Nobel awards with no motivation — which is destructive however loudly it is
+     * counted, and a default may not be. It is also what the existing paths do: a blank
+     * component simply forms part of the key string, so those records already group.
+     *
+     * <p>Rejecting remains available, and is the right choice for a class where a
+     * candidate without a key is not a record at all. That is a decision, not a default.
+     */
     public static MissingKeyPolicy defaultPolicy() {
-        return REJECT_CANDIDATE;
+        return INCOMPLETE_GROUP;
     }
 }
