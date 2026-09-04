@@ -151,11 +151,13 @@ public class TransformEngine {
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<SelfRefFinding> allFindings = new ArrayList<>();
         List<IdentityCollision> allCollisions = new ArrayList<>();
+        List<canonical.KeyedReduction.Conflict> allReductionConflicts = new ArrayList<>();
         for (ReifyConstruct c : config.reifies) {
             created.addAll(applyReify(pool, c, valueFieldByList.get(c.listField())));
             allDemoted.addAll(demoted);
             allFindings.addAll(selfRefFindings);
             allCollisions.addAll(identityCollisions);
+            allReductionConflicts.addAll(reductionConflicts);
         }
         demoted.clear();
         demoted.addAll(allDemoted);
@@ -163,8 +165,39 @@ public class TransformEngine {
         selfRefFindings.addAll(allFindings);
         identityCollisions.clear();
         identityCollisions.addAll(allCollisions);
+        reductionConflicts.clear();
+        reductionConflicts.addAll(allReductionConflicts);
         logIdentityCollisions(allCollisions, log);
+        logReductionConflicts(allReductionConflicts, log);
         return created;
+    }
+
+    private static void logReductionConflicts(
+            List<canonical.KeyedReduction.Conflict> conflicts, GenerationLog log) {
+        if (log == null || conflicts == null || conflicts.isEmpty()) return;
+        java.util.Map<String, List<canonical.KeyedReduction.Conflict>> byType =
+                new java.util.LinkedHashMap<>();
+        for (var conflict : conflicts) {
+            byType.computeIfAbsent(conflict.className(), ignored -> new ArrayList<>())
+                    .add(conflict);
+        }
+        for (var entry : byType.entrySet()) {
+            StringBuilder message = new StringBuilder().append(entry.getKey()).append(": ")
+                    .append(entry.getValue().size())
+                    .append(" field reduction conflict(s); no value was chosen.\n");
+            int shown = 0;
+            for (var conflict : entry.getValue()) {
+                if (shown++ == 5) {
+                    message.append("    +").append(entry.getValue().size() - 5)
+                            .append(" more\n");
+                    break;
+                }
+                message.append("    ").append(conflict.fieldPath()).append(": ")
+                        .append(conflict.left()).append(" vs ")
+                        .append(conflict.right()).append("\n");
+            }
+            log.message(message.toString());
+        }
     }
 
     /**
@@ -453,10 +486,8 @@ public class TransformEngine {
         // the qualifiers were loaded.
         if (!c.dedupBy().isEmpty()) {
             List<WikidataDynamicObject> all = result;
-            result = dedupPreferringWorkAnchored(all, c.dedupBy(), srcField,
-                    c.roles(), c.targetType(), identityCollisions);
-            // Values come from the shared engine, applied to the carriers chosen above.
-            reduceOnto(result, all, c.dedupBy(), c.plan(), reductionConflicts);
+            result = reduceSelectingWorkAnchoredCarrier(all, c.plan(), srcField,
+                    c.roles(), c.targetType(), identityCollisions, reductionConflicts);
         }
 
         // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
@@ -805,99 +836,43 @@ public class TransformEngine {
      * denormalized back-reference (source==the nominee). Robust to qualifier-load
      * timing since it reads final field values, not the reify-time inverse flag.
      */
-    private static List<WikidataDynamicObject> dedupPreferringWorkAnchored(
-            List<WikidataDynamicObject> objs, List<String> keyFields,
+    private static List<WikidataDynamicObject> reduceSelectingWorkAnchoredCarrier(
+            List<WikidataDynamicObject> objs, canonical.CanonicalizationPlan plan,
             String srcField, List<ReifyConstruct.Role> roles,
-            String type, List<IdentityCollision> collisions) {
-        // Partitioning and reduction are the shared engine's. What stays here is the
-        // one thing only Wikidata knows: which COPY of a statement is the canonical one
-        // to carry the result, since the same nomination arrives from the work's own
-        // statement and from the nominee's back-reference. That choice consults no model
-        // key — it reads the record's own source against its roles — which is the
-        // separation milestone 3 asked for.
-        java.util.Map<String, WikidataDynamicObject> byKey =
+            String type, List<IdentityCollision> collisions,
+            List<canonical.KeyedReduction.Conflict> conflicts) {
+        canonical.StableForm stable = WikidataCandidates.stableForm();
+        java.util.Map<String, List<WikidataDynamicObject>> byKey =
                 new java.util.LinkedHashMap<>();
         for (WikidataDynamicObject o : objs) {
-            String k = keyOf(o, keyFields);
-            WikidataDynamicObject cur = byKey.get(k);
-            if (cur == null) {
-                byKey.put(k, o);
-                continue;
-            }
-            boolean replace = !workAnchored(cur, srcField, roles)
-                    && workAnchored(o, srcField, roles);
-            if (collisions != null) {
-                collisions.add(new IdentityCollision(
-                        type, k, replace ? o : cur, replace ? cur : o, true));
-            }
-            if (replace) byKey.put(k, o);
-        }
-        return new ArrayList<>(byKey.values());
-    }
-
-    /**
-     * The reduced values, written onto the carrier each partition chose.
-     *
-     * <p>The old merge was one hard-coded rule for every class: union collections, fill
-     * empty scalars, and silently keep the first of two conflicting ones. It could not
-     * say "union the laureates while requiring the category to agree", which is why the
-     * reducers exist — and why a conflict is now reported instead of disappearing.
-     */
-    private static void reduceOnto(List<WikidataDynamicObject> carriers,
-            List<WikidataDynamicObject> all, List<String> keyFields,
-            canonical.CanonicalizationPlan plan, List<canonical.KeyedReduction.Conflict> conflicts) {
-        if (plan == null || !plan.identified() || plan.reductionByField().isEmpty()) return;
-        java.util.Map<String, WikidataDynamicObject> carrierByKey =
-                new java.util.LinkedHashMap<>();
-        for (WikidataDynamicObject carrier : carriers) {
-            carrierByKey.put(keyOf(carrier, keyFields), carrier);
+            canonical.Candidate candidate = WikidataCandidates.of(o);
+            String key = canonical.KeyedReduction.keyFor(plan, candidate, stable);
+            byKey.computeIfAbsent(key, ignored -> new ArrayList<>()).add(o);
         }
         canonical.KeyedReduction.Result reduced = canonical.KeyedReduction.reduce(
-                plan, WikidataCandidates.of(all), WikidataCandidates.stableForm());
+                plan, WikidataCandidates.of(objs), stable);
+        List<WikidataDynamicObject> carriers = new ArrayList<>();
         for (canonical.KeyedReduction.Instance instance : reduced.instances()) {
-            WikidataDynamicObject carrier = carrierByKey.get(instance.key());
-            if (carrier == null) continue;
+            List<WikidataDynamicObject> partition = byKey.get(instance.key());
+            if (partition == null || partition.isEmpty()) continue;
+            java.util.Comparator<WikidataDynamicObject> sourceOrder =
+                    java.util.Comparator.comparing(o -> o.getIdentifier() == null
+                            ? "" : o.getIdentifier());
+            WikidataDynamicObject carrier = partition.stream()
+                    .filter(o -> workAnchored(o, srcField, roles)).min(sourceOrder)
+                    .orElseGet(() -> partition.stream().min(sourceOrder).orElseThrow());
             for (var value : instance.values().entrySet()) {
-                if (plan.reductionFor(value.getKey()) != null) {
-                    carrier.put(value.getKey(), value.getValue());
-                }
+                carrier.put(value.getKey(), value.getValue());
+            }
+            carriers.add(carrier);
+            if (collisions != null) for (WikidataDynamicObject collapsed
+                    : partition.stream().sorted(sourceOrder).toList()) {
+                if (collapsed != carrier) collisions.add(new IdentityCollision(
+                        type, instance.key(), carrier, collapsed, true));
             }
         }
         if (conflicts != null) conflicts.addAll(reduced.conflicts());
-    }
-
-    /**
-     * Completes the preferred representative from another partial copy. Collections
-     * are unioned in encounter order; an absent scalar is filled; conflicting scalar
-     * values remain on the preferred record rather than silently becoming a list.
-     */
-    private static void mergePartialRecord(
-            WikidataDynamicObject preferred, WikidataDynamicObject partial) {
-        for (var entry : partial.dynamicFields().entrySet()) {
-            String field = entry.getKey();
-            Object incoming = entry.getValue();
-            Object existing = preferred.get(field);
-            if (existing == null) {
-                preferred.put(field, incoming);
-                continue;
-            }
-            if (existing instanceof Collection<?> || incoming instanceof Collection<?>) {
-                List<Object> union = new ArrayList<>();
-                appendDistinct(union, existing);
-                appendDistinct(union, incoming);
-                preferred.put(field, union);
-            }
-        }
-    }
-
-    private static void appendDistinct(List<Object> target, Object value) {
-        if (value instanceof Collection<?> values) {
-            for (Object item : values) appendDistinct(target, item);
-            return;
-        }
-        if (value != null && target.stream().noneMatch(item -> sameEntity(item, value))) {
-            target.add(value);
-        }
+        return carriers;
     }
 
     // The source is (also) a role value — e.g. source==forWork: the statement sits

@@ -52,6 +52,10 @@ final class ClassIdentityEditor extends JPanel {
     private final Map<String, JComboBox<Reduction>> reducerBoxes = new LinkedHashMap<>();
     private final JLabel proposal = new JLabel(" ");
     private final JButton accept = new JButton(" ");
+    private final JButton addKey = button("Add", event -> addSelected());
+    private final JButton removeKey = button("Remove", event -> removeSelected());
+    private final JButton moveKeyUp = button("Up", event -> move(-1));
+    private final JButton moveKeyDown = button("Down", event -> move(1));
 
     private final JTextArea preview = new JTextArea(5, 40);
     private List<canonical.Candidate> sampled = List.of();
@@ -96,10 +100,10 @@ final class ClassIdentityEditor extends JPanel {
     private JPanel keyButtons() {
         JPanel buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
-        buttons.add(button("Add", event -> addSelected()));
-        buttons.add(button("Remove", event -> removeSelected()));
-        buttons.add(button("Up", event -> move(-1)));
-        buttons.add(button("Down", event -> move(1)));
+        buttons.add(addKey);
+        buttons.add(removeKey);
+        buttons.add(moveKeyUp);
+        buttons.add(moveKeyDown);
         buttons.add(Box.createVerticalStrut(4));
         buttons.add(addable);
         return buttons;
@@ -178,6 +182,11 @@ final class ClassIdentityEditor extends JPanel {
         // pretending the list is a choice it is not.
         boolean editable = plan.key().stream().noneMatch(KeyComponent::structural);
         keyList.setEnabled(editable);
+        addable.setEnabled(editable);
+        addKey.setEnabled(editable);
+        removeKey.setEnabled(editable);
+        moveKeyUp.setEnabled(editable);
+        moveKeyDown.setEnabled(editable);
 
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.name() == null || field.name().isBlank()) continue;

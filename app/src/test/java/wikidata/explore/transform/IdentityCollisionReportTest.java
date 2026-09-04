@@ -5,6 +5,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.CanonicalSpec;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +26,13 @@ class IdentityCollisionReportTest {
         o.type("Holding");
         o.put("source", source);
         o.put("position", value);
+        return o;
+    }
+
+    private static WikidataDynamicObject record(
+            String qid, String source, String value, String note) {
+        WikidataDynamicObject o = record(qid, source, value);
+        o.put("note", note);
         return o;
     }
 
@@ -78,5 +86,37 @@ class IdentityCollisionReportTest {
         engine.applyReify(new java.util.ArrayList<>(List.of(person)), reify(CanonicalSpec.DuplicatePolicy.KEEP_ONE));
 
         assertEquals(List.of(), engine.identityCollisions());
+    }
+
+    @Test void wholeTransformRetainsAndLogsConflictsFromEveryReify() {
+        TransformEngine engine = new TransformEngine();
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Someone");
+        person.type("Person");
+        person.put("__First", new java.util.ArrayList<>(List.of(
+                record("S1", "Q1", "Q9", "first-a"),
+                record("S2", "Q1", "Q9", "first-b"))));
+        person.put("__Second", new java.util.ArrayList<>(List.of(
+                record("S3", "Q1", "Q8", "second-a"),
+                record("S4", "Q1", "Q8", "second-b"))));
+
+        TransformConfig config = new TransformConfig();
+        config.reifies.add(reify("__First", "FirstHolding"));
+        config.reifies.add(reify("__Second", "SecondHolding"));
+        List<String> messages = new java.util.ArrayList<>();
+
+        engine.apply(new java.util.ArrayList<>(List.of(person)), config, null,
+                wikidata.explore.extract.GenerationLog.of(messages::add));
+
+        assertEquals(2, engine.reductionConflicts().size(),
+                "the second reify must not erase the first one's conflict");
+        assertTrue(messages.stream().anyMatch(m -> m.contains("FirstHolding: 1 field reduction conflict")));
+        assertTrue(messages.stream().anyMatch(m -> m.contains("SecondHolding: 1 field reduction conflict")));
+    }
+
+    private static ReifyConstruct reify(String listField, String targetType) {
+        return new ReifyConstruct("Person", listField, targetType,
+                "source", "position", true, List.of(), List.of("source", "position"),
+                "", List.of(), CanonicalSpec.DuplicatePolicy.MERGE_RECORDS,
+                Map.of("note", canonical.Reduction.REQUIRE_AGREEMENT));
     }
 }

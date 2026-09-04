@@ -90,17 +90,14 @@ public final class Canonicalizer {
         if (spec.keyFields().isEmpty()) {
             return safe(fallback);
         }
-        StringBuilder sb = new StringBuilder();
+        java.util.List<String> components = new java.util.ArrayList<>();
         boolean any = false;
         for (String key : spec.keyFields()) {
             String id = idOf(read(reader, key));
-            if (sb.length() > 0) {
-                sb.append('|');
-            }
-            sb.append(id);
+            components.add(id);
             any |= !id.isBlank();
         }
-        return any ? sb.toString() : safe(fallback);
+        return any ? canonical.StableKey.encode(components) : safe(fallback);
     }
 
     private static Object read(FieldReader reader, String field) {

@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalizerTest {
@@ -98,8 +99,22 @@ class CanonicalizerTest {
         fields.put("category", new Ref("Q2", "Best Actor"));
         fields.put("year", "1979");
 
-        assertEquals("Q1|Q2|1979", Canonicalizer.identifier(
+        // The encoding is framed rather than joined with a separator, so what is
+        // asserted is the PROPERTY that matters: the same tuple gives the same id, and
+        // a tuple whose components differ only in where a separator would fall does
+        // not collide with it. "Q1|Q2" + "1979" and "Q1" + "Q2|1979" used to be one id.
+        String identifier = Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec, reader(fields), "GUID", "fb");
+        assertEquals(identifier, Canonicalizer.identifier(
                 ClassKind.STATEMENT, spec, reader(fields), "GUID", "fb"));
+
+        Map<String, Object> shifted = new HashMap<>();
+        shifted.put("nominee", new Ref("Q1|Q2", "run together"));
+        shifted.put("category", new Ref("1979", "shifted along"));
+        shifted.put("year", "");
+        assertNotEquals(identifier, Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec, reader(shifted), "GUID", "fb"),
+                "a separator inside a value no longer reads as the boundary between two");
     }
 
     @Test
@@ -118,8 +133,8 @@ class CanonicalizerTest {
                         new Ref("Q3", "Donna Strickland"),
                         new Ref("Q1", "Gérard Mourou")))), "statement-2", "fallback");
 
-        assertEquals("[Q1,Q2,Q3]", first);
-        assertEquals(first, reordered);
+        assertEquals(first, reordered,
+                "the members decide it, not the order they arrived in");
     }
 
     @Test
@@ -142,11 +157,19 @@ class CanonicalizerTest {
         CanonicalSpec spec = new CanonicalSpec();
         spec.keyFields().add("year");
 
-        assertEquals("canonical-date", Canonicalizer.identifier(
-                ClassKind.STATEMENT, spec,
-                reader(Map.of("year", new StableScalar(
-                        "canonical-date", "friendly rendered date"))),
-                "statement", "fallback"));
+        // The stable form still decides the identity; it is framed rather than
+        // returned raw, so this asserts that two values with the same stable form agree
+        // and the rendering does not enter into it.
+        assertEquals(
+                Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                        reader(Map.of("year", new StableScalar(
+                                "canonical-date", "friendly rendered date"))),
+                        "statement", "fallback"),
+                Canonicalizer.identifier(ClassKind.STATEMENT, spec,
+                        reader(Map.of("year", new StableScalar(
+                                "canonical-date", "a different rendering entirely"))),
+                        "statement", "fallback"),
+                "the same stable form is the same identity, however it is displayed");
     }
 
     @Test

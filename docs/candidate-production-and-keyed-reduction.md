@@ -39,6 +39,13 @@ a provider-qualified source identity as its key, or deliberately configure a con
 key. Entity and Statement therefore describe candidate *production shapes*; they do
 not select different canonicalization engines.
 
+This remains an architectural acceptance criterion, not a capability of the present
+Wikidata carrier. That carrier stores one QID as both datasource identity and modeled
+identity. Until those are separated and a canonical instance retains every contributing
+source identity, validation refuses a content key on a Source class rather than silently
+compiling a key that generation does not execute or collapsing away identities needed by
+Enrich.
+
 ## Boundary of this refactor
 
 The boundary is drawn **after source-specific normalization**. Acquisition, parsing and

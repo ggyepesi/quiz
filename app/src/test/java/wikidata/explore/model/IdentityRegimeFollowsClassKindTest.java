@@ -3,6 +3,7 @@ package wikidata.explore.model;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,9 +64,16 @@ class IdentityRegimeFollowsClassKindTest {
         assertEquals("Q42", Canonicalizer.identifier(
                         ClassKind.SOURCE, spec, reader, "Q42", "fallback"),
                 "a source-identified class keeps its id even where a key is configured");
-        assertEquals("Q1", Canonicalizer.identifier(
-                        ClassKind.STATEMENT, spec, reader, "Q42", "fallback"),
-                "and one that derives its identity joins the key fields");
+        // What matters is that it derives from the KEY and not from the source id, not
+        // how the key is encoded — the encoding frames its components now, so that two
+        // different tuples cannot spell the same identity.
+        String derived = Canonicalizer.identifier(
+                ClassKind.STATEMENT, spec, reader, "Q42", "fallback");
+        assertNotEquals("Q42", derived,
+                "and one that derives its identity ignores the source id");
+        assertEquals(derived, Canonicalizer.identifier(
+                        ClassKind.STATEMENT, spec, reader, "a different source", "fallback"),
+                "the key decides it, so the source id cannot change it");
     }
 
     @Test void aDisplayNameIsComposedWhenTheMODEsaysSoAndNotOtherwise() {

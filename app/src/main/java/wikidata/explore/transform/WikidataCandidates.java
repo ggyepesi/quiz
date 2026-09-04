@@ -69,14 +69,16 @@ public final class WikidataCandidates {
                 // back is right; recomputing it here would be the second discovery path.
                 case OWNER_SITE_IDENTITY -> object.isPart() ? object.getIdentifier() : "";
 
-                // NOT SUPPLIED YET, and deliberately blank rather than approximated.
-                // A statement's occurrence identity is its GUID, which acquisition does
-                // not store; the triple would be the obvious substitute and is exactly
-                // wrong, since the same triple legitimately occurs more than once —
-                // that is the 179-holdings-over-173-pairs case. A blank means the
-                // missing-key policy reports it, which is what should happen until
-                // extraction carries the GUID.
-                case SOURCE_OCCURRENCE -> "";
+                // A reified statement's occurrence IS its Wikidata statement id —
+                // "Q72717$67ADCA97-…", one claim on one entity — and acquisition has
+                // been storing it as the record's identifier all along. This read ""
+                // and said the GUID was not stored, which was simply wrong: the shipped
+                // Nobel snapshot identifies every award that way. Anything else stays
+                // blank, so a plan keying on an occurrence gets one where an occurrence
+                // exists and is refused where none does.
+                case SOURCE_OCCURRENCE -> wikidata.WikidataIds
+                        .isStatementId(object.getIdentifier())
+                        ? NAMESPACE + ":" + object.getIdentifier() : "";
 
                 case FIELD -> "";
             };

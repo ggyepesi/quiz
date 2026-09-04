@@ -11,6 +11,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
 
+    @Test void sourceContentKeyIsRefusedRatherThanSilentlyIgnored() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.classKind(ClassKind.SOURCE);
+        person.addField("name", FieldType.STRING, FieldCardinality.SINGLE);
+        person.canonical().keyFields().add("name");
+        project.rootClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.format().contains(
+                "content keys require a canonical carrier that retains every source identity"),
+                result.format());
+    }
+
     @Test void representationRequiresAnExplicitTargetAdmission() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel prize = new GeneratedClassModel("Prize");

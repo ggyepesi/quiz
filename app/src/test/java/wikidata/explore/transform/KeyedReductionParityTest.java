@@ -117,19 +117,32 @@ class KeyedReductionParityTest {
     }
 
     /**
-     * The occurrence identity is not supplied, and says so by being blank rather than
-     * approximated. Its real value is a statement's GUID, which acquisition does not
-     * store; the subject/property/object triple is the obvious substitute and is exactly
-     * wrong, because the same triple legitimately occurs more than once.
+     * A reified statement's occurrence identity is supplied, because it was always
+     * there: the record's own identifier IS the Wikidata statement id.
+     *
+     * <p>This asserted the opposite, on a false premise of mine — that acquisition did
+     * not store the GUID. Every shipped statement class is identified by one:
+     * "q76555$82129A1D-…" for a holding, "Q72717$67ADCA97-…" for a nomination. The gap
+     * this was documenting did not exist.
      */
-    @Test void anOccurrenceIdentityIsAbsentRatherThanGuessed() throws Exception {
+    @Test void aStatementsOccurrenceIdentityIsItsStatementId() throws Exception {
         Domain history = load("history");
         var holding = history.byClass().get("OfficeHolding").get(0);
 
-        assertEquals("", WikidataCandidates.of(holding)
-                        .structuralIdentity(canonical.KeyComponent.Kind.SOURCE_OCCURRENCE),
-                "blank, so a plan asking for it is refused by the missing-key policy "
-                        + "instead of silently keyed on something that repeats");
+        String occurrence = WikidataCandidates.of(holding)
+                .structuralIdentity(canonical.KeyComponent.Kind.SOURCE_OCCURRENCE);
+        assertTrue(occurrence.startsWith(WikidataCandidates.NAMESPACE + ":"), occurrence);
+        assertTrue(occurrence.contains("$"),
+                "one claim on one entity, which is what an occurrence is: " + occurrence);
+    }
+
+    /** An entity has no occurrence: it is not one assertion, it is a thing. */
+    @Test void anEntityHasNoOccurrenceIdentity() throws Exception {
+        Domain history = load("history");
+        var person = history.byClass().get("Person").get(0);
+
+        assertEquals("", WikidataCandidates.of(person)
+                .structuralIdentity(canonical.KeyComponent.Kind.SOURCE_OCCURRENCE));
     }
 
     /**

@@ -32,7 +32,7 @@ public final class KeyedReduction {
 
     /** Two candidates in one partition disagreed on a field that admits one value. */
     public record Conflict(String className, String key, String fieldPath,
-                           Object kept, Object rejected) { }
+                           Object left, Object right) { }
 
     /** A candidate that could not be keyed, and what was done about it. */
     public record Unkeyed(String className, KeyComponent missing,
@@ -88,8 +88,8 @@ public final class KeyedReduction {
                     break;
                 }
                 text.append("        ").append(conflict.fieldPath()).append(": ")
-                        .append(conflict.kept()).append(" vs ")
-                        .append(conflict.rejected()).append("\n");
+                        .append(conflict.left()).append(" vs ")
+                        .append(conflict.right()).append("\n");
             }
             return text.toString();
         }
@@ -121,7 +121,7 @@ public final class KeyedReduction {
                 unkeyed.add(new Unkeyed(plan.className(), missing, policy));
                 if (policy == MissingKeyPolicy.REJECT_CANDIDATE) continue;
             }
-            partitions.computeIfAbsent(keyOf(plan, candidate, stable),
+            partitions.computeIfAbsent(keyFor(plan, candidate, stable),
                     ignored -> new ArrayList<>()).add(candidate);
         }
 
@@ -145,15 +145,18 @@ public final class KeyedReduction {
         return null;
     }
 
-    private static String keyOf(
+    /** The exact partition key used by {@link #reduce}; exposed so an adapter can
+     * attach a materialized result to one of its source carriers without reimplementing
+     * key encoding. */
+    public static String keyFor(
             CanonicalizationPlan plan, Candidate candidate, StableForm stable) {
-        StringBuilder key = new StringBuilder();
+        List<String> components = new ArrayList<>();
         for (KeyComponent component : plan.key()) {
-            key.append('|').append(component.structural()
+            components.add(component.structural()
                     ? candidate.structuralIdentity(component.kind())
                     : stable.of(candidate.value(component.fieldPath())));
         }
-        return key.toString();
+        return StableKey.encode(components);
     }
 
     private static Instance materialize(
@@ -182,15 +185,22 @@ public final class KeyedReduction {
             switch (entry.getValue()) {
                 case UNION_DISTINCT -> values.put(field, union(present, stable));
                 case REQUIRE_AGREEMENT, PREFER_NON_EMPTY -> {
-                    Object kept = present.get(0);
-                    String keptForm = stable.of(kept);
-                    for (Object other : present.subList(1, present.size())) {
-                        if (!keptForm.equals(stable.of(other))) {
-                            conflicts.add(new Conflict(
-                                    plan.className(), key, field, kept, other));
-                        }
+                    // Compare DISTINCT normalized values in their stable order. Besides
+                    // keeping the instance free of an arbitrary winner, this makes the
+                    // diagnostic independent of remote row order too: with A/B/C the
+                    // same conflicts are reported whichever candidate arrived first.
+                    TreeMap<String, Object> distinct = new TreeMap<>();
+                    for (Object value : present) {
+                        distinct.putIfAbsent(stable.of(value), value);
                     }
-                    values.put(field, kept);
+                    if (distinct.size() == 1) {
+                        values.put(field, distinct.firstEntry().getValue());
+                        break;
+                    }
+                    Object left = distinct.firstEntry().getValue();
+                    distinct.tailMap(distinct.firstKey(), false).values().forEach(right ->
+                            conflicts.add(new Conflict(
+                                    plan.className(), key, field, left, right)));
                 }
                 // An explicit ordering or evidence policy is a later construct. Until
                 // one exists this cannot be reached: nothing offers it as a choice, and

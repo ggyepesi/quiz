@@ -13,9 +13,13 @@ public final class WikidataIds {
     private static final Pattern QID = Pattern.compile("Q\\d+");
     private static final Pattern PID = Pattern.compile("P\\d+");
     // A statement id names one claim ON an entity: "Q72717$67ADCA97-2FF9-43AD-...".
-    // Wikidata writes the GUID in either case, so match both.
+    // Wikidata writes the GUID in either case, and the ENTITY PREFIX in either case
+    // too — its own statement ids are lower-cased there ("q76555$82129A1D-…"), which
+    // this required to be upper. Half the shipped data is written the lower way:
+    // Oscars' nominations are "Q72717$…" and History's holdings "q76555$…", so a
+    // pattern accepting only one silently answers "not a statement" for the other.
     private static final Pattern STATEMENT =
-            Pattern.compile("(Q\\d+)\\$[0-9a-fA-F-]+");
+            Pattern.compile("([Qq]\\d+)\\$[0-9a-fA-F-]+");
 
     private WikidataIds() { }
 
@@ -47,12 +51,18 @@ public final class WikidataIds {
         return s != null && STATEMENT.matcher(s).matches();
     }
 
-    /** The entity a statement is about ({@code Q72717$…} → {@code Q72717}), else null. */
+    /**
+     * The entity a statement is about ({@code Q72717$…} → {@code Q72717}), else null.
+     *
+     * <p>Always the canonical upper-case QID, whichever case the statement id was
+     * written in — a lower-cased prefix is still that entity, and returning it verbatim
+     * would hand back something {@link #isQid} rejects and no pool lookup would match.
+     */
     public static String statementSubject(String s) {
         if (s == null) {
             return null;
         }
         var matcher = STATEMENT.matcher(s);
-        return matcher.matches() ? matcher.group(1) : null;
+        return matcher.matches() ? "Q" + matcher.group(1).substring(1) : null;
     }
 }

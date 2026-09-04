@@ -830,6 +830,20 @@ public final class GeneratedProjectModelValidator {
 
         Set<String> fieldNames = fieldNames(clazz);
 
+        // A SOURCE carrier still uses one QID as both datasource identity and modeled
+        // identity. Silently accepting a content key here would make the compiled plan
+        // claim that several source entities become one while generation continued to
+        // materialize one per QID (and a naïve collapse would lose the other QIDs needed
+        // by Enrich). Refuse the unsupported declaration until modeled identity and the
+        // retained set of source identities are represented separately.
+        if (clazz.classKind() == ClassKind.SOURCE
+                && !canonical.keyFields().isEmpty()) {
+            problems.add(Problem.error(clazz.className(),
+                    "A Source class is identified by its datasource identity; content "
+                            + "keys require a canonical carrier that retains every source "
+                            + "identity and are not supported yet."));
+        }
+
         if (clazz.classKind().usesCanonicalKey()) {
             if (canonical.keyFields().isEmpty()) {
                 // An empty key is no longer a state with a meaning. It used to be

@@ -89,7 +89,7 @@ class KeyedReductionTest {
                 "the same candidates in a different order produce the same instance");
     }
 
-    /** Disagreement is reported and the run continues — it is a fact about the data. */
+    /** Disagreement is reported without choosing a value by arrival order. */
     @Test void aDisagreementIsReportedRatherThanRankedOrFatal() {
         var plan = plan(List.of(KeyComponent.field("category")),
                 Map.of("motivation", Reduction.REQUIRE_AGREEMENT));
@@ -99,11 +99,28 @@ class KeyedReductionTest {
                 row("s2", "category", "Physics", "motivation", "for radioactivity")), STABLE);
 
         assertEquals(1, result.instances().size(), "the instance is still produced");
+        assertTrue(!result.instances().get(0).values().containsKey("motivation"),
+                "must agree cannot retain whichever remote row arrived first");
         assertEquals(1, result.conflicts().size());
         var conflict = result.conflicts().get(0);
         assertEquals("motivation", conflict.fieldPath());
-        assertEquals("for radiation", conflict.kept());
-        assertEquals("for radioactivity", conflict.rejected());
+        assertEquals("for radiation", conflict.left());
+        assertEquals("for radioactivity", conflict.right());
+    }
+
+    @Test void disagreementDiagnosticsDoNotDependOnCandidateOrder() {
+        var plan = plan(List.of(KeyComponent.field("category")),
+                Map.of("motivation", Reduction.REQUIRE_AGREEMENT));
+        var a = row("s1", "category", "Physics", "motivation", "zeta");
+        var b = row("s2", "category", "Physics", "motivation", "alpha");
+        var c = row("s3", "category", "Physics", "motivation", "middle");
+
+        var forwards = KeyedReduction.reduce(plan, List.of(a, b, c), STABLE);
+        var backwards = KeyedReduction.reduce(plan, List.of(c, b, a), STABLE);
+
+        assertEquals(forwards.instances(), backwards.instances());
+        assertEquals(forwards.conflicts(), backwards.conflicts(),
+                "the audit must be reproducible as well as the materialized instance");
     }
 
     /**
@@ -166,7 +183,7 @@ class KeyedReductionTest {
                 "group by nothing is one group — never what an unchosen key meant");
     }
 
-    /** Nothing prefers a survivor. Which candidate is kept follows from the reducer. */
+    /** Nothing prefers a survivor when agreement fails. */
     @Test void noCandidateIsPreferredByTheEngineItself() {
         var plan = plan(List.of(KeyComponent.field("category")),
                 Map.of("motivation", Reduction.REQUIRE_AGREEMENT));
@@ -175,8 +192,20 @@ class KeyedReductionTest {
                 row("s1", "category", "Physics", "motivation", "first"),
                 row("s2", "category", "Physics", "motivation", "second")), STABLE);
 
-        assertEquals("first", result.instances().get(0).values().get("motivation"),
-                "the first is kept because agreement keeps one, not because it won");
+        assertTrue(!result.instances().get(0).values().containsKey("motivation"),
+                "without agreement or a selection policy there is no value to keep");
+    }
+
+    @Test void delimitersInsideComponentsCannotMakeDifferentTuplesShareAKey() {
+        var plan = plan(List.of(KeyComponent.field("left"), KeyComponent.field("right")),
+                Map.of());
+
+        var result = KeyedReduction.reduce(plan, List.of(
+                row("s1", "left", "a|b", "right", "c"),
+                row("s2", "left", "a", "right", "b|c")), STABLE);
+
+        assertEquals(2, result.instances().size(),
+                "a delimiter is data, not a boundary in the key encoding");
     }
 
     /**
