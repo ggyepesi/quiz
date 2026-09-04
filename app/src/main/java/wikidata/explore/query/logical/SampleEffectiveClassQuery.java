@@ -1,16 +1,9 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
-import wikidata.explore.extract.RuleTreeExtractor;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
 import wikidata.explore.query.result.ClassSampleResult;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.rule.RuleTreeCompiler;
 import work.Query;
 import work.QueryContext;
 
@@ -51,31 +44,14 @@ public final class SampleEffectiveClassQuery implements Query<ClassSampleResult>
     @Override public ClassSampleResult execute(QueryContext context) throws Exception {
         if (snapshot == null) throw new IllegalStateException("No model to sample");
         CompiledProjectModel compiled = ProjectModelCompiler.compile(snapshot);
-        CompiledClass clazz = compiled.findClass(sampledClass).orElseThrow(() ->
-                new IllegalStateException("Compiled class is missing: " + sampledClass));
-        RuleNode plan = RuleTreeCompiler.compileClass(clazz, compiled);
-        // Classification-derived/reference classes deliberately have no population
-        // mapping. For inspection, use the evidence type MembershipPattern already
-        // owns; never write it back into the model or generation plan.
-        if (plan.sourceQid().isBlank()) {
-            var editableClass = snapshot.findClass(sampledClass);
-            plan.sourceQid(MembershipPattern.typeQid(editableClass, snapshot));
-        }
-        plan.limit(limit + 1);
-
-        List<wikidata.explore.extract.WikidataDynamicObject> extracted = context.step(
-                "Extract bounded class instances", "Workflow", skeleton(), parameters(), step -> {
-                    var generationLog = StepGenerationLog.of(context, step);
-                    RuleTreeExtractor extractor = new RuleTreeExtractor(
-                            WikidataAccess.sparql(context, Datasource.WIKIDATA))
-                            .api(WikidataAccess.api(context))
-                            .cancellation(context.cancellation());
-                    extractor.log(generationLog);
-                    return extractor.load(plan, clazz.generationDepth(), generationLog);
-                });
+        SampledClassProduction.Records produced = context.step(
+                "Extract bounded class instances", "Workflow", skeleton(), parameters(),
+                step -> SampledClassProduction.of(snapshot, compiled, sampledClass,
+                        SampledClassProduction.Bound.firstMembers(limit),
+                        context, StepGenerationLog.of(context, step)));
 
         return ClassSampleResults.materialize(snapshot, requestedClass, sampledClass,
-                productionRoute, limit, extracted);
+                productionRoute, limit, produced.records(), produced.truncated());
     }
 
     @Override public int rowCount(ClassSampleResult result) {

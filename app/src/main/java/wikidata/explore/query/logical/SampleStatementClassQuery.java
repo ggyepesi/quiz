@@ -3,23 +3,12 @@ package wikidata.explore.query.logical;
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.extract.RuleTreeExtractor;
-import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
 import wikidata.explore.query.result.ClassSampleResult;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.transform.ModelStatementReifications;
-import wikidata.explore.transform.QualifierLoadConfig;
-import wikidata.explore.transform.QualifierLoader;
-import wikidata.explore.transform.TransformEngine;
 import work.Query;
 import work.QueryContext;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,43 +44,22 @@ public final class SampleStatementClassQuery implements Query<ClassSampleResult>
     @Override public ClassSampleResult execute(QueryContext context) throws Exception {
         if (snapshot == null) throw new IllegalStateException("No model to sample");
         CompiledProjectModel compiled = ProjectModelCompiler.compile(snapshot);
+        // Said here rather than left to the production step, which routes a class by
+        // what it IS: a statement class with no recipe would fall to the extracted
+        // route and present its SUBJECTS as if they were its statement records.
         CompiledClass statementClass = compiled.findClass(className).orElseThrow(() ->
                 new IllegalStateException("Compiled class is missing: " + className));
-        ModelStatementReifications.Reification reification =
-                ModelStatementReifications.deriveOne(statementClass, compiled);
-        if (reification == null) {
+        if (ModelStatementReifications.deriveOne(statementClass, compiled) == null) {
             throw new IllegalStateException("No executable statement recipe for " + className);
         }
+        SampledClassProduction.Records produced = context.step(
+                "Produce bounded statement instances", "Workflow", skeleton(), parameters(),
+                step -> SampledClassProduction.of(snapshot, compiled, className,
+                        SampledClassProduction.Bound.firstMembers(limit),
+                        context, StepGenerationLog.of(context, step)));
 
-        return context.step("Produce bounded statement instances", "Workflow", skeleton(),
-                parameters(), step -> {
-                    GenerationLog log = StepGenerationLog.of(context, step);
-                    QualifierLoadConfig load = reification.load();
-                    List<WikidataDynamicObject> pool = new ArrayList<>();
-                    if (!load.discoverSubjects()) {
-                        CompiledClass source = compiled.findClass(load.entityType()).orElseThrow(() ->
-                                new IllegalStateException("Statement source class is missing: "
-                                        + load.entityType()));
-                        RuleNode sourcePlan = RuleTreeCompiler.compileClass(source, compiled);
-                        sourcePlan.limit(limit + 1);
-                        RuleTreeExtractor extractor = new RuleTreeExtractor(
-                                WikidataAccess.sparql(context, Datasource.WIKIDATA))
-                                .api(WikidataAccess.api(context))
-                                .cancellation(context.cancellation());
-                        extractor.log(log);
-                        pool.addAll(extractor.load(sourcePlan, 0, log));
-                    }
-
-                    new QualifierLoader().api(WikidataAccess.api(context))
-                            .discoveryLimit(limit + 1)
-                            .enrich(pool, load,
-                                    WikidataAccess.sparql(context, Datasource.WIKIDATA), log);
-                    boolean subjectsTruncated = pool.size() > limit;
-                    List<WikidataDynamicObject> records = new TransformEngine().applyReify(
-                            pool, reification.reify(), load.valueField());
-                    return ClassSampleResults.materialize(snapshot, className, className,
-                            productionRoute, limit, records, subjectsTruncated);
-                });
+        return ClassSampleResults.materialize(snapshot, className, className,
+                productionRoute, limit, produced.records(), produced.truncated());
     }
 
     @Override public int rowCount(ClassSampleResult result) {

@@ -10,6 +10,7 @@ import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.query.swing.SwingQueryRunner;
+import wikidata.explore.query.logical.SampleAggregateClassQuery;
 import wikidata.explore.query.logical.SampleEffectiveClassQuery;
 import wikidata.explore.query.logical.SampleStatementClassQuery;
 import wikidata.explore.query.result.ClassSampleResult;
@@ -1011,16 +1012,23 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         GeneratedClassModel sampled = samplingClass();
         if (requested == null || sampled == null) return null;
         MembershipPattern pattern = MembershipPattern.of(requested, projectModel);
-        // Statement and aggregate production need their own adapters; returning null is
-        // an explicit unsupported state rather than quietly sampling their source class
-        // and presenting those entities as produced records.
+        // Each production route has its own adapter; returning null is an explicit
+        // unsupported state rather than quietly sampling a class's source and
+        // presenting those entities as produced records.
         if (pattern == MembershipPattern.REIFIED) {
             return new SampleStatementClassQuery(projectModel, requested.className(),
                     MembershipPattern.describe(requested, projectModel),
                     NodeSamplePanel.SAMPLE_LIMIT);
         }
-        if (pattern == MembershipPattern.AGGREGATED
-                || pattern == MembershipPattern.OWNED_COMPONENT) {
+        if (pattern == MembershipPattern.AGGREGATED) {
+            // Counted in KEYS, not members: an aggregate's sample is complete groups
+            // over a sampled set of keys, so the limit bounds how many groups are shown
+            // rather than how many source records they were built from.
+            return new SampleAggregateClassQuery(projectModel, requested.className(),
+                    MembershipPattern.describe(requested, projectModel),
+                    NodeSamplePanel.SAMPLE_LIMIT);
+        }
+        if (pattern == MembershipPattern.OWNED_COMPONENT) {
             return null;
         }
         RuleNode preview = temporaryRuleNodeForSelected();
@@ -1039,7 +1047,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         if (requested == null) return "Select a class to sample instances.";
         return switch (MembershipPattern.of(requested, projectModel)) {
             case REIFIED -> "This statement class has no executable reification recipe.";
-            case AGGREGATED -> "Aggregate class sampling is not implemented yet.";
+            case AGGREGATED -> requested.aggregateSource() == null
+                    || !requested.aggregateSource().configured()
+                    ? "This aggregate class has no configured source to group from."
+                    : "This aggregate class cannot be sampled.";
             case OWNED_COMPONENT -> "Owned class sampling is not implemented yet.";
             default -> "This class has no population or classification evidence to sample.";
         };
