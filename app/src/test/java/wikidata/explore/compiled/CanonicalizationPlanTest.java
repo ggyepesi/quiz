@@ -95,4 +95,24 @@ class CanonicalizationPlanTest {
         assertTrue(!CanonicalizationPlans.defaultedFields(holding).containsKey("predecessor"),
                 "what was chosen must be distinguishable from what was defaulted");
     }
+
+    /**
+     * An owned part keys on owner plus site, and is NOT pushed through content grouping.
+     *
+     * <p>Exactly one part exists per owner per production site — that is what producing
+     * it per site means — so grouping by its field values would ask a question whose
+     * answer is already guaranteed, and would ask it using values that can contradict
+     * each other. A structural key is not a weaker key here; it is the true one.
+     */
+    @Test void anOwnedPartKeysStructurallyRatherThanByItsValues() throws Exception {
+        var name = model("history").findClass("Name");
+        CanonicalizationPlan plan = CanonicalizationPlans.of(name);
+
+        assertEquals(List.of(KeyComponent.ownerSiteIdentity()), plan.key());
+        assertTrue(plan.key().get(0).structural(),
+                "production supplies it; no field of the part is consulted");
+        assertTrue(plan.reductionByField().keySet().stream()
+                        .noneMatch(field -> plan.key().contains(KeyComponent.field(field))),
+                "and nothing of the key is reduced");
+    }
 }
