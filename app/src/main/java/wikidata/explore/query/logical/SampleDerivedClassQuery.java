@@ -121,7 +121,7 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                         List<WikidataDynamicObject> pool =
                                 new ArrayList<>(produced.records());
                         produceForward(chain, compiled, pool, context, log);
-                        return show(pool, produced.records(), produced.truncated());
+                        return show(chain, pool, produced.records(), produced.truncated());
                     });
         }
 
@@ -144,7 +144,7 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
 
         if (chosen.ids().isEmpty()) {
             return ClassSampleResults.show(snapshot, className, className,
-                    productionRoute, List.of(), false);
+                    productionRoute, List.of(), false, chainOrder(chain));
         }
 
         return context.step("Read those keys whole", "Workflow", skeleton(), parameters(),
@@ -165,8 +165,8 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                     // Truncation is about KEYS: the groups are whole, and "more
                     // available" of a complete group says the opposite of what this
                     // query guarantees.
-                    return show(keep(pool, className, chosen.ids()), whole.records(),
-                            chosen.ids().size() >= limit);
+                    return show(chain, keep(pool, className, chosen.ids()),
+                            whole.records(), chosen.ids().size() >= limit);
                 });
     }
 
@@ -198,15 +198,37 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
      * whether the groups took the right records. The producers follow the produced, so
      * the reader meets the answer before the working.
      */
-    private ClassSampleResult show(List<WikidataDynamicObject> derived,
-            List<WikidataDynamicObject> population, boolean truncated) throws Exception {
+    private ClassSampleResult show(ProductionChain chain,
+            List<WikidataDynamicObject> derived, List<WikidataDynamicObject> population,
+            boolean truncated) throws Exception {
         List<WikidataDynamicObject> rows = new ArrayList<>();
         derived.stream().limit(limit).forEach(rows::add);
         population.stream().limit(limit).forEach(row -> {
             if (!rows.contains(row)) rows.add(row);
         });
         return ClassSampleResults.show(snapshot, className, className, productionRoute,
-                rows, truncated);
+                rows, truncated, chainOrder(chain));
+    }
+
+    /**
+     * The classes on the chain, produced before producer.
+     *
+     * <p>The sample is OF the class in hand, so it comes first and what made it follows
+     * — the answer before the working. Without a stated order the viewer groups by type
+     * in the order its reference walk happens to reach them, which on a two-class result
+     * is as likely to lead with the population as with the class that was asked for.
+     */
+    private static List<String> chainOrder(ProductionChain chain) {
+        List<String> order = new ArrayList<>();
+        for (ClassDependencies.Edge link : chain.links()) {
+            String produced = link.dependent().className();
+            if (!order.contains(produced)) order.add(produced);
+        }
+        if (chain.population() != null
+                && !order.contains(chain.population().className())) {
+            order.add(chain.population().className());
+        }
+        return order;
     }
 
     /**

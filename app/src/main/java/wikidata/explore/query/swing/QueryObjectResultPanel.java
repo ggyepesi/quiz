@@ -3,7 +3,6 @@ package wikidata.explore.query.swing;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.ui.IdentityChip;
 
-import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
 import quiz.source.WikidataSource;
@@ -94,39 +93,58 @@ public class QueryObjectResultPanel
 
     private JComponent buildView(ObjectQueryResult result) {
         Map<String, List<Viewable>> byType =
-                groupByType(result.objects());
+                ordered(groupByType(result.objects()), result.typeOrder());
 
         if (byType.size() <= 1) {
             return searchPanelView(result);
         }
 
-        MultiView multi =
-                new MultiView();
-
-        // MultiView supplies its own shared RenderContext rather than going through
-        // SearchableView.Builder.cardDecorator(). Configure that context BEFORE build:
-        // cards read their header decoration while they are constructed. Without this,
-        // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
-        // as the result contained several types (the normal generated-domain case).
-        multi.context().setCardDecorator(cardDecorator);
-
-        for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
-            List<Viewable> full = e.getValue();
-
-            if (full.isEmpty()) {
-                continue;
-            }
-
-            multi.addSection(
-                    sectionTitle(e.getKey(), full.size()),
-                    full.getFirst().getClass(),
-                    capped(full));
+        // One tab per type, each rendered by the SAME builder a single-type result gets.
+        // Several types used to be laid out as side-by-side sections, which is a second
+        // presentation of the same objects and a much smaller one: two types split the
+        // width in half, so embedded in a panel rather than a wide window it came out as
+        // search headers with no room for cards. Tabs give every type the full width,
+        // and their order is the result's stated order — the production chain, when the
+        // producer knows it.
+        JTabbedPane byTypeTabs = new JTabbedPane();
+        List<RenderContext> contexts = new ArrayList<>();
+        for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
+            List<Viewable> objects = entry.getValue();
+            if (objects.isEmpty()) continue;
+            JComponent view = searchPanelView(new ObjectQueryResult(
+                    objects, result.primaryClass(), result.generatedSource()));
+            contexts.add(activeContext);
+            byTypeTabs.addTab(sectionTitle(entry.getKey(), objects.size()), view);
         }
+        // The context belongs to what the reader is looking at: an action taken on the
+        // shown tab must render through that tab's cards, not through whichever tab
+        // happened to be built last.
+        byTypeTabs.addChangeListener(event -> {
+            int index = byTypeTabs.getSelectedIndex();
+            if (index >= 0 && index < contexts.size()) activeContext = contexts.get(index);
+        });
+        if (!contexts.isEmpty()) activeContext = contexts.getFirst();
 
-        multi.build(1);
-        activeContext = multi.context();
+        return byTypeTabs;
+    }
 
-        return multi;
+    /**
+     * The producer's order first, then whatever it did not name.
+     *
+     * <p>Grouping discovers types by walking references, so without this the sections
+     * come out in the order the walk happened to reach them — which for a sample of a
+     * derived class puts its production chain in no particular order.
+     */
+    private static Map<String, List<Viewable>> ordered(
+            Map<String, List<Viewable>> byType, List<String> typeOrder) {
+        if (typeOrder == null || typeOrder.isEmpty()) return byType;
+        Map<String, List<Viewable>> sorted = new LinkedHashMap<>();
+        for (String type : typeOrder) {
+            List<Viewable> objects = byType.get(type);
+            if (objects != null) sorted.put(type, objects);
+        }
+        byType.forEach(sorted::putIfAbsent);
+        return sorted;
     }
 
     private Map<String, List<Viewable>> groupByType(List<Viewable> roots) {

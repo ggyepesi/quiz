@@ -42,6 +42,15 @@ final class ClassSampleResults {
             GeneratedProjectModel snapshot, String requestedClass, String runtimeClass,
             String route, List<WikidataDynamicObject> bounded, boolean truncated)
             throws Exception {
+        return show(snapshot, requestedClass, runtimeClass, route, bounded, truncated,
+                List.of());
+    }
+
+    /** @param typeOrder how the result's types relate, shown in this order */
+    static ClassSampleResult show(
+            GeneratedProjectModel snapshot, String requestedClass, String runtimeClass,
+            String route, List<WikidataDynamicObject> bounded, boolean truncated,
+            List<String> typeOrder) throws Exception {
         int limit = bounded.size();
         GenerationPipeline pipeline = new GenerationPipeline();
         try (GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot)) {
@@ -51,7 +60,8 @@ final class ClassSampleResults {
                     objects,
                     selectedRuntime == null ? runtime.generatedClass()
                             : selectedRuntime.generatedClass(),
-                    runtime.source()), requestedClass, route, limit, truncated);
+                    runtime.source(), typeOrder),
+                    requestedClass, route, limit, truncated);
         }
     }
 }
