@@ -46,11 +46,17 @@ public class NodeSamplePanel extends JPanel {
 
     private boolean wired;
 
-    private final JButton classSampleButton =
-            new JButton("Sample class instances");
-
-    private final JButton fieldSampleButton =
-            new JButton("Sample selected field");
+    /**
+     * One button, because there is one question: sample what is selected.
+     *
+     * <p>Two buttons made the reader work out which one their selection matched, and each
+     * guessed at its own enablement — on an aggregate class both offered themselves, one
+     * answering "not implemented yet" and the other "select a field", and pressing either
+     * left the pair in a state neither had decided. Its text says which sample it will
+     * take, so the selection-dependent part is stated rather than inferred.
+     */
+    private final JButton sampleButton =
+            new JButton("Sample");
 
     private Runnable onSampleFailed = () -> { };
     private final JLabel statusLabel =
@@ -91,6 +97,11 @@ public class NodeSamplePanel extends JPanel {
     private final JTextArea failureArea = new JTextArea();
 
     private Consumer<ClassSampleResult> onClassSample = ignored -> { };
+
+    /** What the shown result is a sample OF, and whether one is shown at all. */
+    private Object shownSubject;
+    private boolean hasSubject;
+    private boolean resultShown;
 
     private final JPanel resultCards = new JPanel(new CardLayout());
 
@@ -182,8 +193,7 @@ public class NodeSamplePanel extends JPanel {
         JPanel buttonRow =
                 new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
 
-        buttonRow.add(classSampleButton);
-        buttonRow.add(fieldSampleButton);
+        buttonRow.add(sampleButton);
         buttonRow.add(statusLabel);
         buttonRow.add(cardinalityHintLabel);
 
@@ -201,8 +211,7 @@ public class NodeSamplePanel extends JPanel {
         add(top, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
 
-        classSampleButton.setEnabled(false);
-        fieldSampleButton.setEnabled(false);
+        sampleButton.setEnabled(false);
         cardinalityHintLabel.setVisible(false);
     }
 
@@ -214,25 +223,69 @@ public class NodeSamplePanel extends JPanel {
         wired = true;
 
         queryRunner.wireButton(
-                classSampleButton,
-                this::acceptClassSample,
-                this::buildClassSampleQuery,
-                ex -> showFailure("Class sample failed", ex));
-
-        queryRunner.wireButton(
-                fieldSampleButton,
-                this::acceptFieldSample,
-                this::buildFieldSampleQuery,
+                sampleButton,
+                this::acceptSample,
+                this::buildSampleQuery,
                 ex -> {
                     onSampleFailed.run();
-                    showFailure("Field sample failed", ex);
+                    showFailure("Sample failed", ex);
                 });
+
+        // The runner enables every run button when a run ends, which is its answer to
+        // "is something running" and not to "can THIS be sampled". Its listeners fire
+        // after that blanket enable, so availability has the last word instead of being
+        // overwritten by whatever else in the workbench happened to run.
+        queryRunner.onRunningChanged(running -> refreshAvailability());
 
         refreshAvailability();
     }
 
-    public void triggerFieldSample() {
-        fieldSampleButton.doClick();
+    /** Sample what is selected now — used after a field has just been selected for it. */
+    public void triggerSample() {
+        sampleButton.doClick();
+    }
+
+    /**
+     * The sample the current selection calls for: a field's values when a field is
+     * selected, otherwise the class's instances.
+     *
+     * <p>Field first because it is the more specific selection — a selected field always
+     * has a declaring class, so asking the class first would mean a field could never be
+     * sampled at all.
+     */
+    private Query<Object> buildSampleQuery() {
+        applyEdits.run();
+        if (fieldSampleSupplier.get() != null) return erased(buildFieldSampleQuery());
+        return erased(buildClassSampleQuery());
+    }
+
+    private void acceptSample(Object result) {
+        if (result instanceof ClassSampleResult classSample) acceptClassSample(classSample);
+        else if (result instanceof TableQueryResult rows) acceptFieldSample(rows);
+    }
+
+    /** The same query, seen as producing whatever it produces. */
+    @SuppressWarnings("unchecked")
+    private static <R> Query<Object> erased(Query<R> query) {
+        if (query == null) return null;
+        return new Query<>() {
+            @Override public String purpose() { return query.purpose(); }
+            @Override public String skeleton() { return query.skeleton(); }
+            @Override public String queryType() { return query.queryType(); }
+            @Override public String description() { return query.description(); }
+            @Override public java.util.Map<String, String> parameters() {
+                return query.parameters();
+            }
+            @Override public Object execute(work.QueryContext context) throws Exception {
+                return query.execute(context);
+            }
+            @Override public int rowCount(Object result) {
+                return query.rowCount((R) result);
+            }
+            @Override public String summary(Object result) {
+                return query.summary((R) result);
+            }
+        };
     }
 
     private Query<ClassSampleResult> buildClassSampleQuery() {
@@ -318,6 +371,7 @@ public class NodeSamplePanel extends JPanel {
             statusLabel.setText(
                     (result == null ? 0 : result.size()) + " sampled instance(s)"
                             + (result != null && result.truncated() ? "; more available" : ""));
+            resultShown = true;
             if (result == null) return;
             if (result.instances() != null) {
                 classResultPanel.accept(result.instances());
@@ -340,6 +394,7 @@ public class NodeSamplePanel extends JPanel {
         String detail = failure == null || failure.getMessage() == null
                 ? "No detail available." : failure.getMessage().trim();
         statusLabel.setText(what + " — " + firstLine(detail));
+        resultShown = true;
         failureArea.setText(detail);
         failureArea.setCaretPosition(0);
         ((CardLayout) resultCards.getLayout()).show(resultCards, "failure");
@@ -354,6 +409,7 @@ public class NodeSamplePanel extends JPanel {
 
     private void acceptFieldSample(TableQueryResult result) {
         SwingUtilities.invokeLater(() -> {
+            resultShown = true;
             fillTable(result);
             statusLabel.setText(
                     result.size()
@@ -463,37 +519,76 @@ public class NodeSamplePanel extends JPanel {
      * nothing selected — or on a class that cannot be sampled — was answered with a
      * refusal after the fact. The reasons already existed; nothing asked them.
      */
+    /**
+     * What the panel is now about.
+     *
+     * <p>A result outlives its subject only until the selection moves. Rows sampled from
+     * one class stayed on screen when another was selected — sitting beside THAT class's
+     * editor and explanation, where they read as its instances, with nothing saying
+     * otherwise because nothing tracked what they were a sample of. Selecting is an
+     * inspection: it clears what no longer describes the selection, and produces nothing.
+     */
+    public void showSubject(Object subject) {
+        boolean changed = !hasSubject || !java.util.Objects.equals(subject, shownSubject);
+        shownSubject = subject;
+        hasSubject = true;
+        if (changed) clearResult();
+        refreshAvailability();
+    }
+
+    private void clearResult() {
+        resultShown = false;
+        classResultPanel.clear();
+        tableModel.setRowCount(0);
+        failureArea.setText("");
+        sparqlArea.setText("");
+        cardinalityHintLabel.setVisible(false);
+        contextLabel.setText(" ");
+        ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
+    }
+
     public void refreshAvailability() {
-        // Whether a class can be sampled is answered by BUILDING its query, because
-        // that is the same question the button asks a moment later. A reason string
-        // alone could not answer it: classSampleUnavailableReason only ever returns a
-        // reason, since it exists to explain a refusal that has already happened.
-        String classReason = "Sampling needs a query runner.";
-        if (queryRunner != null) {
+        // ONE question, asked in the order the button answers it: a selected field is
+        // sampled as a field, anything else as a class. Two independent enablement rules
+        // is what let an aggregate offer both buttons and honour neither.
+        boolean field = queryRunner != null && fieldSampleSupplier.get() != null;
+
+        String reason;
+        if (queryRunner == null) {
+            reason = "Sampling needs a query runner.";
+        } else if (field) {
+            reason = "";
+        } else {
+            // Whether a class can be sampled is answered by BUILDING its query, because
+            // that is the same question the button asks a moment later. A reason string
+            // alone could not answer it: classSampleUnavailableReason only ever returns a
+            // reason, since it exists to explain a refusal that has already happened.
             try {
-                classReason = classSampleSupplier.get() == null
+                reason = classSampleSupplier.get() == null
                         ? classSampleUnavailableReason.get() : "";
             } catch (RuntimeException refused) {
                 // An invalid model refuses at compile. That is a real reason not to
                 // offer the button, and the message is the validation report.
-                classReason = refused.getMessage() == null
+                reason = refused.getMessage() == null
                         ? "This class cannot be sampled." : refused.getMessage();
             }
         }
-        boolean canSampleClass = classReason.isBlank();
-        classSampleButton.setEnabled(canSampleClass);
-        classSampleButton.setToolTipText(canSampleClass
-                ? "Produce this class's instances and show them here." : classReason);
 
-        String fieldReason = queryRunner == null
-                ? "Sampling needs a query runner."
-                : fieldSampleSupplier.get() == null
-                        ? "Select a field to sample its values." : "";
-        boolean canSampleField = fieldReason.isBlank();
-        fieldSampleButton.setEnabled(canSampleField);
-        fieldSampleButton.setToolTipText(canSampleField
-                ? "Read this field's real values, and detect its cardinality."
-                : fieldReason);
+        boolean canSample = reason.isBlank();
+        sampleButton.setText(canSample && field
+                ? "Sample field values" : "Sample class instances");
+        sampleButton.setEnabled(canSample);
+        sampleButton.setToolTipText(canSample
+                ? (field ? "Read this field's real values, and detect its cardinality."
+                        : "Produce this class's instances and show them here.")
+                : reason);
+
+        // With nothing shown, the status line is the only place saying why. A reason that
+        // lives only in a disabled button's tooltip is a reason the reader has to hunt for.
+        if (!resultShown) {
+            statusLabel.setText(canSample
+                    ? "Press " + sampleButton.getText() + "." : reason);
+        }
     }
 
     private void installLinkBehavior() {

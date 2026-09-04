@@ -375,8 +375,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.selected = selected;
         // A disabled Sample button must reflect what is selected NOW: the reasons are
         // computed from the current selection, and asking them once at wiring time made
-        // them permanently stale.
-        samplePanel.refreshAvailability();
+        // them permanently stale. The shown result is about the selection too, so the
+        // panel is told what it is now about rather than only re-asked what is possible.
+        samplePanel.showSubject(selected);
 
         CardLayout layout =
                 (CardLayout) cardPanel.getLayout();
@@ -699,7 +700,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             // that sequence. Direct property-catalogue actions retain the historical
             // behaviour of opening Sample so the result is visible immediately.
             if (showSampleTab) showSample();
-            samplePanel.triggerFieldSample();
+            samplePanel.triggerSample();
         } else {
             onFieldAddedFromTool.accept(field);
         }
@@ -863,7 +864,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         fieldSourcePanel.onSampleRequested(
                 () -> {
                     showSample();
-                    samplePanel.triggerFieldSample();
+                    samplePanel.triggerSample();
                 });
 
         samplePanel.setClassSampleSupplier(this::classSampleQueryForSelected);
