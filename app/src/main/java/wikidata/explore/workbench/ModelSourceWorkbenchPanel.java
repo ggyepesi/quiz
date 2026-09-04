@@ -7,11 +7,12 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.ProductionChain;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.query.swing.SwingQueryRunner;
-import wikidata.explore.query.logical.SampleAggregateClassQuery;
 import wikidata.explore.query.logical.SampleEffectiveClassQuery;
+import wikidata.explore.query.logical.SampleDerivedClassQuery;
 import wikidata.explore.query.logical.SampleStatementClassQuery;
 import wikidata.explore.query.result.ClassSampleResult;
 import wikidata.explore.rule.RuleNode;
@@ -1020,16 +1021,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     MembershipPattern.describe(requested, projectModel),
                     NodeSamplePanel.SAMPLE_LIMIT);
         }
-        if (pattern == MembershipPattern.AGGREGATED) {
-            // Counted in KEYS, not members: an aggregate's sample is complete groups
-            // over a sampled set of keys, so the limit bounds how many groups are shown
-            // rather than how many source records they were built from.
-            return new SampleAggregateClassQuery(projectModel, requested.className(),
-                    MembershipPattern.describe(requested, projectModel),
-                    NodeSamplePanel.SAMPLE_LIMIT);
-        }
-        if (pattern == MembershipPattern.OWNED_COMPONENT) {
-            return null;
+        // Owned and aggregated are one route: a class with no population of its own,
+        // sampled by following its production chain to the class that has one. The
+        // chain is also what refuses, since only it can see a cycle or an ambiguity.
+        if (pattern == MembershipPattern.AGGREGATED
+                || pattern == MembershipPattern.OWNED_COMPONENT) {
+            return ProductionChain.of(requested, projectModel).resolved()
+                    ? new SampleDerivedClassQuery(projectModel, requested.className(),
+                            MembershipPattern.describe(requested, projectModel),
+                            NodeSamplePanel.SAMPLE_LIMIT)
+                    : null;
         }
         RuleNode preview = temporaryRuleNodeForSelected();
         if (preview == null || preview.sourceQid().isBlank()
@@ -1047,11 +1048,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         if (requested == null) return "Select a class to sample instances.";
         return switch (MembershipPattern.of(requested, projectModel)) {
             case REIFIED -> "This statement class has no executable reification recipe.";
-            case AGGREGATED -> requested.aggregateSource() == null
-                    || !requested.aggregateSource().configured()
-                    ? "This aggregate class has no configured source to group from."
-                    : "This aggregate class cannot be sampled.";
-            case OWNED_COMPONENT -> "Owned class sampling is not implemented yet.";
+            case AGGREGATED, OWNED_COMPONENT ->
+                    ProductionChain.of(requested, projectModel).refusal();
             default -> "This class has no population or classification evidence to sample.";
         };
     }

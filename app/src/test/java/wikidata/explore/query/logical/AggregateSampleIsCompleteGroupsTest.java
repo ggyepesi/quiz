@@ -53,8 +53,8 @@ class AggregateSampleIsCompleteGroupsTest {
         List<WikidataDynamicObject> pool = new ArrayList<>(sourceRecords());
         ModelAggregates.apply(compiled, pool, null);
 
-        SampleAggregateClassQuery.Keys keys =
-                SampleAggregateClassQuery.keysOf(pool, "NobelPrize", "category", 1);
+        SampleDerivedClassQuery.Keys keys =
+                SampleDerivedClassQuery.keysOf(pool, "NobelPrize", "category", 1);
 
         assertEquals(1, keys.ids().size(), "one key was asked for");
         assertEquals(List.of("Q35637"), keys.objectQids(),
@@ -72,9 +72,14 @@ class AggregateSampleIsCompleteGroupsTest {
     @Test void theObjectSideOfTheKeyIsWhatNarrowsTheRead() throws Exception {
         GeneratedProjectModel project = nobel();
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
+        wikidata.explore.model.ProductionChain chain =
+                wikidata.explore.model.ProductionChain.of(
+                        project.findClass("NobelPrize"), project);
 
-        assertEquals("category", SampleAggregateClassQuery.objectKeyField(compiled,
-                compiled.findClass("NobelPrize").orElseThrow().aggregateSource()));
+        assertEquals("LaureatesWithMotivation", chain.population().className(),
+                "one link: the prizes are grouped from the award statements");
+        assertEquals("category",
+                SampleDerivedClassQuery.objectKeyField(compiled, chain));
     }
 
     /** Only the chosen groups survive the second pass, in the order they were chosen. */
@@ -82,11 +87,11 @@ class AggregateSampleIsCompleteGroupsTest {
         CompiledProjectModel compiled = ProjectModelCompiler.compile(nobel());
         List<WikidataDynamicObject> pool = new ArrayList<>(sourceRecords());
         ModelAggregates.apply(compiled, pool, null);
-        List<String> all = SampleAggregateClassQuery
+        List<String> all = SampleDerivedClassQuery
                 .keysOf(pool, "NobelPrize", "category", 9).ids();
         assertEquals(2, all.size(), "the fixture makes two prizes");
 
-        List<WikidataDynamicObject> kept = SampleAggregateClassQuery.keep(
+        List<WikidataDynamicObject> kept = SampleDerivedClassQuery.keep(
                 pool, "NobelPrize", List.of(all.get(1), all.get(0)));
 
         assertEquals(List.of(all.get(1), all.get(0)),

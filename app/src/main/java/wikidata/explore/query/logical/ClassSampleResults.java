@@ -26,8 +26,23 @@ final class ClassSampleResults {
             String route, int limit, List<WikidataDynamicObject> produced,
             boolean upstreamTruncated) throws Exception {
         List<WikidataDynamicObject> values = produced == null ? List.of() : produced;
-        boolean truncated = upstreamTruncated || values.size() > limit;
-        List<WikidataDynamicObject> bounded = values.stream().limit(limit).toList();
+        return show(snapshot, requestedClass, runtimeClass, route,
+                values.stream().limit(limit).toList(),
+                upstreamTruncated || values.size() > limit);
+    }
+
+    /**
+     * Materializes exactly these objects — the caller has already decided which.
+     *
+     * <p>A derived class's sample shows the class in hand AND the population it was
+     * produced from, so the count that matters is of the requested class and a blanket
+     * cut over the whole list would take the producers as if they were instances of it.
+     */
+    static ClassSampleResult show(
+            GeneratedProjectModel snapshot, String requestedClass, String runtimeClass,
+            String route, List<WikidataDynamicObject> bounded, boolean truncated)
+            throws Exception {
+        int limit = bounded.size();
         GenerationPipeline pipeline = new GenerationPipeline();
         try (GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot)) {
             List<Viewable> objects = pipeline.materialize(runtime, bounded);

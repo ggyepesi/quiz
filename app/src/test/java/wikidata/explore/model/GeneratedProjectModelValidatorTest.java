@@ -186,8 +186,10 @@ class GeneratedProjectModelValidatorTest {
 
         assertFalse(result.valid());
         assertTrue(result.errors().stream()
-                        .anyMatch(p -> p.message().contains("Base class cycle")),
-                "the inheritance cycle is reported once: " + result.format());
+                        .anyMatch(p -> p.message().contains("Class dependency cycle")
+                                && p.message().contains("extends")),
+                "one walker over every kind of class dependency, and the message still "
+                        + "says which kind to go and look at: " + result.format());
     }
 
     @Test
@@ -316,7 +318,8 @@ class GeneratedProjectModelValidatorTest {
 
         assertFalse(result.valid());
         assertEquals(1, result.errors().stream()
-                .filter(problem -> problem.message().contains("Owned-component cycle"))
+                .filter(problem -> problem.message().contains("Class dependency cycle")
+                        && problem.message().contains("is owned by"))
                 .count(), result.format());
         assertFalse(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("through class extension")), result.format());

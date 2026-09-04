@@ -220,7 +220,8 @@ class ProjectModelCompilerTest {
         ModelCompilationException ex = assertThrows(
                 ModelCompilationException.class,
                 () -> ProjectModelCompiler.compile(p));
-        assertTrue(ex.validation().format().contains("Base class cycle"),
+        assertTrue(ex.validation().format().contains("Class dependency cycle")
+                        && ex.validation().format().contains("extends"),
                 ex.validation().format());
     }
 

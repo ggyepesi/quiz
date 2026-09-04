@@ -36,8 +36,7 @@ public final class GeneratedProjectModelValidator {
         validateUniqueClassNames(project, problems);
         validateUniqueDeclarationIds(project, problems);
         validateSelectionsAndKindRules(project, problems);
-        validateOwnedComponentCycles(project, problems);
-        validateAggregateCycles(project, problems);
+        validateDependencyCycles(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) {
@@ -48,7 +47,6 @@ public final class GeneratedProjectModelValidator {
             validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
             validateInverseFields(project, clazz, problems);
-            validateBaseCycle(project, clazz, problems);
             validateCanonical(project, clazz, problems);
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
@@ -63,6 +61,24 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    /**
+     * Every cycle in the class dependency graph, over the kinds that must not have one.
+     *
+     * <p>Three checks stood here — base, owned, aggregate — and each walked only its own
+     * kind of edge. A cycle that ALTERNATES kinds, an aggregate grouped from a class
+     * owned by that aggregate, was invisible to all three: the model validated and then
+     * failed downstream at whichever walker was running. One walk over {@link
+     * ClassDependencies} sees them all, and the message names the kinds on the cycle so a
+     * modeller still knows whether to look at inheritance or at production.
+     */
+    private static void validateDependencyCycles(
+            GeneratedProjectModel project, List<Problem> problems) {
+        for (ClassDependencies.Cycle cycle : ClassDependencies.cycles(project)) {
+            problems.add(Problem.error(cycle.classes().getFirst(),
+                    "Class dependency cycle: " + cycle + "."));
+        }
     }
 
     private static void validateUniqueDeclarationIds(
@@ -86,23 +102,6 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
-    private static void validateAggregateCycles(GeneratedProjectModel project,
-            List<Problem> problems) {
-        for (GeneratedClassModel start : project.classes()) {
-            if (start == null || start.aggregateSource() == null) continue;
-            Set<String> seen = new LinkedHashSet<>();
-            GeneratedClassModel current = start;
-            while (current != null && current.aggregateSource() != null) {
-                if (!seen.add(current.className())) {
-                    problems.add(Problem.error(start.className(),
-                            "Aggregate source cycle: " + String.join(" → ", seen)
-                                    + " → " + current.className() + "."));
-                    break;
-                }
-                current = project.findClass(current.aggregateSource().sourceClassName());
-            }
-        }
-    }
 
     private static void validateAggregateClass(GeneratedProjectModel project,
             GeneratedClassModel aggregate, List<Problem> problems) {
@@ -398,37 +397,7 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
-    private static void validateOwnedComponentCycles(
-            GeneratedProjectModel project, List<Problem> problems) {
-        for (GeneratedClassModel start : project.classes()) {
-            if (start == null) continue;
-            java.util.LinkedHashSet<String> path = new java.util.LinkedHashSet<>();
-            if (ownedCycle(project, start.className(), start.className(), path)) {
-                problems.add(Problem.error(start.className(),
-                        "Owned-component cycle: " + String.join(" -> ", path)
-                                + " -> " + start.className()));
-            }
-        }
-    }
 
-    private static boolean ownedCycle(
-            GeneratedProjectModel project, String start, String current,
-            java.util.LinkedHashSet<String> path) {
-        if (!path.add(current)) return current.equals(start);
-        GeneratedClassModel model = project.findClass(current);
-        if (model != null) for (GeneratedFieldModel field : model.fields()) {
-            if (field != null && field.mapping().productionKind()
-                    == FieldProductionKind.OWNED_COMPONENT) {
-                String next = clean(field.entityClassName());
-                if (next.equals(start)
-                        || (!next.isBlank() && ownedCycle(project, start, next, path))) {
-                    return true;
-                }
-            }
-        }
-        path.remove(current);
-        return false;
-    }
 
     private static void validateSelectionsAndKindRules(
             GeneratedProjectModel project, List<Problem> problems) {
@@ -586,52 +555,6 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
-    /**
-     * Flags an inheritance cycle (A extends B extends A). Without this the
-     * flattening in {@code effectiveFields} silently stops at the visited-set
-     * guard, so the compiled class would quietly lose the looped fields. Reported
-     * once per cycle, attributed to its alphabetically-first member.
-     */
-    private static void validateBaseCycle(
-            GeneratedProjectModel project,
-            GeneratedClassModel clazz,
-            List<Problem> problems) {
-
-        if (!clazz.hasBase()) {
-            return;
-        }
-
-        List<String> path = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        GeneratedClassModel current = clazz;
-
-        while (current != null && current.hasBase()) {
-            String key = clean(current.className()).toLowerCase();
-            if (!seen.add(key)) {
-                int start = 0;
-                for (int i = 0; i < path.size(); i++) {
-                    if (clean(path.get(i)).toLowerCase().equals(key)) {
-                        start = i;
-                        break;
-                    }
-                }
-                List<String> cycle = path.subList(start, path.size());
-                String owner = cycle.stream()
-                        .min(java.util.Comparator.comparing(String::toLowerCase))
-                        .orElse(clazz.className());
-                if (clean(clazz.className()).equalsIgnoreCase(owner)) {
-                    List<String> shown = new ArrayList<>(cycle);
-                    shown.add(cycle.get(0));
-                    problems.add(Problem.error(
-                            clazz.className(),
-                            "Base class cycle: " + String.join(" -> ", shown)));
-                }
-                return;
-            }
-            path.add(current.className());
-            current = project.findClass(current.baseClassName());
-        }
-    }
 
     // A source-class-less reify must bound the subjects it discovers: a P31
     // value-type filter, or a referenced VOCABULARY Selection supplying the values.
