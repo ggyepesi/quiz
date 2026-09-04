@@ -17,7 +17,8 @@ public record CompiledCanonical(
         String displayNameField,
         String displayNameTemplate,
         String labelLanguage,
-        String primaryListField) {
+        String primaryListField,
+        java.util.Map<String, canonical.Reduction> reductions) {
 
     public CompiledCanonical {
         keyFields = keyFields == null ? List.of() : List.copyOf(keyFields);
@@ -33,6 +34,8 @@ public record CompiledCanonical(
             labelLanguage = "en";
         }
         primaryListField = clean(primaryListField);
+        reductions = java.util.Map.copyOf(
+                reductions == null ? java.util.Map.of() : reductions);
     }
 
     /** Back-compat: keep one duplicate and infer the canonical-list marker. */
@@ -42,7 +45,7 @@ public record CompiledCanonical(
                              String labelLanguage) {
         this(keyFields, CanonicalSpec.DuplicatePolicy.KEEP_ONE,
                 displayNameMode, displayNameField,
-                displayNameTemplate, labelLanguage, "");
+                displayNameTemplate, labelLanguage, "", java.util.Map.of());
     }
 
 
@@ -70,7 +73,8 @@ public record CompiledCanonical(
                 source.displayNameField(),
                 source.displayNameTemplate(),
                 source.labelLanguage(),
-                source.primaryListField());
+                source.primaryListField(),
+                source.reductions());
     }
 
     private static String clean(String value) {

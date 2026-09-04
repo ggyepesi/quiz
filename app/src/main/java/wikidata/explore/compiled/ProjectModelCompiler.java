@@ -197,7 +197,8 @@ public final class ProjectModelCompiler {
                 resolvedDisplayField,
                 canonical.displayNameTemplate(),
                 canonical.labelLanguage(),
-                canonical.primaryListField());
+                canonical.primaryListField(),
+                canonical.reductions());
     }
 
     private static List<CompiledField> compileFields(

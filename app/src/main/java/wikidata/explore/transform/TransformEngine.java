@@ -38,6 +38,8 @@ public class TransformEngine {
     // double-checked in the generation log.
     private final List<SelfRefFinding> selfRefFindings = new ArrayList<>();
     private final List<IdentityCollision> identityCollisions = new ArrayList<>();
+    private final List<canonical.KeyedReduction.Conflict> reductionConflicts =
+            new ArrayList<>();
 
     /** Whether a fully self-referential atom was dropped as a witnessed phantom. */
     public enum SelfRefDecision { DROPPED, KEPT }
@@ -83,6 +85,12 @@ public class TransformEngine {
     /** What collapsed on the key in the last call, in encounter order. */
     public List<IdentityCollision> identityCollisions() {
         return identityCollisions;
+    }
+
+    /** Fields two candidates disagreed on. Reported, never silently resolved — the old
+     *  merge kept the first of two conflicting scalars and said nothing. */
+    public List<canonical.KeyedReduction.Conflict> reductionConflicts() {
+        return reductionConflicts;
     }
 
     /**
@@ -343,6 +351,7 @@ public class TransformEngine {
         demoted.clear();
         selfRefFindings.clear();
         identityCollisions.clear();
+        reductionConflicts.clear();
         List<WikidataDynamicObject> created = new ArrayList<>();
         if (pool == null || c == null || c.sourceType() == null
                 || c.listField() == null || c.targetType() == null) {
@@ -443,8 +452,11 @@ public class TransformEngine {
         // (source==the list). Uses the final field values, so it's robust to when
         // the qualifiers were loaded.
         if (!c.dedupBy().isEmpty()) {
-            result = dedupPreferringWorkAnchored(result, c.dedupBy(), srcField,
+            List<WikidataDynamicObject> all = result;
+            result = dedupPreferringWorkAnchored(all, c.dedupBy(), srcField,
                     c.roles(), c.duplicatePolicy(), c.targetType(), identityCollisions);
+            // Values come from the shared engine, applied to the carriers chosen above.
+            reduceOnto(result, all, c.dedupBy(), c.plan(), reductionConflicts);
         }
 
         // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
@@ -798,6 +810,12 @@ public class TransformEngine {
             String srcField, List<ReifyConstruct.Role> roles,
             wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy,
             String type, List<IdentityCollision> collisions) {
+        // Partitioning and reduction are the shared engine's. What stays here is the
+        // one thing only Wikidata knows: which COPY of a statement is the canonical one
+        // to carry the result, since the same nomination arrives from the work's own
+        // statement and from the nominee's back-reference. That choice consults no model
+        // key — it reads the record's own source against its roles — which is the
+        // separation milestone 3 asked for.
         java.util.Map<String, WikidataDynamicObject> byKey =
                 new java.util.LinkedHashMap<>();
         for (WikidataDynamicObject o : objs) {
@@ -809,23 +827,44 @@ public class TransformEngine {
             }
             boolean replace = !workAnchored(cur, srcField, roles)
                     && workAnchored(o, srcField, roles);
-            boolean merged = duplicatePolicy
-                    == wikidata.explore.model.CanonicalSpec.DuplicatePolicy.MERGE_RECORDS;
-            // Two records shared the key, so one of them stops existing. Recorded
-            // BEFORE the merge, while both are still distinguishable — afterwards the
-            // survivor carries the other's fields and the fact is unrecoverable.
             if (collisions != null) {
                 collisions.add(new IdentityCollision(
-                        type, k, replace ? o : cur, replace ? cur : o, merged));
+                        type, k, replace ? o : cur, replace ? cur : o, true));
             }
-            if (replace) {
-                if (merged) mergePartialRecord(o, cur);
-                byKey.put(k, o);
-            } else if (merged) {
-                mergePartialRecord(cur, o);
-            }
+            if (replace) byKey.put(k, o);
         }
         return new ArrayList<>(byKey.values());
+    }
+
+    /**
+     * The reduced values, written onto the carrier each partition chose.
+     *
+     * <p>The old merge was one hard-coded rule for every class: union collections, fill
+     * empty scalars, and silently keep the first of two conflicting ones. It could not
+     * say "union the laureates while requiring the category to agree", which is why the
+     * reducers exist — and why a conflict is now reported instead of disappearing.
+     */
+    private static void reduceOnto(List<WikidataDynamicObject> carriers,
+            List<WikidataDynamicObject> all, List<String> keyFields,
+            canonical.CanonicalizationPlan plan, List<canonical.KeyedReduction.Conflict> conflicts) {
+        if (plan == null || !plan.identified() || plan.reductionByField().isEmpty()) return;
+        java.util.Map<String, WikidataDynamicObject> carrierByKey =
+                new java.util.LinkedHashMap<>();
+        for (WikidataDynamicObject carrier : carriers) {
+            carrierByKey.put(keyOf(carrier, keyFields), carrier);
+        }
+        canonical.KeyedReduction.Result reduced = canonical.KeyedReduction.reduce(
+                plan, WikidataCandidates.of(all), WikidataCandidates.stableForm());
+        for (canonical.KeyedReduction.Instance instance : reduced.instances()) {
+            WikidataDynamicObject carrier = carrierByKey.get(instance.key());
+            if (carrier == null) continue;
+            for (var value : instance.values().entrySet()) {
+                if (plan.reductionFor(value.getKey()) != null) {
+                    carrier.put(value.getKey(), value.getValue());
+                }
+            }
+        }
+        if (conflicts != null) conflicts.addAll(reduced.conflicts());
     }
 
     /**

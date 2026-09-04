@@ -249,7 +249,11 @@ public final class ModelStatementReifications {
                 dedup,
                 primaryListField,
                 subjectParticipantFields,
-                statementClass.canonical().duplicatePolicy());
+                statementClass.canonical().duplicatePolicy(),
+                // The plan's reducers travel with the reify, so the transform reads one
+                // thing: this class's key AND what each other field does when two
+                // records share it.
+                reductionsFor(statementClass));
 
         return new Reification(load, reify);
     }
@@ -278,6 +282,22 @@ public final class ModelStatementReifications {
         }
 
         return "value";
+    }
+
+    /** What each non-key field does when candidates share a key, from the compiled
+     *  class — defaults included, resolved in the one place that resolves them. */
+    private static java.util.Map<String, canonical.Reduction> reductionsFor(
+            CompiledClass statementClass) {
+        java.util.Map<String, canonical.Reduction> reductions =
+                new java.util.LinkedHashMap<>();
+        for (CompiledField field : statementClass.effectiveFields()) {
+            if (field == null || field.name() == null || field.name().isBlank()) continue;
+            canonical.Reduction chosen =
+                    statementClass.canonical().reductions().get(field.name());
+            reductions.put(field.name(), chosen != null ? chosen
+                    : canonical.Reduction.defaultFor(field.collection()));
+        }
+        return reductions;
     }
 
     /** An authored bound as something executable: a vocabulary becomes what it names. */

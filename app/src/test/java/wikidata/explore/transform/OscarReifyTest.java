@@ -51,10 +51,17 @@ class OscarReifyTest {
         WikidataDynamicObject source = obj("source", "source", "Source");
         source.put("awards", List.of(first, second));
 
+        // The reducer says it now, per field, instead of a class-wide MERGE_RECORDS
+        // meaning "union every collection and fill every empty scalar". That policy is
+        // one of this refactor's listed divergences: it could not express "union the
+        // laureates while requiring the category to agree", which is precisely the class
+        // this test is about. Generation supplies these from the compiled class; a
+        // hand-built construct says them here.
         ReifyConstruct merge = new ReifyConstruct(
                 "Source", "awards", "LaureatesWithMotivation", "source", "value", true,
                 List.of(), List.of("category", "year", "motivation"), "laureates",
-                List.of(), CanonicalSpec.DuplicatePolicy.MERGE_RECORDS);
+                List.of(), CanonicalSpec.DuplicatePolicy.MERGE_RECORDS,
+                java.util.Map.of("laureates", canonical.Reduction.UNION_DISTINCT));
 
         List<WikidataDynamicObject> result = new TransformEngine()
                 .applyReify(new ArrayList<>(List.of(source)), merge);
