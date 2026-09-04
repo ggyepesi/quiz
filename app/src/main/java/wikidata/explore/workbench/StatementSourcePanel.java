@@ -734,9 +734,10 @@ public class StatementSourcePanel extends JPanel {
 
         JPanel canonical =
                 new JPanel(new GridBagLayout());
-        canonical.setBorder(
-                BorderFactory.createTitledBorder(
-                        "Canonical identity"));
+        // No title: the boxes inside are titled "Identity" and "When the same key
+        // occurs", and a third border reading "Canonical identity" around them was a
+        // heading for its own contents.
+        canonical.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 
         GridBagConstraints cc =
                 new GridBagConstraints();
@@ -748,11 +749,17 @@ public class StatementSourcePanel extends JPanel {
         // per field, asked the same way on every construct.
         GridBagUtils.wideRow(canonical, 0, identityEditor);
 
-        duplicatePolicyBox.setToolTipText("What happens when key fields identify "
-                + "several copies: keep the preferred complete copy, or preserve "
-                + "its scalar values while unioning collection values from every copy.");
+        // Superseded, and shown saying so rather than left looking live. It is a
+        // class-wide policy, so it could never express "union the laureates while
+        // requiring the category to agree" — the per-field rules above do, and the
+        // reify path now reads those. Nothing in a run consults this any more. It stays
+        // visible only because the shipped models still carry it, and it goes when they
+        // are regenerated.
+        duplicatePolicyBox.setEnabled(false);
+        duplicatePolicyBox.setToolTipText(
+                "Superseded by the per-field rules above. It no longer affects a run.");
         GridBagUtils.labeledRow(canonical, cc, 1,
-            "When duplicates occur:", duplicatePolicyBox);
+            "When duplicates occur (superseded):", duplicatePolicyBox);
 
         displayNameFieldBox.setToolTipText(
                 "Single field used as the record's display name.");

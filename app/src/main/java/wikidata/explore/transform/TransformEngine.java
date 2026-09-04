@@ -454,7 +454,7 @@ public class TransformEngine {
         if (!c.dedupBy().isEmpty()) {
             List<WikidataDynamicObject> all = result;
             result = dedupPreferringWorkAnchored(all, c.dedupBy(), srcField,
-                    c.roles(), c.duplicatePolicy(), c.targetType(), identityCollisions);
+                    c.roles(), c.targetType(), identityCollisions);
             // Values come from the shared engine, applied to the carriers chosen above.
             reduceOnto(result, all, c.dedupBy(), c.plan(), reductionConflicts);
         }
@@ -808,7 +808,6 @@ public class TransformEngine {
     private static List<WikidataDynamicObject> dedupPreferringWorkAnchored(
             List<WikidataDynamicObject> objs, List<String> keyFields,
             String srcField, List<ReifyConstruct.Role> roles,
-            wikidata.explore.model.CanonicalSpec.DuplicatePolicy duplicatePolicy,
             String type, List<IdentityCollision> collisions) {
         // Partitioning and reduction are the shared engine's. What stays here is the
         // one thing only Wikidata knows: which COPY of a statement is the canonical one

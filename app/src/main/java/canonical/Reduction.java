@@ -59,4 +59,16 @@ public enum Reduction {
     public static Reduction defaultFor(boolean holdsManyValues) {
         return holdsManyValues ? UNION_DISTINCT : REQUIRE_AGREEMENT;
     }
+
+    /** What a modeller reads. A combo showing UNION_DISTINCT is showing them the name
+     *  of a constant, which is a different thing from what it does. */
+    @Override
+    public String toString() {
+        return switch (this) {
+            case REQUIRE_AGREEMENT -> "Must agree";
+            case UNION_DISTINCT -> "Combine them";
+            case PREFER_NON_EMPTY -> "Take whichever is present";
+            case CHOOSE_BY_POLICY -> "Choose by a configured policy";
+        };
+    }
 }
