@@ -115,4 +115,26 @@ class CanonicalizationPlanTest {
                         .noneMatch(field -> plan.key().contains(KeyComponent.field(field))),
                 "and nothing of the key is reduced");
     }
+
+    /**
+     * An aggregate's identity is its canonical key, like every other construct's.
+     *
+     * <p>It was kept in AggregateClassSource as target/source pairs — a fourth place
+     * identity was stored, and the reason the plan compiler needed a branch per
+     * construct. What remains there is the half only an aggregate has: each of its own
+     * fields is grouped from a differently-named field on the source, and applying that
+     * rename is construction.
+     */
+    @Test void anAggregateKeysLikeEverythingElseAndRenamesLikeNothingElse() throws Exception {
+        var prize = model("nobelprizes").findClass("NobelPrize");
+
+        assertEquals(List.of(KeyComponent.field("category"), KeyComponent.field("year")),
+                CanonicalizationPlans.of(prize).key(),
+                "read from the canonical key, with no aggregate branch to read it");
+        assertEquals(List.of("category", "year"), prize.canonical().keyFields(),
+                "and a model saved before the move arrives with it there");
+
+        assertEquals("category", prize.aggregateSource().sourceFieldFor("category"),
+                "the rename table stays, because only an aggregate needs one");
+    }
 }

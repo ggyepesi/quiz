@@ -250,6 +250,7 @@ public class GeneratedClassModel {
 
     public void aggregateSource(AggregateClassSource value) {
         aggregateSource = value == null ? null : value.copy();
+
         if (aggregateSource != null) {
             statementSource = null;
             classKind = ClassKind.AGGREGATE;

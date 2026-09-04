@@ -36,7 +36,26 @@ public final class AggregateClassSource {
     }
     public String membersField() { return clean(membersField); }
     public void membersField(String value) { membersField = clean(value); }
+    /**
+     * The target/source pairs, which are now a RENAME TABLE and not the identity.
+     *
+     * <p>Which fields identify an aggregate, and in what order, is
+     * {@code canonical().keyFields()} — the same place every other construct keeps it.
+     * What is left here is the half only an aggregate has: each of its own fields is
+     * grouped from a differently-named field on the source record, and applying that
+     * rename is construction. Milestone 4 already drew that line by keeping construction
+     * in ModelAggregates; this puts the identity on the other side of it.
+     */
     public List<Key> keys() { return keys; }
+
+    /** Where an aggregate's own field takes its grouping value from. */
+    public String sourceFieldFor(String targetField) {
+        String target = clean(targetField);
+        return keys.stream()
+                .filter(key -> key != null && key.targetField().equals(target))
+                .map(Key::sourceField)
+                .findFirst().orElse("");
+    }
     public MissingKeyPolicy missingKeyPolicy() {
         return missingKeyPolicy == null ? MissingKeyPolicy.EXCLUDE : missingKeyPolicy;
     }

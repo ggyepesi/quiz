@@ -72,19 +72,10 @@ public final class CanonicalizationPlans {
             key.add(KeyComponent.ownerSiteIdentity());
             return key;
         }
-        // An aggregate keeps its grouping key in AggregateClassSource, a FOURTH place
-        // identity is stored — which is the argument for this compiler existing. Read as
-        // components it is an ordinary field key over the target fields it groups by;
-        // making that its only home is milestone 4, and reading it here is what lets a
-        // consumer stop caring which construct produced the class.
-        if (kind == ClassKind.AGGREGATE && clazz.aggregateSource() != null) {
-            for (var aggregateKey : clazz.aggregateSource().keys()) {
-                if (aggregateKey == null) continue;
-                String target = aggregateKey.targetField();
-                if (target != null && !target.isBlank()) key.add(KeyComponent.field(target));
-            }
-            return key;
-        }
+        // No aggregate branch. Its key is canonical().keyFields() like everyone else's
+        // now, and the special case that used to read AggregateClassSource was the
+        // fourth place identity was stored — the argument for this compiler existing,
+        // and now one place fewer.
         for (String field : clazz.canonical().keyFields()) {
             if (field != null && !field.isBlank()) key.add(KeyComponent.field(field));
         }

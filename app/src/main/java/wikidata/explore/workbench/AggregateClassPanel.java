@@ -28,6 +28,10 @@ final class AggregateClassPanel extends JPanel {
             new JComboBox<>(AggregateClassSource.MissingKeyPolicy.values());
     private final JPanel displayFieldsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
     private final LinkedHashMap<String, JCheckBox> displayFields = new LinkedHashMap<>();
+    // Identity, asked the way every construct asks it. The pair list below says which
+    // of this class's fields HAVE a source to group from; this says which of them
+    // identify an instance, and in what order.
+    private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
     private GeneratedClassModel clazz;
     private boolean refreshing;
     private Consumer<Void> afterChange = ignored -> {};
@@ -49,8 +53,10 @@ final class AggregateClassPanel extends JPanel {
         keys.setToolTipText(
                 "Select compatible aggregate/source field pairs that define one group.");
         JScrollPane keyScroll = new JScrollPane(keys);
-        keyScroll.setBorder(BorderFactory.createTitledBorder("Group by (target ← source)"));
+        keyScroll.setBorder(BorderFactory.createTitledBorder(
+                "Grouped from (this class's field ← source class's field)"));
         GridBagUtils.wideRow(form, 2, keyScroll);
+        GridBagUtils.wideRow(form, 7, identityEditor);
         GridBagUtils.labeledRow(form, c, 3, "Missing key:", missingKeyPolicy);
         displayFieldsPanel.setBorder(BorderFactory.createTitledBorder("Display name fields"));
         displayFieldsPanel.setToolTipText(
@@ -86,6 +92,34 @@ final class AggregateClassPanel extends JPanel {
         missingKeyPolicy.setSelectedItem(spec == null
                 ? AggregateClassSource.MissingKeyPolicy.EXCLUDE : spec.missingKeyPolicy());
         refreshDisplayChoices(value);
+        identityEditor.show(value);
+    }
+
+    /**
+     * Keeps the canonical key to the fields that have a source to group from.
+     *
+     * <p>The two say different things and neither implies the other: a pair says a field
+     * CAN be grouped, the key says it DOES identify. So a pair that is removed takes its
+     * key component with it — it has nothing left to group by — while the order of what
+     * remains is untouched, because that order is part of the identity and the identity
+     * editor owns it.
+     */
+    private void syncKeyWithPairs(AggregateClassSource spec) {
+        java.util.List<String> paired = spec.keys().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(AggregateClassSource.Key::targetField)
+                .filter(field -> !field.isBlank())
+                .toList();
+        java.util.List<String> key = new java.util.ArrayList<>();
+        for (String existing : clazz.canonical().keyFields()) {
+            if (paired.contains(existing)) key.add(existing);
+        }
+        for (String target : paired) {
+            if (!key.contains(target)) key.add(target);
+        }
+        clazz.canonical().keyFields().clear();
+        clazz.canonical().keyFields().addAll(key);
+        identityEditor.show(clazz);
     }
 
     void applyEdits() {
@@ -100,6 +134,7 @@ final class AggregateClassPanel extends JPanel {
                 missingKeyPolicy.getSelectedItem());
         clazz.classKind(ClassKind.AGGREGATE);
         clazz.aggregateSource(spec);
+        syncKeyWithPairs(spec);
         String template = displayFields.entrySet().stream()
                 .filter(entry -> entry.getValue().isSelected())
                 .map(entry -> "{" + entry.getKey() + "}")

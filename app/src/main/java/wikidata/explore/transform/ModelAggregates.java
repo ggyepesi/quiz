@@ -48,6 +48,9 @@ public final class ModelAggregates {
                     sources.add(new SourceCandidate(source, recipe));
                 }
             }
+            // Grouped by the SOURCE field each of the aggregate's own key fields reads
+            // from — the rename applied in the other direction. The order is the
+            // canonical key's, which is where an aggregate's identity now lives.
             canonical.CanonicalizationPlan plan = new canonical.CanonicalizationPlan(
                     recipe.targetType(),
                     recipe.keys().stream()

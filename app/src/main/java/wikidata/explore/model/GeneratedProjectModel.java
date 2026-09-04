@@ -700,6 +700,21 @@ public class GeneratedProjectModel {
         for (GeneratedClassModel clazz : classes) {
             if (clazz != null) clazz.ensureDeclarationId(name());
         }
+        // An aggregate's identity lives where every other construct's does. What sits
+        // under it is a rename table — each of its own fields is grouped from a
+        // differently-named field on the source — and applying that rename is
+        // construction. So the canonical key is filled from the target halves for a
+        // model saved before identity moved: a READ of what the model already said, once,
+        // and not a second place to write one.
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null || clazz.aggregateSource() == null) continue;
+            if (!clazz.canonical().keyFields().isEmpty()) continue;
+            for (AggregateClassSource.Key key : clazz.aggregateSource().keys()) {
+                if (key != null && !key.targetField().isBlank()) {
+                    clazz.canonical().keyFields().add(key.targetField());
+                }
+            }
+        }
         for (Selection selection : selections) {
             if (selection != null) selection.ensureDeclarationId(name());
         }
