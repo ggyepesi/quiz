@@ -73,7 +73,12 @@ final class AggregateClassPanel extends JPanel {
         removePair.addActionListener(event -> removeSelectedPair());
         pairButtons.add(addPair);
         pairButtons.add(removePair);
-        pairButtons.add(javax.swing.Box.createVerticalStrut(4));
+        pairButtons.add(javax.swing.Box.createVerticalStrut(8));
+        JLabel addableLabel = new JLabel("Available:");
+        addableLabel.setToolTipText(
+                "Pairs this class could be grouped from. Add puts the chosen one into "
+                        + "the list; Remove takes the selected row out of it.");
+        pairButtons.add(addableLabel);
         pairButtons.add(addablePair);
         grouping.add(pairButtons, java.awt.BorderLayout.EAST);
         GridBagUtils.wideRow(form, 2, grouping);
@@ -211,6 +216,18 @@ final class AggregateClassPanel extends JPanel {
             }
         }
         membersField.setSelectedItem(selectedMember);
+        // An aggregate holds its sources in one of its OWN fields, so that field must be
+        // a list of the source class. Choosing a source this class cannot hold left the
+        // control empty and said nothing — a dead end that looks like a bug in the
+        // editor rather than a fact about the model.
+        boolean holdable = membersField.getItemCount() > 1;
+        membersField.setToolTipText(holdable
+                ? "A list field on this class that holds the source records."
+                : source == null
+                        ? "Choose the class to group first."
+                        : "This class has no list field of " + source.className()
+                                + ", so it cannot hold those records. Add one to "
+                                + clazz.className() + " first.");
 
         LinkedHashSet<KeyChoice> choices = new LinkedHashSet<>();
         if (source != null) {
@@ -245,10 +262,16 @@ final class AggregateClassPanel extends JPanel {
         if (value == null) return;
         String template = value.canonical().displayNameTemplate();
         for (var field : value.fields()) {
-            if (field.cardinality() == FieldCardinality.COLLECTION) continue;
+            // A collection is offered. It was skipped, which contradicted the mechanism
+            // it feeds: a display TEMPLATE renders whatever field it names, and Nobel's
+            // own statement class is titled "{laureates} — {category}" from a collection.
+            // Excluding them here meant an aggregate could not be titled by its members —
+            // the one thing an aggregate has that its sources do not.
             JCheckBox box = new JCheckBox(field.name(),
                     template.contains("{" + field.name() + "}"));
-            box.setToolTipText("Include " + field.name() + " in the aggregate title");
+            box.setToolTipText(field.cardinality() == FieldCardinality.COLLECTION
+                    ? "Include every " + field.name() + " value in the aggregate title"
+                    : "Include " + field.name() + " in the aggregate title");
             displayFields.put(field.name(), box);
             displayFieldsPanel.add(box);
         }
