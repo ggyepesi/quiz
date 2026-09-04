@@ -175,7 +175,11 @@ class ModelSourceWorkbenchPanelTest {
 
         ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
         panel.edit(holding);
-        comboContaining(panel, "position").setSelectedItem("position");
+        // The DISPLAY-NAME combo by name, not "whichever combo contains position". The
+        // identity editor offers the same field names, so a content search finds
+        // whichever was added to the layout first — which is a property of the layout,
+        // not of what this test is about.
+        displayNameCombo(panel).setSelectedItem("position");
         panel.changeSelection(person);
 
         assertEquals(CanonicalSpec.DisplayNameMode.FIELD,
@@ -352,5 +356,20 @@ class ModelSourceWorkbenchPanelTest {
 
         assertEquals("Q5",
                 ModelSourceWorkbenchPanel.fieldSampleContext(model, type).ownerTypeQid());
+    }
+
+    /** The statement panel's display-name field combo, addressed by name. */
+    @SuppressWarnings("unchecked")
+    private static JComboBox<String> displayNameCombo(ModelSourceWorkbenchPanel panel) {
+        try {
+            StatementSourcePanel statement =
+                    component(panel, StatementSourcePanel.class);
+            java.lang.reflect.Field field =
+                    StatementSourcePanel.class.getDeclaredField("displayNameFieldBox");
+            field.setAccessible(true);
+            return (JComboBox<String>) field.get(statement);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError(failure);
+        }
     }
 }

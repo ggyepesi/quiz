@@ -82,10 +82,8 @@ public class StatementSourcePanel extends JPanel {
             new JComboBox<>(GraphExpansionPolicy.values());
     private final JLabel graphPatternValue = new JLabel(" ");
 
-    // The offer. A class with no key gets a proposal it can accept in one click — not a
-    // key written for it. Enabled only when there is something to propose, so it is
-    // absent rather than inert once the key is settled.
-    private final JButton acceptProposedKey = new JButton(" ");
+    // One editor for identity and same-key handling, shared with every other construct.
+    private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
     private final JPanel keyFieldsPanel =
             new JPanel(new GridBagLayout());
     private final Map<String, JCheckBox> keyFieldBoxes =
@@ -168,6 +166,7 @@ public class StatementSourcePanel extends JPanel {
         graphExpansionBox.setSelectedItem(source == null
                 ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
+        identityEditor.show(clazz);
         refreshTriple();
         rebuildCanonicalControls();
         refreshDerived();
@@ -347,38 +346,9 @@ public class StatementSourcePanel extends JPanel {
      * AUTO-production fields. COMPANION_MATCH fields such as Oscar
      * {@code won} are post-transform facts and must never enter identity.
      */
-    /**
-     * Writes the proposal, because the modeller asked for it.
-     *
-     * <p>The same fields the old seeding wrote, reached by an explicit act. That is the
-     * entire difference, and it is what makes the key answerable: whatever is in it,
-     * someone chose it.
-     */
-    private void acceptProposal() {
-        if (clazz == null) return;
-        List<String> proposal = StatementIdentity.proposedKey(clazz);
-        if (proposal.isEmpty()) return;
-        clazz.canonical().keyFields().addAll(proposal);
-        rebuildCanonicalControls();
-        afterChange.accept(null);
-    }
 
-    /** Shows what the triple would give, or hides the offer once there is a key. */
-    private void refreshKeyProposal() {
-        List<String> proposal = clazz == null ? List.of()
-                : StatementIdentity.proposedKey(clazz);
-        acceptProposedKey.setVisible(!proposal.isEmpty());
-        if (!proposal.isEmpty()) {
-            acceptProposedKey.setText(
-                    "Use the subject and object: " + String.join(" + ", proposal));
-            acceptProposedKey.setToolTipText(
-                    "A statement class needs a key, and nothing writes one. This is what "
-                            + "the triple implies; any other combination is yours to tick.");
-        }
-    }
 
     private void rebuildCanonicalControls() {
-        refreshKeyProposal();
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
 
@@ -473,14 +443,11 @@ public class StatementSourcePanel extends JPanel {
         canonical.primaryListField(
                 INFER_PRIMARY_LIST.equals(primaryList) ? "" : primaryList);
 
-        canonical.keyFields().clear();
-
-        for (Map.Entry<String, JCheckBox> entry
-                : keyFieldBoxes.entrySet()) {
-            if (entry.getValue().isSelected()) {
-                canonical.keyFields().add(entry.getKey());
-            }
-        }
+        // The key is NOT written here. It belongs to the identity editor, which keeps
+        // it as an ordered list. Rebuilding it from checkbox order silently rewrote any
+        // key authored in a different order — and identity joins a key's values IN
+        // order, so that changed every instance's identifier. It went unnoticed because
+        // all three shipped models happen to have been authored in field order.
 
         String displayField =
                 selectedText(displayNameFieldBox);
@@ -777,9 +744,9 @@ public class StatementSourcePanel extends JPanel {
         cc.anchor = GridBagConstraints.NORTHWEST;
         cc.fill = GridBagConstraints.HORIZONTAL;
 
-        GridBagUtils.labeledRow(canonical, cc, 0,
-            "Same record when:",
-            keyFieldsPanel);
+        // The shared editor replaces the checkbox grid: an ordered key, and a reducer
+        // per field, asked the same way on every construct.
+        GridBagUtils.wideRow(canonical, 0, identityEditor);
 
         duplicatePolicyBox.setToolTipText("What happens when key fields identify "
                 + "several copies: keep the preferred complete copy, or preserve "
@@ -805,8 +772,7 @@ public class StatementSourcePanel extends JPanel {
             "Canonical list:",
             primaryListFieldBox);
 
-        acceptProposedKey.addActionListener(event -> acceptProposal());
-        GridBagUtils.wideRow(canonical, 4, acceptProposedKey);
+        // The offer moved into the identity editor, where the key is.
 
         // No "Re-derive identity" button. It replaced the configured key with a
         // guess swept from the scalar AUTO fields, which is why its purpose was
