@@ -45,6 +45,34 @@ public final class Canonicalizer {
      * <p>The regime is the caller's to state, because it follows from how the class is
      * built rather than from anything in the spec.
      */
+    /**
+     * What identifies an instance, as named components — the ONE derivation.
+     *
+     * <p>This reasoning existed twice: here, as branches inside the identifier builder,
+     * and again in the plan compiler. Two derivations of one fact agree until one of them
+     * learns something the other does not, which is the failure this refactor is about.
+     * It lives on this side because a model owns its authored key; the compiler reads it.
+     */
+    public static java.util.List<canonical.KeyComponent> keyComponents(
+            ClassKind kind, CanonicalSpec spec) {
+        java.util.List<canonical.KeyComponent> key = new java.util.ArrayList<>();
+        if (kind != null && kind.identityFromSource()) {
+            key.add(canonical.KeyComponent.sourceIdentity());
+            return key;
+        }
+        if (kind != null && kind.identityFromOwner()) {
+            key.add(canonical.KeyComponent.ownerSiteIdentity());
+            return key;
+        }
+        if (spec == null) return key;
+        for (String field : spec.keyFields()) {
+            if (field != null && !field.isBlank()) {
+                key.add(canonical.KeyComponent.field(field));
+            }
+        }
+        return key;
+    }
+
     public static String identifier(ClassKind kind, CanonicalSpec spec,
                                     FieldReader reader, String sourceId, String fallback) {
         if (kind == null || kind.identityFromSource()) {

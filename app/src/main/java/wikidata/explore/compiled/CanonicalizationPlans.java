@@ -61,25 +61,20 @@ public final class CanonicalizationPlans {
      * choice without any consumer learning a second way to ask.
      */
     private static List<KeyComponent> keyOf(GeneratedClassModel clazz) {
-        List<KeyComponent> key = new ArrayList<>();
-        ClassKind kind = clazz.classKind();
+        return keyOf(clazz.classKind(), clazz.canonical());
+    }
 
-        if (kind != null && kind.identityFromSource()) {
-            key.add(KeyComponent.sourceIdentity());
-            return key;
-        }
-        if (kind != null && kind.identityFromOwner()) {
-            key.add(KeyComponent.ownerSiteIdentity());
-            return key;
-        }
-        // No aggregate branch. Its key is canonical().keyFields() like everyone else's
-        // now, and the special case that used to read AggregateClassSource was the
-        // fourth place identity was stored — the argument for this compiler existing,
-        // and now one place fewer.
-        for (String field : clazz.canonical().keyFields()) {
-            if (field != null && !field.isBlank()) key.add(KeyComponent.field(field));
-        }
-        return key;
+    /**
+     * What identifies an instance — asked of the model, never worked out again here.
+     *
+     * <p>{@code Canonicalizer} builds an identifier from the same two facts and had this
+     * reasoning too. It owns it now, because a model owns its authored key and the
+     * compiler reads it; deriving it on both sides is the second discovery path this
+     * refactor exists to remove.
+     */
+    public static List<KeyComponent> keyOf(
+            ClassKind kind, wikidata.explore.model.CanonicalSpec spec) {
+        return wikidata.explore.model.Canonicalizer.keyComponents(kind, spec);
     }
 
     /** What the modeller has not chosen, so an editor can show the difference. */

@@ -658,6 +658,21 @@ mechanics can be factored without source-specific knowledge leaking across the b
 - Delete `DuplicatePolicy`, `primaryListField` inference and construct-specific merge
   loops after all callers use the compiled plan AND that path's parity test has held
   (milestone 2). Deletion follows the evidence, not the sequence number.
+
+  **Blocked, and the gate is why.** Parity has held — 30,000 instances and Nobel's
+  aggregates — but the other half is false: only `ModelAggregates` reduces through the
+  engine. `TransformEngine.dedupPreferringWorkAnchored`, which produces every statement
+  instance, does not. Deleting the merge loops now would remove the code that actually
+  runs.
+
+  What unblocks it is the substitution milestone 3's deletion list implied: the reify
+  path reducing through `KeyedReduction`. That is not a refactor — it is where the
+  intended divergences happen (a conflicting scalar reported rather than silently kept,
+  no preferred survivor, a union ordered by its values), so parity CANNOT verify it by
+  construction. Only a regeneration can, which is this milestone's own acceptance test.
+
+  So the order is: substitute, regenerate, compare counts and collision reports, then
+  delete. Not delete and regenerate.
 - Verify Generate class, Generate domain, Remap, Enrich and Sample consume the same plan.
 - Regenerate Nobel, Oscars and History; use their counts and collision reports as forcing
   acceptance tests rather than migrating old snapshots.
