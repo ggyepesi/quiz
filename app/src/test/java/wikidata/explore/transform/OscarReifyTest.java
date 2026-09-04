@@ -222,7 +222,14 @@ class OscarReifyTest {
                 new ModelStatementReifications.Reification(load, reify));
 
         assertTrue(desc.contains("subject-fallback fields: edition, nominee"), desc);
-        assertTrue(desc.contains("canonical key: category + edition + nominee"), desc);
+        // "canonical key" and a duplicate policy became "grouped by" and "when two
+        // share that", so a run explains a class in the words the editor uses — it
+        // named a retired mechanism while the panel beside it explained the same class
+        // per field.
+        assertTrue(desc.contains("grouped by: category + edition + nominee"), desc);
+        assertTrue(desc.contains("when two share that:"), desc);
+        assertTrue(!desc.contains("duplicate policy"),
+                "a retired mechanism is not how a run explains its grain: " + desc);
         assertTrue(desc.contains("edition←P805"), desc);
         // "(year)", not "(date)": this qualifier IS the year-only projection, and the
         // description used to call every time qualifier a date — the label agreeing

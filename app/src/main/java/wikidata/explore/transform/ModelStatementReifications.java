@@ -557,14 +557,30 @@ public final class ModelStatementReifications {
                 + display(subjectFallbacks)
                 + "\n statement-value-fallback fields: "
                 + display(valueFallbacks)
-                + "\n canonical key: "
+                // The plan, in the words the editor uses. This said "canonical key" and
+                // then a duplicate policy that no longer decides anything — so a run
+                // explained the grain by naming a retired mechanism, while the panel
+                // beside it explained the same class per field. One compiled plan, read
+                // the same way in both places.
+                + "\n grouped by: "
                 + display(reify.dedupBy(), " + ")
-                + "\n duplicate policy: "
-                + reify.duplicatePolicy()
+                + "\n when two share that: "
+                + describeReductions(reify)
                 + "\n qualifiers: "
                 + (qualifierText.length() == 0
                 ? "—"
                 : qualifierText);
+    }
+
+    /** What becomes of each field that is not part of the key, per field. */
+    private static String describeReductions(ReifyConstruct reify) {
+        var plan = reify.plan();
+        if (plan.reductionByField().isEmpty()) {
+            return "nothing is combined — every field is part of the key";
+        }
+        return plan.reductionByField().entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(java.util.stream.Collectors.joining("; "));
     }
 
     // ---- Compiled-model pipeline ----

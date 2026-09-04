@@ -594,6 +594,23 @@ design is working:
 | survivor of a collision | work-anchored preference, implicit and class-wide | the configured reducers; no survivor is "preferred" |
 | an entity class's key | source identity, hard-coded by `ClassKind` | a chosen component, source identity by default |
 | the order within a combined collection | encounter order — the order rows arrived | the values' own stable form |
+| a field two candidates disagree on | the first value silently kept | left ABSENT, and every disagreement reported |
+| the identifier of a content-keyed instance | components joined with `\|` | length-framed, so no two tuples can spell one id |
+
+The last two arrived after the first four and are the ones a regeneration diff will show
+most loudly, so they are worth reading before the run rather than during it.
+
+A disagreement leaving the field EMPTY looks like data loss and is the opposite: the old
+merge kept whichever candidate happened to arrive first and said nothing, so the value in
+a snapshot was a coin toss presented as a fact. An absent field with a reported conflict
+is the same information, honestly. If a value is wanted there, the field says which one
+by its reducer — that is what `prefer non-empty` and a selection policy are for.
+
+And every content-keyed identifier changes, because joining with a separator could not
+distinguish `["a|b", "c"]` from `["a", "b|c"]`. Aggregates already framed their keys, so
+their identifiers are unchanged; statement classes' are not. This is what makes
+regeneration REQUIRED rather than merely the acceptance test — a saved instance and a
+newly generated one no longer share an id.
 
 The last one will be the first difference a parity run over Nobel actually shows, and it
 is the one most likely to be mistaken for a regression, so it is worth saying why it is
