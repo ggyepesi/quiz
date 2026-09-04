@@ -25,11 +25,6 @@ import java.util.TreeMap;
 public final class KeyedReduction {
     private KeyedReduction() { }
 
-    /** One instance, and what it was made from. */
-    public record Instance(String className, String key,
-                           Map<String, Object> values,
-                           int candidateCount) { }
-
     /** Two candidates in one partition disagreed on a field that admits one value. */
     public record Conflict(String className, String key, String fieldPath,
                            Object left, Object right) { }
@@ -38,7 +33,7 @@ public final class KeyedReduction {
     public record Unkeyed(String className, KeyComponent missing,
                           MissingKeyPolicy applied) { }
 
-    public record Result(List<Instance> instances,
+    public record Result(List<CanonicalInstance> instances,
                          List<Conflict> conflicts,
                          List<Unkeyed> unkeyed,
                          int candidateCount) {
@@ -95,9 +90,9 @@ public final class KeyedReduction {
         }
     }
 
-    public static Result reduce(CanonicalizationPlan plan,
-                                Collection<? extends Candidate> candidates,
-                                StableForm stable) {
+    static Result reduce(CanonicalizationPlan plan,
+                         Collection<? extends Candidate> candidates,
+                         StableForm stable) {
         if (plan == null || !plan.identified()) {
             throw new IllegalArgumentException(
                     "Cannot reduce without a key: nothing chooses one for a class");
@@ -125,7 +120,7 @@ public final class KeyedReduction {
                     ignored -> new ArrayList<>()).add(candidate);
         }
 
-        List<Instance> instances = new ArrayList<>();
+        List<CanonicalInstance> instances = new ArrayList<>();
         for (var partition : partitions.entrySet()) {
             instances.add(materialize(
                     plan, partition.getKey(), partition.getValue(), stable, conflicts));
@@ -148,7 +143,7 @@ public final class KeyedReduction {
     /** The exact partition key used by {@link #reduce}; exposed so an adapter can
      * attach a materialized result to one of its source carriers without reimplementing
      * key encoding. */
-    public static String keyFor(
+    static String keyFor(
             CanonicalizationPlan plan, Candidate candidate, StableForm stable) {
         List<String> components = new ArrayList<>();
         for (KeyComponent component : plan.key()) {
@@ -159,7 +154,7 @@ public final class KeyedReduction {
         return StableKey.encode(components);
     }
 
-    private static Instance materialize(
+    private static CanonicalInstance materialize(
             CanonicalizationPlan plan, String key, List<Candidate> partition,
             StableForm stable, List<Conflict> conflicts) {
 
@@ -210,7 +205,34 @@ public final class KeyedReduction {
                                 + plan.className() + "." + field);
             }
         }
-        return new Instance(plan.className(), key, values, partition.size());
+        List<Candidate> orderedCandidates = partition.stream()
+                .sorted(java.util.Comparator.comparing(KeyedReduction::candidateOrder))
+                .toList();
+        return new CanonicalInstance(plan.className(), key, values, partition.size(),
+                identities(partition, Candidate::sourceIdentities),
+                identities(partition, Candidate::occurrenceIdentities),
+                identities(partition, Candidate::ownerSiteIdentities),
+                orderedCandidates);
+    }
+
+    private static String candidateOrder(Candidate candidate) {
+        List<String> identities = new ArrayList<>();
+        identities.addAll(candidate.sourceIdentities());
+        identities.addAll(candidate.occurrenceIdentities());
+        identities.addAll(candidate.ownerSiteIdentities());
+        return StableKey.encode(identities.stream().sorted().toList());
+    }
+
+    private static List<String> identities(
+            List<Candidate> candidates,
+            java.util.function.Function<Candidate, List<String>> read) {
+        java.util.SortedSet<String> distinct = new java.util.TreeSet<>();
+        for (Candidate candidate : candidates) {
+            for (String identity : read.apply(candidate)) {
+                if (identity != null && !identity.isBlank()) distinct.add(identity);
+            }
+        }
+        return List.copyOf(distinct);
     }
 
     /**

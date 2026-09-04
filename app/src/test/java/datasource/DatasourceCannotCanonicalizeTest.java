@@ -39,7 +39,8 @@ class DatasourceCannotCanonicalizeTest {
 
     /** Deciding what becomes of a candidate. Not a provider's question. */
     private static final Set<String> ENGINE = Set.of(
-            "canonical.KeyedReduction", "canonical.CanonicalizationPlan",
+            "canonical.KeyedReduction", "canonical.CanonicalizationEngine",
+            "canonical.CanonicalInstance", "canonical.CanonicalizationPlan",
             "canonical.Reduction", "canonical.MissingKeyPolicy", "canonical.StableForm");
 
     /** A provider growing its own vocabulary for the same thing is the same failure,

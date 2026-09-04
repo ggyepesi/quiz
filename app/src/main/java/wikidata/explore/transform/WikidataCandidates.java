@@ -67,7 +67,9 @@ public final class WikidataCandidates {
                 // A part's identity is composed when it is produced — owner plus the
                 // site that made it — and stored as the object's identifier. Reading it
                 // back is right; recomputing it here would be the second discovery path.
-                case OWNER_SITE_IDENTITY -> object.isPart() ? object.getIdentifier() : "";
+                case OWNER_SITE_IDENTITY -> object.isPart()
+                        ? canonical.StableKey.encode(List.of(
+                                object.typeKey(), object.getIdentifier())) : "";
 
                 // A reified statement's occurrence IS its Wikidata statement id —
                 // "Q72717$67ADCA97-…", one claim on one entity — and acquisition has

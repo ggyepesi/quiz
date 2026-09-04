@@ -55,15 +55,23 @@ class IdentityRegimeFollowsClassKindTest {
                 "one act, one consequence — nothing else to keep in step with it");
     }
 
-    @Test void anIdentifierFollowsTheRegimeRatherThanTheSpec() {
+    @Test void aSourceClassKeysOnItsSourceUnlessItWasGivenAContentKey() {
         CanonicalSpec spec = new CanonicalSpec();
         spec.keyFields().add("nominee");
         Canonicalizer.FieldReader reader = field ->
                 "nominee".equals(field) ? "Q1" : null;
 
         assertEquals("Q42", Canonicalizer.identifier(
+                        ClassKind.SOURCE, new CanonicalSpec(), reader, "Q42", "fallback"),
+                "with nothing configured, a source class is its source entity");
+        // And with a content key it uses one. This asserted that a Source class keeps
+        // its source id even THEN, which was true only while such a key was refused:
+        // the configuration was accepted and then ignored, which is the state this
+        // whole design removes. A canonical instance retains every contributing source
+        // identity, so choosing a content key no longer loses the QIDs Enrich needs.
+        assertNotEquals("Q42", Canonicalizer.identifier(
                         ClassKind.SOURCE, spec, reader, "Q42", "fallback"),
-                "a source-identified class keeps its id even where a key is configured");
+                "a configured content key is honoured rather than accepted and ignored");
         // What matters is that it derives from the KEY and not from the source id, not
         // how the key is encoded — the encoding frames its components now, so that two
         // different tuples cannot spell the same identity.

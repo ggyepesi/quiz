@@ -1,6 +1,7 @@
 package wikidata.explore.transform;
 
 import canonical.CanonicalizationPlan;
+import canonical.CanonicalizationEngine;
 import canonical.KeyedReduction;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CanonicalizationPlans;
@@ -73,7 +74,7 @@ class KeyedReductionParityTest {
                 CanonicalizationPlan plan = CanonicalizationPlans.of(clazz);
                 if (!plan.identified()) continue;
 
-                KeyedReduction.Result result = KeyedReduction.reduce(
+                KeyedReduction.Result result = CanonicalizationEngine.canonicalize(
                         plan, WikidataCandidates.of(instances),
                         WikidataCandidates.stableForm());
 
@@ -109,7 +110,8 @@ class KeyedReductionParityTest {
 
         List<WikidataDynamicObject> names = history.byClass().getOrDefault("Name", List.of());
         if (!names.isEmpty()) {
-            assertEquals(names.get(0).getIdentifier(),
+            assertEquals(canonical.StableKey.encode(List.of(
+                            names.get(0).typeKey(), names.get(0).getIdentifier())),
                     WikidataCandidates.of(names.get(0))
                             .structuralIdentity(canonical.KeyComponent.Kind.OWNER_SITE_IDENTITY),
                     "a part's identity was composed at production; it is read, not remade");
@@ -160,7 +162,7 @@ class KeyedReductionParityTest {
         GeneratedClassModel nomination = oscars.model().findClass("Nomination");
         List<WikidataDynamicObject> saved = oscars.byClass().get("Nomination");
 
-        KeyedReduction.Result result = KeyedReduction.reduce(
+        KeyedReduction.Result result = CanonicalizationEngine.canonicalize(
                 CanonicalizationPlans.of(nomination),
                 WikidataCandidates.of(saved), WikidataCandidates.stableForm());
 

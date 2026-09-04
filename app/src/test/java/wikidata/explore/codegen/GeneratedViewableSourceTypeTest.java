@@ -83,6 +83,40 @@ class GeneratedViewableSourceTypeTest {
         }
     }
 
+    @Test void aSourceContentKeyReducesCandidatesAndRetainsEverySourceIdentity()
+            throws Exception {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("modeledName", FieldType.STRING, FieldCardinality.SINGLE);
+        person.addField("roles", FieldType.STRING, FieldCardinality.COLLECTION);
+        person.canonical().keyFields().add("modeledName");
+
+        var first = new wikidata.explore.extract.WikidataDynamicObject("Q1", "First");
+        first.type("Person");
+        first.put("modeledName", "same person");
+        first.put("roles", new java.util.ArrayList<>(java.util.List.of("writer")));
+        var second = new wikidata.explore.extract.WikidataDynamicObject("Q2", "Second");
+        second.type("Person");
+        second.put("modeledName", "same person");
+        second.put("roles", new java.util.ArrayList<>(java.util.List.of("director")));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(person)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(first, second));
+
+            assertEquals(1, mapped.size(), "the modeled key, not QID, defines instances");
+            quiz.source.GeneratedEntity canonical =
+                    (quiz.source.GeneratedEntity) mapped.getFirst();
+            assertEquals(java.util.List.of("wikidata:Q1", "wikidata:Q2"),
+                    canonical.sourceIdentities(),
+                    "reduction must not discard identities needed to revisit the sources");
+            assertEquals("https://www.wikidata.org/wiki/Q1", canonical.getUrl(),
+                    "a modeled identity must not make its retained source unreachable");
+            java.lang.reflect.Field roles = canonical.getClass().getField("roles");
+            assertEquals(java.util.List.of("director", "writer"), roles.get(canonical));
+        }
+    }
+
     @Test void anExplicitAliasOptOutRemovesTheFieldAndDoesNotCopyCachedAliases()
             throws Exception {
         GeneratedClassModel country = new GeneratedClassModel("Country");

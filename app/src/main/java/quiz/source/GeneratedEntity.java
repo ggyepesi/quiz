@@ -19,6 +19,8 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     private String label = "";
     @Hidden
     private boolean part;
+    @Hidden
+    private java.util.List<String> sourceIdentities = new java.util.ArrayList<>();
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -37,4 +39,25 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     @Override public boolean isPart() { return part; }
 
     public void part(boolean value) { this.part = value; }
+
+    /** Provider-qualified identities retained when several source candidates become
+     * one modeled instance. They are acquisition/provenance metadata, not model fields. */
+    public java.util.List<String> sourceIdentities() {
+        return java.util.List.copyOf(sourceIdentities);
+    }
+
+    public void sourceIdentities(java.util.Collection<String> values) {
+        sourceIdentities.clear();
+        if (values != null) values.stream().filter(java.util.Objects::nonNull)
+                .map(String::trim).filter(value -> !value.isBlank()).distinct()
+                .sorted().forEach(sourceIdentities::add);
+    }
+
+    /** Keep the ordinary Wikidata link when a content-keyed instance retains one or
+     * more Wikidata source identities instead of using a QID as modeled identity. */
+    public String getUrl() {
+        return sourceIdentities.stream().filter(value -> value.startsWith("wikidata:Q"))
+                .map(value -> "https://www.wikidata.org/wiki/" + value.substring(9))
+                .findFirst().orElse("");
+    }
 }

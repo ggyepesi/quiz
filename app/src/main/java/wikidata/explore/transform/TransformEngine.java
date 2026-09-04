@@ -841,38 +841,23 @@ public class TransformEngine {
             String srcField, List<ReifyConstruct.Role> roles,
             String type, List<IdentityCollision> collisions,
             List<canonical.KeyedReduction.Conflict> conflicts) {
-        canonical.StableForm stable = WikidataCandidates.stableForm();
-        java.util.Map<String, List<WikidataDynamicObject>> byKey =
-                new java.util.LinkedHashMap<>();
-        for (WikidataDynamicObject o : objs) {
-            canonical.Candidate candidate = WikidataCandidates.of(o);
-            String key = canonical.KeyedReduction.keyFor(plan, candidate, stable);
-            byKey.computeIfAbsent(key, ignored -> new ArrayList<>()).add(o);
+        WikidataCanonicalization.Result result = WikidataCanonicalization.apply(
+                plan, objs, o -> workAnchored(o, srcField, roles));
+        if (collisions != null) {
+            result.canonicalByCandidate().entrySet().stream()
+                    .filter(entry -> entry.getKey() != entry.getValue())
+                    .sorted(java.util.Comparator
+                            .comparing((java.util.Map.Entry<WikidataDynamicObject,
+                                    WikidataDynamicObject> entry) ->
+                                    result.keyByCandidate().getOrDefault(entry.getKey(), ""))
+                            .thenComparing(entry -> java.util.Objects.toString(
+                                    entry.getKey().getIdentifier(), "")))
+                    .forEach(entry -> collisions.add(new IdentityCollision(type,
+                            result.keyByCandidate().getOrDefault(entry.getKey(), ""),
+                            entry.getValue(), entry.getKey(), true)));
         }
-        canonical.KeyedReduction.Result reduced = canonical.KeyedReduction.reduce(
-                plan, WikidataCandidates.of(objs), stable);
-        List<WikidataDynamicObject> carriers = new ArrayList<>();
-        for (canonical.KeyedReduction.Instance instance : reduced.instances()) {
-            List<WikidataDynamicObject> partition = byKey.get(instance.key());
-            if (partition == null || partition.isEmpty()) continue;
-            java.util.Comparator<WikidataDynamicObject> sourceOrder =
-                    java.util.Comparator.comparing(o -> o.getIdentifier() == null
-                            ? "" : o.getIdentifier());
-            WikidataDynamicObject carrier = partition.stream()
-                    .filter(o -> workAnchored(o, srcField, roles)).min(sourceOrder)
-                    .orElseGet(() -> partition.stream().min(sourceOrder).orElseThrow());
-            for (var value : instance.values().entrySet()) {
-                carrier.put(value.getKey(), value.getValue());
-            }
-            carriers.add(carrier);
-            if (collisions != null) for (WikidataDynamicObject collapsed
-                    : partition.stream().sorted(sourceOrder).toList()) {
-                if (collapsed != carrier) collisions.add(new IdentityCollision(
-                        type, instance.key(), carrier, collapsed, true));
-            }
-        }
-        if (conflicts != null) conflicts.addAll(reduced.conflicts());
-        return carriers;
+        if (conflicts != null) conflicts.addAll(result.reduction().conflicts());
+        return result.carriers();
     }
 
     // The source is (also) a role value — e.g. source==forWork: the statement sits

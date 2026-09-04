@@ -59,11 +59,11 @@ public final class ModelAggregates {
                     missingKeyPolicy(recipe.missingKeyPolicy()),
                     java.util.Map.of(MEMBERS, canonical.Reduction.UNION_DISTINCT));
 
-            canonical.KeyedReduction.Result reduced = canonical.KeyedReduction.reduce(
-                    plan, sources, WikidataCandidates.stableForm());
+            canonical.KeyedReduction.Result reduced = canonical.CanonicalizationEngine
+                    .canonicalize(plan, sources, WikidataCandidates.stableForm());
             int excludedMissing = reduced.unkeyed().size();
 
-            for (canonical.KeyedReduction.Instance group : reduced.instances()) {
+            for (canonical.CanonicalInstance group : reduced.instances()) {
                 List<Object> values = recipe.keys().stream()
                         .map(key -> group.values().get(key.sourceField())).toList();
                 List<String> stableKey = values.stream()

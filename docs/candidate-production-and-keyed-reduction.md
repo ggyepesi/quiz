@@ -39,12 +39,11 @@ a provider-qualified source identity as its key, or deliberately configure a con
 key. Entity and Statement therefore describe candidate *production shapes*; they do
 not select different canonicalization engines.
 
-This remains an architectural acceptance criterion, not a capability of the present
-Wikidata carrier. That carrier stores one QID as both datasource identity and modeled
-identity. Until those are separated and a canonical instance retains every contributing
-source identity, validation refuses a content key on a Source class rather than silently
-compiling a key that generation does not execute or collapsing away identities needed by
-Enrich.
+This is now implemented without rewriting the normalized source pool. The canonical
+instance has its modeled key and retains every contributing provider-qualified identity;
+the source candidates keep their QIDs in the snapshot, so Enrich can revisit all of them.
+Changing a Source key is therefore a local rematerialization decision, not a destructive
+rewrite of acquisition identity.
 
 ## Boundary of this refactor
 
@@ -83,17 +82,19 @@ contract.
 ## The common pipeline
 
 The boundary this document exists to draw is the map/reduce one. **The datasource layer
-emits KEYED candidates — that is the map phase. The postprocess layer turns them into the
-user-facing instances — that is the reduce phase.**
+emits NORMALIZED, UNKEYED candidates — that is the map phase. The postprocess layer
+applies the compiled model key and turns them into user-facing instances — that is the
+reduce phase.**
 
 ```text
 ┌── map: the datasource layer ─────────────────────────────────┐
 │ acquire, parse, normalize                                    │
-│ apply the compiled key to each candidate                     │
-│                                    emits ⟨class, key⟩ → candidate │
+│ emits candidate(class, fields, source identities, occurrence │
+│ identity, owner/site identity, provenance)                   │
 └──────────────────────────┬───────────────────────────────────┘
                            │
 ┌── reduce: the postprocess layer ─────────────────────────────┐
+│ apply the compiled model key                                 │
 │ partition by ⟨class, key⟩                                    │
 │ reduce every field with its configured rule                  │
 │ materialize one instance per partition                       │
@@ -101,16 +102,11 @@ user-facing instances — that is the reduce phase.**
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Keying at the point of production and not later is deliberate: the source values are
-freshest there, and the reduce phase never re-reads fields to work out what a candidate
-belongs to.
-
-**Applying a key is not owning one.** The datasource contract below says a provider does
-not own canonical keys, and that still holds: compilation resolves the authored key ONCE
-into a compiled key function, and the map phase applies it. Ownership stays with the
-model; only evaluation moves to where the values are. This is the same split the rest of
-this document uses — compile once, and let every consumer execute the compiled plan
-rather than re-deciding.
+The earlier draft put key evaluation in the map phase. That still crossed the boundary:
+the provider had to receive a modeled key even if it did not own it. The corrected rule
+is simpler. A provider says what it observed and supplies its structural identities. The
+shared postprocess reads those normalized values and applies the compiled model plan.
+No provider imports, receives or executes a canonicalization plan.
 
 One case cannot be keyed at map time: a key component whose value a LATER source
 contributes. Then the key is not knowable when the candidate is emitted, and the run must
@@ -121,6 +117,41 @@ enrichment of any other field.
 The map/reduce wording is semantic, not a commitment to a distributed framework.
 The first implementation can remain an in-process transformation over the generated
 pool.
+
+## Completion plan: one carrier and one coordinator
+
+The remaining implementation is deliberately ordered so no construct gains a second
+identity path while moving:
+
+1. A normalized candidate exposes typed fields plus all identities supplied by
+   production: provider-qualified source identities, source occurrence identity and
+   owner/production-site identity. It contains no modeled key.
+2. A neutral canonical instance contains the modeled key, reduced fields, every retained
+   source identity and occurrence, and the candidates that contributed to it.
+3. One canonicalization coordinator applies `CanonicalizationPlan`, partitions, reduces
+   and reports conflicts. Provider adapters receive its partitions; they never call a
+   key evaluator themselves.
+4. Statement uses the coordinator first. Wikidata-specific work anchoring may choose the
+   physical source carrier for an already-decided partition, but cannot partition or
+   reduce it.
+5. Aggregate uses the same coordinator; aggregate construction remains the subsequent
+   act of creating another class.
+6. Source uses it with `SOURCE_IDENTITY` by default. A content key is enabled only when
+   the materialized canonical carrier keeps every contributing source identity, so
+   Enrich and links do not lose the other QIDs.
+7. Owned uses it with `OWNER_SITE_IDENTITY`. Composition still creates the candidate at
+   the declared field site; the coordinator decides identity and reductions exactly as
+   for every other construct.
+8. Reference resolution indexes both candidate occurrences and source identities to the
+   resulting canonical instance. Inverses, presentation and serving run afterwards.
+9. Snapshots retain normalized source candidates. Canonical modeled instances are rebuilt
+   locally from those candidates and the model, so changing a key or reducer is a Remap,
+   not another acquisition.
+
+The forcing constraint is preservation, not compatibility: a reduction may combine
+source candidates only if every source identity required to revisit or enrich them
+survives on the canonical result. The normalized QID-bearing candidates remain the saved
+acquisition layer; the materialized carrier records their provider-qualified identities.
 
 ## Four independent axes
 
@@ -626,25 +657,27 @@ regression until shown otherwise.
 
 ### Milestone 3 — adapt normalized Wikidata output
 
-- Put a narrow adapter after the existing Wikidata entity/statement normalization. It
+- **Implemented.** A narrow adapter follows the existing Wikidata entity/statement
+  normalization. It
   emits the neutral candidate contract without redesigning Wikidata acquisition.
-- Supply provider-qualified `SOURCE_IDENTITY` for normalized entity candidates.
-- Supply tuple fields, source occurrence identity and provenance for normalized
+- It supplies provider-qualified `SOURCE_IDENTITY` for normalized entity candidates.
+- It supplies tuple fields, source occurrence identity and provenance for normalized
   statement candidates.
-- Keep canonical-list/work-anchored behavior inside Wikidata normalization for now, but
-  ensure it does not consult the model key or perform model-level field reduction.
-- Delete `mergePartialRecord`, `StatementIdentity` and editable-model reification entry
-  points once the common reducer and parity tests replace their responsibilities.
+- Work-anchored carrier choice stays in the Wikidata adapter, after the neutral engine
+  has decided partition membership and reduced values. It therefore cannot change the
+  modeled key or the result of field reduction.
+- The adapter retains all contributing source identities even though one existing
+  Wikidata object is selected as the physical carrier.
 
 ### Milestone 4 — unify Aggregate and Owned boundaries
 
-- Compile aggregate grouping keys through the neutral key compiler and express its
-  members field as `Union distinct`.
-- Keep aggregate output as a distinct class-construction step.
-- Confirm Owned's mandatory owner/site key can use the common identity representation;
-  do not force owned candidates through content grouping when exactly one candidate per
-  site is guaranteed.
-- Remove aggregate-local stable-key/grouping code after the common engine covers it.
+- **Implemented.** Aggregate grouping keys compile through the neutral key compiler and
+  its members field is expressed as `Union distinct`.
+- Aggregate output remains a distinct class-construction step.
+- Owned components use the same engine with the mandatory owner/production-site key.
+  The Wikidata adapter then rewires each owning field to the selected canonical part.
+- The owner/site identity includes both the production-site type key and owner source
+  identifier; an owner identifier alone is not a production-site identity.
 
 ### Milestone 5 — provider-facing normalized-candidate contract
 
@@ -683,20 +716,11 @@ mechanics can be factored without source-specific knowledge leaking across the b
   loops after all callers use the compiled plan AND that path's parity test has held
   (milestone 2). Deletion follows the evidence, not the sequence number.
 
-  **Blocked, and the gate is why.** Parity has held — 30,000 instances and Nobel's
-  aggregates — but the other half is false: only `ModelAggregates` reduces through the
-  engine. `TransformEngine.dedupPreferringWorkAnchored`, which produces every statement
-  instance, does not. Deleting the merge loops now would remove the code that actually
-  runs.
-
-  What unblocks it is the substitution milestone 3's deletion list implied: the reify
-  path reducing through `KeyedReduction`. That is not a refactor — it is where the
-  intended divergences happen (a conflicting scalar reported rather than silently kept,
-  no preferred survivor, a union ordered by its values), so parity CANNOT verify it by
-  construction. Only a regeneration can, which is this milestone's own acceptance test.
-
-  So the order is: substitute, regenerate, compare counts and collision reports, then
-  delete. Not delete and regenerate.
+  **The substitution is implemented.** Statement, Aggregate, Source and Owned candidates
+  now reach `CanonicalizationEngine`; Wikidata-specific code attaches the neutral result
+  to a physical carrier but no longer derives the modeled key or reduces fields. The
+  remaining gate is empirical: regenerate, compare counts and collision reports, then
+  delete any compatibility entry point shown to have no callers.
 - Verify Generate class, Generate domain, Remap, Enrich and Sample consume the same plan.
 - Regenerate Nobel, Oscars and History; use their counts and collision reports as forcing
   acceptance tests rather than migrating old snapshots.

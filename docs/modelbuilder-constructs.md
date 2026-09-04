@@ -156,13 +156,14 @@ not a reason for a second noun.
 A class is a named kind of thing plus the fields you load on it. Its membership
 "shape" is classified by `MembershipPattern` and shown on the class-tree node.
 
-### Entity classes — QID identity ("identity holders")
+### Entity classes — source identity by default
 
-An entity class **is** a set of Wikidata entities, so its identity is the **QID**:
-one instance per QID, and every reference to the same entity resolves to that one
-object (`GeneratedViewableMapper` unifies by QID — see
-[[canonicalization-model.md]]). This unification is the whole point: the same film
-appearing in five nominations is **one** node you can pivot on.
+An entity class is produced from source entities. Its default key is the
+provider-qualified source identity — for Wikidata, the QID — so every reference to the
+same source entity resolves to one modeled instance. A modeller may instead choose a
+content key. The shared reducer then combines matching normalized candidates while the
+canonical result retains every contributing source identity; the saved acquisition
+candidates keep their QIDs for later Enrich and Remap.
 
 Declared-membership entity classes gather members by a rule:
 

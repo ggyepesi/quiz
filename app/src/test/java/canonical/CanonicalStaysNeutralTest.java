@@ -24,9 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * collision was decided by an Oscars-shaped preference for the work-anchored copy. None
  * of that is wrong for Wikidata; all of it was wrong as the general rule.
  *
- * <p>The direction matters too: a datasource may APPLY the key this package describes,
- * and must not own or reimplement it. An import from here into a provider is expected;
- * an import from a provider into here is the boundary failing.
+ * <p>The direction matters too: a datasource emits an unkeyed candidate and must not
+ * receive, apply or reimplement a modeled key. The provider-facing handoff may import
+ * the candidate contract; an import from a provider into here is the boundary failing.
  */
 class CanonicalStaysNeutralTest {
 

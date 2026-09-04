@@ -148,7 +148,7 @@ final class ClassIdentityEditor extends JPanel {
             return;
         }
         try {
-            var result = canonical.KeyedReduction.reduce(
+            var result = canonical.CanonicalizationEngine.canonicalize(
                     plan, sampled, wikidata.explore.transform.WikidataCandidates.stableForm());
             StringBuilder text = new StringBuilder(result.report());
             if (result.reducedPartitions() == 0 && result.conflicts().isEmpty()) {
@@ -177,16 +177,20 @@ final class ClassIdentityEditor extends JPanel {
 
         CanonicalizationPlan plan = CanonicalizationPlans.of(clazz);
         for (KeyComponent component : plan.key()) keyModel.addElement(component.toString());
-        // A structural key is supplied by production and cannot be edited into something
-        // else here; showing it read-only says what identifies the class without
-        // pretending the list is a choice it is not.
-        boolean editable = plan.key().stream().noneMatch(KeyComponent::structural);
+        // Owner/site is mandatory. Source identity is a default and can be replaced by
+        // a modeled field key; Add performs that explicit replacement rather than
+        // silently mixing a structural component into CanonicalSpec's field list.
+        boolean sourceDefault = clazz.classKind()
+                == wikidata.explore.model.ClassKind.SOURCE
+                && clazz.canonical().keyFields().isEmpty();
+        boolean editable = sourceDefault
+                || plan.key().stream().noneMatch(KeyComponent::structural);
         keyList.setEnabled(editable);
         addable.setEnabled(editable);
         addKey.setEnabled(editable);
-        removeKey.setEnabled(editable);
-        moveKeyUp.setEnabled(editable);
-        moveKeyDown.setEnabled(editable);
+        removeKey.setEnabled(editable && !sourceDefault);
+        moveKeyUp.setEnabled(editable && !sourceDefault);
+        moveKeyDown.setEnabled(editable && !sourceDefault);
 
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.name() == null || field.name().isBlank()) continue;
@@ -272,6 +276,10 @@ final class ClassIdentityEditor extends JPanel {
     private void addSelected() {
         Object chosen = addable.getSelectedItem();
         if (clazz == null || chosen == null) return;
+        if (clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
+                && clazz.canonical().keyFields().isEmpty()) {
+            keyModel.clear(); // replace the displayed source-identity default
+        }
         keyModel.addElement(chosen.toString());
         writeKey();
     }

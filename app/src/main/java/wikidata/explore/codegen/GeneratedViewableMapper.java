@@ -26,6 +26,15 @@ public class GeneratedViewableMapper {
     // several WDO copies (a root + inline-field references) maps to ONE typed
     // instance (see mapObject). Statement atoms (Q\d+-<guid>) keep per-atom identity.
     private final Map<String, Object> generatedByQid = new java.util.HashMap<>();
+    /** Source candidates are partitioned by the same neutral engine as statements and
+     * owned components before Java objects are materialized. Indexed per modeled class,
+     * because one source object may be represented through more than one class role. */
+    private final Map<String, Map<WikidataDynamicObject, WikidataDynamicObject>>
+            canonicalSourceByType = new java.util.LinkedHashMap<>();
+    private final Map<String, Map<WikidataDynamicObject, String>>
+            canonicalSourceKeyByType = new java.util.LinkedHashMap<>();
+    private final Map<String, Map<WikidataDynamicObject, List<String>>>
+            canonicalSourceIdentitiesByType = new java.util.LinkedHashMap<>();
     // Classes produced once per owning instance. Such a component BORROWS its owner's
     // QID (one Name per Person, carrying the person's identifier), so it is not "the
     // same entity arriving twice": unifying it by QID would hand the owner's instance
@@ -41,6 +50,7 @@ public class GeneratedViewableMapper {
     public List<Viewable> mapRoots(List<WikidataDynamicObject> roots) throws Exception {
         List<Viewable> out = new ArrayList<>();
         if (roots == null) return out;
+        prepareSourceCanonicalization(roots);
         // Distinct instances: two roots that are the same entity (same qid, e.g. a
         // work + its inline-reference copy) map to ONE instance — add it once.
         java.util.Set<Object> added =
@@ -52,6 +62,32 @@ public class GeneratedViewableMapper {
             }
         }
         return out;
+    }
+
+    private void prepareSourceCanonicalization(List<WikidataDynamicObject> roots) {
+        canonicalSourceByType.clear();
+        canonicalSourceKeyByType.clear();
+        canonicalSourceIdentitiesByType.clear();
+        List<WikidataDynamicObject> reachable =
+                wikidata.explore.extract.WikidataObjectGraph.reachable(roots);
+        for (GeneratedViewableRuntime.ClassRuntime classRuntime : runtime.byType().values()) {
+            GeneratedClassModel model = classRuntime.model();
+            if (model == null || model.classKind()
+                    != wikidata.explore.model.ClassKind.SOURCE) continue;
+            List<WikidataDynamicObject> candidates = reachable.stream()
+                    .filter(value -> value != null && !value.isPart()
+                            && value.directClassNames().contains(model.className()))
+                    .toList();
+            if (candidates.isEmpty()) continue;
+            wikidata.explore.transform.WikidataCanonicalization.Result result =
+                    wikidata.explore.transform.WikidataCanonicalization.apply(
+                            wikidata.explore.compiled.CanonicalizationPlans.of(model),
+                            candidates, null);
+            canonicalSourceByType.put(model.className(), result.canonicalByCandidate());
+            canonicalSourceKeyByType.put(model.className(), result.keyByCandidate());
+            canonicalSourceIdentitiesByType.put(
+                    model.className(), result.sourceIdentitiesByCandidate());
+        }
     }
 
     private Object mapObject(WikidataDynamicObject source) throws Exception {
@@ -117,6 +153,20 @@ public class GeneratedViewableMapper {
         String type = genuineModeledKind ? sourceType
                 : typedRequested ? preferredType : sourceType;
 
+        // The normalized source object is only a candidate. Canonicalization may map
+        // several projections to one carrier; follow that decision before consulting
+        // mapper caches, so QID-based materialization cannot become a second reducer.
+        WikidataDynamicObject originalSource = source;
+        source = canonicalSourceByType.getOrDefault(type, Map.of())
+                .getOrDefault(source, source);
+        if (source != originalSource) {
+            Object canonicalExisting = generatedByDynamic.get(source);
+            if (canonicalExisting != null) {
+                generatedByDynamic.put(originalSource, canonicalExisting);
+                return canonicalExisting;
+            }
+        }
+
         // Map each object to its generated class (e.g. a constellation's child
         // stars -> Star). An object whose type has no generated class (a true
         // bare leaf reference) is kept as-is (renders as a link).
@@ -144,6 +194,7 @@ public class GeneratedViewableMapper {
 
         Object target = cr.generatedClass().getDeclaredConstructor().newInstance();
         generatedByDynamic.put(source, target);
+        if (source != originalSource) generatedByDynamic.put(originalSource, target);
         if (realEntity) {
             generatedByQid.put(entityQid, target);
         }
@@ -154,8 +205,18 @@ public class GeneratedViewableMapper {
         // identifier IS the QID), and a durable per-instance creation record is deferred
         // until the curation-history UI that would consume it.
         if (target instanceof quiz.source.GeneratedEntity ge) {
-            ge.identifier(source.getIdentifier());
+            String canonicalKey = canonicalSourceKeyByType.getOrDefault(type, Map.of())
+                    .get(originalSource);
+            boolean contentKey = cr.model().classKind()
+                    == wikidata.explore.model.ClassKind.SOURCE
+                    && !cr.model().canonical().keyFields().isEmpty();
+            ge.identifier(contentKey && canonicalKey != null
+                    ? canonicalKey : source.getIdentifier());
             ge.label(source.getDisplayName());
+            ge.sourceIdentities(canonicalSourceIdentitiesByType
+                    .getOrDefault(type, Map.of()).getOrDefault(originalSource,
+                            source.qid().isBlank() ? List.of()
+                                    : List.of("wikidata:" + source.qid())));
             if (wikidata.explore.model.ClassSourceBindings
                     .aliasesEnabled(cr.model())) {
                 assignAliases(target, source.aliases());
@@ -171,6 +232,7 @@ public class GeneratedViewableMapper {
         // so legacy models are unchanged until reconfigured. Reads the mapped target
         // value (a proper Viewable), falling back to the raw source value.
         final Object mappedTarget = target;
+        final WikidataDynamicObject materializedSource = source;
         Canonicalizer.FieldReader reader = fieldName -> {
             Field jf = findField(cr.generatedClass(),
                     GeneratedViewableSourceGenerator.sanitizeFieldName(fieldName));
@@ -185,7 +247,7 @@ public class GeneratedViewableMapper {
                     // fall back to the source value
                 }
             }
-            return source.get(fieldName);
+            return materializedSource.get(fieldName);
         };
         String override = canonicalDisplayNameOverride(
                 cr.model(), reader, source.getDisplayName());

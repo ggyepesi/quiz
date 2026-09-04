@@ -26,4 +26,27 @@ public interface Candidate {
      * @return the identity, or "" when this candidate has none of that kind
      */
     String structuralIdentity(KeyComponent.Kind kind);
+
+    /** Every provider-qualified entity identity this candidate carries. A candidate
+     * normally has one; the collection form is what lets a later provider handoff or
+     * correspondence retain more without changing the canonicalization contract. */
+    default java.util.List<String> sourceIdentities() {
+        return supplied(KeyComponent.Kind.SOURCE_IDENTITY);
+    }
+
+    /** Source occurrences retained for diagnostics and provenance. */
+    default java.util.List<String> occurrenceIdentities() {
+        return supplied(KeyComponent.Kind.SOURCE_OCCURRENCE);
+    }
+
+    /** Owner/production-site identities retained for composed values. */
+    default java.util.List<String> ownerSiteIdentities() {
+        return supplied(KeyComponent.Kind.OWNER_SITE_IDENTITY);
+    }
+
+    private java.util.List<String> supplied(KeyComponent.Kind kind) {
+        String value = structuralIdentity(kind);
+        return value == null || value.isBlank()
+                ? java.util.List.of() : java.util.List.of(value);
+    }
 }

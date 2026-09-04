@@ -159,10 +159,57 @@ public final class OwnedComponents {
             }
             owners = materialized;
         }
+        // Composition says where candidates come from; the common engine says what
+        // identifies them. OWNER_SITE_IDENTITY currently leaves every produced part in
+        // its own partition, but running the same coordinator is load-bearing: a future
+        // second projection of a part cannot introduce another owned-only dedup path.
+        made = canonicalize(project, made, roots);
         if (log != null && created > 0) {
             log.message("Owned components: materialized " + created + " object(s).\n");
         }
         return new Result(created, List.copyOf(made), List.copyOf(manufactured));
+    }
+
+    private static List<WikidataDynamicObject> canonicalize(
+            GeneratedProjectModel project,
+            List<WikidataDynamicObject> components,
+            Collection<WikidataDynamicObject> roots) {
+        if (components.isEmpty()) return components;
+        List<WikidataDynamicObject> canonical = new ArrayList<>();
+        Map<WikidataDynamicObject, WikidataDynamicObject> aliases = new IdentityHashMap<>();
+        for (GeneratedClassModel target : project.classes()) {
+            if (target == null || target.classKind()
+                    != wikidata.explore.model.ClassKind.OWNED) continue;
+            List<WikidataDynamicObject> candidates = components.stream()
+                    .filter(value -> value != null && value.isPart()
+                            && value.directClassNames().contains(target.className()))
+                    .toList();
+            if (candidates.isEmpty()) continue;
+            WikidataCanonicalization.Result result = WikidataCanonicalization.apply(
+                    wikidata.explore.compiled.CanonicalizationPlans.of(target),
+                    candidates, null);
+            canonical.addAll(result.carriers());
+            aliases.putAll(result.canonicalByCandidate());
+        }
+        // Components whose model was incomplete still belong to validation, not to a
+        // destructive cleanup here.
+        for (WikidataDynamicObject component : components) {
+            if (!aliases.containsKey(component)) canonical.add(component);
+        }
+        if (!aliases.isEmpty()) {
+            for (WikidataDynamicObject owner
+                    : wikidata.explore.extract.WikidataObjectGraph.reachable(roots)) {
+                for (var field : owner.dynamicFields().entrySet()) {
+                    if (field.getValue() instanceof WikidataDynamicObject part) {
+                        WikidataDynamicObject replacement = aliases.get(part);
+                        if (replacement != null && replacement != part) {
+                            owner.put(field.getKey(), replacement);
+                        }
+                    }
+                }
+            }
+        }
+        return canonical;
     }
 
     /** "Elia Kazan — birth name": whose view, and which view. Readable wherever the

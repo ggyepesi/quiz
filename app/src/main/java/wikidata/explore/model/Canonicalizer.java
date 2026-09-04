@@ -56,7 +56,8 @@ public final class Canonicalizer {
     public static java.util.List<canonical.KeyComponent> keyComponents(
             ClassKind kind, CanonicalSpec spec) {
         java.util.List<canonical.KeyComponent> key = new java.util.ArrayList<>();
-        if (kind != null && kind.identityFromSource()) {
+        if (kind != null && kind.identityFromSource()
+                && (spec == null || spec.keyFields().isEmpty())) {
             key.add(canonical.KeyComponent.sourceIdentity());
             return key;
         }
@@ -75,7 +76,8 @@ public final class Canonicalizer {
 
     public static String identifier(ClassKind kind, CanonicalSpec spec,
                                     FieldReader reader, String sourceId, String fallback) {
-        if (kind == null || kind.identityFromSource()) {
+        if (kind == null || kind.identityFromSource()
+                && (spec == null || spec.keyFields().isEmpty())) {
             return firstNonBlank(sourceId, fallback);
         }
         // An owned part's identifier is established by composition from owner +
