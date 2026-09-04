@@ -18,6 +18,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.DefaultListModel;
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
@@ -52,6 +53,8 @@ final class ClassIdentityEditor extends JPanel {
     private final JLabel proposal = new JLabel(" ");
     private final JButton accept = new JButton(" ");
 
+    private final JTextArea preview = new JTextArea(5, 40);
+    private List<canonical.Candidate> sampled = List.of();
     private GeneratedClassModel clazz;
     private Consumer<Void> afterChange = ignored -> { };
 
@@ -78,8 +81,16 @@ final class ClassIdentityEditor extends JPanel {
 
         reductions.setBorder(BorderFactory.createTitledBorder("When the same key occurs"));
 
+        preview.setEditable(false);
+        preview.setOpaque(false);
+        preview.setBorder(BorderFactory.createTitledBorder("What this would do"));
+
+        JPanel below = new JPanel(new BorderLayout(4, 4));
+        below.add(reductions, BorderLayout.NORTH);
+        below.add(new JScrollPane(preview), BorderLayout.CENTER);
+
         add(top, BorderLayout.NORTH);
-        add(reductions, BorderLayout.CENTER);
+        add(below, BorderLayout.CENTER);
     }
 
     private JPanel keyButtons() {
@@ -102,6 +113,50 @@ final class ClassIdentityEditor extends JPanel {
 
     void afterChange(Consumer<Void> consumer) {
         afterChange = consumer == null ? ignored -> { } : consumer;
+    }
+
+    /**
+     * Instances to try the configuration against, so a change can be SEEN before it is
+     * applied.
+     *
+     * <p>These are already-reduced instances, which is the point rather than a
+     * limitation: each is its own partition under the key that produced it, so the
+     * preview reads "nothing would change" until the key is edited — and then it says
+     * exactly what a coarser one would merge. That is the question a modeller has when
+     * they touch a key, and the only place it could otherwise be answered is a
+     * regenerated snapshot.
+     */
+    void previewAgainst(List<canonical.Candidate> candidates) {
+        sampled = candidates == null ? List.of() : List.copyOf(candidates);
+        showPreview();
+    }
+
+    private void showPreview() {
+        if (clazz == null || sampled.isEmpty()) {
+            preview.setText("Sample this class to see what the configuration would do "
+                    + "to real instances.");
+            return;
+        }
+        CanonicalizationPlan plan = CanonicalizationPlans.of(clazz);
+        if (!plan.identified()) {
+            preview.setText("Nothing identifies this class yet, so there is nothing to "
+                    + "try: every instance would be the same one.");
+            return;
+        }
+        try {
+            var result = canonical.KeyedReduction.reduce(
+                    plan, sampled, wikidata.explore.transform.WikidataCandidates.stableForm());
+            StringBuilder text = new StringBuilder(result.report());
+            if (result.reducedPartitions() == 0 && result.conflicts().isEmpty()) {
+                text.append("Nothing is combined: this key tells all ")
+                        .append(sampled.size()).append(" of them apart.\n");
+            }
+            preview.setText(text.toString());
+            preview.setCaretPosition(0);
+        } catch (RuntimeException refused) {
+            preview.setText(refused.getMessage() == null
+                    ? "This configuration cannot be applied." : refused.getMessage());
+        }
     }
 
     void show(GeneratedClassModel value) {
@@ -131,6 +186,7 @@ final class ClassIdentityEditor extends JPanel {
 
         showReductions(plan);
         showProposal();
+        showPreview();
         revalidate();
         repaint();
     }
@@ -154,6 +210,10 @@ final class ClassIdentityEditor extends JPanel {
                     : "Chosen for this field.");
             box.addActionListener(event -> {
                 clazz.canonical().reductions().put(field, (Reduction) box.getSelectedItem());
+                // The preview follows the selection, and only the preview: applying is
+                // still the explicit act it was. Inspecting a consequence must not be
+                // how a configuration gets made.
+                showPreview();
                 afterChange.accept(null);
             });
             reducerBoxes.put(field, box);

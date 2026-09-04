@@ -307,6 +307,11 @@ public class ClassSourcePanel extends JPanel {
         return clazz == null ? null : RuleTreeCompiler.compileClass(clazz);
     }
 
+    /** Instances to try the identity configuration against, before applying it. */
+    void previewAgainst(java.util.List<canonical.Candidate> candidates) {
+        identityEditor.previewAgainst(candidates);
+    }
+
     public void applyEdits() {
         apply();
     }
