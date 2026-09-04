@@ -147,7 +147,10 @@ public class ClassSourcePanel extends JPanel {
             new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
     private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
     private final JTextField displayNameTemplateField = new JTextField(18);
-    private final JTextField keyFieldsField = new JTextField(18);
+    // The same editor every other construct uses. This was a space-separated text
+    // field, which could not show that a SOURCE class keys on its source identity, and
+    // could not keep an order — both of which identity depends on.
+    private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
     private final JLabel canonicalHint = new JLabel(" ");
 
     private final JButton applyButton =
@@ -549,9 +552,7 @@ public class ClassSourcePanel extends JPanel {
                 + "— {field} is replaced by that field's label.");
         GridBagUtils.labeledRow(form, c, y++, "  template:", displayNameTemplateField);
 
-        keyFieldsField.setToolTipText("Identity key fields (space-separated) — the "
-                + "grain that makes one instance unique. Prefilled from the class.");
-        GridBagUtils.labeledRow(form, c, y++, "Identity key fields:", keyFieldsField);
+        GridBagUtils.wideRow(form, y++, identityEditor);
 
         canonicalHint.setForeground(new Color(0xB00020));
         GridBagUtils.wideRow(form, y++, canonicalHint);
@@ -1097,7 +1098,7 @@ public class ClassSourcePanel extends JPanel {
         });
         displayNameFieldBox.setSelectedItem(spec.displayNameField());
         displayNameTemplateField.setText(spec.displayNameTemplate());
-        keyFieldsField.setText(String.join(" ", spec.keyFields()));
+        identityEditor.show(clazz);
 
         updateCanonicalEnablement();
     }
@@ -1136,7 +1137,10 @@ public class ClassSourcePanel extends JPanel {
         String mode = (String) displayNameModeBox.getSelectedItem();
         displayNameFieldBox.setEnabled(hasClass && DN_FIELD.equals(mode));
         displayNameTemplateField.setEnabled(hasClass && DN_TEMPLATE.equals(mode));
-        keyFieldsField.setEnabled(keyed);
+        // Not told whether the key is editable: the editor asks the compiled plan,
+        // which knows a structural key is supplied by production. Deciding it here as
+        // well would be the same fact derived two ways — and the two would agree until
+        // a construct's identity regime changed on one side only.
         aliasesBox.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
 
         canonicalHint.setText(canonicalWarning(clazz == null ? null : clazz.classKind(), mode));
@@ -1191,7 +1195,7 @@ public class ClassSourcePanel extends JPanel {
                 clazz.classKind(), displayMode,
                 selectedField == null ? "" : selectedField.toString(),
                 displayNameTemplateField.getText(), langField.getText(),
-                keyFieldsField.getText());
+                clazz.canonical());
 
         clazz.canonical(spec);
         ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());

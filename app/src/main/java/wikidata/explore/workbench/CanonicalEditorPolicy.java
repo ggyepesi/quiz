@@ -22,23 +22,26 @@ final class CanonicalEditorPolicy {
             String displayField,
             String template,
             String language,
-            String keyText) {
+            CanonicalSpec existing) {
         CanonicalSpec.DisplayNameMode safeMode = mode == null
                 ? CanonicalSpec.DisplayNameMode.LABEL : mode;
-        CanonicalSpec result = new CanonicalSpec().displayNameMode(safeMode);
+        // Built FROM what is there, not instead of it. This made a fresh spec and the
+        // caller assigned it over the old one, so anything the editor does not touch was
+        // dropped on every apply — reductions and the missing-key policy among them,
+        // which is a modeller's answer to "what happens when two candidates share a key"
+        // disappearing because they edited a display name.
+        CanonicalSpec result = existing == null
+                ? new CanonicalSpec() : existing.copy();
+        result.displayNameMode(safeMode);
         switch (safeMode) {
             case LABEL -> result.labelLanguage(language);
             case FIELD -> result.displayNameField(displayField);
             case TEMPLATE -> result.displayNameTemplate(template);
         }
-        if (editsCanonicalKey(kind)) {
-            for (String token : clean(keyText).split("[,;\\s]+")) {
-                String key = token.trim();
-                if (!key.isBlank() && !result.keyFields().contains(key)) {
-                    result.keyFields().add(key);
-                }
-            }
-        }
+        // The key is not touched here at all. It belongs to ClassIdentityEditor, which
+        // holds it as an ordered list — and identity joins a key's values in order, so a
+        // space-separated string parsed back could not preserve what an identifier is
+        // built from. This assembled the key from text; now it only assembles a name.
         return result;
     }
 
