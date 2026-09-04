@@ -22,21 +22,22 @@ import static org.junit.jupiter.api.Assertions.*;
 class NodeSamplePanelTest {
 
     /**
-     * A sampled instance must not be rendered unlike a generated one — the same intent
-     * this test always had. It used to be satisfied by rendering nothing here and
-     * pointing at a separate Instances window, which made sense while sampling lived
-     * among the Explorer tools. Beside the class's own editor, sending the result
-     * elsewhere is the odd part, so the panel now shows it through the SAME renderer
-     * that window used.
+     * A sampled instance is rendered in ONE place, the way a generated one is.
+     *
+     * <p>Two ways to fail this, and both have happened. A bespoke table here is a second
+     * presentation KIND — the same object shown one way when generated and another when
+     * sampled. The shared renderer here is a second COPY: the window renders the result
+     * too, and two views of one result that disagree about how it looks leave the reader
+     * deciding which to believe. Neither belongs in this panel.
      */
-    @Test void aSampledInstanceIsRenderedTheWayAGeneratedOneIs() {
+    @Test void aSampledInstanceIsRenderedInOnePlace() {
         NodeSamplePanel sample = new NodeSamplePanel();
 
         assertNull(find(sample, workbench.EntityResultPanel.class),
                 "a bespoke result table here would be a second presentation");
-        assertNotNull(
+        assertNull(
                 find(sample, wikidata.explore.query.swing.QueryObjectResultPanel.class),
-                "the shared Viewable renderer, the one the Instances window uses");
+                "and the shared renderer here would be a second copy of the one result");
     }
 
     /** Whoever owns the Instances view receives the result, exactly once. */

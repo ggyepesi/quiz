@@ -86,11 +86,19 @@ public class NodeSamplePanel extends JPanel {
     private final JTable table =
             new JTable(tableModel);
 
-    // The same renderer the Instances window uses — the shared Viewable path, not a
-    // second table. The panel used to say "Class samples open in the Instances window",
-    // which was true when sampling lived among the Explorer tools; now that it sits
-    // beside the class's own editor, sending its result somewhere else is the odd part.
-    private final QueryObjectResultPanel classResultPanel = new QueryObjectResultPanel();
+    /**
+     * A class sample has ONE home, and it is not here.
+     *
+     * <p>This panel rendered the instances and the window rendered them as well: the
+     * same objects twice, in two sizes, disagreeing about how they looked. The window
+     * is where they belong — two sections sharing a tab's width leave room for their
+     * search headers and nothing else, which is why that window exists at all.
+     *
+     * <p>Empty rather than a label saying where they went: this area is for rendering a
+     * result, and putting a hand-built component where a rendered one used to be mixes
+     * two kinds of drawing in one place. The count is on the status line already.
+     */
+    private final JPanel classResultCard = new JPanel();
 
     // (5) A failure is not a status line. Compilation refuses with the model's whole
     // validation report, and "Class sample failed." threw all of it away.
@@ -182,7 +190,7 @@ public class NodeSamplePanel extends JPanel {
         failureArea.setEditable(false);
         failureArea.setLineWrap(true);
         failureArea.setWrapStyleWord(true);
-        resultCards.add(classResultPanel, "class");
+        resultCards.add(classResultCard, "class");
         resultCards.add(new JScrollPane(failureArea), "failure");
         resultCards.add(new JScrollPane(table), "field");
         tabs.addTab("Results", resultCards);
@@ -379,11 +387,11 @@ public class NodeSamplePanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText(
                     (result == null ? 0 : result.size()) + " sampled instance(s)"
-                            + (result != null && result.truncated() ? "; more available" : ""));
+                            + (result != null && result.truncated() ? "; more available" : "")
+                            + " — in the Sample class instances window");
             resultShown = true;
             if (result == null) return;
             if (result.instances() != null) {
-                classResultPanel.accept(result.instances());
                 ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
             }
             onClassSample.accept(result);
@@ -547,7 +555,7 @@ public class NodeSamplePanel extends JPanel {
 
     private void clearResult() {
         resultShown = false;
-        classResultPanel.clear();
+        ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
         tableModel.setRowCount(0);
         failureArea.setText("");
         sparqlArea.setText("");
