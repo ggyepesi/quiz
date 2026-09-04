@@ -12,32 +12,49 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * A class sample is presented by the Instances viewer, not by this panel.
+ * A class sample is presented HERE, through the shared Viewable renderer.
  *
- * <p>It used to render its own QID/label table here, which made a sampled instance a
- * second presentation kind: the same object shown one way when generated and another
- * when sampled, with none of the nested-field expansion, links or view configuration
- * the ordinary result has. The panel now hands the result on and says where it went.
+ * <p>Two ways this has been wrong. It rendered its own QID/label table, which made a
+ * sampled instance a second presentation KIND — the same object shown one way when
+ * generated and another when sampled, with none of the nested-field expansion, links or
+ * view configuration the ordinary result has. Then it rendered through the shared
+ * renderer AND a window rendered the same result too, which was a second COPY: the same
+ * objects twice, in two sizes, disagreeing about how they looked.
+ *
+ * <p>One renderer, one place. The sample is read beside the class's own editor and its
+ * explanation, so that is where it is drawn.
  */
 class NodeSamplePanelTest {
 
-    /**
-     * A sampled instance is rendered in ONE place, the way a generated one is.
-     *
-     * <p>Two ways to fail this, and both have happened. A bespoke table here is a second
-     * presentation KIND — the same object shown one way when generated and another when
-     * sampled. The shared renderer here is a second COPY: the window renders the result
-     * too, and two views of one result that disagree about how it looks leave the reader
-     * deciding which to believe. Neither belongs in this panel.
-     */
-    @Test void aSampledInstanceIsRenderedInOnePlace() {
+    /** One renderer — the shared one — and no second table beside it. */
+    @Test void aSampledInstanceIsRenderedTheWayAGeneratedOneIs() {
         NodeSamplePanel sample = new NodeSamplePanel();
 
         assertNull(find(sample, workbench.EntityResultPanel.class),
-                "a bespoke result table here would be a second presentation");
-        assertNull(
+                "a bespoke result table here would be a second presentation kind");
+        assertNotNull(
                 find(sample, wikidata.explore.query.swing.QueryObjectResultPanel.class),
-                "and the shared renderer here would be a second copy of the one result");
+                "the shared Viewable renderer, the one every view of generated objects "
+                        + "uses");
+    }
+
+    /**
+     * And nowhere else: the frame must not open a window on the same result.
+     *
+     * <p>That is what made the instances appear twice. The consumer stays, because what
+     * reads a sample without rendering it still needs it — the identity preview compares
+     * a key change against real instances — so this asserts the shape, not that nobody
+     * listens.
+     */
+    @Test void theFrameDoesNotOpenASecondViewOfTheSameResult() {
+        long windows = java.util.Arrays.stream(
+                        ModelBuilderFrame.class.getDeclaredFields())
+                .filter(field -> javax.swing.JFrame.class.isAssignableFrom(field.getType()))
+                .filter(field -> field.getName().toLowerCase().contains("sample"))
+                .count();
+
+        assertEquals(0, windows,
+                "a sample window is a second copy of what the Sample tab already draws");
     }
 
     /** Whoever owns the Instances view receives the result, exactly once. */
