@@ -75,7 +75,10 @@ final class EffectiveClassPanel extends JPanel {
         }
         out.append("<h2>Effective class: ").append(esc(value.className())).append("</h2>");
         row(out, "Declaration", value.declaration());
-        row(out, "Instances", value.instances());
+        // The three stages, named and in order: what is produced, what groups it, what
+        // combines the rest. A reader who saw only the first two could not tell whether
+        // Nobel's laureates are unioned or one of them is thrown away.
+        row(out, "1 · Produced from", value.instances());
         out.append("<h3>Fields</h3><ul>");
         if (value.hasParts()) {
             // A reified statement is one fact with things said about it. Listing the
@@ -96,9 +99,18 @@ final class EffectiveClassPanel extends JPanel {
             }
             if (value.fields().isEmpty()) out.append("<li>none</li>");
         }
-        if (!value.identity().isBlank()) {
-            out.append("</ul><h3>Tells two apart</h3><ul><li>")
-                    .append(esc(value.identity())).append("</li>");
+        out.append("</ul>");
+        out.append("<h3>2 · Grouped by</h3><ul><li>")
+                .append(value.identity().isBlank()
+                        ? "<i>nothing chosen yet — a domain must settle this before it "
+                                + "can generate</i>"
+                        : esc(value.identity()))
+                .append("</li></ul>");
+        if (!value.reduction().isBlank()) {
+            out.append("<h3>3 · When two share that</h3><ul><li>")
+                    .append(esc(value.reduction())).append("</li>");
+        } else {
+            out.append("<ul>");
         }
         out.append("</ul><h3>Used by</h3><ul>");
         // Three states, not two. Nobody has looked yet is not the same as looked and

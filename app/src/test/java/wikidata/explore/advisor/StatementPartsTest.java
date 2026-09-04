@@ -99,8 +99,13 @@ class StatementPartsTest {
         var explanation = EffectiveClassExplanations.explain(
                 project, project.findClass("OfficeHolding"));
 
-        assertEquals("source + position + startDate + endDate; "
-                + "two records with the same key keep one", explanation.identity());
+        // The key alone. What happens when two share it is no longer a class-wide
+        // sentence appended here — it is per field, and the explanation says it as its
+        // own stage, because "keep one" could never express that Nobel's laureates
+        // combine while its category must agree.
+        assertEquals("source + position + startDate + endDate", explanation.identity());
+        assertEquals("predecessor: Must agree", explanation.reduction(),
+                "the one field that is not part of the key, and what becomes of it");
     }
 
     /**
@@ -135,6 +140,9 @@ class StatementPartsTest {
         assertFalse(explanation.hasParts(),
                 "an unavailable explanation also has no parts, so availability is "
                         + "asserted first or this passes for the wrong reason");
-        assertEquals("", explanation.identity());
+        // An entity class HAS an identity, and now says so. It read blank before, not
+        // because there was nothing to say but because only a statement key was
+        // described — the class identified by its source was left unexplained.
+        assertEquals("source identity", explanation.identity());
     }
 }

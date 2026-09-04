@@ -9,9 +9,14 @@ public record EffectiveClassExplanation(
         String declaration,
         String instances,
         List<Field> fields,
-        /** What makes one record distinct from another, and what happens when two
-         *  still collide. Blank when the class declares no canonical key. */
+        /** What makes one instance distinct from another. Blank when nothing has been
+         *  chosen — which is a state, not an absence, and one a domain must resolve. */
         String identity,
+        /** What happens to the other fields when two candidates share that. The third
+         *  stage: a class produces candidates, a key groups them, and reducers combine
+         *  what is left. Reading only the first two, a modeller cannot tell whether
+         *  laureates are unioned or one of them is thrown away. */
+        String reduction,
         /** Empty when nothing has looked: absent evidence is not evidence of absence.
          *  A present empty list means the reverse index ran and found no reference,
          *  which is a finding; the two must not render alike. */

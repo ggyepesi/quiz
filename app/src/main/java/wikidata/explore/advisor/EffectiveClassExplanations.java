@@ -50,6 +50,7 @@ public final class EffectiveClassExplanations {
                 instanceDescription(declaration, project),
                 fields,
                 identityDescription(declaration),
+                reductionDescription(declaration),
                 // ModelDeclarationGraph will own the reverse declaration index. Do not
                 // create a second field/rule scan here while that shared construct is
                 // still only designed — and say nothing rather than guess, because
@@ -205,16 +206,35 @@ public final class EffectiveClassExplanations {
      * subject/value pairs.
      */
     private static String identityDescription(GeneratedClassModel declaration) {
-        Set<String> key = keyFields(declaration);
+        // Asked of the compiled plan, so this says what generation will do rather than
+        // a second reading of the same fields. It also shows a STRUCTURAL key, which
+        // listing key field names could not: an entity class is identified by its source
+        // and a part by where it was produced, and neither is a field.
+        var key = wikidata.explore.compiled.CanonicalizationPlans
+                .of(declaration).key();
         if (key.isEmpty()) return "";
-        var canonical = declaration.canonical();
-        String policy = canonical == null || canonical.duplicatePolicy() == null
-                ? "" : switch (canonical.duplicatePolicy().name()) {
-                    case "KEEP_ONE" -> "; two records with the same key keep one";
-                    case "MERGE_RECORDS" -> "; two records with the same key are merged";
-                    default -> "";
-                };
-        return String.join(" + ", key) + policy;
+        return key.stream().map(Object::toString)
+                .collect(java.util.stream.Collectors.joining(" + "));
+    }
+
+    /**
+     * What becomes of the other fields when two candidates share the key.
+     *
+     * <p>The third stage, and the one that was invisible. It used to be one class-wide
+     * sentence — "two records with the same key keep one" — which could not say that
+     * Nobel's laureates combine while its category must agree. Per field, and only where
+     * something can actually combine: a class whose fields are all key components says
+     * so instead of listing nothing.
+     */
+    private static String reductionDescription(GeneratedClassModel declaration) {
+        var plan = wikidata.explore.compiled.CanonicalizationPlans.of(declaration);
+        if (!plan.identified()) return "";
+        if (plan.reductionByField().isEmpty()) {
+            return "every field is part of the key, so nothing is combined";
+        }
+        return plan.reductionByField().entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(java.util.stream.Collectors.joining("; "));
     }
 
     private static String declarationOrigin(GeneratedClassModel declaration) {
@@ -224,7 +244,7 @@ public final class EffectiveClassExplanations {
 
     private static EffectiveClassExplanation unavailable(String name, String reason) {
         // A model that could not be compiled has said nothing about uses either.
-        return new EffectiveClassExplanation(name, "", "", List.of(), "",
+        return new EffectiveClassExplanation(name, "", "", List.of(), "", "",
                 java.util.Optional.empty(),
                 reason == null || reason.isBlank() ? "Effective class is unavailable" : reason);
     }
