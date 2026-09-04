@@ -171,23 +171,28 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
     }
 
     /**
-     * Generation's derivation steps, run over the sampled population.
+     * Generation's derivation steps, run over the sampled population — all of them.
      *
-     * <p>In generation's order and not the chain's: parts are composed before groups are
-     * reduced because a part must exist to be grouped, and running the chain's own order
-     * would be a second answer to a question generation has already settled. A step the
-     * chain has no link for is skipped rather than run for nothing.
+     * <p>In generation's order: parts are composed before groups are reduced, because a
+     * part must exist to be grouped. Running the CHAIN's order instead would be a second
+     * answer to a question generation has already settled.
+     *
+     * <p>Every step, not only the ones the chain names. Skipping the others looked like
+     * an economy and was a misrepresentation: the chain says how the SAMPLED class is
+     * produced, and says nothing about what hangs off the classes its instances reach. A
+     * NobelPrize is aggregated and owns nothing, so composition was skipped — and its
+     * laureates came back without the structured names that a generated laureate has,
+     * from a step that would have made them had it run. A sampled instance has to be
+     * what a generated one is, and that is decided by what is IN the pool, not by which
+     * edge was followed to choose the pool.
      */
     private void produceForward(ProductionChain chain, CompiledProjectModel compiled,
             List<WikidataDynamicObject> pool, QueryContext context, GenerationLog log) {
-        if (chain.has(ClassDependencies.Kind.OWNED)) {
-            SemanticConvergence.Result converged = SemanticConvergence.apply(
-                    snapshot, pool, WikidataAccess.api(context), log, List.of(), null);
-            log.message("Composed " + converged.ownedCreated() + " owned part(s).\n");
-        }
-        if (chain.has(ClassDependencies.Kind.AGGREGATED)) {
-            ModelAggregates.apply(compiled, pool, log);
-        }
+        SemanticConvergence.Result converged = SemanticConvergence.apply(
+                snapshot, pool, WikidataAccess.api(context), log, List.of(), null);
+        log.message("Composed " + converged.ownedCreated() + " owned part(s) and settled "
+                + converged.classifiedKinds() + " kind(s).\n");
+        ModelAggregates.apply(compiled, pool, log);
     }
 
     /**
