@@ -188,11 +188,36 @@ public class ModelBuilderFrame extends JFrame {
     // Guards the combo's listener while we repopulate/select it programmatically.
     private boolean updatingDomainBox = false;
 
+    /**
+     * The model's fingerprint when it was last loaded or saved — what "unchanged" means.
+     *
+     * <p>Not a flag set by every edit path: there are a dozen of those and a new one is
+     * added whenever a control is. DomainSave.signature already answers "is this the same
+     * model" for the staleness guard, over a COPY, excluding declaration identities and
+     * derived vocabulary values — so it says changed when a modeller changed something
+     * and not when the model was merely re-read. Reusing it means the two questions
+     * cannot drift apart, and a new editor is covered the day it is written.
+     */
+    private String savedSignature = "";
+
+    /**
+     * Where this project lives: the model file it was last loaded from or saved to.
+     *
+     * <p>Blank for a draft that has never been saved, which is the one state that has no
+     * answer. Settled at exactly the moments {@link #savedSignature} is, because they are
+     * the same moment — the project became identical to a file on disk.
+     */
+    private File openModelFile;
+
     private final JButton loadProjectButton =
             new JButton("Load project");
 
+    // "Load instances", because that is what it loads: the saved objects, into the
+    // model that is already open. It was "Load saved", which named neither what is
+    // loaded nor what it is loaded into, and asked for a folder the open domain
+    // already knows.
     private final JButton loadSavedButton =
-            new JButton("Load saved");
+            new JButton("Load instances");
 
     private final JButton saveEverythingButton =
             new JButton("Save domain");
@@ -309,6 +334,9 @@ public class ModelBuilderFrame extends JFrame {
         JPanel domainFiles = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         domainFiles.add(saveEverythingButton);
         domainFiles.add(loadProjectButton);
+        loadSavedButton.setToolTipText(
+                "Load the instances saved beside this domain's model. "
+                        + "Which folder that is follows from the open domain.");
         domainFiles.add(loadSavedButton);
 
         JPanel domainSection = new JPanel(new GridLayout(0, 1, 0, 0));
@@ -2059,7 +2087,40 @@ public class ModelBuilderFrame extends JFrame {
         return storage.modelFileOf(name);
     }
 
+    /**
+     * Whether this project differs from the file it came from.
+     *
+     * <p>An unknown signature is not a claim that nothing changed: a model that cannot be
+     * compiled has none, and a draft has no file to differ from. Both answer "yes, ask" —
+     * the safe direction, since the cost of asking is a dialog and the cost of not asking
+     * is lost work.
+     */
+    private boolean hasUnsavedChanges() {
+        String saved = savedSignature;
+        String now = modelSignature(projectModel);
+        return saved.isBlank() || now.isBlank() || !now.equals(saved);
+    }
+
+    /** This project is now exactly what {@code file} holds. */
+    private void markSaved(File file) {
+        openModelFile = file;
+        savedSignature = file == null ? "" : modelSignature(projectModel);
+    }
+
+    /** The folder this project lives in, or null for a draft that has no home yet. */
+    private File openDomainDir() {
+        if (openModelFile != null && openModelFile.getParentFile() != null) {
+            return openModelFile.getParentFile();
+        }
+        File model = domainModelFile(projectModel.name());
+        return model == null ? null : model.getParentFile();
+    }
+
     private boolean confirmDiscardChanges(String title) {
+        // Nothing to discard, nothing to ask. A dialog that always appears is one a
+        // reader learns to dismiss without reading, which is exactly when it needed to
+        // be read.
+        if (!hasUnsavedChanges()) return true;
         int c = JOptionPane.showConfirmDialog(
                 this,
                 "Discard any unsaved changes to \"" + projectModel.name()
@@ -2109,6 +2170,9 @@ public class ModelBuilderFrame extends JFrame {
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             refreshProjectKindUi();
+            // Last, after the selection and refreshes: those can announce a change, and
+            // a load that marked itself saved too early would then look edited.
+            markSaved(model);
             rememberCurrentDomain();
             logWindow.info("Loaded " + (projectModel.isModel() ? "model" : "domain")
                     + " \"" + projectModel.name() + "\".");
@@ -2272,6 +2336,7 @@ public class ModelBuilderFrame extends JFrame {
             graphDiscoveryLedger = ledger;
             modelChanged();
             syncDepthSpinnerToActiveClass();
+            markSaved(f);
             rememberCurrentDomain();
         } catch (Exception ex) {
             System.err.println("Could not load saved model " + f.getPath()
@@ -2294,7 +2359,7 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     // Loads a project model (config) from a chosen *.model.json, replacing the
-    // current one. (Instances are reloaded separately via "Load saved".)
+    // current one. (Instances are reloaded separately via "Load instances".)
     // A project is one folder under data/wikidata/. A domain may also hold its
     // .ruletree/.snapshot files; a model holds configuration only. The user picks the
     // FOLDER (files are shown but not selectable — which file is a technical detail)
@@ -2362,6 +2427,7 @@ public class ModelBuilderFrame extends JFrame {
             syncDepthSpinnerToActiveClass();
             refreshDomainBox();
             refreshProjectKindUi();
+            markSaved(model);
             logWindow.info("Loaded project configuration from " + model.getName());
         } catch (Exception ex) {
             reportGenerationError(ex);
@@ -2379,16 +2445,20 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void loadSavedInstances() {
-        File dir = chooseDomainDir("Load saved instances — pick the domain folder");
-        if (dir == null) {
-            return;
-        }
-        File file = findInDir(dir, ".snapshot.json");
+        // The open domain knows where its instances are — asking for the folder made
+        // the reader answer a question the application had already answered, and let
+        // them answer it with somebody else's domain.
+        File dir = openDomainDir();
+        File file = dir == null ? null : findInDir(dir, ".snapshot.json");
         if (file == null) {
             JOptionPane.showMessageDialog(this,
-                                          "No *.snapshot.json found in\n" + dir.getPath()
-                                                  + "\n(generate + save the domain first)",
-                                          "Load saved", JOptionPane.WARNING_MESSAGE);
+                                          dir == null
+                                                  ? "\"" + projectModel.name() + "\" has not been "
+                                                          + "saved yet, so it has no instances to load."
+                                                  : "No saved instances for \"" + projectModel.name()
+                                                          + "\" in\n" + dir.getPath()
+                                                          + "\n(generate, then \"Save domain\")",
+                                          "Load instances", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -2546,7 +2616,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // Where a domain's files live is dataset.DomainStorage's business; this frame only says
     // which domain it is currently editing. The layout — "Constellations" ->
-    // data/wikidata/constellations/ — is the one the web client and "Load saved" read.
+    // data/wikidata/constellations/ — is the one the web client and "Load instances" read.
     private String projectKey() { return dataset.DomainStorage.key(projectModel.name()); }
 
     private static String domainKey(String name) { return dataset.DomainStorage.key(name); }
@@ -2561,7 +2631,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // Saves config (the editable project model), the compiled rule tree, and
     // the generated instances together into the project's data directory — the
-    // instances file being exactly what the web client and "Load saved" read.
+    // instances file being exactly what the web client and "Load instances" read.
     // A model's generation signature: the rule tree it compiles to is exactly
     // what drives generation, so two models with the same signature produce the
     // same instances. Used to detect a model drifting past its saved snapshot.
@@ -2738,6 +2808,8 @@ public class ModelBuilderFrame extends JFrame {
             }
 
             sourceWorkbench.refreshDomainOverview();
+            // What is on disk is now what is open, so switching away asks nothing.
+            markSaved(modelFile());
             logWindow.info("Saved domain \"" + projectModel.name() + "\":\n" + report);
 
             String hint = instanceCountHint(n);
@@ -2762,6 +2834,7 @@ public class ModelBuilderFrame extends JFrame {
                     != JOptionPane.OK_OPTION) return;
             modelFile().getParentFile().mkdirs();
             new GeneratedProjectModelStore().save(projectModel, modelFile());
+            markSaved(modelFile());
             rememberCurrentDomain();
             sourceWorkbench.refreshDomainOverview();
             refreshDomainBox();
