@@ -3,6 +3,7 @@ package wikidata.explore.query.swing;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.ui.IdentityChip;
 
+import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
 import quiz.source.WikidataSource;
@@ -92,40 +93,50 @@ public class QueryObjectResultPanel
     }
 
     private JComponent buildView(ObjectQueryResult result) {
+        // The result answers what it holds, by type. The panel used to walk the object
+        // graph itself, so the headings it drew and the count the sample reported were
+        // two rules for one question and disagreed the moment a result carried more
+        // than the class that was asked for.
         Map<String, List<Viewable>> byType =
-                ordered(groupByType(result.objects()), result.typeOrder());
+                ordered(result.byType(), result.typeOrder());
 
         if (byType.size() <= 1) {
             return searchPanelView(result);
         }
 
-        // One tab per type, each rendered by the SAME builder a single-type result gets.
-        // Several types used to be laid out as side-by-side sections, which is a second
-        // presentation of the same objects and a much smaller one: two types split the
-        // width in half, so embedded in a panel rather than a wide window it came out as
-        // search headers with no room for cards. Tabs give every type the full width,
-        // and their order is the result's stated order — the production chain, when the
-        // producer knows it.
-        JTabbedPane byTypeTabs = new JTabbedPane();
-        List<RenderContext> contexts = new ArrayList<>();
-        for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
-            List<Viewable> objects = entry.getValue();
-            if (objects.isEmpty()) continue;
-            JComponent view = searchPanelView(new ObjectQueryResult(
-                    objects, result.primaryClass(), result.generatedSource()));
-            contexts.add(activeContext);
-            byTypeTabs.addTab(sectionTitle(entry.getKey(), objects.size()), view);
-        }
-        // The context belongs to what the reader is looking at: an action taken on the
-        // shown tab must render through that tab's cards, not through whichever tab
-        // happened to be built last.
-        byTypeTabs.addChangeListener(event -> {
-            int index = byTypeTabs.getSelectedIndex();
-            if (index >= 0 && index < contexts.size()) activeContext = contexts.get(index);
-        });
-        if (!contexts.isEmpty()) activeContext = contexts.getFirst();
+        // Side by side, sharing ONE render context — which is the point of this layout
+        // rather than a detail of it. Highlighting a reference in one section lights it
+        // up in the other, and that works only while both render through the same
+        // context. Tabs were tried here and gave each type its own SearchableView, so
+        // every cross-panel highlight went dead: two panels showing related objects with
+        // no way left to say they were related.
+        MultiView multi =
+                new MultiView();
 
-        return byTypeTabs;
+        // MultiView supplies its own shared RenderContext rather than going through
+        // SearchableView.Builder.cardDecorator(). Configure that context BEFORE build:
+        // cards read their header decoration while they are constructed. Without this,
+        // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
+        // as the result contained several types (the normal generated-domain case).
+        multi.context().setCardDecorator(cardDecorator);
+
+        for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
+            List<Viewable> full = e.getValue();
+
+            if (full.isEmpty()) {
+                continue;
+            }
+
+            multi.addSection(
+                    sectionTitle(e.getKey(), full.size()),
+                    full.getFirst().getClass(),
+                    capped(full));
+        }
+
+        multi.build(1);
+        activeContext = multi.context();
+
+        return multi;
     }
 
     /**
@@ -147,66 +158,8 @@ public class QueryObjectResultPanel
         return sorted;
     }
 
-    private Map<String, List<Viewable>> groupByType(List<Viewable> roots) {
-        Map<String, List<Viewable>> byType =
-                new LinkedHashMap<>();
 
-        Set<Viewable> seen =
-                Collections.newSetFromMap(new IdentityHashMap<>());
 
-        Deque<Viewable> queue =
-                new ArrayDeque<>(roots == null ? List.of() : roots);
-
-        while (!queue.isEmpty()) {
-            Viewable q = queue.poll();
-
-            if (q == null || !seen.add(q)) {
-                continue;
-            }
-
-            if (q instanceof wikidata.explore.extract.WikidataDynamicObject) {
-                continue;
-            }
-
-            String type = q.typeName();
-
-            if (type != null
-                    && !type.isBlank()
-                    && !"WikidataDynamicObject".equals(type)) {
-                byType.computeIfAbsent(type, k -> new ArrayList<>()).add(q);
-            }
-
-            collectReferences(q, queue);
-        }
-
-        return byType;
-    }
-
-    private void collectReferences(
-            Viewable q,
-            Deque<Viewable> queue) {
-        objectview.field.FieldSet fields = objectview.field.FieldSet.of(q);
-        for (objectview.field.FieldRef field : fields.fields()) {
-            addReferences(fields.read(field.name()), queue);
-        }
-    }
-
-    private void addReferences(
-            Object v,
-            Deque<Viewable> queue) {
-
-        if (v instanceof Viewable q) {
-            queue.add(q);
-        } else if (v instanceof Collection<?> c) {
-            for (Object o : c) {
-                addReferences(o, queue);
-            }
-        } else if (v instanceof Map<?, ?> m) {
-            for (Object o : m.values()) {
-                addReferences(o, queue);
-            }
-        }
-    }
 
     private JComponent searchPanelView(ObjectQueryResult result) {
         List<Viewable> typed =

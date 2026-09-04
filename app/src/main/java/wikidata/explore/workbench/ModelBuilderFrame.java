@@ -72,6 +72,13 @@ public class ModelBuilderFrame extends JFrame {
     private final ModelSourceWorkbenchPanel sourceWorkbench =
             new ModelSourceWorkbenchPanel(projectModel);
 
+    // The sample's instances live in a window of their own, big enough for the
+    // side-by-side sections to show cards rather than just their search headers. The
+    // Sample tab shows the same result through the same panel; what differs is the room,
+    // and that is the whole reason this window exists.
+    private final QueryObjectResultPanel sampleInstancesPanel = new QueryObjectResultPanel();
+    private JFrame sampleInstancesWindow;
+
     private final QueryObjectResultPanel instancesPanel =
             new QueryObjectResultPanel();
 
@@ -432,6 +439,26 @@ public class ModelBuilderFrame extends JFrame {
     /** Presents bounded samples with the same Instances component without replacing
      * the generated domain result that the main Instances window owns. */
 
+    private void showClassSample(
+            wikidata.explore.query.result.ClassSampleResult sample) {
+        if (sampleInstancesWindow == null) {
+            sampleInstancesWindow = new JFrame("Sample class instances");
+            sampleInstancesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            sampleInstancesWindow.setLayout(new BorderLayout());
+            sampleInstancesWindow.add(sampleInstancesPanel, BorderLayout.CENTER);
+            sampleInstancesWindow.setSize(1000, 760);
+            sampleInstancesWindow.setLocationByPlatform(true);
+        }
+        sampleInstancesPanel.accept(sample.instances());
+        // Counted the way the sections are counted, off the same walk: a title saying
+        // sixteen beside a section saying eight is the reader having to decide which of
+        // us to believe.
+        sampleInstancesWindow.setTitle("Sample: " + sample.requestedClass()
+                + " — " + sample.size() + " of " + sample.requestedLimit()
+                + (sample.truncated() ? " (more available)" : " (complete)"));
+        showAndFocus(sampleInstancesWindow);
+    }
+
     // Lazily-created window hosting the discovery tools moved out of the main
     // frame, so the main window stays focused on domain + configuration.
     // Sample the selected class, then open the statement view on those instances.
@@ -669,6 +696,10 @@ public class ModelBuilderFrame extends JFrame {
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
         sourceWorkbench.setQueryRunner(queryRunner);
+        sourceWorkbench.onClassSample(sample -> {
+            if (sample == null || sample.instances() == null) return;
+            showClassSample(sample);
+        });
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());

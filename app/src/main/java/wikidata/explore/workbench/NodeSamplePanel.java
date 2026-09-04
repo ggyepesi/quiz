@@ -103,6 +103,9 @@ public class NodeSamplePanel extends JPanel {
     private boolean hasSubject;
     private boolean resultShown;
 
+    /** The runner's own broadcast, which is what disables every other run button. */
+    private boolean runnerBusy;
+
     private final JPanel resultCards = new JPanel(new CardLayout());
 
     private final JTextArea sparqlArea =
@@ -231,11 +234,17 @@ public class NodeSamplePanel extends JPanel {
                     showFailure("Sample failed", ex);
                 });
 
-        // The runner enables every run button when a run ends, which is its answer to
-        // "is something running" and not to "can THIS be sampled". Its listeners fire
-        // after that blanket enable, so availability has the last word instead of being
-        // overwritten by whatever else in the workbench happened to run.
-        queryRunner.onRunningChanged(running -> refreshAvailability());
+        // Two conditions, two owners, and neither may overwrite the other. The runner
+        // owns "is something running" — it disables every run button and enables Cancel
+        // — and this panel owns "can THIS selection be sampled". Its listeners fire
+        // after the blanket toggle, so re-asking availability there is what stops a run
+        // ENDING anywhere in the workbench from enabling a button whose selection
+        // cannot be sampled. Availability must therefore honour the run state too, or
+        // the same listener re-enables Sample in the middle of its own run.
+        queryRunner.onRunningChanged(running -> {
+            runnerBusy = running;
+            refreshAvailability();
+        });
 
         refreshAvailability();
     }
@@ -556,6 +565,11 @@ public class NodeSamplePanel extends JPanel {
         String reason;
         if (queryRunner == null) {
             reason = "Sampling needs a query runner.";
+        } else if (runnerBusy) {
+            // Sample belongs to the group a run disables, and Cancel is what is offered
+            // instead. Asking again while the answer is being fetched is not a second
+            // sample, it is the same one twice.
+            reason = "Something is already running \u2014 cancel it or wait.";
         } else if (field) {
             reason = "";
         } else {

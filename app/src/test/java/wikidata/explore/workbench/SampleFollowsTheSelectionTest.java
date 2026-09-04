@@ -108,6 +108,60 @@ class SampleFollowsTheSelectionTest {
     }
 
     /**
+     * Sample is one of the buttons a run disables, and Cancel is what replaces it.
+     *
+     * <p>Availability and the run state are two conditions with two owners, and the fix
+     * for one broke the other: re-asking availability when the run state changes is what
+     * stops a finishing run from enabling an unsampleable selection, and it also
+     * re-enabled Sample in the middle of its own run unless availability honours the run
+     * state too.
+     */
+    @Test void samplingIsNotOfferedWhileSomethingIsRunning() throws Exception {
+        NodeSamplePanel sample = new NodeSamplePanel();
+        sample.setClassSampleSupplier(() -> new StubQuery());
+        sample.setClassSampleUnavailableReason(() -> "");
+        wikidata.explore.query.swing.SwingQueryRunner runner = runner();
+        sample.setQueryRunner(runner);
+        sample.showSubject("Nomination");
+        assertTrue(buttonsIn(sample).getFirst().isEnabled(), "sampleable to begin with");
+
+        setRunning(runner, true);
+
+        assertFalse(buttonsIn(sample).getFirst().isEnabled(),
+                "asking again while the answer is being fetched is the same sample twice");
+        assertTrue(statusOf(sample).contains("already running"), statusOf(sample));
+
+        setRunning(runner, false);
+
+        assertTrue(buttonsIn(sample).getFirst().isEnabled(),
+                "and it comes back when the run ends");
+    }
+
+    /** A query that only has to exist — nothing here runs it. */
+    private record StubQuery() implements work.Query<
+            wikidata.explore.query.result.ClassSampleResult> {
+        @Override public String purpose() { return "stub"; }
+        @Override public String skeleton() { return "stub"; }
+        @Override public java.util.Map<String, String> parameters() {
+            return java.util.Map.of();
+        }
+        @Override public wikidata.explore.query.result.ClassSampleResult execute(
+                work.QueryContext context) { return null; }
+        @Override public int rowCount(
+                wikidata.explore.query.result.ClassSampleResult result) { return 0; }
+    }
+
+    private static void setRunning(
+            wikidata.explore.query.swing.SwingQueryRunner runner, boolean running)
+            throws Exception {
+        java.lang.reflect.Method method =
+                runner.getClass().getDeclaredMethod("setRunning", boolean.class);
+        method.setAccessible(true);
+        method.invoke(runner, running);
+        flushEventQueue();
+    }
+
+    /**
      * The runner answers "is something running", not "can this be sampled".
      *
      * <p>It enables every registered run button when a run ends. That is why a field
@@ -122,13 +176,8 @@ class SampleFollowsTheSelectionTest {
         sample.setQueryRunner(runner);
         sample.showSubject("NobelPrize");
 
-        java.lang.reflect.Method setRunning =
-                runner.getClass().getDeclaredMethod("setRunning", boolean.class);
-        setRunning.setAccessible(true);
-        setRunning.invoke(runner, true);
-        flushEventQueue();
-        setRunning.invoke(runner, false);
-        flushEventQueue();
+        setRunning(runner, true);
+        setRunning(runner, false);
 
         assertFalse(buttonsIn(sample).getFirst().isEnabled(),
                 "the runner had the last word on a question it was not asked");
