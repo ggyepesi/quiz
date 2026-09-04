@@ -46,6 +46,35 @@ public record ObjectQueryResult(
     }
 
     /**
+     * One object that points at another, and the field it points through.
+     *
+     * @param owner the object holding the reference
+     * @param field the field it is held in — "grouped by NobelPrize" says less than
+     *              "NobelPrize.laureatesWithMotivation", and the reader is usually
+     *              asking which of several edges brought them here
+     */
+    public record Referrer(Viewable owner, String field) { }
+
+    /**
+     * What points AT each object — the reference edges read backwards.
+     *
+     * <p>A card shows what it points to; nothing showed what points to it. For a class
+     * with no population of its own that is the more useful direction: the prize lists
+     * the records it grouped, but a record could not say which prize took it, and that
+     * is the connection a modeller checking a key actually wants to follow.
+     *
+     * <p>Derived, never stored. A back-reference field would put it in the model and
+     * then in everything served, which is production carrying something only a view
+     * wants; the edges are already in the objects and this reads them.
+     *
+     * <p>Keyed by identity: two objects that compare equal are still two places in the
+     * graph, and a card is shown for one of them.
+     */
+    public Map<Viewable, List<Referrer>> referrers() {
+        return walk().referrers();
+    }
+
+    /**
      * Everything this result holds, grouped by type — the roots and what they reach.
      *
      * <p>ONE rule, because the viewer's section headings and the sample's own count are
@@ -59,7 +88,25 @@ public record ObjectQueryResult(
      * it in {@link #typeOrder()}.
      */
     public Map<String, List<Viewable>> byType() {
+        return walk().byType();
+    }
+
+    /** What one traversal of this result found. */
+    private record Contents(Map<String, List<Viewable>> byType,
+                            Map<Viewable, List<Referrer>> referrers) { }
+
+    /**
+     * The one traversal.
+     *
+     * <p>Both questions this result answers about its contents — which types are in it,
+     * and what points at what — are read off the same edges, so they are read once. Two
+     * walks would be two chances to disagree about what the result contains, which is
+     * the shape of the defect that had the sections and the count reporting different
+     * numbers for the same objects.
+     */
+    private Contents walk() {
         Map<String, List<Viewable>> byType = new LinkedHashMap<>();
+        Map<Viewable, List<Referrer>> referrers = new IdentityHashMap<>();
         Set<Viewable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         Deque<Viewable> queue = new ArrayDeque<>(objects == null ? List.of() : objects);
         while (!queue.isEmpty()) {
@@ -74,19 +121,33 @@ public record ObjectQueryResult(
             }
             objectview.field.FieldSet fields = objectview.field.FieldSet.of(value);
             for (objectview.field.FieldRef field : fields.fields()) {
-                enqueue(fields.read(field.name()), queue);
+                for (Viewable referenced : referencedBy(fields.read(field.name()))) {
+                    // Recorded even when already seen: the edge is a fact about this
+                    // pair, and a record grouped by one prize and mentioned by another
+                    // must show both.
+                    referrers.computeIfAbsent(referenced, key -> new ArrayList<>())
+                            .add(new Referrer(value, field.name()));
+                    queue.add(referenced);
+                }
             }
         }
-        return byType;
+        return new Contents(byType, referrers);
     }
 
-    private static void enqueue(Object value, Deque<Viewable> queue) {
+    /** Every Viewable a field's value holds, whatever container it is in. */
+    private static List<Viewable> referencedBy(Object value) {
+        List<Viewable> found = new ArrayList<>();
+        collect(value, found);
+        return found;
+    }
+
+    private static void collect(Object value, List<Viewable> found) {
         if (value instanceof Viewable viewable) {
-            queue.add(viewable);
+            found.add(viewable);
         } else if (value instanceof Iterable<?> values) {
-            for (Object each : values) enqueue(each, queue);
+            for (Object each : values) collect(each, found);
         } else if (value instanceof Map<?, ?> values) {
-            for (Object each : values.values()) enqueue(each, queue);
+            for (Object each : values.values()) collect(each, found);
         }
     }
 }
