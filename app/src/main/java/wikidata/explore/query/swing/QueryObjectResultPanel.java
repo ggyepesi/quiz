@@ -118,8 +118,7 @@ public class QueryObjectResultPanel
         // cards read their header decoration while they are constructed. Without this,
         // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
         // as the result contained several types (the normal generated-domain case).
-        multi.context().setCardDecorator(
-                ReferrerChips.over(cardDecorator, result, () -> activeContext));
+        multi.context().setCardDecorator(cardDecorator);
 
         for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             List<Viewable> full = e.getValue();
@@ -190,10 +189,8 @@ public class QueryObjectResultPanel
                         .sample(first)
                         // Stamp each instance with its Wikidata identity chip — same
                         // presentation the transform/curation views use, resolved here from the
-                        // instance's native id (ModelBuilder has no curation sidecar) — and
-                        // with what points AT it, which the card could not otherwise say.
-                        .cardDecorator(ReferrerChips.over(
-                                cardDecorator, result, () -> activeContext))
+                        // instance's native id (ModelBuilder has no curation sidecar).
+                        .cardDecorator(cardDecorator)
                         .build();
         activeContext = browser.renderContext();
 
