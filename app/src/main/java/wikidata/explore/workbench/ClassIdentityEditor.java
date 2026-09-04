@@ -45,18 +45,14 @@ import java.util.function.Consumer;
  */
 final class ClassIdentityEditor extends JPanel {
 
-    private final DefaultListModel<String> keyModel = new DefaultListModel<>();
-    private final JList<String> keyList = new JList<>(keyModel);
-    private final JComboBox<String> addable = new JComboBox<>();
+    // The shared control: a list of chosen things plus a chooser of what could be
+    // added, with clicking a row an inspection rather than an edit. Ordered, because an
+    // identifier joins a key's values IN order.
+    private final OrderedChoiceList<String> key = new OrderedChoiceList<>(true);
     private final JPanel reductions = new JPanel(new GridBagLayout());
     private final Map<String, JComboBox<Reduction>> reducerBoxes = new LinkedHashMap<>();
     private final JLabel proposal = new JLabel(" ");
     private final JButton accept = new JButton(" ");
-    private final JButton addKey = button("Add", event -> addSelected());
-    private final JButton removeKey = button("Remove", event -> removeSelected());
-    private final JButton moveKeyUp = button("Up", event -> move(-1));
-    private final JButton moveKeyDown = button("Down", event -> move(1));
-
     private final JTextArea preview = new JTextArea(5, 40);
     private List<canonical.Candidate> sampled = List.of();
     private GeneratedClassModel clazz;
@@ -66,10 +62,7 @@ final class ClassIdentityEditor extends JPanel {
         super(new BorderLayout(6, 6));
         setBorder(BorderFactory.createTitledBorder("Identity"));
 
-        JPanel key = new JPanel(new BorderLayout(4, 4));
-        keyList.setVisibleRowCount(4);
-        key.add(new JScrollPane(keyList), BorderLayout.CENTER);
-        key.add(keyButtons(), BorderLayout.EAST);
+        key.onChange(this::writeKey);
 
         JPanel top = new JPanel(new BorderLayout(4, 4));
         top.add(new JLabel("<html><i>What tells two instances apart. The order is part of "
@@ -97,23 +90,7 @@ final class ClassIdentityEditor extends JPanel {
         add(below, BorderLayout.CENTER);
     }
 
-    private JPanel keyButtons() {
-        JPanel buttons = new JPanel();
-        buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
-        buttons.add(addKey);
-        buttons.add(removeKey);
-        buttons.add(moveKeyUp);
-        buttons.add(moveKeyDown);
-        buttons.add(Box.createVerticalStrut(4));
-        buttons.add(addable);
-        return buttons;
-    }
 
-    private static JButton button(String text, java.awt.event.ActionListener action) {
-        JButton button = new JButton(text);
-        button.addActionListener(action);
-        return button;
-    }
 
     void afterChange(Consumer<Void> consumer) {
         afterChange = consumer == null ? ignored -> { } : consumer;
@@ -165,10 +142,8 @@ final class ClassIdentityEditor extends JPanel {
 
     void show(GeneratedClassModel value) {
         clazz = value;
-        keyModel.clear();
         reducerBoxes.clear();
         reductions.removeAll();
-        addable.removeAllItems();
         if (clazz == null) {
             revalidate();
             repaint();
@@ -176,26 +151,24 @@ final class ClassIdentityEditor extends JPanel {
         }
 
         CanonicalizationPlan plan = CanonicalizationPlans.of(clazz);
-        for (KeyComponent component : plan.key()) keyModel.addElement(component.toString());
-        // Owner/site is mandatory. Source identity is a default and can be replaced by
-        // a modeled field key; Add performs that explicit replacement rather than
-        // silently mixing a structural component into CanonicalSpec's field list.
+        List<String> chosen = plan.key().stream().map(Object::toString).toList();
+        List<String> addable = new java.util.ArrayList<>();
+        for (GeneratedFieldModel field : clazz.fields()) {
+            if (field == null || field.name() == null || field.name().isBlank()) continue;
+            addable.add(field.name());
+        }
+        key.show(chosen, addable);
+
+        // Owner/site is mandatory. Source identity is a DEFAULT that adding replaces —
+        // removing it would leave the class with no identity at all, which is not what
+        // a reader means by removing a default.
         boolean sourceDefault = clazz.classKind()
                 == wikidata.explore.model.ClassKind.SOURCE
                 && clazz.canonical().keyFields().isEmpty();
-        boolean editable = sourceDefault
-                || plan.key().stream().noneMatch(KeyComponent::structural);
-        keyList.setEnabled(editable);
-        addable.setEnabled(editable);
-        addKey.setEnabled(editable);
-        removeKey.setEnabled(editable && !sourceDefault);
-        moveKeyUp.setEnabled(editable && !sourceDefault);
-        moveKeyDown.setEnabled(editable && !sourceDefault);
-
-        for (GeneratedFieldModel field : clazz.fields()) {
-            if (field == null || field.name() == null || field.name().isBlank()) continue;
-            if (!keyModel.contains(field.name())) addable.addItem(field.name());
-        }
+        key.mode(sourceDefault ? OrderedChoiceList.Mode.REPLACED_BY_ADDING
+                : plan.key().stream().anyMatch(KeyComponent::structural)
+                        ? OrderedChoiceList.Mode.FIXED
+                        : OrderedChoiceList.Mode.EDITABLE);
 
         showReductions(plan);
         showProposal();
@@ -273,41 +246,15 @@ final class ClassIdentityEditor extends JPanel {
         afterChange.accept(null);
     }
 
-    private void addSelected() {
-        Object chosen = addable.getSelectedItem();
-        if (clazz == null || chosen == null) return;
-        if (clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
-                && clazz.canonical().keyFields().isEmpty()) {
-            keyModel.clear(); // replace the displayed source-identity default
-        }
-        keyModel.addElement(chosen.toString());
-        writeKey();
-    }
 
-    private void removeSelected() {
-        int index = keyList.getSelectedIndex();
-        if (index < 0) return;
-        keyModel.remove(index);
-        writeKey();
-    }
 
-    private void move(int by) {
-        int index = keyList.getSelectedIndex();
-        int target = index + by;
-        if (index < 0 || target < 0 || target >= keyModel.size()) return;
-        String moved = keyModel.remove(index);
-        keyModel.add(target, moved);
-        keyList.setSelectedIndex(target);
-        writeKey();
-    }
 
+    /** The list IS the key, in the order shown. */
     /** The list IS the key, in the order shown. */
     private void writeKey() {
         if (clazz == null) return;
-        List<String> key = new ArrayList<>();
-        for (int i = 0; i < keyModel.size(); i++) key.add(keyModel.get(i));
         clazz.canonical().keyFields().clear();
-        clazz.canonical().keyFields().addAll(key);
+        clazz.canonical().keyFields().addAll(key.chosen());
         show(clazz);
         afterChange.accept(null);
     }

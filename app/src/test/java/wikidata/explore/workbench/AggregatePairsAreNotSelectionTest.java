@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * deselected every other pair, and the next apply dropped them — and with them the key
  * components that depended on them. On Nobel that turned [category, year] into
  * [category], which would have merged 634 prizes into far fewer.
+ *
+ * <p>The defect is now unrepresentable rather than merely fixed: the pairs live in
+ * {@link OrderedChoiceList}, whose list holds the choice and whose selection only says
+ * what Remove would act on. These stay to assert it through the aggregate editor.
  */
 class AggregatePairsAreNotSelectionTest {
 
@@ -27,11 +31,24 @@ class AggregatePairsAreNotSelectionTest {
                 new File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
     }
 
+    private static OrderedChoiceList<?> pairs(AggregateClassPanel panel) throws Exception {
+        var field = AggregateClassPanel.class.getDeclaredField("pairs");
+        field.setAccessible(true);
+        return (OrderedChoiceList<?>) field.get(panel);
+    }
+
     @SuppressWarnings("unchecked")
     private static JList<Object> pairList(AggregateClassPanel panel) throws Exception {
-        var field = AggregateClassPanel.class.getDeclaredField("keys");
+        var field = OrderedChoiceList.class.getDeclaredField("chosen");
         field.setAccessible(true);
-        return (JList<Object>) field.get(panel);
+        return (JList<Object>) field.get(pairs(panel));
+    }
+
+    /** Remove is the control's own button, pressed the way the modeller presses it. */
+    private static void pressRemove(AggregateClassPanel panel) throws Exception {
+        var field = OrderedChoiceList.class.getDeclaredField("remove");
+        field.setAccessible(true);
+        ((javax.swing.JButton) field.get(pairs(panel))).doClick();
     }
 
     @Test void clickingAPairChangesNeitherThePairsNorTheKey() throws Exception {
@@ -70,9 +87,7 @@ class AggregatePairsAreNotSelectionTest {
             if (String.valueOf(pairs.getModel().getElementAt(i)).contains("year")) year = i;
         }
         pairs.setSelectedIndex(year);
-        var remove = AggregateClassPanel.class.getDeclaredMethod("removeSelectedPair");
-        remove.setAccessible(true);
-        remove.invoke(panel);
+        pressRemove(panel);
 
         assertEquals(List.of("category"), prize.canonical().keyFields(),
                 "a field with nothing to group from cannot identify anything");

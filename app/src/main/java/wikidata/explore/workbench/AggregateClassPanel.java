@@ -22,14 +22,9 @@ final class AggregateClassPanel extends JPanel {
     private final GeneratedProjectModel project;
     private final JComboBox<String> sourceClass = new JComboBox<>();
     private final JComboBox<String> membersField = new JComboBox<>();
-    // The list holds the CONFIGURED pairs; it is not a menu whose selection is the
-    // configuration. It was, and one plain click reconfigured the class: a JList in
-    // MULTIPLE_INTERVAL_SELECTION replaces its selection, so clicking a row to look at
-    // it deselected every other pair, and applying then dropped those pairs and the key
-    // components that depended on them. Clicking to inspect must not configure.
-    private final DefaultListModel<KeyChoice> keyChoices = new DefaultListModel<>();
-    private final JList<KeyChoice> keys = new JList<>(keyChoices);
-    private final JComboBox<KeyChoice> addablePair = new JComboBox<>();
+    // Unordered: which field is grouped from which is a set of pairs, and position
+    // says nothing. The key's ORDER is the identity editor's question, below.
+    private final OrderedChoiceList<KeyChoice> pairs = new OrderedChoiceList<>(false);
     private final JComboBox<AggregateClassSource.MissingKeyPolicy> missingKeyPolicy =
             new JComboBox<>(AggregateClassSource.MissingKeyPolicy.values());
     private final JPanel displayFieldsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
@@ -54,34 +49,16 @@ final class AggregateClassPanel extends JPanel {
         membersField.setToolTipText(
                 "List-valued ENTITY fields on this class that hold the selected source class.");
         GridBagUtils.labeledRow(form, c, 1, "Members field:", membersField);
-        keys.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        keys.setVisibleRowCount(5);
-        keys.setToolTipText(
+        pairs.title("Grouped from (this class's field \u2190 source class's field)");
+        pairs.setToolTipText(
                 "Which of this class's fields is grouped from which field of the source "
                         + "class. Selecting a row only chooses what Remove would take.");
-        JScrollPane keyScroll = new JScrollPane(keys);
-        JPanel grouping = new JPanel(new java.awt.BorderLayout(4, 4));
-        grouping.setBorder(BorderFactory.createTitledBorder(
-                "Grouped from (this class's field ← source class's field)"));
-        grouping.add(keyScroll, java.awt.BorderLayout.CENTER);
-        JPanel pairButtons = new JPanel();
-        pairButtons.setLayout(new javax.swing.BoxLayout(
-                pairButtons, javax.swing.BoxLayout.Y_AXIS));
-        JButton addPair = new JButton("Add");
-        addPair.addActionListener(event -> addSelectedPair());
-        JButton removePair = new JButton("Remove");
-        removePair.addActionListener(event -> removeSelectedPair());
-        pairButtons.add(addPair);
-        pairButtons.add(removePair);
-        pairButtons.add(javax.swing.Box.createVerticalStrut(8));
-        JLabel addableLabel = new JLabel("Available:");
-        addableLabel.setToolTipText(
-                "Pairs this class could be grouped from. Add puts the chosen one into "
-                        + "the list; Remove takes the selected row out of it.");
-        pairButtons.add(addableLabel);
-        pairButtons.add(addablePair);
-        grouping.add(pairButtons, java.awt.BorderLayout.EAST);
-        GridBagUtils.wideRow(form, 2, grouping);
+        pairs.onChange(() -> {
+            if (clazz == null) return;
+            applyEdits();
+            edit(clazz);
+        });
+        GridBagUtils.wideRow(form, 2, pairs);
         GridBagUtils.wideRow(form, 7, identityEditor);
         GridBagUtils.labeledRow(form, c, 3, "Missing key:", missingKeyPolicy);
         displayFieldsPanel.setBorder(BorderFactory.createTitledBorder("Display name fields"));
@@ -154,8 +131,7 @@ final class AggregateClassPanel extends JPanel {
                 selection(sourceClass), selection(membersField));
         // The list's CONTENTS, not its selection. Reading the selection made clicking
         // a row to look at it an edit that dropped every other pair.
-        for (int i = 0; i < keyChoices.size(); i++) {
-            KeyChoice choice = keyChoices.get(i);
+        for (KeyChoice choice : pairs.chosen()) {
             spec.keys().add(new AggregateClassSource.Key(
                     choice.targetField(), choice.sourceField()));
         }
@@ -175,29 +151,8 @@ final class AggregateClassPanel extends JPanel {
         afterChange.accept(null);
     }
 
-    /** Adds the chosen pair. An explicit act, so nothing is configured by looking. */
-    private void addSelectedPair() {
-        Object chosen = addablePair.getSelectedItem();
-        if (clazz == null || !(chosen instanceof KeyChoice pair)) return;
-        if (!contains(pair)) keyChoices.addElement(pair);
-        applyEdits();
-        edit(clazz);
-    }
 
-    private void removeSelectedPair() {
-        int index = keys.getSelectedIndex();
-        if (clazz == null || index < 0) return;
-        keyChoices.remove(index);
-        applyEdits();
-        edit(clazz);
-    }
 
-    private boolean contains(KeyChoice pair) {
-        for (int i = 0; i < keyChoices.size(); i++) {
-            if (keyChoices.get(i).equals(pair)) return true;
-        }
-        return false;
-    }
 
     private void refreshChoices(AggregateClassSource selected) {
         if (clazz == null) return;
@@ -247,13 +202,7 @@ final class AggregateClassPanel extends JPanel {
         LinkedHashSet<KeyChoice> configured = new LinkedHashSet<>();
         if (selected != null) selected.keys().forEach(key ->
                 configured.add(new KeyChoice(key.targetField(), key.sourceField())));
-        keyChoices.clear();
-        configured.forEach(keyChoices::addElement);
-
-        addablePair.removeAllItems();
-        for (KeyChoice choice : choices) {
-            if (!configured.contains(choice)) addablePair.addItem(choice);
-        }
+        pairs.show(new java.util.ArrayList<>(configured), new java.util.ArrayList<>(choices));
     }
 
     private void refreshDisplayChoices(GeneratedClassModel value) {
