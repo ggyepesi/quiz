@@ -22,8 +22,14 @@ final class AggregateClassPanel extends JPanel {
     private final GeneratedProjectModel project;
     private final JComboBox<String> sourceClass = new JComboBox<>();
     private final JComboBox<String> membersField = new JComboBox<>();
+    // The list holds the CONFIGURED pairs; it is not a menu whose selection is the
+    // configuration. It was, and one plain click reconfigured the class: a JList in
+    // MULTIPLE_INTERVAL_SELECTION replaces its selection, so clicking a row to look at
+    // it deselected every other pair, and applying then dropped those pairs and the key
+    // components that depended on them. Clicking to inspect must not configure.
     private final DefaultListModel<KeyChoice> keyChoices = new DefaultListModel<>();
     private final JList<KeyChoice> keys = new JList<>(keyChoices);
+    private final JComboBox<KeyChoice> addablePair = new JComboBox<>();
     private final JComboBox<AggregateClassSource.MissingKeyPolicy> missingKeyPolicy =
             new JComboBox<>(AggregateClassSource.MissingKeyPolicy.values());
     private final JPanel displayFieldsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
@@ -48,14 +54,29 @@ final class AggregateClassPanel extends JPanel {
         membersField.setToolTipText(
                 "List-valued ENTITY fields on this class that hold the selected source class.");
         GridBagUtils.labeledRow(form, c, 1, "Members field:", membersField);
-        keys.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        keys.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         keys.setVisibleRowCount(5);
         keys.setToolTipText(
-                "Select compatible aggregate/source field pairs that define one group.");
+                "Which of this class's fields is grouped from which field of the source "
+                        + "class. Selecting a row only chooses what Remove would take.");
         JScrollPane keyScroll = new JScrollPane(keys);
-        keyScroll.setBorder(BorderFactory.createTitledBorder(
+        JPanel grouping = new JPanel(new java.awt.BorderLayout(4, 4));
+        grouping.setBorder(BorderFactory.createTitledBorder(
                 "Grouped from (this class's field ← source class's field)"));
-        GridBagUtils.wideRow(form, 2, keyScroll);
+        grouping.add(keyScroll, java.awt.BorderLayout.CENTER);
+        JPanel pairButtons = new JPanel();
+        pairButtons.setLayout(new javax.swing.BoxLayout(
+                pairButtons, javax.swing.BoxLayout.Y_AXIS));
+        JButton addPair = new JButton("Add");
+        addPair.addActionListener(event -> addSelectedPair());
+        JButton removePair = new JButton("Remove");
+        removePair.addActionListener(event -> removeSelectedPair());
+        pairButtons.add(addPair);
+        pairButtons.add(removePair);
+        pairButtons.add(javax.swing.Box.createVerticalStrut(4));
+        pairButtons.add(addablePair);
+        grouping.add(pairButtons, java.awt.BorderLayout.EAST);
+        GridBagUtils.wideRow(form, 2, grouping);
         GridBagUtils.wideRow(form, 7, identityEditor);
         GridBagUtils.labeledRow(form, c, 3, "Missing key:", missingKeyPolicy);
         displayFieldsPanel.setBorder(BorderFactory.createTitledBorder("Display name fields"));
@@ -126,7 +147,10 @@ final class AggregateClassPanel extends JPanel {
         if (clazz == null) return;
         AggregateClassSource spec = new AggregateClassSource(
                 selection(sourceClass), selection(membersField));
-        for (KeyChoice choice : keys.getSelectedValuesList()) {
+        // The list's CONTENTS, not its selection. Reading the selection made clicking
+        // a row to look at it an edit that dropped every other pair.
+        for (int i = 0; i < keyChoices.size(); i++) {
+            KeyChoice choice = keyChoices.get(i);
             spec.keys().add(new AggregateClassSource.Key(
                     choice.targetField(), choice.sourceField()));
         }
@@ -144,6 +168,30 @@ final class AggregateClassPanel extends JPanel {
                 ? CanonicalSpec.DisplayNameMode.LABEL
                 : CanonicalSpec.DisplayNameMode.TEMPLATE);
         afterChange.accept(null);
+    }
+
+    /** Adds the chosen pair. An explicit act, so nothing is configured by looking. */
+    private void addSelectedPair() {
+        Object chosen = addablePair.getSelectedItem();
+        if (clazz == null || !(chosen instanceof KeyChoice pair)) return;
+        if (!contains(pair)) keyChoices.addElement(pair);
+        applyEdits();
+        edit(clazz);
+    }
+
+    private void removeSelectedPair() {
+        int index = keys.getSelectedIndex();
+        if (clazz == null || index < 0) return;
+        keyChoices.remove(index);
+        applyEdits();
+        edit(clazz);
+    }
+
+    private boolean contains(KeyChoice pair) {
+        for (int i = 0; i < keyChoices.size(); i++) {
+            if (keyChoices.get(i).equals(pair)) return true;
+        }
+        return false;
     }
 
     private void refreshChoices(AggregateClassSource selected) {
@@ -176,16 +224,18 @@ final class AggregateClassPanel extends JPanel {
                 }
             }
         }
+        // The list shows what IS configured; the combo offers what could be added. A
+        // menu whose selection was the configuration could not tell looking from
+        // choosing, so those are now two controls.
+        LinkedHashSet<KeyChoice> configured = new LinkedHashSet<>();
         if (selected != null) selected.keys().forEach(key ->
-                choices.add(new KeyChoice(key.targetField(), key.sourceField())));
+                configured.add(new KeyChoice(key.targetField(), key.sourceField())));
         keyChoices.clear();
-        choices.forEach(keyChoices::addElement);
-        if (selected != null) {
-            Set<KeyChoice> wanted = selected.keys().stream()
-                    .map(key -> new KeyChoice(key.targetField(), key.sourceField()))
-                    .collect(java.util.stream.Collectors.toSet());
-            keys.setSelectedIndices(IntStream.range(0, keyChoices.size())
-                    .filter(i -> wanted.contains(keyChoices.get(i))).toArray());
+        configured.forEach(keyChoices::addElement);
+
+        addablePair.removeAllItems();
+        for (KeyChoice choice : choices) {
+            if (!configured.contains(choice)) addablePair.addItem(choice);
         }
     }
 
