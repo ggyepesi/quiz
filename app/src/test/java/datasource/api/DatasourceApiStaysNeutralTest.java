@@ -26,7 +26,15 @@ class DatasourceApiStaysNeutralTest {
             "(?i)(?:https?://|(?:^|[^a-z])"
                     + "(?:wikidata|wikipedia|dbpedia|wikisource|commons)"
                     + "|(?:^|[^a-z])wdt?:)");
-    private static final Set<String> ALLOWED_ROOTS = Set.of("java", "datasource", "work");
+    /**
+     * {@code canonical} is allowed as the CONTRACT a provider hands off to — a candidate
+     * and the kinds of identity production can supply. It is not allowed as an ENGINE:
+     * what a candidate identifies and how several of them combine are model semantics
+     * every provider shares, so a provider answering them would answer for all of them.
+     * {@code DatasourceCannotCanonicalizeTest} draws that second line.
+     */
+    private static final Set<String> ALLOWED_ROOTS =
+            Set.of("java", "datasource", "work", "canonical");
 
     @Test void apiImportsOnlyNeutralFoundations() throws Exception {
         List<String> offenders = new ArrayList<>();

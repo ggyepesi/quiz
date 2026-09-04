@@ -628,7 +628,12 @@ regression until shown otherwise.
   architecture.
 - Connect Wikidata first without generalizing its normalization implementation.
 - Connect Wikipedia/DBpedia paths that contribute modeled values when they can satisfy
-  the same output contract.
+  the same output contract. **They cannot yet, and the reason is worth recording rather
+  than working around:** `DBpediaFieldAcquisition` contributes FIELD VALUES to objects
+  another provider already produced, joining through `owl:sameAs`. It is an enrichment
+  path, not a candidate producer, and forcing it into the contract would mean inventing a
+  candidate that stands for no instance. The handoff waits for a provider that genuinely
+  produces one.
 - Require providers to stop at normalized typed candidates plus evidence; the common
   compiled plan performs identity and reduction.
 - Add an architecture guard that prevents datasource providers importing the model's
