@@ -1616,7 +1616,7 @@ public class ModelBuilderFrame extends JFrame {
             return null;
         }
         String rel = membership.relationPid();
-        if (!rel.isBlank() && !rel.equals("P31")) {
+        if (wikidata.explore.model.MembershipPattern.relational(rel)) {
             return "Class \"" + c.className() + "\" has relation property " + rel
                     + " but no objects. Set the objects the relation points at "
                     + "(e.g. the award), or add Seed QIDs.";
@@ -2518,8 +2518,9 @@ public class ModelBuilderFrame extends JFrame {
                 .filter(existing -> !existing.equals(qid)).forEach(targets::add);
         String pid = c.membership().relationPid();
         c.membership(EntityBound.relation(
-                pid.isBlank() ? "P31" : pid, targets,
-                c.membership().includeDescendants()));
+                pid.isBlank()
+                        ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid,
+                targets, c.membership().includeDescendants()));
         c.instanceMapping().sourceLabel(label == null ? "" : label);
         sourceWorkbench.edit(c);
         modelChanged();
@@ -2564,7 +2565,8 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
         String pid = c.membership().relationPid();
-        pid = pid.isBlank() ? "P31" : pid;
+        pid = pid.isBlank()
+                ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid;
         c.membership(EntityBound.relation(
                 pid, targets, c.membership().includeDescendants()));
         sourceWorkbench.edit(c);

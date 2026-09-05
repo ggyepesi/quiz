@@ -33,9 +33,7 @@ public record DecisionContext(
     }
 
     public boolean relational() {
-        MembershipPattern p = pattern();
-        return p == MembershipPattern.SINGLE_TARGET_RELATION
-                || p == MembershipPattern.MULTI_TARGET_RELATION;
+        return pattern().relational();
     }
 
     public String relationPid() {

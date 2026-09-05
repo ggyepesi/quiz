@@ -127,10 +127,33 @@ case"* is directive 12 — a decision read off a value that merely correlates wi
 question gets a name of its own, or one constant will be compared in eight places to mean
 eight things.
 
-### 4. Graph expansion moves to the edge
+### 4. Graph expansion — WITHDRAWN: two frontiers, one enum
 
-`GraphExpansionPolicy` sits on BOTH `StatementClassSource` and `GeneratedFieldModel`, and
-one plan reads both:
+**This section was wrong, and trying it proved it.** `GraphExpansionPolicy` does sit on
+both `StatementClassSource` and `GeneratedFieldModel`, and one plan does read both — but
+they govern different traversals, and the shared enum is what makes them look like one
+control in two places:
+
+```text
+field policy       a RECURSIVE frontier: expanding a node through the SAME field, which
+                   the validator already refuses unless the field targets its own
+                   declaring class ("cross-class traversal requires a composed graph
+                   plan")
+statement policy   a CROSS-CLASS frontier: source class —(statement)→ target class, with
+                   the pattern carrying both ends explicitly
+```
+
+Moving the statement flag onto the field the objects arrive in — the obvious reading of
+"an edge is what expands" — makes every such model invalid the moment it is saved:
+`OfficeHolding.position` targets `Position`, not `OfficeHolding`, so the field-frontier
+rule refuses it. The plan reading both is not a duplication to remove; it is the composed
+graph plan that rule names.
+
+What remains true is the smaller complaint: the statement panel presented the policy as
+though the class were the thing that expands. That is wording, and it belongs with
+whatever revisits graph discovery — not a relocation.
+
+The original argument, kept because the shape it describes is real:
 
 ```java
 for (GeneratedClassModel clazz : model.classes()) {
@@ -317,19 +340,23 @@ regenerate-versus-migrate explicitly.
 Steps 1–5 are done. Two of the five things §"Five things this resolves" claims are not,
 and one of them was never started:
 
-- **§4, graph expansion.** `GraphExpansionPolicy` still sits on BOTH
-  `StatementClassSource` and `GeneratedFieldModel`, and the statement editor still has a
-  "Graph discovery" box. An edge is what expands; the class-level copy is on the nearest
-  thing that had a panel. Untouched.
-- **§3, the P31 literal.** The wording case is gone with the row label it fed, and the
-  defaults a source class reads and writes are concentrated in `TripleEditor`. Forty-two
-  `"P31"` literals remain in `app/src/main`, and the fourth job — `equals("P31")` standing
-  for "is this the plain membership case" — is still asked in `ModelBuilderFrame` and
-  `PropertyDiscoveryPanel`. It needs the name the note says it needs.
-- **§2, direction.** The question is no longer ASKED anywhere: a source class's members
-  are fixed as the subject and the panel writes `ITEM_TO_ROOT`. The three vocabularies
-  are still in the code — the enum, the `→`/`←` cues, and "incoming"/"outgoing" in the
-  advisor — and they now describe fields, not membership.
+- **§4, graph expansion.** WITHDRAWN, with the reason in §4 itself: the two policies
+  govern different traversals — a recursive field frontier and a cross-class statement
+  frontier — and the validator already refuses the first when it is not self-targeting.
+  Relocating the second onto a field makes every such model invalid.
+- ~~**§3, the P31 literal.**~~ **Done.** The fourth job has the name this note said it
+  needs: `MembershipPattern.relational(pid)` — whether a membership relates its members
+  to something other than their type — asked by the advisor, the qualifier discovery
+  panel, the "nothing to generate" hint and the intrinsic-field rules. The first three
+  jobs are `MembershipPattern.DEFAULT_PROPERTY` and `DEFAULT_PROPERTY_LABEL`. Thirty-three
+  `"P31"` literals remain in `app/src/main` and they are uses of the property itself — an
+  exclusion filter, an evidence rule, a SPARQL pattern — not the four jobs.
+- **§2, direction.** Closed as not-a-defect. The question is no longer ASKED of a
+  membership: a source class's members are its subject, fixed, and the panel writes
+  `ITEM_TO_ROOT`. The three vocabularies still exist — the enum, the `→`/`←` cues, the
+  advisor's "incoming"/"outgoing" — but they now describe FIELDS, where direction is a
+  real choice, and one vocabulary per audience is not the same fault as one concept
+  spelled three ways in one editor.
 
 And the closure query is persistable but not runnable; the validator refuses it.
 

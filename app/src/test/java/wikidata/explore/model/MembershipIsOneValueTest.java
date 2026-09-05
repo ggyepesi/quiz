@@ -91,6 +91,32 @@ class MembershipIsOneValueTest {
     }
 
     /**
+     * "Is this the plain membership case" has a name, and it is not a string comparison.
+     *
+     * <p>{@code equals("P31")} was answering it in four places, each of which had to
+     * know that P31 means by-type and that a blank property means P31. It is a question
+     * about the membership: a class whose members are "the entities that won this award"
+     * has targets, qualifiers and a target field; one whose members are "the entities of
+     * this type" has none of them.
+     */
+    @Test void whetherAMembershipIsRelationalIsAskedByName() {
+        assertFalse(MembershipPattern.relational(MembershipPattern.DEFAULT_PROPERTY),
+                "by type is the plain case");
+        assertFalse(MembershipPattern.relational(""),
+                "and so is an unstated property, which defaults to it");
+        assertTrue(MembershipPattern.relational("P166"),
+                "an award received relates members to something other than their type");
+
+        GeneratedClassModel byType = new GeneratedClassModel("Star");
+        byType.membership(EntityBound.relation("P31", List.of("Q523"), false));
+        assertFalse(MembershipPattern.of(byType).relational());
+
+        GeneratedClassModel byRelation = new GeneratedClassModel("Nominee");
+        byRelation.membership(EntityBound.relation("P1411", List.of("Q102427"), false));
+        assertTrue(MembershipPattern.of(byRelation).relational());
+    }
+
+    /**
      * The bound can hold subclass closure, which the three fields could not — and no run
      * performs it yet, so a model that asks for one is refused rather than quietly
      * narrowed to the flat backbone.

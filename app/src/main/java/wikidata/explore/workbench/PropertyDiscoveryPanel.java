@@ -595,9 +595,10 @@ public class PropertyDiscoveryPanel extends JPanel {
             return null;
         }
         String pid = RuleNode.cleanPid(node.propertyPid());
-        if (!WikidataIds.isPid(pid) || pid.equals("P31")) {
+        if (!wikidata.explore.model.MembershipPattern.relational(pid)) {
             statusLabel.setText("\"Qualifiers\" needs a relational membership "
-                    + "(a non-P31 relation, e.g. P1411 → categories).");
+                    + "(a relation to something other than a type, e.g. P1411 → "
+                    + "categories).");
             return null;
         }
         statusLabel.setText("Discovering qualifiers…");

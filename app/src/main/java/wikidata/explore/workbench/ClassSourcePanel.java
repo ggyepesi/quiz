@@ -251,8 +251,9 @@ public class ClassSourcePanel extends JPanel {
         String pid = clazz.membership().relationPid();
         clazz.membership(targets.isEmpty()
                 ? EntityBound.unbounded()
-                : EntityBound.relation(pid.isBlank() ? "P31" : pid, targets,
-                        clazz.membership().includeDescendants()));
+                : EntityBound.relation(pid.isBlank()
+                        ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid,
+                        targets, clazz.membership().includeDescendants()));
         clazz.instanceMapping().sourceLabel(label);
 
         triple.membershipTargets(targets, clazz.instanceMapping().displaySource());

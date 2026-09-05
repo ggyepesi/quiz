@@ -50,6 +50,41 @@ public enum MembershipPattern {
     /** Members are an explicit curated QID list (seed QIDs). */
     SEEDED("Seeded");
 
+    /**
+     * The property a membership is by when nothing says otherwise: instance of.
+     *
+     * <p>A named default, because the literal was doing four different jobs — the value
+     * a reader is shown, the value read when none is stored, the label beside it, and a
+     * question about what KIND of membership this is. The first three are this constant
+     * and {@link #DEFAULT_PROPERTY_LABEL}; the fourth is {@link #relational(String)},
+     * which is not a literal problem and must not be solved as one.
+     */
+    public static final String DEFAULT_PROPERTY = "P31";
+
+    /** What {@link #DEFAULT_PROPERTY} is called. */
+    public static final String DEFAULT_PROPERTY_LABEL = "instance of";
+
+    /**
+     * Whether a membership on this property relates its members to something OTHER than
+     * their type.
+     *
+     * <p>This is the question {@code equals("P31")} was being asked to answer in four
+     * places, and it is a question about the membership, not about a string: a class
+     * whose members are "the entities that won this award" has targets, qualifiers and a
+     * target field, and one whose members are "the entities of this type" has none of
+     * them. Reading it off the literal meant every place that asked had to know that P31
+     * means by-type, and a blank property means P31.
+     */
+    public static boolean relational(String propertyPid) {
+        String pid = clean(propertyPid);
+        return WikidataIds.isPid(pid) && !pid.equals(DEFAULT_PROPERTY);
+    }
+
+    /** Whether THIS pattern relates its members to something other than their type. */
+    public boolean relational() {
+        return this == SINGLE_TARGET_RELATION || this == MULTI_TARGET_RELATION;
+    }
+
     private final String label;
 
     MembershipPattern(String label) {
@@ -332,7 +367,7 @@ public enum MembershipPattern {
         // ADDITIONAL type" and "two types" are the same question, and only the second
         // survives a value that does not know which of its QIDs came first.
         int targets = targetCount(membership);
-        if (pid.equals("P31")) {
+        if (!relational(pid)) {
             if (targets > 1) {
                 return MULTI_TYPE;
             }

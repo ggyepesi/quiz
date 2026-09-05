@@ -4,6 +4,7 @@ import objectview.utils.swing.GridBagUtils;
 import workbench.SimpleDocumentListener;
 import wikidata.ui.WikidataLinks;
 import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.rule.RuleNode;
 
 import javax.swing.BorderFactory;
@@ -203,7 +204,7 @@ final class TripleEditor extends JPanel {
     void membership(String propertyPid, String propertyLabel, List<String> targets,
             String targetLabel) {
         membershipProperty.setText(propertyPid == null || propertyPid.isBlank()
-                ? "P31" : propertyPid);
+                ? MembershipPattern.DEFAULT_PROPERTY : propertyPid);
         membershipPropertyLabel.setText(
                 propertyLabel == null || propertyLabel.isBlank() ? " " : propertyLabel);
         membershipTargets.setText(String.join(" ",
@@ -216,7 +217,7 @@ final class TripleEditor extends JPanel {
     /** The property, defaulted to P31 the way the membership rule reads a blank one. */
     String membershipProperty() {
         String pid = RuleNode.cleanPid(membershipProperty.getText());
-        return pid.isBlank() ? "P31" : pid;
+        return pid.isBlank() ? MembershipPattern.DEFAULT_PROPERTY : pid;
     }
 
     void membershipProperty(String pid, String label) {

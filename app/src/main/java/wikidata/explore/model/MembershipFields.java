@@ -32,7 +32,7 @@ public final class MembershipFields {
 
     public static final String TARGET_FIELD = "target";
     public static final String TYPE_FIELD = "type";
-    private static final String P31 = "P31";
+    private static final String P31 = MembershipPattern.DEFAULT_PROPERTY;
 
     private MembershipFields() {}
 
@@ -49,8 +49,7 @@ public final class MembershipFields {
         }
         EntityBound membership = clazz.membership();
         String pid = clean(membership.relationPid());
-        return WikidataIds.isPid(pid) && !pid.equals(P31)
-                && !targets(membership).isEmpty();
+        return MembershipPattern.relational(pid) && !targets(membership).isEmpty();
     }
 
     /**
@@ -71,7 +70,7 @@ public final class MembershipFields {
         }
         // More than one TYPE, not "at least one ADDITIONAL type": the two were the
         // same question while a membership had a leading QID and a set of extras.
-        return !pid.equals(P31) || targets(membership).size() > 1;
+        return MembershipPattern.relational(pid) || targets(membership).size() > 1;
     }
 
     /**

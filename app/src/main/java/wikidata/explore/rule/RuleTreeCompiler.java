@@ -51,7 +51,8 @@ public final class RuleTreeCompiler {
         node.sourceQid(targets.isEmpty() ? "" : targets.get(0));
         targets.stream().skip(1).forEach(node::addAdditionalSourceQid);
         String pid = membership == null ? "" : membership.relationPid();
-        node.propertyPid(pid.isBlank() ? "P31" : pid);
+        node.propertyPid(pid.isBlank()
+                ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid);
     }
 
     private static RuleNode compileClass(
