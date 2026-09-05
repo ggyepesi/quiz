@@ -11,7 +11,7 @@
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
-    "classKind" : "SOURCE",
+    "classKind" : "STATEMENT",
     "statementSource" : {
       "propertyPid" : "P1411",
       "propertyLabel" : "nominated for",
@@ -333,7 +333,7 @@
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
-    "classKind" : "SOURCE",
+    "classKind" : "STATEMENT",
     "statementSource" : {
       "propertyPid" : "P1411",
       "propertyLabel" : "nominated for",

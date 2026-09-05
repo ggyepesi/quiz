@@ -1689,7 +1689,7 @@
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
-    "classKind" : "SOURCE",
+    "classKind" : "STATEMENT",
     "statementSource" : {
       "propertyPid" : "P39",
       "propertyLabel" : "position held",

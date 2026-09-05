@@ -168,17 +168,41 @@ public class GeneratedClassModel {
         classKind(value ? ClassKind.OWNED : ClassKind.SOURCE);
     }
 
+    /**
+     * What kind of class this is — stored, and answered from storage.
+     *
+     * <p>It used to be stored for OWNED and AGGREGATE and RECOMPUTED for the other two:
+     * "Statement" meant "has a statement property filled in" rather than "was declared a
+     * statement class". So a class could not be a statement class before it had a
+     * property, and switching a new class to Statement did not stick — the setter wrote
+     * the value and this method immediately overrode it. There was then no way to reach
+     * the editor that picks the property, because reaching it required the kind to hold.
+     *
+     * <p>Being declared a statement class and having a property yet are two questions.
+     * The second belongs to validation, which already refuses a statement class without
+     * one before generation, and to {@link #reifiesStatements()}.
+     */
     public ClassKind classKind() {
-        if (classKind == ClassKind.OWNED) return ClassKind.OWNED;
-        if (classKind == ClassKind.AGGREGATE) return ClassKind.AGGREGATE;
-        return reifiesStatements() ? ClassKind.STATEMENT : ClassKind.SOURCE;
+        return classKind == null ? ClassKind.SOURCE : classKind;
     }
 
+    /**
+     * Sets the kind, and clears whatever the new kind cannot have.
+     *
+     * <p>A switch rather than a chain of ifs: a kind added to the enum and forgotten
+     * here is a compile error, not a class that silently keeps the population of the
+     * kind it used to be.
+     */
     public void classKind(ClassKind value) {
         classKind = value == null ? ClassKind.SOURCE : value;
-        if (classKind != ClassKind.AGGREGATE) aggregateSource = null;
-        if (classKind == ClassKind.OWNED || classKind == ClassKind.AGGREGATE) {
-            clearIndependentPopulation();
+        switch (classKind) {
+            case SOURCE -> aggregateSource = null;
+            case STATEMENT -> aggregateSource = null;
+            case OWNED -> {
+                aggregateSource = null;
+                clearIndependentPopulation();
+            }
+            case AGGREGATE -> clearIndependentPopulation();
         }
     }
 
@@ -258,17 +282,32 @@ public class GeneratedClassModel {
         }
     }
 
+    /**
+     * Assigning a statement source makes this a STATEMENT class, and now records it.
+     *
+     * <p>The sentence below was already here and was already true; the kind was simply
+     * recomputed from whether a property had been filled in, so nothing had to store it.
+     * A class could therefore not be a statement class before it had a property — and
+     * the editor that picks the property is the one you reach by being one.
+     *
+     * <p>Having a source and having a property are separate: {@link #reifiesStatements()}
+     * still asks the second, which is what generation and validation need.
+     *
+     * <p>The identity regime follows from the kind rather than being set alongside it.
+     * The natural-key FIELDS still cannot be chosen here: callers commonly assign the
+     * source before adding the statement value and qualifiers, so editors invoke
+     * StatementCanonicalDefaults once those semantics are known.
+     */
     public void statementSource(StatementClassSource value) {
         statementSource = value == null ? null : value.copy();
         if (statementSource != null) {
             aggregateSource = null;
-            if (classKind == ClassKind.AGGREGATE) classKind = ClassKind.SOURCE;
+            classKind = ClassKind.STATEMENT;
+        } else if (classKind == ClassKind.STATEMENT) {
+            // Taking the source away takes the kind with it: a statement class with no
+            // statement source is not a kind, it is a leftover.
+            classKind = ClassKind.SOURCE;
         }
-        // Assigning a statement source makes this a STATEMENT class, and the
-        // identity regime follows from that rather than being set alongside it. The
-        // natural-key FIELDS still cannot be chosen here: callers commonly assign the
-        // source before adding the statement value and qualifiers, so editors invoke
-        // StatementCanonicalDefaults once those semantics are known.
     }
 
     /**

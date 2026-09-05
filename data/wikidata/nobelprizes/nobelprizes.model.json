@@ -188,7 +188,11 @@
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "keyFields" : [ "java.util.ArrayList", [ "category", "year" ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "TEMPLATE",
       "displayNameField" : "",
@@ -384,7 +388,11 @@
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "keyFields" : [ "java.util.ArrayList", [ "category", "year" ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "TEMPLATE",
       "displayNameField" : "",
@@ -401,12 +409,26 @@
     "discriminatorQid" : "",
     "alias" : "",
     "importedFrom" : "",
-    "classKind" : "SOURCE",
+    "classKind" : "STATEMENT",
     "statementSource" : {
       "propertyPid" : "P166",
       "propertyLabel" : "award received",
-      "valueSelectionName" : "Categories",
-      "valueSelectionId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
+      "objectBound" : {
+        "kind" : "VOCABULARY",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "Categories",
+        "selectionId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
+        "includeDescendants" : false
+      },
+      "subjectBound" : {
+        "kind" : "UNBOUNDED",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "",
+        "selectionId" : "",
+        "includeDescendants" : false
+      },
       "graphExpansionPolicy" : "NONE"
     },
     "generationDepth" : 1,
@@ -637,6 +659,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "category", "year", "motivation" ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "MERGE_RECORDS" ],
       "displayNameMode" : "TEMPLATE",
       "displayNameField" : "",
@@ -733,6 +759,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",

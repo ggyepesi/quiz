@@ -388,9 +388,17 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             effectiveClassPanel.showClass(projectModel, clazz);
             updatingKind = true;
             MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
-            kindBox.setSelectedIndex(clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE
-                    ? 3 : clazz.reifiesStatements()
-                    ? 1 : pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0);
+            // The stored kind, not what the configuration has reached. Asking
+            // reifiesStatements() asked whether a property had been filled in, so a
+            // class just switched to Statement — which has none yet — answered "Source"
+            // and the combo snapped back, leaving no way to reach the editor that picks
+            // the property.
+            kindBox.setSelectedIndex(switch (clazz.classKind()) {
+                case SOURCE -> pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0;
+                case STATEMENT -> 1;
+                case OWNED -> 2;
+                case AGGREGATE -> 3;
+            });
             kindBox.setEnabled(editingEnabled);
             updatingKind = false;
 
