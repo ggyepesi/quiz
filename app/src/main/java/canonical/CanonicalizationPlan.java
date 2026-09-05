@@ -27,7 +27,13 @@ public record CanonicalizationPlan(
         key = List.copyOf(key == null ? List.of() : key);
         missingKeyPolicy = missingKeyPolicy == null
                 ? MissingKeyPolicy.defaultPolicy() : missingKeyPolicy;
-        reductionByField = Map.copyOf(reductionByField == null ? Map.of() : reductionByField);
+        // Unmodifiable, and in the order it was given — which is the class's field
+        // order. Map.copyOf is immutable AND randomizes iteration per JVM, so the
+        // editor's one-row-per-field list came out in a different order on every
+        // launch, and any report walking it read differently each run. Same fault as
+        // the one that made a saved model's bytes differ per process.
+        reductionByField = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(
+                reductionByField == null ? Map.of() : reductionByField));
 
         // A key component appears once. Twice is not a tighter key — it is the same
         // partition computed twice, and it makes the key's own order ambiguous.

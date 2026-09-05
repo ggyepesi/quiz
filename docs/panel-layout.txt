@@ -1,0 +1,301 @@
+== Source class - ClassSourcePanel ==
+  label: Class: Person
+  label: How do we find instances of this class?
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+  label: Subtype:
+  text: [P31]
+  label: =
+  text: []
+  label: Represent matching entities as:
+  piece: OrderedChoiceList
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+    label: Available:
+    combo: 1 item(s)
+  label: Reifies statements of:
+  text: []
+  piece: TripleEditor  [Triple — subject · property · object]
+    piece: EntityEndEditor  [Subject]
+      label: Modelled as:
+      label: Goes into field:
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: []
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the subject restricts WHOSE statements are collected.
+    label: Subject population:
+    combo: 0 item(s)
+    label: Property:
+    text: []
+    piece: EntityEndEditor  [Object]
+      label: Modelled as:
+      label: Goes into field:
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: []
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the object restricts WHICH statements are collected.
+    label: Subject:
+    label: this class's members
+    label: Property:
+    text: [P31]
+    button: Find…
+    label: Objects:
+    text: [Q5]
+    button: Discover subtypes  (disabled)
+    button: From parts…  (disabled)
+    label: (not selected)
+  label: Exclude types:
+  text: []
+  label: Limit:
+  text: [200]
+  check: Require label
+  label: lang:
+  text: [en]
+  check: Notable only (require Wikipedia article)
+  label: Rank by:
+  combo: 3 item(s)
+  check: highest first
+  label: Seed QIDs:
+  textarea
+  label: Search:
+  text: [Person]
+  label: Method:
+  combo: 3 item(s)
+  button: Search  (disabled)
+  button: Use selected  (disabled)
+  label: Identity & label
+  label: Identity:
+  label: Source entity (id + label)
+  label: Source bindings:
+  label: Wikidata id (QID) · Label · Also known as
+  label: Additional names:
+  check: Add aliases (Also known as)
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 3 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 3 item(s)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: birthDate:
+      combo: 2 item(s)
+      label: structuredName:
+      combo: 2 item(s)
+    box: What this would do
+  label: Current source: items with instance of (not selected)
+
+== Statement class - StatementSourcePanel ==
+  label: Statement class: Award
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+  piece: TripleEditor  [Statement triple — subject · property · object]
+    piece: EntityEndEditor  [Subject]
+      label: Modelled as:
+      label: no class named , served as a bare reference
+      label: Goes into field:
+      label: Not projected — nothing on the record holds it. Required before this domain can generate.
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: []
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the subject restricts WHOSE statements are collected.
+    label: Subject population:
+    combo: 2 item(s)
+    label: Property:
+    text: [P166]
+    piece: EntityEndEditor  [Object]
+      label: Modelled as:
+      label: no class named , served as a bare reference
+      label: Goes into field:
+      label: Not projected — the value the statement points at. Required before this domain can generate.
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: [Q35637]
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the object restricts WHICH statements are collected.
+    label: Subject:
+    label: this class's members
+    label: Property:
+    text: []
+    label: Objects:
+    text: []
+    label: (not selected)
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: category:
+      combo: 2 item(s)
+    box: What this would do
+  label: When duplicates occur (superseded):
+  combo: 2 item(s)  (disabled)
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 2 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
+    label: These instances have no name of their own — pick Field or Template.
+  label: Canonical list:
+  combo: 1 item(s)
+  box: Derived runtime recipe
+    label: Identity:
+    label: derived natural key
+    label: Subject fallback:
+    label: —
+    label: Value fallback:
+    label: —
+    label: Canonical key:
+    label: —
+    box: Qualifier fields
+  box: Graph discovery
+    label: Expansion policy:
+    combo: 2 item(s)
+    label: Resolved pattern:
+    label: Disabled — statements are still generated normally.
+
+== Owned class - OwnedClassPanel ==
+  label: Owned class — instances are created by fields that target this class.
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Name]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 1 item(s)
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 2 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
+  piece: TripleEditor  [Triple — subject · property · object]
+    piece: EntityEndEditor  [Subject]
+      label: Modelled as:
+      label: Goes into field:
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: []
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the subject restricts WHOSE statements are collected.
+    label: Subject population:
+    combo: 0 item(s)
+    label: Property:
+    text: []
+    piece: EntityEndEditor  [Object]
+      label: Modelled as:
+      label: Goes into field:
+      label: Entities allowed:
+      combo: 4 item(s)
+      text: []
+      text: []
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the object restricts WHICH statements are collected.
+    label: Subject:
+    label: this class's members
+    label: Property:
+    label: Person.structuredName — authored on Person, where the field is
+    label: Object:
+    label: Person — the owner each part is a view of
+    label: Subject:
+    label: this class's members
+    label: Property:
+    text: []
+    label: Objects:
+    text: []
+    label: (not selected)
+
+== Aggregate class - AggregateClassPanel ==
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Prize]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+  label: From class:
+  combo: 4 item(s)
+  label: Members field:
+  combo: 2 item(s)
+  piece: OrderedChoiceList  [Grouped from (this class's field ← source class's field)]
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    label: Available:
+    combo: 1 item(s)
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: awards:
+      combo: 2 item(s)
+    box: What this would do
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 1 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
+    label: These instances have no name of their own — pick Field or Template.
+  label: Choices come from compatible fields on this class and its source class.
+

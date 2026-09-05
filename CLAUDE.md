@@ -144,6 +144,21 @@ construct per thing produced:
    panels ended in four different orders. No step of that was a decision; every one was a
    gap filled quietly.
 
+15. **Give every kind of change an artifact that can see it, and look at the artifact.**
+   A change is finished when something outside your own intent has confirmed it: for
+   generated data the counts (`counts.tsv`), for an editor its rendered structure
+   (`docs/panel-layout.txt`, enforced by `PanelLayoutIsCheckedInTest`). If no such
+   artifact exists for what you are changing, build it FIRST — a change you cannot
+   observe is a change you cannot claim, and a green suite is not observation when
+   nothing in it can perceive the property you are designing.
+   *(Trigger: about to report a UI or structural change as done with only a passing
+   suite as evidence.)*
+
+   The asymmetry that proves it: the same session verified a membership reshape against
+   real data — 634 prizes, not 636 — while the panels drifted for a day, green
+   throughout, because no test could see that the triple had landed seventh on one
+   editor and last on another.
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until
