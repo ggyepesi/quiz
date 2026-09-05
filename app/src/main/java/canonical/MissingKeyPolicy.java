@@ -37,4 +37,15 @@ public enum MissingKeyPolicy {
     public static MissingKeyPolicy defaultPolicy() {
         return INCOMPLETE_GROUP;
     }
+
+    /** What a modeller reads. A combo showing REJECT_CANDIDATE is showing them the name
+     *  of a constant, which is a different thing from what it does. */
+    @Override
+    public String toString() {
+        return switch (this) {
+            case REJECT_CANDIDATE -> "Leave them out";
+            case INCOMPLETE_GROUP -> "Group them together";
+            case FAIL -> "Stop the run";
+        };
+    }
 }

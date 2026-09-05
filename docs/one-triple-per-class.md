@@ -174,12 +174,23 @@ The triple is one of four shared components. The others, from the same survey:
   Import ownership belongs to `ModelSourceWorkbenchPanel`, which already locks the whole
   selected declaration and shows the single explanation that it is edited in its owning
   model. The header must not repeat that state or notice.
-- **`ClassIdentityEditor`** — already shared by Source, Statement and Aggregate. Gains the
-  missing-key control, which exists on `CanonicalSpec` and **nothing edits**; the only
-  missing-key UI is `AggregateClassPanel`, editing a *different* enum
-  (`AggregateClassSource.MissingKeyPolicy`) for the same concept. The model already
-  collapsed those two into `canonical.MissingKeyPolicy`; the UI is the last place holding
-  both.
+- **`ClassIdentityEditor`** — already shared by Source, Statement and Aggregate. **Done.**
+  It now asks the missing-key question beside the key it is about, for every kind.
+
+  The UI was not the last place holding both. `AggregateClassSource` still carried its own
+  `MissingKeyPolicy` (EXCLUDE / GROUP, defaulting to EXCLUDE), `ModelAggregates`
+  translated it into `canonical.MissingKeyPolicy` on the way to the one engine that acts
+  on it, and `CompiledCanonical` did not carry the canonical one at all — so `toSpec()`
+  gave back a spec that had forgotten it. Nobel's NobelPrize held both and answered them
+  differently: EXCLUDE on its aggregate recipe, INCOMPLETE_GROUP on its canonical spec.
+
+  The surviving enum's default is `INCOMPLETE_GROUP`, and the argument for it is measured:
+  rejecting, run over the shipped snapshots, would have discarded 99 real records, and a
+  default may only be non-destructive. That is the opposite of the aggregate default, so
+  collapsing them changes what a new aggregate class does. Nobel keeps its behaviour
+  because its authored answer was written onto the surviving field — 634 prizes, not the
+  636 the other default produces. Changing that is a decision for the UI, which is now
+  the only place it can be made.
 - **`DisplayNameEditor`** — mode, field, template. Whole in `ClassSourcePanel`, a partial
   fourth copy in `StatementSourcePanel` (field only, silently preserving templates it
   cannot show), absent in Owned and Aggregate.
@@ -229,7 +240,8 @@ without them.
 ## Order
 
 1. `ClassHeaderEditor` — the largest gap, no open questions.
-2. `ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.
+2. ~~`ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.~~
+   **Done.**
 3. `TripleEditor`, Statement first (it authors everything), then Source, then Owned
    read-only.
 4. `DisplayNameEditor`, in all four panels; owner-and-site becomes the owned default

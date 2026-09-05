@@ -30,8 +30,6 @@ final class AggregateClassPanel extends JPanel {
     // Unordered: which field is grouped from which is a set of pairs, and position
     // says nothing. The key's ORDER is the identity editor's question, below.
     private final OrderedChoiceList<KeyChoice> pairs = new OrderedChoiceList<>(false);
-    private final JComboBox<AggregateClassSource.MissingKeyPolicy> missingKeyPolicy =
-            new JComboBox<>(AggregateClassSource.MissingKeyPolicy.values());
     // A template, asked the way every kind asks it. This was a row of field
     // checkboxes composed INTO a template and read back out of one by substring: it
     // could only ever produce "{a} — {b}", so a template written with any other
@@ -72,7 +70,6 @@ final class AggregateClassPanel extends JPanel {
         });
         GridBagUtils.wideRow(form, 3, pairs);
         GridBagUtils.wideRow(form, 5, identityEditor);
-        GridBagUtils.labeledRow(form, c, 4, "Missing key:", missingKeyPolicy);
         GridBagUtils.wideRow(form, 6, displayNameEditor);
         GridBagUtils.wideRow(form, 7, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
@@ -102,8 +99,6 @@ final class AggregateClassPanel extends JPanel {
         sourceClass.setSelectedItem(spec == null ? "" : spec.sourceClassName());
         refreshing = false;
         refreshChoices(spec);
-        missingKeyPolicy.setSelectedItem(spec == null
-                ? AggregateClassSource.MissingKeyPolicy.EXCLUDE : spec.missingKeyPolicy());
         displayNameEditor.show(value);
         identityEditor.show(value);
     }
@@ -146,8 +141,6 @@ final class AggregateClassPanel extends JPanel {
             spec.keys().add(new AggregateClassSource.Key(
                     choice.targetField(), choice.sourceField()));
         }
-        spec.missingKeyPolicy((AggregateClassSource.MissingKeyPolicy)
-                missingKeyPolicy.getSelectedItem());
         clazz.classKind(ClassKind.AGGREGATE);
         clazz.aggregateSource(spec);
         syncKeyWithPairs(spec);

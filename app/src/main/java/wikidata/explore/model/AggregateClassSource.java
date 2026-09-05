@@ -13,7 +13,6 @@ public final class AggregateClassSource {
     private String sourceClassName = "";
     private String sourceClassId = "";
     private String membersField = "";
-    private MissingKeyPolicy missingKeyPolicy = MissingKeyPolicy.EXCLUDE;
     private final List<Key> keys = new ArrayList<>();
 
     public AggregateClassSource() {}
@@ -56,19 +55,12 @@ public final class AggregateClassSource {
                 .map(Key::sourceField)
                 .findFirst().orElse("");
     }
-    public MissingKeyPolicy missingKeyPolicy() {
-        return missingKeyPolicy == null ? MissingKeyPolicy.EXCLUDE : missingKeyPolicy;
-    }
-    public void missingKeyPolicy(MissingKeyPolicy value) {
-        missingKeyPolicy = value == null ? MissingKeyPolicy.EXCLUDE : value;
-    }
     public boolean configured() {
         return !sourceClassName().isBlank() && !membersField().isBlank() && !keys.isEmpty();
     }
     public AggregateClassSource copy() {
         AggregateClassSource copy = new AggregateClassSource(sourceClassName(), membersField());
         copy.sourceClassId = sourceClassId;
-        copy.missingKeyPolicy = missingKeyPolicy();
         keys.stream().filter(java.util.Objects::nonNull)
                 .forEach(key -> copy.keys.add(new Key(key.targetField(), key.sourceField())));
         return copy;
@@ -78,12 +70,6 @@ public final class AggregateClassSource {
             targetField = clean(targetField);
             sourceField = clean(sourceField);
         }
-    }
-    public enum MissingKeyPolicy {
-        /** A source record missing any grouping value is not aggregated. */
-        EXCLUDE,
-        /** Missing values deliberately form an explicit incomplete group. */
-        GROUP
     }
     private static String clean(String value) { return value == null ? "" : value.trim(); }
 }

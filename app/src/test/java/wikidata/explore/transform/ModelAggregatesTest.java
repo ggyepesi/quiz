@@ -41,14 +41,36 @@ class ModelAggregatesTest {
         assertTrue(result.toString().contains("members field"), result.toString());
     }
 
-    @Test void missingKeyIsExcludedByDefaultRatherThanCreatingAPhantomGroup() {
+    /**
+     * What becomes of a candidate whose key cannot be computed is the class's answer,
+     * and the same answer every other kind gives.
+     *
+     * <p>There were two enums with opposite defaults: an aggregate EXCLUDEd such a
+     * candidate, every other construct grouped it — and Nobel's NobelPrize carried both,
+     * saying exclude on its aggregate recipe and group on its canonical spec. One
+     * question now, and its default is the non-destructive one, by the rule that a
+     * default may only be non-destructive: rejecting, run over the shipped snapshots,
+     * would have discarded 99 real records. Nobel still excludes, because that is now
+     * written on the class instead of assumed from its kind.
+     */
+    @Test void aCandidateWithNoKeyGroupsUnlessTheClassSaysToLeaveItOut() {
         GeneratedProjectModel model = model();
         WikidataDynamicObject physics = entity("Q38104", "Physics", "Category");
-        WikidataDynamicObject missing = group("S1", physics, null, "unknown year");
-        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(physics, missing));
+        List<WikidataDynamicObject> grouped = new ArrayList<>(
+                List.of(physics, group("S1", physics, null, "unknown year")));
 
-        assertEquals(0, ModelAggregates.apply(ProjectModelCompiler.compile(model), pool, null));
-        assertTrue(pool.stream().noneMatch(o -> o.directClassNames().contains("NobelPrize")));
+        assertEquals(1,
+                ModelAggregates.apply(ProjectModelCompiler.compile(model), grouped, null));
+
+        model.rootClass().canonical()
+                .missingKeyPolicy(canonical.MissingKeyPolicy.REJECT_CANDIDATE);
+        List<WikidataDynamicObject> rejected = new ArrayList<>(
+                List.of(physics, group("S2", physics, null, "unknown year")));
+
+        assertEquals(0,
+                ModelAggregates.apply(ProjectModelCompiler.compile(model), rejected, null));
+        assertTrue(rejected.stream()
+                .noneMatch(o -> o.directClassNames().contains("NobelPrize")));
     }
 
     @Test void framedAggregateIdentityCannotCollideOnDelimiterCharacters() {

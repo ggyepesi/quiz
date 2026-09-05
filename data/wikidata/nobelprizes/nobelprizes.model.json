@@ -16,7 +16,6 @@
       "sourceClassName" : "LaureatesWithMotivation",
       "sourceClassId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "membersField" : "laureatesWithMotivation",
-      "missingKeyPolicy" : "EXCLUDE",
       "keys" : [ "java.util.ArrayList", [ {
         "targetField" : "category",
         "sourceField" : "category"
@@ -192,7 +191,7 @@
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
-      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "missingKeyPolicy" : "REJECT_CANDIDATE",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "TEMPLATE",
       "displayNameField" : "",
@@ -216,7 +215,6 @@
       "sourceClassName" : "LaureatesWithMotivation",
       "sourceClassId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
       "membersField" : "laureatesWithMotivation",
-      "missingKeyPolicy" : "EXCLUDE",
       "keys" : [ "java.util.ArrayList", [ {
         "targetField" : "category",
         "sourceField" : "category"
@@ -392,7 +390,7 @@
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
-      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "missingKeyPolicy" : "REJECT_CANDIDATE",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "TEMPLATE",
       "displayNameField" : "",

@@ -198,6 +198,7 @@ public final class ProjectModelCompiler {
                 canonical.displayNameTemplate(),
                 canonical.labelLanguage(),
                 canonical.primaryListField(),
+                canonical.missingKeyPolicy(),
                 canonical.reductions());
     }
 

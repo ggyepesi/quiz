@@ -7,7 +7,6 @@ import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.extract.GenerationLog;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.AggregateClassSource;
 import wikidata.explore.model.AggregateIdentity;
 
 import java.util.ArrayList;
@@ -23,7 +22,8 @@ public final class ModelAggregates {
             GenerationLog log) {
         if (model == null) return 0;
         List<Recipe> recipes = model.classes().stream().filter(CompiledClass::aggregateClass)
-                .map(c -> recipe(c.className(), c.aggregateSource())).toList();
+                .map(c -> recipe(c.className(), c.aggregateSource(),
+                        c.canonical().missingKeyPolicy())).toList();
         return apply(recipes, pool, log);
     }
 
@@ -56,7 +56,7 @@ public final class ModelAggregates {
                     recipe.keys().stream()
                             .map(key -> canonical.KeyComponent.field(key.sourceField()))
                             .toList(),
-                    missingKeyPolicy(recipe.missingKeyPolicy()),
+                    recipe.missingKeyPolicy(),
                     java.util.Map.of(MEMBERS, canonical.Reduction.UNION_DISTINCT));
 
             canonical.KeyedReduction.Result reduced = canonical.CanonicalizationEngine
@@ -120,10 +120,11 @@ public final class ModelAggregates {
         out.add(recipe);
     }
 
-    private static Recipe recipe(String target, CompiledAggregateSource source) {
+    private static Recipe recipe(String target, CompiledAggregateSource source,
+            canonical.MissingKeyPolicy missingKeyPolicy) {
         return new Recipe(target, source.sourceClassName(), source.membersField(),
                 source.keys().stream().map(k -> new Key(k.targetField(), k.sourceField())).toList(),
-                source.missingKeyPolicy());
+                missingKeyPolicy);
     }
     private static String stableValue(Object value) {
         return StableIdentity.of(value);
@@ -161,13 +162,7 @@ public final class ModelAggregates {
      * One vocabulary for one concept. An aggregate had EXCLUDE and GROUP; the shared
      * names are REJECT_CANDIDATE and INCOMPLETE_GROUP, and they mean the same two things.
      */
-    private static canonical.MissingKeyPolicy missingKeyPolicy(
-            AggregateClassSource.MissingKeyPolicy policy) {
-        return policy == AggregateClassSource.MissingKeyPolicy.EXCLUDE
-                ? canonical.MissingKeyPolicy.REJECT_CANDIDATE
-                : canonical.MissingKeyPolicy.INCOMPLETE_GROUP;
-    }
 
     private record Recipe(String targetType, String sourceType, String membersField,
-                          List<Key> keys, AggregateClassSource.MissingKeyPolicy missingKeyPolicy) {}
+                          List<Key> keys, canonical.MissingKeyPolicy missingKeyPolicy) {}
 }

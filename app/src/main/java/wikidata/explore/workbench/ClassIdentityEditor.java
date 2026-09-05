@@ -37,6 +37,12 @@ import java.util.function.Consumer;
  * class, a space-separated text field on an entity class, and nothing at all on an
  * aggregate — for one question that every class answers.
  *
+ * <p>What happens when a key cannot be COMPUTED is asked here too, beside the key it is
+ * about. It existed on every class's canonical spec and nothing edited it; the only
+ * control for it was on the aggregate editor, over a second enum of its own with a
+ * different default — so one class answered the question twice, and Nobel's NobelPrize
+ * answered it two different ways at once.
+ *
  * <p>The key is an ORDERED list, not a set of ticks. That is not presentation: identity
  * is built by joining a key's values in order, so reordering a key changes every
  * instance's identifier. The checkbox grid rebuilt the key in FIELD order on every apply,
@@ -50,12 +56,15 @@ final class ClassIdentityEditor extends JPanel {
     // identifier joins a key's values IN order.
     private final OrderedChoiceList<String> key = new OrderedChoiceList<>(true);
     private final JPanel reductions = new JPanel(new GridBagLayout());
+    private final JComboBox<canonical.MissingKeyPolicy> missingKey =
+            new JComboBox<>(canonical.MissingKeyPolicy.values());
     private final Map<String, JComboBox<Reduction>> reducerBoxes = new LinkedHashMap<>();
     private final JLabel proposal = new JLabel(" ");
     private final JButton accept = new JButton(" ");
     private final JTextArea preview = new JTextArea(5, 40);
     private List<canonical.Candidate> sampled = List.of();
     private GeneratedClassModel clazz;
+    private boolean showing;
     private Consumer<Void> afterChange = ignored -> { };
 
     ClassIdentityEditor() {
@@ -78,12 +87,38 @@ final class ClassIdentityEditor extends JPanel {
 
         reductions.setBorder(BorderFactory.createTitledBorder("When the same key occurs"));
 
+        missingKey.setToolTipText("<html>What becomes of a candidate whose key cannot be "
+                + "computed — a different question from two candidates sharing one, and "
+                + "the difference is scope: this decides whether a candidate takes part "
+                + "AT ALL.<br><b>INCOMPLETE_GROUP</b>: group them together and say so."
+                + "<br><b>REJECT_CANDIDATE</b>: leave them out, and count what was left "
+                + "out.<br><b>FAIL</b>: for this class, a candidate without a key means "
+                + "the run is wrong.</html>");
+        missingKey.addActionListener(event -> {
+            if (showing || clazz == null) return;
+            clazz.canonical().missingKeyPolicy(
+                    (canonical.MissingKeyPolicy) missingKey.getSelectedItem());
+            showPreview();
+            afterChange.accept(null);
+        });
+        JPanel missing = new JPanel(new GridBagLayout());
+        GridBagConstraints missingRow = new GridBagConstraints();
+        missingRow.insets = new Insets(2, 4, 2, 4);
+        missingRow.anchor = GridBagConstraints.WEST;
+        missingRow.fill = GridBagConstraints.HORIZONTAL;
+        GridBagUtils.labeledRow(
+                missing, missingRow, 0, "When a key cannot be computed:", missingKey);
+
+        JPanel keyRules = new JPanel(new BorderLayout());
+        keyRules.add(missing, BorderLayout.NORTH);
+        keyRules.add(reductions, BorderLayout.CENTER);
+
         preview.setEditable(false);
         preview.setOpaque(false);
         preview.setBorder(BorderFactory.createTitledBorder("What this would do"));
 
         JPanel below = new JPanel(new BorderLayout(4, 4));
-        below.add(reductions, BorderLayout.NORTH);
+        below.add(keyRules, BorderLayout.NORTH);
         below.add(new JScrollPane(preview), BorderLayout.CENTER);
 
         add(top, BorderLayout.NORTH);
@@ -144,6 +179,15 @@ final class ClassIdentityEditor extends JPanel {
         clazz = value;
         reducerBoxes.clear();
         reductions.removeAll();
+        showing = true;
+        try {
+            missingKey.setEnabled(clazz != null);
+            missingKey.setSelectedItem(clazz == null
+                    ? canonical.MissingKeyPolicy.defaultPolicy()
+                    : clazz.canonical().missingKeyPolicy());
+        } finally {
+            showing = false;
+        }
         if (clazz == null) {
             revalidate();
             repaint();

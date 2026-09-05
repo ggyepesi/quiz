@@ -18,6 +18,10 @@ public record CompiledCanonical(
         String displayNameTemplate,
         String labelLanguage,
         String primaryListField,
+        // What becomes of a candidate whose key cannot be computed. It was authored on
+        // the spec and dropped here, so toSpec() gave back a spec that had forgotten
+        // it, and every compiled consumer read the default.
+        canonical.MissingKeyPolicy missingKeyPolicy,
         java.util.Map<String, canonical.Reduction> reductions) {
 
     public CompiledCanonical {
@@ -34,6 +38,8 @@ public record CompiledCanonical(
             labelLanguage = "en";
         }
         primaryListField = clean(primaryListField);
+        missingKeyPolicy = missingKeyPolicy == null
+                ? canonical.MissingKeyPolicy.defaultPolicy() : missingKeyPolicy;
         reductions = java.util.Map.copyOf(
                 reductions == null ? java.util.Map.of() : reductions);
     }
@@ -45,7 +51,8 @@ public record CompiledCanonical(
                              String labelLanguage) {
         this(keyFields, CanonicalSpec.DuplicatePolicy.KEEP_ONE,
                 displayNameMode, displayNameField,
-                displayNameTemplate, labelLanguage, "", java.util.Map.of());
+                displayNameTemplate, labelLanguage, "",
+                canonical.MissingKeyPolicy.defaultPolicy(), java.util.Map.of());
     }
 
 
@@ -60,6 +67,7 @@ public record CompiledCanonical(
                 .displayNameTemplate(displayNameTemplate)
                 .labelLanguage(labelLanguage)
                 .primaryListField(primaryListField);
+        spec.missingKeyPolicy(missingKeyPolicy);
         spec.keyFields().addAll(keyFields);
         return spec;
     }
@@ -74,6 +82,7 @@ public record CompiledCanonical(
                 source.displayNameTemplate(),
                 source.labelLanguage(),
                 source.primaryListField(),
+                source.missingKeyPolicy(),
                 source.reductions());
     }
 
