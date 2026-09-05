@@ -22,6 +22,12 @@ final class AggregateClassPanel extends JPanel {
     private final GeneratedProjectModel project;
     private final JComboBox<String> sourceClass = new JComboBox<>();
     private final JComboBox<String> membersField = new JComboBox<>();
+    // An aggregate class has a name, an alias and a base like any other class, and
+    // this panel showed none of them — so an aggregate could not be renamed at all:
+    // RenameClass is used by the Source, Statement and Owned panels and by nothing
+    // else. Nothing in the model or the validator restricts those by kind.
+    private final ClassHeaderEditor header;
+
     // Unordered: which field is grouped from which is a set of pairs, and position
     // says nothing. The key's ORDER is the identity editor's question, below.
     private final OrderedChoiceList<KeyChoice> pairs = new OrderedChoiceList<>(false);
@@ -40,15 +46,20 @@ final class AggregateClassPanel extends JPanel {
     AggregateClassPanel(GeneratedProjectModel project) {
         super(new BorderLayout());
         this.project = project;
+        this.header = new ClassHeaderEditor(project, () -> project.classes().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(GeneratedClassModel::className)
+                .toList());
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 6, 4, 6);
         c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1;
-        GridBagUtils.labeledRow(form, c, 0, "From class:", sourceClass);
+        GridBagUtils.wideRow(form, 0, header);
+        GridBagUtils.labeledRow(form, c, 1, "From class:", sourceClass);
         membersField.setToolTipText(
                 "List-valued ENTITY fields on this class that hold the selected source class.");
-        GridBagUtils.labeledRow(form, c, 1, "Members field:", membersField);
+        GridBagUtils.labeledRow(form, c, 2, "Members field:", membersField);
         pairs.title("Grouped from (this class's field \u2190 source class's field)");
         pairs.setToolTipText(
                 "Which of this class's fields is grouped from which field of the source "
@@ -58,18 +69,18 @@ final class AggregateClassPanel extends JPanel {
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 2, pairs);
-        GridBagUtils.wideRow(form, 7, identityEditor);
-        GridBagUtils.labeledRow(form, c, 3, "Missing key:", missingKeyPolicy);
+        GridBagUtils.wideRow(form, 3, pairs);
+        GridBagUtils.wideRow(form, 5, identityEditor);
+        GridBagUtils.labeledRow(form, c, 4, "Missing key:", missingKeyPolicy);
         displayFieldsPanel.setBorder(BorderFactory.createTitledBorder("Display name fields"));
         displayFieldsPanel.setToolTipText(
                 "Checked fields are shown in model order, separated by an em dash.");
-        GridBagUtils.wideRow(form, 4, displayFieldsPanel);
-        GridBagUtils.wideRow(form, 5, new JLabel(
+        GridBagUtils.wideRow(form, 6, displayFieldsPanel);
+        GridBagUtils.wideRow(form, 7, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
         JButton apply = new JButton("Apply aggregate class");
         apply.addActionListener(e -> applyEdits());
-        GridBagUtils.wideRow(form, 6, apply);
+        GridBagUtils.wideRow(form, 8, apply);
         add(new JScrollPane(form), BorderLayout.CENTER);
         sourceClass.addActionListener(e -> {
             if (!refreshing) refreshChoices(null);
@@ -81,6 +92,7 @@ final class AggregateClassPanel extends JPanel {
     }
 
     void edit(GeneratedClassModel value) {
+        header.show(value);
         clazz = value;
         refreshing = true;
         sourceClass.removeAllItems();
@@ -127,6 +139,7 @@ final class AggregateClassPanel extends JPanel {
 
     void applyEdits() {
         if (clazz == null) return;
+        header.applyEdits();
         AggregateClassSource spec = new AggregateClassSource(
                 selection(sourceClass), selection(membersField));
         // The list's CONTENTS, not its selection. Reading the selection made clicking
