@@ -200,11 +200,22 @@ public class GenerationPipeline {
     private String membershipPattern(
             GeneratedClassModel cls, GeneratedProjectModel project) {
         wikidata.explore.model.EntityBound membership = cls.effectiveMembership(project);
-        if (!membership.qids().isEmpty() && !membership.relationPid().isBlank()) {
-            return "?value wdt:" + RuleNode.cleanPid(membership.relationPid())
-                    + " wd:" + membership.qids().get(0) + " .";
+        if (membership.qids().isEmpty() || membership.relationPid().isBlank()) {
+            return null;
         }
-        return null;
+        String pid = RuleNode.cleanPid(membership.relationPid());
+        if (membership.qids().size() == 1) {
+            return "?value wdt:" + pid + " wd:" + membership.qids().get(0) + " .";
+        }
+        // Every target, joined the way membership is: a bound naming four types means
+        // members of any of them. Taking the first sampled one type's units and called
+        // them the class's — which was invisible while the leading QID looked primary.
+        StringBuilder values = new StringBuilder("VALUES ?membershipRoot {");
+        for (String qid : membership.qids()) {
+            values.append(" wd:").append(qid);
+        }
+        return values.append(" } ?value wdt:").append(pid)
+                .append(" ?membershipRoot .").toString();
     }
 
     public GenerationRun fullRun(

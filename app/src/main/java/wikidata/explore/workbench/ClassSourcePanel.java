@@ -259,10 +259,21 @@ public class ClassSourcePanel extends JPanel {
             return;
         }
 
-        clazz.instanceMapping().sourceQid(qid);
+        // The leading target, keeping the rest — the editor shows the first as
+        // "Wikidata type" and the others as "Also include types", which is what this
+        // replaced when the first one was a field of its own.
+        java.util.List<String> targets = new java.util.ArrayList<>();
+        if (qid != null && !qid.isBlank()) targets.add(qid);
+        clazz.membership().qids().stream().skip(1)
+                .filter(existing -> !existing.equals(qid)).forEach(targets::add);
+        String pid = clazz.membership().relationPid();
+        clazz.membership(targets.isEmpty()
+                ? EntityBound.unbounded()
+                : EntityBound.relation(pid.isBlank() ? "P31" : pid, targets,
+                        clazz.membership().includeDescendants()));
         clazz.instanceMapping().sourceLabel(label);
 
-        typeQidField.setText(clazz.instanceMapping().sourceQid());
+        typeQidField.setText(targets.isEmpty() ? "" : targets.get(0));
         typeLabel.setText(clazz.instanceMapping().displaySource());
 
         updateSummary();
@@ -641,8 +652,9 @@ public class ClassSourcePanel extends JPanel {
         if (clazz == null) {
             return null;
         }
-        String base = clazz.instanceMapping().sourceQid();
-        if (base == null || base.isBlank()) {
+        String base = clazz.membership().qids().isEmpty()
+                ? "" : clazz.membership().qids().get(0);
+        if (base.isBlank()) {
             JOptionPane.showMessageDialog(this,
                     "Set the Wikidata type first, then discover its subtypes.",
                     "No type selected", JOptionPane.INFORMATION_MESSAGE);

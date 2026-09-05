@@ -71,7 +71,6 @@ public class StatementSourcePanel extends JPanel {
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
     // One control per end, so the alternatives cannot be configured together. They used
     // to be separate rows that looked combinable while the loader silently kept one.
-    private final JTextField valueTypeField = new JTextField(10);
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
     private final JLabel graphPatternValue = new JLabel(" ");
@@ -146,10 +145,10 @@ public class StatementSourcePanel extends JPanel {
 
         refreshValueDomainChoices(source == null ? "" : source.valueSelectionName());
 
-        // The value-type filter remains part of the statement class's
-        // extraction mapping: it constrains the ps: value by P31.
-        valueTypeField.setText(
-                clazz.instanceMapping().sourceQid());
+        // No value-type control. It showed instanceMapping.sourceQid — where a
+        // statement class kept an object type filter before the object END had a bound —
+        // and it was never written back from here. Nothing authors that field now, so
+        // the control could only ever show a blank; the object's bound is in the triple.
         graphExpansionBox.setSelectedItem(source == null
                 ? GraphExpansionPolicy.NONE : source.graphExpansionPolicy());
 
@@ -579,7 +578,6 @@ public class StatementSourcePanel extends JPanel {
         titleLabel.setText("Statement class");
         header.show(null);
         triple.clear();
-        valueTypeField.setText("");
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
         graphPatternValue.setText(" ");
         keyFieldsPanel.removeAll();

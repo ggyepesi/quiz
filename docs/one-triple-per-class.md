@@ -74,9 +74,19 @@ TripleEditor
 
 Per kind it is configured, not subclassed:
 
-- **Statement** — both ends authored, no members-end.
+- **Statement** — both ends authored, no members-end. **Shipped.**
 - **Source** — members-end authored (the direction), the other end an `EntityBound`.
+  **Not shipped: the model change landed, the editor did not.** A source class's
+  membership is one `EntityBound` now, but `ClassSourcePanel` still shows it as
+  "Relation property" plus two QID boxes ("Wikidata type" and "Also include types") —
+  one ordered list read as a leading target and the rest. Nothing is lost through them,
+  and they are still a second spelling of the triple: the two boxes are the object row,
+  the relation property is the property row, and the members are the subject.
+  Everything hanging off those boxes moves with them — the type search, "Discover
+  subtypes", "From parts", the QID links, and `useSourceQid` from the WikiProject and
+  Explore panels, which is why this is a step of its own and not a rename.
 - **Owned** — every row read-only, each pointing at the field that authors it.
+  **Shipped.**
 - **Aggregate** — the component is absent; there is no triple.
 
 ## Five things this resolves
@@ -242,7 +252,8 @@ without them.
 1. `ClassHeaderEditor` — the largest gap, no open questions.
 2. ~~`ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.~~
    **Done.**
-3. `TripleEditor` — **Statement done, Owned done, Source blocked on the model.**
+3. `TripleEditor` — **Statement done, Owned done, Source still open (the UI, no
+   longer the model).**
 
    Statement authors all three tags in one box, and the subject's population moved
    inside it: naming the class whose members are the subjects is a way of bounding the
@@ -265,12 +276,16 @@ without them.
    re-deriving it, which is what makes the two compiler paths agree by construction —
    the parity test used to pass because both made the same split.
 
-   Two things it did NOT do. `seedQids` is the same construct in `EXPLICIT` shape and is
-   still a second authored place, with silent precedence between them in
-   `PopulationSourceBindings` (a relation wins, a seed list is only consulted when there
-   is none) — 37 sites, its own step. And the UI still shows one list in two boxes
-   ("Wikidata type" and "Also include types") backed by the one bound; folding them into
-   the triple's object row is what brings Source into `TripleEditor`.
+   Two things it did NOT do, and step 3 is therefore NOT finished for Source.
+   `seedQids` is the same construct in `EXPLICIT` shape and is still a second authored
+   place, with silent precedence between them in `PopulationSourceBindings` (a relation
+   wins, a seed list is only consulted when there is none) — 37 sites, its own step.
+
+   And the source editor still shows the one bound as three controls: a relation
+   property and two QID boxes, the second reading as "extra" types when the model no
+   longer has a leading one. Folding them into the triple's object row is what brings
+   Source into `TripleEditor`, and it carries the type search, "Discover subtypes",
+   "From parts", the QID links and the `useSourceQid` action with it.
 
    Subclass closure is now persistable — the thing the adapter used to refuse — and no
    run performs it: `RuleNodeQueryBuilder.subclassMembershipBackboneQuery` carries none

@@ -46,6 +46,31 @@ class ModelValidationScopeTest {
                 result.format());
     }
 
+    /**
+     * The object end's bound is what bounds the objects, and it is asked of that end.
+     *
+     * <p>This asked the statement CLASS's {@code sourceQid} — where the filter lived
+     * before the end had a bound of its own, and a field nothing writes now — so a class
+     * bounded by explicit QIDs or by a relation was reported as unbounded and refused,
+     * while only the vocabulary case still answered.
+     */
+    @Test void anObjectBoundIsWhatBoundsTheObjects() {
+        for (EntityBound bound : java.util.List.of(
+                EntityBound.explicit(java.util.List.of("Q35637")),
+                EntityBound.relation("P279", java.util.List.of("Q618779"), false))) {
+            GeneratedProjectModel project = discoveringStatementClass(
+                    GeneratedProjectModel.ProjectKind.DOMAIN);
+            project.rootClass().statementSource().objectBound(bound);
+
+            var result = GeneratedProjectModelValidator.validate(project);
+
+            assertTrue(result.errors().stream().noneMatch(problem ->
+                            problem.message().contains("at least one end of the triple "
+                                    + "must be bounded")),
+                    bound.kind() + " bounds the objects: " + result.format());
+        }
+    }
+
     @Test void aStructuralErrorIsAnErrorInBothKinds() {
         for (GeneratedProjectModel.ProjectKind kind
                 : GeneratedProjectModel.ProjectKind.values()) {

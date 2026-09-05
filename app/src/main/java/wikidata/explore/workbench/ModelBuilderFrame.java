@@ -2504,13 +2504,25 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     // Make the given entity the selected class's membership type. Shared by the
-    // WikiProject and Explore panels.
+    // WikiProject and Explore panels. It wrote instanceMapping.sourceQid, which a
+    // class's membership no longer lives in, so the action set a field nothing reads
+    // and the class stayed unbounded.
     private void useSourceQid(String qid, String label) {
         if (qid == null || !WikidataIds.isQid(qid)) {
             return;
         }
         GeneratedClassModel c = activeClass();
-        c.instanceMapping().sourceQid(qid);
+        // Replaces the LEADING target and keeps the rest, which is what this did when
+        // the leading one was its own field: the editor still shows the first target as
+        // "Wikidata type" and the others as "Also include types".
+        java.util.List<String> targets = new java.util.ArrayList<>();
+        targets.add(qid);
+        c.membership().qids().stream().skip(1)
+                .filter(existing -> !existing.equals(qid)).forEach(targets::add);
+        String pid = c.membership().relationPid();
+        c.membership(EntityBound.relation(
+                pid.isBlank() ? "P31" : pid, targets,
+                c.membership().includeDescendants()));
         c.instanceMapping().sourceLabel(label == null ? "" : label);
         sourceWorkbench.edit(c);
         modelChanged();
@@ -2545,7 +2557,8 @@ public class ModelBuilderFrame extends JFrame {
     // to seed-and-cut/paste, and the main "Relation target" field can stay blank.
     private void addRelationTargets(List<String> qids) {
         GeneratedClassModel c = activeClass();
-        var targets = c.instanceMapping().additionalTypeQids();
+        java.util.List<String> targets =
+                new java.util.ArrayList<>(c.membership().qids());
         int added = 0;
         for (String qid : qids) {
             if (qid != null && WikidataIds.isQid(qid) && !targets.contains(qid)) {
@@ -2553,12 +2566,16 @@ public class ModelBuilderFrame extends JFrame {
                 added++;
             }
         }
+        String pid = c.membership().relationPid();
+        pid = pid.isBlank() ? "P31" : pid;
+        c.membership(EntityBound.relation(
+                pid, targets, c.membership().includeDescendants()));
         sourceWorkbench.edit(c);
         modelChanged();
         logWindow.info("Added " + added + " relation target(s) to \""
                                + c.className() + "\" (total " + targets.size()
-                               + "). They join the membership relation (" + c.instanceMapping()
-                                                                             .propertyPid() + ") as additional targets.");
+                               + "). They join the membership relation (" + pid
+                               + ") as additional targets.");
     }
 
     // The class the toolbar actions operate on: the one selected in the class

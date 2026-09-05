@@ -577,14 +577,16 @@ public final class GeneratedProjectModelValidator {
     }
 
 
-    // A source-class-less reify must bound the subjects it discovers: a P31
-    // value-type filter, or a referenced VOCABULARY Selection supplying the values.
+    // A source-class-less reify must bound the objects it discovers from. That is the
+    // object END's question, and the object end has a bound: this asked the statement
+    // CLASS's sourceQid, which was where the filter lived before the end had one, and
+    // which nothing writes now — so a class bounded by explicit QIDs or by a relation
+    // was reported as unbounded, and only the vocabulary case still answered.
     private static boolean hasBoundedValueDomain(
             GeneratedProjectModel project,
             GeneratedClassModel clazz,
             StatementClassSource source) {
-        if (clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")
-                || source.hasValueSelection()) {
+        if (source.objectBound().bounded()) {
             return true;
         }
         String valueField = StatementFieldSemantics.statementValueFieldName(clazz);
@@ -629,19 +631,10 @@ public final class GeneratedProjectModelValidator {
             // scans, so a class that is structurally sound but not independently
             // generatable is a legitimate thing for a model to declare — the domain
             // that gives it a population is where the bound has to exist.
-        // Two object bounds are not two constraints. Only one ever reached the query:
-        // an explicit set won and the type filter did nothing, without saying so. The
-        // editor writes one and clears the other, so this catches models made before
-        // that, or edited by hand.
-        if (source.hasValueSelection()
-                && clean(clazz.instanceMapping().sourceQid()).matches("(?i)Q\\d+")) {
-            problems.add(Problem.error(
-                    clazz.className(),
-                    "The objects are bounded twice — vocabulary '"
-                            + source.valueSelectionName() + "' and instances of "
-                            + clean(clazz.instanceMapping().sourceQid())
-                            + ". Only one applies; keep the one you mean."));
-        }
+        // No doubly-bounded check: the state is unrepresentable. It caught a vocabulary
+        // AND a type filter, which were two fields that looked combinable while only one
+        // reached the query. Both are the object end's ONE bound now — a bound has one
+        // kind — so nothing can be written for this to find.
 
             // EITHER end bounded is enough: each pins one side of the join, which is
             // what stops the scan (R16). This demanded the OBJECT end specifically,
