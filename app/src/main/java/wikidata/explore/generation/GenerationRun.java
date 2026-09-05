@@ -300,10 +300,49 @@ public record GenerationRun(
      * The cached inputs a domain Remap re-transforms offline: the ENRICHED pool
      * (post qualifier-load, pre-reify — a deep copy, since the transforms mutate)
      * and the companion-match sets (so `won` re-computes without re-fetching P166).
+     *
+     * <p>The enriched pool is a NORMALIZED_SOURCE_GRAPH under another name — see
+     * {@link #remapCheckpoint()}, which is where that is now said.
      */
     public record RemapState(
             List<WikidataDynamicObject> enrichedPool,
             Map<String, Set<List<String>>> companionSets) {}
+
+    /**
+     * This run's graph, said in the pipeline's words.
+     *
+     * <p>A run holds a settled graph — acquired, constructed, converged and finalized —
+     * so it is a FINAL_GRAPH checkpoint, and a Remap from it alone can only re-run the
+     * transforms that are safe on their own output.
+     *
+     * <p>Adapting rather than replacing: nothing here changes what a run is or how one
+     * is made. It says what a run already holds in the vocabulary the pipeline will use,
+     * so the flows can be described before any of them moves.
+     */
+    public GraphCheckpoint checkpoint() {
+        return GraphCheckpoint.finalGraph(dynamicObjects, loadedDeclarations,
+                datasource.graph.GraphDiscoveryState.EMPTY,
+                wikidata.explore.generation.DomainSave.signature(modelSnapshot));
+    }
+
+    /**
+     * The best checkpoint a Remap of this run can start from.
+     *
+     * <p>{@link RemapState} is a normalized graph in all but name — the pool as
+     * acquired, before construction — which is exactly why a Remap can rebuild
+     * everything while it is still in memory. After a restart there is only the final
+     * graph, and the capability drops. That difference was implicit in whether a field
+     * happened to be null; here it is the stage of the checkpoint, and the capability
+     * follows from it.
+     */
+    public GraphCheckpoint remapCheckpoint() {
+        return remapState == null || remapState.enrichedPool() == null
+                        || remapState.enrichedPool().isEmpty()
+                ? checkpoint()
+                : GraphCheckpoint.normalized(remapState.enrichedPool(),
+                        loadedDeclarations, datasource.graph.GraphDiscoveryState.EMPTY,
+                        wikidata.explore.generation.DomainSave.signature(modelSnapshot));
+    }
 
     public int size() {
         return instances == null ? 0 : instances.size();

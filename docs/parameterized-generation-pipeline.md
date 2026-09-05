@@ -404,11 +404,38 @@ external evidence.
 Result counts and input graph shape are not yet recorded; they need a representative
 run against saved domains and belong with Milestone 4's comparison.
 
-### Milestone 1 — request and checkpoint vocabulary
+### Milestone 1 — request and checkpoint vocabulary — **DONE**
 
-- Add immutable `PipelineRequest`, scope/acquisition/output types and `GraphCheckpoint`.
-- Adapt the existing `GenerationRun` and `RemapState` without changing execution.
-- Make full versus idempotent-only Remap capability explicit.
+`PipelineRequest` (with `Input`, `Acquisition`, `Output`), `PipelineScope`,
+`PipelineLimits` and `GraphCheckpoint` (with `Stage` and `RemapCapability`). Nothing
+executes yet; this is the vocabulary the flows will be described in.
+
+Decisions taken while writing it:
+
+- **A scope is one value, one way of being scoped**, following `EntityBound`. Two
+  independent fields would let a run name a class AND claim the whole domain, and
+  something would have to rank them. `CLASS_PRODUCTION_CHAIN` names its class; the
+  others may not.
+- **Unbounded means the model's own limits, not the absence of limits.** A bounded run
+  adds a bound; it never removes the ones the model already carries.
+- **Two unanswerable requests are refused where they are made**: starting from an empty
+  graph with acquisition `NONE` has no source at all, and starting from an empty graph
+  scoped to the existing population has no population. Everything else is a run that
+  does something, and what a phase can do under it is the planner's question.
+- **Remap capability is derived from the checkpoint stage**, not stored. It was implicit
+  in whether `RemapState` happened to be null: with the enriched pool in memory a Remap
+  rebuilt everything, and after a restart it quietly did less.
+  `GenerationRun.remapCheckpoint()` now says which it is —
+  `NORMALIZED_SOURCE_GRAPH` → `FULL_RECONSTRUCTION`, otherwise `IDEMPOTENT_ONLY`.
+- **`RemapState.enrichedPool` is a normalized source graph** under another name, which is
+  why full reconstruction is possible from it. Recorded on both, adapted rather than
+  replaced.
+- **A checkpoint carries the fingerprint of the model that made it**
+  (`DomainSave.signature`), and an unknown signature on either side makes no claim
+  rather than answering "yes".
+
+Not built, for want of a forcing reason: request/resource budgets, which the design
+lists among limits but nothing in the code asks for yet.
 
 ### Milestone 2 — compile once
 
