@@ -495,11 +495,34 @@ Still open in this milestone:
   locally from stored labels is unverified; the reason says what was assumed, and it
   should be checked rather than left as an assumption.
 
-### Milestone 3 — common executor and local tail
+### Milestone 3 — common executor and local tail — **IN PROGRESS**
 
-- Introduce the step/artifact contract and common executor.
-- Route finalization and materialization through it first.
-- Then route construction and semantic convergence, reusing their existing owners.
+Done: `PipelineStep`, `PipelineState`, `PipelineContext`, `PipelineExecutor`, and the
+local tail as steps — `FinalizeStep` and `MaterializeStep`. The steps reimplement
+nothing: finalization is still `DomainFinalization`, materialization still
+`GenerationPipeline.buildRuntime`/`materialize`. What is new is the contract they are
+called through.
+
+- **The order is `PipelinePhase`'s and belongs to nobody else.** Steps are registered in
+  any order and run in the vocabulary's.
+- **Three refusals, each before a step runs rather than during it**: a phase the plan did
+  not mark RUN is not run and the plan's reason is reported; a step whose required stage
+  the graph has not reached is refused; and a step that reaches the network under a run
+  forbidden to acquire is refused even if a plan wrongly said RUN. The last is a second
+  lock on the invariant the whole Remap flow rests on.
+- **A context for a forbidden run is not given a client to acquire with.** "Reaches no
+  network" becomes a property of what a step HAS, not of what it remembers not to call.
+- **A stage is reached, not set.** `PipelineState.reached` refuses to move a graph
+  backwards, so a step cannot quietly undo the stage another established.
+
+Still open in this milestone, and blocked on Milestone 2's open item:
+
+Routing a real flow's tail through the executor needs the compiled run to be the ONE
+compile. `GenerateDomainQuery` compiles the model itself and would then also compile a
+`CompiledPipelineRun` — two compiles of one model, which is the thing this design exists
+to remove. So `CompiledPipelineRun` must first become the owner of the compiled model
+that the flows read (Milestone 2's remaining half), and the tail is routed after that,
+followed by construction and the semantic worklist.
 
 ### Milestone 4 — Generate domain
 
