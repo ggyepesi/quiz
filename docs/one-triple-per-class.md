@@ -242,8 +242,28 @@ without them.
 1. `ClassHeaderEditor` — the largest gap, no open questions.
 2. ~~`ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.~~
    **Done.**
-3. `TripleEditor`, Statement first (it authors everything), then Source, then Owned
-   read-only.
+3. `TripleEditor` — **Statement done, Owned done, Source blocked on the model.**
+
+   Statement authors all three tags in one box, and the subject's population moved
+   inside it: naming the class whose members are the subjects is a way of bounding the
+   subject end, and it was the one leg with a control outside the box named after the
+   triple. Owned READS its triples in the same three words, one per production site,
+   each saying where it is authored.
+
+   Source cannot join without the model change, and a UI that translated for it would be
+   the shim directive 7 warns about. Its object end is `sourceQid` plus
+   `additionalTypeQids`: reading those as one `EntityBound` is lossless, writing one back
+   is not — splitting a bound into "the type" and "the extra types" is the
+   `instancesOf(first)` loss already made once and corrected. `sourceQid()` has 69
+   readers across 20 files in `main` and 41 test files, so this is its own piece of work,
+   not a step of a UI decomposition.
+
+   The shape it wants: a source class's membership is ONE `EntityBound` on its own
+   members — `RELATION(propertyPid, sourceQid + additionalTypeQids, includeDescendants)`.
+   That subsumes the property, the type and the extra types, and brings P279 closure,
+   which the three fields cannot express at all. `excludedTypeQids` and the subclass
+   discriminator stay separate, per §1. Direction is subsumed too: the panel already
+   hardcodes `ITEM_TO_ROOT`, so "which end the members occupy" has never been asked.
 4. `DisplayNameEditor`, in all four panels; owner-and-site becomes the owned default
    rather than an unconditional rule.
 5. Apply buttons removed.

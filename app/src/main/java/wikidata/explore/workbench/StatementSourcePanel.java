@@ -61,20 +61,14 @@ public class StatementSourcePanel extends JPanel {
 
     private final ClassHeaderEditor header =
             new ClassHeaderEditor(() -> projectModel);
-    private final JComboBox<String> reifyFromBox = new JComboBox<>();
-    // Blank, not "P1411". That is the Oscars nomination property, and it was the
-    // initial value, the fallback for a blank source, and what clear() restored — so
-    // every domain's new statement class started life claiming to be about Oscars.
-    private final JTextField statementPropField = new JTextField(6);
+    // Subject, property and object in one component, because that is one construct.
+    // The subject's POPULATION was the one leg with a control outside the box the box
+    // was named after: naming the class whose members are the subjects is a way of
+    // bounding the subject end, not a separate question asked beside it.
+    private final TripleEditor triple =
+            new TripleEditor("Statement triple — subject · property · object");
     private static final String NO_VALUE_DOMAIN = "(none)";
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
-    // One editor, twice. The two ends ask the same question, so writing the controls
-    // twice was writing one control twice — and they had already drifted: only the
-    // object could be bounded by a vocabulary, only the subject by explicit QIDs.
-    private final EntityEndEditor subjectEnd = new EntityEndEditor("Subject",
-            "Bounding the subject restricts WHOSE statements are collected.");
-    private final EntityEndEditor objectEnd = new EntityEndEditor("Object",
-            "Bounding the object restricts WHICH statements are collected.");
     // One control per end, so the alternatives cannot be configured together. They used
     // to be separate rows that looked combinable while the loader silently kept one.
     private final JTextField valueTypeField = new JTextField(10);
@@ -147,17 +141,8 @@ public class StatementSourcePanel extends JPanel {
                 "Statement class: " + clazz.className());
         header.show(clazz);
 
-        refreshSourceClassChoices();
-
         StatementClassSource source =
                 clazz.statementSource();
-
-        reifyFromBox.setSelectedItem(
-                source == null
-                        ? ""
-                        : source.sourceClassName());
-
-        statementPropField.setText(source == null ? "" : source.propertyPid());
 
         refreshValueDomainChoices(source == null ? "" : source.valueSelectionName());
 
@@ -196,11 +181,11 @@ public class StatementSourcePanel extends JPanel {
         // The validator's own predicate, not a second reading of the same idea.
         boolean projectionRequired =
                 projectModel != null && projectModel.acquiresInstances();
-        subjectEnd.destination(subject.fieldName(),
+        triple.subjectDestination(subject.fieldName(),
                 targetClassOf(subject.fieldName()), valueKindOf(subject.fieldName()),
                 subject.route().phrase(), projectionRequired);
         String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
-        objectEnd.destination(objectField, targetClassOf(objectField),
+        triple.objectDestination(objectField, targetClassOf(objectField),
                 valueKindOf(objectField), "the value the statement points at",
                 projectionRequired);
 
@@ -209,12 +194,14 @@ public class StatementSourcePanel extends JPanel {
                         .filter(selection -> selection instanceof wikidata.explore.model.VocabularySelection)
                         .map(wikidata.explore.model.Selection::name)
                         .toList();
-        subjectEnd.vocabularies(() -> vocabularies);
-        objectEnd.vocabularies(() -> vocabularies);
+        triple.vocabularies(vocabularies);
 
         StatementClassSource source = clazz == null ? null : clazz.statementSource();
-        subjectEnd.show(source == null ? null : source.subjectBound());
-        objectEnd.show(source == null ? null : source.objectBound());
+        triple.subjectPopulation(subjectPopulationCandidates(),
+                source == null ? "" : source.sourceClassName());
+        triple.show(source == null ? "" : source.propertyPid(),
+                source == null ? null : source.subjectBound(),
+                source == null ? null : source.objectBound());
     }
 
     /** The placeholder class a leg's field is typed as, or blank when it names none. */
@@ -249,11 +236,8 @@ public class StatementSourcePanel extends JPanel {
 
         header.applyEdits();
 
-        String sourceClass =
-                selectedText(reifyFromBox);
-        String statementPid =
-                RuleNode.cleanPid(
-                        statementPropField.getText());
+        String sourceClass = triple.subjectPopulation();
+        String statementPid = triple.propertyPid();
 
         boolean wasStatementClass = clazz.reifiesStatements();
 
@@ -277,8 +261,8 @@ public class StatementSourcePanel extends JPanel {
             next.propertyPid(statementPid);
             // Each end reports ONE value, from the same editor. There is no state in
             // which two bounds compete, so nothing here has to clear the loser.
-            next.subjectBound(subjectEnd.bound());
-            next.objectBound(objectEnd.bound());
+            next.subjectBound(triple.subjectBound());
+            next.objectBound(triple.objectBound());
 
             next.graphExpansionPolicy((GraphExpansionPolicy)
                     graphExpansionBox.getSelectedItem());
@@ -296,27 +280,15 @@ public class StatementSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
-    private void refreshSourceClassChoices() {
-        String selected =
-                selectedText(reifyFromBox);
-
-        reifyFromBox.removeAllItems();
-        reifyFromBox.addItem("");
-
+    /** The classes whose members could be this triple's subjects — never this one. */
+    private java.util.List<String> subjectPopulationCandidates() {
+        java.util.List<String> names = new java.util.ArrayList<>();
         for (String name : sourceClassCandidates.get()) {
-            if (name == null
-                    || name.isBlank()
-                    || clazz != null
-                    && name.equals(clazz.className())) {
-                continue;
-            }
-
-            reifyFromBox.addItem(name);
+            if (name == null || name.isBlank()) continue;
+            if (clazz != null && name.equals(clazz.className())) continue;
+            names.add(name);
         }
-
-        if (!selected.isBlank()) {
-            reifyFromBox.setSelectedItem(selected);
-        }
+        return names;
     }
 
     private void refreshValueDomainChoices(String selected) {
@@ -606,8 +578,7 @@ public class StatementSourcePanel extends JPanel {
     private void clear() {
         titleLabel.setText("Statement class");
         header.show(null);
-        reifyFromBox.removeAllItems();
-        statementPropField.setText("");
+        triple.clear();
         valueTypeField.setText("");
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
         graphPatternValue.setText(" ");
@@ -643,36 +614,7 @@ public class StatementSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(form, row++, header);
 
-        JPanel triple = new JPanel(new GridBagLayout());
-        triple.setBorder(BorderFactory.createTitledBorder(
-                "Statement triple — subject · property · object"));
-        GridBagConstraints tc = new GridBagConstraints();
-        tc.insets = new Insets(3, 4, 3, 4);
-        GridBagConstraints wide = (GridBagConstraints) tc.clone();
-        wide.gridx = 0;
-        wide.gridwidth = 2;
-        wide.fill = GridBagConstraints.HORIZONTAL;
-        wide.weightx = 1;
-        wide.gridy = 0;
-        triple.add(subjectEnd, wide);
-        GridBagUtils.labeledRow(triple, tc, 1, "Property:", statementPropField);
-        GridBagConstraints objectCell = (GridBagConstraints) wide.clone();
-        objectCell.gridy = 2;
-        triple.add(objectEnd, objectCell);
         GridBagUtils.wideRow(form, row++, triple);
-
-        reifyFromBox.setToolTipText(
-                "Optional: the already-extracted class whose statements are read, "
-                        + "outgoing from its members. Leave blank to discover subjects "
-                        + "incoming from the property instead — which then requires the "
-                        + "objects to be bounded, since they become the starting set.");
-        GridBagUtils.labeledRow(form, row++,
-            "Subject population:",
-            reifyFromBox);
-
-
-
-
 
 
 

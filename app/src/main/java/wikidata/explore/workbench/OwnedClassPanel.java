@@ -22,7 +22,11 @@ final class OwnedClassPanel extends JPanel {
     // owner and the site that produced it is what LABEL resolves to here, which is the
     // default rather than a rule that outranks the model.
     private final DisplayNameEditor displayName = new DisplayNameEditor();
-    private final JLabel sites = new JLabel(" ");
+    // The same three words every other kind uses. An owned class describes a triple
+    // like the others; what differs is that two of its tags are settled by which field,
+    // on which class, declares the ownership — so they are read here, not asked.
+    private final TripleEditor triple =
+            new TripleEditor("Triple — subject · property · object");
     private final JButton apply = new JButton("Apply owned class");
     private GeneratedClassModel clazz;
     private Consumer<Void> afterChange = ignored -> {};
@@ -58,11 +62,9 @@ final class OwnedClassPanel extends JPanel {
 
 
     private void refreshSites() {
-        String shown = MembershipPattern.ownedBy(clazz, project).stream()
-                .map(site -> site.ownerClass() + "." + site.fieldName())
-                .reduce((left, right) -> left + ", " + right)
-                .orElse("none yet");
-        sites.setText("Producing fields: " + shown);
+        triple.producedAt(MembershipPattern.ownedBy(clazz, project).stream()
+                .map(site -> new TripleEditor.Site(site.ownerClass(), site.fieldName()))
+                .toList());
     }
 
     private void buildUi() {
@@ -77,10 +79,7 @@ final class OwnedClassPanel extends JPanel {
                 "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
         GridBagUtils.wideRow(form, row++, header);
         GridBagUtils.wideRow(form, row++, displayName);
-        GridBagUtils.wideRow(form, row++, sites);
-        GridBagUtils.wideRow(form, row++, new JLabel(
-                "<html>The owner is not configured here. Add an ENTITY field to the "
-                        + "owner class and select this class as its target.</html>"));
+        GridBagUtils.wideRow(form, row++, triple);
         GridBagUtils.wideRow(form, row, apply);
         apply.addActionListener(event -> applyEdits());
         add(form, BorderLayout.NORTH);
