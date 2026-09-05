@@ -86,25 +86,34 @@ public final class SemanticConvergence {
         }
 
         for (iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-            long fetchedBefore = api.facts().fetchedDocuments();
-            long hitsBefore = api.facts().cacheHits();
+            long fetchedBefore = api == null ? 0 : api.facts().fetchedDocuments();
+            long hitsBefore = api == null ? 0 : api.facts().cacheHits();
             int stamped = ReferentClassStamp.apply(model, pool);
-            ReferentFieldLoad.RetentionPlan retention =
-                    ReferentFieldLoad.planRetention(
-                            pool, api, acquisition, completed.values());
-            sink.message("Semantic retention preflight iteration " + iteration + ": "
-                    + retention.factPairs() + " planned QID/property pair(s) across "
-                    + retention.entities() + " class member(s) in "
-                    + retention.classes() + " class(es), registered before acquisition; "
-                    + retention.coveredPairs() + " pair(s) already loaded and not "
-                    + "planned again.\n");
-            ReferentFieldLoad.Result fields = ReferentFieldLoad.load(
-                    model, pool, api, sink, completed.values(), true, acquisition,
-                    sourcePlan == null ? model.classes().stream()
-                            .filter(java.util.Objects::nonNull)
-                            .map(c -> c.className())
-                            .collect(java.util.stream.Collectors.toSet())
-                            : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan));
+            // Without a client the worklist runs its LOCAL subset: stamping roles,
+            // classifying kinds from stored evidence, composing owned parts. Those need
+            // nothing fetched, and a run forbidden to acquire is not a run forbidden to
+            // think. Permission belongs to the acquisition, not to the phase — which is
+            // why a Remap can converge instead of reaching past the worklist for
+            // OwnedComponents alone and skipping the two steps composition depends on.
+            ReferentFieldLoad.Result fields = new ReferentFieldLoad.Result(0, List.of());
+            if (api != null) {
+                ReferentFieldLoad.RetentionPlan retention =
+                        ReferentFieldLoad.planRetention(
+                                pool, api, acquisition, completed.values());
+                sink.message("Semantic retention preflight iteration " + iteration + ": "
+                        + retention.factPairs() + " planned QID/property pair(s) across "
+                        + retention.entities() + " class member(s) in "
+                        + retention.classes() + " class(es), registered before acquisition; "
+                        + retention.coveredPairs() + " pair(s) already loaded and not "
+                        + "planned again.\n");
+                fields = ReferentFieldLoad.load(
+                        model, pool, api, sink, completed.values(), true, acquisition,
+                        sourcePlan == null ? model.classes().stream()
+                                .filter(java.util.Objects::nonNull)
+                                .map(c -> c.className())
+                                .collect(java.util.stream.Collectors.toSet())
+                                : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan));
+            }
             loaded += fields.loaded();
             fields.completed().forEach(done -> {
                 completed.put(done.key(), done);
@@ -124,9 +133,13 @@ public final class SemanticConvergence {
 
             SnapshotEntityKindClassifier.Result stored =
                     SnapshotEntityKindClassifier.apply(model, pool, pool, sink);
-            ReferentKindClassifier.Result remote = ReferentKindClassifier.apply(
-                    model, pool, api, sink, stored.withoutStoredEvidenceQids(),
-                    nameMetadata(sourcePlan));
+            // Stored evidence is read locally above; only the entities that HAD none
+            // need asking about, and that is the part a forbidden run does without.
+            ReferentKindClassifier.Result remote = api == null
+                    ? new ReferentKindClassifier.Result(0, 0, 0)
+                    : ReferentKindClassifier.apply(
+                            model, pool, api, sink, stored.withoutStoredEvidenceQids(),
+                            nameMetadata(sourcePlan));
             classified += stored.classified() + remote.classified();
             kindsClassified.addAll(stored.newlyClassified());
             Set<String> currentUnavailable = new LinkedHashSet<>(remote.unavailableQids());
@@ -152,11 +165,13 @@ public final class SemanticConvergence {
                     + stamped + " role stamp(s), " + fields.loaded() + " field value(s), "
                     + (stored.classified() + remote.classified()) + " kind(s), "
                     + made.created() + " owned value(s).\n");
-            sink.message("Semantic fact reuse iteration " + iteration + ": "
-                    + (api.facts().fetchedDocuments() - fetchedBefore)
-                    + " document(s) fetched, "
-                    + (api.facts().cacheHits() - hitsBefore)
-                    + " fetch(es) avoided.\n");
+            if (api != null) {
+                sink.message("Semantic fact reuse iteration " + iteration + ": "
+                        + (api.facts().fetchedDocuments() - fetchedBefore)
+                        + " document(s) fetched, "
+                        + (api.facts().cacheHits() - hitsBefore)
+                        + " fetch(es) avoided.\n");
+            }
             boolean productive = stamped != 0 || fields.loaded() != 0
                     || stored.classified() + remote.classified() != 0
                     || made.created() != 0 || componentStamps != 0;

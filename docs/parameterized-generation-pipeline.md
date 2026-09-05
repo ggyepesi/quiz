@@ -151,6 +151,7 @@ not say what it contains. The pipeline needs a typed checkpoint:
 GraphCheckpoint
   stage
   objects
+  constructed records (an identity selection from objects)
   loaded declarations
   retained source evidence (on the normalized objects and loaded declarations)
   graph-discovery ledger
@@ -542,6 +543,9 @@ called through.
   network" becomes a property of what a step HAS, not of what it remembers not to call.
 - **A stage is reached, not set.** `PipelineState.reached` refuses to move a graph
   backwards, so a step cannot quietly undo the stage another established.
+- **Cancellation does not return an incomplete success.** The executor throws before
+  the next step runs. A caller therefore cannot continue and dereference finalization or
+  materialization artifacts which cancellation deliberately prevented.
 
 **Generate domain's tail is routed.** `DomainFinalization` and materialization are
 reached through `FinalizeStep` and `MaterializeStep`, over one `PipelineState`.
@@ -556,18 +560,35 @@ Two decisions worth recording:
 - **The state shares the flow's pool rather than copying it**, via `PipelineState.over`.
   Finalization prunes — dead stubs, orphans, records missing a required field — and a copy
   would prune the copy while the flow kept holding what was removed. A state built
-  `from` a checkpoint still copies, because a checkpoint records what was and a run does
-  not edit its own history.
+  `from` a checkpoint makes one graph-preserving deep copy, because a checkpoint records
+  what was and a run does not edit its own history. Its constructed-record selection is
+  copied with the graph so every selected record remains the same object as its pool
+  member after resume.
 
 The characterization recognised the change: with the tail behind the executor,
 `GenerateDomainQuery` no longer contains `DomainFinalization.apply` or `buildRuntime`. A
 routed phase is now recognised by the step it registers — the record migrating, one phase
 at a time, towards the decisions themselves.
 
-Still open: construction and the semantic worklist, whose steps need the finer network
-rule — the worklist has a local subset that must run under acquisition `NONE` and an
-acquiring subset that must not, so a step is not simply network-or-not. Remap's and
-Enrich's tails are not routed either.
+**Network permission is per operation, not per phase.** `PipelineStep.networkUse()`
+replaces the boolean with `NONE` / `OPTIONAL` / `REQUIRED`, and the executor refuses only
+`REQUIRED` under acquisition `NONE`.
+
+- `SemanticConvergence` now runs its LOCAL subset when it has no client — stamping roles,
+  classifying kinds from stored evidence, composing owned parts. A run forbidden to
+  acquire is not a run forbidden to think, and this is what lets a Remap converge instead
+  of reaching past the worklist for `OwnedComponents` alone and skipping the two steps
+  composition depends on. That removes the shortcut Milestone 0 recorded as a
+  discrepancy, in principle; routing Remap onto the step is what makes it true in fact.
+- The subset is chosen by what the context HAS, not by what a step remembers not to call:
+  a forbidden run carries no client, so the acquiring half is unreachable.
+- `ConstructRecordsStep` is `OPTIONAL` for the same reason — only companion matching can
+  acquire, and the sets are already a supplier parameter of `StatementTransforms.apply`,
+  so a run that may not acquire replays the ones it cached. That is what makes a Remap
+  from a normalized graph a full reconstruction rather than a partial one.
+
+Still open: routing Generate's construction and worklist onto these steps, and Remap's
+and Enrich's tails.
 
 ### Milestone 4 — Generate domain
 

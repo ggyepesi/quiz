@@ -2,6 +2,7 @@ package wikidata.explore.generation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 /**
  * Runs the steps a compiled run says to run, in phase order, and refuses the rest.
@@ -54,17 +55,22 @@ public final class PipelineExecutor {
                 lines.add(phase.label() + ": " + decision);
                 continue;
             }
-            if (step.network() && !context.run().request().mayAcquire()) {
+            if (step.networkUse() == PipelineStep.NetworkUse.REQUIRED
+                    && !context.run().request().mayAcquire()) {
                 throw new IllegalStateException(phase.label()
-                        + " reaches the network, and this run may not acquire");
+                        + " cannot run without acquiring, and this run may not");
             }
             if (state.stage().ordinal() < step.requires().ordinal()) {
                 throw new IllegalStateException(phase.label() + " needs a "
                         + step.requires() + " and the graph is a " + state.stage());
             }
             if (context.cancelled()) {
-                lines.add(phase.label() + ": cancelled before it ran");
-                break;
+                // A caller cannot safely continue with the state as if the step ran:
+                // finalization/runtime artifacts are deliberately still absent. A
+                // returned informational line was too easy to ignore and turned clean
+                // cancellation into a null dereference in the legacy caller.
+                throw new CancellationException(
+                        phase.label() + " cancelled before it ran");
             }
             String said = step.execute(context, state);
             state.reached(step.produces());

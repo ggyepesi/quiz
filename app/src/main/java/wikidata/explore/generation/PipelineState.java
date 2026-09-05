@@ -4,6 +4,7 @@ import objectview.Viewable;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.extract.LoadedDeclaration;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.transform.PoolCopy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +59,18 @@ public final class PipelineState {
 
     /** The state a run starts in, from the graph it was given. */
     public static PipelineState from(GraphCheckpoint checkpoint) {
-        PipelineState state = new PipelineState(checkpoint.stage(), checkpoint.objects());
+        if (checkpoint == null) throw new IllegalArgumentException("No checkpoint");
+        // One graph-preserving copy for pool and record selection together. Copying the
+        // two lists separately would make a record a different object from that same
+        // record in the pool; copying only the list would still mutate checkpoint
+        // objects in place.
+        List<WikidataDynamicObject> combined = new ArrayList<>(checkpoint.objects());
+        combined.addAll(checkpoint.records());
+        List<WikidataDynamicObject> copied = PoolCopy.deepCopy(combined);
+        int poolSize = checkpoint.objects().size();
+        PipelineState state = new PipelineState(checkpoint.stage(),
+                new ArrayList<>(copied.subList(0, poolSize)), true);
+        state.records.addAll(copied.subList(poolSize, copied.size()));
         state.loadedDeclarations.addAll(checkpoint.loadedDeclarations());
         return state;
     }

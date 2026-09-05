@@ -67,15 +67,50 @@ class RoutedTailKeepsItsOrderTest {
 
     /** A state built from a checkpoint copies, because a checkpoint is a record. */
     @Test void aStateFromACheckpointDoesNotWriteBackIntoIt() {
+        WikidataDynamicObject original = star("Q1");
         GraphCheckpoint checkpoint = new GraphCheckpoint(
-                GraphCheckpoint.Stage.FINAL_GRAPH, List.of(star("Q1")), List.of(),
+                GraphCheckpoint.Stage.FINAL_GRAPH, List.of(original), List.of(), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
 
-        PipelineState.from(checkpoint).pool().add(star("Q2"));
+        PipelineState state = PipelineState.from(checkpoint);
+        state.pool().get(0).put("changed", "inside the run");
+        state.pool().add(star("Q2"));
 
         assertEquals(1, checkpoint.objects().size(),
                 "a checkpoint records what was; a run does not edit its own history");
+        assertNull(original.get("changed"),
+                "checkpoint objects, not only their containing list, are immutable history");
+    }
+
+    /** The record selection survives resume and still points into the copied pool. */
+    @Test void aConstructedCheckpointCarriesItsRecordsByIdentity() {
+        WikidataDynamicObject original = star("Q1");
+        GraphCheckpoint checkpoint = GraphCheckpoint.constructed(
+                List.of(original), List.of(original), List.of(),
+                datasource.graph.GraphDiscoveryState.EMPTY,
+                GenerationRun.Quality.completeQuality(), "sig");
+
+        PipelineState state = PipelineState.from(checkpoint);
+
+        assertNotSame(original, state.pool().get(0));
+        assertSame(state.pool().get(0), state.records().get(0),
+                "the record is a selection from the graph, not a second graph copy");
+    }
+
+    /** A checkpoint cannot claim records its graph could not possibly contain. */
+    @Test void checkpointRecordSelectionMustBelongToAConstructedGraph() {
+        WikidataDynamicObject pooled = star("Q1");
+        WikidataDynamicObject foreign = star("Q2");
+
+        assertThrows(IllegalArgumentException.class, () -> new GraphCheckpoint(
+                GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, List.of(pooled), List.of(foreign),
+                List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
+                GenerationRun.Quality.completeQuality(), "sig"));
+        assertThrows(IllegalArgumentException.class, () -> new GraphCheckpoint(
+                GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH, List.of(pooled),
+                List.of(pooled), List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
+                GenerationRun.Quality.completeQuality(), "sig"));
     }
 
     /** Once finalize has run, materialize is allowed — the same state carries the stage. */
@@ -83,10 +118,12 @@ class RoutedTailKeepsItsOrderTest {
         PipelineState state = PipelineState.over(
                 GraphCheckpoint.Stage.CONSTRUCTED_GRAPH,
                 new ArrayList<>(List.of(star("Q1"))));
-        state.reached(GraphCheckpoint.Stage.FINAL_GRAPH);
+
+        new PipelineExecutor().with(new FinalizeStep()).run(context(), state);
 
         new PipelineExecutor().with(new MaterializeStep()).run(context(), state);
 
+        assertNotNull(state.finalization(), "the real finalization step ran");
         assertNotNull(state.runtime());
     }
 }

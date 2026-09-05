@@ -4,7 +4,10 @@ import datasource.graph.GraphDiscoveryState;
 import wikidata.explore.extract.LoadedDeclaration;
 import wikidata.explore.extract.WikidataDynamicObject;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A graph, and what has already happened to it.
@@ -16,14 +19,16 @@ import java.util.List;
  * Neither mistake is visible in the list. The stage is what makes it visible.
  *
  * <p>What the checkpoint carries beyond the objects is what a later phase would
- * otherwise have to guess: which declarations have been fetched (so acquisition asks
- * only for what is new), what the graph-discovery ledger covers, the run's final-state
- * quality, and the fingerprint of the model that produced it (so a checkpoint is not
- * silently reused under an edited model).
+ * otherwise have to guess: which constructed objects are the modeled records, which
+ * declarations have been fetched (so acquisition asks only for what is new), what the
+ * graph-discovery ledger covers, the run's final-state quality, and the fingerprint of
+ * the model that produced it (so a checkpoint is not silently reused under an edited
+ * model).
  */
 public record GraphCheckpoint(
         Stage stage,
         List<WikidataDynamicObject> objects,
+        List<WikidataDynamicObject> records,
         List<LoadedDeclaration> loadedDeclarations,
         GraphDiscoveryState graphDiscovery,
         GenerationRun.Quality quality,
@@ -66,6 +71,18 @@ public record GraphCheckpoint(
     public GraphCheckpoint {
         if (stage == null) throw new IllegalArgumentException("A checkpoint needs a stage");
         objects = objects == null ? List.of() : List.copyOf(objects);
+        records = records == null ? List.of() : List.copyOf(records);
+        if (stage == Stage.NORMALIZED_SOURCE_GRAPH && !records.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "A normalized checkpoint cannot already contain constructed records");
+        }
+        Set<WikidataDynamicObject> pooled =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+        pooled.addAll(objects);
+        if (!pooled.containsAll(records)) {
+            throw new IllegalArgumentException(
+                    "Every constructed record must belong to the checkpoint graph");
+        }
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
         if (graphDiscovery == null) {
@@ -82,7 +99,16 @@ public record GraphCheckpoint(
     public static GraphCheckpoint normalized(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
             GenerationRun.Quality quality, String modelSignature) {
-        return new GraphCheckpoint(Stage.NORMALIZED_SOURCE_GRAPH, objects, loaded,
+        return new GraphCheckpoint(Stage.NORMALIZED_SOURCE_GRAPH, objects, List.of(), loaded,
+                discovery, quality, modelSignature);
+    }
+
+    /** A graph whose modeled records exist but whose semantic work is not settled. */
+    public static GraphCheckpoint constructed(List<WikidataDynamicObject> objects,
+            List<WikidataDynamicObject> records, List<LoadedDeclaration> loaded,
+            GraphDiscoveryState discovery, GenerationRun.Quality quality,
+            String modelSignature) {
+        return new GraphCheckpoint(Stage.CONSTRUCTED_GRAPH, objects, records, loaded,
                 discovery, quality, modelSignature);
     }
 
@@ -90,7 +116,7 @@ public record GraphCheckpoint(
     public static GraphCheckpoint finalGraph(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
             GenerationRun.Quality quality, String modelSignature) {
-        return new GraphCheckpoint(Stage.FINAL_GRAPH, objects, loaded, discovery,
+        return new GraphCheckpoint(Stage.FINAL_GRAPH, objects, List.of(), loaded, discovery,
                 quality, modelSignature);
     }
 

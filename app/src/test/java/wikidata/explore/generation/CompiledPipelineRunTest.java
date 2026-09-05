@@ -22,7 +22,7 @@ class CompiledPipelineRunTest {
     private final GeneratedProjectModel model = GeneratedProjectModel.constellationDemo();
 
     private static GraphCheckpoint at(GraphCheckpoint.Stage stage) {
-        return new GraphCheckpoint(stage, List.of(), List.of(),
+        return new GraphCheckpoint(stage, List.of(), List.of(), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
     }

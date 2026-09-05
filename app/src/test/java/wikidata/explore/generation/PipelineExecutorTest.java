@@ -6,6 +6,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,9 +52,30 @@ class PipelineExecutorTest {
     }
 
     private static GraphCheckpoint checkpoint(GraphCheckpoint.Stage stage) {
-        return new GraphCheckpoint(stage, List.of(), List.of(),
+        return new GraphCheckpoint(stage, List.of(), List.of(), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
+    }
+
+    /** Cancellation is an outcome, not a successful return carrying half a run. */
+    @Test void cancellationCannotBeMistakenForACompletedPipeline() {
+        List<String> ran = new ArrayList<>();
+        work.CancellationToken cancellation = new work.CancellationToken();
+        cancellation.cancel();
+        PipelineState state = PipelineState.from(
+                checkpoint(GraphCheckpoint.Stage.CONSTRUCTED_GRAPH));
+
+        assertThrows(CancellationException.class,
+                () -> new PipelineExecutor()
+                        .with(new Recording(PipelinePhase.FINALIZE,
+                                GraphCheckpoint.Stage.CONSTRUCTED_GRAPH,
+                                GraphCheckpoint.Stage.FINAL_GRAPH, ran))
+                        .run(new PipelineContext(
+                                CompiledPipelineRun.compile(PipelineRequest.generateDomain(model)),
+                                null, null, cancellation), state));
+
+        assertTrue(ran.isEmpty(), "cancelled before the step ran");
+        assertNull(state.finalization(), "a caller cannot observe fake finalization");
     }
 
     /** Phases run in the vocabulary's order, whichever order they were registered in. */
