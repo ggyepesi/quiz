@@ -73,9 +73,6 @@ final class AggregateClassPanel extends JPanel {
         GridBagUtils.wideRow(form, 6, displayNameEditor);
         GridBagUtils.wideRow(form, 7, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
-        JButton apply = new JButton("Apply aggregate class");
-        apply.addActionListener(e -> applyEdits());
-        GridBagUtils.wideRow(form, 8, apply);
         add(new JScrollPane(form), BorderLayout.CENTER);
         sourceClass.addActionListener(e -> {
             if (!refreshing) refreshChoices(null);

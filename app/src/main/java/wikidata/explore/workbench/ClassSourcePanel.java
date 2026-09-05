@@ -125,8 +125,6 @@ public class ClassSourcePanel extends JPanel {
     // could not keep an order — both of which identity depends on.
     private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
 
-    private final JButton applyButton =
-            new JButton("Apply class source");
 
     private final JLabel summaryLabel =
             new JLabel(" ");
@@ -438,13 +436,8 @@ public class ClassSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(form, y++, summaryLabel);
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        buttons.add(applyButton);
-        GridBagUtils.wideRow(form, y++, buttons);
-
         add(scroll, BorderLayout.CENTER);
 
-        applyButton.addActionListener(e -> apply());
         searchTextField.addActionListener(e -> searchTypeButton.doClick());
         useSelectedButton.addActionListener(e -> useSelectedSearchRow());
 

@@ -27,7 +27,6 @@ final class OwnedClassPanel extends JPanel {
     // on which class, declares the ownership — so they are read here, not asked.
     private final TripleEditor triple =
             new TripleEditor("Triple — subject · property · object");
-    private final JButton apply = new JButton("Apply owned class");
     private GeneratedClassModel clazz;
     private Consumer<Void> afterChange = ignored -> {};
 
@@ -79,9 +78,7 @@ final class OwnedClassPanel extends JPanel {
                 "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
         GridBagUtils.wideRow(form, row++, header);
         GridBagUtils.wideRow(form, row++, displayName);
-        GridBagUtils.wideRow(form, row++, triple);
-        GridBagUtils.wideRow(form, row, apply);
-        apply.addActionListener(event -> applyEdits());
+        GridBagUtils.wideRow(form, row, triple);
         add(form, BorderLayout.NORTH);
     }
 }

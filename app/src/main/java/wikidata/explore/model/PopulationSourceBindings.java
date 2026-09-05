@@ -91,6 +91,21 @@ final class PopulationSourceBindings {
         String pid = clean(membership.relationPid()).toUpperCase();
         List<String> targets = new ArrayList<>();
         membership.qids().forEach(value -> addQid(targets, value));
+        List<String> seeds = clazz.seedQids().stream().map(PopulationSourceBindings::clean)
+                .map(String::toUpperCase).filter(WikidataIds::isQid).distinct().toList();
+
+        // A bound AND seeds is an INTERSECTION — the seeds restrict the membership
+        // ("the twelve Olympians, and only those that are gods"), which the rule tree
+        // emits as the membership triple plus VALUES ?value. No catalogue operation can
+        // say that: each maps to ONE PopulationRequest, RELATION or EXPLICIT. This used
+        // to answer with the membership alone, silently dropping the restriction, and
+        // assigning that answer back deleted the seeds. Naming a parameter for it would
+        // only move the drop into the provider, which ignores what it does not read, so
+        // this class has no catalogue binding until one can express the intersection.
+        if (!targets.isEmpty() && !seeds.isEmpty()) {
+            return null;
+        }
+
         if (WikidataIds.isPid(pid) && !targets.isEmpty()) {
             LinkedHashMap<String, String> parameters = new LinkedHashMap<>();
             parameters.put("property", pid);
@@ -100,8 +115,6 @@ final class PopulationSourceBindings {
             return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.STATEMENT_MEMBERSHIP, parameters);
         }
-        List<String> seeds = clazz.seedQids().stream().map(PopulationSourceBindings::clean)
-                .map(String::toUpperCase).filter(WikidataIds::isQid).distinct().toList();
         if (!seeds.isEmpty()) {
             return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.SEED_LIST,

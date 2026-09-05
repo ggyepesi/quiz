@@ -272,10 +272,20 @@ without them.
    re-deriving it, which is what makes the two compiler paths agree by construction —
    the parity test used to pass because both made the same split.
 
-   Two things it did NOT do, and step 3 is therefore NOT finished for Source.
-   `seedQids` is the same construct in `EXPLICIT` shape and is still a second authored
-   place, with silent precedence between them in `PopulationSourceBindings` (a relation
-   wins, a seed list is only consulted when there is none) — 37 sites, its own step.
+   **`seedQids` is NOT the same construct, and this note said it was.** Seeds COMBINE
+   with the bound: with none they are the members, and with one they RESTRICT it — the
+   rule tree emits the membership triple plus `VALUES ?value`, and the editor offers the
+   combination ("the twelve Olympians; or set a type too, to restrict it"). Folding them
+   into `EntityBound.EXPLICIT` would have deleted an intersection nothing else can
+   express, which is why the fold is not being done.
+
+   What was wrong is the catalogue projection. No operation there can say "these,
+   restricted to those" — each maps to ONE `PopulationRequest` — and
+   `PopulationSourceBindings.fromLegacy` answered with the membership alone, dropping
+   the restriction without a word; assigning that answer back deleted the seeds. It now
+   declines to describe a population it cannot express, rather than describing half of
+   one. Naming a parameter for the intersection would only move the drop into the
+   provider, which ignores what it does not read.
 
    The source editor's three controls are now the triple's three rows. Two things went
    with them: the row label that read "Wikidata type/class" or "Relation target (Pnnn)"
@@ -289,7 +299,12 @@ without them.
    The validator refuses a model that asks for one until that query is wired.
 4. ~~`DisplayNameEditor`, in all four panels~~ **Done**; owner-and-site is the owned
    default rather than an unconditional rule.
-5. Apply buttons removed.
+5. ~~Apply buttons removed.~~ **Done.** Three buttons with three names, one of them
+   mid-panel above rows it did not cover; the statement editor had none and worked. A
+   guard test fails on any kind editor that grows one back, and a second asserts what
+   they were standing in for: an edit made and left unpressed still reaches the model,
+   because the workbench flushes the editor that owns the class when the selection
+   moves.
 
 Each step keeps the suite green and changes no saved data. Step 3 changes what a Source
 class can express — `EntityBound` replaces its positive target fields while exclusions
