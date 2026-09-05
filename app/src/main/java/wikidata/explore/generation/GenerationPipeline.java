@@ -399,7 +399,8 @@ public class GenerationPipeline {
         GenerationRun.RemapState rs = previous.remapState();
         RemapScope scope = RemapScope.of(previous);
         if (scope.retransform()) {
-            return retransform(previous, snapshot, compiled, plan, runtime, rs, log, steps);
+            return retransform(previous, run, snapshot, plan, runtime, rs, log,
+                    steps);
         }
 
         // No cached enriched pool (e.g. a snapshot loaded after an app restart, or a
@@ -471,7 +472,9 @@ public class GenerationPipeline {
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
                 pool, tailState.runtime(), instances, rs,
-                previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
+                previous.loadedDeclarations(),
+                remapQuality(previous.quality(), converged.unresolvedKindQids()),
+                finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.notRun(),
                 GenerationRun.OwnedCompositionAudit.ran(converged.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(converged.newlyClassifiedKinds()),
@@ -715,6 +718,27 @@ public class GenerationPipeline {
         return GenerationRun.Quality.partial(List.copyOf(warnings), List.copyOf(qids));
     }
 
+    /** Final-state quality for a local run which deliberately made no remote attempt. */
+    static GenerationRun.Quality remapQuality(
+            GenerationRun.Quality prior, java.util.Collection<String> unresolvedKinds) {
+        java.util.LinkedHashSet<String> unresolved = new java.util.LinkedHashSet<>();
+        if (unresolvedKinds != null) unresolved.addAll(unresolvedKinds);
+        if (unresolved.isEmpty()) {
+            return prior == null ? GenerationRun.Quality.completeQuality() : prior;
+        }
+        java.util.LinkedHashSet<String> warnings = new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<String> qids = new java.util.LinkedHashSet<>();
+        if (prior != null) {
+            warnings.addAll(prior.warnings());
+            qids.addAll(prior.unavailableQids());
+        }
+        warnings.add("Local reconstruction lacks retained entity-kind evidence for "
+                + unresolved.size() + " entities; Enrich can acquire it");
+        qids.addAll(unresolved);
+        return GenerationRun.Quality.partial(
+                java.util.List.copyOf(warnings), java.util.List.copyOf(qids));
+    }
+
     private static boolean notRepairableByEnrich(String warning) {
         if (warning == null) return false;
         String normalized = warning.toLowerCase(java.util.Locale.ROOT);
@@ -772,8 +796,8 @@ public class GenerationPipeline {
      * refetch). Mirrors GenerateDomainQuery's transform block.
      */
     private GenerationRun retransform(
-            GenerationRun previous, GeneratedProjectModel snapshot,
-            wikidata.explore.compiled.CompiledProjectModel compiledSnapshot,
+            GenerationRun previous, CompiledPipelineRun run,
+            GeneratedProjectModel snapshot,
             RuleNode plan, GeneratedViewableRuntime runtime,
             GenerationRun.RemapState rs, GenerationLog log,
             RunSteps steps) throws Exception {
@@ -785,12 +809,19 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.CONSTRUCT,
                 "Reify statements and replay local transforms");
 
-        // The ONE transform sequence (#97). Remap differs from Generate only in where
-        // the companion sets come from: it replays the ones Generate cached.
+        // The same executable path as Generate, with a different declared operation:
+        // companion sets are replayed from the run rather than acquired. The executor
+        // can therefore enforce that this Remap has no network-capable construction.
+        PipelineState state = PipelineState.over(
+                GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH, pool,
+                previous.dynamicObjects(), previous.dynamicObjects());
+        PipelineContext context = new PipelineContext(run, null, log, null);
+        state.useRuntime(runtime);
+        new PipelineExecutor()
+                .with(ConstructRecordsStep.replaying(rs.companionSets()))
+                .run(context, state);
         wikidata.explore.transform.StatementTransforms.Result transformed =
-                wikidata.explore.transform.StatementTransforms.apply(
-                        snapshot, compiledSnapshot, pool,
-                        records -> rs.companionSets(), log);
+                state.construction();
         List<WikidataDynamicObject> reified = transformed.reified();
         int filled = transformed.projectedFields();
         steps.completed(GenerateDomainPipeline.CONSTRUCT,
@@ -799,24 +830,15 @@ public class GenerationPipeline {
 
         steps.started(GenerateDomainPipeline.SEMANTIC,
                 "Settle entity kinds and compose owned parts");
-        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
-                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
-        // Kind membership is an input to owned composition: a Person that arrived as
-        // Nominee must become Person before Person.structuredName can be produced.
-        wikidata.explore.transform.OwnedComponents.Result owned =
-                wikidata.explore.transform.OwnedComponents.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
-        owned.addTo(pool);
-        wikidata.explore.transform.ReferentClassStamp.apply(
-                snapshot, owned.components());
+        new PipelineExecutor().with(new SemanticWorklistStep()).run(context, state);
+        SemanticConvergence.Result converged = state.convergence();
         steps.completed(GenerateDomainPipeline.SEMANTIC,
-                kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
+                converged.classifiedKinds() + " kind(s), "
+                        + converged.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.FINALIZE,
                 "Finalize and validate the transformed graph");
-        DomainFinalization.Result finalization = DomainFinalization.apply(
-                snapshot, compiledSnapshot, pool, reified, previous.dynamicObjects(),
-                null, log);
+        new PipelineExecutor().with(new FinalizeStep()).run(context, state);
+        DomainFinalization.Result finalization = state.finalization();
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 restricted + " dropped (required-field)"
@@ -826,22 +848,27 @@ public class GenerationPipeline {
             log.message("Remap (retransform): " + pool.size()
                     + " objects, " + reified.size() + " reified, "
                     + filled + " projected field(s) filled, "
-                    + kinds.classified() + " entity kind(s) assigned, "
+                    + converged.classifiedKinds() + " entity kind(s) assigned, "
                     + restricted + " dropped (required-field).\n");
         }
 
         steps.started(GenerateDomainPipeline.MATERIALIZE,
                 "Map the final graph into instances");
-        List<Viewable> instances = materialize(runtime, pool);
+        new PipelineExecutor().with(new MaterializeStep()).run(context, state);
+        List<Viewable> instances = state.instances();
         steps.completed(GenerateDomainPipeline.MATERIALIZE,
                 instances.size() + " instance(s) materialized");
 
         return new GenerationRun(
-                snapshot, previous.depth(), plan, pool, runtime, instances, rs,
-                previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
+                snapshot, previous.depth(), plan, pool, state.runtime(), instances, rs,
+                previous.loadedDeclarations(),
+                remapQuality(previous.quality(), converged.unresolvedKindQids()),
+                finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
-                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
-                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()),
+                GenerationRun.OwnedCompositionAudit.ran(
+                        converged.ownedComponentsCreated()),
+                GenerationRun.KindClassificationAudit.ran(
+                        converged.newlyClassifiedKinds()),
                 GenerationRun.ProjectionAudit.ran(
                         transformed.projectionChangedInstances()));
     }

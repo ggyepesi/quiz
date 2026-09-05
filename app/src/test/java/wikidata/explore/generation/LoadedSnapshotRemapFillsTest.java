@@ -117,4 +117,26 @@ class LoadedSnapshotRemapFillsTest {
                         state -> state.startedAtNanos() > 0),
                 "every completed phase must have been started before its work");
     }
+
+    /** Both Remap scopes execute the same named steps; only construction differs. */
+    @Test void anInMemoryRemapAlsoRunsThroughAllLocalPipelineSteps() throws Exception {
+        GeneratedProjectModel model = modelWithYearProjection();
+        List<String> messages = new ArrayList<>();
+        GenerationRun previous = new GenerationRun(
+                model, 1, null, loadedPool(), null, List.of(),
+                new GenerationRun.RemapState(loadedPool(), java.util.Map.of()), List.of());
+
+        new GenerationPipeline().remap(
+                previous, model, wikidata.explore.extract.GenerationLog.of(messages::add),
+                RunSteps.SILENT);
+
+        assertTrue(messages.stream().anyMatch(
+                line -> line.startsWith("Construct modeled records:")), messages.toString());
+        assertTrue(messages.stream().anyMatch(
+                line -> line.startsWith("Resolve semantic worklist:")), messages.toString());
+        assertTrue(messages.stream().anyMatch(
+                line -> line.startsWith("Finalize and validate:")), messages.toString());
+        assertTrue(messages.stream().anyMatch(
+                line -> line.startsWith("Materialize instances:")), messages.toString());
+    }
 }

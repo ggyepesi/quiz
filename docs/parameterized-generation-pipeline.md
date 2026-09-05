@@ -617,7 +617,9 @@ into a run.
 **Remap's and Enrich's tails are routed too.** Both finalize and materialize through the
 executor over one state. Remap's context carries no client, so finalization's local form
 is the only reachable one rather than the one it is trusted to choose; Enrich's carries
-one, so the same step does more because it was given more.
+one, so the same step does more because it was given more. `FinalizeStep` therefore
+declares OPTIONAL network use: canonicalization and pruning are local; disambiguation
+evidence is acquired only when the context provides a client.
 
 `MaterializeStep` uses a runtime the flow already built, when there is one. Enrich and
 Remap build one before acquisition deliberately — compiling the model's classes is slow
@@ -625,10 +627,17 @@ and proves the model compiles at all, so a failure costs a moment instead of min
 fetching. Building a second one to map through would compile the same classes twice and
 leave the run carrying a runtime that did not produce its own instances.
 
-**Remap runs the semantic worklist.** Its three hand-written steps are gone; the local
-path reads the previous run's objects as evidence, which is what `GraphCheckpoint`'s
-retained evidence exists for. Two things change: roles are stamped on the pool before
-classification, and the worklist iterates to a fixed point where Remap did one pass.
+**Both Remap scopes run the same executable steps.** A loaded final snapshot starts with
+the replayable derived transforms; an in-memory normalized graph additionally runs
+`ConstructRecordsStep.replaying(cachedSets)`. From there both use
+`SemanticWorklistStep`, `FinalizeStep` and `MaterializeStep`. The local path reads the
+previous run's objects as evidence, which is what `GraphCheckpoint`'s retained evidence
+exists for. Roles are stamped on the pool before classification, and the worklist
+iterates to a fixed point where the old paths performed one pass.
+
+If retained evidence cannot settle a kind, Remap carries those QIDs into final-state
+quality and tells the reader that Enrich can acquire the missing evidence. It does not
+record a network failure, because no network operation was attempted under `NONE`.
 
 That is a behaviour change on a flow that produces saved data, and it has not been run.
 A Remap before and after, compared on counts, is what would settle it — Nobel's baseline

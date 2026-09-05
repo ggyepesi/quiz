@@ -23,12 +23,17 @@ public final class FinalizeStep implements PipelineStep {
         return GraphCheckpoint.Stage.FINAL_GRAPH;
     }
 
+    @Override public NetworkUse networkUse() {
+        return NetworkUse.OPTIONAL;
+    }
+
     @Override public String execute(PipelineContext context, PipelineState state)
             throws Exception {
         CompiledProjectModel compiled = context.run().model();
         DomainFinalization.Result result = DomainFinalization.apply(
                 context.run().request().model(), compiled, state.pool(),
-                state.records(), context.entityApi(), context.log());
+                state.records(), state.vocabularyEvidence(), context.entityApi(),
+                context.log());
         state.finalized(result);
         return result.dead() + " dead, " + result.orphans() + " orphan(s), "
                 + result.requiredDropped() + " dropped for a missing required field";

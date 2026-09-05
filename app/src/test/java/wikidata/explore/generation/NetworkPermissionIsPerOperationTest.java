@@ -46,7 +46,8 @@ class NetworkPermissionIsPerOperationTest {
 
     /** A purely local step needs no permission at all. */
     @Test void aLocalStepNeedsNoPermission() {
-        assertEquals(PipelineStep.NetworkUse.NONE, new FinalizeStep().networkUse());
+        assertEquals(PipelineStep.NetworkUse.OPTIONAL, new FinalizeStep().networkUse(),
+                "finalization is local except for disambiguation evidence when available");
         assertEquals(PipelineStep.NetworkUse.NONE, new MaterializeStep().networkUse());
     }
 

@@ -26,6 +26,7 @@ public final class PipelineState {
     private GraphCheckpoint.Stage stage;
     private final List<WikidataDynamicObject> pool;
     private final List<WikidataDynamicObject> evidence;
+    private final List<WikidataDynamicObject> vocabularyEvidence;
     private final List<WikidataDynamicObject> records = new ArrayList<>();
     private final List<LoadedDeclaration> loadedDeclarations = new ArrayList<>();
     private GeneratedViewableRuntime runtime;
@@ -46,12 +47,20 @@ public final class PipelineState {
 
     private PipelineState(GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool,
             List<WikidataDynamicObject> evidence, boolean share) {
+        this(stage, pool, evidence, pool, share);
+    }
+
+    private PipelineState(GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool,
+            List<WikidataDynamicObject> evidence,
+            List<WikidataDynamicObject> vocabularyEvidence, boolean share) {
         if (stage == null) throw new IllegalArgumentException("A state needs a stage");
         this.stage = stage;
         this.pool = pool == null ? new ArrayList<>()
                 : share ? pool : new ArrayList<>(pool);
         this.evidence = evidence == null ? this.pool
                 : share ? evidence : new ArrayList<>(evidence);
+        this.vocabularyEvidence = vocabularyEvidence == null ? this.pool
+                : share ? vocabularyEvidence : new ArrayList<>(vocabularyEvidence);
     }
 
     /**
@@ -80,6 +89,13 @@ public final class PipelineState {
         return new PipelineState(stage, pool, evidence, true);
     }
 
+    /** A state whose semantic and descriptive-vocabulary evidence differ. */
+    public static PipelineState over(GraphCheckpoint.Stage stage,
+            List<WikidataDynamicObject> pool, List<WikidataDynamicObject> evidence,
+            List<WikidataDynamicObject> vocabularyEvidence) {
+        return new PipelineState(stage, pool, evidence, vocabularyEvidence, true);
+    }
+
     /** The state a run starts in, from the graph it was given. */
     public static PipelineState from(GraphCheckpoint checkpoint) {
         if (checkpoint == null) throw new IllegalArgumentException("No checkpoint");
@@ -93,9 +109,11 @@ public final class PipelineState {
         List<WikidataDynamicObject> copied = PoolCopy.deepCopy(combined);
         int poolSize = checkpoint.objects().size();
         int recordEnd = poolSize + checkpoint.records().size();
+        List<WikidataDynamicObject> copiedEvidence =
+                new ArrayList<>(copied.subList(recordEnd, copied.size()));
         PipelineState state = new PipelineState(checkpoint.stage(),
                 new ArrayList<>(copied.subList(0, poolSize)),
-                new ArrayList<>(copied.subList(recordEnd, copied.size())), true);
+                copiedEvidence, copiedEvidence, true);
         state.records.addAll(copied.subList(poolSize, recordEnd));
         state.loadedDeclarations.addAll(checkpoint.loadedDeclarations());
         return state;
@@ -118,6 +136,11 @@ public final class PipelineState {
     /** The settled graph retained as evidence for local reconstruction. */
     public List<WikidataDynamicObject> evidence() {
         return evidence;
+    }
+
+    /** The graph descriptive vocabularies are rebuilt from at finalization. */
+    public List<WikidataDynamicObject> vocabularyEvidence() {
+        return vocabularyEvidence;
     }
 
     /** The statement records construction made, which finalization checks against. */
