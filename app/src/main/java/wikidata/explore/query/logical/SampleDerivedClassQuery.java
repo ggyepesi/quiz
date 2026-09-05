@@ -120,7 +120,7 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                                 context, log);
                         List<WikidataDynamicObject> pool =
                                 new ArrayList<>(produced.records());
-                        produceForward(chain, compiled, pool, context, log);
+                        SampledDerivation.apply(snapshot, compiled, pool, context, log);
                         return show(chain, pool, produced.records(), produced.truncated());
                     });
         }
@@ -134,7 +134,7 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                             SampledClassProduction.Bound.firstMembers(limit * RECORDS_PER_KEY),
                             context, log);
                     List<WikidataDynamicObject> pool = new ArrayList<>(probe.records());
-                    produceForward(chain, compiled, pool, context, log);
+                    SampledDerivation.apply(snapshot, compiled, pool, context, log);
                     Keys keys = keysOf(pool, className, objectField, limit);
                     log.message("Key sample: " + keys.ids().size() + " key(s) of "
                             + className + " found in " + probe.records().size()
@@ -161,38 +161,13 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                             SampledClassProduction.Bound.wholeObjects(chosen.objectQids()),
                             context, log);
                     List<WikidataDynamicObject> pool = new ArrayList<>(whole.records());
-                    produceForward(chain, compiled, pool, context, log);
+                    SampledDerivation.apply(snapshot, compiled, pool, context, log);
                     // Truncation is about KEYS: the groups are whole, and "more
                     // available" of a complete group says the opposite of what this
                     // query guarantees.
                     return show(chain, keep(pool, className, chosen.ids()),
                             whole.records(), chosen.ids().size() >= limit);
                 });
-    }
-
-    /**
-     * Generation's derivation steps, run over the sampled population — all of them.
-     *
-     * <p>In generation's order: parts are composed before groups are reduced, because a
-     * part must exist to be grouped. Running the CHAIN's order instead would be a second
-     * answer to a question generation has already settled.
-     *
-     * <p>Every step, not only the ones the chain names. Skipping the others looked like
-     * an economy and was a misrepresentation: the chain says how the SAMPLED class is
-     * produced, and says nothing about what hangs off the classes its instances reach. A
-     * NobelPrize is aggregated and owns nothing, so composition was skipped — and its
-     * laureates came back without the structured names that a generated laureate has,
-     * from a step that would have made them had it run. A sampled instance has to be
-     * what a generated one is, and that is decided by what is IN the pool, not by which
-     * edge was followed to choose the pool.
-     */
-    private void produceForward(ProductionChain chain, CompiledProjectModel compiled,
-            List<WikidataDynamicObject> pool, QueryContext context, GenerationLog log) {
-        SemanticConvergence.Result converged = SemanticConvergence.apply(
-                snapshot, pool, WikidataAccess.api(context), log, List.of(), null);
-        log.message("Composed " + converged.ownedCreated() + " owned part(s) and settled "
-                + converged.classifiedKinds() + " kind(s).\n");
-        ModelAggregates.apply(compiled, pool, log);
     }
 
     /**

@@ -22,8 +22,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class SampleDerivesLikeGenerationTest {
 
     private static String source() throws Exception {
+        return source("SampleDerivedClassQuery");
+    }
+
+    private static String source(String name) throws Exception {
         return Files.readString(Path.of("src/main/java/wikidata/explore/query/logical/"
-                + "SampleDerivedClassQuery.java"));
+                + name + ".java"));
     }
 
     @Test void compositionIsNotConditionalOnHowTheSampledClassIsProduced()
@@ -39,9 +43,15 @@ class SampleDerivesLikeGenerationTest {
                 "keys where a reduction happens, owners where none does");
     }
 
-    /** Generation's order, not the chain's: a part must exist before it can be grouped. */
+    /**
+     * Generation's order, not the chain's: a part must exist before it can be grouped.
+     *
+     * <p>Read where the order now lives. It was written into the derived-class route and
+     * moved to the step every route takes, because what needs deriving is whatever is in
+     * the pool and every route puts entities there.
+     */
     @Test void partsAreComposedBeforeGroupsAreReduced() throws Exception {
-        String body = source();
+        String body = source("SampledDerivation");
         assertTrue(body.indexOf("SemanticConvergence.apply")
                         < body.indexOf("ModelAggregates.apply"),
                 "reducing first would group parts that do not exist yet");
