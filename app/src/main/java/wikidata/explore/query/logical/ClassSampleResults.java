@@ -14,6 +14,23 @@ import java.util.List;
 final class ClassSampleResults {
     private ClassSampleResults() { }
 
+    /**
+     * The model's parts, except the one that was asked for.
+     *
+     * <p>A part is reached through its owner and not listed beside the classes that
+     * exist in their own right — unless the reader asked to see that part, which is
+     * exactly what sampling an owned class is. Deciding this here, where the request is
+     * known, is why the result carries a list rather than working it out from the model
+     * and then having to make an exception.
+     */
+    private static List<String> partsOtherThan(
+            GeneratedProjectModel snapshot, String requestedClass) {
+        List<String> parts = new java.util.ArrayList<>(
+                wikidata.explore.model.MembershipPattern.partClassNames(snapshot));
+        parts.remove(requestedClass == null ? "" : requestedClass.trim());
+        return parts;
+    }
+
     static ClassSampleResult materialize(
             GeneratedProjectModel snapshot, String requestedClass, String runtimeClass,
             String route, int limit, List<WikidataDynamicObject> produced) throws Exception {
@@ -60,7 +77,7 @@ final class ClassSampleResults {
                     objects,
                     selectedRuntime == null ? runtime.generatedClass()
                             : selectedRuntime.generatedClass(),
-                    runtime.source(), typeOrder),
+                    runtime.source(), typeOrder, partsOtherThan(snapshot, requestedClass)),
                     requestedClass, route, limit, truncated);
         }
     }

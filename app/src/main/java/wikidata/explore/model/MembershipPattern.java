@@ -173,6 +173,28 @@ public enum MembershipPattern {
         visiting.remove(clean(clazz.className()));
     }
 
+    /**
+     * Every class that is produced as a PART of another.
+     *
+     * <p>A part has no independent existence — one is made per owning instance, carrying
+     * that owner's identifier — so it is not a thing to list beside the classes that do.
+     * The web already knows this and does not serve them; this is the same rule, asked
+     * once, for the views that show instances.
+     */
+    public static List<String> partClassNames(GeneratedProjectModel project) {
+        if (project == null) return List.of();
+        List<String> parts = new java.util.ArrayList<>();
+        for (GeneratedClassModel clazz : project.classes()) {
+            if (clazz == null) continue;
+            String name = clean(clazz.className());
+            if (!name.isEmpty() && of(clazz, project) == OWNED_COMPONENT
+                    && !parts.contains(name)) {
+                parts.add(name);
+            }
+        }
+        return List.copyOf(parts);
+    }
+
     /** Field-defined production sites; the target class carries no duplicate owner config. */
     public static List<OwnedBy> ownedBy(
             GeneratedClassModel clazz, GeneratedProjectModel project) {

@@ -313,6 +313,8 @@ public record GenerationRun(
         return new ObjectQueryResult(
                 instances,
                 runtime.generatedClass(),
-                runtime.source());
+                runtime.source(),
+                java.util.List.of(),
+                wikidata.explore.model.MembershipPattern.partClassNames(modelSnapshot));
     }
 }

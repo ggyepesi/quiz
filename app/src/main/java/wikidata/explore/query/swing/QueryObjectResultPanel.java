@@ -97,8 +97,12 @@ public class QueryObjectResultPanel
         // graph itself, so the headings it drew and the count the sample reported were
         // two rules for one question and disagreed the moment a result carried more
         // than the class that was asked for.
+        // Without the parts: a class produced per owning instance is reached through
+        // its owner and rendered inside it, so a heading of its own puts it beside the
+        // classes it belongs to as though it were one of them. On Nobel that listed 989
+        // structured names next to the prizes and the people they name.
         Map<String, List<Viewable>> byType =
-                ordered(result.byType(), result.typeOrder());
+                ordered(result.byTypeWithoutParts(), result.typeOrder());
 
         if (byType.size() <= 1) {
             return searchPanelView(result);

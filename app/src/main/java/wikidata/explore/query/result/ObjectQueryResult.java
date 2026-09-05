@@ -18,21 +18,34 @@ import java.util.Set;
  *                  was discovered. A sample of a derived class puts its production chain
  *                  here: without it the sections come out in traversal order, which
  *                  reads as no order at all.
+ * @param partTypes types whose instances are PARTS of another object — one made per
+ *                  owning instance, carrying that owner's identifier. They are reached
+ *                  through their owner and not listed beside the classes that have an
+ *                  existence of their own. Named by the producer, which is what has the
+ *                  model to ask; a producer that means to show a part (a sample OF one)
+ *                  leaves it out of this list.
  */
 public record ObjectQueryResult(
         List<Viewable> objects,
         Class<?> primaryClass,
         String generatedSource,
-        List<String> typeOrder) {
+        List<String> typeOrder,
+        List<String> partTypes) {
 
     public ObjectQueryResult {
         typeOrder = typeOrder == null ? List.of() : List.copyOf(typeOrder);
+        partTypes = partTypes == null ? List.of() : List.copyOf(partTypes);
     }
 
-    /** A result whose types have no stated order. */
+    /** A result whose types have no stated order and no declared parts. */
     public ObjectQueryResult(
             List<Viewable> objects, Class<?> primaryClass, String generatedSource) {
-        this(objects, primaryClass, generatedSource, List.of());
+        this(objects, primaryClass, generatedSource, List.of(), List.of());
+    }
+
+    public ObjectQueryResult(List<Viewable> objects, Class<?> primaryClass,
+            String generatedSource, List<String> typeOrder) {
+        this(objects, primaryClass, generatedSource, typeOrder, List.of());
     }
 
     public int size() {
@@ -43,6 +56,20 @@ public record ObjectQueryResult(
     public int countOf(String typeName) {
         if (typeName == null || typeName.isBlank()) return size();
         return byType().getOrDefault(typeName, List.of()).size();
+    }
+
+    /**
+     * The types worth a section of their own — everything but the parts.
+     *
+     * <p>The grouping stays the whole truth; this is the view of it a reader is offered.
+     * A part is still reached, still counted, and still rendered inside the owner whose
+     * field holds it — what it does not get is a heading beside the classes it belongs
+     * to. Dropping it from the walk instead would lose whatever IT reaches.
+     */
+    public Map<String, List<Viewable>> byTypeWithoutParts() {
+        Map<String, List<Viewable>> byType = byType();
+        partTypes.forEach(byType::remove);
+        return byType;
     }
 
     /**
