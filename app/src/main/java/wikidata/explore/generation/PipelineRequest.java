@@ -13,10 +13,10 @@ import wikidata.explore.model.GeneratedProjectModel;
  * <table>
  *   <caption>The five flows as combinations</caption>
  *   <tr><th>flow</th><th>input</th><th>scope</th><th>acquisition</th></tr>
- *   <tr><td>Generate domain</td><td>EMPTY</td><td>whole domain</td><td>ALL_REQUIRED</td></tr>
- *   <tr><td>Class preview</td><td>EMPTY</td><td>a production chain</td><td>ALL_REQUIRED</td></tr>
- *   <tr><td>Sample</td><td>EMPTY</td><td>a production chain</td><td>ALL_REQUIRED</td></tr>
- *   <tr><td>Enrich</td><td>SAVED_GRAPH</td><td>existing population</td><td>MISSING_ONLY</td></tr>
+ *   <tr><td>Generate domain</td><td>empty</td><td>whole domain</td><td>ALL_REQUIRED</td></tr>
+ *   <tr><td>Class preview</td><td>empty</td><td>a production chain</td><td>ALL_REQUIRED</td></tr>
+ *   <tr><td>Sample</td><td>empty</td><td>a production chain</td><td>ALL_REQUIRED</td></tr>
+ *   <tr><td>Enrich</td><td>final checkpoint</td><td>existing population</td><td>MISSING_ONLY</td></tr>
  *   <tr><td>Remap</td><td>a checkpoint</td><td>existing population</td><td>NONE</td></tr>
  * </table>
  *
@@ -29,29 +29,11 @@ import wikidata.explore.model.GeneratedProjectModel;
  */
 public record PipelineRequest(
         GeneratedProjectModel model,
-        Input input,
+        PipelineInput input,
         PipelineScope scope,
         Acquisition acquisition,
         PipelineLimits limits,
         Output output) {
-
-    /**
-     * Where the graph comes from, and what has already been done to it.
-     *
-     * <p>Not merely a collection of objects: reifying an already-reified graph, or
-     * treating a final snapshot as raw source output, is wrong in ways the objects
-     * themselves cannot report.
-     */
-    public enum Input {
-        /** Nothing yet — the run discovers its own population. */
-        EMPTY,
-        /** A saved snapshot: a final graph, read back from disk. */
-        SAVED_GRAPH,
-        /** Acquired and normalized, before modeled records were constructed. */
-        NORMALIZED_CHECKPOINT,
-        /** Records constructed, before the semantic worklist settled them. */
-        CONSTRUCTED_CHECKPOINT
-    }
 
     /**
      * Whether external facts may be requested.
@@ -88,18 +70,18 @@ public record PipelineRequest(
         // An empty graph and no permission to fill it can produce nothing at all. Every
         // other combination is a run that does something; this one is a request that
         // cannot be answered, and refusing it here beats explaining it later.
-        if (input == Input.EMPTY && acquisition == Acquisition.NONE) {
+        if (input.isEmpty() && acquisition == Acquisition.NONE) {
             throw new IllegalArgumentException(
                     "A run starting from nothing, forbidden to acquire, has no source");
         }
-        if (input == Input.EMPTY && !scope.discovers()) {
+        if (input.isEmpty() && !scope.discovers()) {
             throw new IllegalArgumentException(
                     "A run starting from nothing has no existing population to scope to");
         }
     }
 
     public static PipelineRequest generateDomain(GeneratedProjectModel model) {
-        return new PipelineRequest(model, Input.EMPTY, PipelineScope.wholeDomain(),
+        return new PipelineRequest(model, PipelineInput.empty(), PipelineScope.wholeDomain(),
                 Acquisition.ALL_REQUIRED, PipelineLimits.asConfigured(),
                 Output.REPLACEMENT_CANDIDATE);
     }
@@ -107,29 +89,32 @@ public record PipelineRequest(
     /** One class and what it takes to make it, bounded, shown and not applied. */
     public static PipelineRequest generateClassPreview(
             GeneratedProjectModel model, String className, int depth) {
-        return new PipelineRequest(model, Input.EMPTY,
+        return new PipelineRequest(model, PipelineInput.empty(),
                 PipelineScope.productionChainOf(className), Acquisition.ALL_REQUIRED,
-                new PipelineLimits(PipelineLimits.UNBOUNDED, depth), Output.PREVIEW);
+                new PipelineLimits(PipelineLimits.AS_CONFIGURED, depth), Output.PREVIEW);
     }
 
     /** The same as a preview, bounded harder. The difference is the number. */
     public static PipelineRequest sampleClass(
             GeneratedProjectModel model, String className, int members) {
-        return new PipelineRequest(model, Input.EMPTY,
+        return new PipelineRequest(model, PipelineInput.empty(),
                 PipelineScope.productionChainOf(className), Acquisition.ALL_REQUIRED,
                 PipelineLimits.members(members), Output.PREVIEW);
     }
 
-    public static PipelineRequest enrich(GeneratedProjectModel model) {
-        return new PipelineRequest(model, Input.SAVED_GRAPH,
+    public static PipelineRequest enrich(
+            GeneratedProjectModel model, GraphCheckpoint checkpoint) {
+        return new PipelineRequest(model, PipelineInput.from(checkpoint),
                 PipelineScope.existingPopulation(), Acquisition.MISSING_ONLY,
                 PipelineLimits.asConfigured(), Output.REPLACEMENT_CANDIDATE);
     }
 
     /** Local reconstruction from the best checkpoint there is. Reaches no network. */
-    public static PipelineRequest remap(GeneratedProjectModel model, Input from) {
-        return new PipelineRequest(model, from, PipelineScope.existingPopulation(),
-                Acquisition.NONE, PipelineLimits.asConfigured(),
+    public static PipelineRequest remap(
+            GeneratedProjectModel model, GraphCheckpoint checkpoint) {
+        return new PipelineRequest(model, PipelineInput.from(checkpoint),
+                PipelineScope.existingPopulation(), Acquisition.NONE,
+                PipelineLimits.asConfigured(),
                 Output.REPLACEMENT_CANDIDATE);
     }
 

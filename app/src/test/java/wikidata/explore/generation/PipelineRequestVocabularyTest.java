@@ -41,8 +41,7 @@ class PipelineRequestVocabularyTest {
 
     /** Remap reaches no network — the design's one hard invariant. */
     @Test void remapMayNotAcquire() {
-        PipelineRequest remap = PipelineRequest.remap(
-                model, PipelineRequest.Input.NORMALIZED_CHECKPOINT);
+        PipelineRequest remap = PipelineRequest.remap(model, normalized());
 
         assertFalse(remap.mayAcquire());
         assertEquals(PipelineRequest.Acquisition.NONE, remap.acquisition());
@@ -50,10 +49,11 @@ class PipelineRequestVocabularyTest {
 
     /** Enrich asks only for what its graph does not answer. */
     @Test void enrichAsksOnlyForWhatIsMissing() {
-        PipelineRequest enrich = PipelineRequest.enrich(model);
+        GraphCheckpoint saved = finalGraph();
+        PipelineRequest enrich = PipelineRequest.enrich(model, saved);
 
         assertEquals(PipelineRequest.Acquisition.MISSING_ONLY, enrich.acquisition());
-        assertEquals(PipelineRequest.Input.SAVED_GRAPH, enrich.input());
+        assertSame(saved, enrich.input().suppliedCheckpoint().orElseThrow());
         assertFalse(enrich.scope().discovers(), "it works on what it already has");
     }
 
@@ -70,7 +70,7 @@ class PipelineRequestVocabularyTest {
     /** A request that cannot be answered is refused where it is made. */
     @Test void aRunFromNothingThatMayNotAcquireIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> new PipelineRequest(
-                model, PipelineRequest.Input.EMPTY, PipelineScope.wholeDomain(),
+                model, PipelineInput.empty(), PipelineScope.wholeDomain(),
                 PipelineRequest.Acquisition.NONE, PipelineLimits.asConfigured(),
                 PipelineRequest.Output.PREVIEW));
     }
@@ -88,5 +88,38 @@ class PipelineRequestVocabularyTest {
         assertFalse(PipelineLimits.asConfigured().bounded());
         assertTrue(PipelineLimits.members(8).bounded());
         assertEquals("as configured", PipelineLimits.asConfigured().toString());
+    }
+
+    @Test void zeroDepthMeansFollowNoChildEdges() {
+        PipelineRequest preview = PipelineRequest.generateClassPreview(model, "Star", 0);
+
+        assertTrue(preview.limits().bounded());
+        assertEquals(0, preview.limits().depth());
+    }
+
+    @Test void invalidNegativeLimitsAreRefusedRatherThanReinterpreted() {
+        assertThrows(IllegalArgumentException.class, () -> new PipelineLimits(-2, 1));
+        assertThrows(IllegalArgumentException.class, () -> new PipelineLimits(1, -2));
+    }
+
+    @Test void theCheckpointIsTheOnlyOwnerOfInputStage() {
+        GraphCheckpoint normalized = normalized();
+        PipelineRequest request = PipelineRequest.remap(model, normalized);
+
+        assertSame(normalized, request.input().suppliedCheckpoint().orElseThrow());
+        assertEquals(GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH,
+                request.input().suppliedCheckpoint().orElseThrow().stage());
+    }
+
+    private static GraphCheckpoint normalized() {
+        return GraphCheckpoint.normalized(java.util.List.of(), java.util.List.of(),
+                datasource.graph.GraphDiscoveryState.EMPTY,
+                GenerationRun.Quality.completeQuality(), "sig");
+    }
+
+    private static GraphCheckpoint finalGraph() {
+        return GraphCheckpoint.finalGraph(java.util.List.of(), java.util.List.of(),
+                datasource.graph.GraphDiscoveryState.EMPTY,
+                GenerationRun.Quality.completeQuality(), "sig");
     }
 }

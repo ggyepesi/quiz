@@ -10,40 +10,43 @@ package wikidata.explore.generation;
  * one — a sampled Nominee that never became a Person, an aggregate group missing most of
  * its members.
  *
- * @param members how many members of the scope to read, or {@link #UNBOUNDED} for as
+ * @param members how many members of the scope to read, or {@link #AS_CONFIGURED} for as
  *                many as the model's own configuration allows
  * @param depth   how many levels of child-object reference edges to follow, or
- *                {@link #UNBOUNDED} to use each class's own configured depth
+ *                {@link #AS_CONFIGURED} to use each class's own configured depth.
+ *                Zero is a real bound: follow no child edges.
  */
 public record PipelineLimits(int members, int depth) {
 
     /** Not "no limit": the model's own limits still apply. This adds none. */
-    public static final int UNBOUNDED = 0;
+    public static final int AS_CONFIGURED = -1;
 
     public PipelineLimits {
-        members = Math.max(UNBOUNDED, members);
-        depth = Math.max(UNBOUNDED, depth);
+        if (members < AS_CONFIGURED || depth < AS_CONFIGURED) {
+            throw new IllegalArgumentException(
+                    "Pipeline limits are non-negative or AS_CONFIGURED");
+        }
     }
 
     /** As much as the model itself allows — what a full generation reads. */
     public static PipelineLimits asConfigured() {
-        return new PipelineLimits(UNBOUNDED, UNBOUNDED);
+        return new PipelineLimits(AS_CONFIGURED, AS_CONFIGURED);
     }
 
     /** The first {@code members} of the scope, at the model's configured depth. */
     public static PipelineLimits members(int members) {
-        return new PipelineLimits(members, UNBOUNDED);
+        return new PipelineLimits(members, AS_CONFIGURED);
     }
 
     public boolean bounded() {
-        return members != UNBOUNDED || depth != UNBOUNDED;
+        return members != AS_CONFIGURED || depth != AS_CONFIGURED;
     }
 
     @Override public String toString() {
         if (!bounded()) return "as configured";
         StringBuilder said = new StringBuilder();
-        if (members != UNBOUNDED) said.append(members).append(" member(s)");
-        if (depth != UNBOUNDED) {
+        if (members != AS_CONFIGURED) said.append(members).append(" member(s)");
+        if (depth != AS_CONFIGURED) {
             said.append(said.isEmpty() ? "" : ", ").append("depth ").append(depth);
         }
         return said.toString();

@@ -26,7 +26,7 @@ class RemapCapabilityIsTheCheckpointTest {
 
     @Test void aNormalizedGraphCanBeRebuiltInFull() {
         GraphCheckpoint checkpoint = GraphCheckpoint.normalized(
-                List.of(star()), List.of(), null, "sig");
+                List.of(star()), List.of(), ledger(), complete(), "sig");
 
         assertEquals(GraphCheckpoint.RemapCapability.FULL_RECONSTRUCTION,
                 checkpoint.remapCapability());
@@ -35,7 +35,7 @@ class RemapCapabilityIsTheCheckpointTest {
     /** Reify over an already-reified graph would build a second copy of every record. */
     @Test void aFinalGraphAllowsOnlyIdempotentTransforms() {
         GraphCheckpoint checkpoint = GraphCheckpoint.finalGraph(
-                List.of(star()), List.of(), null, "sig");
+                List.of(star()), List.of(), ledger(), complete(), "sig");
 
         assertEquals(GraphCheckpoint.RemapCapability.IDEMPOTENT_ONLY,
                 checkpoint.remapCapability());
@@ -43,7 +43,8 @@ class RemapCapabilityIsTheCheckpointTest {
 
     /** A run holds a settled graph, whatever it took to get there. */
     @Test void aRunIsAFinalGraph() {
-        assertEquals(GraphCheckpoint.Stage.FINAL_GRAPH, run(null).checkpoint().stage());
+        assertEquals(GraphCheckpoint.Stage.FINAL_GRAPH,
+                run(null).checkpoint(ledger()).stage());
     }
 
     /** With the enriched pool still in memory, a Remap of that run can do everything. */
@@ -52,9 +53,9 @@ class RemapCapabilityIsTheCheckpointTest {
                 List.of(star()), Map.of()));
 
         assertEquals(GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH,
-                kept.remapCheckpoint().stage());
+                kept.remapCheckpoint(ledger()).stage());
         assertEquals(GraphCheckpoint.RemapCapability.FULL_RECONSTRUCTION,
-                kept.remapCheckpoint().remapCapability());
+                kept.remapCheckpoint(ledger()).remapCapability());
     }
 
     /** After a restart there is only the final graph, and the capability drops. */
@@ -62,7 +63,7 @@ class RemapCapabilityIsTheCheckpointTest {
         GenerationRun restored = run(null);
 
         assertEquals(GraphCheckpoint.RemapCapability.IDEMPOTENT_ONLY,
-                restored.remapCheckpoint().remapCapability());
+                restored.remapCheckpoint(ledger()).remapCapability());
     }
 
     /** An empty pool is not a normalized graph; it is no graph. */
@@ -70,19 +71,55 @@ class RemapCapabilityIsTheCheckpointTest {
         GenerationRun empty = run(new GenerationRun.RemapState(List.of(), Map.of()));
 
         assertEquals(GraphCheckpoint.Stage.FINAL_GRAPH,
-                empty.remapCheckpoint().stage());
+                empty.remapCheckpoint(ledger()).stage());
     }
 
     /** A checkpoint says which model made it, and makes no claim when it cannot. */
     @Test void anUnknownSignatureClaimsNothing() {
         GraphCheckpoint unsigned = GraphCheckpoint.finalGraph(
-                List.of(star()), List.of(), null, "");
+                List.of(star()), List.of(), ledger(), complete(), "");
 
         assertFalse(unsigned.producedBy("sig"));
-        assertFalse(GraphCheckpoint.finalGraph(List.of(), List.of(), null, "sig")
+        assertFalse(GraphCheckpoint.finalGraph(
+                        List.of(), List.of(), ledger(), complete(), "sig")
                 .producedBy(null));
-        assertTrue(GraphCheckpoint.finalGraph(List.of(), List.of(), null, "sig")
+        assertTrue(GraphCheckpoint.finalGraph(
+                        List.of(), List.of(), ledger(), complete(), "sig")
                 .producedBy("sig"));
+    }
+
+    @Test void checkpointRetainsCoverageAndQualityInsteadOfInventingDefaults() {
+        GenerationRun partial = new GenerationRun(
+                wikidata.explore.model.GeneratedProjectModel.constellationDemo(), 0, null,
+                List.of(star()), null, List.of(), null, List.of(),
+                GenerationRun.Quality.partial(List.of("incomplete"), List.of("Q1")));
+
+        GraphCheckpoint checkpoint = partial.checkpoint(ledger());
+
+        assertSame(ledger(), checkpoint.graphDiscovery());
+        assertFalse(checkpoint.quality().complete());
+    }
+
+    @Test void aRunCannotSilentlyReplaceAnUnknownLedgerWithEmpty() {
+        assertThrows(IllegalArgumentException.class, () -> run(null).checkpoint(null));
+    }
+
+    @Test void aCheckpointCannotInventCoverageOrQuality() {
+        assertThrows(IllegalArgumentException.class, () -> GraphCheckpoint.finalGraph(
+                List.of(star()), List.of(), null, complete(), "sig"));
+        assertThrows(IllegalArgumentException.class, () -> GraphCheckpoint.finalGraph(
+                List.of(star()), List.of(), ledger(), null, "sig"));
+    }
+
+    private static final datasource.graph.GraphDiscoveryState LEDGER =
+            new datasource.graph.GraphDiscoveryState(List.of(), List.of());
+
+    private static datasource.graph.GraphDiscoveryState ledger() {
+        return LEDGER;
+    }
+
+    private static GenerationRun.Quality complete() {
+        return GenerationRun.Quality.completeQuality();
     }
 
     private static GenerationRun run(GenerationRun.RemapState remapState) {

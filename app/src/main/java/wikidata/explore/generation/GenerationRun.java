@@ -302,7 +302,8 @@ public record GenerationRun(
      * and the companion-match sets (so `won` re-computes without re-fetching P166).
      *
      * <p>The enriched pool is a NORMALIZED_SOURCE_GRAPH under another name — see
-     * {@link #remapCheckpoint()}, which is where that is now said.
+     * {@link #remapCheckpoint(datasource.graph.GraphDiscoveryState)}, which is where
+     * that is now said.
      */
     public record RemapState(
             List<WikidataDynamicObject> enrichedPool,
@@ -319,9 +320,10 @@ public record GenerationRun(
      * is made. It says what a run already holds in the vocabulary the pipeline will use,
      * so the flows can be described before any of them moves.
      */
-    public GraphCheckpoint checkpoint() {
+    public GraphCheckpoint checkpoint(
+            datasource.graph.GraphDiscoveryState graphDiscovery) {
         return GraphCheckpoint.finalGraph(dynamicObjects, loadedDeclarations,
-                datasource.graph.GraphDiscoveryState.EMPTY,
+                requiredGraphDiscovery(graphDiscovery), quality,
                 wikidata.explore.generation.DomainSave.signature(modelSnapshot));
     }
 
@@ -335,13 +337,23 @@ public record GenerationRun(
      * happened to be null; here it is the stage of the checkpoint, and the capability
      * follows from it.
      */
-    public GraphCheckpoint remapCheckpoint() {
+    public GraphCheckpoint remapCheckpoint(
+            datasource.graph.GraphDiscoveryState graphDiscovery) {
         return remapState == null || remapState.enrichedPool() == null
                         || remapState.enrichedPool().isEmpty()
-                ? checkpoint()
+                ? checkpoint(graphDiscovery)
                 : GraphCheckpoint.normalized(remapState.enrichedPool(),
-                        loadedDeclarations, datasource.graph.GraphDiscoveryState.EMPTY,
+                        loadedDeclarations, requiredGraphDiscovery(graphDiscovery), quality,
                         wikidata.explore.generation.DomainSave.signature(modelSnapshot));
+    }
+
+    private static datasource.graph.GraphDiscoveryState requiredGraphDiscovery(
+            datasource.graph.GraphDiscoveryState value) {
+        if (value == null) {
+            throw new IllegalArgumentException(
+                    "A run checkpoint needs the current graph-discovery ledger");
+        }
+        return value;
     }
 
     public int size() {

@@ -47,10 +47,15 @@ class PipelineFlowsCharacterizationTest {
         PHASES.put("extractResult(", "extract");
         PHASES.put("extract(client", "extract");
         PHASES.put("RuleTreeExtractor", "extract");
-        PHASES.put("QualifierLoader", "acquire-statements");
-        PHASES.put("StatementTransforms.applyIdempotent", "construct-idempotent");
-        PHASES.put("StatementTransforms.apply(", "construct");
-        PHASES.put("applyReify", "construct-reify");
+        PHASES.put(".enrichWithReport(", "acquire-statements");
+        PHASES.put("new QualifierLoader", "acquire-statements");
+        PHASES.put("StatementTransforms.applyIdempotent", "refresh-derived");
+        // apply() is two operations under one call: first-time statement-record
+        // construction and the same replayable derived-value refresh that Enrich calls
+        // separately. Keep that distinction visible rather than manufacturing an
+        // inversion between unlike operations.
+        PHASES.put("StatementTransforms.apply(", "construct-records+refresh-derived");
+        PHASES.put("applyReify", "construct-records");
         PHASES.put("SemanticConvergence.apply", "semantic");
         PHASES.put("OwnedComponents.apply", "semantic-owned-only");
         PHASES.put("ExternalSourceAcquisition.apply", "external-evidence");
@@ -61,31 +66,35 @@ class PipelineFlowsCharacterizationTest {
     }
 
     /** Generate domain — the order that produced every snapshot we compare counts to. */
-    @Test void generateDomainConstructsBeforeItSettlesKinds() throws IOException {
+    @Test void generateDomainAcquiresStatementsBeforeConstructingTheirRecords()
+            throws IOException {
         List<String> order = phasesOf(source("query/logical/GenerateDomainQuery.java"));
 
-        assertEquals(List.of("compile", "plan", "extract", "construct",
-                        "acquire-statements", "semantic", "external-evidence",
+        assertEquals(List.of("compile", "plan", "extract", "acquire-statements",
+                        "construct-records+refresh-derived", "semantic",
+                        "external-evidence",
                         "finalize", "materialize"),
                 order);
     }
 
     /**
-     * Enrich settles kinds BEFORE constructing — the reverse of Generate domain.
+     * Enrich does not construct records. Its input is an already-constructed saved
+     * graph, so it replays only the idempotent derived-value transforms after loading
+     * newly declared and external values.
      *
-     * <p>The discrepancy that matters most: kinds settled before reification see
-     * different records than kinds settled after, so these two flows can disagree about
-     * what the same model produces. One of the orders is wrong. Converging them changes
-     * behaviour on whichever moves, which is why the design characterizes it here rather
-     * than picking one in passing.
+     * <p>The remaining discrepancy is narrower: Generate performs that same refresh as
+     * part of {@code StatementTransforms.apply}, before semantic and external
+     * acquisition, and does not replay it afterwards. That is an artifact-dependency
+     * issue, not a legitimate per-flow ordering parameter.
      */
-    @Test void enrichSettlesKindsBeforeItConstructs() throws IOException {
+    @Test void enrichRefreshesDerivedValuesAfterAcquisition() throws IOException {
         List<String> order = phasesIn("GenerationPipeline.java", "public GenerationRun enrich(",
                 "static GenerationRun.Quality reconcileQuality");
 
-        assertTrue(order.indexOf("semantic") < order.indexOf("construct-idempotent"),
-                "the reverse of Generate domain, and the two cannot both be right: "
-                        + order);
+        assertTrue(order.indexOf("semantic") < order.indexOf("refresh-derived"), order.toString());
+        assertTrue(order.indexOf("external-evidence") < order.indexOf("refresh-derived"),
+                order.toString());
+        assertFalse(order.contains("construct-records"), order.toString());
     }
 
     /**
@@ -151,7 +160,7 @@ class PipelineFlowsCharacterizationTest {
 
         assertTrue(order.contains("extract"), order.toString());
         assertTrue(order.contains("acquire-statements"), order.toString());
-        assertTrue(order.contains("construct-reify"), order.toString());
+        assertTrue(order.contains("construct-records"), order.toString());
         assertTrue(order.contains("semantic"),
                 "a sampled instance is only what a generated one is if this runs");
         assertTrue(order.contains("materialize"), order.toString());
@@ -167,7 +176,9 @@ class PipelineFlowsCharacterizationTest {
                         "static GenerationRun.Quality reconcileQuality"),
                 phasesIn("GenerationPipeline.java", "public GenerationRun remap(",
                         "public GenerationRun enrich("),
-                phasesOf(source("query/logical/SampledDerivation.java")));
+                phasesIn("GenerationPipeline.java", "public GenerationRun fullRun(\n            GeneratedProjectModel snapshot,\n            int depth,\n            WikidataSparqlClient client,\n            GenerationLog log,\n            wikidata.api.WikidataApiClient entityApi,\n            work.CancellationToken cancellation,\n            datasource.api.SourceExecutionPlan sourcePlan,\n            WikidataSparqlClient dbpedia)",
+                        "public GenerationRun remap("),
+                sampleOrder());
 
         assertEquals(orders.size(), orders.stream().distinct().count(),
                 "no two flows describe the same sequence, which is the finding: "
@@ -185,6 +196,7 @@ class PipelineFlowsCharacterizationTest {
 
     /** The phases this text performs, in order, each recorded once per consecutive run. */
     private static List<String> phasesOf(String text) {
+        text = withoutComments(text);
         Pattern markers = Pattern.compile(PHASES.keySet().stream()
                 .map(Pattern::quote).reduce((a, b) -> a + "|" + b).orElseThrow());
         List<String> found = new ArrayList<>();
@@ -194,6 +206,20 @@ class PipelineFlowsCharacterizationTest {
             if (found.isEmpty() || !found.getLast().equals(phase)) found.add(phase);
         }
         return found;
+    }
+
+    private static List<String> sampleOrder() throws IOException {
+        List<String> order = new ArrayList<>();
+        order.addAll(phasesOf(source("query/logical/SampledClassProduction.java")));
+        order.addAll(phasesOf(source("query/logical/SampledDerivation.java")));
+        order.addAll(phasesOf(source("query/logical/ClassSampleResults.java")));
+        return order;
+    }
+
+    /** Comments explain neighboring phases and must never masquerade as calls. */
+    private static String withoutComments(String text) {
+        return text.replaceAll("(?s)/\\*.*?\\*/", "")
+                .replaceAll("(?m)//.*$", "");
     }
 
     private static String source(String path) throws IOException {

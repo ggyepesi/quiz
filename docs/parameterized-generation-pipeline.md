@@ -83,7 +83,7 @@ Conceptually:
 ```text
 PipelineRequest
   model
-  input
+  input (empty, or the actual typed checkpoint)
   scope
   acquisition
   limits
@@ -93,15 +93,15 @@ PipelineRequest
 ### Input
 
 ```text
-EMPTY
-SAVED_GRAPH
-NORMALIZED_CHECKPOINT
-CONSTRUCTED_CHECKPOINT
+PipelineInput
+  Empty
+  Checkpoint(GraphCheckpoint)
 ```
 
 Input is not only a collection of objects. It names what has already happened to those
 objects, because reifying an already-reified graph or treating a final snapshot as raw
-source output is incorrect.
+source output is incorrect. The checkpoint itself owns its stage; the request must not
+carry a parallel stage enum that can disagree with it.
 
 ### Scope
 
@@ -152,7 +152,7 @@ GraphCheckpoint
   stage
   objects
   loaded declarations
-  retained source evidence
+  retained source evidence (on the normalized objects and loaded declarations)
   graph-discovery ledger
   quality
   model fingerprint
@@ -367,27 +367,39 @@ historical request failed or whether a collection happens to be empty.
 
 ### Milestone 0 — characterize the five flows — **DONE**
 
-Recorded by `PipelineFlowsCharacterizationTest`, which reads each flow's phase order
-from the source, because that is where the order is written and these flows need a
-network to run. What it found:
+Recorded by `PipelineFlowsCharacterizationTest`, which reads executable call markers
+from each flow's source, excluding comments, because that is where the order is written
+and these flows need a network to run. This is temporary characterization evidence;
+Milestone 2 replaces it with the compiled phase decisions that execution itself
+consumes. What it found:
 
 | flow | order today |
 |---|---|
-| Generate domain | compile → plan → extract → **construct** → acquire-statements → **semantic** → external-evidence → finalize → materialize |
-| Enrich | compile → **semantic** → external-evidence → **construct** → finalize |
+| Generate domain | compile → plan → extract → acquire-statements → **construct records + refresh derived values** → semantic → external-evidence → finalize → materialize |
+| Enrich | compile → semantic → external-evidence → **refresh derived values** → finalize |
 | Remap | compile → **construct** → owned-components-only → finalize |
 | Generate class preview (`fullRun`) | compile → extract → external-evidence → construct → canonicalize → materialize |
-| Sample | extract → acquire-statements → construct-reify → semantic → aggregate → materialize |
+| Sample | extract → acquire-statements → construct-records → semantic → aggregate → materialize |
 
 Five flows, five orderings. Three discrepancies to remove, and one invariant already
 held:
 
-1. **Construct vs semantic is inverted between Generate domain and Enrich.** Kinds
-   settled before reification see different records than kinds settled after, so the two
-   flows can disagree about what one model produces. One order is wrong. Converging them
-   changes behaviour on whichever moves; the recommendation is to keep Generate domain's
-   order, because it produced every saved snapshot whose counts are the comparison for
-   everything else — but that is a decision to take deliberately, not in passing.
+1. **The apparent Construct/Semantic inversion combines two different operations.**
+   Generate starts from normalized source data, so it must construct statement records
+   before semantic work can see them. Enrich starts from an already-constructed saved
+   graph and does not reify again; its `StatementTransforms.applyIdempotent` call is a
+   refresh of aggregates, restrictions, inverts and projections after newly declared and
+   external values have been acquired. The checkpoint therefore decides whether
+   **construct records** runs; this is not a per-flow ordering option.
+
+   A narrower, real discrepancy remains. Generate performs the replayable derived-value
+   refresh inside `StatementTransforms.apply`, before semantic and external acquisition,
+   and does not refresh again afterwards. Enrich refreshes after both. If either
+   acquisition supplies an input to an aggregate, restriction, invert or projection, the
+   flows can disagree. Milestone 2 must expose **construct records** and **refresh derived
+   values** as separate decisions. The latter is scheduled from dependencies after its
+   last contributing producer (or reported as the present Generate discrepancy until
+   execution is unified), never selected by a `generate/enrich` ordering flag.
 2. **Remap composes parts without the semantic worklist**, calling `OwnedComponents`
    directly. Composition depends on kinds, so this is the variation most likely to be a
    latent bug rather than an economy.
@@ -406,7 +418,7 @@ run against saved domains and belong with Milestone 4's comparison.
 
 ### Milestone 1 — request and checkpoint vocabulary — **DONE**
 
-`PipelineRequest` (with `Input`, `Acquisition`, `Output`), `PipelineScope`,
+`PipelineRequest` (with `PipelineInput`, `Acquisition`, `Output`), `PipelineScope`,
 `PipelineLimits` and `GraphCheckpoint` (with `Stage` and `RemapCapability`). Nothing
 executes yet; this is the vocabulary the flows will be described in.
 
@@ -425,7 +437,7 @@ Decisions taken while writing it:
 - **Remap capability is derived from the checkpoint stage**, not stored. It was implicit
   in whether `RemapState` happened to be null: with the enriched pool in memory a Remap
   rebuilt everything, and after a restart it quietly did less.
-  `GenerationRun.remapCheckpoint()` now says which it is —
+  `GenerationRun.remapCheckpoint(graphDiscovery)` now says which it is —
   `NORMALIZED_SOURCE_GRAPH` → `FULL_RECONSTRUCTION`, otherwise `IDEMPOTENT_ONLY`.
 - **`RemapState.enrichedPool` is a normalized source graph** under another name, which is
   why full reconstruction is possible from it. Recorded on both, adapted rather than
@@ -433,16 +445,55 @@ Decisions taken while writing it:
 - **A checkpoint carries the fingerprint of the model that made it**
   (`DomainSave.signature`), and an unknown signature on either side makes no claim
   rather than answering "yes".
+- **The checkpoint is the input.** `PipelineInput` is either empty or carries the actual
+  `GraphCheckpoint`; there is no second input-stage enum to contradict
+  `GraphCheckpoint.Stage`.
+- **Depth zero remains a real bound.** It means “follow no child edges,” as it does in
+  `RuleTreeExtractor`. “Use the model's configured limit” is represented separately as
+  `AS_CONFIGURED` and invalid negative values are refused rather than reinterpreted.
+- **Checkpoint state is not invented.** A `GenerationRun` checkpoint requires the
+  current graph-discovery ledger explicitly and carries the run's quality. It may not
+  silently substitute an empty ledger for state owned by the loaded snapshot/UI.
 
 Not built, for want of a forcing reason: request/resource budgets, which the design
 lists among limits but nothing in the code asks for yet.
 
-### Milestone 2 — compile once
+### Milestone 2 — compile once — **IN PROGRESS**
 
-- Add `CompiledPipelineRun` as the sole owner of compiled model, datasource plan, fact
-  demands and phase decisions.
-- Compile and validate it before any external operation.
-- Drive the explanatory diagram from its phase decisions.
+Done: `PipelinePhase`, `PhaseDecision` and `CompiledPipelineRun`, which decides every
+phase from the request alone. No flow name reaches the planner; there is no
+generate/enrich order switch.
+
+- **Construct records is derived from the input checkpoint.** Empty or
+  `NORMALIZED_SOURCE_GRAPH` → RUN; `CONSTRUCTED_GRAPH` or `FINAL_GRAPH` → SKIP, because
+  reifying again would build a second copy of every record. This is what dissolved the
+  apparent Generate/Enrich inversion.
+- **Refresh derived values is scheduled from dependencies.**
+  `refreshDerivedValuesAfter()` returns the last phase that both produces field values
+  and actually runs, so Generate and Enrich converge on `ACQUIRE_EXTERNAL_EVIDENCE`
+  without anyone choosing, and a run that acquires nothing converges on the semantic
+  worklist. `PipelinePhase.producesFieldValues()` is where that dependency is stated —
+  a coarse first form: it names the phases that can supply a value, not yet the fields
+  each transform consumes.
+- **A phase that does not run carries a reason**, enforced in `PhaseDecision`: a silent
+  skip is indistinguishable from a phase somebody forgot. A phase that runs may not
+  carry one either — it explains itself by running.
+- **An uncompilable model BLOCKS every phase after COMPILE**, with the validation report
+  as the reason, before anything is fetched. So does a scope naming a class the model
+  does not contain.
+- **Sample and Generate domain produce identical phase decisions**, which is the design's
+  invariant made checkable: they differ by scope and limits and by nothing else.
+
+Still open in this milestone:
+
+- The compiled datasource plan and fact demands are not yet owned here; today they are
+  built inside the flows.
+- The explanatory diagram still comes from `configured(...)`, `configuredRemap(...)` and
+  `configuredEnrich(...)`. `CompiledPipelineRun.explain()` derives the same description
+  from the decisions; switching the UI onto it is the remaining step.
+- `HYDRATE_NAMES` is SKIPped under acquisition `NONE`. Whether names can be hydrated
+  locally from stored labels is unverified; the reason says what was assumed, and it
+  should be checked rather than left as an assumption.
 
 ### Milestone 3 — common executor and local tail
 

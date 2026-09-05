@@ -17,15 +17,16 @@ import java.util.List;
  *
  * <p>What the checkpoint carries beyond the objects is what a later phase would
  * otherwise have to guess: which declarations have been fetched (so acquisition asks
- * only for what is new), what the graph-discovery ledger covers, and the fingerprint of
- * the model that produced it (so a checkpoint is not silently reused under an edited
- * model).
+ * only for what is new), what the graph-discovery ledger covers, the run's final-state
+ * quality, and the fingerprint of the model that produced it (so a checkpoint is not
+ * silently reused under an edited model).
  */
 public record GraphCheckpoint(
         Stage stage,
         List<WikidataDynamicObject> objects,
         List<LoadedDeclaration> loadedDeclarations,
         GraphDiscoveryState graphDiscovery,
+        GenerationRun.Quality quality,
         String modelSignature) {
 
     /**
@@ -67,24 +68,30 @@ public record GraphCheckpoint(
         objects = objects == null ? List.of() : List.copyOf(objects);
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
-        graphDiscovery = graphDiscovery == null ? GraphDiscoveryState.EMPTY : graphDiscovery;
+        if (graphDiscovery == null) {
+            throw new IllegalArgumentException(
+                    "A checkpoint needs the graph-discovery ledger it carries");
+        }
+        if (quality == null) {
+            throw new IllegalArgumentException("A checkpoint needs its final-state quality");
+        }
         modelSignature = modelSignature == null ? "" : modelSignature.trim();
     }
 
     /** A graph as acquired, before anything was constructed from it. */
     public static GraphCheckpoint normalized(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
-            String modelSignature) {
+            GenerationRun.Quality quality, String modelSignature) {
         return new GraphCheckpoint(Stage.NORMALIZED_SOURCE_GRAPH, objects, loaded,
-                discovery, modelSignature);
+                discovery, quality, modelSignature);
     }
 
     /** A settled graph — a saved snapshot, or the end of a run. */
     public static GraphCheckpoint finalGraph(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
-            String modelSignature) {
+            GenerationRun.Quality quality, String modelSignature) {
         return new GraphCheckpoint(Stage.FINAL_GRAPH, objects, loaded, discovery,
-                modelSignature);
+                quality, modelSignature);
     }
 
     /**
@@ -96,15 +103,6 @@ public record GraphCheckpoint(
     public RemapCapability remapCapability() {
         return stage == Stage.NORMALIZED_SOURCE_GRAPH
                 ? RemapCapability.FULL_RECONSTRUCTION : RemapCapability.IDEMPOTENT_ONLY;
-    }
-
-    /** Which request input this checkpoint answers. */
-    public PipelineRequest.Input asInput() {
-        return switch (stage) {
-            case NORMALIZED_SOURCE_GRAPH -> PipelineRequest.Input.NORMALIZED_CHECKPOINT;
-            case CONSTRUCTED_GRAPH -> PipelineRequest.Input.CONSTRUCTED_CHECKPOINT;
-            case FINAL_GRAPH -> PipelineRequest.Input.SAVED_GRAPH;
-        };
     }
 
     /**
