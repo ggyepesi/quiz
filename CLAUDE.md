@@ -128,6 +128,22 @@ construct per thing produced:
    new *mechanisms* and so let three hand-written copies of one list control through.
    *(Trigger: about to write a control, a phrase, or a name.)*
 
+14. **When in the slightest doubt about what was agreed, ask — do not let the
+   implementation settle it.** Directive 11 governs a design that is written down; this
+   governs the gap where one is not. Reconstructing an agreement from memory and building
+   it is how a design drifts without anyone deciding to change it, and the drift is
+   invisible in review because each step looks reasonable on its own. Name the doubt,
+   state the readings, and let the answer come back before the code does.
+   *(Trigger: "I think we said…", or an implementation choice that no note, comment or
+   message actually settles.)*
+
+   The cost, measured: after a note that said every kind editor opens with its triple,
+   the source editor shipped with the triple SEVENTH — behind a subtype control and a
+   role list that both depend on it — the owned editor put it last, "Reifies statements
+   of" survived as a free-text field that changes a class's kind by keystroke, and four
+   panels ended in four different orders. No step of that was a decision; every one was a
+   gap filled quietly.
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until
