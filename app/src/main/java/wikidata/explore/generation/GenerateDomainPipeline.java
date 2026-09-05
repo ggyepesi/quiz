@@ -35,7 +35,21 @@ public final class GenerateDomainPipeline {
     private GenerateDomainPipeline() { }
 
     public static ProcessWorkflowPipeline configured(GeneratedProjectModel model) {
-        var compiled = wikidata.explore.compiled.ProjectModelCompiler.compile(model);
+        return configured(CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(model)));
+    }
+
+    /**
+     * The description, from the same compiled run execution consumes.
+     *
+     * <p>It used to compile the model for itself, so a Generate run compiled it twice —
+     * once to say what would happen and once to make it happen — and the two could
+     * describe different models the moment anything edited one between them. The compiled
+     * run is the one owner; this reads it.
+     */
+    public static ProcessWorkflowPipeline configured(CompiledPipelineRun run) {
+        GeneratedProjectModel model = run.request().model();
+        var compiled = run.model();
         return new ProcessWorkflowPipeline(List.of(
                 phase(PLAN, "Validate & plan",
                         "Freeze the model, compile it and derive required operations.",

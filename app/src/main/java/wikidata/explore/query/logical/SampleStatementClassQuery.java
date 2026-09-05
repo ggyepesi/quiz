@@ -43,7 +43,14 @@ public final class SampleStatementClassQuery implements Query<ClassSampleResult>
 
     @Override public ClassSampleResult execute(QueryContext context) throws Exception {
         if (snapshot == null) throw new IllegalStateException("No model to sample");
-        CompiledProjectModel compiled = ProjectModelCompiler.compile(snapshot);
+        // Compiled once, through the owner of that decision: a sample that cannot be
+        // planned says so with the model's own validation report, before it fetches.
+        wikidata.explore.generation.CompiledPipelineRun run =
+                wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.sampleClass(
+                                snapshot, className, limit));
+        if (run.blocked()) throw new IllegalStateException(run.explain());
+        CompiledProjectModel compiled = run.model();
         // Said here rather than left to the production step, which routes a class by
         // what it IS: a statement class with no recipe would fall to the extracted
         // route and present its SUBJECTS as if they were its statement records.

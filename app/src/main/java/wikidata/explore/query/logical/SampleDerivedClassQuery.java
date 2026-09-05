@@ -108,7 +108,14 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
                     chain == null ? "No model to sample" : chain.refusal());
         }
         GeneratedClassModel population = chain.population();
-        CompiledProjectModel compiled = ProjectModelCompiler.compile(snapshot);
+        // Compiled once, through the owner of that decision: a sample that cannot be
+        // planned says so with the model's own validation report, before it fetches.
+        wikidata.explore.generation.CompiledPipelineRun run =
+                wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.sampleClass(
+                                snapshot, className, limit));
+        if (run.blocked()) throw new IllegalStateException(run.explain());
+        CompiledProjectModel compiled = run.model();
 
         if (!chain.has(ClassDependencies.Kind.AGGREGATED)) {
             return context.step("Produce from bounded population", "Workflow", skeleton(),

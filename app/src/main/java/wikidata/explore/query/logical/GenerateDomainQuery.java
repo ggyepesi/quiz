@@ -123,8 +123,21 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // the runtime, so it holds fully-resolved field models.
                     pipeline.resolveUnits(project, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
 
+                    // Compiled once, by the owner of that decision. This method used to
+                    // compile for itself while GenerateDomainPipeline compiled again to
+                    // describe the run — two compiles of one model, which could describe
+                    // different models the moment anything edited one between them. A
+                    // model that will not compile now blocks with its validation report
+                    // before a single further request is made.
+                    wikidata.explore.generation.CompiledPipelineRun compiledRun =
+                            wikidata.explore.generation.CompiledPipelineRun.compile(
+                                    wikidata.explore.generation.PipelineRequest
+                                            .generateDomain(project));
+                    if (compiledRun.blocked()) {
+                        throw new IllegalStateException(compiledRun.explain());
+                    }
                     wikidata.explore.compiled.CompiledProjectModel compiledProject =
-                            wikidata.explore.compiled.ProjectModelCompiler.compile(project);
+                            compiledRun.model();
                     wikidata.explore.generation.GenerationState generationState =
                             new wikidata.explore.generation.GenerationState(
                                     project, compiledProject, entityApi.facts());

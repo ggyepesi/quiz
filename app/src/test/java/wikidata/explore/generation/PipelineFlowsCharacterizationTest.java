@@ -42,6 +42,10 @@ class PipelineFlowsCharacterizationTest {
     private static final Map<String, String> PHASES = new LinkedHashMap<>();
 
     static {
+        // Compiling through the owner is still compiling. A flow that reads
+        // CompiledPipelineRun.model() has not stopped having a compile phase; it has
+        // stopped having a compile of its OWN, which is what OneCompilePerRunTest holds.
+        PHASES.put("CompiledPipelineRun.compile", "compile");
         PHASES.put("ProjectModelCompiler.compile", "compile");
         PHASES.put("pipeline.plan(", "plan");
         PHASES.put("extractResult(", "extract");

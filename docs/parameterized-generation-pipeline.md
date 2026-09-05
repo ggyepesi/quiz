@@ -484,13 +484,28 @@ generate/enrich order switch.
 - **Sample and Generate domain produce identical phase decisions**, which is the design's
   invariant made checkable: they differ by scope and limits and by nothing else.
 
+**Compile once is now true of the model.** Every flow that executes a run —
+`GenerateDomainQuery`, the three sample routes, and `GenerateDomainPipeline`'s
+description — reads `CompiledPipelineRun.model()` instead of compiling for itself. A
+Generate run previously compiled the model twice, once to say what would happen and once
+to make it happen, and the two could describe different models the moment anything edited
+one between them. Each flow now also refuses a blocked plan before it fetches, with the
+model's validation report as the reason.
+
+`OneCompilePerRunTest` holds it, and states the distinction it rests on: an advisor
+explaining a class, a panel deriving inverts and a transform deriving reifications each
+compile for a question of their own and are not runs. What may not compile for itself is
+a flow that executes one.
+
 Still open in this milestone:
 
 - The compiled datasource plan and fact demands are not yet owned here; today they are
   built inside the flows.
-- The explanatory diagram still comes from `configured(...)`, `configuredRemap(...)` and
-  `configuredEnrich(...)`. `CompiledPipelineRun.explain()` derives the same description
-  from the decisions; switching the UI onto it is the remaining step.
+- The explanatory diagram is built from the compiled run but still enumerates its own
+  phases in `configured(...)`, `configuredRemap(...)` and `configuredEnrich(...)`.
+  `CompiledPipelineRun.explain()` derives one description from the decisions; switching
+  the UI onto it changes what a reader sees — Generate would gain "Stage input graph"
+  and "Refresh derived values" rows — so it is a deliberate step, not a tidy-up.
 - `HYDRATE_NAMES` is SKIPped under acquisition `NONE`. Whether names can be hydrated
   locally from stored labels is unverified; the reason says what was assumed, and it
   should be checked rather than left as an assumption.
