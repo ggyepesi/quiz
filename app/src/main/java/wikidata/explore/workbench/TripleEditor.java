@@ -1,6 +1,8 @@
 package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
+import workbench.SimpleDocumentListener;
+import wikidata.ui.WikidataLinks;
 import wikidata.explore.model.EntityBound;
 import wikidata.explore.rule.RuleNode;
 
@@ -35,6 +37,12 @@ import java.util.List;
  * Its property and object are settled by which field, on which class, declares the
  * ownership — so they are authored there and only read here, and a class produced at
  * several sites occupies several triples.
+ *
+ * <p>A SOURCE class occupies one END of its triple ({@link #membership}): its members
+ * are the subject, and it authors the property and the objects. Those were three
+ * controls — "Relation property", "Wikidata type/class" and "Also include types" — over
+ * what is one ordered list, and the second box was labelled by asking whether the
+ * property was P31. One list, one row.
  */
 final class TripleEditor extends JPanel {
 
@@ -50,6 +58,15 @@ final class TripleEditor extends JPanel {
 
     private final JPanel authored = new JPanel(new GridBagLayout());
     private final JPanel produced = new JPanel();
+    private final JPanel membership = new JPanel(new GridBagLayout());
+    private final JTextField membershipProperty = new JTextField(6);
+    private final JLabel membershipPropertyLabel = new JLabel(" ");
+    private final JTextField membershipTargets = new JTextField(22);
+    private final JLabel membershipTargetLabel = new JLabel("(not selected)");
+    private final JPanel membershipPropertyActions =
+            new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+    private final JPanel membershipObjectActions =
+            new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
 
     TripleEditor(String title) {
         super(new CardLayout());
@@ -57,6 +74,8 @@ final class TripleEditor extends JPanel {
         produced.setLayout(new BoxLayout(produced, BoxLayout.Y_AXIS));
         add(authored, "authored");
         add(produced, "produced");
+        add(membership, "membership");
+        buildMembershipRows();
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(3, 4, 3, 4);
@@ -118,6 +137,120 @@ final class TripleEditor extends JPanel {
         ((CardLayout) getLayout()).show(this, "produced");
         revalidate();
         repaint();
+    }
+
+    private void buildMembershipRows() {
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(3, 4, 3, 4);
+        c.anchor = GridBagConstraints.WEST;
+        c.fill = GridBagConstraints.HORIZONTAL;
+
+        GridBagUtils.labeledRow(membership, c, 0, "Subject:",
+                new JLabel("<html><i>this class's members</i></html>"));
+
+        JPanel propertyRow = new JPanel(new java.awt.FlowLayout(
+                java.awt.FlowLayout.LEFT, 4, 0));
+        membershipProperty.setToolTipText("<html>The property that puts an entity in "
+                + "this class. <b>P31</b> = instance of; any property works, e.g. "
+                + "<b>P166</b> = award received, <b>P39</b> = position held.</html>");
+        propertyRow.add(membershipProperty);
+        propertyRow.add(membershipPropertyActions);
+        propertyRow.add(membershipPropertyLabel);
+        GridBagUtils.labeledRow(membership, c, 1, "Property:", propertyRow);
+
+        // One row, whatever the property is. The QIDs used to be two boxes — one
+        // "type/class" and one "also include" — and the first was relabelled "Relation
+        // target" when the property was not P31, which is the P31 literal answering a
+        // question about wording. They are the objects this triple points at.
+        JPanel objectRow = new JPanel(new java.awt.FlowLayout(
+                java.awt.FlowLayout.LEFT, 4, 0));
+        membershipTargets.setToolTipText("<html>The entities this property must point "
+                + "into, space-separated. An entity is a member when the property "
+                + "reaches ANY of them.</html>");
+        objectRow.add(membershipTargets);
+        objectRow.add(membershipObjectActions);
+        objectRow.add(membershipTargetLabel);
+        GridBagUtils.labeledRow(membership, c, 2, "Objects:", objectRow);
+
+        membershipPropertyActions.setOpaque(false);
+        membershipObjectActions.setOpaque(false);
+        WikidataLinks.linkify(membershipTargetLabel,
+                () -> firstTarget().isBlank() ? "" : firstTarget());
+        WikidataLinks.linkify(membershipPropertyLabel,
+                () -> RuleNode.cleanPid(membershipProperty.getText()));
+        // A hand-edited PID is no longer the property whose label is shown.
+        membershipProperty.getDocument().addDocumentListener(
+                SimpleDocumentListener.of(() -> membershipPropertyLabel.setText(" ")));
+    }
+
+    /** The buttons that fill these rows; their actions belong to the owning panel. */
+    void membershipActions(List<javax.swing.JComponent> propertyActions,
+            List<javax.swing.JComponent> objectActions) {
+        membershipPropertyActions.removeAll();
+        membershipObjectActions.removeAll();
+        for (javax.swing.JComponent action : propertyActions) {
+            membershipPropertyActions.add(action);
+        }
+        for (javax.swing.JComponent action : objectActions) {
+            membershipObjectActions.add(action);
+        }
+    }
+
+    /**
+     * A source class's triple: its members are the subject, and it authors the property
+     * and the objects.
+     */
+    void membership(String propertyPid, String propertyLabel, List<String> targets,
+            String targetLabel) {
+        membershipProperty.setText(propertyPid == null || propertyPid.isBlank()
+                ? "P31" : propertyPid);
+        membershipPropertyLabel.setText(
+                propertyLabel == null || propertyLabel.isBlank() ? " " : propertyLabel);
+        membershipTargets.setText(String.join(" ",
+                targets == null ? List.<String>of() : targets));
+        membershipTargetLabel.setText(targetLabel == null || targetLabel.isBlank()
+                ? "(not selected)" : targetLabel);
+        ((CardLayout) getLayout()).show(this, "membership");
+    }
+
+    /** The property, defaulted to P31 the way the membership rule reads a blank one. */
+    String membershipProperty() {
+        String pid = RuleNode.cleanPid(membershipProperty.getText());
+        return pid.isBlank() ? "P31" : pid;
+    }
+
+    void membershipProperty(String pid, String label) {
+        membershipProperty.setText(pid == null ? "" : pid);
+        membershipPropertyLabel.setText(label == null || label.isBlank() ? " " : label);
+    }
+
+    String membershipPropertyLabel() {
+        return membershipPropertyLabel.getText() == null
+                ? "" : membershipPropertyLabel.getText().trim();
+    }
+
+    /** Every QID typed into the objects row, in order, without repeats. */
+    List<String> membershipTargets() {
+        java.util.List<String> qids = new java.util.ArrayList<>();
+        for (String token : membershipTargets.getText().trim().split("[,;\\s]+")) {
+            String qid = RuleNode.cleanQid(token);
+            if (!qid.isBlank() && !qids.contains(qid)) qids.add(qid);
+        }
+        return qids;
+    }
+
+    void membershipTargets(List<String> qids, String targetLabel) {
+        membershipTargets.setText(String.join(" ",
+                qids == null ? List.<String>of() : qids));
+        if (targetLabel != null) {
+            membershipTargetLabel.setText(
+                    targetLabel.isBlank() ? "(not selected)" : targetLabel);
+        }
+    }
+
+    String firstTarget() {
+        List<String> qids = membershipTargets();
+        return qids.isEmpty() ? "" : qids.get(0);
     }
 
     void vocabularies(List<String> names) {

@@ -75,16 +75,12 @@ TripleEditor
 Per kind it is configured, not subclassed:
 
 - **Statement** — both ends authored, no members-end. **Shipped.**
-- **Source** — members-end authored (the direction), the other end an `EntityBound`.
-  **Not shipped: the model change landed, the editor did not.** A source class's
-  membership is one `EntityBound` now, but `ClassSourcePanel` still shows it as
-  "Relation property" plus two QID boxes ("Wikidata type" and "Also include types") —
-  one ordered list read as a leading target and the rest. Nothing is lost through them,
-  and they are still a second spelling of the triple: the two boxes are the object row,
-  the relation property is the property row, and the members are the subject.
-  Everything hanging off those boxes moves with them — the type search, "Discover
-  subtypes", "From parts", the QID links, and `useSourceQid` from the WikiProject and
-  Explore panels, which is why this is a step of its own and not a rename.
+- **Source** — the members are the subject; the property and the objects are authored.
+  **Shipped.** Three controls became three rows of one triple: "Relation property" is
+  the property, and "Wikidata type/class" plus "Also include types" — one ordered list
+  shown as a leading target and the rest — are one objects row. The buttons that fill
+  them (Find…, Discover subtypes, From parts…) are injected by the panel, because the
+  dialogs and queries behind them are its concern and the rows are not.
 - **Owned** — every row read-only, each pointing at the field that authors it.
   **Shipped.**
 - **Aggregate** — the component is absent; there is no triple.
@@ -252,8 +248,8 @@ without them.
 1. `ClassHeaderEditor` — the largest gap, no open questions.
 2. ~~`ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.~~
    **Done.**
-3. `TripleEditor` — **Statement done, Owned done, Source still open (the UI, no
-   longer the model).**
+3. ~~`TripleEditor`, Statement first, then Source, then Owned read-only.~~ **Done for
+   all three kinds.**
 
    Statement authors all three tags in one box, and the subject's population moved
    inside it: naming the class whose members are the subjects is a way of bounding the
@@ -281,18 +277,18 @@ without them.
    place, with silent precedence between them in `PopulationSourceBindings` (a relation
    wins, a seed list is only consulted when there is none) — 37 sites, its own step.
 
-   And the source editor still shows the one bound as three controls: a relation
-   property and two QID boxes, the second reading as "extra" types when the model no
-   longer has a leading one. Folding them into the triple's object row is what brings
-   Source into `TripleEditor`, and it carries the type search, "Discover subtypes",
-   "From parts", the QID links and the `useSourceQid` action with it.
+   The source editor's three controls are now the triple's three rows. Two things went
+   with them: the row label that read "Wikidata type/class" or "Relation target (Pnnn)"
+   depending on whether the property was P31 — the P31 literal answering a question
+   about wording, §3's fourth case — and a third private copy of `SimpleDocumentListener`,
+   which moved to the shared `workbench` package where both apps may have it.
 
    Subclass closure is now persistable — the thing the adapter used to refuse — and no
    run performs it: `RuleNodeQueryBuilder.subclassMembershipBackboneQuery` carries none
    of the class's other membership filters, so swapping it in would drop them silently.
    The validator refuses a model that asks for one until that query is wired.
-4. `DisplayNameEditor`, in all four panels; owner-and-site becomes the owned default
-   rather than an unconditional rule.
+4. ~~`DisplayNameEditor`, in all four panels~~ **Done**; owner-and-site is the owned
+   default rather than an unconditional rule.
 5. Apply buttons removed.
 
 Each step keeps the suite green and changes no saved data. Step 3 changes what a Source

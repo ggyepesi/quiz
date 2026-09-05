@@ -3,6 +3,7 @@ package wikidata.explore.workbench;
 import wikidata.WikidataIds;
 
 import objectview.utils.swing.GridBagUtils;
+import workbench.SimpleDocumentListener;
 
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleNode;
@@ -67,23 +68,14 @@ public class ClassSourcePanel extends JPanel {
     // and qualifiers (pq:, set per-field). Blank = a normal class.
     private final JTextField statementSourceField = new JTextField(12);
 
-    private final JTextField typeQidField = new JTextField(10);
-    private final JLabel typeLabel = new JLabel("(not selected)");
-    // Row label for the source-QID field. Reads "Wikidata type/class:" only when
-    // the relation is P31 (instance of); for any other relation the source QID is
-    // the relation's TARGET (e.g. P166 → the award won), not a type — so the label
-    // adapts to avoid the "is this a class?" confusion.
-    private final JLabel typeRowLabel = new JLabel("Wikidata type/class:");
-    // The membership relation property: P31 (instance of) by default, but any
-    // property — e.g. P166 (award received) for "won this award".
-    private final JTextField relationPidField = new JTextField(6);
+    // Subject, property and objects in one component, because that is one triple. The
+    // property and the QIDs were three controls over one bound, and the QID row was
+    // labelled by asking whether the property was P31.
+    private final TripleEditor triple =
+            new TripleEditor("Triple — subject · property · object");
     private final JButton findRelationButton = new JButton("Find…");
-    // Resolved label of the relation property (e.g. "nominated for"), shown next
-    // to the PID and clickable to open the property's Wikidata page.
-    private final JLabel relationLabel = new JLabel(" ");
     // Lazily-created; the property/item name search uses the Wikidata API.
     private WikidataApiClient api;
-    private final JTextField additionalTypesField = new JTextField(14);
     private final JTextField excludeTypesField = new JTextField(14);
     private final JButton discoverTypesButton = new JButton("Discover subtypes");
     // Discover the membership targets from a parent's "has part(s)" relation —
@@ -155,9 +147,7 @@ public class ClassSourcePanel extends JPanel {
     /** Fill the class population relation from the explicit workbench selection. */
     public void usePopulationProperty(String pid, String label) {
         if (!WikidataIds.isPid(pid)) return;
-        relationPidField.setText(pid);
-        relationLabel.setText(label == null || label.isBlank() ? pid : label);
-        updateTypeRowLabel();
+        triple.membershipProperty(pid, label == null || label.isBlank() ? pid : label);
     }
 
     /**
@@ -196,16 +186,10 @@ public class ClassSourcePanel extends JPanel {
         populateClassDetails();
         populateRepresentations();
 
-        List<String> membershipQids = clazz.membership().qids();
-        typeQidField.setText(membershipQids.isEmpty() ? "" : membershipQids.get(0));
-        typeLabel.setText(m.displaySource());
-        relationPidField.setText(clazz.membership().relationPid().isBlank()
-                ? "P31" : clazz.membership().relationPid());
-        // setText above fires the listener that blanks relationLabel — restore the
-        // stored label afterwards so a saved relation shows its name on load.
-        relationLabel.setText(m.propertyLabel() == null ? " " : m.propertyLabel());
-        additionalTypesField.setText(String.join(" ", membershipQids.subList(
-                Math.min(1, membershipQids.size()), membershipQids.size())));
+        // The property's label is set AFTER the PID, whose document listener blanks it
+        // — a saved relation must still show its name on load.
+        triple.membership(clazz.membership().relationPid(), m.propertyLabel(),
+                clazz.membership().qids(), m.displaySource());
         excludeTypesField.setText(String.join(" ", m.excludedTypeQids()));
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -273,8 +257,7 @@ public class ClassSourcePanel extends JPanel {
                         clazz.membership().includeDescendants()));
         clazz.instanceMapping().sourceLabel(label);
 
-        typeQidField.setText(targets.isEmpty() ? "" : targets.get(0));
-        typeLabel.setText(clazz.instanceMapping().displaySource());
+        triple.membershipTargets(targets, clazz.instanceMapping().displaySource());
 
         updateSummary();
         afterChange.accept(null);
@@ -348,25 +331,15 @@ public class ClassSourcePanel extends JPanel {
                 + "class.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Reifies statements of:", statementSourceField);
 
-        JPanel typeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        typeRow.add(typeQidField);
-        typeRow.add(typeLabel);
-        GridBagUtils.labeledRow(form, c, y++, typeRowLabel, typeRow);
-
-        additionalTypesField.setToolTipText("<html>Extra type QIDs (space-separated) "
-                + "for membership: an item counts if it is instance-of the type "
-                + "above OR any of these.<br>e.g. add Q4193029 (zodiacal "
-                + "constellation) so Aries &amp; Cancer — typed only as the "
-                + "subclass — are included. Avoids a slow/over-broad P279* path.</html>");
-        JPanel addTypesRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        addTypesRow.add(additionalTypesField);
-        addTypesRow.add(discoverTypesButton);
-        fromPartsButton.setToolTipText("<html>Fill the membership from a parent "
-                + "entity's parts: e.g. Academy Awards (Q19020) <b>P527</b> (has "
-                + "part) → its award categories. Data-driven instead of a pasted "
-                + "QID list.</html>");
-        addTypesRow.add(fromPartsButton);
-        GridBagUtils.labeledRow(form, c, y++, "Also include types:", addTypesRow);
+        fromPartsButton.setToolTipText("<html>Fill the objects from a parent entity's "
+                + "parts: e.g. Academy Awards (Q19020) <b>P527</b> (has part) → its "
+                + "award categories. Data-driven instead of a pasted QID list.</html>");
+        findRelationButton.setToolTipText(
+                "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
+        findRelationButton.addActionListener(e -> pickProperty());
+        triple.membershipActions(List.of(findRelationButton),
+                List.of(discoverTypesButton, fromPartsButton));
+        GridBagUtils.wideRow(form, y++, triple);
 
         excludeTypesField.setToolTipText("<html>Type QIDs (space-separated) to "
                 + "EXCLUDE: drop any item that is instance-of (P31) one of these, "
@@ -374,31 +347,6 @@ public class ClassSourcePanel extends JPanel {
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Exclude types:", excludeTypesField);
-
-        relationPidField.setToolTipText("<html>Membership relation property. "
-                + "<b>P31</b> = instance of (the type above); but any property "
-                + "works, e.g. <b>P166</b> = award received (\"won this award\"), "
-                + "<b>P39</b> = position held. Emitted as "
-                + "<code>?item wdt:&lt;PID&gt; wd:&lt;type/value&gt;</code>.</html>");
-        JPanel relRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        relRow.add(relationPidField);
-        findRelationButton.setToolTipText(
-                "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
-        findRelationButton.addActionListener(e -> pickProperty());
-        relRow.add(findRelationButton);
-        relRow.add(relationLabel);
-        GridBagUtils.labeledRow(form, c, y++, "Relation property:", relRow);
-        // Keep the source-QID row label + the relation label in sync with the
-        // chosen relation; clear the resolved label when the PID is hand-edited.
-        relationPidField.getDocument().addDocumentListener(
-                (SimpleDocumentListener) e -> {
-                    updateTypeRowLabel();
-                    relationLabel.setText(" ");
-                });
-        updateTypeRowLabel();
-        // Both the type and relation labels link to their Wikidata page.
-        WikidataLinks.linkify(typeLabel, () -> RuleNode.cleanQid(typeQidField.getText()));
-        WikidataLinks.linkify(relationLabel, () -> RuleNode.cleanPid(relationPidField.getText()));
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         options.add(new JLabel("Limit:"));
@@ -546,8 +494,7 @@ public class ClassSourcePanel extends JPanel {
         if (clazz == null) {
             return null;
         }
-        JTextField parentField = new JTextField(
-                RuleNode.cleanQid(typeQidField.getText()), 12);
+        JTextField parentField = new JTextField(triple.firstTarget(), 12);
         JTextField pidField = new JTextField("P527", 6);
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
         form.add(new JLabel("Parent entity QID:"));
@@ -744,13 +691,9 @@ public class ClassSourcePanel extends JPanel {
         if (!WikidataIds.isQid(qid)) {
             return;
         }
-        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
-        for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
-            String q = RuleNode.cleanQid(tok);
-            if (WikidataIds.isQid(q)) set.add(q);
-        }
-        set.add(qid);
-        additionalTypesField.setText(String.join(" ", set));
+        java.util.List<String> targets = triple.membershipTargets();
+        if (!targets.contains(qid)) targets.add(qid);
+        triple.membershipTargets(targets, null);
         apply();
         log.accept("Added membership type " + qid + "\n");
     }
@@ -875,24 +818,12 @@ public class ClassSourcePanel extends JPanel {
             String qid = RuleNode.cleanQid(tok);
             if (WikidataIds.isQid(qid)) m.excludedTypeQids().add(qid);
         }
-        String relPid = RuleNode.cleanPid(relationPidField.getText());
+        String relPid = triple.membershipProperty();
         if (!WikidataIds.isPid(relPid)) {
             relPid = "P31";
         }
-        // One value: the property and every type QID it may point into. The two boxes
-        // are one list shown in two places — a leading QID and the rest — which is what
-        // the model held until it held a bound. Order is kept, so what is read back is
-        // what was typed.
-        List<String> membershipQids = new ArrayList<>();
-        for (String text : List.of(typeQidField.getText(),
-                additionalTypesField.getText())) {
-            for (String token : text.trim().split("[,;\\s]+")) {
-                String qid = RuleNode.cleanQid(token);
-                if (WikidataIds.isQid(qid) && !membershipQids.contains(qid)) {
-                    membershipQids.add(qid);
-                }
-            }
-        }
+        // One value, from one row: the property and every entity it may point into.
+        List<String> membershipQids = triple.membershipTargets();
         clazz.membership(membershipQids.isEmpty()
                 ? EntityBound.unbounded()
                 : EntityBound.relation(relPid, membershipQids,
@@ -921,7 +852,7 @@ public class ClassSourcePanel extends JPanel {
         }
         // Preserve the resolved relation label (from "Find…" or a prior load) so
         // it persists and renders; default P31 to "instance of".
-        String relLabelText = relationLabel.getText().trim();
+        String relLabelText = triple.membershipPropertyLabel();
         m.propertyLabel(relPid.equals("P31") ? "instance of"
                 : (relLabelText.isEmpty() ? "" : relLabelText));
         m.direction(RuleDirection.ITEM_TO_ROOT);
@@ -959,7 +890,7 @@ public class ClassSourcePanel extends JPanel {
         }
 
         titleLabel.setText("Class: " + clazz.className());
-        typeLabel.setText(m.displaySource());
+        triple.membershipTargets(clazz.membership().qids(), m.displaySource());
 
         // Multi-target/-type membership → auto-add the intrinsic grouping fields
         // (type, and target for a relation) as real, editable model fields.
@@ -1075,9 +1006,7 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class");
         header.show(null);
         searchTextField.setText("");
-        typeQidField.setText("");
-        typeLabel.setText("(not selected)");
-        relationPidField.setText("P31");
+        triple.membership("P31", "", List.of(), "");
         representations.show(List.of(), List.of());
         summaryLabel.setText(" ");
         searchModel.setRows(List.of());
@@ -1165,18 +1094,6 @@ public class ClassSourcePanel extends JPanel {
         }
     }
 
-    // The source-QID field is a "type/class" only with the default P31 relation.
-    // For any other relation it holds the relation's TARGET (e.g. P166 → the award
-    // won), so relabel it to match — this is exactly the confusion P1411 caused.
-    private void updateTypeRowLabel() {
-        String pid = RuleNode.cleanPid(relationPidField.getText());
-        if (pid.isBlank() || pid.equals("P31")) {
-            typeRowLabel.setText("Wikidata type/class:");
-        } else {
-            typeRowLabel.setText("Relation target (" + pid + "):");
-        }
-    }
-
     private WikidataApiClient api() {
         if (api == null) {
             api = new WikidataApiClient("quiz-modelbuilder/1.0 (ggyepesi@gmail.com)");
@@ -1201,9 +1118,9 @@ public class ClassSourcePanel extends JPanel {
         // exact match (just that property), which is clearer than seeding the
         // label (a fuzzy text match that also pulls in related properties). Fall
         // back to the resolved label only when there's no PID yet.
-        String seed = relationPidField.getText().trim();
+        String seed = triple.membershipProperty();
         if (seed.isEmpty()) {
-            seed = relationLabel.getText().trim();
+            seed = triple.membershipPropertyLabel();
         }
         JTextField input = new JTextField(seed, 20);
         JButton searchBtn = new JButton("Search");
@@ -1269,9 +1186,8 @@ public class ClassSourcePanel extends JPanel {
         Runnable use = () -> {
             WikidataApiClient.SearchResult picked = list.getSelectedValue();
             if (picked != null) {
-                relationPidField.setText(picked.qid());   // fires listener (clears label)
-                updateTypeRowLabel();
-                relationLabel.setText(picked.label());     // then set the picked label
+                // The label after the PID: setting the PID blanks it.
+                triple.membershipProperty(picked.qid(), picked.label());
                 dialog.dispose();
             }
         };
@@ -1316,15 +1232,6 @@ public class ClassSourcePanel extends JPanel {
 
     private static String esc(String s) {
         return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
-    // DocumentListener whose three callbacks all run the same action.
-    @FunctionalInterface
-    private interface SimpleDocumentListener extends javax.swing.event.DocumentListener {
-        void changed(javax.swing.event.DocumentEvent e);
-        @Override default void insertUpdate(javax.swing.event.DocumentEvent e) { changed(e); }
-        @Override default void removeUpdate(javax.swing.event.DocumentEvent e) { changed(e); }
-        @Override default void changedUpdate(javax.swing.event.DocumentEvent e) { changed(e); }
     }
 
 }

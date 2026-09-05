@@ -98,6 +98,51 @@ class OneTriplePerClassTest {
     }
 
     /** The property row by name: both ends hold text fields of their own. */
+    /**
+     * A source class occupies one END of its triple: its members are the subject, and
+     * it authors the property and the objects.
+     *
+     * <p>Those were three controls — "Relation property", "Wikidata type/class" and
+     * "Also include types" — over one ordered list, and the second box was labelled by
+     * asking whether the property was P31, so the same list read as a type plus extras
+     * or as a relation target plus extras depending on a literal.
+     */
+    @Test void aSourceClassAuthorsItsTripleInTheSameComponent() {
+        GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
+        constellation.membership(EntityBound.relation(
+                "P31", List.of("Q8928", "Q1053464"), false));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(constellation);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(constellation);
+
+        TripleEditor triple = find(panel, TripleEditor.class);
+        assertNotNull(triple, "a source class describes a triple like the others");
+        assertEquals("P31", triple.membershipProperty());
+        assertEquals(List.of("Q8928", "Q1053464"), triple.membershipTargets(),
+                "one row, one list — not a leading type and a set of extras");
+    }
+
+    /** What the reader typed comes back as it was typed, order included. */
+    @Test void editingTheObjectsRowWritesTheMembership() {
+        GeneratedClassModel star = new GeneratedClassModel("Star");
+        star.membership(EntityBound.relation("P31", List.of("Q523"), false));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(star);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(star);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        triple.membershipTargets(List.of("Q523", "Q6243"), null);
+        panel.applyEdits();
+
+        assertEquals(EntityBound.relation("P31", List.of("Q523", "Q6243"), false),
+                star.membership());
+    }
+
     private static JTextField property(TripleEditor triple) {
         try {
             java.lang.reflect.Field field =
