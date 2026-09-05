@@ -30,6 +30,8 @@ public final class PipelineState {
     private GeneratedViewableRuntime runtime;
     private List<Viewable> instances = List.of();
     private DomainFinalization.Result finalization;
+    private wikidata.explore.transform.StatementTransforms.Result construction;
+    private SemanticConvergence.Result convergence;
 
     public PipelineState(
             GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool) {
@@ -108,6 +110,30 @@ public final class PipelineState {
 
     public DomainFinalization.Result finalization() {
         return finalization;
+    }
+
+    /**
+     * What construction produced, in full.
+     *
+     * <p>Not only the records: a run also reads the companion sets it fetched (to cache
+     * for a later Remap), the self-references it found and the records a projection
+     * changed. A step that returned a count would make its caller re-derive the rest.
+     */
+    public wikidata.explore.transform.StatementTransforms.Result construction() {
+        return construction;
+    }
+
+    /** What the worklist settled — declarations, kinds, parts, and what it could not. */
+    public SemanticConvergence.Result convergence() {
+        return convergence;
+    }
+
+    public void constructed(wikidata.explore.transform.StatementTransforms.Result result) {
+        construction = result;
+    }
+
+    public void converged(SemanticConvergence.Result result) {
+        convergence = result;
     }
 
     /** Only forwards: a stage is something a graph has reached, not a setting. */

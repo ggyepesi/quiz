@@ -48,6 +48,7 @@ public final class SemanticWorklistStep implements PipelineStep {
         SemanticConvergence.Result converged = SemanticConvergence.apply(
                 context.run().request().model(), state.pool(), context.entityApi(),
                 context.log(), state.loadedDeclarations(), quality, sourcePlan);
+        state.converged(converged);
         state.loadedDeclarations().clear();
         state.loadedDeclarations().addAll(converged.completedDeclarations().values());
         return converged.ownedCreated() + " owned part(s), "

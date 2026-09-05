@@ -231,9 +231,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // The ONE transform sequence (#97). Generate differs from Remap only
                     // in that it FETCHES the companion sets instead of replaying cached
                     // ones — and it caches them here for the next Remap.
-                    wikidata.explore.transform.StatementTransforms.Result transformed =
-                            wikidata.explore.transform.StatementTransforms.apply(
-                                    project, compiledProject, reifyPool,
+                    // One state for the whole run from here on: construction, the
+                    // worklist, finalization and materialization all advance it, and each
+                    // declares the stage it needs — so the order is checked rather than
+                    // trusted to the order these lines happen to be written in.
+                    wikidata.explore.generation.PipelineState runState =
+                            wikidata.explore.generation.PipelineState.over(
+                                    wikidata.explore.generation.GraphCheckpoint.Stage
+                                            .NORMALIZED_SOURCE_GRAPH, reifyPool);
+                    wikidata.explore.generation.PipelineContext runContext =
+                            new wikidata.explore.generation.PipelineContext(
+                                    compiledRun, entityApi, genLog, context.cancellation());
+                    new wikidata.explore.generation.PipelineExecutor()
+                            .with(new wikidata.explore.generation.ConstructRecordsStep(
                                     records -> {
                                         try {
                                             return wikidata.explore.transform.CompanionMatch
@@ -246,8 +256,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                         } catch (Exception failed) {
                                             throw new RuntimeException(failed);
                                         }
-                                    },
-                                    genLog);
+                                    }))
+                            .run(runContext, runState);
+                    wikidata.explore.transform.StatementTransforms.Result transformed =
+                            runState.construction();
                     List<WikidataDynamicObject> reified = transformed.reified();
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
                             companionSets = transformed.companionSets();
@@ -283,10 +295,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // after a full generation re-asks Wikidata for all of it.
                     wikidata.explore.generation.GenerationQualityTracker qualityTracker =
                             generationState.quality();
+                    new wikidata.explore.generation.PipelineExecutor()
+                            .with(new wikidata.explore.generation.SemanticWorklistStep(
+                                    sourcePlan, qualityTracker))
+                            .run(runContext, runState);
                     wikidata.explore.generation.SemanticConvergence.Result convergence =
-                            wikidata.explore.generation.SemanticConvergence.apply(
-                                    project, referentLoadRoots, entityApi, genLog,
-                                    java.util.List.of(), qualityTracker, sourcePlan);
+                            runState.convergence();
                     java.util.Map<String, wikidata.explore.extract.LoadedDeclaration>
                             completedReferentLoads = new java.util.LinkedHashMap<>(
                                     convergence.completedDeclarations());
@@ -333,16 +347,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // state — MaterializeStep requires a FINAL_GRAPH, and only
                     // FinalizeStep leaves one.
                     //
-                    // The state shares this pool rather than copying it: finalization
-                    // prunes, and a copy would prune the copy.
-                    wikidata.explore.generation.PipelineState runState =
-                            wikidata.explore.generation.PipelineState.over(
-                                    wikidata.explore.generation.GraphCheckpoint.Stage
-                                            .CONSTRUCTED_GRAPH, pool);
-                    runState.records().addAll(reified);
-                    wikidata.explore.generation.PipelineContext runContext =
-                            new wikidata.explore.generation.PipelineContext(
-                                    compiledRun, entityApi, genLog, context.cancellation());
+                    // The same state construction and the worklist advanced: pool IS
+                    // reifyPool, and the records are the ones the construct step left.
                     new wikidata.explore.generation.PipelineExecutor()
                             .with(new wikidata.explore.generation.FinalizeStep())
                             .run(runContext, runState);

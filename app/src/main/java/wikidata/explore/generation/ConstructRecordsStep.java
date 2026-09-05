@@ -60,6 +60,7 @@ public final class ConstructRecordsStep implements PipelineStep {
         StatementTransforms.Result result = StatementTransforms.apply(
                 context.run().request().model(), context.run().model(), state.pool(),
                 companionSetsFor, context.log());
+        state.constructed(result);
         state.records().clear();
         state.records().addAll(result.reified());
         return result.reified().size() + " record(s) constructed";

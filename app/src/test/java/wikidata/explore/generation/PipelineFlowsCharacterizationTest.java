@@ -69,6 +69,8 @@ class PipelineFlowsCharacterizationTest {
         // to make in place. This is the characterization being replaced piece by piece:
         // as each phase moves behind the executor, what the source shows is the step,
         // and eventually the decisions themselves are the record.
+        PHASES.put("ConstructRecordsStep(", "construct-records+refresh-derived");
+        PHASES.put("SemanticWorklistStep(", "semantic");
         PHASES.put("FinalizeStep()", "finalize");
         PHASES.put("DomainFinalization.apply", "finalize");
         PHASES.put("MaterializeStep()", "materialize");

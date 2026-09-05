@@ -587,8 +587,21 @@ replaces the boolean with `NONE` / `OPTIONAL` / `REQUIRED`, and the executor ref
   so a run that may not acquire replays the ones it cached. That is what makes a Remap
   from a normalized graph a full reconstruction rather than a partial one.
 
-Still open: routing Generate's construction and worklist onto these steps, and Remap's
-and Enrich's tails.
+**Generate is routed end to end.** Construction, the worklist, finalization and
+materialization all run through the executor over ONE `PipelineState`, created where the
+reify pool is and carried to the end. Generate's phases operate on the same list
+throughout — `pool` IS `reifyPool`, and the worklist's roots are that pool — so one state
+spans them without any phase needing a view of its own.
+
+The steps return their whole result, not a count: the run reads the companion sets it
+fetched (to cache for a later Remap), the self-references construction found, the records
+a projection changed, and what the worklist settled or could not. A step that reported
+only a number would make its caller re-derive the rest, which is how a second answer gets
+into a run.
+
+Still open: Remap's and Enrich's tails, and Remap onto `SemanticWorklistStep` — which is
+what turns the removed shortcut from a capability into a fact, and changes what Remap
+produces, so it wants Milestone 4's comparison rather than a claim.
 
 ### Milestone 4 — Generate domain
 
