@@ -46,14 +46,32 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private final EffectiveClassPanel effectiveClassPanel = new EffectiveClassPanel();
     private final JTabbedPane editorTabs = new JTabbedPane();
 
-    private final JComboBox<String> kindBox =
-            new JComboBox<>(
-                    new String[]{
-                            "Source class",
-                            "Statement class",
-                            "Owned class",
-                            "Aggregate class"
-                    });
+    /**
+     * The kinds themselves, not labels standing in for them.
+     *
+     * <p>It held Strings and every read asked for an INDEX — {@code kind == 2} meant
+     * Owned because Owned happened to be third. Reordering the labels would have
+     * renamed every kind silently, and one read used the index to choose which editor's
+     * pending edits to flush into the model.
+     */
+    private final JComboBox<wikidata.explore.model.ClassKind> kindBox =
+            new JComboBox<>(wikidata.explore.model.ClassKind.values());
+
+    {
+        // The kind's own word for itself, so the label and the value cannot part company
+        // the way a parallel String array let them.
+        kindBox.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index,
+                    boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof wikidata.explore.model.ClassKind kind) {
+                    setText(kind.label());
+                }
+                return this;
+            }
+        });
+    }
 
     /** Says, above the editor, that what is shown belongs to another model. Visible
      *  only for an imported class, whose controls are all disabled — without it the
@@ -393,12 +411,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             // class just switched to Statement — which has none yet — answered "Source"
             // and the combo snapped back, leaving no way to reach the editor that picks
             // the property.
-            kindBox.setSelectedIndex(switch (clazz.classKind()) {
-                case SOURCE -> pattern == MembershipPattern.OWNED_COMPONENT ? 2 : 0;
-                case STATEMENT -> 1;
-                case OWNED -> 2;
-                case AGGREGATE -> 3;
-            });
+            // A class that does not DECLARE itself owned can still be one in fact: a
+            // field elsewhere produces it as a part. MembershipPattern is what knows
+            // that, and it is a different question from the stored kind.
+            kindBox.setSelectedItem(
+                    clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
+                            && pattern == MembershipPattern.OWNED_COMPONENT
+                            ? wikidata.explore.model.ClassKind.OWNED
+                            : clazz.classKind());
             kindBox.setEnabled(editingEnabled);
             updatingKind = false;
 
@@ -573,16 +593,21 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 : "");
     }
 
+    /**
+     * Flushes the editor that owns the selected class, chosen by what the class IS.
+     *
+     * <p>It used to be chosen by the kind combo's index — a stored fact read off a
+     * widget. When the two disagreed the wrong panel was flushed and the right one's
+     * edits were dropped without a word, and they DID disagree: until the kind became
+     * stored, it snapped back to Source while the statement card was still showing.
+     */
     public void applyEdits() {
-        if (selected instanceof GeneratedClassModel) {
-            if (kindBox.getSelectedIndex() == 1) {
-                statementSourcePanel.applyEdits();
-            } else if (kindBox.getSelectedIndex() == 2) {
-                ownedClassPanel.applyEdits();
-            } else if (kindBox.getSelectedIndex() == 3) {
-                aggregateClassPanel.applyEdits();
-            } else {
-                classSourcePanel.applyEdits();
+        if (selected instanceof GeneratedClassModel clazz) {
+            switch (clazz.classKind()) {
+                case STATEMENT -> statementSourcePanel.applyEdits();
+                case OWNED -> ownedClassPanel.applyEdits();
+                case AGGREGATE -> aggregateClassPanel.applyEdits();
+                case SOURCE -> classSourcePanel.applyEdits();
             }
         }
 
@@ -1090,11 +1115,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         CardLayout layout =
                 (CardLayout) cardPanel.getLayout();
 
-        int kind = kindBox.getSelectedIndex();
-        boolean toStatement = kind == 1;
-        reusableSelectionsPanel.setVisible(kind != 3);
+        // The widget IS the input here — the reader has just chosen — so it is read.
+        // What it must not be read for is what the class already IS; that is stored.
+        wikidata.explore.model.ClassKind kind =
+                (wikidata.explore.model.ClassKind) kindBox.getSelectedItem();
+        if (kind == null) return;
+        boolean toStatement = kind == wikidata.explore.model.ClassKind.STATEMENT;
+        reusableSelectionsPanel.setVisible(
+                kind != wikidata.explore.model.ClassKind.AGGREGATE);
 
-        if (kind == 3) {
+        if (kind == wikidata.explore.model.ClassKind.AGGREGATE) {
             if (clazz.reifiesStatements()) statementSourcePanel.applyEdits();
             else if (clazz.ownedClass()) ownedClassPanel.applyEdits();
             else if (clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE) {
@@ -1111,7 +1141,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             return;
         }
 
-        if (kind == 2) {
+        if (kind == wikidata.explore.model.ClassKind.OWNED) {
             if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 aggregateClassPanel.applyEdits();
                 clazz.aggregateSource(null);

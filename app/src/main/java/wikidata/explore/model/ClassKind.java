@@ -48,4 +48,20 @@ public enum ClassKind {
     public boolean identityFromOwner() {
         return this == OWNED;
     }
+
+    /**
+     * What a reader calls this kind.
+     *
+     * <p>Here rather than in a parallel array of strings beside a combo box, where the
+     * mapping was positional: reordering the labels would have silently renamed every
+     * kind, because the code asked the combo for an INDEX and compared it to 1, 2 or 3.
+     */
+    public String label() {
+        return switch (this) {
+            case SOURCE -> "Source class";
+            case STATEMENT -> "Statement class";
+            case OWNED -> "Owned class";
+            case AGGREGATE -> "Aggregate class";
+        };
+    }
 }
