@@ -179,6 +179,36 @@ class OwnedComponentsTest {
         assertSame(part, person.get("structuredName"), "settled, not replaced");
     }
 
+    /**
+     * Owner-and-site is the DEFAULT name, not a rule outranking the model.
+     *
+     * <p>{@code DomainFinalization} canonicalizes and then settles part names.
+     * Canonicalization skips only LABEL mode, not owned classes — so a part class named
+     * by a field or a template had that name applied and then overwritten two lines
+     * later in the same finalization. The configuration was authorable and silently
+     * discarded, and the two rules agreed only because no editor offered a way to
+     * configure one.
+     */
+    @Test void aPartClassThatNamesItselfKeepsThatNameWhenNamesAreSettled() {
+        GeneratedProjectModel project = project();
+        wikidata.explore.model.CanonicalSpec spec =
+                project.findClass("Name").canonical();
+        spec.displayNameMode(
+                wikidata.explore.model.CanonicalSpec.DisplayNameMode.TEMPLATE);
+        spec.displayNameTemplate("{given}");
+
+        WikidataDynamicObject person = entity("Q312674", "Q312674", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        part.name("Giorgio");            // what canonicalization made of the template
+        person.name("Giorgio Moroder");  // the owner's label, hydrated later
+
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)),
+                "the class says how it is named, so nothing disagrees");
+        assertEquals("Giorgio", part.getDisplayName());
+    }
+
     /** The count says how many disagreed, so a pass over settled names must report
      *  none — otherwise the number measures how often it ran. */
     @Test void settlingNamesThatAlreadyAgreeChangesNothing() {

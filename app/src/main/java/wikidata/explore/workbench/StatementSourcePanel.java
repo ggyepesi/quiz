@@ -15,7 +15,6 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.StatementDisplayDefaults;
 import wikidata.explore.model.StatementFieldSemantics;
 import wikidata.explore.rule.RuleNode;
@@ -60,7 +59,8 @@ public class StatementSourcePanel extends JPanel {
     /** The "no declaration — infer it" choice, shown instead of a blank row. */
     private static final String INFER_PRIMARY_LIST = "(infer)";
 
-    private final JTextField classNameField = new JTextField(18);
+    private final ClassHeaderEditor header =
+            new ClassHeaderEditor(() -> projectModel);
     private final JComboBox<String> reifyFromBox = new JComboBox<>();
     // Blank, not "P1411". That is the Oscars nomination property, and it was the
     // initial value, the fallback for a blank source, and what clear() restored — so
@@ -91,8 +91,10 @@ public class StatementSourcePanel extends JPanel {
     private final JComboBox<CanonicalSpec.DuplicatePolicy> duplicatePolicyBox =
             new JComboBox<>(CanonicalSpec.DuplicatePolicy.values());
 
-    private final JComboBox<String> displayNameFieldBox =
-            new JComboBox<>();
+    // Mode, field and template. This was a field box alone, so a class named by a
+    // template had nothing to show it in and the template was put into the box as an
+    // uneditable string.
+    private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
     /** #92: which collection field marks the canonical copy of a shared statement.
      *  "" = infer structurally (right when there is exactly one candidate). */
     private final JComboBox<String> primaryListFieldBox =
@@ -143,7 +145,7 @@ public class StatementSourcePanel extends JPanel {
 
         titleLabel.setText(
                 "Statement class: " + clazz.className());
-        classNameField.setText(clazz.className());
+        header.show(clazz);
 
         refreshSourceClassChoices();
 
@@ -245,30 +247,7 @@ public class StatementSourcePanel extends JPanel {
             return;
         }
 
-        String previousClassName = clazz.className();
-        String typedClassName = classNameField.getText() == null
-                ? "" : classNameField.getText().trim();
-        if (typedClassName.isBlank()) {
-            showRenameError("A class name is required.");
-            classNameField.setText(clazz.className());
-        } else {
-            String requestedClassName = GeneratedViewableSourceGenerator
-                    .sanitizeClassName(typedClassName);
-            if (projectModel == null) {
-                throw new IllegalStateException(
-                        "A Statement class can only be renamed inside a project model.");
-            }
-            if (!projectModel.renameClass(previousClassName, requestedClassName)) {
-                showRenameError("A class or vocabulary/population named '"
-                        + requestedClassName + "' already exists.");
-                classNameField.setText(clazz.className());
-            }
-        }
-        // Show the canonical spelling chosen by the same sanitizer used by source
-        // generation. More importantly, rename through the project: class names are
-        // references in field targets, base classes, role selections and kind rules,
-        // so changing only this object leaves a partially renamed model.
-        classNameField.setText(clazz.className());
+        header.applyEdits();
 
         String sourceClass =
                 selectedText(reifyFromBox);
@@ -315,11 +294,6 @@ public class StatementSourcePanel extends JPanel {
         applyCanonicalControls();
         refreshDerived();
         afterChange.accept(null);
-    }
-
-    private void showRenameError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
-                JOptionPane.WARNING_MESSAGE);
     }
 
     private void refreshSourceClassChoices() {
@@ -377,8 +351,7 @@ public class StatementSourcePanel extends JPanel {
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
 
-        displayNameFieldBox.removeAllItems();
-        displayNameFieldBox.addItem("");
+        displayNameEditor.show(clazz);
         primaryListFieldBox.removeAllItems();
         primaryListFieldBox.addItem(INFER_PRIMARY_LIST);
 
@@ -414,7 +387,6 @@ public class StatementSourcePanel extends JPanel {
 
             keyFieldsPanel.add(box, c);
             keyFieldBoxes.put(field.name(), box);
-            displayNameFieldBox.addItem(field.name());
         }
 
         // The canonical-list candidates are the multi-valued ENTITY qualifiers — the
@@ -432,32 +404,6 @@ public class StatementSourcePanel extends JPanel {
         primaryListFieldBox.setSelectedItem(
                 canonical.primaryListField().isBlank()
                         ? INFER_PRIMARY_LIST : canonical.primaryListField());
-
-        // Show what is configured, including what this editor cannot edit. A class in
-        // TEMPLATE mode left this box empty, which is what LABEL mode looks like — so a
-        // record named "{laureates} — {category}" reported that nothing named it. The
-        // template is shown as the value it is, and the box is closed because changing
-        // it belongs to the editor that owns templates.
-        String template = canonical.displayNameMode()
-                == CanonicalSpec.DisplayNameMode.TEMPLATE
-                ? canonical.displayNameTemplate().trim() : "";
-        if (!template.isBlank()) {
-            displayNameFieldBox.addItem(template);
-            displayNameFieldBox.setSelectedItem(template);
-            displayNameFieldBox.setEnabled(false);
-            displayNameFieldBox.setToolTipText(
-                    "A template names this record, not a single field. Edit it in the "
-                            + "class editor.");
-        } else {
-            displayNameFieldBox.setEnabled(true);
-            displayNameFieldBox.setToolTipText(
-                    "Single field used as the record's display name.");
-            if (canonical.displayNameMode()
-                    == CanonicalSpec.DisplayNameMode.FIELD) {
-                displayNameFieldBox.setSelectedItem(
-                        canonical.displayNameField());
-            }
-        }
 
         if (row == 0) {
             GridBagConstraints c =
@@ -494,28 +440,12 @@ public class StatementSourcePanel extends JPanel {
         // order, so that changed every instance's identifier. It went unnoticed because
         // all three shipped models happen to have been authored in field order.
 
-        String displayField =
-                selectedText(displayNameFieldBox);
-
-        // The box is closed exactly when it is showing a template it cannot edit, so
-        // that is the whole test. It used to be "the selection is blank", which was the
-        // same answer only while a template was displayed as nothing.
-        boolean preserveUneditableTemplate = !displayNameFieldBox.isEnabled();
-        // This compact statement editor exposes FIELD selection, not the general
-        // class editor's TEMPLATE control. Merely visiting and leaving a statement
-        // class must therefore preserve a template it cannot display or edit.
-        if (!preserveUneditableTemplate) {
-            if (displayField.isBlank()) {
-                canonical.displayNameMode(CanonicalSpec.DisplayNameMode.LABEL);
-                canonical.displayNameField("");
-            } else {
-                canonical.displayNameMode(CanonicalSpec.DisplayNameMode.FIELD);
-                canonical.displayNameField(displayField);
-            }
-            canonical.displayNameTemplate("");
-        }
-
         clazz.canonical(canonical);
+
+        // All three modes are editable here now, so there is nothing to preserve
+        // around. The rule "keep whatever this editor could not show" existed because
+        // it could not show a template; it wrote the spec last, so it goes last.
+        displayNameEditor.applyEdits();
     }
 
     /**
@@ -675,7 +605,7 @@ public class StatementSourcePanel extends JPanel {
 
     private void clear() {
         titleLabel.setText("Statement class");
-        classNameField.setText("");
+        header.show(null);
         reifyFromBox.removeAllItems();
         statementPropField.setText("");
         valueTypeField.setText("");
@@ -684,7 +614,7 @@ public class StatementSourcePanel extends JPanel {
         keyFieldsPanel.removeAll();
         keyFieldBoxes.clear();
         duplicatePolicyBox.setSelectedItem(CanonicalSpec.DuplicatePolicy.KEEP_ONE);
-        displayNameFieldBox.removeAllItems();
+        displayNameEditor.show(null);
         identityValue.setText(" ");
         subjectFallbackValue.setText(" ");
         statementValueFallbackValue.setText(" ");
@@ -711,21 +641,7 @@ public class StatementSourcePanel extends JPanel {
                                   16f));
         GridBagUtils.wideRow(form, row++, titleLabel);
 
-        JLabel explanation =
-                new JLabel("<html><div width='560'>Each instance is one statement — a <b>subject</b>, a "
-                        + "<b>property</b>, and an <b>object</b> — with its qualifiers "
-                        + "said about that statement. Subject and object are named by a "
-                        + "class, which is a placeholder: unnamed it is served as a "
-                        + "reference (identity and label), and it is specialized by "
-                        + "evidence rather than asserted here.</div></html>");
-        explanation.setFont(
-                explanation.getFont()
-                           .deriveFont(Font.ITALIC));
-        GridBagUtils.wideRow(form, row++, explanation);
-
-        GridBagUtils.labeledRow(form, row++,
-            "Class name:",
-            classNameField);
+        GridBagUtils.wideRow(form, row++, header);
 
         JPanel triple = new JPanel(new GridBagLayout());
         triple.setBorder(BorderFactory.createTitledBorder(
@@ -806,11 +722,7 @@ public class StatementSourcePanel extends JPanel {
         GridBagUtils.labeledRow(canonical, cc, 1,
             "When duplicates occur (superseded):", duplicatePolicyBox);
 
-        displayNameFieldBox.setToolTipText(
-                "Single field used as the record's display name.");
-        GridBagUtils.labeledRow(canonical, cc, 2,
-            "Display-name field:",
-            displayNameFieldBox);
+        GridBagUtils.wideRow(canonical, 2, displayNameEditor);
 
         primaryListFieldBox.setToolTipText("<html>Which multi-valued entity qualifier "
                 + "marks the CANONICAL copy of a shared statement (#92).<br>"

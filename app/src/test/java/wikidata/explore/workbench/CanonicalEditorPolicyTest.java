@@ -11,7 +11,7 @@ class CanonicalEditorPolicyTest {
     @Test void sourceClassesMayComposeNamesWithoutAcquiringFieldIdentity() {
         CanonicalSpec spec = CanonicalEditorPolicy.spec(
                 ClassKind.SOURCE, CanonicalSpec.DisplayNameMode.TEMPLATE,
-                "", "{title}", "en", null);
+                "", "{title}", null);
 
         assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE, spec.displayNameMode());
         assertEquals("{title}", spec.displayNameTemplate());
@@ -32,7 +32,7 @@ class CanonicalEditorPolicyTest {
 
         CanonicalSpec updated = CanonicalEditorPolicy.spec(
                 ClassKind.STATEMENT, CanonicalSpec.DisplayNameMode.FIELD,
-                "position", "", "en", existing);
+                "position", "", existing);
 
         assertEquals(java.util.List.of("startDate", "position"), updated.keyFields(),
                 "untouched, and still in the order it was authored");
@@ -57,7 +57,7 @@ class CanonicalEditorPolicyTest {
         var updated = CanonicalEditorPolicy.spec(
                 wikidata.explore.model.ClassKind.SOURCE,
                 wikidata.explore.model.CanonicalSpec.DisplayNameMode.LABEL,
-                "", "", "en", existing);
+                "", "", existing);
 
         assertEquals(canonical.Reduction.UNION_DISTINCT,
                 updated.reductions().get("spouse"));

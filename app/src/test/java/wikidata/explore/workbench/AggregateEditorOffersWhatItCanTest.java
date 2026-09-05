@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 
-import javax.swing.JCheckBox;
+import wikidata.explore.model.CanonicalSpec;
+import wikidata.explore.model.GeneratedClassModel;
+
 import javax.swing.JComboBox;
 import java.io.File;
-import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -28,21 +30,29 @@ class AggregateEditorOffersWhatItCanTest {
     }
 
     /**
-     * A collection may title an aggregate. It was excluded, which contradicted the
-     * mechanism it feeds: Nobel's own statement class is titled "{laureates} —
-     * {category}" from a collection, so an aggregate could not be named by its members
-     * — the one thing it has that its sources do not.
+     * A collection may title an aggregate. It was excluded from the title checkboxes,
+     * which contradicted the mechanism they fed: Nobel's own statement class is titled
+     * "{laureates} — {category}" from a collection, so an aggregate could not be named
+     * by its members — the one thing it has that its sources do not.
+     *
+     * <p>The checkboxes are gone; a template is written where every kind writes one.
+     * What has to stay true is that this editor neither refuses a collection nor
+     * rewrites the template it is given, which is what the checkboxes did — they could
+     * only ever compose "{a} — {b}" and read one back by substring.
      */
-    @SuppressWarnings("unchecked")
     @Test void aCollectionFieldCanTitleAnAggregate() throws Exception {
         GeneratedProjectModel project = nobel();
-        AggregateClassPanel panel = new AggregateClassPanel(project);
-        panel.edit(project.findClass("NobelPrize"));
+        GeneratedClassModel prize = project.findClass("NobelPrize");
+        prize.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE);
+        prize.canonical().displayNameTemplate("{laureatesWithMotivation} · {category}");
 
-        Map<String, JCheckBox> offered =
-                (Map<String, JCheckBox>) field(panel, "displayFields");
-        assertTrue(offered.containsKey("laureatesWithMotivation"),
-                "the members field is offered as a title component: " + offered.keySet());
+        AggregateClassPanel panel = new AggregateClassPanel(project);
+        panel.edit(prize);
+        panel.applyEdits();
+
+        assertEquals("{laureatesWithMotivation} · {category}",
+                prize.canonical().displayNameTemplate(),
+                "the members field titles the aggregate, and its separator survives");
     }
 
     /**

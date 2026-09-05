@@ -212,6 +212,15 @@ public final class OwnedComponents {
         return canonical;
     }
 
+    /** Whether this object's class says how to name it, rather than taking the default. */
+    private static boolean namesItself(
+            GeneratedProjectModel project, WikidataDynamicObject component) {
+        GeneratedClassModel model = component.typeName() == null
+                ? null : project.findClass(component.typeName());
+        return model != null && model.canonical().displayNameMode()
+                != wikidata.explore.model.CanonicalSpec.DisplayNameMode.LABEL;
+    }
+
     /** "Elia Kazan — birth name": whose view, and which view. Readable wherever the
      *  part turns up — a curation list, a search hit — which a bare owner label is not,
      *  and distinct from the owner's own name, which a title-suppressing renderer needs
@@ -255,6 +264,17 @@ public final class OwnedComponents {
                     if (!isSite(field, project)) continue;
                     if (!(owner.get(field.name())
                             instanceof WikidataDynamicObject component)) continue;
+                    // Owner-and-site is the DEFAULT name, not a rule outranking the
+                    // model. A part is an instance of its class like any other and takes
+                    // nothing from its owner; ownership says only how it is produced. It
+                    // needs a default because it is produced on the owner's QID and so
+                    // has no label of its own to take — the default is what keeps it
+                    // distinct from the owner it would otherwise read as. A class that
+                    // names itself by a field or a template had that name applied by
+                    // canonicalization and overwritten here, two lines later in the same
+                    // finalization: authorable and silently discarded, the two rules
+                    // agreeing only because nobody had configured one.
+                    if (namesItself(project, component)) continue;
                     String settled = partName(owner, field);
                     if (settled.equals(component.getDisplayName())) continue;
                     component.name(settled);

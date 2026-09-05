@@ -10,7 +10,6 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.ClassSourceBindings;
-import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceMapping;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -19,7 +18,6 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.EntityRepresentationRule;
 import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.StatementClassSource;
 import datasource.api.SourceBindingSlot;
 import wikidata.explore.query.logical.ClassSearchQuery;
@@ -36,7 +34,6 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import wikidata.ui.WikidataLinks;
 
 public class ClassSourcePanel extends JPanel {
@@ -53,14 +50,8 @@ public class ClassSourcePanel extends JPanel {
 
     private final JLabel titleLabel = new JLabel("Class");
 
-    private final JTextField classNameField = new JTextField(18);
-    private final JTextField aliasField = new JTextField(18);
-
-    // "Extends" base class: this class inherits the base's fields/membership
-    // and adds its own (see GeneratedClassModel.effectiveFields). Blank = none.
-    private static final String NO_BASE = "(none)";
-    private final JComboBox<String> baseClassBox = new JComboBox<>();
-    private Supplier<List<String>> baseClassCandidates = List::of;
+    private final ClassHeaderEditor header =
+            new ClassHeaderEditor(() -> projectModel);
     // Subclass discriminator: a (property, value) pair narrowing the inherited
     // membership to instances that also have ?value wdt:<pid> wd:<qid> (Person =
     // nominee membership AND P31=human). Property defaults to P31 but can be any.
@@ -130,23 +121,16 @@ public class ClassSourcePanel extends JPanel {
     // --- Identity & label (canonicalization) ---
     private static final String KIND_ENTITY = "Source entity (id + label)";
     private static final String KIND_DERIVED = "Derived (key + field/template)";
-    private static final String DN_LABEL = "Label";
-    private static final String DN_FIELD = "Field";
-    private static final String DN_TEMPLATE = "Template";
-
     /** States the regime rather than offering it: it is a consequence, not a choice. */
     private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
     private final javax.swing.JLabel canonicalSourcesLabel = new javax.swing.JLabel();
     private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
-    private final JComboBox<String> displayNameModeBox =
-            new JComboBox<>(new String[]{DN_LABEL, DN_FIELD, DN_TEMPLATE});
-    private final JComboBox<String> displayNameFieldBox = new JComboBox<>();
-    private final JTextField displayNameTemplateField = new JTextField(18);
+    // Mode, field and template, asked the way every kind now asks them.
+    private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
     // The same editor every other construct uses. This was a space-separated text
     // field, which could not show that a SOURCE class keys on its source identity, and
     // could not keep an order — both of which identity depends on.
     private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
-    private final JLabel canonicalHint = new JLabel(" ");
 
     private final JButton applyButton =
             new JButton("Apply class source");
@@ -193,12 +177,6 @@ public class ClassSourcePanel extends JPanel {
         this.afterChange = afterChange == null ? v -> {} : afterChange;
     }
 
-    /** Supplies the class names this class may extend (the project's classes;
-     *  the editing class itself is filtered out). */
-    public void baseClassCandidates(Supplier<List<String>> candidates) {
-        this.baseClassCandidates = candidates == null ? List::of : candidates;
-    }
-
     public void edit(GeneratedClassModel clazz) {
         this.clazz = clazz;
 
@@ -211,11 +189,10 @@ public class ClassSourcePanel extends JPanel {
 
         titleLabel.setText("Class: " + clazz.className());
 
-        classNameField.setText(clazz.className());
-        aliasField.setText(clazz.alias());
+        header.show(clazz);
         searchTextField.setText(clazz.className());
 
-        populateBaseClasses();
+        populateClassDetails();
         populateRepresentations();
 
         typeQidField.setText(m.sourceQid());
@@ -241,17 +218,7 @@ public class ClassSourcePanel extends JPanel {
 
     // Fill the extends combo with the other classes (excluding self), selecting
     // this class's current base.
-    private void populateBaseClasses() {
-        baseClassBox.removeAllItems();
-        baseClassBox.addItem(NO_BASE);
-        String self = clazz == null ? "" : clazz.className();
-        for (String name : baseClassCandidates.get()) {
-            if (name != null && !name.isBlank() && !name.equals(self)) {
-                baseClassBox.addItem(name);
-            }
-        }
-        String base = clazz == null ? "" : clazz.baseClassName();
-        baseClassBox.setSelectedItem(base == null || base.isBlank() ? NO_BASE : base);
+    private void populateClassDetails() {
         discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
         discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
         StatementClassSource statement = clazz == null ? null : clazz.statementSource();
@@ -334,19 +301,7 @@ public class ClassSourcePanel extends JPanel {
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, y++, question);
 
-        GridBagUtils.labeledRow(form, c, y++, "Class name:", classNameField);
-
-        aliasField.setToolTipText("<html>Display alias: what the UI shows for "
-                + "this class instead of its name. Pure presentation — the class "
-                + "name stays the identity everything references, so aliasing "
-                + "never breaks the model.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Alias:", aliasField);
-
-        baseClassBox.setToolTipText("<html>Extend another class: this class "
-                + "inherits the base's fields and membership and adds its own "
-                + "(a subclass field with the same name overrides). Lets a shared "
-                + "base (e.g. Person) be reused and extended per domain.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Extends:", baseClassBox);
+        GridBagUtils.wideRow(form, y++, header);
 
         discriminatorPidField.setToolTipText("Discriminator property — defaults to "
                 + "P31 (instance of); set another relation to subclass on a "
@@ -509,24 +464,14 @@ public class ClassSourcePanel extends JPanel {
                 + "and sort like other fields.");
         GridBagUtils.labeledRow(form, c, y++, "Additional names:", aliasesBox);
 
-        displayNameModeBox.setToolTipText("How to make the display name: the source "
-                + "label, a single field's value, or a template.");
-        GridBagUtils.labeledRow(form, c, y++, "Display name:", displayNameModeBox);
-
-        displayNameFieldBox.setToolTipText("Single-valued field to show as the "
-                + "label (a reference shows its own name).");
-        GridBagUtils.labeledRow(form, c, y++, "  from field:", displayNameFieldBox);
-
-        displayNameTemplateField.setToolTipText("e.g. {nominee} · {category} {year} "
-                + "— {field} is replaced by that field's label.");
-        GridBagUtils.labeledRow(form, c, y++, "  template:", displayNameTemplateField);
+        GridBagUtils.wideRow(form, y++, displayNameEditor);
 
         GridBagUtils.wideRow(form, y++, identityEditor);
 
-        canonicalHint.setForeground(new Color(0xB00020));
-        GridBagUtils.wideRow(form, y++, canonicalHint);
-
-        displayNameModeBox.addActionListener(e -> updateCanonicalEnablement());
+        // The editor carries its own hint. This panel's shared one said only what the
+        // display name was missing, so a second copy of it here would be the same
+        // sentence written twice.
+        displayNameEditor.onChange(this::updateCanonicalEnablement);
 
         GridBagUtils.wideRow(form, y++, summaryLabel);
 
@@ -831,9 +776,7 @@ public class ClassSourcePanel extends JPanel {
 
         if (text.isBlank()) {
             text =
-                    classNameField.getText() == null
-                            ? ""
-                            : classNameField.getText().trim();
+                    clazz == null ? "" : clazz.className();
         }
 
         return text;
@@ -907,26 +850,7 @@ public class ClassSourcePanel extends JPanel {
 
         boolean wasStatementClass = clazz.reifiesStatements();
 
-        String typedName = classNameField.getText() == null
-                ? "" : classNameField.getText().trim();
-        if (typedName.isBlank()) {
-            renameError("A class name is required.");
-            classNameField.setText(clazz.className());
-        } else {
-            String requestedName = GeneratedViewableSourceGenerator
-                    .sanitizeClassName(typedName);
-            if (projectModel == null
-                    || !projectModel.renameClass(clazz.className(), requestedName)) {
-                renameError("A class or vocabulary/population named '" + requestedName
-                        + "' already exists.");
-                classNameField.setText(clazz.className());
-            }
-        }
-        classNameField.setText(clazz.className());
-        clazz.alias(aliasField.getText());
-
-        Object base = baseClassBox.getSelectedItem();
-        clazz.baseClassName(base == null || NO_BASE.equals(base) ? "" : base.toString());
+        header.applyEdits();
         clazz.discriminatorPid(RuleNode.cleanPid(discriminatorPidField.getText()));
         clazz.discriminatorQid(RuleNode.cleanQid(discriminatorQidField.getText()));
         FieldSourceMapping m = clazz.instanceMapping();
@@ -1041,48 +965,17 @@ public class ClassSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
-    private void renameError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
-                JOptionPane.WARNING_MESSAGE);
-    }
-
     // --- Identity & label (canonicalization) ---
 
     /** Loads the class's canonical spec into the section. */
     private void loadCanonical() {
-        populateDisplayNameFields();
-
         if (clazz != null) ClassSourceBindings.synchronize(clazz);
         aliasesBox.setSelected(clazz != null && ClassSourceBindings.binding(clazz,
                 SourceBindingSlot.CLASS_ALIASES) != null);
-        CanonicalSpec spec = clazz == null
-                ? new CanonicalSpec()
-                : clazz.canonical();
-
-        displayNameModeBox.setSelectedItem(switch (spec.displayNameMode()) {
-            case FIELD -> DN_FIELD;
-            case TEMPLATE -> DN_TEMPLATE;
-            case LABEL -> DN_LABEL;
-        });
-        displayNameFieldBox.setSelectedItem(spec.displayNameField());
-        displayNameTemplateField.setText(spec.displayNameTemplate());
+        displayNameEditor.show(clazz);
         identityEditor.show(clazz);
 
         updateCanonicalEnablement();
-    }
-
-    // Only SINGLE-cardinality, non-identity fields can be a Field-mode display name.
-    private void populateDisplayNameFields() {
-        displayNameFieldBox.removeAllItems();
-        if (clazz == null) {
-            return;
-        }
-        for (GeneratedFieldModel f : clazz.fields()) {
-            if (f != null && !f.isNameField()
-                    && f.cardinality() != FieldCardinality.COLLECTION) {
-                displayNameFieldBox.addItem(f.name());
-            }
-        }
     }
 
     private void updateCanonicalEnablement() {
@@ -1098,20 +991,11 @@ public class ClassSourcePanel extends JPanel {
                 });
         canonicalSourcesLabel.setText(describeClassSources());
 
-        // Display policy is independent of identity: even a source-identified class
-        // may deliberately compose a name from its configured fields.
-        displayNameModeBox.setEnabled(hasClass);
-
-        String mode = (String) displayNameModeBox.getSelectedItem();
-        displayNameFieldBox.setEnabled(hasClass && DN_FIELD.equals(mode));
-        displayNameTemplateField.setEnabled(hasClass && DN_TEMPLATE.equals(mode));
         // Not told whether the key is editable: the editor asks the compiled plan,
         // which knows a structural key is supplied by production. Deciding it here as
         // well would be the same fact derived two ways — and the two would agree until
         // a construct's identity regime changed on one side only.
         aliasesBox.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
-
-        canonicalHint.setText(canonicalWarning(clazz == null ? null : clazz.classKind(), mode));
     }
 
     private String describeClassSources() {
@@ -1129,47 +1013,22 @@ public class ClassSourcePanel extends JPanel {
         return labels.isEmpty() ? "—" : String.join(" · ", labels);
     }
 
-    // A composed display name must resolve; only a source class has a source label.
-    private String canonicalWarning(ClassKind kind, String mode) {
-        if (kind == null) {
-            return " ";
-        }
-        if (DN_FIELD.equals(mode) && displayNameFieldBox.getItemCount() == 0) {
-            return "No single-valued field to use as the display name — add one or use a template.";
-        }
-        if (DN_TEMPLATE.equals(mode) && displayNameTemplateField.getText().isBlank()) {
-            return "Template is empty — the display name won't resolve.";
-        }
-        if (DN_LABEL.equals(mode) && !CanonicalEditorPolicy.hasSourceLabel(kind)) {
-            return "This class has no source label — pick Field or Template.";
-        }
-        return " ";
-    }
-
     private void applyCanonical() {
         if (clazz == null) {
             return;
         }
         // How a class is BUILT decides its identity regime, so the editor no longer
         // offers it as a separate choice that could disagree with the class's kind.
-        String mode = (String) displayNameModeBox.getSelectedItem();
-
-        Object selectedField = displayNameFieldBox.getSelectedItem();
-        CanonicalSpec.DisplayNameMode displayMode = DN_TEMPLATE.equals(mode)
-                ? CanonicalSpec.DisplayNameMode.TEMPLATE
-                : DN_FIELD.equals(mode) ? CanonicalSpec.DisplayNameMode.FIELD
-                : CanonicalSpec.DisplayNameMode.LABEL;
-        CanonicalSpec spec = CanonicalEditorPolicy.spec(
-                clazz.classKind(), displayMode,
-                selectedField == null ? "" : selectedField.toString(),
-                displayNameTemplateField.getText(), langField.getText(),
-                clazz.canonical());
-
-        clazz.canonical(spec);
+        displayNameEditor.applyEdits();
+        // Which language the label is acquired in is this panel's control, beside the
+        // other source options, and it applies to the mode that acquires a label.
+        if (displayNameEditor.mode() == CanonicalSpec.DisplayNameMode.LABEL) {
+            clazz.canonical().labelLanguage(langField.getText());
+        }
         ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());
 
-        String warning = canonicalWarning(clazz.classKind(), mode);
-        if (warning != null && !warning.isBlank()) {
+        String warning = displayNameEditor.warning();
+        if (!warning.isBlank()) {
             log.accept("Identity & label: " + warning + "\n");
         }
     }
@@ -1187,8 +1046,7 @@ public class ClassSourcePanel extends JPanel {
 
     private void clear() {
         titleLabel.setText("Class");
-        classNameField.setText("");
-        aliasField.setText("");
+        header.show(null);
         searchTextField.setText("");
         typeQidField.setText("");
         typeLabel.setText("(not selected)");

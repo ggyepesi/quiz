@@ -17,6 +17,11 @@ final class OwnedClassPanel extends JPanel {
     // Name, alias and extends are class facts, so they are the shared header. What is
     // left here is what an OWNED class adds: where it is produced.
     private final ClassHeaderEditor header;
+    // A part is an instance of its class like any other, and is named the same way.
+    // Ownership says how the data is produced, not what the instances are called; the
+    // owner and the site that produced it is what LABEL resolves to here, which is the
+    // default rather than a rule that outranks the model.
+    private final DisplayNameEditor displayName = new DisplayNameEditor();
     private final JLabel sites = new JLabel(" ");
     private final JButton apply = new JButton("Apply owned class");
     private GeneratedClassModel clazz;
@@ -25,13 +30,7 @@ final class OwnedClassPanel extends JPanel {
     OwnedClassPanel(GeneratedProjectModel project) {
         super(new BorderLayout());
         this.project = project;
-        // An Owned class may extend only another Owned class — the validator's rule,
-        // said here as which candidates the header offers rather than as a switch
-        // inside it.
-        this.header = new ClassHeaderEditor(project, () -> project.classes().stream()
-                .filter(candidate -> candidate != null && candidate.ownedClass())
-                .map(GeneratedClassModel::className)
-                .toList());
+        this.header = new ClassHeaderEditor(() -> project);
         buildUi();
     }
 
@@ -42,6 +41,7 @@ final class OwnedClassPanel extends JPanel {
     void edit(GeneratedClassModel value) {
         clazz = value;
         header.show(value);
+        displayName.show(value);
         refreshSites();
     }
 
@@ -51,6 +51,7 @@ final class OwnedClassPanel extends JPanel {
         clazz.discriminatorPid("");
         clazz.discriminatorQid("");
         clazz.ownedClass(true);
+        displayName.applyEdits();
         refreshSites();
         afterChange.accept(null);
     }
@@ -75,6 +76,7 @@ final class OwnedClassPanel extends JPanel {
         GridBagUtils.wideRow(form, row++, new JLabel(
                 "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
         GridBagUtils.wideRow(form, row++, header);
+        GridBagUtils.wideRow(form, row++, displayName);
         GridBagUtils.wideRow(form, row++, sites);
         GridBagUtils.wideRow(form, row++, new JLabel(
                 "<html>The owner is not configured here. Add an ENTITY field to the "

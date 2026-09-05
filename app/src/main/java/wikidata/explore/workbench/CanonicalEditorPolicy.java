@@ -12,8 +12,22 @@ final class CanonicalEditorPolicy {
         return kind != null && kind.usesCanonicalKey();
     }
 
-    static boolean hasSourceLabel(ClassKind kind) {
-        return kind == ClassKind.SOURCE;
+    /**
+     * Where LABEL mode gets a name for this kind, or blank when it has none to get.
+     *
+     * <p>The question used to be {@code hasSourceLabel}, meaning "is this a SOURCE
+     * class" — which reported that an owned class had no name in LABEL mode. It has one:
+     * a part is produced on its owner's QID, so it cannot take a label of its own and is
+     * given the owner and the site that produced it instead. That default is what keeps
+     * it from reading as its owner, and it is a name, so LABEL resolves there.
+     */
+    static String labelSource(ClassKind kind) {
+        if (kind == null) return "";
+        return switch (kind) {
+            case SOURCE -> "the datasource's label";
+            case OWNED -> "its owner and the field that produced it";
+            case STATEMENT, AGGREGATE -> "";
+        };
     }
 
     static CanonicalSpec spec(
@@ -21,7 +35,6 @@ final class CanonicalEditorPolicy {
             CanonicalSpec.DisplayNameMode mode,
             String displayField,
             String template,
-            String language,
             CanonicalSpec existing) {
         CanonicalSpec.DisplayNameMode safeMode = mode == null
                 ? CanonicalSpec.DisplayNameMode.LABEL : mode;
@@ -34,7 +47,12 @@ final class CanonicalEditorPolicy {
                 ? new CanonicalSpec() : existing.copy();
         result.displayNameMode(safeMode);
         switch (safeMode) {
-            case LABEL -> result.labelLanguage(language);
+            // Which language a label is acquired in is not one of the three modes; it is
+            // a parameter of the acquisition, authored beside the other source options
+            // and written by the editor that owns that control. Taking it here meant
+            // every panel sharing this had to invent one, and a blank invented value
+            // resets a class configured in another language back to the default.
+            case LABEL -> { }
             case FIELD -> result.displayNameField(displayField);
             case TEMPLATE -> result.displayNameTemplate(template);
         }
@@ -43,9 +61,5 @@ final class CanonicalEditorPolicy {
         // space-separated string parsed back could not preserve what an identifier is
         // built from. This assembled the key from text; now it only assembles a name.
         return result;
-    }
-
-    private static String clean(String value) {
-        return value == null ? "" : value;
     }
 }

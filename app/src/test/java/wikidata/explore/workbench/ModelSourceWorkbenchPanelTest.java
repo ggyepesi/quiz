@@ -179,7 +179,7 @@ class ModelSourceWorkbenchPanelTest {
         // identity editor offers the same field names, so a content search finds
         // whichever was added to the layout first — which is a property of the layout,
         // not of what this test is about.
-        displayNameCombo(panel).setSelectedItem("position");
+        nameByField(panel, "position");
         panel.changeSelection(person);
 
         assertEquals(CanonicalSpec.DisplayNameMode.FIELD,
@@ -358,18 +358,31 @@ class ModelSourceWorkbenchPanelTest {
                 ModelSourceWorkbenchPanel.fieldSampleContext(model, type).ownerTypeQid());
     }
 
-    /** The statement panel's display-name field combo, addressed by name. */
+    /**
+     * Names the edited class by one of its fields, through the shared editor.
+     *
+     * <p>Both controls, because the mode is stored rather than inferred from whether a
+     * field happens to be selected: choosing a field while the class is named by its
+     * label says which field to use IF it is named by a field, and nothing more.
+     */
     @SuppressWarnings("unchecked")
-    private static JComboBox<String> displayNameCombo(ModelSourceWorkbenchPanel panel) {
+    private static void nameByField(ModelSourceWorkbenchPanel panel, String field) {
         try {
-            StatementSourcePanel statement =
-                    component(panel, StatementSourcePanel.class);
-            java.lang.reflect.Field field =
-                    StatementSourcePanel.class.getDeclaredField("displayNameFieldBox");
-            field.setAccessible(true);
-            return (JComboBox<String>) field.get(statement);
+            DisplayNameEditor editor = component(
+                    component(panel, StatementSourcePanel.class),
+                    DisplayNameEditor.class);
+            JComboBox<String> mode = (JComboBox<String>) box(editor, "modeBox");
+            mode.setSelectedItem("Field");
+            ((JComboBox<String>) box(editor, "fieldBox")).setSelectedItem(field);
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);
         }
+    }
+
+    private static Object box(DisplayNameEditor editor, String name)
+            throws ReflectiveOperationException {
+        java.lang.reflect.Field field = DisplayNameEditor.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(editor);
     }
 }

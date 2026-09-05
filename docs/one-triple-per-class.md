@@ -2,7 +2,7 @@
 
 ## Status
 
-Design proposal, no code. Written after a session of configuration-UI defects whose
+Implementation in progress. Written after a session of configuration-UI defects whose
 common cause was one construct spelled three ways in three editors. It proposes a single
 triple component and says what each class kind fixes, authors and only reads.
 
@@ -27,14 +27,21 @@ saying which end its members occupy.
 |---|---|---|---|---|
 | **Source** | `Constellation`: ⟨members, P31, Q8928⟩ | its members are one end | which end (direction), the property, the object bound | — |
 | **Statement** | ⟨subject, P166, category⟩ | — | all three | — |
-| **Owned** | ⟨owner, production site, part⟩ | the part is one end; the site is a field | — | the whole triple: it is authored on the OWNER's field |
+| **Owned** | ⟨members, production site, owner⟩ | its members are one end | — | the property and the object: both are settled by which field, on which class, declares the ownership |
 | **Aggregate** | none | | | grouping by a key is not a statement |
 
-Owned is the case that must not be forced into the pattern. Its triple is stored on the
-owning field (`productionKind = OWNED_COMPONENT`, `entityClassName`), a class may be
-produced at several sites, and none of those triples belongs to the class being edited.
-The component shows them and points at where each is authored — it must not offer to edit
-them here, or the model would gain a second place to say one thing.
+Owned has a triple like the others; what differs is that two of its three tags are
+authored elsewhere. Ownership is a statement about **production** — how these instances
+are drawn from the datasource, on the owner's QID — and about nothing else. A part
+inherits nothing from its owner: it is an instance of its class like any other, told apart
+by that class exactly as any other instance is.
+
+Its triple is stored on the owning field (`productionKind = OWNED_COMPONENT`,
+`entityClassName`), so the property (the production site) and the object (the owner) are
+both implicit, settled by which field on which class declares the ownership. A class may
+be produced at several sites, and none of those triples is authored on the class being
+edited. The component shows them and points at where each is authored — it must not offer
+to edit them here, or the model would gain a second place to say one thing.
 
 ## What is spelled three times today
 
@@ -76,10 +83,17 @@ Per kind it is configured, not subclassed:
 
 ### 1. `EntityBound` reaches Source membership
 
-A Source class can say `additionalTypeQids` and `excludedTypeQids` — a list of objects on
-one property. It cannot say "P279 subclasses of these, with closure", which `EntityBound`
-expresses and the statement ends already use. Sharing the component gives membership the
-bound the model already has, and retires two ad-hoc QID lists.
+A Source class can say `sourceQid` plus `additionalTypeQids` — a positive set of objects
+on one property. It cannot say "P279 subclasses of these, with closure", which
+`EntityBound` expresses and the statement ends already use. Sharing the component gives
+that positive population membership the bound the model already has.
+
+`excludedTypeQids` is not another spelling of that bound: it is a negative filter applied
+after the positive population is described. The subclass discriminator is different
+again: it is a conjunctive restriction on inherited membership. Neither may be folded
+into the one `EntityBound`, because doing so would silently broaden or otherwise change
+the population. They remain separately named constraints until a composition construct
+is forced; this refactor does not invent one.
 
 ### 2. Direction gets one name
 
@@ -149,19 +163,17 @@ all. These are class facts, not kind facts: `ClassHeaderEditor`.
 
 The triple is one of four shared components. The others, from the same survey:
 
-- **`ClassHeaderEditor`** — name, alias, extends, and the imported state.
+- **`ClassHeaderEditor`** — name, alias and extends.
 
-  **Alias** is a display alias: what the UI shows for a class instead of its name, pure
-  presentation, with the class name staying the identity everything references. Its point
-  is an imported class — `Name` imported from the person model can read as "Structured
-  name" locally without a rename that would break every reference to it.
+  **Alias** is a display alias authored with the class: what the UI shows instead of its
+  name, pure presentation, with the class name staying the identity everything references.
+  An imported class is a live reference, so its alias is read-only here just like its name
+  and fields; a domain-local alias would be a separate presentation-override construct and
+  is not introduced without a forcing use case.
 
-  So the header carries the **imported** state, and must carry it rather than leaving each
-  panel to decide again what imported looks like. An imported class's controls are all
-  disabled, with a label above them saying the class belongs to another model — without
-  which a disabled editor reads as merely broken. `ClassSourcePanel` and `OwnedClassPanel`
-  each handle this today; `StatementSourcePanel` shows the class name without an alias, so
-  it cannot show an alias it may not edit either.
+  Import ownership belongs to `ModelSourceWorkbenchPanel`, which already locks the whole
+  selected declaration and shows the single explanation that it is edited in its owning
+  model. The header must not repeat that state or notice.
 - **`ClassIdentityEditor`** — already shared by Source, Statement and Aggregate. Gains the
   missing-key control, which exists on `CanonicalSpec` and **nothing edits**; the only
   missing-key UI is `AggregateClassPanel`, editing a *different* enum
@@ -170,9 +182,19 @@ The triple is one of four shared components. The others, from the same survey:
   both.
 - **`DisplayNameEditor`** — mode, field, template. Whole in `ClassSourcePanel`, a partial
   fourth copy in `StatementSourcePanel` (field only, silently preserving templates it
-  cannot show), absent in Owned and Aggregate. Open question: an owned part is named
-  owner + site and must never take its owner's label, so this may be "not applicable"
-  there rather than three modes.
+  cannot show), absent in Owned and Aggregate.
+
+  **All four kinds get it, Owned included.** A part's instances belong to a class and are
+  told apart by it like any other instances; ownership governs production, not naming.
+  Owner-and-site is the DEFAULT — a part is produced on the owner's QID and so has no
+  label of its own to take, and the default is what keeps it from reading as its owner.
+
+  This was already broken rather than merely absent. `DomainFinalization` runs
+  `Canonicalization.apply` and then `OwnedComponents.recomposeNames`; canonicalization
+  skips only LABEL mode, not owned classes, so a FIELD or TEMPLATE name on an owned class
+  was applied and then unconditionally overwritten two lines later. Two rules for one
+  fact, agreeing only because the UI offered no way to configure one. `recomposeNames`
+  now leaves a class that names itself alone.
 
 ### The statement panel's explanation goes with it
 
@@ -210,11 +232,13 @@ without them.
 2. `ClassIdentityEditor` gains missing-key; the aggregate's private enum collapses.
 3. `TripleEditor`, Statement first (it authors everything), then Source, then Owned
    read-only.
-4. `DisplayNameEditor`, once the Owned question is answered.
+4. `DisplayNameEditor`, in all four panels; owner-and-site becomes the owned default
+   rather than an unconditional rule.
 5. Apply buttons removed.
 
 Each step keeps the suite green and changes no saved data. Step 3 changes what a Source
-class can express — `EntityBound` where two QID lists were — which is the one place a
+class can express — `EntityBound` replaces its positive target fields while exclusions
+and inherited discriminators retain their distinct semantics. This is the one place a
 saved model would gain a shape it did not have, and so the one place to decide
 regenerate-versus-migrate explicitly.
 

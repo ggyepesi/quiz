@@ -12,7 +12,6 @@ import wikidata.explore.model.GeneratedProjectModel;
 import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashSet;
-import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
@@ -33,8 +32,13 @@ final class AggregateClassPanel extends JPanel {
     private final OrderedChoiceList<KeyChoice> pairs = new OrderedChoiceList<>(false);
     private final JComboBox<AggregateClassSource.MissingKeyPolicy> missingKeyPolicy =
             new JComboBox<>(AggregateClassSource.MissingKeyPolicy.values());
-    private final JPanel displayFieldsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-    private final LinkedHashMap<String, JCheckBox> displayFields = new LinkedHashMap<>();
+    // A template, asked the way every kind asks it. This was a row of field
+    // checkboxes composed INTO a template and read back out of one by substring: it
+    // could only ever produce "{a} — {b}", so a template written with any other
+    // separator, or with a word in it, was rewritten the next time the class was
+    // applied — and the mode was then decided by whether the result came out blank,
+    // which is a fact derived from something that merely agrees with it.
+    private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
     // Identity, asked the way every construct asks it. The pair list below says which
     // of this class's fields HAVE a source to group from; this says which of them
     // identify an instance, and in what order.
@@ -46,10 +50,7 @@ final class AggregateClassPanel extends JPanel {
     AggregateClassPanel(GeneratedProjectModel project) {
         super(new BorderLayout());
         this.project = project;
-        this.header = new ClassHeaderEditor(project, () -> project.classes().stream()
-                .filter(java.util.Objects::nonNull)
-                .map(GeneratedClassModel::className)
-                .toList());
+        this.header = new ClassHeaderEditor(() -> project);
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 6, 4, 6);
@@ -72,10 +73,7 @@ final class AggregateClassPanel extends JPanel {
         GridBagUtils.wideRow(form, 3, pairs);
         GridBagUtils.wideRow(form, 5, identityEditor);
         GridBagUtils.labeledRow(form, c, 4, "Missing key:", missingKeyPolicy);
-        displayFieldsPanel.setBorder(BorderFactory.createTitledBorder("Display name fields"));
-        displayFieldsPanel.setToolTipText(
-                "Checked fields are shown in model order, separated by an em dash.");
-        GridBagUtils.wideRow(form, 6, displayFieldsPanel);
+        GridBagUtils.wideRow(form, 6, displayNameEditor);
         GridBagUtils.wideRow(form, 7, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
         JButton apply = new JButton("Apply aggregate class");
@@ -106,7 +104,7 @@ final class AggregateClassPanel extends JPanel {
         refreshChoices(spec);
         missingKeyPolicy.setSelectedItem(spec == null
                 ? AggregateClassSource.MissingKeyPolicy.EXCLUDE : spec.missingKeyPolicy());
-        refreshDisplayChoices(value);
+        displayNameEditor.show(value);
         identityEditor.show(value);
     }
 
@@ -153,14 +151,9 @@ final class AggregateClassPanel extends JPanel {
         clazz.classKind(ClassKind.AGGREGATE);
         clazz.aggregateSource(spec);
         syncKeyWithPairs(spec);
-        String template = displayFields.entrySet().stream()
-                .filter(entry -> entry.getValue().isSelected())
-                .map(entry -> "{" + entry.getKey() + "}")
-                .collect(java.util.stream.Collectors.joining(" — "));
-        clazz.canonical().displayNameTemplate(template);
-        clazz.canonical().displayNameMode(template.isBlank()
-                ? CanonicalSpec.DisplayNameMode.LABEL
-                : CanonicalSpec.DisplayNameMode.TEMPLATE);
+        // After the kind is assigned: the editor asks the policy what LABEL means for
+        // this kind, and the answer differs by kind.
+        displayNameEditor.applyEdits();
         afterChange.accept(null);
     }
 
@@ -216,29 +209,6 @@ final class AggregateClassPanel extends JPanel {
         if (selected != null) selected.keys().forEach(key ->
                 configured.add(new KeyChoice(key.targetField(), key.sourceField())));
         pairs.show(new java.util.ArrayList<>(configured), new java.util.ArrayList<>(choices));
-    }
-
-    private void refreshDisplayChoices(GeneratedClassModel value) {
-        displayFields.clear();
-        displayFieldsPanel.removeAll();
-        if (value == null) return;
-        String template = value.canonical().displayNameTemplate();
-        for (var field : value.fields()) {
-            // A collection is offered. It was skipped, which contradicted the mechanism
-            // it feeds: a display TEMPLATE renders whatever field it names, and Nobel's
-            // own statement class is titled "{laureates} — {category}" from a collection.
-            // Excluding them here meant an aggregate could not be titled by its members —
-            // the one thing an aggregate has that its sources do not.
-            JCheckBox box = new JCheckBox(field.name(),
-                    template.contains("{" + field.name() + "}"));
-            box.setToolTipText(field.cardinality() == FieldCardinality.COLLECTION
-                    ? "Include every " + field.name() + " value in the aggregate title"
-                    : "Include " + field.name() + " in the aggregate title");
-            displayFields.put(field.name(), box);
-            displayFieldsPanel.add(box);
-        }
-        displayFieldsPanel.revalidate();
-        displayFieldsPanel.repaint();
     }
 
     private record KeyChoice(String targetField, String sourceField) {
