@@ -336,11 +336,8 @@ public final class GeneratedProjectModelValidator {
                                 + base.className() + "' is " + base.classKind() + "."));
             }
         }
-        FieldSourceMapping own = clazz.instanceMapping();
         if (clazz.reifiesStatements() || !clazz.seedQids().isEmpty()
-                || !clean(own.sourceQid()).isBlank()
-                || !clean(own.propertyPid()).isBlank()
-                || !own.additionalTypeQids().isEmpty()) {
+                || clazz.membership().bounded()) {
             problems.add(Problem.error(clazz.className(),
                     "An Owned class cannot also define an independent membership source."));
         }

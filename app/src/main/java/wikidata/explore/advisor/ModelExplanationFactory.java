@@ -1,5 +1,6 @@
 package wikidata.explore.advisor;
 
+import wikidata.explore.model.EntityBound;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSemantics;
 import wikidata.explore.model.FieldSourceMapping;
@@ -71,13 +72,19 @@ public final class ModelExplanationFactory {
             GeneratedClassModel clazz) {
 
         FieldSourceMapping source = clazz.effectiveInstanceMapping(project);
-        List<SourceRouteExplanation> routes =
-                clazz.effectiveMembership(project).relationPid().isBlank()
+        // A class's membership is its bound; the mapping supplies only the labels and
+        // the direction beside it. Reading the triple off the mapping showed a blank
+        // property and "?membershipTarget" for every class, because those fields are
+        // where a membership USED to live.
+        EntityBound membership = clazz.effectiveMembership(project);
+        List<SourceRouteExplanation> routes = membership.relationPid().isBlank()
                 ? List.of()
-                : List.of(route(1, source, classExample(clazz, source), false,
-                                source.direction()));
+                : List.of(new SourceRouteExplanation(1, source.sourceType(),
+                        membership.relationPid(), source.propertyLabel(),
+                        source.direction(), classExample(clazz, membership,
+                                source.direction()), false));
         List<String> advice = new ArrayList<>();
-        if (source.propertyPid().isBlank() && clazz.seedQids().isEmpty()) {
+        if (membership.relationPid().isBlank() && clazz.seedQids().isEmpty()) {
             advice.add("Configure a membership property and target, or add seed QIDs.");
         }
         if (clazz.generationDepth() > 1) {
@@ -169,11 +176,15 @@ public final class ModelExplanationFactory {
 
     private static String classExample(
             GeneratedClassModel clazz,
-            FieldSourceMapping source) {
+            EntityBound membership,
+            RuleDirection direction) {
         String entity = "?" + variable(clazz.className());
-        String target = source.sourceQid().isBlank()
-                ? "?membershipTarget" : "wd:" + source.sourceQid();
-        return source.direction().triplePattern(target, entity, source.propertyPid());
+        // Every target it may point into, which is what a bound naming several means.
+        String target = membership.qids().isEmpty()
+                ? "?membershipTarget"
+                : membership.qids().stream().map(qid -> "wd:" + qid)
+                        .collect(java.util.stream.Collectors.joining(", "));
+        return direction.triplePattern(target, entity, membership.relationPid());
     }
 
     private static String fieldExample(

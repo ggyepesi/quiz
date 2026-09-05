@@ -1611,22 +1611,19 @@ public class ModelBuilderFrame extends JFrame {
                     + wikidata.explore.model.MembershipPattern.describe(c, projectModel)
                     + ". Use Generate domain; it has no independent query.";
         }
-        var m = c.effectiveInstanceMapping(projectModel);
-        boolean hasTarget = m != null && !m.sourceQid().isBlank();
-        boolean hasExtraTypes = m != null && !m.additionalTypeQids().isEmpty();
-        boolean hasSeeds = !c.seedQids().isEmpty();
-        if (hasTarget || hasExtraTypes || hasSeeds) {
+        EntityBound membership = c.effectiveMembership(projectModel);
+        if (!membership.qids().isEmpty() || !c.seedQids().isEmpty()) {
             return null;
         }
-        String rel = m == null || m.propertyPid().isBlank() ? "P31" : m.propertyPid();
-        if (!rel.equals("P31")) {
+        String rel = membership.relationPid();
+        if (!rel.isBlank() && !rel.equals("P31")) {
             return "Class \"" + c.className() + "\" has relation property " + rel
-                    + " but no target. Set the \"Relation target\" (the entity the "
-                    + "relation points to — e.g. the award), or add Seed QIDs.";
+                    + " but no objects. Set the objects the relation points at "
+                    + "(e.g. the award), or add Seed QIDs.";
         }
-        return "Class \"" + c.className() + "\" has no membership type (Wikidata "
-                + "type/class) and no Seed QIDs — nothing to generate. Set a "
-                + "type/class QID (or a relation + target), or add Seed QIDs.";
+        return "Class \"" + c.className() + "\" has no membership objects and no Seed "
+                + "QIDs — nothing to generate. Set the objects its property points at, "
+                + "or add Seed QIDs.";
     }
 
     private GeneratedClassModel classByName(String name) {

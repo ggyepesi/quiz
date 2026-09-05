@@ -353,17 +353,18 @@ public class ModelGraphPanel extends JPanel {
             GeneratedClassModel clazz,
             GeneratedProjectModel project) {
         var mapping = clazz.effectiveInstanceMapping(project);
-        if (mapping.propertyPid().isBlank()) {
+        var membership = clazz.effectiveMembership(project);
+        if (!membership.bounded()) {
             return clazz.seedQids().isEmpty()
                     ? "membership: ?"
                     : "membership: " + clazz.seedQids().size() + " seed QID"
                       + (clazz.seedQids().size() == 1 ? "" : "s");
         }
-        String target = mapping.sourceQid().isBlank()
-                ? "?" : mapping.sourceQid();
+        String target = membership.qids().isEmpty()
+                ? "?" : String.join(", ", membership.qids());
         String direction = mapping.direction()
                 == wikidata.explore.model.RuleDirection.ROOT_TO_ITEM ? "→" : "←";
-        return "members: WD:" + mapping.propertyPid() + " " + direction + " " + target;
+        return "members: WD:" + membership.relationPid() + " " + direction + " " + target;
     }
 
     private static String fit(Graphics2D g, String text, int width) {

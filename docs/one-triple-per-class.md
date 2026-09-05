@@ -312,6 +312,27 @@ and inherited discriminators retain their distinct semantics. This is the one pl
 saved model would gain a shape it did not have, and so the one place to decide
 regenerate-versus-migrate explicitly.
 
+## What is left
+
+Steps 1–5 are done. Two of the five things §"Five things this resolves" claims are not,
+and one of them was never started:
+
+- **§4, graph expansion.** `GraphExpansionPolicy` still sits on BOTH
+  `StatementClassSource` and `GeneratedFieldModel`, and the statement editor still has a
+  "Graph discovery" box. An edge is what expands; the class-level copy is on the nearest
+  thing that had a panel. Untouched.
+- **§3, the P31 literal.** The wording case is gone with the row label it fed, and the
+  defaults a source class reads and writes are concentrated in `TripleEditor`. Forty-two
+  `"P31"` literals remain in `app/src/main`, and the fourth job — `equals("P31")` standing
+  for "is this the plain membership case" — is still asked in `ModelBuilderFrame` and
+  `PropertyDiscoveryPanel`. It needs the name the note says it needs.
+- **§2, direction.** The question is no longer ASKED anywhere: a source class's members
+  are fixed as the subject and the panel writes `ITEM_TO_ROOT`. The three vocabularies
+  are still in the code — the enum, the `→`/`←` cues, and "incoming"/"outgoing" in the
+  advisor — and they now describe fields, not membership.
+
+And the closure query is persistable but not runnable; the validator refuses it.
+
 ## Non-goals
 
 - A generic "edit any triple" screen. The kinds differ in what they fix, and the component
