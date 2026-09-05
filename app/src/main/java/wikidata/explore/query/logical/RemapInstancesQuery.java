@@ -20,22 +20,19 @@ public class RemapInstancesQuery
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
+    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
     private final wikidata.explore.generation.RunSteps steps;
-
-    public RemapInstancesQuery(
-            GenerationRun previousRun,
-            GeneratedProjectModel projectModel) {
-        this(previousRun, projectModel, wikidata.explore.generation.RunSteps.SILENT);
-    }
 
     /** Reporting each step it finishes, so the plan's steps are the run's steps. */
     public RemapInstancesQuery(
             GenerationRun previousRun,
-            GeneratedProjectModel projectModel,
+            wikidata.explore.generation.CompiledPipelineRun compiledRun,
             wikidata.explore.generation.RunSteps steps) {
 
+        if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.previousRun = previousRun;
-        this.projectModel = projectModel;
+        this.compiledRun = compiledRun;
+        this.projectModel = compiledRun.request().model();
         this.steps = steps == null
                 ? wikidata.explore.generation.RunSteps.SILENT : steps;
     }
@@ -86,7 +83,7 @@ public class RemapInstancesQuery
         }
 
         return new GenerationPipeline().remap(
-                previousRun, projectModel,
+                previousRun, compiledRun,
                 wikidata.explore.extract.GenerationLog.of(context::message), steps);
     }
 

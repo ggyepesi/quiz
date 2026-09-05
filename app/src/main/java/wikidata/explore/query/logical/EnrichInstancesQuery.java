@@ -24,32 +24,24 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
+    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
     private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
     private final wikidata.explore.generation.RunSteps steps;
 
-    public EnrichInstancesQuery(
-            GenerationRun previousRun,
-            GeneratedProjectModel projectModel) {
-        this(previousRun, projectModel,
-                new wikidata.explore.generation.GenerationExecutionSettings());
-    }
-
-    public EnrichInstancesQuery(
-            GenerationRun previousRun, GeneratedProjectModel projectModel,
-            wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
-        this(previousRun, projectModel, executionSettings,
-                wikidata.explore.generation.RunSteps.SILENT);
-    }
-
     /** Reporting each step it finishes, so the plan's steps are the run's steps. */
     public EnrichInstancesQuery(
-            GenerationRun previousRun, GeneratedProjectModel projectModel,
+            GenerationRun previousRun,
+            wikidata.explore.generation.CompiledPipelineRun compiledRun,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings,
             wikidata.explore.generation.RunSteps steps) {
+        if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.previousRun = previousRun;
-        this.projectModel = projectModel;
-        this.executionSettings = executionSettings;
+        this.compiledRun = compiledRun;
+        this.projectModel = compiledRun.request().model();
+        this.executionSettings = executionSettings == null
+                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                : executionSettings;
         this.steps = steps == null
                 ? wikidata.explore.generation.RunSteps.SILENT : steps;
     }
@@ -116,7 +108,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     // I/O-bound — near-zero CPU for minutes — so the process itself
                     // cannot answer "working, or blocked?".
                     return new GenerationPipeline().enrich(
-                            previousRun, projectModel, entityApi,
+                            previousRun, compiledRun, entityApi,
                             genLog, context.cancellation(), steps, sourcePlan,
                             wikidata.explore.query.core.WikidataAccess.sparql(
                                     context,

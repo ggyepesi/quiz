@@ -50,6 +50,12 @@ public class GenerateInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
+        wikidata.explore.generation.CompiledPipelineRun compiledRun =
+                wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.generateClassPreview(
+                                projectModel, projectModel.rootClass().className(), depth));
+        if (compiledRun.blocked()) throw new IllegalStateException(compiledRun.explain());
+
         datasource.api.SourceExecutionPlan sourcePlan =
                 wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
                         projectModel, datasource.Datasources.standard());
@@ -94,7 +100,7 @@ public class GenerateInstancesQuery
 
                     GenerationRun run =
                             pipeline.fullRun(
-                                    projectModel,
+                                    compiledRun,
                                     depth,
                                     WikidataAccess.sparql(context, Datasource.WIKIDATA),
                                     genLog,

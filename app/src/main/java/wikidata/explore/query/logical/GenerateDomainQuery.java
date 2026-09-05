@@ -35,27 +35,27 @@ import wikidata.api.FactDemandPlan;
 public class GenerateDomainQuery implements Query<GenerationRun> {
 
     private final GeneratedProjectModel project;
+    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
     private final process.ProcessWorkflowPipeline pipelineProgress;
     private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
     public GenerateDomainQuery(GeneratedProjectModel project) {
-        this(project, null, new wikidata.explore.generation.GenerationExecutionSettings());
+        this(wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.generateDomain(project)),
+                null, new wikidata.explore.generation.GenerationExecutionSettings());
     }
 
     public GenerateDomainQuery(
-            GeneratedProjectModel project,
-            process.ProcessWorkflowPipeline pipelineProgress) {
-        this(project, pipelineProgress,
-                new wikidata.explore.generation.GenerationExecutionSettings());
-    }
-
-    public GenerateDomainQuery(
-            GeneratedProjectModel project,
+            wikidata.explore.generation.CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipelineProgress,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
-        this.project = project;
+        if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
+        this.compiledRun = compiledRun;
+        this.project = compiledRun.request().model();
         this.pipelineProgress = pipelineProgress;
-        this.executionSettings = executionSettings;
+        this.executionSettings = executionSettings == null
+                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                : executionSettings;
     }
 
     @Override public String purpose() { return "Generate domain"; }
@@ -76,6 +76,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
 
     @Override
     public GenerationRun execute(QueryContext context) throws Exception {
+        // The very first executable decision. In particular, unit lookup below can
+        // reach WDQS, so an invalid plan must stop before source-plan preparation or
+        // any other externally backed setup.
+        if (compiledRun.blocked()) {
+            throw new IllegalStateException(compiledRun.explain());
+        }
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
         datasource.api.SourceExecutionPlan sourcePlan =
@@ -123,19 +129,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // the runtime, so it holds fully-resolved field models.
                     pipeline.resolveUnits(project, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
 
-                    // Compiled once, by the owner of that decision. This method used to
-                    // compile for itself while GenerateDomainPipeline compiled again to
-                    // describe the run — two compiles of one model, which could describe
-                    // different models the moment anything edited one between them. A
-                    // model that will not compile now blocks with its validation report
-                    // before a single further request is made.
-                    wikidata.explore.generation.CompiledPipelineRun compiledRun =
-                            wikidata.explore.generation.CompiledPipelineRun.compile(
-                                    wikidata.explore.generation.PipelineRequest
-                                            .generateDomain(project));
-                    if (compiledRun.blocked()) {
-                        throw new IllegalStateException(compiledRun.explain());
-                    }
                     wikidata.explore.compiled.CompiledProjectModel compiledProject =
                             compiledRun.model();
                     wikidata.explore.generation.GenerationState generationState =
@@ -333,9 +326,28 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             labels.resolved() + " label(s) resolved");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
                             "Canonicalize, prune, validate and build vocabularies");
+                    // Through the executor, which owns the order. Two calls rather than
+                    // one because ~120 lines of reporting sit between the two phases and
+                    // moving them would change what a reader sees mid-run; the ordering
+                    // guarantee does not come from a single call but from the shared
+                    // state — MaterializeStep requires a FINAL_GRAPH, and only
+                    // FinalizeStep leaves one.
+                    //
+                    // The state shares this pool rather than copying it: finalization
+                    // prunes, and a copy would prune the copy.
+                    wikidata.explore.generation.PipelineState runState =
+                            wikidata.explore.generation.PipelineState.over(
+                                    wikidata.explore.generation.GraphCheckpoint.Stage
+                                            .CONSTRUCTED_GRAPH, pool);
+                    runState.records().addAll(reified);
+                    wikidata.explore.generation.PipelineContext runContext =
+                            new wikidata.explore.generation.PipelineContext(
+                                    compiledRun, entityApi, genLog, context.cancellation());
+                    new wikidata.explore.generation.PipelineExecutor()
+                            .with(new wikidata.explore.generation.FinalizeStep())
+                            .run(runContext, runState);
                     wikidata.explore.generation.DomainFinalization.Result finalization =
-                            wikidata.explore.generation.DomainFinalization.apply(
-                            project, compiledProject, pool, reified, entityApi, genLog);
+                            runState.finalization();
                     // Fetched vs avoided says whether the cache paid; the eviction
                     // figures say WHY. A poor hit rate with no evicted re-fetches means
                     // the consumers never ask about the same entity and a larger budget
@@ -452,9 +464,11 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // generation preview identical to load/serve — otherwise a qid
                     // stamped as a class root but stored untyped in the pool would
                     // show at generation yet vanish on reload.
-                    GeneratedViewableRuntime runtime = pipeline.buildRuntime(project);
-                    List<Viewable> allInstances =
-                            pipeline.materialize(runtime, pool);
+                    new wikidata.explore.generation.PipelineExecutor()
+                            .with(new wikidata.explore.generation.MaterializeStep())
+                            .run(runContext, runState);
+                    GeneratedViewableRuntime runtime = runState.runtime();
+                    List<Viewable> allInstances = runState.instances();
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
                             allInstances.size() + " instances materialized");
 

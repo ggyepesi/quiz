@@ -25,7 +25,20 @@ public record CompiledPipelineRun(
         Map<PipelinePhase, PhaseDecision> decisions) {
 
     public CompiledPipelineRun {
-        decisions = Map.copyOf(decisions);
+        if (request == null) throw new IllegalArgumentException("A compiled run needs its request");
+        if (decisions == null) throw new IllegalArgumentException("A compiled run needs decisions");
+        java.util.EnumMap<PipelinePhase, PhaseDecision> exhaustive =
+                new java.util.EnumMap<>(PipelinePhase.class);
+        exhaustive.putAll(decisions);
+        java.util.List<PipelinePhase> missing = java.util.Arrays.stream(PipelinePhase.values())
+                .filter(phase -> !exhaustive.containsKey(phase)).toList();
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Missing pipeline decision(s): " + missing);
+        }
+        if (exhaustive.values().stream().anyMatch(java.util.Objects::isNull)) {
+            throw new IllegalArgumentException("A pipeline decision may not be null");
+        }
+        decisions = java.util.Collections.unmodifiableMap(exhaustive);
     }
 
     /**
@@ -129,7 +142,9 @@ public record CompiledPipelineRun(
     }
 
     public PhaseDecision decision(PipelinePhase phase) {
-        return decisions.getOrDefault(phase, PhaseDecision.run());
+        if (phase == null) throw new IllegalArgumentException("No pipeline phase");
+        return java.util.Objects.requireNonNull(decisions.get(phase),
+                () -> "No decision for " + phase);
     }
 
     public boolean runs(PipelinePhase phase) {

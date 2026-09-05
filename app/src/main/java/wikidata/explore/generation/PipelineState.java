@@ -32,9 +32,28 @@ public final class PipelineState {
 
     public PipelineState(
             GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool) {
+        this(stage, pool, false);
+    }
+
+    private PipelineState(
+            GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool, boolean share) {
         if (stage == null) throw new IllegalArgumentException("A state needs a stage");
         this.stage = stage;
-        this.pool = new ArrayList<>(pool == null ? List.of() : pool);
+        this.pool = pool == null ? new ArrayList<>()
+                : share ? pool : new ArrayList<>(pool);
+    }
+
+    /**
+     * A state over a graph a caller already holds — the same list, not a copy.
+     *
+     * <p>Finalization prunes: dead stubs, orphans, records missing a required field. A
+     * copy would prune the copy and leave the caller's list holding what was removed, so
+     * a flow being routed through the executor one step at a time would quietly stop
+     * pruning. The state IS the run's graph; this says so rather than hiding an alias.
+     */
+    public static PipelineState over(
+            GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool) {
+        return new PipelineState(stage, pool, true);
     }
 
     /** The state a run starts in, from the graph it was given. */

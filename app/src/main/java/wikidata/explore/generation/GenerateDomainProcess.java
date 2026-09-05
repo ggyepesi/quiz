@@ -13,27 +13,25 @@ import java.util.Map;
 /** Process façade for domain generation; the established Query is an explicit subprocess. */
 public final class GenerateDomainProcess implements Process<GenerationRun> {
     private final GeneratedProjectModel project;
+    private final CompiledPipelineRun compiledRun;
     private final process.ProcessWorkflowPipeline pipeline;
     private final GenerationExecutionSettings settings;
 
     public GenerateDomainProcess(GeneratedProjectModel project) {
-        this(project, GenerateDomainPipeline.configured(project));
+        this(CompiledPipelineRun.compile(PipelineRequest.generateDomain(project)),
+                null, new GenerationExecutionSettings());
     }
 
     public GenerateDomainProcess(
-            GeneratedProjectModel project,
-            process.ProcessWorkflowPipeline pipeline) {
-        this(project, pipeline, new GenerationExecutionSettings());
-    }
-
-    public GenerateDomainProcess(
-            GeneratedProjectModel project,
+            CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipeline,
             GenerationExecutionSettings settings) {
-        this.project = project.copy();
+        if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
+        this.compiledRun = compiledRun;
+        this.project = compiledRun.request().model();
         this.settings = settings == null ? new GenerationExecutionSettings() : settings;
         this.pipeline = pipeline == null
-                ? GenerateDomainPipeline.configured(this.project) : pipeline;
+                ? GenerateDomainPipeline.configured(compiledRun) : pipeline;
     }
 
     @Override public ProcessPlan plan() {
@@ -55,7 +53,7 @@ public final class GenerateDomainProcess implements Process<GenerationRun> {
     @Override public ProcessOutcome<GenerationRun> execute(ProcessContext context) {
         ProcessOutcome<GenerationRun> outcome =
                 context.run(new QuerySubprocess<>(new GenerateDomainQuery(
-                        project, pipeline, settings)));
+                        compiledRun, pipeline, settings)));
         outcome = RunCompleteness.decide(outcome, settings.requireComplete());
         if (outcome.result() != null) {
             RunPhaseSummaries.record(pipeline, RuleEffects.fromRun(

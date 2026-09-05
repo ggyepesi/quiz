@@ -20,7 +20,11 @@ public enum PipelinePhase {
     DISCOVER_POPULATION("Discover population", true, false),
     ACQUIRE_SOURCE_FACTS("Acquire source facts", true, true),
     CONSTRUCT_RECORDS("Construct modeled records", false, false),
-    RESOLVE_SEMANTIC_WORKLIST("Resolve semantic worklist", true, true),
+    // The worklist always has local work (stamping, stored-evidence classification,
+    // owned composition). Under an acquiring request it may also load missing facts;
+    // under NONE the step must run its local subset. Network permission therefore
+    // belongs to the acquisition operation, not to the semantic phase as a whole.
+    RESOLVE_SEMANTIC_WORKLIST("Resolve semantic worklist", false, true),
     ACQUIRE_EXTERNAL_EVIDENCE("Acquire remaining external evidence", true, true),
     REFRESH_DERIVED_VALUES("Refresh derived values", false, false),
     HYDRATE_NAMES("Hydrate names", true, false),

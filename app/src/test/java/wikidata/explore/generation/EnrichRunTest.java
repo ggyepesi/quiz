@@ -45,10 +45,10 @@ class EnrichRunTest {
                 invalid, 1, null, new ArrayList<>(List.of(person)), null, List.of());
         List<List<String>> asked = new ArrayList<>();
 
-        assertThrows(wikidata.explore.compiled.ProjectModelCompiler
-                        .ModelCompilationException.class,
+        IllegalStateException blocked = assertThrows(IllegalStateException.class,
                 () -> new GenerationPipeline().enrich(
                         previous, invalid, recording(asked), null));
+        assertTrue(blocked.getMessage().contains("BLOCKED"), blocked.getMessage());
 
         assertTrue(asked.isEmpty(),
                 "model validation must precede semantic or external acquisition: " + asked);

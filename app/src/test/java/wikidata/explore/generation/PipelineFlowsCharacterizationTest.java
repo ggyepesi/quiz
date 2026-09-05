@@ -65,7 +65,13 @@ class PipelineFlowsCharacterizationTest {
         PHASES.put("ExternalSourceAcquisition.apply", "external-evidence");
         PHASES.put("Canonicalization.apply", "canonicalize");
         PHASES.put("ModelAggregates.apply", "aggregate");
+        // A routed phase is recognised by the STEP it registers, not by the call it used
+        // to make in place. This is the characterization being replaced piece by piece:
+        // as each phase moves behind the executor, what the source shows is the step,
+        // and eventually the decisions themselves are the record.
+        PHASES.put("FinalizeStep()", "finalize");
         PHASES.put("DomainFinalization.apply", "finalize");
+        PHASES.put("MaterializeStep()", "materialize");
         PHASES.put("buildRuntime(", "materialize");
     }
 

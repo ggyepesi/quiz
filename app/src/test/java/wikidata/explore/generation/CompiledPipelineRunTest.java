@@ -84,12 +84,34 @@ class CompiledPipelineRunTest {
 
         for (PipelinePhase phase : PipelinePhase.values()) {
             if (!phase.network()) continue;
-            if (phase == PipelinePhase.RESOLVE_SEMANTIC_WORKLIST) continue;
             assertFalse(remap.runs(phase), phase + " reached the network under NONE");
             assertTrue(remap.decision(phase).reason().contains("acquisition forbidden")
                             || remap.decision(phase).reason().contains("existing population"),
                     phase + ": " + remap.decision(phase));
         }
+    }
+
+    /** Local semantic work remains required when requests are forbidden. */
+    @Test void remapRunsTheLocalSemanticWorklistWithoutCallingItANetworkPhase() {
+        CompiledPipelineRun remap = CompiledPipelineRun.compile(
+                remapFrom(GraphCheckpoint.Stage.FINAL_GRAPH));
+
+        assertTrue(remap.runs(PipelinePhase.RESOLVE_SEMANTIC_WORKLIST));
+        assertFalse(PipelinePhase.RESOLVE_SEMANTIC_WORKLIST.network());
+    }
+
+    /** An absent decision is an invalid plan, never implicit permission to run. */
+    @Test void aCompiledRunRequiresOneDecisionForEveryPhase() {
+        CompiledPipelineRun complete = CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(model));
+        java.util.Map<PipelinePhase, PhaseDecision> incomplete =
+                new java.util.EnumMap<>(complete.decisions());
+        incomplete.remove(PipelinePhase.FINALIZE);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> new CompiledPipelineRun(
+                        complete.request(), complete.model(), incomplete));
+        assertTrue(refused.getMessage().contains("Finalize"), refused.getMessage());
     }
 
     /** A model that will not compile blocks everything after compiling, with the report. */

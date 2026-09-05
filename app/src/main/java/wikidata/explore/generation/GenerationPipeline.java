@@ -257,12 +257,32 @@ public class GenerationPipeline {
             datasource.api.SourceExecutionPlan sourcePlan,
             WikidataSparqlClient dbpedia) throws Exception {
 
+        CompiledPipelineRun run = CompiledPipelineRun.compile(
+                PipelineRequest.generateClassPreview(
+                        snapshot, snapshot.rootClass().className(), depth));
+        return fullRun(run, depth, client, log, entityApi, cancellation, sourcePlan, dbpedia);
+    }
+
+    /** Single-class production using the compiled run its caller displayed. */
+    public GenerationRun fullRun(
+            CompiledPipelineRun run,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation,
+            datasource.api.SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia) throws Exception {
+
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        if (run.blocked()) throw new IllegalStateException(run.explain());
+        GeneratedProjectModel snapshot = run.request().model();
+
         // Before ANY acquisition, for the reason Enrich compiles first — except that
         // here the model was never checked at all, so an invalid one did not merely
         // waste the fetching: it went on to build a runtime and materialize instances
         // from a model nothing had refused, and the run looked like it worked.
-        wikidata.explore.compiled.CompiledProjectModel compiled =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
@@ -342,19 +362,33 @@ public class GenerationPipeline {
             GeneratedProjectModel snapshot,
             GenerationLog log,
             RunSteps steps) throws Exception {
+        datasource.graph.GraphDiscoveryState observed =
+                WikidataGraphDiscoveryState.compute(snapshot, previous.dynamicObjects());
+        CompiledPipelineRun run = CompiledPipelineRun.compile(PipelineRequest.remap(
+                snapshot, previous.remapCheckpoint(observed)));
+        return remap(previous, run, log, steps);
+    }
+
+    public GenerationRun remap(
+            GenerationRun previous,
+            CompiledPipelineRun run,
+            GenerationLog log,
+            RunSteps steps) throws Exception {
 
         steps = steps == null ? RunSteps.SILENT : steps;
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        if (run.blocked()) throw new IllegalStateException(run.explain());
+        GeneratedProjectModel snapshot = run.request().model();
         steps.started(GenerateDomainPipeline.PLAN,
                 "Compile the model and stage the saved graph");
-        wikidata.explore.compiled.CompiledProjectModel compiled =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
         GenerationRun.RemapState rs = previous.remapState();
         RemapScope scope = RemapScope.of(previous);
         if (scope.retransform()) {
-            return retransform(previous, snapshot, plan, runtime, rs, log, steps);
+            return retransform(previous, snapshot, compiled, plan, runtime, rs, log, steps);
         }
 
         // No cached enriched pool (e.g. a snapshot loaded after an app restart, or a
@@ -492,7 +526,27 @@ public class GenerationPipeline {
             RunSteps steps,
             datasource.api.SourceExecutionPlan announcedPlan,
             WikidataSparqlClient dbpediaClient) throws Exception {
+        datasource.graph.GraphDiscoveryState observed =
+                WikidataGraphDiscoveryState.compute(snapshot, previous.dynamicObjects());
+        CompiledPipelineRun run = CompiledPipelineRun.compile(PipelineRequest.enrich(
+                snapshot, previous.checkpoint(observed)));
+        return enrich(previous, run, entityApi, log, cancellation, steps,
+                announcedPlan, dbpediaClient);
+    }
+
+    public GenerationRun enrich(
+            GenerationRun previous,
+            CompiledPipelineRun run,
+            wikidata.api.WikidataApiClient entityApi,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            RunSteps steps,
+            datasource.api.SourceExecutionPlan announcedPlan,
+            WikidataSparqlClient dbpediaClient) throws Exception {
         steps = steps == null ? RunSteps.SILENT : steps;
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        if (run.blocked()) throw new IllegalStateException(run.explain());
+        GeneratedProjectModel snapshot = run.request().model();
 
         steps.started(GenerateDomainPipeline.PLAN,
                 "Compile the model and stage the saved graph");
@@ -508,8 +562,7 @@ public class GenerationPipeline {
         // Compile the domain before ANY acquisition. Source-plan validation alone is
         // not enough: a broken class/field model must fail while this is still a plan,
         // not after semantic and external providers have spent minutes fetching data.
-        wikidata.explore.compiled.CompiledProjectModel compiled =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
+        wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
         GeneratedViewableRuntime runtime = buildRuntime(snapshot);
 
@@ -688,6 +741,7 @@ public class GenerationPipeline {
      */
     private GenerationRun retransform(
             GenerationRun previous, GeneratedProjectModel snapshot,
+            wikidata.explore.compiled.CompiledProjectModel compiledSnapshot,
             RuleNode plan, GeneratedViewableRuntime runtime,
             GenerationRun.RemapState rs, GenerationLog log,
             RunSteps steps) throws Exception {
@@ -699,9 +753,6 @@ public class GenerationPipeline {
         steps.started(GenerateDomainPipeline.CONSTRUCT,
                 "Reify statements and replay local transforms");
 
-        // Reify from the compiled model — parity-proven with the editable one.
-        wikidata.explore.compiled.CompiledProjectModel compiledSnapshot =
-                wikidata.explore.compiled.ProjectModelCompiler.compile(snapshot);
         // The ONE transform sequence (#97). Remap differs from Generate only in where
         // the companion sets come from: it replays the ones Generate cached.
         wikidata.explore.transform.StatementTransforms.Result transformed =

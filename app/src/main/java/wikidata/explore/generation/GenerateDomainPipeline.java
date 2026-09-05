@@ -48,7 +48,14 @@ public final class GenerateDomainPipeline {
      * run is the one owner; this reads it.
      */
     public static ProcessWorkflowPipeline configured(CompiledPipelineRun run) {
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
         GeneratedProjectModel model = run.request().model();
+        if (run.blocked()) {
+            return new ProcessWorkflowPipeline(List.of(
+                    phase(PLAN, "Cannot generate",
+                            "The model must be corrected before any request is made.",
+                            run.explain().lines().filter(line -> !line.isBlank()).toList())));
+        }
         var compiled = run.model();
         return new ProcessWorkflowPipeline(List.of(
                 phase(PLAN, "Validate & plan",
@@ -106,6 +113,14 @@ public final class GenerateDomainPipeline {
                         "Map the final shared graph into viewable instances.", List.of())));
     }
 
+    /** Remap description tied to the same decisions its query consumes. */
+    public static ProcessWorkflowPipeline configuredRemap(
+            CompiledPipelineRun run, List<String> details, boolean retransform) {
+        requirePlanned(run, PipelinePhase.REFRESH_DERIVED_VALUES);
+        requirePlanned(run, PipelinePhase.RESOLVE_SEMANTIC_WORKLIST);
+        return configuredRemap(details, retransform);
+    }
+
     /** The additive network recipe over an existing population. */
     public static ProcessWorkflowPipeline configuredEnrich(List<String> details) {
         return new ProcessWorkflowPipeline(List.of(
@@ -127,6 +142,25 @@ public final class GenerateDomainPipeline {
                         List.of()),
                 phase(MATERIALIZE, "Materialize instances",
                         "Map the final shared graph into viewable instances.", List.of())));
+    }
+
+
+    /** Enrich description tied to the same decisions its query consumes. */
+    public static ProcessWorkflowPipeline configuredEnrich(
+            CompiledPipelineRun run, List<String> details) {
+        requirePlanned(run, PipelinePhase.RESOLVE_SEMANTIC_WORKLIST);
+        requirePlanned(run, PipelinePhase.ACQUIRE_EXTERNAL_EVIDENCE);
+        requirePlanned(run, PipelinePhase.REFRESH_DERIVED_VALUES);
+        return configuredEnrich(details);
+    }
+
+    private static void requirePlanned(CompiledPipelineRun run, PipelinePhase phase) {
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        PhaseDecision decision = run.decision(phase);
+        if (!decision.runs()) {
+            throw new IllegalArgumentException(
+                    phase.label() + " is not part of this run: " + decision);
+        }
     }
 
     private static ProcessWorkflowPipeline.Phase phase(

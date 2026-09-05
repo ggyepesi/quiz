@@ -41,11 +41,11 @@ class FullRunValidationTest {
 
         RecordingClient client = new RecordingClient();
 
-        assertThrows(
-                wikidata.explore.compiled.ProjectModelCompiler.ModelCompilationException.class,
+        IllegalStateException blocked = assertThrows(IllegalStateException.class,
                 () -> new GenerationPipeline().fullRun(
                         invalid, 1, client, GenerationLog.NOOP, null,
                         new work.CancellationToken(), null, null));
+        assertTrue(blocked.getMessage().contains("BLOCKED"), blocked.getMessage());
 
         assertTrue(client.queries.isEmpty(),
                 "compilation must precede extraction: " + client.queries);

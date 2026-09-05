@@ -17,6 +17,23 @@ import wikidata.api.FactDemandPlan;
 
 class GenerateDomainPipelineTest {
 
+    @Test void anInvalidModelProducesAnExplainedBlockedPlan() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel broken = new GeneratedClassModel("Broken");
+        broken.baseClassName("Broken");
+        model.rootClass(broken);
+        CompiledPipelineRun run = CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(model));
+
+        ProcessWorkflowPipeline pipeline = GenerateDomainPipeline.configured(run);
+
+        assertEquals(1, pipeline.snapshot().size());
+        assertEquals(GenerateDomainPipeline.PLAN,
+                pipeline.snapshot().get(0).phase().id());
+        assertTrue(String.join("\n", pipeline.snapshot().get(0).phase().details())
+                .contains("BLOCKED"));
+    }
+
     /**
      * The plan tab is read BEFORE the run, so it is what the reader trusts. It must name
      * what acquisition will actually do — which is now decided by the BINDING, not by the

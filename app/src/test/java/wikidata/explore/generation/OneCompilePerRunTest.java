@@ -33,6 +33,10 @@ class OneCompilePerRunTest {
             "query/logical/SampleEffectiveClassQuery.java",
             "query/logical/SampleStatementClassQuery.java",
             "query/logical/SampleDerivedClassQuery.java",
+            "query/logical/GenerateInstancesQuery.java",
+            "query/logical/RemapInstancesQuery.java",
+            "query/logical/EnrichInstancesQuery.java",
+            "generation/GenerationPipeline.java",
             "generation/GenerateDomainPipeline.java");
 
     @Test void noFlowCompilesAModelOfItsOwn() throws IOException {
@@ -57,7 +61,11 @@ class OneCompilePerRunTest {
     @Test void aFlowRefusesABlockedPlanBeforeAcquiring() throws IOException {
         for (String flow : FLOWS) {
             if (flow.contains("GenerateDomainPipeline")) continue;
-            assertTrue(source(flow).contains("blocked()"),
+            String text = source(flow);
+            boolean refusesHere = text.contains("blocked()");
+            boolean delegatesTheCompiledRun = text.contains("GenerationPipeline")
+                    && text.contains("compiledRun");
+            assertTrue(refusesHere || delegatesTheCompiledRun,
                     flow + " runs a plan without asking whether it can be run");
         }
     }

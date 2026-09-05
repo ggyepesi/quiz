@@ -197,9 +197,10 @@ Every request is explained using the same ordered phases:
 5. Construct modeled records
 6. Resolve semantic worklist
 7. Acquire remaining external evidence
-8. Hydrate names
-9. Finalize and validate
-10. Materialize instances
+8. Refresh derived values
+9. Hydrate names
+10. Finalize and validate
+11. Materialize instances
 ```
 
 The compiled run plan marks each phase:
@@ -221,6 +222,7 @@ Acquire source facts          SKIP — acquisition forbidden
 Construct modeled records     RUN or limited by checkpoint stage
 Resolve semantic worklist     RUN
 External evidence             SKIP — acquisition forbidden
+Refresh derived values        RUN
 Hydrate names                 RUN locally or SKIP with reason
 Finalize and validate         RUN
 Materialize instances         RUN
@@ -484,13 +486,24 @@ generate/enrich order switch.
 - **Sample and Generate domain produce identical phase decisions**, which is the design's
   invariant made checkable: they differ by scope and limits and by nothing else.
 
-**Compile once is now true of the model.** Every flow that executes a run —
-`GenerateDomainQuery`, the three sample routes, and `GenerateDomainPipeline`'s
-description — reads `CompiledPipelineRun.model()` instead of compiling for itself. A
+**Compile once is now true of the model.** Every production flow that executes a run —
+Generate domain, Generate class preview, Sample, Enrich and Remap — reads
+`CompiledPipelineRun.model()` instead of compiling for itself. Generate, Enrich and
+Remap also carry the same compiled-run object from the UI description into the query. A
 Generate run previously compiled the model twice, once to say what would happen and once
 to make it happen, and the two could describe different models the moment anything edited
 one between them. Each flow now also refuses a blocked plan before it fetches, with the
-model's validation report as the reason.
+model's validation report as the reason. Generate performs this refusal before unit
+lookup, which is itself an external request rather than harmless preparation.
+
+Phase decisions are exhaustive: constructing a `CompiledPipelineRun` without one
+decision per `PipelinePhase` is refused. An omitted entry can no longer become implicit
+permission to run through a default.
+
+The semantic worklist is not itself classified as a network phase. It always contains
+local stamping, stored-evidence classification and owned composition; acquisition
+permission controls the missing-fact operation inside it. This lets Remap run the local
+semantic subset under `NONE` while still receiving no acquisition client.
 
 `OneCompilePerRunTest` holds it, and states the distinction it rests on: an advisor
 explaining a class, a panel deriving inverts and a transform deriving reifications each
@@ -530,14 +543,31 @@ called through.
 - **A stage is reached, not set.** `PipelineState.reached` refuses to move a graph
   backwards, so a step cannot quietly undo the stage another established.
 
-Still open in this milestone, and blocked on Milestone 2's open item:
+**Generate domain's tail is routed.** `DomainFinalization` and materialization are
+reached through `FinalizeStep` and `MaterializeStep`, over one `PipelineState`.
 
-Routing a real flow's tail through the executor needs the compiled run to be the ONE
-compile. `GenerateDomainQuery` compiles the model itself and would then also compile a
-`CompiledPipelineRun` — two compiles of one model, which is the thing this design exists
-to remove. So `CompiledPipelineRun` must first become the owner of the compiled model
-that the flows read (Milestone 2's remaining half), and the tail is routed after that,
-followed by construction and the semantic worklist.
+Two decisions worth recording:
+
+- **Two executor calls, not one.** About 120 lines of reporting sit between the two
+  phases in `GenerateDomainQuery`, and folding them into a single call would move what a
+  reader sees mid-run. The ordering guarantee does not come from a single call: materialize
+  requires a `FINAL_GRAPH` and only finalize leaves one, so calling them the wrong way
+  round is refused rather than quietly mapping an unfinalized graph.
+- **The state shares the flow's pool rather than copying it**, via `PipelineState.over`.
+  Finalization prunes — dead stubs, orphans, records missing a required field — and a copy
+  would prune the copy while the flow kept holding what was removed. A state built
+  `from` a checkpoint still copies, because a checkpoint records what was and a run does
+  not edit its own history.
+
+The characterization recognised the change: with the tail behind the executor,
+`GenerateDomainQuery` no longer contains `DomainFinalization.apply` or `buildRuntime`. A
+routed phase is now recognised by the step it registers — the record migrating, one phase
+at a time, towards the decisions themselves.
+
+Still open: construction and the semantic worklist, whose steps need the finer network
+rule — the worklist has a local subset that must run under acquisition `NONE` and an
+acquiring subset that must not, so a step is not simply network-or-not. Remap's and
+Enrich's tails are not routed either.
 
 ### Milestone 4 — Generate domain
 

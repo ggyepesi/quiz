@@ -803,12 +803,17 @@ public class ModelBuilderFrame extends JFrame {
                 GeneratedProjectModel snapshot = projectModel.copy();
                 wikidata.explore.generation.WikidataGraphDiscoveryState
                         .applyExpansionLedger(snapshot, graphDiscoveryLedger);
+                wikidata.explore.generation.CompiledPipelineRun compiledRun =
+                        wikidata.explore.generation.CompiledPipelineRun.compile(
+                                wikidata.explore.generation.PipelineRequest
+                                        .generateDomain(snapshot));
                 process.ProcessWorkflowPipeline generationPipeline =
-                        wikidata.explore.generation.GenerateDomainPipeline.configured(snapshot);
+                        wikidata.explore.generation.GenerateDomainPipeline.configured(compiledRun);
                 var executionSettings =
                         new wikidata.explore.generation.GenerationExecutionSettings();
                 GenerateDomainProcess generation =
-                        new GenerateDomainProcess(snapshot, generationPipeline, executionSettings);
+                        new GenerateDomainProcess(
+                                compiledRun, generationPipeline, executionSettings);
                 java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
                         .map(model -> {
                             quiz.transform.DynamicViewable card =
@@ -898,8 +903,13 @@ public class ModelBuilderFrame extends JFrame {
                             new wikidata.explore.generation.GenerationExecutionSettings();
                     wikidata.explore.generation.RemapScope replayableScope =
                             wikidata.explore.generation.RemapScope.of(lastRun);
+                    wikidata.explore.generation.CompiledPipelineRun compiledRun =
+                            wikidata.explore.generation.CompiledPipelineRun.compile(
+                                    wikidata.explore.generation.PipelineRequest.remap(
+                                            snapshot, lastRun.remapCheckpoint(
+                                                    graphDiscoveryLedger)));
                     var pipeline = wikidata.explore.generation.GenerateDomainPipeline
-                            .configuredRemap(
+                            .configuredRemap(compiledRun,
                             java.util.List.of(lastRun.dynamicObjects().size()
                                     + " existing objects", snapshot.classes().size()
                                     + " configured classes"),
@@ -910,7 +920,7 @@ public class ModelBuilderFrame extends JFrame {
                             wikidata.explore.generation.RemapScope.of(lastRun);
                     startGenerationOperation(
                             "Remap domain", "Preview local model changes without downloading data.",
-                            "remap", new RemapInstancesQuery(lastRun, snapshot,
+                            "remap", new RemapInstancesQuery(lastRun, compiledRun,
                                     wikidata.explore.generation.RunSteps.of(pipeline)),
                             pipeline,
                             snapshot, operationSettings, false,
@@ -939,13 +949,19 @@ public class ModelBuilderFrame extends JFrame {
                     GeneratedProjectModel snapshot = projectModel.copy();
                     var operationSettings =
                             new wikidata.explore.generation.GenerationExecutionSettings();
+                    wikidata.explore.generation.CompiledPipelineRun compiledRun =
+                            wikidata.explore.generation.CompiledPipelineRun.compile(
+                                    wikidata.explore.generation.PipelineRequest.enrich(
+                                            snapshot, lastRun.checkpoint(
+                                                    graphDiscoveryLedger)));
                     var pipeline = wikidata.explore.generation.GenerateDomainPipeline
-                            .configuredEnrich(enrichmentDetails(snapshot, lastRun));
+                            .configuredEnrich(
+                                    compiledRun, enrichmentDetails(snapshot, lastRun));
                     startGenerationOperation(
                             "Enrich domain",
                             "Add newly declared values to the existing population without rediscovery.",
                             "enrich", new EnrichInstancesQuery(
-                                    lastRun, snapshot, operationSettings,
+                                    lastRun, compiledRun, operationSettings,
                                     wikidata.explore.generation.RunSteps.of(pipeline)),
                             pipeline,
                             snapshot, operationSettings, true,

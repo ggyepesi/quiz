@@ -82,8 +82,10 @@ class GenerationExecutionSettingsTest {
     void generatePlanReadsTheSettingsSelectedBeforeExecute() {
         GenerationExecutionSettings settings = new GenerationExecutionSettings(false);
         GeneratedProjectModel model = new GeneratedProjectModel();
+        CompiledPipelineRun run = CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(model));
         GenerateDomainProcess process = new GenerateDomainProcess(
-                model, GenerateDomainPipeline.configured(model), settings);
+                run, GenerateDomainPipeline.configured(run), settings);
 
         settings.memoryProfile(GenerationExecutionSettings.MemoryProfile.CUSTOM);
         settings.customMemoryMb(960);
