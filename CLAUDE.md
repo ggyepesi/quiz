@@ -104,6 +104,29 @@ construct per thing produced:
    the UI, an agent or background process must not make it on the user's behalf without explicit
    approval of that exact change. Inspection, validation and preview may not mutate.
    *(Trigger: "the user could configure this, but I can save them the step.")*
+11. **Follow the design; a shortcut is a discussion, not a decision.** If a doc, a rule
+   file or an explaining comment states how something works, read it before changing what
+   it governs. Diverging is allowed and sometimes right — but it is raised explicitly and
+   agreed, never taken quietly in the implementation. Every one of a recent run of UI
+   defects was a design already written down and not read first: `MultiView.layout` says
+   side-by-side is deliberate because navigation cannot reveal a card on a hidden tab;
+   the pipeline design says a preview differs by scope and limits and never by dropped
+   phases; `bounding-an-entity-end.md` says that construct carries population and never
+   structure. *(Trigger: about to change something that has a design note or a comment
+   explaining why it is as it is.)*
+12. **Store the fact; do not derive it from something that merely agrees with it.** An
+   implementation dependency the design does not state is a latent bug while it still
+   agrees, and an unrepresentable state is its symptom — a class could not be a statement
+   class until it had a property, because the kind was read off the property. If a
+   decision can be made before its configuration is complete, it is stored. This sits
+   beside rule 3 rather than replacing it: 3 forbids two routes to one fact, 12 forbids
+   inventing a route where the fact should simply be kept. *(Trigger: "X is true whenever
+   Y is", where nothing says X MEANS Y.)*
+13. **Find the existing construct first — for small things too.** Not only classes and
+   mechanisms: how a selection is handled, how a list and its chooser are built, which
+   word the codebase already uses for the concept. Sharpens directive 8, which fires on
+   new *mechanisms* and so let three hand-written copies of one list control through.
+   *(Trigger: about to write a control, a phrase, or a name.)*
 
 ## Working agreements
 
