@@ -621,13 +621,34 @@ from a capability into a fact, and it changes what Remap produces — roles stam
 kinds settled before parts are composed, where today they are not — so it wants
 Milestone 4's comparison rather than a claim.
 
-**Nothing routed so far has been run against real data.** The suite never reaches WDQS,
-so Generate's four routed phases are green but unverified. Nobel's counts are the
-comparison to make: `total=3367 Name=989 Person=989 LaureatesWithMotivation=716
-NobelPrize=634 Laureate=33 Categories=6`, reproduced byte-identical on 2026-09-04 and so
-a known-good baseline.
+**Verified against real data (2026-09-05).** Nobel regenerated with Generate's four
+phases routed reproduces the baseline exactly:
 
-### Milestone 4 — Generate domain
+```
+2026-09-04T17:12:05  total=3367 Name=989 Person=989 LaureatesWithMotivation=716 NobelPrize=634 Laureate=33 Categories=6
+2026-09-05T14:32:15  total=3367 Name=989 Person=989 LaureatesWithMotivation=716 NobelPrize=634 Laureate=33 Categories=6
+```
+
+The query log shows the four phases running through the executor, in order, reporting
+what each step returned — 716 records constructed, 989 owned parts and 989 kinds settled
+over 6743 field values, nothing dead or orphaned at finalization, 3361 instances
+materialized. Convergence reached its fixed point after two productive iterations.
+
+Not verified: the snapshot is 845 bytes larger than the previous run's. It is not tracked
+and the previous file was overwritten, so the difference cannot be attributed — a day of
+live Wikidata is the likely cause, and the counts are the artifact this project uses for
+"did the numbers move". Quality, graph coverage and source-yield reporting are compared
+only as far as the log shows them.
+
+### Milestone 4 — Generate domain — **PARTLY DONE**
+
+Generate is on the executor for construction, the worklist, finalization and
+materialization, and a real regeneration of Nobel reproduces the previous run's counts
+exactly (see Milestone 3). What is not yet compared is a domain with statement-heavy
+external evidence and a non-trivial quality report — Oscars, which is the next
+regeneration to make.
+
+Original scope:
 
 - Move Generate domain onto the executor without changing output.
 - Compare instance counts, quality, graph coverage, source-yield reporting and query
