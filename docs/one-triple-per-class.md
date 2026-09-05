@@ -149,7 +149,19 @@ all. These are class facts, not kind facts: `ClassHeaderEditor`.
 
 The triple is one of four shared components. The others, from the same survey:
 
-- **`ClassHeaderEditor`** — name, alias, extends.
+- **`ClassHeaderEditor`** — name, alias, extends, and the imported state.
+
+  **Alias** is a display alias: what the UI shows for a class instead of its name, pure
+  presentation, with the class name staying the identity everything references. Its point
+  is an imported class — `Name` imported from the person model can read as "Structured
+  name" locally without a rename that would break every reference to it.
+
+  So the header carries the **imported** state, and must carry it rather than leaving each
+  panel to decide again what imported looks like. An imported class's controls are all
+  disabled, with a label above them saying the class belongs to another model — without
+  which a disabled editor reads as merely broken. `ClassSourcePanel` and `OwnedClassPanel`
+  each handle this today; `StatementSourcePanel` shows the class name without an alias, so
+  it cannot show an alias it may not edit either.
 - **`ClassIdentityEditor`** — already shared by Source, Statement and Aggregate. Gains the
   missing-key control, which exists on `CanonicalSpec` and **nothing edits**; the only
   missing-key UI is `AggregateClassPanel`, editing a *different* enum
@@ -161,6 +173,29 @@ The triple is one of four shared components. The others, from the same survey:
   cannot show), absent in Owned and Aggregate. Open question: an owned part is named
   owner + site and must never take its owner's label, so this may be "not applicable"
   there rather than three modes.
+
+### The statement panel's explanation goes with it
+
+`StatementSourcePanel` carries a standing caption:
+
+> Each instance is one statement — a **subject**, a **property**, and an **object** — with
+> its qualifiers said about that statement. Subject and object are named by a class, which
+> is a placeholder: unnamed it is served as a reference (identity and label), and it is
+> specialized by evidence rather than asserted here.
+
+It says four things, and after the unification the UI shows three of them: the triple IS
+the component's shape; the qualifier fields carry their PIDs; and `Modelled as: no class
+named — served as a bare reference` is the third. Prose restating what the controls show
+is the rephrasing this session's rules already forbid.
+
+The fourth clause — specialized by evidence rather than asserted here — is not about the
+triple. It is the admission-versus-representation rule, and the validator already refuses
+the mistake with the reader's own class names in it: *"A statement subject cannot directly
+assert the evidence-admitted class 'X'. Target a role class and represent it as…"*. So the
+caption pre-explains a refusal most models never trigger. Delete it, and if that clause
+needs saying in the UI, say it where the choice is made — on the subject end, when the
+target class IS evidence-admitted — not as a caption on a panel usually describing a model
+already doing it correctly.
 
 And one deletion: **no per-kind Apply buttons.** Three panels have one, with three
 different names, one of them mid-panel above rows it appears not to cover; the statement
