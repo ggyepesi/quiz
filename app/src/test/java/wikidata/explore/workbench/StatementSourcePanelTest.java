@@ -240,7 +240,11 @@ class StatementSourcePanelTest {
         assertEquals(2, ends.size(), "one editor per end, and no more");
 
         String shown = labelTexts(panel);
-        assertTrue(shown.contains("Not configured"),
+        // "Nothing holds it", not "Not configured": an end with no destination field is
+        // missing a HOME, which is not the same as being unconfigured. Nobel's subject
+        // has no QIDs bounding it and is modelled as Laureate — unbounded and
+        // configured — and the old wording made those read as one state.
+        assertTrue(shown.contains("Nothing holds it"),
                 "an unsettled end says so rather than vanishing: " + shown);
     }
 

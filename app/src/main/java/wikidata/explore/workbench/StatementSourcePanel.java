@@ -186,12 +186,17 @@ public class StatementSourcePanel extends JPanel {
      * all, from the field editor.
      */
     private void refreshTriple() {
-        String subjectField = StatementFieldSemantics.statementSubjectFieldName(clazz);
-        subjectEnd.destination(subjectField, targetClassOf(subjectField),
-                "filled from the statement's own item");
+        // Every authored route, not only the declared-subject one. A class settling its
+        // subject through a participants collection was reported as unconfigured, which
+        // told the reader a domain that generates could not.
+        StatementFieldSemantics.SubjectDestination subject =
+                StatementFieldSemantics.subjectDestination(clazz);
+        subjectEnd.destination(subject.fieldName(),
+                targetClassOf(subject.fieldName()), valueKindOf(subject.fieldName()),
+                subject.route().phrase());
         String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
         objectEnd.destination(objectField, targetClassOf(objectField),
-                "the value the statement points at");
+                valueKindOf(objectField), "the value the statement points at");
 
         java.util.List<String> vocabularies = projectModel == null ? java.util.List.of()
                 : projectModel.selections().stream()
@@ -207,6 +212,17 @@ public class StatementSourcePanel extends JPanel {
     }
 
     /** The placeholder class a leg's field is typed as, or blank when it names none. */
+    /** The datatype the receiving field declares — entity, date, string, and so on. */
+    private String valueKindOf(String fieldName) {
+        if (clazz == null || fieldName == null || fieldName.isBlank()) return "";
+        return clazz.fields().stream()
+                .filter(candidate -> candidate != null
+                        && fieldName.equals(candidate.name()))
+                .findFirst()
+                .map(field -> field.type() == null ? "" : field.type().name())
+                .orElse("");
+    }
+
     private String targetClassOf(String fieldName) {
         if (clazz == null || fieldName == null || fieldName.isBlank()) return "";
         return clazz.fields().stream()
@@ -413,10 +429,30 @@ public class StatementSourcePanel extends JPanel {
                 canonical.primaryListField().isBlank()
                         ? INFER_PRIMARY_LIST : canonical.primaryListField());
 
-        if (canonical.displayNameMode()
-                == CanonicalSpec.DisplayNameMode.FIELD) {
-            displayNameFieldBox.setSelectedItem(
-                    canonical.displayNameField());
+        // Show what is configured, including what this editor cannot edit. A class in
+        // TEMPLATE mode left this box empty, which is what LABEL mode looks like — so a
+        // record named "{laureates} — {category}" reported that nothing named it. The
+        // template is shown as the value it is, and the box is closed because changing
+        // it belongs to the editor that owns templates.
+        String template = canonical.displayNameMode()
+                == CanonicalSpec.DisplayNameMode.TEMPLATE
+                ? canonical.displayNameTemplate().trim() : "";
+        if (!template.isBlank()) {
+            displayNameFieldBox.addItem(template);
+            displayNameFieldBox.setSelectedItem(template);
+            displayNameFieldBox.setEnabled(false);
+            displayNameFieldBox.setToolTipText(
+                    "A template names this record, not a single field. Edit it in the "
+                            + "class editor.");
+        } else {
+            displayNameFieldBox.setEnabled(true);
+            displayNameFieldBox.setToolTipText(
+                    "Single field used as the record's display name.");
+            if (canonical.displayNameMode()
+                    == CanonicalSpec.DisplayNameMode.FIELD) {
+                displayNameFieldBox.setSelectedItem(
+                        canonical.displayNameField());
+            }
         }
 
         if (row == 0) {
@@ -457,10 +493,10 @@ public class StatementSourcePanel extends JPanel {
         String displayField =
                 selectedText(displayNameFieldBox);
 
-        boolean preserveUneditableTemplate = displayField.isBlank()
-                && canonical.displayNameMode()
-                == CanonicalSpec.DisplayNameMode.TEMPLATE
-                && !canonical.displayNameTemplate().isBlank();
+        // The box is closed exactly when it is showing a template it cannot edit, so
+        // that is the whole test. It used to be "the selection is blank", which was the
+        // same answer only while a template was displayed as nothing.
+        boolean preserveUneditableTemplate = !displayNameFieldBox.isEnabled();
         // This compact statement editor exposes FIELD selection, not the general
         // class editor's TEMPLATE control. Merely visiting and leaving a statement
         // class must therefore preserve a template it cannot display or edit.

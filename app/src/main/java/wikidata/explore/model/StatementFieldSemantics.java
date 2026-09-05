@@ -134,10 +134,91 @@ public final class StatementFieldSemantics {
                         == MissingQualifierPolicy.STATEMENT_SUBJECT;
     }
 
-    /** Whether the statement declares any visible destination for its subject. */
+    /**
+     * Which field receives the statement's subject, and by which route.
+     *
+     * <p>Three routes are authored, and a reader shown only the first is told a model is
+     * unconfigured when it is not. Nobel settles its subject through a participants
+     * collection: the field holds the laureate the statement is about together with the
+     * P1706 co-laureates. Asking {@link #statementSubjectFieldName} alone answers "no
+     * field", which is true of that question and false about the model.
+     */
+    public record SubjectDestination(String fieldName, Route route) {
+
+        public enum Route {
+            /** Nothing on the record holds it. */
+            NONE("nothing on the record holds it"),
+            /** A field declared as the subject. */
+            SUBJECT_FIELD("the statement's own item"),
+            /** A participants collection: the subject together with qualifier values. */
+            PARTICIPANTS("participants — the statement's own item with the qualifier's"),
+            /** A qualifier that falls back to the subject when it has no value. */
+            QUALIFIER_FALLBACK("this qualifier, falling back to the statement's own item");
+
+            private final String phrase;
+
+            Route(String phrase) {
+                this.phrase = phrase;
+            }
+
+            /** What the field holds, said the way a reader would say it. */
+            public String phrase() {
+                return phrase;
+            }
+        }
+
+        public SubjectDestination {
+            fieldName = fieldName == null ? "" : fieldName.trim();
+            if (route == null) route = Route.NONE;
+            if ((route == Route.NONE) != fieldName.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A route names a field, and no route names none: "
+                                + route + " / \"" + fieldName + "\"");
+            }
+        }
+
+        public boolean bound() {
+            return route != Route.NONE;
+        }
+    }
+
+    /** Where the subject goes, over every authored route, in the order they are ranked. */
+    public static SubjectDestination subjectDestination(GeneratedClassModel owner) {
+        if (owner == null || !owner.reifiesStatements()) {
+            return new SubjectDestination("", SubjectDestination.Route.NONE);
+        }
+        String declared = statementSubjectFieldName(owner);
+        if (!declared.isBlank()) {
+            return new SubjectDestination(
+                    declared, SubjectDestination.Route.SUBJECT_FIELD);
+        }
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null || field.name() == null || field.name().isBlank()) continue;
+            if (field.mapping().productionKind()
+                    == FieldProductionKind.STATEMENT_PARTICIPANTS) {
+                return new SubjectDestination(
+                        field.name(), SubjectDestination.Route.PARTICIPANTS);
+            }
+            if (supportsMissingQualifierPolicy(owner, field)
+                    && effectiveMissingQualifierPolicy(
+                            field.mapping().missingQualifierPolicy())
+                            == MissingQualifierPolicy.STATEMENT_SUBJECT) {
+                return new SubjectDestination(
+                        field.name(), SubjectDestination.Route.QUALIFIER_FALLBACK);
+            }
+        }
+        return new SubjectDestination("", SubjectDestination.Route.NONE);
+    }
+
+    /**
+     * Whether the statement declares any visible destination for its subject.
+     *
+     * <p>The same question {@link #subjectDestination} answers, asked for a yes or no —
+     * derived from it rather than walked again, so the validator and the editor cannot
+     * disagree about whether a model is configured.
+     */
     public static boolean hasStatementSubjectBinding(GeneratedClassModel owner) {
-        return owner != null && owner.fields().stream()
-                .anyMatch(field -> receivesStatementSubject(owner, field));
+        return subjectDestination(owner).bound();
     }
 
     /** True when {@code field} plays the value role — see

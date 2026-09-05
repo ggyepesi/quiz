@@ -32,6 +32,15 @@ import java.util.function.Supplier;
 final class EntityEndEditor extends JPanel {
 
     private static final String ANY = "Anything";
+
+    /**
+     * What a value at this end IS, once acquired — its datatype and its class.
+     *
+     * <p>Read from the field that receives the end, which is where both are authored.
+     * Giving the end its own copy would be a second place to say one thing, and the two
+     * could then disagree about whether an object is a date.
+     */
+    private final JLabel modelledAs = new JLabel(" ");
     private static final String THESE_ENTITIES = "These entities";
     private static final String A_VOCABULARY = "A vocabulary";
     private static final String INSTANCES_OF = "Instances of";
@@ -59,13 +68,28 @@ final class EntityEndEditor extends JPanel {
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(3, 4, 3, 4);
-        GridBagUtils.labeledRow(this, c, 0, "Field:", destination);
-        GridBagUtils.labeledRow(this, c, 1, "Entities:", modeRow());
+        // Three questions about one end, and they are not the same question. Having no
+        // QIDs for an end is not the same as having no configuration for it: Nobel's
+        // subject is bounded by nothing and modelled as Laureate, which is a configured
+        // end with an unrestricted population. Tying the class to the field row said
+        // those two together and left the bound row looking like the whole answer.
+        modelledAs.setToolTipText(
+                "What an entity at this end IS once acquired — the class it is modelled "
+                        + "as. Independent of how many entities may occupy the end.");
+        GridBagUtils.labeledRow(this, c, 0, "Modelled as:", modelledAs);
+        destination.setToolTipText(
+                "Structure: which field of each record receives this end.");
+        GridBagUtils.labeledRow(this, c, 1, "Goes into field:", destination);
+        JPanel bound = modeRow();
+        bound.setToolTipText(
+                "Population: which entities may occupy this end BEFORE acquisition. "
+                        + "\"Anything\" restricts nothing; it does not mean unconfigured.");
+        GridBagUtils.labeledRow(this, c, 2, "Entities allowed:", bound);
 
         JLabel hint = new JLabel("<html><i>" + consequence + "</i></html>");
         GridBagConstraints hintCell = (GridBagConstraints) c.clone();
         hintCell.gridx = 0;
-        hintCell.gridy = 2;
+        hintCell.gridy = 3;
         hintCell.gridwidth = 2;
         hintCell.anchor = GridBagConstraints.WEST;
         add(hint, hintCell);
@@ -113,17 +137,29 @@ final class EntityEndEditor extends JPanel {
         box.setSelectedItem(name);
     }
 
-    /** Says which field of the instance receives this end, or that none does. */
-    void destination(String fieldName, String targetClass, String whatItWouldHold) {
+    /**
+     * Says which field receives this end and how, or that nothing does.
+     *
+     * <p>{@code howItIsFilled} is the route, not a guess at one. The subject has three
+     * authored routes and this used to be told about one, so a class settling its
+     * subject through a participants collection was reported as unconfigured and unable
+     * to generate — of a domain that generates.
+     */
+    void destination(String fieldName, String targetClass, String valueKind,
+            String howItIsFilled) {
+        String kind = valueKind == null || valueKind.isBlank() ? "" : valueKind;
+        modelledAs.setText(targetClass == null || targetClass.isBlank()
+                ? "<html>" + (kind.isEmpty() ? "" : "<b>" + kind + "</b> — ")
+                        + "<i>no class named</i>, served as a bare reference</html>"
+                : "<html><b>" + targetClass + "</b>"
+                        + (kind.isEmpty() ? "" : " <i>(" + kind + ")</i>") + "</html>");
         if (fieldName == null || fieldName.isBlank()) {
-            destination.setText("<html><i>Not configured</i> — " + whatItWouldHold
+            destination.setText("<html><i>Nothing holds it</i> — " + howItIsFilled
                     + ". A domain must settle this before it can generate.</html>");
             return;
         }
-        destination.setText("<html><b>" + fieldName + "</b>"
-                + (targetClass == null || targetClass.isBlank()
-                        ? " — <i>any entity</i> (no class named; served as a reference)"
-                        : " — " + targetClass) + "</html>");
+        destination.setText("<html><b>" + fieldName + "</b> — <i>" + howItIsFilled
+                + "</i></html>");
     }
 
     void show(EntityBound bound) {
