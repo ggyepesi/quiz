@@ -412,25 +412,29 @@ public class GenerationPipeline {
                 filled + " projected field value(s) changed");
         steps.started(GenerateDomainPipeline.SEMANTIC,
                 "Settle entity kinds and compose owned parts");
-        wikidata.explore.transform.SnapshotEntityKindClassifier.Result kinds =
-                wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
-        wikidata.explore.transform.OwnedComponents.Result owned =
-                wikidata.explore.transform.OwnedComponents.apply(
-                        snapshot, pool, previous.dynamicObjects(), log);
-        owned.addTo(pool);
-        wikidata.explore.transform.ReferentClassStamp.apply(snapshot, owned.components());
-        steps.completed(GenerateDomainPipeline.SEMANTIC,
-                kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
-        steps.started(GenerateDomainPipeline.FINALIZE,
-                "Finalize and validate the transformed graph");
-        // Through the executor. Remap may not acquire, so the context carries no
-        // client — which is what makes finalization's local form the only reachable one
-        // rather than the one it is trusted to choose.
-        PipelineState tailState =
-                PipelineState.over(GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, pool);
+        // Through the worklist, not past it. Remap ran three of its steps by hand —
+        // classify from stored evidence, compose parts, stamp the new components — and
+        // so did one pass where the worklist runs to a fixed point, and never stamped
+        // roles on the pool before classifying. Composition can unlock composition, so
+        // one pass is a different answer, not a cheaper one.
+        //
+        // Remap may not acquire, so the context carries no client and the worklist takes
+        // its local path. The previous run's objects are the evidence that path reads
+        // instead of asking: the pool here is a staged copy, because kind assignment can
+        // change a carrier's type key and the visible run must not move before Apply.
+        PipelineState tailState = PipelineState.over(
+                GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, pool, previous.dynamicObjects());
         PipelineContext tailContext = new PipelineContext(run, null, log, null);
         tailState.useRuntime(runtime);
+        new PipelineExecutor()
+                .with(new SemanticWorklistStep())
+                .run(tailContext, tailState);
+        SemanticConvergence.Result converged = tailState.convergence();
+        steps.completed(GenerateDomainPipeline.SEMANTIC,
+                converged.classifiedKinds() + " kind(s), "
+                        + converged.ownedCreated() + " owned part(s)");
+        steps.started(GenerateDomainPipeline.FINALIZE,
+                "Finalize and validate the transformed graph");
         new PipelineExecutor().with(new FinalizeStep()).run(tailContext, tailState);
         DomainFinalization.Result finalization = tailState.finalization();
         int restricted = finalization.requiredDropped();
@@ -441,7 +445,7 @@ public class GenerationPipeline {
             log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
                     + filled + " projected field(s) filled, "
-                    + kinds.classified() + " entity kind(s) assigned, "
+                    + converged.classifiedKinds() + " entity kind(s) assigned, "
                     + restricted + " dropped (required-field).\n"
                     + scope.limitation() + "\n");
         }
@@ -458,8 +462,8 @@ public class GenerationPipeline {
                 pool, tailState.runtime(), instances, rs,
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.notRun(),
-                GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
-                GenerationRun.KindClassificationAudit.ran(kinds.newlyClassified()),
+                GenerationRun.OwnedCompositionAudit.ran(converged.ownedComponentsCreated()),
+                GenerationRun.KindClassificationAudit.ran(converged.newlyClassifiedKinds()),
                 GenerationRun.ProjectionAudit.ran(projectedRecords));
     }
 

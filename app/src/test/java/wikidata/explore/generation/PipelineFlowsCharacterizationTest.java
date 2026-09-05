@@ -61,6 +61,12 @@ class PipelineFlowsCharacterizationTest {
         PHASES.put("StatementTransforms.apply(", "construct-records+refresh-derived");
         PHASES.put("applyReify", "construct-records");
         PHASES.put("SemanticConvergence.apply", "semantic");
+        // The worklist's steps, named individually, because a flow that ran some of
+        // them by hand looks like a flow that ran none unless the record can see them.
+        // Reading a gap as evidence of absence is exactly the mistake this omission
+        // caused: Remap was recorded as composing parts without settling kinds, and it
+        // had been settling them all along.
+        PHASES.put("SnapshotEntityKindClassifier.apply", "semantic-classify-only");
         PHASES.put("OwnedComponents.apply", "semantic-owned-only");
         PHASES.put("ExternalSourceAcquisition.apply", "external-evidence");
         PHASES.put("Canonicalization.apply", "canonicalize");
@@ -125,21 +131,26 @@ class PipelineFlowsCharacterizationTest {
     }
 
     /**
-     * Remap composes parts without settling kinds first.
+     * Remap runs the semantic worklist, rather than three of its steps by hand.
      *
-     * <p>It calls OwnedComponents directly where every other flow runs the whole
-     * semantic worklist. Composition depends on kinds — a Nominee must already BE a
-     * Person before Person's parts are made for it — so this is the variation most
-     * likely to be a latent bug rather than a deliberate economy.
+     * <p>Milestone 0 recorded this as "composes parts without settling kinds", and that
+     * was wrong: Remap classified kinds from stored evidence before composing, and the
+     * code said so. The record could not see the call, because the marker set had no
+     * entry for the classifier — a gap read as evidence of absence.
+     *
+     * <p>What Remap actually lacked was smaller and still real: it stamped roles only on
+     * the components it had just made, never on the pool before classifying, and it did
+     * ONE pass where the worklist runs to a fixed point. Composition can unlock
+     * composition, so one pass is a different answer rather than a cheaper one.
      */
-    @Test void remapComposesPartsWithoutTheSemanticWorklist() throws IOException {
+    @Test void remapRunsTheWholeSemanticWorklist() throws IOException {
         List<String> order = phasesIn("GenerationPipeline.java", "public GenerationRun remap(",
                 "public GenerationRun enrich(");
 
-        assertTrue(order.contains("semantic-owned-only"), order.toString());
-        assertFalse(order.contains("semantic"),
-                "one flow's shortcut through a phase every other flow runs whole: "
-                        + order);
+        assertTrue(order.contains("semantic"), order.toString());
+        assertFalse(order.contains("semantic-owned-only"),
+                "no step of the worklist is run beside the worklist: " + order);
+        assertFalse(order.contains("semantic-classify-only"), order.toString());
     }
 
     /**

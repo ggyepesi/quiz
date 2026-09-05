@@ -67,6 +67,19 @@ public final class PipelineState {
         return new PipelineState(stage, pool, true);
     }
 
+    /**
+     * A state over a caller's graph, with a settled graph kept as evidence.
+     *
+     * <p>What a local reconstruction reads instead of asking. The pool being rebuilt is
+     * a staged copy — kind assignment can change a carrier's type key, so the run that
+     * is still visible must not be mutated before Apply — and the evidence is the
+     * previous settled graph, where the answers already are.
+     */
+    public static PipelineState over(GraphCheckpoint.Stage stage,
+            List<WikidataDynamicObject> pool, List<WikidataDynamicObject> evidence) {
+        return new PipelineState(stage, pool, evidence, true);
+    }
+
     /** The state a run starts in, from the graph it was given. */
     public static PipelineState from(GraphCheckpoint checkpoint) {
         if (checkpoint == null) throw new IllegalArgumentException("No checkpoint");

@@ -404,9 +404,18 @@ held:
    values** as separate decisions. The latter is scheduled from dependencies after its
    last contributing producer (or reported as the present Generate discrepancy until
    execution is unified), never selected by a `generate/enrich` ordering flag.
-2. **Remap composes parts without the semantic worklist**, calling `OwnedComponents`
+2. ~~**Remap composes parts without the semantic worklist**, calling `OwnedComponents`
    directly. Composition depends on kinds, so this is the variation most likely to be a
-   latent bug rather than an economy.
+   latent bug rather than an economy.~~ **This finding was wrong.** Remap classified kinds
+   from stored evidence before composing, and said so in a comment. The record could not
+   see the call because the marker set had no entry for `SnapshotEntityKindClassifier`,
+   and the gap was read as evidence of absence.
+
+   What Remap actually lacked is smaller and still real: it stamped roles only on the
+   components it had just made, never on the pool before classifying, and it did ONE pass
+   where the worklist runs to a fixed point. Composition can unlock composition, so one
+   pass is a different answer rather than a cheaper one. Routing Remap onto
+   `SemanticWorklistStep` adds both.
 3. **The preview omits the semantic worklist entirely, and neither it nor Sample
    finalizes.** The preview says so in a comment and explains why; the design's answer is
    that a bounded run differs by scope and limits, never by dropping a phase. Sample
@@ -616,10 +625,14 @@ and proves the model compiles at all, so a failure costs a moment instead of min
 fetching. Building a second one to map through would compile the same classes twice and
 leave the run carrying a runtime that did not produce its own instances.
 
-Still open: Remap onto `SemanticWorklistStep`. That is what turns the removed shortcut
-from a capability into a fact, and it changes what Remap produces — roles stamped and
-kinds settled before parts are composed, where today they are not — so it wants
-Milestone 4's comparison rather than a claim.
+**Remap runs the semantic worklist.** Its three hand-written steps are gone; the local
+path reads the previous run's objects as evidence, which is what `GraphCheckpoint`'s
+retained evidence exists for. Two things change: roles are stamped on the pool before
+classification, and the worklist iterates to a fixed point where Remap did one pass.
+
+That is a behaviour change on a flow that produces saved data, and it has not been run.
+A Remap before and after, compared on counts, is what would settle it — Nobel's baseline
+makes that comparison meaningful now.
 
 **Verified against real data (2026-09-05).** Nobel regenerated with Generate's four
 phases routed reproduces the baseline exactly:
