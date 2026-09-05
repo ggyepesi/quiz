@@ -17,7 +17,7 @@
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -39,6 +39,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -576,6 +584,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -600,7 +612,7 @@
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -622,6 +634,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -1159,6 +1179,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -1203,6 +1227,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -1335,6 +1367,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",

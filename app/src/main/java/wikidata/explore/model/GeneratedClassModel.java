@@ -66,6 +66,25 @@ public class GeneratedClassModel {
     private final FieldSourceMapping instanceMapping =
             new FieldSourceMapping();
 
+    /**
+     * Which entities are this class's members — one value, one way of being bounded.
+     *
+     * <p>It was three fields on {@link #instanceMapping}: a property, one type QID, and
+     * a set of further type QIDs OR-ed with it. Three spellings of one triple, and the
+     * split between "the type" and "the extra types" carried no meaning — every consumer
+     * re-joined them, {@code PopulationSourceBindings.assign} tore a list back apart as
+     * first-and-rest, and the class that inherits membership decided it had its own by
+     * asking whether one of the three was blank.
+     *
+     * <p>{@link EntityBound#RELATION} is the ordinary shape: the members are the entities
+     * carrying {@code relationPid} into these QIDs. It carries {@code includeDescendants}
+     * as well, which the three fields could not express at all — the query for it has
+     * existed in {@code RuleNodeQueryBuilder} with nothing able to ask for it, and
+     * {@code PopulationSourceBindings} refused a binding that did, saying the class model
+     * could not persist subclass-closure membership yet.
+     */
+    private EntityBound membership = EntityBound.unbounded();
+
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
     private final List<String> seedQids = new ArrayList<>();
 
@@ -211,11 +230,9 @@ public class GeneratedClassModel {
         statementSource(null);
         populationSource = null;
         seedQids.clear();
-        instanceMapping.sourceQid("");
+        membership = EntityBound.unbounded();
         instanceMapping.sourceLabel("");
-        instanceMapping.propertyPid("");
         instanceMapping.propertyLabel("");
-        instanceMapping.additionalTypeQids().clear();
         instanceMapping.excludedTypeQids().clear();
     }
 
@@ -333,6 +350,34 @@ public class GeneratedClassModel {
         return instanceMapping;
     }
 
+    public EntityBound membership() {
+        return membership == null ? EntityBound.unbounded() : membership;
+    }
+
+    public GeneratedClassModel membership(EntityBound value) {
+        membership = value == null ? EntityBound.unbounded() : value;
+        return this;
+    }
+
+    /**
+     * This class's membership, or the base's when it declares none.
+     *
+     * <p>The same rule as {@link #effectiveInstanceMapping}, and asked of the same
+     * thing: a class HAS its own membership when its bound is bounded. That used to be
+     * read off whether one of three fields was blank.
+     */
+    public EntityBound effectiveMembership(GeneratedProjectModel project) {
+        if (ownedClass() || membership().bounded()
+                || baseClassName.isEmpty() || project == null) {
+            return membership();
+        }
+        GeneratedClassModel base = project.findClass(baseClassName);
+        if (base == null || base == this || className.equals(base.className())) {
+            return membership();
+        }
+        return base.effectiveMembership(project);
+    }
+
     public List<String> seedQids() {
         return seedQids;
     }
@@ -408,7 +453,7 @@ public class GeneratedClassModel {
         // Owned classes may extend another class for its fields/schema, but their
         // population always comes from owning fields, never from the base's query.
         if (ownedClass()
-                || !instanceMapping.sourceQid().isBlank()
+                || membership().bounded()
                 || baseClassName.isEmpty()
                 || project == null) {
             return instanceMapping;
@@ -461,6 +506,7 @@ public class GeneratedClassModel {
                         : statementSource.copy();
         copy.aggregateSource = aggregateSource == null ? null : aggregateSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
+        copy.membership = membership();   // immutable, so shared rather than cloned
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;
         copy.sourceBindings.addAll(sourceBindings);

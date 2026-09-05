@@ -31,6 +31,26 @@ class EveryClassHasItsHeaderTest {
         return project;
     }
 
+    @Test void aSourceClassUsesTheSharedHeader() {
+        GeneratedClassModel source = new GeneratedClassModel("Person");
+        GeneratedProjectModel project = projectWith(source);
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(source);
+
+        assertNotNull(find(panel, ClassHeaderEditor.class));
+    }
+
+    @Test void aStatementClassUsesTheSharedHeader() {
+        GeneratedClassModel statement = new GeneratedClassModel("Award");
+        GeneratedProjectModel project = projectWith(statement);
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(statement);
+
+        assertNotNull(find(panel, ClassHeaderEditor.class));
+    }
+
     /** The gap this closes: an aggregate could not be renamed from its editor. */
     @Test void anAggregateClassCanBeNamed() {
         GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
@@ -103,7 +123,8 @@ class EveryClassHasItsHeaderTest {
         GeneratedClassModel imported = new GeneratedClassModel("Name");
         imported.ownedClass(true);
         imported.importedFrom("Person");
-        OwnedClassPanel panel = new OwnedClassPanel(projectWith(imported));
+        ModelSourceWorkbenchPanel panel =
+                new ModelSourceWorkbenchPanel(projectWith(imported));
         panel.edit(imported);
 
         assertTrue(textIn(panel).stream().anyMatch(t -> t.contains("Imported from")),

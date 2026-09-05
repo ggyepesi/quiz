@@ -47,9 +47,10 @@ public final class MembershipFields {
         if (clazz == null || clazz.reifiesStatements()) {
             return false;
         }
-        FieldSourceMapping m = clazz.instanceMapping();
-        String pid = clean(m.propertyPid());
-        return WikidataIds.isPid(pid) && !pid.equals(P31) && !targets(m).isEmpty();
+        EntityBound membership = clazz.membership();
+        String pid = clean(membership.relationPid());
+        return WikidataIds.isPid(pid) && !pid.equals(P31)
+                && !targets(membership).isEmpty();
     }
 
     /**
@@ -63,12 +64,14 @@ public final class MembershipFields {
         if (clazz == null || clazz.reifiesStatements()) {
             return false;
         }
-        FieldSourceMapping m = clazz.instanceMapping();
-        String pid = clean(m.propertyPid());
+        EntityBound membership = clazz.membership();
+        String pid = clean(membership.relationPid());
         if (!WikidataIds.isPid(pid)) {
             return false;
         }
-        return !pid.equals(P31) || m.additionalTypeQids().size() >= 1;
+        // More than one TYPE, not "at least one ADDITIONAL type": the two were the
+        // same question while a membership had a leading QID and a set of extras.
+        return !pid.equals(P31) || targets(membership).size() > 1;
     }
 
     /**
@@ -85,27 +88,23 @@ public final class MembershipFields {
         if (clazz == null) {
             return added;
         }
-        FieldSourceMapping m = clazz.instanceMapping();
-        String pid = clean(m.propertyPid());
+        EntityBound membership = clazz.membership();
+        String pid = clean(membership.relationPid());
 
         if (appliesType(clazz) && !hasFieldFor(clazz, P31)) {
             clazz.fields().add(typeField());
             added.add(TYPE_FIELD);
         }
         if (appliesTarget(clazz) && !hasFieldFor(clazz, pid)) {
-            clazz.fields().add(targetField(pid, targets(m)));
+            clazz.fields().add(targetField(pid, targets(membership)));
             added.add(TARGET_FIELD);
         }
         return added;
     }
 
-    private static Set<String> targets(FieldSourceMapping m) {
+    private static Set<String> targets(EntityBound membership) {
         Set<String> t = new LinkedHashSet<>();
-        String src = clean(m.sourceQid());
-        if (WikidataIds.isQid(src)) {
-            t.add(src);
-        }
-        for (String q : m.additionalTypeQids()) {
+        for (String q : membership.qids()) {
             String c = clean(q);
             if (WikidataIds.isQid(c)) {
                 t.add(c);

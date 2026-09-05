@@ -99,15 +99,11 @@ class OscarReifyTest {
         // targets (the categories) as the value filter instead.
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");   // Best Picture
-        src.instanceMapping().additionalTypeQids().add("Q103360");   // Best Director
+        src.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103360"), false));   // Best Picture
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
-        nom.instanceMapping().propertyPid("P1411");
-        nom.instanceMapping().sourceQid("Q19020");   // the wrong value-type filter
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P1411");     // value field, no allowedQids
         // Declared, not implied: reification used to invent a "source" field for
@@ -134,9 +130,7 @@ class OscarReifyTest {
     @Test void valueFilterGapFlagsAMissedMembershipTarget() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");
-        src.instanceMapping().additionalTypeQids().add("Q103360");
+        src.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103360"), false));
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
@@ -168,9 +162,7 @@ class OscarReifyTest {
         // No explicit allowedQids → deriveOne inherits ALL membership targets → no gap.
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");
-        src.instanceMapping().additionalTypeQids().add("Q103360");
+        src.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103360"), false));
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
@@ -539,12 +531,11 @@ class OscarReifyTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("OscarNominations"));
         GeneratedClassModel src = project.rootClass();
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");   // Best Picture
+        src.membership(EntityBound.relation("P1411", List.of("Q102427"), false));   // Best Picture
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
-        nom.instanceMapping().sourceQid("Q19020");
+        nom.membership(EntityBound.relation("P31", List.of("Q19020"), false));
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
         category.mapping().propertyPid("P1411");                     // the ps: value field

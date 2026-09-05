@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -21,8 +23,7 @@ class DateValueNodeQueryTest {
 
     private static GeneratedProjectModel rulers(boolean unusedSort) {
         GeneratedClassModel ruler = new GeneratedClassModel("Ruler");
-        ruler.instanceMapping().propertyPid("P39");
-        ruler.instanceMapping().additionalTypeQids().add("Q6412254");
+        ruler.membership(EntityBound.relation("P39", List.of("Q6412254"), false));
 
         GeneratedFieldModel born =
                 ruler.addField("born", FieldType.DATE, FieldCardinality.SINGLE);

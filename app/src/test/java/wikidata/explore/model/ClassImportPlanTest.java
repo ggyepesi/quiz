@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
@@ -23,8 +24,7 @@ class ClassImportPlanTest {
         source.addClass(name);
 
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
-        person.instanceMapping().propertyPid("P31");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel structured = person.addField(
                 "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
         structured.entityClassName("Name");

@@ -15,8 +15,22 @@
     "statementSource" : {
       "propertyPid" : "P1411",
       "propertyLabel" : "nominated for",
-      "valueSelectionName" : "OscarCategories",
-      "valueSelectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
+      "objectBound" : {
+        "kind" : "VOCABULARY",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "OscarCategories",
+        "selectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
+        "includeDescendants" : false
+      },
+      "subjectBound" : {
+        "kind" : "UNBOUNDED",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "",
+        "selectionId" : "",
+        "includeDescendants" : false
+      },
       "graphExpansionPolicy" : "NONE"
     },
     "generationDepth" : 1,
@@ -46,6 +60,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -315,6 +337,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
@@ -337,8 +363,22 @@
     "statementSource" : {
       "propertyPid" : "P1411",
       "propertyLabel" : "nominated for",
-      "valueSelectionName" : "OscarCategories",
-      "valueSelectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
+      "objectBound" : {
+        "kind" : "VOCABULARY",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "OscarCategories",
+        "selectionId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
+        "includeDescendants" : false
+      },
+      "subjectBound" : {
+        "kind" : "UNBOUNDED",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "",
+        "selectionId" : "",
+        "includeDescendants" : false
+      },
       "graphExpansionPolicy" : "NONE"
     },
     "generationDepth" : 1,
@@ -368,6 +408,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -637,6 +685,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
@@ -659,7 +711,7 @@
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -681,6 +733,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -797,6 +857,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -819,7 +883,7 @@
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -841,6 +905,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -957,6 +1029,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -1001,6 +1077,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -1116,6 +1200,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",

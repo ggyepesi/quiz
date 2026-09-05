@@ -199,10 +199,10 @@ public class GenerationPipeline {
 
     private String membershipPattern(
             GeneratedClassModel cls, GeneratedProjectModel project) {
-        FieldSourceMapping im = cls.effectiveInstanceMapping(project);
-        if (im != null && !im.sourceQid().isBlank() && !im.propertyPid().isBlank()) {
-            return "?value wdt:" + RuleNode.cleanPid(im.propertyPid())
-                    + " wd:" + im.sourceQid() + " .";
+        wikidata.explore.model.EntityBound membership = cls.effectiveMembership(project);
+        if (!membership.qids().isEmpty() && !membership.relationPid().isBlank()) {
+            return "?value wdt:" + RuleNode.cleanPid(membership.relationPid())
+                    + " wd:" + membership.qids().get(0) + " .";
         }
         return null;
     }

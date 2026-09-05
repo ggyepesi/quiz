@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.api.SourceRecipe;
 import datasource.wikidata.WikidataDatasourceProvider;
 import org.junit.jupiter.api.Test;
@@ -10,9 +11,7 @@ class PopulationSourceBindingTest {
 
     @Test void statementMembershipIsExposedAsASourceRecipe() {
         GeneratedClassModel clazz = new GeneratedClassModel("Film");
-        clazz.instanceMapping().propertyPid("P31");
-        clazz.instanceMapping().sourceQid("Q11424");
-        clazz.instanceMapping().additionalTypeQids().add("Q202866");
+        clazz.membership(EntityBound.relation("P31", List.of("Q11424", "Q202866"), false));
 
         SourceRecipe binding = clazz.populationSource();
 
@@ -43,10 +42,12 @@ class PopulationSourceBindingTest {
                         "property", "P31", "values", "Q11424,Q202866",
                         "includeSubclasses", "false")));
 
-        assertEquals("P31", clazz.instanceMapping().propertyPid());
-        assertEquals("Q11424", clazz.instanceMapping().sourceQid());
-        assertEquals(java.util.Set.of("Q202866"),
-                clazz.instanceMapping().additionalTypeQids());
+        // One value back, not a first-and-rest split of one: assign used to put the
+        // leading QID in sourceQid and the others in additionalTypeQids, a shape the
+        // recipe it came from did not have.
+        assertEquals(EntityBound.relation("P31",
+                        java.util.List.of("Q11424", "Q202866"), false),
+                clazz.membership());
         assertEquals(MembershipPattern.MULTI_TYPE, MembershipPattern.of(clazz));
     }
 

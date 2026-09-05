@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -30,7 +32,7 @@ class FieldRecipesTest {
     @Test void theWorkedRecipesRemainAvailableOnConstellationFields() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
-        constellation.instanceMapping().sourceQid("Q8928");
+        constellation.membership(EntityBound.relation("P31", List.of("Q8928"), false));
         var field = constellation.addField(
                 "stars", FieldType.AUTO, FieldCardinality.AUTO);
         model.addClass(constellation);
@@ -41,7 +43,7 @@ class FieldRecipesTest {
     @Test void applicabilityFollowsTheConfiguredConceptRatherThanTheClassName() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel renamed = new GeneratedClassModel("SkyFigure");
-        renamed.instanceMapping().sourceQid("Q8928");
+        renamed.membership(EntityBound.relation("P31", List.of("Q8928"), false));
         var field = renamed.addField("neighbours", FieldType.AUTO, FieldCardinality.AUTO);
         model.addClass(renamed);
 

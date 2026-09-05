@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
@@ -264,8 +265,7 @@ class GeneratedProjectModelValidatorTest {
     @Test void aValidOwnedComponentNeedsNoOwnerConfigurationOnTheTarget() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel field = person.addField(
                 "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
         field.entityClassName("Name");
@@ -342,8 +342,7 @@ class GeneratedProjectModelValidatorTest {
 
     @Test void makingAClassOwnedClearsItsIndependentPopulation() {
         GeneratedClassModel name = new GeneratedClassModel("Name");
-        name.instanceMapping().propertyPid("P31");
-        name.instanceMapping().sourceQid("Q5");
+        name.membership(EntityBound.relation("P31", List.of("Q5"), false));
         name.seedQids().add("Q42");
 
         name.ownedClass(true);

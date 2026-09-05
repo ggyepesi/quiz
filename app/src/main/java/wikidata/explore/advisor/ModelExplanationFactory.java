@@ -71,7 +71,8 @@ public final class ModelExplanationFactory {
             GeneratedClassModel clazz) {
 
         FieldSourceMapping source = clazz.effectiveInstanceMapping(project);
-        List<SourceRouteExplanation> routes = source.propertyPid().isBlank()
+        List<SourceRouteExplanation> routes =
+                clazz.effectiveMembership(project).relationPid().isBlank()
                 ? List.of()
                 : List.of(route(1, source, classExample(clazz, source), false,
                                 source.direction()));

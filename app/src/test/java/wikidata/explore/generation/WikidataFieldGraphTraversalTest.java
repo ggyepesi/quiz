@@ -1,5 +1,7 @@
 package wikidata.explore.generation;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import datasource.schema.FieldType;
 
 import datasource.graph.GraphExpansionPolicy;
@@ -77,8 +79,7 @@ class WikidataFieldGraphTraversalTest {
             throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
-        person.instanceMapping().propertyPid("P31");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel successor = person.addField(
                 "successor", FieldType.ENTITY, FieldCardinality.COLLECTION);
         successor.entityClassName("Person");

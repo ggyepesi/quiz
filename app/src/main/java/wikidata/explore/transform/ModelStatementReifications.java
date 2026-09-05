@@ -217,10 +217,12 @@ public final class ModelStatementReifications {
             // class's own sourceQid, which is where a statement class used to keep its
             // object type filter. Both are READS of what a model already says, not
             // second places to write a bound.
-            objectBound = !valueQids.isEmpty()
-                    ? EntityBound.explicit(valueQids)
-                    : EntityBound.instancesOf(
-                            clean(statementClass.sourceMapping().sourceQid()));
+            // Values already derived from the field or from the source class's
+            // membership. The other fallback was the class's own sourceQid, which is
+            // where a statement class kept an object type filter before the object end
+            // had a bound of its own; nothing authors it now, so reading it could only
+            // report a bound no editor could have written.
+            objectBound = EntityBound.explicit(valueQids);
         }
         EntityBound subjectBound = resolve(statementSource.subjectBound(), project);
 
@@ -346,16 +348,11 @@ public final class ModelStatementReifications {
 
         if (values.isEmpty() && sourceClass != null
                 && statementPid.equals(
-                clean(sourceClass.sourceMapping().propertyPid()))) {
+                clean(sourceClass.membership().relationPid()))) {
 
-            String sourceQid =
-                    clean(sourceClass.sourceMapping().sourceQid());
-            if (WikidataIds.isQid(sourceQid)) {
-                values.add(sourceQid);
-            }
-
-            for (String qid
-                    : sourceClass.sourceMapping().additionalTypeQids()) {
+            // The source class's membership IS the set of values this statement points
+            // at, when the statement's property is the one that populates it.
+            for (String qid : sourceClass.membership().qids()) {
                 String cleanQid = clean(qid);
                 if (WikidataIds.isQid(cleanQid)) {
                     values.add(cleanQid);
@@ -784,18 +781,13 @@ public final class ModelStatementReifications {
         if (sourceClass == null
                 || !config.objectBound().bounded()
                 || !config.propertyPid().equals(
-                clean(sourceClass.sourceMapping().propertyPid()))) {
+                clean(sourceClass.membership().relationPid()))) {
             return missed;
         }
 
         Set<String> filter = new LinkedHashSet<>(config.objectBound().qids());
 
-        String sourceQid = clean(sourceClass.sourceMapping().sourceQid());
-        if (WikidataIds.isQid(sourceQid) && !filter.contains(sourceQid)) {
-            missed.add(sourceQid);
-        }
-
-        for (String qid : sourceClass.sourceMapping().additionalTypeQids()) {
+        for (String qid : sourceClass.membership().qids()) {
             String cleanQid = clean(qid);
             if (WikidataIds.isQid(cleanQid) && !filter.contains(cleanQid)) {
                 missed.add(cleanQid);

@@ -51,6 +51,7 @@ public final class GeneratedProjectModelValidator {
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
             validateAggregateClass(project, clazz, problems);
+            validateMembershipClosure(clazz, problems);
 
             if (clazz.reifiesStatements()) {
                 validateStatementClass(
@@ -73,6 +74,28 @@ public final class GeneratedProjectModelValidator {
      * ClassDependencies} sees them all, and the message names the kinds on the cycle so a
      * modeller still knows whether to look at inheritance or at production.
      */
+    /**
+     * A membership may now ASK for subclass closure, and no run performs it.
+     *
+     * <p>The three fields it replaced could not persist the request at all, so the
+     * datasource adapter refused a binding that carried one. The bound can hold it, and
+     * the query for it exists — {@code RuleNodeQueryBuilder.subclassMembershipBackbone
+     * Query} — but the backbone that runs today also carries this class's other
+     * membership filters (sitelink, exclusions, value filters, limit) and that query
+     * carries none of them. Swapping it in would drop them silently, so the request is
+     * refused here instead: an authored model may not describe a population the run
+     * would quietly narrow.
+     */
+    private static void validateMembershipClosure(
+            GeneratedClassModel clazz, List<Problem> problems) {
+        if (!clazz.membership().includeDescendants()) return;
+        problems.add(Problem.error(clazz.className(),
+                "Membership asks for subclass closure (P279*), which no run performs: "
+                        + "the closure query carries none of this class's other "
+                        + "membership filters. Remove the closure until it is wired "
+                        + "into the membership backbone."));
+    }
+
     private static void validateDependencyCycles(
             GeneratedProjectModel project, List<Problem> problems) {
         for (ClassDependencies.Cycle cycle : ClassDependencies.cycles(project)) {
@@ -307,7 +330,7 @@ public final class GeneratedProjectModelValidator {
         if (!clazz.ownedClass()) return;
         if (clazz.hasBase()) {
             GeneratedClassModel base = project.findClass(clazz.baseClassName());
-            if (base != null && !base.ownedClass()) {
+            if (base != null && !ClassExtensionRules.mayExtend(clazz, base)) {
                 problems.add(Problem.error(clazz.className(),
                         "An Owned class can extend only another Owned class; '"
                                 + base.className() + "' is " + base.classKind() + "."));
@@ -383,11 +406,9 @@ public final class GeneratedProjectModelValidator {
                         "The owner already is a " + target.className()
                                 + " through class extension; a nested component is redundant."));
             }
-            FieldSourceMapping effective = target.effectiveInstanceMapping(project);
             boolean independentlyPopulated = target.reifiesStatements()
                     || !target.seedQids().isEmpty()
-                    || effective != null && (!clean(effective.sourceQid()).isBlank()
-                        || !effective.additionalTypeQids().isEmpty())
+                    || target.effectiveMembership(project).bounded()
                     || MembershipPattern.kindRule(target, project) != null;
             if (independentlyPopulated) {
                 problems.add(Problem.error(path(owner, field),

@@ -1,5 +1,6 @@
 package wikidata.explore.query.template.rule;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.filter.WikidataValueFilterOperator;
 import wikidata.explore.model.FieldCardinality;
@@ -110,8 +111,7 @@ class IncludedFieldVariableIndexTest {
     private static GeneratedProjectModel starWithFilteredMagnitudeAndImage() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel star = new GeneratedClassModel("Star");
-        star.instanceMapping().sourceQid("Q523");
-        star.instanceMapping().propertyPid("P31");
+        star.membership(EntityBound.relation("P31", List.of("Q523"), false));
 
         GeneratedFieldModel magnitude =
                 star.addField("apparentMagnitude", FieldType.NUMBER, FieldCardinality.SINGLE);

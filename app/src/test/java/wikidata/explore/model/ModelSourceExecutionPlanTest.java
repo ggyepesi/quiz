@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.schema.FieldType;
 
 import datasource.Datasources;
@@ -16,8 +17,7 @@ class ModelSourceExecutionPlanTest {
     @Test void onePlanContainsPopulationIdentityNamesAndFieldValues() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().propertyPid("P31");
-        movie.instanceMapping().sourceQid("Q11424");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         GeneratedFieldModel country = movie.addField(
                 "country", FieldType.ENTITY, FieldCardinality.SINGLE);
         country.mapping().propertyPid("P495");
@@ -36,8 +36,7 @@ class ModelSourceExecutionPlanTest {
     @Test void compilingStoredBindingsDoesNotProjectLegacyConfiguration() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().propertyPid("P31");
-        movie.instanceMapping().sourceQid("Q11424");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         model.rootClass(movie);
 
         var plan = ModelSourceExecutionPlan.compileStored(model, Datasources.standard());

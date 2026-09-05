@@ -105,10 +105,9 @@ public enum MembershipPattern {
     public static String typeQid(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null) return "";
-        FieldSourceMapping mapping = project == null
-                ? clazz.instanceMapping() : clazz.effectiveInstanceMapping(project);
-        String declared = mapping == null ? "" : clean(mapping.sourceQid());
-        if (!declared.isEmpty()) return declared;
+        EntityBound membership = project == null
+                ? clazz.membership() : clazz.effectiveMembership(project);
+        if (!membership.qids().isEmpty()) return clean(membership.qids().get(0));
         EntityKindRule rule = kindRule(clazz, project);
         if (rule != null) {
             for (String evidence : rule.evidenceQids()) {
@@ -322,23 +321,23 @@ public enum MembershipPattern {
         if (clazz.classKind() == ClassKind.AGGREGATE) {
             return AGGREGATED;
         }
-        FieldSourceMapping m = clazz.instanceMapping();
-        String pid = clean(m.propertyPid());
+        EntityBound membership = clazz.membership();
+        String pid = clean(membership.relationPid());
         boolean seeded = !clazz.seedQids().isEmpty();
 
         if (!WikidataIds.isPid(pid)) {
             return seeded ? SEEDED : UNCONFIGURED;
         }
+        // How many types, not which field they were typed into. "P31 and at least one
+        // ADDITIONAL type" and "two types" are the same question, and only the second
+        // survives a value that does not know which of its QIDs came first.
+        int targets = targetCount(membership);
         if (pid.equals("P31")) {
-            if (m.additionalTypeQids().stream().anyMatch(q -> WikidataIds.isQid(clean(q)))) {
+            if (targets > 1) {
                 return MULTI_TYPE;
             }
-            if (WikidataIds.isQid(clean(m.sourceQid()))) {
-                return SINGLE_TYPE;
-            }
-            return seeded ? SEEDED : UNCONFIGURED;
+            return targets == 1 ? SINGLE_TYPE : seeded ? SEEDED : UNCONFIGURED;
         }
-        int targets = targetCount(m);
         if (targets > 1) {
             return MULTI_TARGET_RELATION;
         }
@@ -385,8 +384,8 @@ public enum MembershipPattern {
         if (clazz == null) {
             return p.label;
         }
-        FieldSourceMapping m = clazz.instanceMapping();
-        String pid = clean(m.propertyPid());
+        EntityBound membership = clazz.membership();
+        String pid = clean(membership.relationPid());
         return switch (p) {
             case REIFIED -> {
                 StatementClassSource s = clazz.statementSource();
@@ -399,11 +398,12 @@ public enum MembershipPattern {
                         : "";
                 yield p.label + " (" + prop + origin + domain + ")";
             }
-            case SINGLE_TYPE -> p.label + " (" + clean(m.sourceQid()) + ")";
+            case SINGLE_TYPE -> p.label + " ("
+                    + (membership.qids().isEmpty() ? "" : membership.qids().get(0)) + ")";
             case MULTI_TYPE -> p.label + " (P31, +"
-                    + m.additionalTypeQids().size() + ")";
+                    + (targetCount(membership) - 1) + ")";
             case SINGLE_TARGET_RELATION, MULTI_TARGET_RELATION ->
-                    p.label + " (" + pid + " → " + targetCount(m) + ")";
+                    p.label + " (" + pid + " → " + targetCount(membership) + ")";
             case SEEDED -> p.label + " (" + clazz.seedQids().size() + ")";
             case AGGREGATED -> {
                 AggregateClassSource a = clazz.aggregateSource();
@@ -417,13 +417,9 @@ public enum MembershipPattern {
         };
     }
 
-    private static int targetCount(FieldSourceMapping m) {
+    private static int targetCount(EntityBound membership) {
         Set<String> t = new LinkedHashSet<>();
-        String src = clean(m.sourceQid());
-        if (WikidataIds.isQid(src)) {
-            t.add(src);
-        }
-        for (String q : m.additionalTypeQids()) {
+        for (String q : membership.qids()) {
             String c = clean(q);
             if (WikidataIds.isQid(c)) {
                 t.add(c);

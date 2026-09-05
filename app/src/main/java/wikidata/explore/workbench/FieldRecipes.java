@@ -184,8 +184,7 @@ public final class FieldRecipes {
     private static boolean isConstellationField(
             GeneratedFieldModel field, GeneratedProjectModel project) {
         GeneratedClassModel owner = project == null ? null : project.declaringClass(field);
-        return owner != null && owner.instanceMapping() != null
-                && "Q8928".equals(owner.instanceMapping().sourceQid());
+        return owner != null && owner.membership().qids().contains("Q8928");
     }
 
     private static GeneratedFieldModel childField(

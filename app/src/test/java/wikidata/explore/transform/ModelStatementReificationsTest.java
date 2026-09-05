@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -30,9 +31,14 @@ class ModelStatementReificationsTest {
         GeneratedClassModel oscar = new GeneratedClassModel("Oscarnominations");
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSource(new StatementClassSource("Oscarnominations", "P1411"));
-        nom.instanceMapping().propertyPid("P1411");     // the reified statement property
-        nom.instanceMapping().sourceQid("Q19020");      // value-type filter (categories)
+        StatementClassSource statement =
+                new StatementClassSource("Oscarnominations", "P1411");
+        // The objects this statement points at, said on the statement's own object end.
+        // It used to be the statement CLASS's sourceQid, which is a class's membership
+        // everywhere else — one field with two meanings, and the object end now has a
+        // bound of its own.
+        statement.objectBound(EntityBound.explicit(List.of("Q19020")));
+        nom.statementSource(statement);
         nom.fields().add(field("category", FieldType.ENTITY, "P1411", ""));   // ps: value
         nom.fields().add(field("year", FieldType.DATE, "", "P585"));          // qualifier → YEAR
         GeneratedFieldModel nominee = field("nominee", FieldType.ENTITY, "", "P2453");
@@ -253,8 +259,7 @@ class ModelStatementReificationsTest {
 
     @Test void noReificationWithoutStatementSource() {
         GeneratedClassModel plain = new GeneratedClassModel("Person");
-        plain.instanceMapping().propertyPid("P31");
-        plain.instanceMapping().sourceQid("Q5");
+        plain.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(plain);
         assertTrue(ModelStatementReifications.derive(p).isEmpty());

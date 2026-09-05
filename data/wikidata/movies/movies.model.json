@@ -15,9 +15,9 @@
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "Q11424",
+      "sourceQid" : "",
       "sourceLabel" : "film",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -39,6 +39,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "RELATION",
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q11424" ] ],
+      "relationPid" : "P31",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -434,6 +442,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
@@ -456,9 +468,9 @@
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "Q11424",
+      "sourceQid" : "",
       "sourceLabel" : "film",
-      "propertyPid" : "P31",
+      "propertyPid" : "",
       "propertyLabel" : "instance of",
       "qualifierPid" : "",
       "qualifierLabel" : "",
@@ -480,6 +492,14 @@
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "RELATION",
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q11424" ] ],
+      "relationPid" : "P31",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -875,6 +895,10 @@
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
       "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",

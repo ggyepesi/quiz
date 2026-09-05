@@ -39,7 +39,7 @@ public record DecisionContext(
     }
 
     public String relationPid() {
-        return clazz == null ? "" : cleanPid(clazz.instanceMapping().propertyPid());
+        return clazz == null ? "" : cleanPid(clazz.membership().relationPid());
     }
 
     public int targetCount() {
@@ -47,11 +47,7 @@ public record DecisionContext(
             return 0;
         }
         java.util.Set<String> t = new java.util.LinkedHashSet<>();
-        String src = cleanQid(clazz.instanceMapping().sourceQid());
-        if (WikidataIds.isQid(src)) {
-            t.add(src);
-        }
-        for (String q : clazz.instanceMapping().additionalTypeQids()) {
+        for (String q : clazz.membership().qids()) {
             String c = cleanQid(q);
             if (WikidataIds.isQid(c)) {
                 t.add(c);

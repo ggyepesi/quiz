@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.api.WikidataApiClient;
@@ -23,8 +24,7 @@ class ReferentFieldLoadTest {
     @Test void sourceMembersDiscoveredOutsideTheirRootQueryStillLoadImages() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         person.addField("image", FieldType.IMAGE, FieldCardinality.COLLECTION)
                 .mapping().propertyPid("P18");
         model.rootClass(person);
@@ -186,8 +186,7 @@ class ReferentFieldLoadTest {
     @Test void ownedComponentFieldsLoadFromTheOwnerQid() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel structuredName = person.addField(
                 "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
         structuredName.entityClassName("Name");

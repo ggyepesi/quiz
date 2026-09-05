@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import process.ProcessWorkflowPipeline;
 import wikidata.explore.model.EntityKindRule;
@@ -102,8 +103,7 @@ class GenerateDomainPipelineTest {
     @Test void derivesFieldPropertyKindAndOwnedDetailsFromTheConfiguredModel() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.instanceMapping().propertyPid("P31");
-        nomination.instanceMapping().sourceQid("Q1");
+        nomination.membership(EntityBound.relation("P31", List.of("Q1"), false));
         var nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.entityClassName("Nominee");

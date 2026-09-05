@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class OwningEntityClassTest {
                 project.findClass("Name"), project);
 
         assertEquals("Person", bearer.className());
-        assertEquals("Q5", bearer.instanceMapping().sourceQid());
+        assertEquals(List.of("Q5"), bearer.membership().qids());
     }
 
     @Test void aChainOfComponentsResolvesToTheEntityAtItsHead() {
@@ -70,7 +71,7 @@ class OwningEntityClassTest {
     @Test void sitesOnDifferentKindsOfOwnerDoNotResolve() {
         GeneratedProjectModel project = project();
         GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
-        organisation.instanceMapping().sourceQid("Q43229");
+        organisation.membership(EntityBound.relation("P31", List.of("Q43229"), false));
         GeneratedFieldModel legalName = organisation.addField(
                 "legalName", FieldType.ENTITY, FieldCardinality.SINGLE);
         legalName.entityClassName("Name");
@@ -107,7 +108,7 @@ class OwningEntityClassTest {
     @Test void anEvidenceKindTakesItsTypeFromTheRuleThatStampsIt() {
         GeneratedProjectModel project = project();
         GeneratedClassModel person = project.findClass("Person");
-        person.instanceMapping().sourceQid("");
+        person.membership(EntityBound.unbounded());
         project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
 
         assertEquals(MembershipPattern.EVIDENCE_KIND,
@@ -123,7 +124,7 @@ class OwningEntityClassTest {
     @Test void aDeclaredMembershipTypeIsPreferred() {
         GeneratedProjectModel project = project();
         GeneratedClassModel person = project.findClass("Person");
-        person.instanceMapping().sourceQid("Q215627");
+        person.membership(EntityBound.relation("P31", List.of("Q215627"), false));
         project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
 
         assertEquals("Q215627", MembershipPattern.typeQid(person, project));
@@ -133,8 +134,7 @@ class OwningEntityClassTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel nameValue = person.addField(
                 "nameValue", FieldType.ENTITY, FieldCardinality.SINGLE);
         nameValue.entityClassName("Name");

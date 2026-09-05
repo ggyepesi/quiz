@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.FieldCardinality;
@@ -306,8 +307,7 @@ class OwnedComponentsTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel name = person.addField(
                 "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
         name.entityClassName("Name");

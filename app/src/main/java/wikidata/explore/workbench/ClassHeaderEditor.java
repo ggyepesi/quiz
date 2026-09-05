@@ -4,17 +4,16 @@ import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.ClassExtensionRules;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -26,9 +25,8 @@ import java.util.function.Supplier;
  * could not be renamed at all — {@code RenameClass} is used by the Source, Statement and
  * Owned panels and by nothing else, which is why renaming an aggregate was not merely
  * hidden but absent. Nothing in the model or the validator restricts alias or a base by
- * kind: the one kind-specific rule is that an Owned class may extend only another Owned
- * class, which constrains what a base may BE, and is expressed here as the candidate list
- * a caller supplies.
+ * kind. Which bases are legal is a model rule shared with validation, not a choice each
+ * kind editor reconstructs.
  *
  * <p>These are class facts, not kind facts. Each panel keeps only what its kind adds.
  */
@@ -40,29 +38,15 @@ final class ClassHeaderEditor extends JPanel {
     private final JTextField alias = new JTextField(18);
     private final JComboBox<String> baseClass = new JComboBox<>();
 
-    /**
-     * Says the class belongs to another model, above controls that are all disabled.
-     *
-     * <p>Carried here rather than left to each panel: without it a disabled editor reads
-     * as broken rather than as owned elsewhere, and an alias is exactly what an imported
-     * class is for — reading as "Structured name" locally without a rename that would
-     * break every reference to it.
-     */
-    private final JLabel importedFrom = new JLabel(" ");
-
-    private final GeneratedProjectModel project;
-    private final Supplier<List<String>> baseCandidates;
+    private final Supplier<GeneratedProjectModel> project;
     private GeneratedClassModel clazz;
 
     /**
-     * @param baseCandidates which classes this kind may extend — the Owned rule, and any
-     *                       other, said by the caller that knows its kind rather than by
-     *                       a switch in here
+     * @param project the model that owns both the edited class and its possible bases
      */
-    ClassHeaderEditor(GeneratedProjectModel project, Supplier<List<String>> baseCandidates) {
+    ClassHeaderEditor(Supplier<GeneratedProjectModel> project) {
         super(new GridBagLayout());
-        this.project = project;
-        this.baseCandidates = baseCandidates == null ? List::of : baseCandidates;
+        this.project = project == null ? () -> null : project;
         buildUi();
     }
 
@@ -73,19 +57,17 @@ final class ClassHeaderEditor extends JPanel {
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
 
-        importedFrom.setVisible(false);
-        GridBagUtils.wideRow(this, 0, importedFrom);
         className.setToolTipText(
                 "The name everything references. Renaming rebinds those references.");
-        GridBagUtils.labeledRow(this, c, 1, "Class name:", className);
+        GridBagUtils.labeledRow(this, c, 0, "Class name:", className);
         alias.setToolTipText("<html>Display alias: what the UI shows for this class "
                 + "instead of its name. Pure presentation — the class name stays the "
                 + "identity everything references, so aliasing never breaks the "
                 + "model.</html>");
-        GridBagUtils.labeledRow(this, c, 2, "Alias:", alias);
+        GridBagUtils.labeledRow(this, c, 1, "Alias:", alias);
         baseClass.setToolTipText("<html>Extend another class: this class inherits its "
                 + "fields and adds its own.</html>");
-        GridBagUtils.labeledRow(this, c, 3, "Extends:", baseClass);
+        GridBagUtils.labeledRow(this, c, 2, "Extends:", baseClass);
     }
 
     void show(GeneratedClassModel value) {
@@ -96,23 +78,14 @@ final class ClassHeaderEditor extends JPanel {
         baseClass.removeAllItems();
         baseClass.addItem(NO_BASE);
         String self = value == null ? "" : value.className();
-        for (String candidate : baseCandidates.get()) {
-            if (candidate != null && !candidate.isBlank() && !candidate.equals(self)) {
-                baseClass.addItem(candidate);
-            }
+        for (GeneratedClassModel candidate :
+                ClassExtensionRules.candidates(project.get(), value)) {
+            String name = candidate.className();
+            if (!name.isBlank() && !name.equals(self)) baseClass.addItem(name);
         }
         String base = value == null ? "" : value.baseClassName();
         baseClass.setSelectedItem(base.isBlank() ? NO_BASE : base);
 
-        boolean imported = value != null && value.isImported();
-        importedFrom.setVisible(imported);
-        if (imported) {
-            importedFrom.setText("<html><i>Imported from <b>" + value.importedFrom()
-                    + "</b> — edited in the model that owns it.</i></html>");
-        }
-        EditableComponents.setEditable(className, !imported);
-        EditableComponents.setEditable(alias, !imported);
-        EditableComponents.setEditable(baseClass, !imported);
     }
 
     /**
@@ -130,7 +103,8 @@ final class ClassHeaderEditor extends JPanel {
         } else if (!typed.equals(clazz.className())) {
             String requested =
                     GeneratedViewableSourceGenerator.sanitizeClassName(typed);
-            if (!project.renameClass(clazz.className(), requested)) {
+            GeneratedProjectModel owner = project.get();
+            if (owner == null || !owner.renameClass(clazz.className(), requested)) {
                 refuse("A class or vocabulary/population named '" + requested
                         + "' already exists.");
             }

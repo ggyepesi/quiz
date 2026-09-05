@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
@@ -41,8 +42,7 @@ class PreviewSkipsPartsTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         GeneratedFieldModel site = person.addField(
                 "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
         site.entityClassName("BirthName");

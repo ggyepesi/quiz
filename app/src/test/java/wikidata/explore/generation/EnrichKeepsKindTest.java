@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class EnrichKeepsKindTest {
         // A statement class states its key; nothing chooses one for it.
         nomination.canonical().keyFields().addAll(
                 wikidata.explore.model.StatementIdentity.structuralKey(nomination));
-        backbone.instanceMapping().sourceQid("Q19020");
+        backbone.membership(EntityBound.relation("P31", List.of("Q19020"), false));
         GeneratedFieldModel nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.entityClassName("Nominee");

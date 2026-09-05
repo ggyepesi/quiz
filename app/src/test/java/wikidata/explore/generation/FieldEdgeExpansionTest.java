@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryState;
 import datasource.graph.GraphExpansionCoverage;
@@ -31,8 +32,7 @@ class FieldEdgeExpansionTest {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.name("History");
         GeneratedClassModel position = new GeneratedClassModel("Position");
-        position.instanceMapping().sourceQid("Q4164871");
-        position.instanceMapping().propertyPid("P31");
+        position.membership(EntityBound.relation("P31", List.of("Q4164871"), false));
         position.seedQids().add("Q6412254");
         GeneratedFieldModel broader = position.addField(
                 "broaderPosition", FieldType.ENTITY, FieldCardinality.COLLECTION);

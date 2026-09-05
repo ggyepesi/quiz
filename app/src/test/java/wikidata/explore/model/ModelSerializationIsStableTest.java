@@ -32,8 +32,7 @@ class ModelSerializationIsStableTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("People");
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
-        person.instanceMapping().propertyPid("P31");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         person.addField("birthName", datasource.schema.FieldType.STRING,
                 FieldCardinality.SINGLE);
         project.rootClass(person);

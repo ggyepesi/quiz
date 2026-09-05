@@ -1,5 +1,6 @@
 package wikidata.explore.compiled;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -18,8 +19,7 @@ class CompiledSelectionTest {
     @Test void selectionsCarryThroughCompile() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");
+        src.membership(EntityBound.relation("P1411", List.of("Q102427"), false));
         project.addClass(src);
 
         VocabularySelection cats = new VocabularySelection("OscarCategories");
@@ -38,8 +38,7 @@ class CompiledSelectionTest {
     @Test void noSelectionsIsEmptyNotNull() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");
+        src.membership(EntityBound.relation("P1411", List.of("Q102427"), false));
         project.addClass(src);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);

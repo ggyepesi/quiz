@@ -62,9 +62,8 @@ public class GeneratedProjectModel {
         p.name("Constellations");
 
         GeneratedClassModel c = new GeneratedClassModel("Constellation");
-        c.instanceMapping().sourceQid("Q8928");
+        c.membership(EntityBound.relation("P31", java.util.List.of("Q8928"), false));
         c.instanceMapping().sourceLabel("constellation");
-        c.instanceMapping().propertyPid("P31");
         c.instanceMapping().propertyLabel("instance of");
         c.instanceMapping().limit(200);
 

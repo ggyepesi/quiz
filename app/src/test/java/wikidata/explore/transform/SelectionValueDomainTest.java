@@ -1,5 +1,6 @@
 package wikidata.explore.transform;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledClass;
 import wikidata.explore.compiled.CompiledProjectModel;
@@ -27,8 +28,7 @@ class SelectionValueDomainTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
 
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
-        src.instanceMapping().propertyPid("P1411");
-        src.instanceMapping().additionalTypeQids().add("Q102427");   // class-derived filter
+        src.membership(EntityBound.relation("P1411", List.of("Q102427"), false));   // class-derived filter
         project.addClass(src);
 
         VocabularySelection vocab = new VocabularySelection("OscarCategories");

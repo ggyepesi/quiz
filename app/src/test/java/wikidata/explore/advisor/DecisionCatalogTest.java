@@ -44,9 +44,7 @@ class DecisionCatalogTest {
         // Membership + targets + fields set, but no subclass/facet/qualifiers yet.
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("Oscarnominations");
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
-        c.instanceMapping().additionalTypeQids().add("Q103916");
+        c.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103916"), false));
         c.fields().add(field("category", "P1411"));
         c.fields().add(field("type", "P31"));
 
@@ -66,8 +64,7 @@ class DecisionCatalogTest {
     @Test void transformResolvesQualifiersAndDenormalization() {
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("Oscarnominations");
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
+        c.membership(EntityBound.relation("P1411", List.of("Q102427"), false));
         c.fields().add(field("type", "P31"));
 
         TransformConfig t = new TransformConfig();
@@ -91,8 +88,7 @@ class DecisionCatalogTest {
         // Plain P31 = Q5 → no relational branches (targets/type-structure/qualifiers).
         GeneratedClassModel c = new GeneratedClassModel();
         c.className("Person");
-        c.instanceMapping().propertyPid("P31");
-        c.instanceMapping().sourceQid("Q5");
+        c.membership(EntityBound.relation("P31", List.of("Q5"), false));
 
         List<String> ids = DecisionCatalog.evaluate(ctx(c, null)).stream()
                 .map(e -> e.decision().id()).toList();

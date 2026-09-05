@@ -26,6 +26,7 @@ public final class CompiledClass {
      * statementSource.
      */
     private final CompiledFieldSource sourceMapping;
+    private final wikidata.explore.model.EntityBound membership;
 
     private final List<String> seedQids;
     private final CompiledCanonical canonical;
@@ -46,6 +47,7 @@ public final class CompiledClass {
             int generationDepth,
             ClassKind classKind,
             CompiledFieldSource sourceMapping,
+            wikidata.explore.model.EntityBound membership,
             List<String> seedQids,
             CompiledCanonical canonical,
             CompiledStatementSource statementSource,
@@ -65,6 +67,8 @@ public final class CompiledClass {
         this.sourceMapping = sourceMapping == null
                 ? CompiledFieldSource.from(null)
                 : sourceMapping;
+        this.membership = membership == null
+                ? wikidata.explore.model.EntityBound.unbounded() : membership;
         this.seedQids = seedQids == null ? List.of() : List.copyOf(seedQids);
         this.canonical = canonical == null
                 ? CompiledCanonical.from(null)
@@ -102,10 +106,15 @@ public final class CompiledClass {
     public CompiledFieldSource sourceMapping() { return sourceMapping; }
 
     /**
-     * Compatibility name for the first RuleTreeCompiler migration.
+     * Which entities are this class's members — the authored bound, carried through
+     * compilation so both rule-compiler paths read the same fact.
+     *
+     * <p>This used to return the source mapping under a name that promised a
+     * membership: the two rule-compiler paths each read the mapping's sourceQid and
+     * additionalTypeQids, and a parity test asserted they produced identical SPARQL —
+     * which they did, by both making the same split of a value neither of them held.
      */
-    @Deprecated
-    public CompiledFieldSource membership() { return sourceMapping; }
+    public wikidata.explore.model.EntityBound membership() { return membership; }
 
     public List<String> seedQids() { return seedQids; }
     public CompiledCanonical canonical() { return canonical; }

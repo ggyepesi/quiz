@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.schema.FieldType;
 
 import datasource.Datasources;
@@ -85,8 +86,7 @@ class FieldSourceBindingsTest {
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().sourceQid("Q11424");
-        movie.instanceMapping().propertyPid("P31");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         movie.addField("locations", FieldType.ENTITY, FieldCardinality.COLLECTION);
         model.rootClass(movie);
         return model;

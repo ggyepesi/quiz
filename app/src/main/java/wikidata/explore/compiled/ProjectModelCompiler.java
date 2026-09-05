@@ -111,6 +111,7 @@ public final class ProjectModelCompiler {
                 clazz.classKind(),
                 CompiledFieldSource.from(
                         clazz.effectiveInstanceMapping(project)),
+                clazz.effectiveMembership(project),
                 clazz.seedQids(),
                 canonical,
                 CompiledStatementSource.from(

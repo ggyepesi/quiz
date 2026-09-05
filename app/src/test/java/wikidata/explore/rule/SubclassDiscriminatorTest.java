@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -12,9 +14,7 @@ class SubclassDiscriminatorTest {
 
     private static GeneratedProjectModel oscarProject() {
         GeneratedClassModel base = new GeneratedClassModel("Oscarnominations");
-        base.instanceMapping().propertyPid("P1411");           // nominated for
-        base.instanceMapping().additionalTypeQids().add("Q102427");
-        base.instanceMapping().additionalTypeQids().add("Q103916");
+        base.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103916"), false));   // nominated for
 
         GeneratedProjectModel p = new GeneratedProjectModel();
         p.rootClass(base);

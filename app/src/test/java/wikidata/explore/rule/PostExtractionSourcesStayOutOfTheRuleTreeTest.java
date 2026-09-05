@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSourceType;
@@ -43,8 +45,7 @@ class PostExtractionSourcesStayOutOfTheRuleTreeTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("films");
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().sourceQid("Q11424");
-        movie.instanceMapping().propertyPid("P31");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         GeneratedFieldModel country =
                 movie.addField("country", FieldType.TEXT, FieldCardinality.SINGLE);
         country.mapping().sourceType(type);

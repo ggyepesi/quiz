@@ -28,9 +28,7 @@ class MembershipFieldsTest {
     @Test void relationalMultiTargetGetsTargetAndType() {
         // Oscars: P1411 → category set.
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
-        c.instanceMapping().additionalTypeQids().add("Q103916");
+        c.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103916"), false));
 
         List<String> added = MembershipFields.ensure(c);
         assertTrue(added.contains(MembershipFields.TARGET_FIELD), added.toString());
@@ -49,10 +47,7 @@ class MembershipFieldsTest {
     @Test void multiTypeMembershipGetsTypeOnly() {
         // Stars: P31 ∈ {star, red giant, variable star} — target IS the type.
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P31");
-        c.instanceMapping().sourceQid("Q523");                 // star
-        c.instanceMapping().additionalTypeQids().add("Q1153690"); // red giant
-        c.instanceMapping().additionalTypeQids().add("Q6243");    // variable star
+        c.membership(EntityBound.relation("P31", List.of("Q523", "Q1153690", "Q6243"), false));   // star
 
         List<String> added = MembershipFields.ensure(c);
         assertEquals(List.of(MembershipFields.TYPE_FIELD), added);
@@ -62,8 +57,7 @@ class MembershipFieldsTest {
     @Test void singleExactTypeGetsNothing() {
         // Plain P31 = Q5 membership: one type, no target set → no auto fields.
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P31");
-        c.instanceMapping().sourceQid("Q5");
+        c.membership(EntityBound.relation("P31", List.of("Q5"), false));
 
         assertFalse(MembershipFields.appliesType(c));
         assertTrue(MembershipFields.ensure(c).isEmpty());
@@ -73,8 +67,7 @@ class MembershipFieldsTest {
     @Test void doesNotDuplicateExistingEquivalentField() {
         // A hand-made `category` already mapping P1411 → don't add a second target.
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
+        c.membership(EntityBound.relation("P1411", List.of("Q102427"), false));
         GeneratedFieldModel existing = new GeneratedFieldModel(
                 "category", FieldType.ENTITY, FieldCardinality.COLLECTION);
         existing.mapping().propertyPid("P1411");

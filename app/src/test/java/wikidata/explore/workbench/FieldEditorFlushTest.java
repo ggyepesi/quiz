@@ -1,5 +1,6 @@
 package wikidata.explore.workbench;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -91,8 +92,7 @@ class FieldEditorFlushTest {
     private static GeneratedFieldModel field() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().sourceQid("Q11424");
-        movie.instanceMapping().propertyPid("P31");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         model.rootClass(movie);
         return movie.addField("location", FieldType.TEXT, FieldCardinality.SINGLE);
     }

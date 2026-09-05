@@ -21,8 +21,7 @@ class ModelImportResolverTest {
         model.name(name);
         model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
-        person.instanceMapping().propertyPid("P31");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         person.addField("birthName", FieldType.STRING, FieldCardinality.SINGLE);
         model.addClass(person);
         return model;
@@ -151,8 +150,7 @@ class ModelImportResolverTest {
         places.name("Places");
         places.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
         GeneratedClassModel place = new GeneratedClassModel("Place");
-        place.instanceMapping().sourceQid("Q2221906");
-        place.instanceMapping().propertyPid("P31");
+        place.membership(EntityBound.relation("P31", List.of("Q2221906"), false));
         places.addClass(place);
 
         places.addImport(new ModelImport("People", List.of("Person")));

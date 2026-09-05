@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.EntityKindRule;
@@ -186,8 +187,7 @@ class DomainSaveTest {
     private static GeneratedProjectModel movies(String locationPid) {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().sourceQid("Q11424");
-        movie.instanceMapping().propertyPid("P31");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         movie.addField("location", FieldType.TEXT, FieldCardinality.SINGLE)
                 .mapping().propertyPid(locationPid);
         model.rootClass(movie);
@@ -207,8 +207,7 @@ class DomainSaveTest {
             String name, String... qids) {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.instanceMapping().sourceQid("Q1361864");
-        nomination.instanceMapping().propertyPid("P31");
+        nomination.membership(EntityBound.relation("P31", List.of("Q1361864"), false));
         nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("Nominee");
         model.rootClass(nomination);

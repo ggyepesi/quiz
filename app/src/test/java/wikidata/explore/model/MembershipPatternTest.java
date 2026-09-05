@@ -19,33 +19,27 @@ class MembershipPatternTest {
 
     @Test void multiTargetRelation() {
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P1411");
-        c.instanceMapping().additionalTypeQids().add("Q102427");
-        c.instanceMapping().additionalTypeQids().add("Q103916");
+        c.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103916"), false));
         assertEquals(MembershipPattern.MULTI_TARGET_RELATION, MembershipPattern.of(c));
         assertEquals("Multi-target relation (P1411 → 2)", MembershipPattern.describe(c));
     }
 
     @Test void multiType() {
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P31");
-        c.instanceMapping().sourceQid("Q523");
-        c.instanceMapping().additionalTypeQids().add("Q6243");
+        c.membership(EntityBound.relation("P31", List.of("Q523", "Q6243"), false));
         assertEquals(MembershipPattern.MULTI_TYPE, MembershipPattern.of(c));
     }
 
     @Test void singleType() {
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P31");
-        c.instanceMapping().sourceQid("Q5");
+        c.membership(EntityBound.relation("P31", List.of("Q5"), false));
         assertEquals(MembershipPattern.SINGLE_TYPE, MembershipPattern.of(c));
         assertEquals("Single type (Q5)", MembershipPattern.describe(c));
     }
 
     @Test void singleTargetRelation() {
         GeneratedClassModel c = clazz();
-        c.instanceMapping().propertyPid("P166");
-        c.instanceMapping().sourceQid("Q35637");
+        c.membership(EntityBound.relation("P166", List.of("Q35637"), false));
         assertEquals(MembershipPattern.SINGLE_TARGET_RELATION, MembershipPattern.of(c));
     }
 
@@ -148,8 +142,7 @@ class MembershipPatternTest {
     @Test void queriedMembershipDescriptionWinsOverAnIncidentalKindRule() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         project.addClass(person);
         project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
 

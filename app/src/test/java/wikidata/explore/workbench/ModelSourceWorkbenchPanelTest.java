@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
@@ -334,7 +336,7 @@ class ModelSourceWorkbenchPanelTest {
         model.addClass(history);
         model.rootClass(history);
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         var spouse = person.addField(
                 "spouse", FieldType.ENTITY, FieldCardinality.AUTO);
         spouse.mapping().propertyPid("P26");

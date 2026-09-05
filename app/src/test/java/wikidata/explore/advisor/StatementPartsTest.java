@@ -1,5 +1,6 @@
 package wikidata.explore.advisor;
 
+import wikidata.explore.model.EntityBound;
 import datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.advisor.EffectiveClassExplanation.Part;
@@ -24,8 +25,7 @@ class StatementPartsTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("History");
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().sourceQid("Q5");
-        person.instanceMapping().propertyPid("P31");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         project.rootClass(person);
         // A discovering statement class needs a bounded value domain, or the domain
         // does not compile — the same rule that stops an unbounded membership scan.

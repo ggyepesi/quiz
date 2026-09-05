@@ -10,6 +10,7 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.ClassSourceBindings;
+import wikidata.explore.model.EntityBound;
 import wikidata.explore.model.FieldSourceMapping;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -195,13 +196,16 @@ public class ClassSourcePanel extends JPanel {
         populateClassDetails();
         populateRepresentations();
 
-        typeQidField.setText(m.sourceQid());
+        List<String> membershipQids = clazz.membership().qids();
+        typeQidField.setText(membershipQids.isEmpty() ? "" : membershipQids.get(0));
         typeLabel.setText(m.displaySource());
-        relationPidField.setText(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
+        relationPidField.setText(clazz.membership().relationPid().isBlank()
+                ? "P31" : clazz.membership().relationPid());
         // setText above fires the listener that blanks relationLabel — restore the
         // stored label afterwards so a saved relation shows its name on load.
         relationLabel.setText(m.propertyLabel() == null ? " " : m.propertyLabel());
-        additionalTypesField.setText(String.join(" ", m.additionalTypeQids()));
+        additionalTypesField.setText(String.join(" ", membershipQids.subList(
+                Math.min(1, membershipQids.size()), membershipQids.size())));
         excludeTypesField.setText(String.join(" ", m.excludedTypeQids()));
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -854,12 +858,6 @@ public class ClassSourcePanel extends JPanel {
         clazz.discriminatorPid(RuleNode.cleanPid(discriminatorPidField.getText()));
         clazz.discriminatorQid(RuleNode.cleanQid(discriminatorQidField.getText()));
         FieldSourceMapping m = clazz.instanceMapping();
-        m.sourceQid(typeQidField.getText());
-        m.additionalTypeQids().clear();
-        for (String tok : additionalTypesField.getText().trim().split("[,;\\s]+")) {
-            String qid = RuleNode.cleanQid(tok);
-            if (WikidataIds.isQid(qid)) m.additionalTypeQids().add(qid);
-        }
         m.excludedTypeQids().clear();
         for (String tok : excludeTypesField.getText().trim().split("[,;\\s]+")) {
             String qid = RuleNode.cleanQid(tok);
@@ -869,7 +867,24 @@ public class ClassSourcePanel extends JPanel {
         if (!WikidataIds.isPid(relPid)) {
             relPid = "P31";
         }
-        m.propertyPid(relPid);
+        // One value: the property and every type QID it may point into. The two boxes
+        // are one list shown in two places — a leading QID and the rest — which is what
+        // the model held until it held a bound. Order is kept, so what is read back is
+        // what was typed.
+        List<String> membershipQids = new ArrayList<>();
+        for (String text : List.of(typeQidField.getText(),
+                additionalTypesField.getText())) {
+            for (String token : text.trim().split("[,;\\s]+")) {
+                String qid = RuleNode.cleanQid(token);
+                if (WikidataIds.isQid(qid) && !membershipQids.contains(qid)) {
+                    membershipQids.add(qid);
+                }
+            }
+        }
+        clazz.membership(membershipQids.isEmpty()
+                ? EntityBound.unbounded()
+                : EntityBound.relation(relPid, membershipQids,
+                        clazz.membership().includeDescendants()));
         String statementSourceClass = statementSourceField.getText().trim();
         // This editor owns exactly one statement declaration: the source class. A
         // blank one does NOT mean "not a statement class" — every shipped statement

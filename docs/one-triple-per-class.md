@@ -250,20 +250,32 @@ without them.
    triple. Owned READS its triples in the same three words, one per production site,
    each saying where it is authored.
 
-   Source cannot join without the model change, and a UI that translated for it would be
-   the shim directive 7 warns about. Its object end is `sourceQid` plus
-   `additionalTypeQids`: reading those as one `EntityBound` is lossless, writing one back
-   is not — splitting a bound into "the type" and "the extra types" is the
-   `instancesOf(first)` loss already made once and corrected. `sourceQid()` has 69
-   readers across 20 files in `main` and 41 test files, so this is its own piece of work,
-   not a step of a UI decomposition.
+   **The Source model change is done** — `GeneratedClassModel.membership`, one
+   `EntityBound`, replacing `instanceMapping`'s `propertyPid` + `sourceQid` +
+   `additionalTypeQids`. Both rule-compiler paths, the datasource crossing, the
+   membership pattern, the advisor, the validator and the shipped models read it; the
+   six classes that carry a real membership were migrated, and the six that carried a
+   bare default `P31` with no target became unbounded, which is what they meant.
 
-   The shape it wants: a source class's membership is ONE `EntityBound` on its own
-   members — `RELATION(propertyPid, sourceQid + additionalTypeQids, includeDescendants)`.
-   That subsumes the property, the type and the extra types, and brings P279 closure,
-   which the three fields cannot express at all. `excludedTypeQids` and the subclass
-   discriminator stay separate, per §1. Direction is subsumed too: the panel already
-   hardcodes `ITEM_TO_ROOT`, so "which end the members occupy" has never been asked.
+   What it removed: the split between "the type" and "the extras" carried no meaning —
+   every consumer re-joined them — and `PopulationSourceBindings.assign` tore a list back
+   apart as first-and-rest. `effectiveInstanceMapping` decided a class had its own
+   membership by asking whether `sourceQid` was blank; it asks the bound now.
+   `CompiledCanonical` and `CompiledClass.membership()` both gained the fact rather than
+   re-deriving it, which is what makes the two compiler paths agree by construction —
+   the parity test used to pass because both made the same split.
+
+   Two things it did NOT do. `seedQids` is the same construct in `EXPLICIT` shape and is
+   still a second authored place, with silent precedence between them in
+   `PopulationSourceBindings` (a relation wins, a seed list is only consulted when there
+   is none) — 37 sites, its own step. And the UI still shows one list in two boxes
+   ("Wikidata type" and "Also include types") backed by the one bound; folding them into
+   the triple's object row is what brings Source into `TripleEditor`.
+
+   Subclass closure is now persistable — the thing the adapter used to refuse — and no
+   run performs it: `RuleNodeQueryBuilder.subclassMembershipBackboneQuery` carries none
+   of the class's other membership filters, so swapping it in would drop them silently.
+   The validator refuses a model that asks for one until that query is wired.
 4. `DisplayNameEditor`, in all four panels; owner-and-site becomes the owned default
    rather than an unconditional rule.
 5. Apply buttons removed.

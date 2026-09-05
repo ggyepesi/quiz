@@ -1,5 +1,6 @@
 package wikidata.explore.generation;
 
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
@@ -28,8 +29,7 @@ class FullRunValidationTest {
         GeneratedProjectModel invalid = new GeneratedProjectModel();
         invalid.name("movies");
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().propertyPid("P31");
-        movie.instanceMapping().sourceQid("Q11424");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         invalid.rootClass(movie);
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
         nomination.statementSource(new StatementClassSource("DoesNotExist", "P1411"));

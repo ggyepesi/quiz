@@ -37,6 +37,23 @@ public final class RuleTreeCompiler {
         return compileClass(clazz, project, new HashSet<>());
     }
 
+    /**
+     * The authored bound in the rule's shape.
+     *
+     * <p>A rule holds one primary QID plus a set of alternatives; the bound holds one
+     * list, and which member was typed first carries no meaning — {@code
+     * RuleNode.membershipQids} re-joins them immediately. Both compiler paths call this,
+     * so they agree by deriving from one fact rather than by making the same split.
+     */
+    private static void applyMembership(RuleNode node, EntityBound membership) {
+        java.util.List<String> targets = membership == null
+                ? java.util.List.of() : membership.qids();
+        node.sourceQid(targets.isEmpty() ? "" : targets.get(0));
+        targets.stream().skip(1).forEach(node::addAdditionalSourceQid);
+        String pid = membership == null ? "" : membership.relationPid();
+        node.propertyPid(pid.isBlank() ? "P31" : pid);
+    }
+
     private static RuleNode compileClass(
             GeneratedClassModel clazz,
             GeneratedProjectModel project,
@@ -44,16 +61,12 @@ public final class RuleTreeCompiler {
 
         // Inherit the base class's membership when this class defines none.
         FieldSourceMapping m = clazz.effectiveInstanceMapping(project);
+        EntityBound membership = clazz.effectiveMembership(project);
 
         RuleNode node = new RuleNode(clazz.className(), decap(clazz.className()));
 
-        node.sourceQid(m.sourceQid());
+        applyMembership(node, membership);
         node.sourceLabel(m.sourceLabel());
-        // Multi-QID membership: instance-of sourceQid OR any additional type
-        // (e.g. + zodiacal constellation to admit Aries/Cancer).
-        for (String extra : m.additionalTypeQids()) {
-            node.addAdditionalSourceQid(extra);
-        }
         // Excluded types: drop entities that are instance-of (P31) one of these
         // (e.g. exclude Roman deities from a Greek-character class).
         for (String exq : m.excludedTypeQids()) {
@@ -63,7 +76,6 @@ public final class RuleTreeCompiler {
                         new RuleNode.PredicateObjectExclusion("P31", qid));
             }
         }
-        node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
         node.propertyLabel(m.propertyLabel().isBlank()
                                    ? "instance of"
                                    : m.propertyLabel());
@@ -226,11 +238,15 @@ public final class RuleTreeCompiler {
                 // include bright NAMED variable/double stars (typed as a
                 // subclass, not Q523) reached via P59 + magnitude + label.
                 FieldSourceMapping cm = childClass.effectiveInstanceMapping(project);
+                // An edge constrains its values by ONE type, so a membership naming
+                // several contributes its first — as it always has, when the first was
+                // sourceQid and the rest were the additional types.
+                EntityBound childMembership = childClass.effectiveMembership(project);
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
-                        && cm != null && !cm.sourceQid().isBlank()) {
-                    child.membershipPid(cm.propertyPid().isBlank()
-                                                ? "P31" : cm.propertyPid());
-                    child.membershipQid(cm.sourceQid());
+                        && !childMembership.qids().isEmpty()) {
+                    child.membershipPid(childMembership.relationPid().isBlank()
+                                                ? "P31" : childMembership.relationPid());
+                    child.membershipQid(childMembership.qids().get(0));
                 }
                 // "Notable only" is a notability axis (independent of membership):
                 // carry it onto the edge so children are restricted to notable
@@ -268,11 +284,11 @@ public final class RuleTreeCompiler {
                     && project != null) {
                 GeneratedClassModel refClass = project.findClass(field.entityClassName());
                 if (refClass != null) {
-                    FieldSourceMapping cm = refClass.effectiveInstanceMapping(project);
-                    if (cm != null && !cm.sourceQid().isBlank()) {
-                        included.membershipPid(cm.propertyPid().isBlank()
-                                                       ? "P31" : cm.propertyPid());
-                        included.membershipQid(cm.sourceQid());
+                    EntityBound bound = refClass.effectiveMembership(project);
+                    if (!bound.qids().isEmpty()) {
+                        included.membershipPid(bound.relationPid().isBlank()
+                                                       ? "P31" : bound.relationPid());
+                        included.membershipQid(bound.qids().get(0));
                     }
                 }
             }
@@ -352,11 +368,8 @@ public final class RuleTreeCompiler {
 
         RuleNode node = new RuleNode(clazz.className(), decap(clazz.className()));
 
-        node.sourceQid(m.sourceQid());
+        applyMembership(node, clazz.membership());
         node.sourceLabel(m.sourceLabel());
-        for (String extra : m.additionalTypeQids()) {
-            node.addAdditionalSourceQid(extra);
-        }
         for (String exq : m.excludedTypeQids()) {
             String qid = RuleNode.cleanQid(exq);
             if (WikidataIds.isQid(qid)) {
@@ -364,7 +377,6 @@ public final class RuleTreeCompiler {
                         new RuleNode.PredicateObjectExclusion("P31", qid));
             }
         }
-        node.propertyPid(m.propertyPid().isBlank() ? "P31" : m.propertyPid());
         node.propertyLabel(m.propertyLabel().isBlank()
                                    ? "instance of"
                                    : m.propertyLabel());
@@ -479,11 +491,12 @@ public final class RuleTreeCompiler {
                     : project.findClass(field.configuredEntityClassName()).orElse(null);
             if (childClass != null && !visited.contains(childClass.className())) {
                 CompiledFieldSource cm = childClass.sourceMapping();
+                EntityBound childMembership = childClass.membership();
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
-                        && !cm.sourceQid().isBlank()) {
-                    child.membershipPid(cm.propertyPid().isBlank()
-                                                ? "P31" : cm.propertyPid());
-                    child.membershipQid(cm.sourceQid());
+                        && !childMembership.qids().isEmpty()) {
+                    child.membershipPid(childMembership.relationPid().isBlank()
+                                                ? "P31" : childMembership.relationPid());
+                    child.membershipQid(childMembership.qids().get(0));
                 }
                 child.requireSitelink(cm.requireSitelink());
 
@@ -509,11 +522,11 @@ public final class RuleTreeCompiler {
                 CompiledClass refClass = project.findClass(
                         field.configuredEntityClassName()).orElse(null);
                 if (refClass != null) {
-                    CompiledFieldSource cm = refClass.sourceMapping();
-                    if (!cm.sourceQid().isBlank()) {
-                        included.membershipPid(cm.propertyPid().isBlank()
-                                                       ? "P31" : cm.propertyPid());
-                        included.membershipQid(cm.sourceQid());
+                    EntityBound bound = refClass.membership();
+                    if (!bound.qids().isEmpty()) {
+                        included.membershipPid(bound.relationPid().isBlank()
+                                                       ? "P31" : bound.relationPid());
+                        included.membershipQid(bound.qids().get(0));
                     }
                 }
             }

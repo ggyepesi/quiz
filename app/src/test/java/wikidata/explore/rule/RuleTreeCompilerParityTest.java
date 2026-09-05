@@ -1,5 +1,7 @@
 package wikidata.explore.rule;
 
+import java.util.List;
+import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CompiledProjectModel;
 import wikidata.explore.compiled.ProjectModelCompiler;
@@ -29,9 +31,7 @@ class RuleTreeCompilerParityTest {
         project.name("constellations");
 
         GeneratedClassModel root = new GeneratedClassModel("Constellation");
-        root.instanceMapping().sourceQid("Q8928");
-        root.instanceMapping().propertyPid("P31");
-        root.instanceMapping().additionalTypeQids().add("Q1053464");
+        root.membership(EntityBound.relation("P31", List.of("Q8928", "Q1053464"), false));
         root.instanceMapping().excludedTypeQids().add("Q19478619");
         root.seedQids().add("Q8832");
 
@@ -60,8 +60,7 @@ class RuleTreeCompilerParityTest {
         project.rootClass(root);
 
         GeneratedClassModel star = new GeneratedClassModel("Star");
-        star.instanceMapping().sourceQid("Q523");
-        star.instanceMapping().propertyPid("P31");
+        star.membership(EntityBound.relation("P31", List.of("Q523"), false));
         star.discriminatorPid("P31");
         star.discriminatorQid("Q523");
         GeneratedFieldModel mag =

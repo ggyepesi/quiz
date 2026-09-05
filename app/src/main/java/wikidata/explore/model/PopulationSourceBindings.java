@@ -9,14 +9,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
- * Migration boundary between the established class-population fields and the
- * provider/operation binding exposed by the datasource catalogue.
+ * The crossing between a class's authored population and the provider/operation binding
+ * the datasource catalogue exposes.
  *
- * <p>For Wikidata classes the old fields remain the single editable truth for now:
- * every editor and the rule compiler already use them. This projection makes that
- * choice explicit and persistable without introducing a second configuration which
- * could drift. Once editors bind offerings directly, this is the one adapter that can
- * be removed.
+ * <p>The authored form is one value — {@link GeneratedClassModel#membership()} — so this
+ * projects rather than reconciles. It used to translate three fields, and translating
+ * back tore a list apart as first-and-rest: {@code assign} put the first QID in {@code
+ * sourceQid} and the others in {@code additionalTypeQids}, a shape the value it came
+ * from did not have. It also had to REFUSE a binding asking for subclass closure,
+ * because the three fields could not persist one. A bound carries it.
  */
 final class PopulationSourceBindings {
 
@@ -30,7 +31,7 @@ final class PopulationSourceBindings {
     static void assign(GeneratedClassModel clazz, SourceRecipe binding) {
         if (clazz == null) return;
         if (binding == null) {
-            clearMembership(clazz.instanceMapping());
+            clearMembership(clazz);
             clazz.seedQids().clear();
             clazz.declaredPopulationSource(null);
             return;
@@ -45,7 +46,7 @@ final class PopulationSourceBindings {
                     "Owned and statement classes cannot declare an independent population");
         }
         if (WikidataDatasourceProvider.SEED_LIST.equals(binding.operationId())) {
-            clearMembership(clazz.instanceMapping());
+            clearMembership(clazz);
             clazz.seedQids().clear();
             for (String qid : binding.parameter("ids").split("[,\\s|]+")) {
                 addQid(clazz.seedQids(), qid);
@@ -55,10 +56,6 @@ final class PopulationSourceBindings {
             }
         } else if (WikidataDatasourceProvider.STATEMENT_MEMBERSHIP.equals(
                 binding.operationId())) {
-            if (Boolean.parseBoolean(binding.parameter("includeSubclasses"))) {
-                throw new IllegalArgumentException(
-                        "The current class model cannot persist subclass-closure membership yet");
-            }
             String pid = clean(binding.parameter("property")).toUpperCase();
             List<String> values = new ArrayList<>();
             for (String qid : binding.parameter("values").split("[,\\s|]+")) {
@@ -69,13 +66,10 @@ final class PopulationSourceBindings {
                         "A statement-membership binding requires a PID and value QIDs");
             }
             clazz.seedQids().clear();
-            FieldSourceMapping mapping = clazz.instanceMapping();
-            mapping.sourceLabel("");
-            mapping.propertyLabel("");
-            mapping.propertyPid(pid);
-            mapping.sourceQid(values.getFirst());
-            mapping.additionalTypeQids().clear();
-            values.stream().skip(1).forEach(mapping.additionalTypeQids()::add);
+            clazz.instanceMapping().sourceLabel("");
+            clazz.instanceMapping().propertyLabel("");
+            clazz.membership(EntityBound.relation(pid, values,
+                    Boolean.parseBoolean(binding.parameter("includeSubclasses"))));
         } else {
             throw new IllegalArgumentException(
                     "Unsupported Wikidata class-population operation: "
@@ -92,15 +86,17 @@ final class PopulationSourceBindings {
     static SourceRecipe fromLegacy(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null || clazz.ownedClass() || clazz.reifiesStatements()) return null;
-        FieldSourceMapping mapping = project == null
-                ? clazz.instanceMapping() : clazz.effectiveInstanceMapping(project);
-        String pid = clean(mapping.propertyPid()).toUpperCase();
-        List<String> targets = targets(mapping);
+        EntityBound membership = project == null
+                ? clazz.membership() : clazz.effectiveMembership(project);
+        String pid = clean(membership.relationPid()).toUpperCase();
+        List<String> targets = new ArrayList<>();
+        membership.qids().forEach(value -> addQid(targets, value));
         if (WikidataIds.isPid(pid) && !targets.isEmpty()) {
             LinkedHashMap<String, String> parameters = new LinkedHashMap<>();
             parameters.put("property", pid);
             parameters.put("values", String.join(",", targets));
-            parameters.put("includeSubclasses", "false");
+            parameters.put("includeSubclasses",
+                    String.valueOf(membership.includeDescendants()));
             return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.STATEMENT_MEMBERSHIP, parameters);
         }
@@ -131,24 +127,16 @@ final class PopulationSourceBindings {
         }
     }
 
-    private static List<String> targets(FieldSourceMapping mapping) {
-        ArrayList<String> result = new ArrayList<>();
-        addQid(result, mapping.sourceQid());
-        mapping.additionalTypeQids().forEach(value -> addQid(result, value));
-        return List.copyOf(result);
-    }
-
     private static void addQid(List<String> result, String value) {
         String qid = clean(value).toUpperCase();
         if (WikidataIds.isQid(qid) && !result.contains(qid)) result.add(qid);
     }
 
-    private static void clearMembership(FieldSourceMapping mapping) {
-        mapping.sourceQid("");
+    private static void clearMembership(GeneratedClassModel clazz) {
+        clazz.membership(EntityBound.unbounded());
+        FieldSourceMapping mapping = clazz.instanceMapping();
         mapping.sourceLabel("");
-        mapping.propertyPid("");
         mapping.propertyLabel("");
-        mapping.additionalTypeQids().clear();
         mapping.excludedTypeQids().clear();
     }
 

@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.List;
 import datasource.Datasources;
 import datasource.api.SourceBindingSlot;
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,7 @@ class ClassSourceBindingsTest {
     @Test void aSourceClassMakesItsPreviouslyImplicitSourcesExplicit() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");
-        movie.instanceMapping().propertyPid("P31");
-        movie.instanceMapping().sourceQid("Q11424");
+        movie.membership(EntityBound.relation("P31", List.of("Q11424"), false));
         model.rootClass(movie);
 
         var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
@@ -42,8 +42,7 @@ class ClassSourceBindingsTest {
     @Test void explicitlyRemovedAliasesStayRemovedWhenThePlanIsRecompiled() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.instanceMapping().propertyPid("P31");
-        person.instanceMapping().sourceQid("Q5");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         model.rootClass(person);
 
         ClassSourceBindings.synchronize(model);
@@ -95,8 +94,7 @@ class ClassSourceBindingsTest {
     private static GeneratedProjectModel inheritedPopulation() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
-        nominee.instanceMapping().propertyPid("P1411");
-        nominee.instanceMapping().sourceQid("Q19020");
+        nominee.membership(EntityBound.relation("P1411", List.of("Q19020"), false));
         GeneratedClassModel person = new GeneratedClassModel("Person");
         person.baseClassName("Nominee");
         person.discriminatorPid("P31");

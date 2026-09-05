@@ -150,12 +150,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
 
-        classSourcePanel.baseClassCandidates(
-                () -> projectModel.classes()
-                                  .stream()
-                                  .map(
-                                          GeneratedClassModel::className)
-                                  .toList());
         classSourcePanel.setProjectModel(projectModel);
 
         statementSourcePanel.sourceClassCandidates(
@@ -580,11 +574,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             return null;
         }
 
-        String qid =
-                clazz.instanceMapping() == null
-                        ? ""
-                        : clazz.instanceMapping()
-                               .sourceQid();
+        String qid = clazz.membership().qids().isEmpty()
+                ? "" : clazz.membership().qids().get(0);
 
         return clazz.className()
                 + (qid != null
