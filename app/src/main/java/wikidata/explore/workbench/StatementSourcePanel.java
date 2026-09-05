@@ -191,12 +191,16 @@ public class StatementSourcePanel extends JPanel {
         // told the reader a domain that generates could not.
         StatementFieldSemantics.SubjectDestination subject =
                 StatementFieldSemantics.subjectDestination(clazz);
+        // The validator's own predicate, not a second reading of the same idea.
+        boolean projectionRequired =
+                projectModel != null && projectModel.acquiresInstances();
         subjectEnd.destination(subject.fieldName(),
                 targetClassOf(subject.fieldName()), valueKindOf(subject.fieldName()),
-                subject.route().phrase());
+                subject.route().phrase(), projectionRequired);
         String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
         objectEnd.destination(objectField, targetClassOf(objectField),
-                valueKindOf(objectField), "the value the statement points at");
+                valueKindOf(objectField), "the value the statement points at",
+                projectionRequired);
 
         java.util.List<String> vocabularies = projectModel == null ? java.util.List.of()
                 : projectModel.selections().stream()

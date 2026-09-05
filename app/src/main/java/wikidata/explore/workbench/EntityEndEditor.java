@@ -4,6 +4,7 @@ import objectview.utils.swing.GridBagUtils;
 import wikidata.explore.model.EntityBound;
 
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -41,15 +42,23 @@ final class EntityEndEditor extends JPanel {
      * could then disagree about whether an object is a date.
      */
     private final JLabel modelledAs = new JLabel(" ");
-    private static final String THESE_ENTITIES = "These entities";
+    private static final String THESE_ENTITIES = "These QIDs";
     private static final String A_VOCABULARY = "A vocabulary";
-    private static final String INSTANCES_OF = "Instances of";
+    // Not "Instances of": the bound carries ANY property, so P279 (subclass of) is as
+    // expressible as P31, and the old wording named one of them as though it were the
+    // construct. It also took the FIRST typed QID and dropped P279 closure — three
+    // things the model could say and the editor could not, silently reduced on every
+    // apply because bound() is read whether or not anything was touched.
+    private static final String PROPERTY_INTO = "Property + QIDs";
 
     private final String end;
     private final JLabel destination = new JLabel(" ");
     private final JComboBox<String> mode = new JComboBox<>(
-            new String[] {ANY, THESE_ENTITIES, A_VOCABULARY, INSTANCES_OF});
+            new String[] {ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO});
     private final JTextField qids = new JTextField(16);
+    private final JTextField relationPid = new JTextField(6);
+    private final JCheckBox includeDescendants =
+            new JCheckBox("and their subclasses (P279)");
     private final JComboBox<String> vocabulary = new JComboBox<>();
     private final JPanel value = new JPanel(new CardLayout());
 
@@ -63,7 +72,23 @@ final class EntityEndEditor extends JPanel {
         setBorder(BorderFactory.createTitledBorder(end));
 
         value.add(new JPanel(), "none");
-        value.add(qids, "qids");
+        JPanel qidRow = new JPanel(new GridBagLayout());
+        GridBagConstraints qc = new GridBagConstraints();
+        qc.insets = new Insets(0, 0, 0, 4);
+        relationPid.setToolTipText("The property that must point into those QIDs — P31 "
+                + "for instances, P279 for subclasses, or any other.");
+        qidRow.add(relationPid, qc);
+        qc.gridx = 1;
+        qc.weightx = 1;
+        qc.fill = GridBagConstraints.HORIZONTAL;
+        qidRow.add(qids, qc);
+        qc.gridx = 2;
+        qc.weightx = 0;
+        qc.fill = GridBagConstraints.NONE;
+        includeDescendants.setToolTipText(
+                "Follow P279 down from those QIDs as well, so a subclass counts.");
+        qidRow.add(includeDescendants, qc);
+        value.add(qidRow, "qids");
         value.add(vocabulary, "vocabulary");
 
         GridBagConstraints c = new GridBagConstraints();
@@ -95,6 +120,7 @@ final class EntityEndEditor extends JPanel {
         add(hint, hintCell);
 
         mode.addActionListener(event -> showValueForMode());
+        includeDescendants.setOpaque(false);
         showValueForMode();
     }
 
@@ -146,7 +172,7 @@ final class EntityEndEditor extends JPanel {
      * to generate — of a domain that generates.
      */
     void destination(String fieldName, String targetClass, String valueKind,
-            String howItIsFilled) {
+            String howItIsFilled, boolean required) {
         String kind = valueKind == null || valueKind.isBlank() ? "" : valueKind;
         modelledAs.setText(targetClass == null || targetClass.isBlank()
                 ? "<html>" + (kind.isEmpty() ? "" : "<b>" + kind + "</b> — ")
@@ -154,8 +180,16 @@ final class EntityEndEditor extends JPanel {
                 : "<html><b>" + targetClass + "</b>"
                         + (kind.isEmpty() ? "" : " <i>(" + kind + ")</i>") + "</html>");
         if (fieldName == null || fieldName.isBlank()) {
-            destination.setText("<html><i>Nothing holds it</i> — " + howItIsFilled
-                    + ". A domain must settle this before it can generate.</html>");
+            // Not projected is a legitimate END STATE in a model, which states shape and
+            // never acquires: the class is a placeholder yielding a reference, and
+            // specialization giving it fields is optional. Only a project that acquires
+            // has to settle it — the same condition the validator gates on, so the two
+            // cannot tell a reader different things about one model.
+            destination.setText(required
+                    ? "<html><i>Not projected</i> — " + howItIsFilled
+                            + ". Required before this domain can generate.</html>"
+                    : "<html><i>Not projected</i> — served as a reference (identity and "
+                            + "label). Optional in a model.</html>");
             return;
         }
         destination.setText("<html><b>" + fieldName + "</b> — <i>" + howItIsFilled
@@ -167,10 +201,12 @@ final class EntityEndEditor extends JPanel {
         mode.setSelectedItem(switch (shown.kind()) {
             case EXPLICIT -> THESE_ENTITIES;
             case VOCABULARY -> A_VOCABULARY;
-            case RELATION -> INSTANCES_OF;
+            case RELATION -> PROPERTY_INTO;
             case UNBOUNDED -> ANY;
         });
         qids.setText(String.join(" ", shown.qids()));
+        relationPid.setText(shown.relationPid());
+        includeDescendants.setSelected(shown.includeDescendants());
         if (shown.kind() == EntityBound.Kind.VOCABULARY) {
             select(vocabulary, shown.selectionName());
         }
@@ -184,10 +220,15 @@ final class EntityEndEditor extends JPanel {
         if (A_VOCABULARY.equals(chosen)) {
             return EntityBound.vocabulary(selected(vocabulary));
         }
-        if (INSTANCES_OF.equals(chosen)) {
+        if (PROPERTY_INTO.equals(chosen)) {
             List<String> typed = typedQids();
-            return typed.isEmpty() ? EntityBound.unbounded()
-                    : EntityBound.instancesOf(typed.get(0));
+            String pid = relationPid.getText() == null ? "" : relationPid.getText().trim();
+            // Every QID and the property the reader actually chose. This used to build
+            // instancesOf(first) — P31, one target, no closure — so a bound saying
+            // "subclasses of these three" came back as "instances of that one".
+            return typed.isEmpty() || !pid.matches("(?i)P\\d+")
+                    ? EntityBound.unbounded()
+                    : EntityBound.relation(pid, typed, includeDescendants.isSelected());
         }
         return EntityBound.unbounded();
     }
@@ -202,11 +243,14 @@ final class EntityEndEditor extends JPanel {
 
     private void showValueForMode() {
         String chosen = selected(mode);
-        String card = THESE_ENTITIES.equals(chosen) || INSTANCES_OF.equals(chosen) ? "qids"
+        String card = THESE_ENTITIES.equals(chosen) || PROPERTY_INTO.equals(chosen) ? "qids"
                 : A_VOCABULARY.equals(chosen) ? "vocabulary" : "none";
         ((CardLayout) value.getLayout()).show(value, card);
-        qids.setToolTipText(INSTANCES_OF.equals(chosen)
-                ? "One QID: the class whose instances may be the " + end.toLowerCase() + "."
+        boolean viaProperty = PROPERTY_INTO.equals(chosen);
+        relationPid.setVisible(viaProperty);
+        includeDescendants.setVisible(viaProperty);
+        qids.setToolTipText(viaProperty
+                ? "The QIDs the property points INTO, separated by spaces or commas."
                 : "QIDs, separated by spaces or commas.");
     }
 

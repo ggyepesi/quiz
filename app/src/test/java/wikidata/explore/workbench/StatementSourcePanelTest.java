@@ -240,12 +240,25 @@ class StatementSourcePanelTest {
         assertEquals(2, ends.size(), "one editor per end, and no more");
 
         String shown = labelTexts(panel);
-        // "Nothing holds it", not "Not configured": an end with no destination field is
-        // missing a HOME, which is not the same as being unconfigured. Nobel's subject
-        // has no QIDs bounding it and is modelled as Laureate — unbounded and
-        // configured — and the old wording made those read as one state.
-        assertTrue(shown.contains("Nothing holds it"),
+        // "Not projected", not "Not configured": an end with no destination field has no
+        // HOME, which is not being unconfigured. Nobel's subject has no QIDs bounding it
+        // and is modelled as Laureate — unbounded and configured — and the old wording
+        // made those read as one state.
+        assertTrue(shown.contains("Not projected"),
                 "an unsettled end says so rather than vanishing: " + shown);
+        // This project acquires, so the projection is required. A model states shape and
+        // never acquires, and there an unprojected end is a legitimate end state — the
+        // same condition the validator gates on.
+        assertTrue(shown.contains("Required before this domain can generate"), shown);
+
+        project.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        panel.setProjectModel(project);
+        panel.edit(holding);
+        String inAModel = labelTexts(panel);
+        assertTrue(inAModel.contains("Not projected"), inAModel);
+        assertFalse(inAModel.contains("Required before"),
+                "a model may leave a leg unprojected; it yields a reference: " + inAModel);
+        assertTrue(inAModel.contains("Optional in a model"), inAModel);
     }
 
     /** A bound set through the editor reaches the model, and comes back on reopening. */
