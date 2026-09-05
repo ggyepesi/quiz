@@ -72,7 +72,15 @@ TripleEditor
   destination      which field receives each end, and by which route (read-only here)
 ```
 
-Per kind it is configured, not subclassed:
+Per kind it is configured, not subclassed — one no-argument constructor, one title, one
+border, and two calls, `show(clazz, project)` and `applyEdits(clazz)`, which every panel
+makes identically. The component works out what the kind authors from the class itself.
+Two rules decide what a kind is shown, and they came from the reader rather than the
+code: **an element that is GIVEN is shown and not editable**, and **where a choice is
+constrained, the excluded ways are not offered**. The first shipped as three
+implementations behind a CardLayout — the property field written twice, the object end
+three times, an entry point per kind — which is the fault the component exists to remove,
+committed inside it. `OneTriplePerClassTest` now fails on a second control per element.
 
 - **Statement** — both ends authored, no members-end. **Shipped.**
 - **Source** — the members are the subject; the property and the objects are authored.

@@ -136,6 +136,52 @@ final class EntityEndEditor extends JPanel {
         return row;
     }
 
+    /**
+     * Whether this end may be edited at all.
+     *
+     * <p>An element of the triple that is GIVEN — a source class's members, everything
+     * about an owned class's — is shown and not editable, rather than being a different
+     * control or no control. The reader sees the same rows on every kind and can tell at
+     * a glance which of them this kind gets to answer.
+     */
+    void editable(boolean value) {
+        mode.setEnabled(value);
+        qids.setEnabled(value);
+        relationPid.setEnabled(value);
+        includeDescendants.setEnabled(value);
+        vocabulary.setEnabled(value);
+    }
+
+    /**
+     * The ways this end may be bounded, when its kind allows fewer than all of them.
+     *
+     * <p>A source class's objects are the QIDs its membership property points into, and
+     * that property is the triple's own row — so "Property + QIDs" would nest a second
+     * property inside an end that already has one. The excluded ways are not offered and
+     * so are not editable; the rest of the end is unchanged.
+     */
+    void allowedModes(List<String> modes) {
+        String selected = selected(mode);
+        boolean wasEnabled = mode.isEnabled();
+        mode.removeAllItems();
+        for (String allowed : modes) mode.addItem(allowed);
+        if (modes.contains(selected)) mode.setSelectedItem(selected);
+        // One way of being bounded is not a choice; offering it as one invites a click
+        // that can do nothing.
+        mode.setEnabled(wasEnabled && modes.size() > 1);
+        showValueForMode();
+    }
+
+    /** Every way an end can be bounded, for a kind that may use them all. */
+    static List<String> allModes() {
+        return List.of(ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO);
+    }
+
+    /** Only an explicit set: what a membership triple's object end may be. */
+    static List<String> explicitOnly() {
+        return List.of(THESE_ENTITIES);
+    }
+
     /** Offers the vocabularies this project has, keeping any current choice. */
     void vocabularies(Supplier<List<String>> names) {
         String selected = selected(vocabulary);
@@ -194,6 +240,22 @@ final class EntityEndEditor extends JPanel {
         }
         destination.setText("<html><b>" + fieldName + "</b> — <i>" + howItIsFilled
                 + "</i></html>");
+    }
+
+    /**
+     * An end this kind does not author: what occupies it, and why it is not asked.
+     *
+     * <p>Distinct from {@link #destination}, which describes an end that IS projected
+     * into a field and may not be yet. A given end is not "not projected": there is no
+     * field because the instances themselves are the entity at this end, and saying
+     * "served as a reference, optional in a model" about that is a sentence from
+     * another situation.
+     */
+    void given(String occupiedBy, String because) {
+        modelledAs.setText(occupiedBy == null || occupiedBy.isBlank()
+                ? "<html><i>nothing yet</i></html>"
+                : "<html><b>" + occupiedBy + "</b></html>");
+        destination.setText("<html><i>" + because + "</i></html>");
     }
 
     void show(EntityBound bound) {

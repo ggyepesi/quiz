@@ -2,6 +2,12 @@
 
 ## Status
 
+**Superseded as a drawing by `panel-layout.txt`, which is generated.** That file is what
+the editors actually render, kept honest by `PanelLayoutIsCheckedInTest`; this note keeps
+the reading of it — what diverges from the design and why. The drawings below are the
+state on 2026-09-06, BEFORE the triple was unified; the divergences list is still current
+except where marked.
+
 A drawing, not a proposal. It records what the four kind editors render TODAY, after the
 decomposition in `one-triple-per-class.md`, because the note said what each panel should
 hold and never said in what order — and the implementation answered that question by
@@ -84,7 +90,7 @@ The only panel in the agreed order.
 
 ## Where this diverges from the design
 
-1. **The triple is not first.** Only Statement leads with it. Source puts it seventh,
+1. **The triple is not first.** (Still true.) Only Statement leads with it. Source puts it seventh,
    behind two constructs that depend on it — the subtype narrows a membership, and
    "Represent matching entities as" is about the entities that membership admits. Owned
    puts it last, after the display name.
@@ -98,7 +104,8 @@ The only panel in the agreed order.
    Seed QIDs, Limit, Require label, Notable only and Rank by are strewn before and after,
    with a search tool and a results table between them.
 4. **Four panels, four orders** for the three shared components, so learning one panel
-   does not help with the next.
+   does not help with the next. (Still true; the triple is now the same COMPONENT in all
+   three that have one, but the panels still order their pieces differently.)
 5. **Three headings for identity** on the Source panel: a section header "Identity &
    label", a row labelled "Identity:", and a box titled "Identity".
 6. **Leftovers on screen**: a disabled "When duplicates occur (superseded)" control, and

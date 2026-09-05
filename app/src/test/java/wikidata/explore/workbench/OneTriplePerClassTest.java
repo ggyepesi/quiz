@@ -90,11 +90,60 @@ class OneTriplePerClassTest {
         OwnedClassPanel panel = new OwnedClassPanel(project);
         panel.edit(part);
 
-        List<String> text = labels(find(panel, TripleEditor.class));
-        assertTrue(text.stream().anyMatch(t -> t.contains("Person.structuredName")),
-                "the site is the property: " + text);
-        assertTrue(text.stream().anyMatch(t -> t.contains("Subject:")), text.toString());
-        assertTrue(text.stream().anyMatch(t -> t.contains("Object:")), text.toString());
+        TripleEditor triple = find(panel, TripleEditor.class);
+        assertNotNull(triple);
+        JTextField shown = property(triple);
+        assertEquals("Person.structuredName", shown.getText(),
+                "the production site IS the property of this triple");
+        assertFalse(shown.isEnabled(), "and it is given, so it is not editable here");
+        List<String> text = labels(triple);
+        assertTrue(text.stream().anyMatch(t -> t.contains("authored on Person")),
+                "the rows say where they come from: " + text);
+        assertTrue(text.stream().anyMatch(t -> t.contains("Person")),
+                "and the owner is the object: " + text);
+    }
+
+    /**
+     * One component, not several behind one name.
+     *
+     * <p>It was a CardLayout over three cards — authored, membership, produced — with
+     * the property field declared twice and the object end three times, a different
+     * border title per kind, and a public entry point per kind so that every panel had
+     * to know which one it was. Everything about that compiled and passed.
+     */
+    @Test void theTripleIsOneComponentWithOneControlPerElement() {
+        long ends = java.util.Arrays.stream(TripleEditor.class.getDeclaredFields())
+                .filter(field -> field.getType() == EntityEndEditor.class)
+                .count();
+        assertEquals(2, ends, "one subject end and one object end, no more");
+
+        long propertyFields = java.util.Arrays.stream(
+                        TripleEditor.class.getDeclaredFields())
+                .filter(field -> field.getType() == JTextField.class)
+                .count();
+        assertEquals(1, propertyFields, "one property row");
+
+        assertFalse(new TripleEditor().getLayout() instanceof java.awt.CardLayout,
+                "a card per caller is a component per caller");
+
+        assertEquals(1, TripleEditor.class.getDeclaredConstructors().length);
+        assertEquals(0, TripleEditor.class.getDeclaredConstructors()[0]
+                        .getParameterCount(),
+                "one title and one border for every kind, so no panel can choose one");
+    }
+
+    /** Every kind is shown and asked the same way. */
+    @Test void everyPanelUsesTheSameTwoCalls() {
+        List<String> shows = new ArrayList<>();
+        for (Class<?> panel : List.of(ClassSourcePanel.class, StatementSourcePanel.class,
+                OwnedClassPanel.class)) {
+            assertTrue(java.util.Arrays.stream(panel.getDeclaredFields())
+                            .anyMatch(field -> field.getType() == TripleEditor.class),
+                    panel.getSimpleName() + " holds the shared triple");
+            shows.add(panel.getSimpleName());
+        }
+        assertEquals(List.of("ClassSourcePanel", "StatementSourcePanel",
+                "OwnedClassPanel"), shows);
     }
 
     /** The property row by name: both ends hold text fields of their own. */
@@ -120,8 +169,8 @@ class OneTriplePerClassTest {
 
         TripleEditor triple = find(panel, TripleEditor.class);
         assertNotNull(triple, "a source class describes a triple like the others");
-        assertEquals("P31", triple.membershipProperty());
-        assertEquals(List.of("Q8928", "Q1053464"), triple.membershipTargets(),
+        assertEquals("P31", triple.propertyPid());
+        assertEquals(List.of("Q8928", "Q1053464"), triple.objectQids(),
                 "one row, one list — not a leading type and a set of extras");
     }
 
@@ -136,7 +185,7 @@ class OneTriplePerClassTest {
         panel.setProjectModel(project);
         panel.edit(star);
         TripleEditor triple = find(panel, TripleEditor.class);
-        triple.membershipTargets(List.of("Q523", "Q6243"), null);
+        triple.objectQids(List.of("Q523", "Q6243"), null);
         panel.applyEdits();
 
         assertEquals(EntityBound.relation("P31", List.of("Q523", "Q6243"), false),

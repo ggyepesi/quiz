@@ -25,8 +25,7 @@ final class OwnedClassPanel extends JPanel {
     // The same three words every other kind uses. An owned class describes a triple
     // like the others; what differs is that two of its tags are settled by which field,
     // on which class, declares the ownership — so they are read here, not asked.
-    private final TripleEditor triple =
-            new TripleEditor("Triple — subject · property · object");
+    private final TripleEditor triple = new TripleEditor();
     private GeneratedClassModel clazz;
     private Consumer<Void> afterChange = ignored -> {};
 
@@ -61,9 +60,7 @@ final class OwnedClassPanel extends JPanel {
 
 
     private void refreshSites() {
-        triple.producedAt(MembershipPattern.ownedBy(clazz, project).stream()
-                .map(site -> new TripleEditor.Site(site.ownerClass(), site.fieldName()))
-                .toList());
+        triple.show(clazz, project);
     }
 
     private void buildUi() {

@@ -71,8 +71,7 @@ public class ClassSourcePanel extends JPanel {
     // Subject, property and objects in one component, because that is one triple. The
     // property and the QIDs were three controls over one bound, and the QID row was
     // labelled by asking whether the property was P31.
-    private final TripleEditor triple =
-            new TripleEditor("Triple — subject · property · object");
+    private final TripleEditor triple = new TripleEditor();
     private final JButton findRelationButton = new JButton("Find…");
     // Lazily-created; the property/item name search uses the Wikidata API.
     private WikidataApiClient api;
@@ -145,7 +144,7 @@ public class ClassSourcePanel extends JPanel {
     /** Fill the class population relation from the explicit workbench selection. */
     public void usePopulationProperty(String pid, String label) {
         if (!WikidataIds.isPid(pid)) return;
-        triple.membershipProperty(pid, label == null || label.isBlank() ? pid : label);
+        triple.propertyPid(pid, label == null || label.isBlank() ? pid : label);
     }
 
     /**
@@ -186,8 +185,7 @@ public class ClassSourcePanel extends JPanel {
 
         // The property's label is set AFTER the PID, whose document listener blanks it
         // — a saved relation must still show its name on load.
-        triple.membership(clazz.membership().relationPid(), m.propertyLabel(),
-                clazz.membership().qids(), m.displaySource());
+        triple.show(clazz, projectModel);
         excludeTypesField.setText(String.join(" ", m.excludedTypeQids()));
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -256,7 +254,7 @@ public class ClassSourcePanel extends JPanel {
                         targets, clazz.membership().includeDescendants()));
         clazz.instanceMapping().sourceLabel(label);
 
-        triple.membershipTargets(targets, clazz.instanceMapping().displaySource());
+        triple.objectQids(targets, clazz.instanceMapping().displaySource());
 
         updateSummary();
         afterChange.accept(null);
@@ -336,7 +334,7 @@ public class ClassSourcePanel extends JPanel {
         findRelationButton.setToolTipText(
                 "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
         findRelationButton.addActionListener(e -> pickProperty());
-        triple.membershipActions(List.of(findRelationButton),
+        triple.actions(List.of(findRelationButton),
                 List.of(discoverTypesButton, fromPartsButton));
         GridBagUtils.wideRow(form, y++, triple);
 
@@ -488,7 +486,7 @@ public class ClassSourcePanel extends JPanel {
         if (clazz == null) {
             return null;
         }
-        JTextField parentField = new JTextField(triple.firstTarget(), 12);
+        JTextField parentField = new JTextField(triple.firstObjectQid(), 12);
         JTextField pidField = new JTextField("P527", 6);
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
         form.add(new JLabel("Parent entity QID:"));
@@ -593,8 +591,7 @@ public class ClassSourcePanel extends JPanel {
         if (clazz == null) {
             return null;
         }
-        String base = clazz.membership().qids().isEmpty()
-                ? "" : clazz.membership().qids().get(0);
+        String base = triple.firstObjectQid();
         if (base.isBlank()) {
             JOptionPane.showMessageDialog(this,
                     "Set the Wikidata type first, then discover its subtypes.",
@@ -685,9 +682,9 @@ public class ClassSourcePanel extends JPanel {
         if (!WikidataIds.isQid(qid)) {
             return;
         }
-        java.util.List<String> targets = triple.membershipTargets();
+        java.util.List<String> targets = triple.objectQids();
         if (!targets.contains(qid)) targets.add(qid);
-        triple.membershipTargets(targets, null);
+        triple.objectQids(targets, null);
         apply();
         log.accept("Added membership type " + qid + "\n");
     }
@@ -812,16 +809,13 @@ public class ClassSourcePanel extends JPanel {
             String qid = RuleNode.cleanQid(tok);
             if (WikidataIds.isQid(qid)) m.excludedTypeQids().add(qid);
         }
-        String relPid = triple.membershipProperty();
+        String relPid = triple.propertyPid();
         if (!WikidataIds.isPid(relPid)) {
             relPid = "P31";
         }
-        // One value, from one row: the property and every entity it may point into.
-        List<String> membershipQids = triple.membershipTargets();
-        clazz.membership(membershipQids.isEmpty()
-                ? EntityBound.unbounded()
-                : EntityBound.relation(relPid, membershipQids,
-                        clazz.membership().includeDescendants()));
+        // The triple writes the elements it owns — for this kind, the property and the
+        // objects. This editor keeps only the knobs beside it.
+        triple.applyEdits(clazz);
         String statementSourceClass = statementSourceField.getText().trim();
         // This editor owns exactly one statement declaration: the source class. A
         // blank one does NOT mean "not a statement class" — every shipped statement
@@ -844,12 +838,6 @@ public class ClassSourcePanel extends JPanel {
             nextStatementSource.sourceClassName(statementSourceClass);
             clazz.statementSource(nextStatementSource);
         }
-        // Preserve the resolved relation label (from "Find…" or a prior load) so
-        // it persists and renders; a plain membership has the one named default.
-        String relLabelText = triple.membershipPropertyLabel();
-        m.propertyLabel(!MembershipPattern.relational(relPid)
-                ? MembershipPattern.DEFAULT_PROPERTY_LABEL
-                : (relLabelText.isEmpty() ? "" : relLabelText));
         m.direction(RuleDirection.ITEM_TO_ROOT);
         // Commit a value typed into the spinner editor but not yet entered, so
         // Apply reads what's on screen (an out-of-range value otherwise reverts).
@@ -885,7 +873,7 @@ public class ClassSourcePanel extends JPanel {
         }
 
         titleLabel.setText("Class: " + clazz.className());
-        triple.membershipTargets(clazz.membership().qids(), m.displaySource());
+        triple.objectQids(clazz.membership().qids(), m.displaySource());
 
         // Multi-target/-type membership → auto-add the intrinsic grouping fields
         // (type, and target for a relation) as real, editable model fields.
@@ -1001,7 +989,7 @@ public class ClassSourcePanel extends JPanel {
         titleLabel.setText("Class");
         header.show(null);
         searchTextField.setText("");
-        triple.membership("P31", "", List.of(), "");
+        triple.show(null, projectModel);
         representations.show(List.of(), List.of());
         summaryLabel.setText(" ");
         searchModel.setRows(List.of());
@@ -1113,9 +1101,9 @@ public class ClassSourcePanel extends JPanel {
         // exact match (just that property), which is clearer than seeding the
         // label (a fuzzy text match that also pulls in related properties). Fall
         // back to the resolved label only when there's no PID yet.
-        String seed = triple.membershipProperty();
+        String seed = triple.propertyPid();
         if (seed.isEmpty()) {
-            seed = triple.membershipPropertyLabel();
+            seed = triple.propertyLabelText();
         }
         JTextField input = new JTextField(seed, 20);
         JButton searchBtn = new JButton("Search");
@@ -1182,7 +1170,7 @@ public class ClassSourcePanel extends JPanel {
             WikidataApiClient.SearchResult picked = list.getSelectedValue();
             if (picked != null) {
                 // The label after the PID: setting the PID blanks it.
-                triple.membershipProperty(picked.qid(), picked.label());
+                triple.propertyPid(picked.qid(), picked.label());
                 dialog.dispose();
             }
         };

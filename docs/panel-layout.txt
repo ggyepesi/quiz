@@ -26,38 +26,36 @@
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Modelled as:
+      label: Person
       label: Goes into field:
+      label: an instance of this class IS this end
       label: Entities allowed:
-      combo: 4 item(s)
-      text: []
-      text: []
-      check: and their subclasses (P279)
-      combo: 0 item(s)
+      combo: 4 item(s)  (disabled)
+      text: []  (disabled)
+      text: []  (disabled)
+      check: and their subclasses (P279)  (disabled)
+      combo: 0 item(s)  (disabled)
       label: Bounding the subject restricts WHOSE statements are collected.
     label: Subject population:
-    combo: 0 item(s)
-    label: Property:
-    text: []
-    piece: EntityEndEditor  [Object]
-      label: Modelled as:
-      label: Goes into field:
-      label: Entities allowed:
-      combo: 4 item(s)
-      text: []
-      text: []
-      check: and their subclasses (P279)
-      combo: 0 item(s)
-      label: Bounding the object restricts WHICH statements are collected.
-    label: Subject:
-    label: this class's members
+    combo: 1 item(s)  (disabled)
     label: Property:
     text: [P31]
     button: Find…
-    label: Objects:
-    text: [Q5]
+    piece: EntityEndEditor  [Object]
+      label: Modelled as:
+      label: (not selected)
+      label: Goes into field:
+      label: the entities this property must point into
+      label: Entities allowed:
+      combo: 1 item(s)  (disabled)
+      text: []
+      text: [Q5]
+      check: and their subclasses (P279)
+      combo: 0 item(s)
+      label: Bounding the object restricts WHICH statements are collected.
     button: Discover subtypes  (disabled)
     button: From parts…  (disabled)
-    label: (not selected)
+    label: The subject is given: an instance of this class IS the entity at that end.
   label: Exclude types:
   text: []
   label: Limit:
@@ -120,7 +118,7 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-  piece: TripleEditor  [Statement triple — subject · property · object]
+  piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Modelled as:
       label: no class named , served as a bare reference
@@ -134,7 +132,7 @@
       combo: 0 item(s)
       label: Bounding the subject restricts WHOSE statements are collected.
     label: Subject population:
-    combo: 2 item(s)
+    combo: 4 item(s)
     label: Property:
     text: [P166]
     piece: EntityEndEditor  [Object]
@@ -149,13 +147,6 @@
       check: and their subclasses (P279)
       combo: 0 item(s)
       label: Bounding the object restricts WHICH statements are collected.
-    label: Subject:
-    label: this class's members
-    label: Property:
-    text: []
-    label: Objects:
-    text: []
-    label: (not selected)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -219,41 +210,33 @@
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Modelled as:
+      label: Name
       label: Goes into field:
+      label: an instance of this class IS this end
       label: Entities allowed:
-      combo: 4 item(s)
-      text: []
-      text: []
-      check: and their subclasses (P279)
-      combo: 0 item(s)
+      combo: 4 item(s)  (disabled)
+      text: []  (disabled)
+      text: []  (disabled)
+      check: and their subclasses (P279)  (disabled)
+      combo: 0 item(s)  (disabled)
       label: Bounding the subject restricts WHOSE statements are collected.
     label: Subject population:
-    combo: 0 item(s)
+    combo: 1 item(s)  (disabled)
     label: Property:
-    text: []
+    text: [Person.structuredName]  (disabled)
     piece: EntityEndEditor  [Object]
       label: Modelled as:
+      label: Person
       label: Goes into field:
+      label: the owner each part is a view of
       label: Entities allowed:
-      combo: 4 item(s)
-      text: []
-      text: []
-      check: and their subclasses (P279)
-      combo: 0 item(s)
+      combo: 4 item(s)  (disabled)
+      text: []  (disabled)
+      text: []  (disabled)
+      check: and their subclasses (P279)  (disabled)
+      combo: 0 item(s)  (disabled)
       label: Bounding the object restricts WHICH statements are collected.
-    label: Subject:
-    label: this class's members
-    label: Property:
-    label: Person.structuredName — authored on Person, where the field is
-    label: Object:
-    label: Person — the owner each part is a view of
-    label: Subject:
-    label: this class's members
-    label: Property:
-    text: []
-    label: Objects:
-    text: []
-    label: (not selected)
+    label: Given: authored on Person, where the field is.
 
 == Aggregate class - AggregateClassPanel ==
   piece: ClassHeaderEditor

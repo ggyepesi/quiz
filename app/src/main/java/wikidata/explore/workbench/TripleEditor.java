@@ -2,81 +2,73 @@ package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
 import workbench.SimpleDocumentListener;
+import wikidata.WikidataIds;
 import wikidata.ui.WikidataLinks;
 import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.Selection;
+import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementFieldSemantics;
+import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.rule.RuleNode;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The triple a class describes: subject · property · object.
+ * The triple a class describes: subject · property · object. One component, one title,
+ * one set of rows, for every kind that describes one.
  *
- * <p>Source, Statement and Owned classes all describe one. {@code RuleDirection} makes it
- * literal — it has a method called {@code triplePattern} and emits exactly the two
- * arrangements, so a source class's membership is not "a type filter" but a triple with a
- * direction saying which end its members occupy. What differs by kind is only which tags
- * are authored here and which are settled elsewhere.
+ * <p>Every kind is shown the same rows and asked with the same two calls, {@link #show}
+ * and {@link #applyEdits}. What differs is only which elements the kind gets to ANSWER,
+ * and the component works that out from the class itself rather than being told:
  *
- * <p>Both ends ask the same question and are the same control; see {@link
- * EntityEndEditor}. The subject's POPULATION lives here too rather than beside the box:
- * naming the class whose members are the subjects is a way of bounding the subject end,
- * and it was the one leg of the triple with a control of its own outside the triple.
+ * <ul>
+ *   <li>an element that is GIVEN is shown and not editable — a source class's members
+ *       are its subject, and every element of an owned class's triple is authored on the
+ *       field that produces it;</li>
+ *   <li>where a kind may bound an end in fewer ways, the ways it may not use are not
+ *       offered, so they are not editable either.</li>
+ * </ul>
  *
- * <p>An OWNED class is shown its triples rather than asked them ({@link #producedAt}).
- * Its property and object are settled by which field, on which class, declares the
- * ownership — so they are authored there and only read here, and a class produced at
- * several sites occupies several triples.
- *
- * <p>A SOURCE class occupies one END of its triple ({@link #membership}): its members
- * are the subject, and it authors the property and the objects. Those were three
- * controls — "Relation property", "Wikidata type/class" and "Also include types" — over
- * what is one ordered list, and the second box was labelled by asking whether the
- * property was P31. One list, one row.
+ * <p>It was three implementations behind one name: a {@code CardLayout} over an authored
+ * card, a membership card and a produced card, with the property field written twice and
+ * the object end three times, two different border titles, and a separate public entry
+ * point per kind so that every panel had to know which one it was. That is the same "one
+ * thing, several spellings" the triple exists to remove, committed inside the component
+ * meant to remove it.
  */
 final class TripleEditor extends JPanel {
 
-    /** One place a class is produced: the owning class and the field that produces it. */
-    record Site(String ownerClass, String fieldName) { }
+    private static final String TITLE = "Triple — subject · property · object";
 
     private final EntityEndEditor subject = new EntityEndEditor("Subject",
             "Bounding the subject restricts WHOSE statements are collected.");
     private final EntityEndEditor object = new EntityEndEditor("Object",
             "Bounding the object restricts WHICH statements are collected.");
     private final JTextField property = new JTextField(6);
+    private final JLabel propertyLabel = new JLabel(" ");
     private final JComboBox<String> population = new JComboBox<>();
+    private final JPanel propertyActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    private final JPanel objectActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    /** Says which elements are given, and by what. Blank when the kind authors them. */
+    private final JLabel given = new JLabel(" ");
 
-    private final JPanel authored = new JPanel(new GridBagLayout());
-    private final JPanel produced = new JPanel();
-    private final JPanel membership = new JPanel(new GridBagLayout());
-    private final JTextField membershipProperty = new JTextField(6);
-    private final JLabel membershipPropertyLabel = new JLabel(" ");
-    private final JTextField membershipTargets = new JTextField(22);
-    private final JLabel membershipTargetLabel = new JLabel("(not selected)");
-    private final JPanel membershipPropertyActions =
-            new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
-    private final JPanel membershipObjectActions =
-            new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
-
-    TripleEditor(String title) {
-        super(new CardLayout());
-        setBorder(BorderFactory.createTitledBorder(title));
-        produced.setLayout(new BoxLayout(produced, BoxLayout.Y_AXIS));
-        add(authored, "authored");
-        add(produced, "produced");
-        add(membership, "membership");
-        buildMembershipRows();
+    TripleEditor() {
+        super(new GridBagLayout());
+        setBorder(BorderFactory.createTitledBorder(TITLE));
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(3, 4, 3, 4);
@@ -87,228 +79,246 @@ final class TripleEditor extends JPanel {
         wide.weightx = 1;
 
         wide.gridy = 0;
-        authored.add(subject, wide);
+        add(subject, wide);
         population.setToolTipText(
                 "Optional: the already-extracted class whose statements are read, "
                         + "outgoing from its members. Leave blank to discover subjects "
                         + "incoming from the property instead — which then requires the "
                         + "objects to be bounded, since they become the starting set.");
-        GridBagUtils.labeledRow(authored, c, 1, "Subject population:", population);
+        GridBagUtils.labeledRow(this, c, 1, "Subject population:", population);
+
+        JPanel propertyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         property.setToolTipText("The property this triple is about.");
-        GridBagUtils.labeledRow(authored, c, 2, "Property:", property);
+        propertyRow.add(property);
+        propertyRow.add(propertyActions);
+        propertyRow.add(propertyLabel);
+        GridBagUtils.labeledRow(this, c, 2, "Property:", propertyRow);
+
+        JPanel objectRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        objectRow.add(object);
+        objectRow.add(objectActions);
         GridBagConstraints objectCell = (GridBagConstraints) wide.clone();
         objectCell.gridy = 3;
-        authored.add(object, objectCell);
-    }
+        add(objectRow, objectCell);
 
-    /**
-     * The triples this class's members occupy, none of them authored here.
-     *
-     * <p>Named the same way as the authored ones, because they are the same construct:
-     * the members are one end, the production site is the property, and the owner is the
-     * other end. Where each is authored is said, because that is the only place it can
-     * be changed.
-     */
-    void producedAt(List<Site> sites) {
-        produced.removeAll();
-        List<Site> shown = sites == null ? List.of() : sites;
-        if (shown.isEmpty()) {
-            produced.add(new JLabel("<html><i>Produced nowhere yet. Add an ENTITY field "
-                    + "to the owning class and select this class as its target.</i></html>"));
-        }
-        for (Site site : shown) {
-            JPanel one = new JPanel(new GridBagLayout());
-            GridBagConstraints c = new GridBagConstraints();
-            c.insets = new Insets(2, 4, 2, 4);
-            c.anchor = GridBagConstraints.WEST;
-            c.fill = GridBagConstraints.HORIZONTAL;
-            GridBagUtils.labeledRow(one, c, 0, "Subject:",
-                    new JLabel("<html><i>this class's members</i></html>"));
-            GridBagUtils.labeledRow(one, c, 1, "Property:",
-                    new JLabel("<html><b>" + site.ownerClass() + "." + site.fieldName()
-                            + "</b> — <i>authored on " + site.ownerClass()
-                            + ", where the field is</i></html>"));
-            GridBagUtils.labeledRow(one, c, 2, "Object:",
-                    new JLabel("<html><b>" + site.ownerClass()
-                            + "</b> — <i>the owner each part is a view of</i></html>"));
-            JPanel wrapper = new JPanel(new BorderLayout());
-            wrapper.add(one, BorderLayout.CENTER);
-            produced.add(wrapper);
-        }
-        ((CardLayout) getLayout()).show(this, "produced");
-        revalidate();
-        repaint();
-    }
+        GridBagConstraints givenCell = (GridBagConstraints) wide.clone();
+        givenCell.gridy = 4;
+        add(given, givenCell);
 
-    private void buildMembershipRows() {
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(3, 4, 3, 4);
-        c.anchor = GridBagConstraints.WEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
-
-        GridBagUtils.labeledRow(membership, c, 0, "Subject:",
-                new JLabel("<html><i>this class's members</i></html>"));
-
-        JPanel propertyRow = new JPanel(new java.awt.FlowLayout(
-                java.awt.FlowLayout.LEFT, 4, 0));
-        membershipProperty.setToolTipText("<html>The property that puts an entity in "
-                + "this class. <b>P31</b> = instance of; any property works, e.g. "
-                + "<b>P166</b> = award received, <b>P39</b> = position held.</html>");
-        propertyRow.add(membershipProperty);
-        propertyRow.add(membershipPropertyActions);
-        propertyRow.add(membershipPropertyLabel);
-        GridBagUtils.labeledRow(membership, c, 1, "Property:", propertyRow);
-
-        // One row, whatever the property is. The QIDs used to be two boxes — one
-        // "type/class" and one "also include" — and the first was relabelled "Relation
-        // target" when the property was not P31, which is the P31 literal answering a
-        // question about wording. They are the objects this triple points at.
-        JPanel objectRow = new JPanel(new java.awt.FlowLayout(
-                java.awt.FlowLayout.LEFT, 4, 0));
-        membershipTargets.setToolTipText("<html>The entities this property must point "
-                + "into, space-separated. An entity is a member when the property "
-                + "reaches ANY of them.</html>");
-        objectRow.add(membershipTargets);
-        objectRow.add(membershipObjectActions);
-        objectRow.add(membershipTargetLabel);
-        GridBagUtils.labeledRow(membership, c, 2, "Objects:", objectRow);
-
-        membershipPropertyActions.setOpaque(false);
-        membershipObjectActions.setOpaque(false);
-        WikidataLinks.linkify(membershipTargetLabel,
-                () -> firstTarget().isBlank() ? "" : firstTarget());
-        WikidataLinks.linkify(membershipPropertyLabel,
-                () -> RuleNode.cleanPid(membershipProperty.getText()));
+        propertyActions.setOpaque(false);
+        objectActions.setOpaque(false);
+        WikidataLinks.linkify(propertyLabel, () -> RuleNode.cleanPid(property.getText()));
         // A hand-edited PID is no longer the property whose label is shown.
-        membershipProperty.getDocument().addDocumentListener(
-                SimpleDocumentListener.of(() -> membershipPropertyLabel.setText(" ")));
+        property.getDocument().addDocumentListener(
+                SimpleDocumentListener.of(() -> propertyLabel.setText(" ")));
     }
 
-    /** The buttons that fill these rows; their actions belong to the owning panel. */
-    void membershipActions(List<javax.swing.JComponent> propertyActions,
-            List<javax.swing.JComponent> objectActions) {
-        membershipPropertyActions.removeAll();
-        membershipObjectActions.removeAll();
-        for (javax.swing.JComponent action : propertyActions) {
-            membershipPropertyActions.add(action);
+    /** The buttons that fill these rows; the dialogs behind them are the panel's. */
+    void actions(List<JComponent> forProperty, List<JComponent> forObject) {
+        propertyActions.removeAll();
+        objectActions.removeAll();
+        for (JComponent action : forProperty) propertyActions.add(action);
+        for (JComponent action : forObject) objectActions.add(action);
+    }
+
+    /** This class's triple, with whatever it does not author shown and disabled. */
+    void show(GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null) {
+            clear();
+            return;
         }
-        for (javax.swing.JComponent action : objectActions) {
-            membershipObjectActions.add(action);
-        }
-    }
-
-    /**
-     * A source class's triple: its members are the subject, and it authors the property
-     * and the objects.
-     */
-    void membership(String propertyPid, String propertyLabel, List<String> targets,
-            String targetLabel) {
-        membershipProperty.setText(propertyPid == null || propertyPid.isBlank()
-                ? MembershipPattern.DEFAULT_PROPERTY : propertyPid);
-        membershipPropertyLabel.setText(
-                propertyLabel == null || propertyLabel.isBlank() ? " " : propertyLabel);
-        membershipTargets.setText(String.join(" ",
-                targets == null ? List.<String>of() : targets));
-        membershipTargetLabel.setText(targetLabel == null || targetLabel.isBlank()
-                ? "(not selected)" : targetLabel);
-        ((CardLayout) getLayout()).show(this, "membership");
-    }
-
-    /** The property, defaulted to P31 the way the membership rule reads a blank one. */
-    String membershipProperty() {
-        String pid = RuleNode.cleanPid(membershipProperty.getText());
-        return pid.isBlank() ? MembershipPattern.DEFAULT_PROPERTY : pid;
-    }
-
-    void membershipProperty(String pid, String label) {
-        membershipProperty.setText(pid == null ? "" : pid);
-        membershipPropertyLabel.setText(label == null || label.isBlank() ? " " : label);
-    }
-
-    String membershipPropertyLabel() {
-        return membershipPropertyLabel.getText() == null
-                ? "" : membershipPropertyLabel.getText().trim();
-    }
-
-    /** Every QID typed into the objects row, in order, without repeats. */
-    List<String> membershipTargets() {
-        java.util.List<String> qids = new java.util.ArrayList<>();
-        for (String token : membershipTargets.getText().trim().split("[,;\\s]+")) {
-            String qid = RuleNode.cleanQid(token);
-            if (!qid.isBlank() && !qids.contains(qid)) qids.add(qid);
-        }
-        return qids;
-    }
-
-    void membershipTargets(List<String> qids, String targetLabel) {
-        membershipTargets.setText(String.join(" ",
-                qids == null ? List.<String>of() : qids));
-        if (targetLabel != null) {
-            membershipTargetLabel.setText(
-                    targetLabel.isBlank() ? "(not selected)" : targetLabel);
+        List<String> vocabularies = vocabularies(project);
+        subject.vocabularies(() -> vocabularies);
+        object.vocabularies(() -> vocabularies);
+        if (clazz.ownedClass()) {
+            showProduced(clazz, project);
+        } else if (clazz.reifiesStatements()) {
+            showStatement(clazz, project);
+        } else {
+            showMembership(clazz);
         }
     }
 
-    String firstTarget() {
-        List<String> qids = membershipTargets();
-        return qids.isEmpty() ? "" : qids.get(0);
+    /** Writes back whatever this class's kind authors here, and nothing else. */
+    void applyEdits(GeneratedClassModel clazz) {
+        if (clazz == null || clazz.ownedClass()) return;
+        if (clazz.reifiesStatements() || !subjectPopulation().isBlank()) {
+            applyStatement(clazz);
+        } else {
+            applyMembership(clazz);
+        }
     }
 
-    void vocabularies(List<String> names) {
-        List<String> offered = names == null ? List.of() : names;
-        subject.vocabularies(() -> offered);
-        object.vocabularies(() -> offered);
+    // ---- Statement: every element authored ----
+
+    private void showStatement(GeneratedClassModel clazz, GeneratedProjectModel project) {
+        StatementClassSource source = clazz.statementSource();
+        boolean projectionRequired = project != null && project.acquiresInstances();
+
+        StatementFieldSemantics.SubjectDestination destination =
+                StatementFieldSemantics.subjectDestination(clazz);
+        subject.destination(destination.fieldName(),
+                targetClassOf(clazz, destination.fieldName()),
+                valueKindOf(clazz, destination.fieldName()),
+                destination.route().phrase(), projectionRequired);
+        subject.editable(true);
+        subject.allowedModes(EntityEndEditor.allModes());
+        subject.show(source == null ? null : source.subjectBound());
+
+        population.setEnabled(true);
+        subjectPopulation(candidates(clazz, project),
+                source == null ? "" : source.sourceClassName());
+
+        property.setEnabled(true);
+        property.setText(source == null ? "" : source.propertyPid());
+        propertyLabel.setText(source == null || source.propertyLabel().isBlank()
+                ? " " : source.propertyLabel());
+
+        String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
+        object.destination(objectField, targetClassOf(clazz, objectField),
+                valueKindOf(clazz, objectField), "the value the statement points at",
+                projectionRequired);
+        object.editable(true);
+        object.allowedModes(EntityEndEditor.allModes());
+        object.show(source == null ? null : source.objectBound());
+
+        given.setText(" ");
     }
 
-    void subjectDestination(String fieldName, String targetClass, String valueKind,
-            String howItIsFilled, boolean required) {
-        subject.destination(fieldName, targetClass, valueKind, howItIsFilled, required);
+    private void applyStatement(GeneratedClassModel clazz) {
+        String sourceClass = subjectPopulation();
+        String pid = RuleNode.cleanPid(property.getText());
+        // A blank property AND no source class is not a statement class. A property
+        // alone IS one: every shipped statement class discovers its subjects from the
+        // property and names no source class.
+        if (pid.isBlank() && sourceClass.isBlank()) {
+            clazz.statementSource(null);
+            return;
+        }
+        StatementClassSource prior = clazz.statementSource();
+        // Copying carries the declarations this component does not edit, by
+        // construction rather than by a list maintained here.
+        StatementClassSource next = prior == null
+                ? new StatementClassSource(sourceClass, pid) : prior.copy();
+        next.sourceClassName(sourceClass);
+        next.propertyPid(pid);
+        next.subjectBound(subject.bound());
+        next.objectBound(object.bound());
+        clazz.statementSource(next);
     }
 
-    void objectDestination(String fieldName, String targetClass, String valueKind,
-            String howItIsFilled, boolean required) {
-        object.destination(fieldName, targetClass, valueKind, howItIsFilled, required);
-    }
+    // ---- Source: the members are given; the property and the objects are authored ----
 
-    /**
-     * The classes whose members could be this triple's subjects, and the one chosen.
-     *
-     * <p>A name the list does not offer is added rather than dropped: what the control
-     * shows is what gets written, so silently landing on something else would delete the
-     * reference on the next apply.
-     */
-    void subjectPopulation(List<String> classes, String selected) {
+    private void showMembership(GeneratedClassModel clazz) {
+        EntityBound membership = clazz.membership();
+
+        subject.given(clazz.className(), "an instance of this class IS this end");
+        subject.show(EntityBound.unbounded());
+        subject.allowedModes(EntityEndEditor.allModes());
+        subject.editable(false);
+
         population.removeAllItems();
         population.addItem("");
-        for (String name : classes == null ? List.<String>of() : classes) {
-            if (name != null && !name.isBlank()) population.addItem(name);
-        }
-        String chosen = selected == null ? "" : selected.trim();
-        if (!chosen.isBlank()) {
-            boolean offered = false;
-            for (int i = 0; i < population.getItemCount(); i++) {
-                if (chosen.equals(population.getItemAt(i))) offered = true;
-            }
-            if (!offered) population.addItem(chosen);
-            population.setSelectedItem(chosen);
-        }
+        population.setEnabled(false);
+
+        property.setEnabled(true);
+        property.setText(membership.relationPid().isBlank()
+                ? MembershipPattern.DEFAULT_PROPERTY : membership.relationPid());
+        propertyLabel.setText(clazz.instanceMapping().propertyLabel().isBlank()
+                ? " " : clazz.instanceMapping().propertyLabel());
+
+        object.given(clazz.instanceMapping().displaySource(),
+                "the entities this property must point into");
+        object.editable(true);
+        object.allowedModes(EntityEndEditor.explicitOnly());
+        object.show(EntityBound.explicit(membership.qids()));
+
+        given.setText("<html><i>The subject is given: an instance of this class IS the "
+                + "entity at that end.</i></html>");
     }
 
-    void show(String propertyPid, EntityBound subjectBound, EntityBound objectBound) {
-        property.setText(propertyPid == null ? "" : propertyPid);
-        subject.show(subjectBound);
-        object.show(objectBound);
+    private void applyMembership(GeneratedClassModel clazz) {
+        String pid = RuleNode.cleanPid(property.getText());
+        if (!WikidataIds.isPid(pid)) pid = MembershipPattern.DEFAULT_PROPERTY;
+        List<String> targets = objectQids();
+        clazz.membership(targets.isEmpty()
+                ? EntityBound.unbounded()
+                : EntityBound.relation(pid, targets,
+                        clazz.membership().includeDescendants()));
+        // The property's label travels with the property. A plain membership has the
+        // one named default; anything else keeps what "Find…" or a load resolved.
+        clazz.instanceMapping().propertyLabel(
+                MembershipPattern.relational(pid)
+                        ? propertyLabelText()
+                        : MembershipPattern.DEFAULT_PROPERTY_LABEL);
     }
+
+    // ---- Owned: every element given, by the field that produces it ----
+
+    private void showProduced(GeneratedClassModel clazz, GeneratedProjectModel project) {
+        List<MembershipPattern.OwnedBy> sites =
+                MembershipPattern.ownedBy(clazz, project);
+        population.removeAllItems();
+        population.addItem("");
+        population.setEnabled(false);
+        subject.editable(false);
+        object.editable(false);
+        property.setEnabled(false);
+
+        subject.given(clazz.className(), "an instance of this class IS this end");
+        subject.show(EntityBound.unbounded());
+        object.show(EntityBound.unbounded());
+
+        if (sites.isEmpty()) {
+            property.setText("");
+            propertyLabel.setText(" ");
+            object.given("", "no owner yet");
+            given.setText("<html><i>Produced nowhere yet. Add an ENTITY field to the "
+                    + "owning class and select this class as its target.</i></html>");
+            return;
+        }
+        MembershipPattern.OwnedBy first = sites.get(0);
+        property.setText(first.ownerClass() + "." + first.fieldName());
+        propertyLabel.setText(" ");
+        object.given(first.ownerClass(), "the owner each part is a view of");
+
+        StringBuilder note = new StringBuilder("<html><i>Given: authored on ")
+                .append(first.ownerClass()).append(", where the field is.");
+        if (sites.size() > 1) {
+            note.append(" Also produced at ");
+            for (int i = 1; i < sites.size(); i++) {
+                if (i > 1) note.append(", ");
+                note.append(sites.get(i).ownerClass()).append('.')
+                        .append(sites.get(i).fieldName());
+            }
+            note.append('.');
+        }
+        given.setText(note.append("</i></html>").toString());
+    }
+
+    // ---- What the rows say ----
 
     void clear() {
         property.setText("");
+        propertyLabel.setText(" ");
         population.removeAllItems();
         subject.show(null);
         object.show(null);
+        given.setText(" ");
     }
 
+    /** The property as typed — blank is blank, because blank means something here. */
     String propertyPid() {
         return RuleNode.cleanPid(property.getText());
+    }
+
+    void propertyPid(String pid, String label) {
+        property.setText(pid == null ? "" : pid);
+        propertyLabel.setText(label == null || label.isBlank() ? " " : label);
+    }
+
+    String propertyLabelText() {
+        return propertyLabel.getText() == null ? "" : propertyLabel.getText().trim();
     }
 
     String subjectPopulation() {
@@ -316,11 +326,86 @@ final class TripleEditor extends JPanel {
         return selected == null ? "" : selected.toString().trim();
     }
 
+    /** What each end currently says, as one value. */
     EntityBound subjectBound() {
         return subject.bound();
     }
 
     EntityBound objectBound() {
         return object.bound();
+    }
+
+    /** The objects, as the QIDs they are. */
+    List<String> objectQids() {
+        return new ArrayList<>(object.bound().qids());
+    }
+
+    void objectQids(List<String> qids, String targetLabel) {
+        object.show(EntityBound.explicit(qids == null ? List.of() : qids));
+        if (targetLabel != null) {
+            object.given(targetLabel, "the entities this property must point into");
+        }
+    }
+
+    String firstObjectQid() {
+        List<String> qids = objectQids();
+        return qids.isEmpty() ? "" : qids.get(0);
+    }
+
+    // ---- What it needs to know, asked of the model ----
+
+    private void subjectPopulation(List<String> classes, String selected) {
+        population.removeAllItems();
+        population.addItem("");
+        for (String name : classes) {
+            if (name != null && !name.isBlank()) population.addItem(name);
+        }
+        String chosen = selected == null ? "" : selected.trim();
+        if (chosen.isBlank()) return;
+        boolean offered = false;
+        for (int i = 0; i < population.getItemCount(); i++) {
+            if (chosen.equals(population.getItemAt(i))) offered = true;
+        }
+        // A name the project cannot currently list is added rather than dropped: what
+        // the control shows is what gets written.
+        if (!offered) population.addItem(chosen);
+        population.setSelectedItem(chosen);
+    }
+
+    private static List<String> candidates(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        List<String> names = new ArrayList<>();
+        if (project == null) return names;
+        for (GeneratedClassModel candidate : project.classes()) {
+            if (candidate == null || candidate.className().isBlank()) continue;
+            if (candidate.className().equals(clazz.className())) continue;
+            names.add(candidate.className());
+        }
+        return names;
+    }
+
+    private static List<String> vocabularies(GeneratedProjectModel project) {
+        List<String> names = new ArrayList<>();
+        if (project == null) return names;
+        for (Selection selection : project.selections()) {
+            if (selection instanceof VocabularySelection) names.add(selection.name());
+        }
+        return names;
+    }
+
+    private static String targetClassOf(GeneratedClassModel clazz, String fieldName) {
+        return clazz.fields().stream()
+                .filter(field -> field != null && fieldName != null
+                        && fieldName.equals(field.name()))
+                .findFirst().map(field -> field.entityClassName()).orElse("");
+    }
+
+    private static String valueKindOf(GeneratedClassModel clazz, String fieldName) {
+        return clazz.fields().stream()
+                .filter(field -> field != null && fieldName != null
+                        && fieldName.equals(field.name()))
+                .findFirst()
+                .map(field -> field.type() == null ? "" : field.type().name())
+                .orElse("");
     }
 }

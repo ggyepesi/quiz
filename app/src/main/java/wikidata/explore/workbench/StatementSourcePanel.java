@@ -48,7 +48,6 @@ public class StatementSourcePanel extends JPanel {
     private GeneratedProjectModel projectModel;
 
     private Consumer<Void> afterChange = ignored -> {};
-    private Supplier<List<String>> sourceClassCandidates = List::of;
 
     private static final String ANY = "Anything";
     private static final String THESE_ENTITIES = "These entities";
@@ -65,8 +64,7 @@ public class StatementSourcePanel extends JPanel {
     // The subject's POPULATION was the one leg with a control outside the box the box
     // was named after: naming the class whose members are the subjects is a way of
     // bounding the subject end, not a separate question asked beside it.
-    private final TripleEditor triple =
-            new TripleEditor("Statement triple — subject · property · object");
+    private final TripleEditor triple = new TripleEditor();
     private static final String NO_VALUE_DOMAIN = "(none)";
     private final JComboBox<String> valueDomainBox = new JComboBox<>();
     // One control per end, so the alternatives cannot be configured together. They used
@@ -111,12 +109,6 @@ public class StatementSourcePanel extends JPanel {
                 afterChange == null ? ignored -> {} : afterChange;
     }
 
-    public void sourceClassCandidates(
-            Supplier<List<String>> candidates) {
-
-        sourceClassCandidates =
-                candidates == null ? List::of : candidates;
-    }
 
     /**
      * The project is needed both to resolve source-class names and to derive the
@@ -172,35 +164,12 @@ public class StatementSourcePanel extends JPanel {
      * all, from the field editor.
      */
     private void refreshTriple() {
-        // Every authored route, not only the declared-subject one. A class settling its
-        // subject through a participants collection was reported as unconfigured, which
-        // told the reader a domain that generates could not.
-        StatementFieldSemantics.SubjectDestination subject =
-                StatementFieldSemantics.subjectDestination(clazz);
-        // The validator's own predicate, not a second reading of the same idea.
-        boolean projectionRequired =
-                projectModel != null && projectModel.acquiresInstances();
-        triple.subjectDestination(subject.fieldName(),
-                targetClassOf(subject.fieldName()), valueKindOf(subject.fieldName()),
-                subject.route().phrase(), projectionRequired);
-        String objectField = StatementFieldSemantics.statementValueFieldName(clazz);
-        triple.objectDestination(objectField, targetClassOf(objectField),
-                valueKindOf(objectField), "the value the statement points at",
-                projectionRequired);
-
-        java.util.List<String> vocabularies = projectModel == null ? java.util.List.of()
-                : projectModel.selections().stream()
-                        .filter(selection -> selection instanceof wikidata.explore.model.VocabularySelection)
-                        .map(wikidata.explore.model.Selection::name)
-                        .toList();
-        triple.vocabularies(vocabularies);
-
-        StatementClassSource source = clazz == null ? null : clazz.statementSource();
-        triple.subjectPopulation(subjectPopulationCandidates(),
-                source == null ? "" : source.sourceClassName());
-        triple.show(source == null ? "" : source.propertyPid(),
-                source == null ? null : source.subjectBound(),
-                source == null ? null : source.objectBound());
+        // Everything this box needs, it asks of the class: which elements this kind
+        // authors, where each end is projected, which vocabularies exist, which classes
+        // could populate the subject. The panel used to gather all of that and hand it
+        // over in five calls, which is how the same component came to have a different
+        // entry point per kind.
+        triple.show(clazz, projectModel);
     }
 
     /** The placeholder class a leg's field is typed as, or blank when it names none. */
@@ -235,37 +204,17 @@ public class StatementSourcePanel extends JPanel {
 
         header.applyEdits();
 
-        String sourceClass = triple.subjectPopulation();
-        String statementPid = triple.propertyPid();
-
         boolean wasStatementClass = clazz.reifiesStatements();
 
-        // The source class is OPTIONAL: a blank one means subjects are discovered
-        // directly from the statement property (guarded by a value domain). Only a
-        // blank property AND blank source class means "not a statement class" — a
-        // set property alone is enough, so we must NOT null the source in that case
-        // (doing so silently reverted a discovered-subject statement class, e.g.
-        // the Oscars Nomination, to a plain class on every applyEdits).
-        if (statementPid.isBlank() && sourceClass.isBlank()) {
-            clazz.statementSource(null);
-        } else {
-            // Copying the prior source carries the declarations this panel does not
-            // edit — the value Selection (VOCABULARY domain) among them — so they
-            // cannot be dropped here by being forgotten.
-            StatementClassSource prior = clazz.statementSource();
-            StatementClassSource next = prior == null
-                    ? new StatementClassSource(sourceClass, statementPid)
-                    : prior.copy();
-            next.sourceClassName(sourceClass);
-            next.propertyPid(statementPid);
-            // Each end reports ONE value, from the same editor. There is no state in
-            // which two bounds compete, so nothing here has to clear the loser.
-            next.subjectBound(triple.subjectBound());
-            next.objectBound(triple.objectBound());
+        // The triple writes its own three elements, and the rule that a blank property
+        // AND no source class means "not a statement class" travels with them.
+        triple.applyEdits(clazz);
 
-            next.graphExpansionPolicy((GraphExpansionPolicy)
-                    graphExpansionBox.getSelectedItem());
-            clazz.statementSource(next);
+        // Graph discovery is not part of saying what the statement IS, so it stays
+        // here — and it can only be recorded on a source that still exists.
+        if (clazz.statementSource() != null) {
+            clazz.statementSource().graphExpansionPolicy(
+                    (GraphExpansionPolicy) graphExpansionBox.getSelectedItem());
         }
 
 
@@ -279,16 +228,6 @@ public class StatementSourcePanel extends JPanel {
         afterChange.accept(null);
     }
 
-    /** The classes whose members could be this triple's subjects — never this one. */
-    private java.util.List<String> subjectPopulationCandidates() {
-        java.util.List<String> names = new java.util.ArrayList<>();
-        for (String name : sourceClassCandidates.get()) {
-            if (name == null || name.isBlank()) continue;
-            if (clazz != null && name.equals(clazz.className())) continue;
-            names.add(name);
-        }
-        return names;
-    }
 
     private void refreshValueDomainChoices(String selected) {
         valueDomainBox.removeAllItems();

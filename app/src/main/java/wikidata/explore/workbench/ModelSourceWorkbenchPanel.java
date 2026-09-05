@@ -152,13 +152,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         classSourcePanel.setProjectModel(projectModel);
 
-        statementSourcePanel.sourceClassCandidates(
-                () -> projectModel.classes()
-                                  .stream()
-                                  .map(
-                                          GeneratedClassModel::className)
-                                  .toList());
-
         statementSourcePanel.setProjectModel(
                 projectModel);
         buildUi();
