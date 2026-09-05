@@ -165,9 +165,11 @@ class StatementSourcePanelTest {
         StatementSourcePanel panel = new StatementSourcePanel();
         panel.setProjectModel(project);
         panel.edit(prize);
-        Field field = StatementSourcePanel.class.getDeclaredField("classNameField");
-        field.setAccessible(true);
-        ((JTextField) field.get(panel)).setText("Nobel Prize");
+        // Found in the panel rather than named on it: the class name moved into
+        // ClassHeaderEditor when the four kind editors stopped each having their own,
+        // and this test is about what a rename DOES, not about which class holds the
+        // field it is typed into.
+        nameFieldIn(panel).setText("Nobel Prize");
         panel.applyEdits();
 
         assertEquals("NobelPrize", prize.className());
@@ -175,6 +177,18 @@ class StatementSourcePanelTest {
                 "a field target must follow a rename performed in the Statement editor");
     }
 
+
+    /** The class-name field, wherever in the panel it now lives. */
+    private static JTextField nameFieldIn(java.awt.Container root) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof JTextField field) return field;
+            if (child instanceof java.awt.Container container) {
+                JTextField found = nameFieldIn(container);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
 
     /** Every label the panel currently renders, joined. */
     private static String labelTexts(java.awt.Container root) {
