@@ -243,7 +243,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             new wikidata.explore.generation.PipelineContext(
                                     compiledRun, entityApi, genLog, context.cancellation());
                     new wikidata.explore.generation.PipelineExecutor()
-                            .with(new wikidata.explore.generation.ConstructRecordsStep(
+                            .with(wikidata.explore.generation.ConstructRecordsStep.acquiring(
                                     records -> {
                                         try {
                                             return wikidata.explore.transform.CompanionMatch

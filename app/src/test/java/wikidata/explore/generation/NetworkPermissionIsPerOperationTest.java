@@ -38,8 +38,10 @@ class NetworkPermissionIsPerOperationTest {
     @Test void theSemanticWorklistMayAcquireRatherThanMustAcquire() {
         assertEquals(PipelineStep.NetworkUse.OPTIONAL,
                 new SemanticWorklistStep().networkUse());
-        assertEquals(PipelineStep.NetworkUse.OPTIONAL,
-                new ConstructRecordsStep(records -> java.util.Map.of()).networkUse());
+        assertEquals(PipelineStep.NetworkUse.REQUIRED,
+                ConstructRecordsStep.acquiring(records -> java.util.Map.of()).networkUse());
+        assertEquals(PipelineStep.NetworkUse.NONE,
+                ConstructRecordsStep.replaying(java.util.Map.of()).networkUse());
     }
 
     /** A purely local step needs no permission at all. */
@@ -99,12 +101,34 @@ class NetworkPermissionIsPerOperationTest {
                                 new ArrayList<>())));
     }
 
+    /** The real acquiring construction cannot hide behind OPTIONAL under Remap. */
+    @Test void acquiringCompanionSetsAreRefusedBeforeTheirFunctionRuns() {
+        boolean[] called = { false };
+        PipelineContext localReconstruction = new PipelineContext(
+                CompiledPipelineRun.compile(PipelineRequest.remap(model,
+                        GraphCheckpoint.normalized(List.of(), List.of(),
+                                datasource.graph.GraphDiscoveryState.EMPTY,
+                                GenerationRun.Quality.completeQuality(), "sig"))),
+                null, null, null);
+
+        assertThrows(IllegalStateException.class, () -> new PipelineExecutor()
+                .with(ConstructRecordsStep.acquiring(records -> {
+                    called[0] = true;
+                    return java.util.Map.of();
+                }))
+                .run(localReconstruction, PipelineState.over(
+                        GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH,
+                        new ArrayList<>())));
+
+        assertFalse(called[0], "network-capable work was refused before invocation");
+    }
+
     /** Constructing is decided by the graph; a constructed one is not constructed twice. */
     @Test void aConstructedGraphIsNotConstructedAgain() throws Exception {
         List<WikidataDynamicObject> pool = new ArrayList<>(List.of(star()));
 
         PipelineExecutor.Outcome outcome = new PipelineExecutor()
-                .with(new ConstructRecordsStep(records -> java.util.Map.of()))
+                .with(ConstructRecordsStep.replaying(java.util.Map.of()))
                 .run(forbidden(),
                         PipelineState.over(GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, pool));
 

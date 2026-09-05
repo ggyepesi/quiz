@@ -65,7 +65,20 @@ public final class SemanticConvergence {
             Collection<LoadedDeclaration> alreadyLoaded,
             GenerationQualityTracker quality,
             datasource.api.SourceExecutionPlan sourcePlan) {
+        return apply(model, pool, pool, api, log, alreadyLoaded, quality, sourcePlan);
+    }
+
+    public static Result apply(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            List<WikidataDynamicObject> evidence,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<LoadedDeclaration> alreadyLoaded,
+            GenerationQualityTracker quality,
+            datasource.api.SourceExecutionPlan sourcePlan) {
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        List<WikidataDynamicObject> retainedEvidence = evidence == null ? pool : evidence;
         Map<String, LoadedDeclaration> completed = new LinkedHashMap<>();
         if (alreadyLoaded != null) alreadyLoaded.forEach(d -> completed.put(d.key(), d));
         Map<String, LoadedDeclaration> failed = new LinkedHashMap<>();
@@ -132,7 +145,7 @@ public final class SemanticConvergence {
             });
 
             SnapshotEntityKindClassifier.Result stored =
-                    SnapshotEntityKindClassifier.apply(model, pool, pool, sink);
+                    SnapshotEntityKindClassifier.apply(model, pool, retainedEvidence, sink);
             // Stored evidence is read locally above; only the entities that HAD none
             // need asking about, and that is the part a forbidden run does without.
             ReferentKindClassifier.Result remote = api == null
@@ -142,20 +155,23 @@ public final class SemanticConvergence {
                             nameMetadata(sourcePlan));
             classified += stored.classified() + remote.classified();
             kindsClassified.addAll(stored.newlyClassified());
-            Set<String> currentUnavailable = new LinkedHashSet<>(remote.unavailableQids());
-            if (!unresolvedKinds.isEmpty() && quality != null) {
+            Set<String> currentUnavailable = api == null
+                    ? new LinkedHashSet<>(stored.withoutStoredEvidenceQids())
+                    : new LinkedHashSet<>(remote.unavailableQids());
+            if (api != null && !unresolvedKinds.isEmpty() && quality != null) {
                 Set<String> repaired = new LinkedHashSet<>(unresolvedKinds);
                 repaired.removeAll(currentUnavailable);
                 quality.resolved("entity-kind-evidence", repaired);
             }
             unresolvedKinds.clear();
             unresolvedKinds.addAll(currentUnavailable);
-            if (quality != null && !currentUnavailable.isEmpty()) {
+            if (api != null && quality != null && !currentUnavailable.isEmpty()) {
                 quality.failed("entity-kind-evidence", "Entity-kind evidence unavailable",
                         currentUnavailable);
             }
 
-            OwnedComponents.Result made = OwnedComponents.apply(model, pool, null, sink);
+            OwnedComponents.Result made =
+                    OwnedComponents.apply(model, pool, retainedEvidence, sink);
             made.addTo(pool);
             int componentStamps = ReferentClassStamp.apply(model, made.components());
             owned += made.created();

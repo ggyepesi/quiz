@@ -25,6 +25,7 @@ public final class PipelineState {
 
     private GraphCheckpoint.Stage stage;
     private final List<WikidataDynamicObject> pool;
+    private final List<WikidataDynamicObject> evidence;
     private final List<WikidataDynamicObject> records = new ArrayList<>();
     private final List<LoadedDeclaration> loadedDeclarations = new ArrayList<>();
     private GeneratedViewableRuntime runtime;
@@ -40,10 +41,17 @@ public final class PipelineState {
 
     private PipelineState(
             GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool, boolean share) {
+        this(stage, pool, pool, share);
+    }
+
+    private PipelineState(GraphCheckpoint.Stage stage, List<WikidataDynamicObject> pool,
+            List<WikidataDynamicObject> evidence, boolean share) {
         if (stage == null) throw new IllegalArgumentException("A state needs a stage");
         this.stage = stage;
         this.pool = pool == null ? new ArrayList<>()
                 : share ? pool : new ArrayList<>(pool);
+        this.evidence = evidence == null ? this.pool
+                : share ? evidence : new ArrayList<>(evidence);
     }
 
     /**
@@ -68,11 +76,14 @@ public final class PipelineState {
         // objects in place.
         List<WikidataDynamicObject> combined = new ArrayList<>(checkpoint.objects());
         combined.addAll(checkpoint.records());
+        combined.addAll(checkpoint.evidenceObjects());
         List<WikidataDynamicObject> copied = PoolCopy.deepCopy(combined);
         int poolSize = checkpoint.objects().size();
+        int recordEnd = poolSize + checkpoint.records().size();
         PipelineState state = new PipelineState(checkpoint.stage(),
-                new ArrayList<>(copied.subList(0, poolSize)), true);
-        state.records.addAll(copied.subList(poolSize, copied.size()));
+                new ArrayList<>(copied.subList(0, poolSize)),
+                new ArrayList<>(copied.subList(recordEnd, copied.size())), true);
+        state.records.addAll(copied.subList(poolSize, recordEnd));
         state.loadedDeclarations.addAll(checkpoint.loadedDeclarations());
         return state;
     }
@@ -89,6 +100,11 @@ public final class PipelineState {
     /** The graph itself — the live list steps add to and prune. */
     public List<WikidataDynamicObject> pool() {
         return pool;
+    }
+
+    /** The settled graph retained as evidence for local reconstruction. */
+    public List<WikidataDynamicObject> evidence() {
+        return evidence;
     }
 
     /** The statement records construction made, which finalization checks against. */
@@ -144,6 +160,19 @@ public final class PipelineState {
                     "A graph does not go back from " + stage + " to " + reached);
         }
         stage = reached;
+    }
+
+    /**
+     * A runtime the flow has already built, for the step to map through.
+     *
+     * <p>Enrich and Remap build one early on purpose: compiling the model's classes is
+     * slow and proves the model can be compiled at all, so it happens before acquisition
+     * rather than after minutes of fetching. Building a second one to materialize with
+     * would compile the same classes twice and leave the run holding a runtime that did
+     * not produce its own instances.
+     */
+    public void useRuntime(GeneratedViewableRuntime prebuilt) {
+        runtime = prebuilt;
     }
 
     public void materialized(GeneratedViewableRuntime runtime, List<Viewable> instances) {

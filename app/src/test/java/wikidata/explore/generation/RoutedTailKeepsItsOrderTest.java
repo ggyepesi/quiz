@@ -69,7 +69,8 @@ class RoutedTailKeepsItsOrderTest {
     @Test void aStateFromACheckpointDoesNotWriteBackIntoIt() {
         WikidataDynamicObject original = star("Q1");
         GraphCheckpoint checkpoint = new GraphCheckpoint(
-                GraphCheckpoint.Stage.FINAL_GRAPH, List.of(original), List.of(), List.of(),
+                GraphCheckpoint.Stage.FINAL_GRAPH, List.of(original), List.of(),
+                List.of(original), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
 
@@ -105,11 +106,12 @@ class RoutedTailKeepsItsOrderTest {
 
         assertThrows(IllegalArgumentException.class, () -> new GraphCheckpoint(
                 GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, List.of(pooled), List.of(foreign),
-                List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
+                List.of(pooled), List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig"));
         assertThrows(IllegalArgumentException.class, () -> new GraphCheckpoint(
                 GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH, List.of(pooled),
-                List.of(pooled), List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
+                List.of(pooled), List.of(pooled), List.of(),
+                datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig"));
     }
 

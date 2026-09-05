@@ -32,8 +32,11 @@ public final class MaterializeStep implements PipelineStep {
     @Override public String execute(PipelineContext context, PipelineState state)
             throws Exception {
         GenerationPipeline pipeline = new GenerationPipeline();
-        GeneratedViewableRuntime runtime =
-                pipeline.buildRuntime(context.run().request().model());
+        // The one the flow already built, when it built one. Compiling the model's
+        // classes is slow, and a run must carry the runtime that produced its instances
+        // rather than a second one that would have.
+        GeneratedViewableRuntime runtime = state.runtime() != null ? state.runtime()
+                : pipeline.buildRuntime(context.run().request().model());
         List<Viewable> instances = pipeline.materialize(runtime, state.pool());
         state.materialized(runtime, instances);
         return instances.size() + " instance(s) materialized";

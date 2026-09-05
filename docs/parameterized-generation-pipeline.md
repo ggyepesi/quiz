@@ -152,6 +152,7 @@ GraphCheckpoint
   stage
   objects
   constructed records (an identity selection from objects)
+  retained evidence graph (the prior settled graph for local reconstruction)
   loaded declarations
   retained source evidence (on the normalized objects and loaded declarations)
   graph-discovery ledger
@@ -582,10 +583,15 @@ replaces the boolean with `NONE` / `OPTIONAL` / `REQUIRED`, and the executor ref
   discrepancy, in principle; routing Remap onto the step is what makes it true in fact.
 - The subset is chosen by what the context HAS, not by what a step remembers not to call:
   a forbidden run carries no client, so the acquiring half is unreachable.
-- `ConstructRecordsStep` is `OPTIONAL` for the same reason — only companion matching can
-  acquire, and the sets are already a supplier parameter of `StatementTransforms.apply`,
-  so a run that may not acquire replays the ones it cached. That is what makes a Remap
-  from a normalized graph a full reconstruction rather than a partial one.
+- Companion matching is the only acquiring part of construction, so the two operations
+  are explicit: `ConstructRecordsStep.acquiring(...)` is `REQUIRED`, while
+  `replaying(cachedSets)` is `NONE`. No arbitrary function is admitted on the local
+  path. This is what makes acquisition permission enforceable rather than a promise by
+  the caller.
+- A normalized Remap checkpoint carries the prior final graph as retained evidence.
+  Local convergence reads that graph for kind classification and owned-part reuse; a QID
+  for which neither the normalized nor retained graph has evidence remains explicitly
+  unresolved, but is not recorded as a new network failure under acquisition `NONE`.
 
 **Generate is routed end to end.** Construction, the worklist, finalization and
 materialization all run through the executor over ONE `PipelineState`, created where the
@@ -599,9 +605,27 @@ a projection changed, and what the worklist settled or could not. A step that re
 only a number would make its caller re-derive the rest, which is how a second answer gets
 into a run.
 
-Still open: Remap's and Enrich's tails, and Remap onto `SemanticWorklistStep` — which is
-what turns the removed shortcut from a capability into a fact, and changes what Remap
-produces, so it wants Milestone 4's comparison rather than a claim.
+**Remap's and Enrich's tails are routed too.** Both finalize and materialize through the
+executor over one state. Remap's context carries no client, so finalization's local form
+is the only reachable one rather than the one it is trusted to choose; Enrich's carries
+one, so the same step does more because it was given more.
+
+`MaterializeStep` uses a runtime the flow already built, when there is one. Enrich and
+Remap build one before acquisition deliberately — compiling the model's classes is slow
+and proves the model compiles at all, so a failure costs a moment instead of minutes of
+fetching. Building a second one to map through would compile the same classes twice and
+leave the run carrying a runtime that did not produce its own instances.
+
+Still open: Remap onto `SemanticWorklistStep`. That is what turns the removed shortcut
+from a capability into a fact, and it changes what Remap produces — roles stamped and
+kinds settled before parts are composed, where today they are not — so it wants
+Milestone 4's comparison rather than a claim.
+
+**Nothing routed so far has been run against real data.** The suite never reaches WDQS,
+so Generate's four routed phases are green but unverified. Nobel's counts are the
+comparison to make: `total=3367 Name=989 Person=989 LaureatesWithMotivation=716
+NobelPrize=634 Laureate=33 Categories=6`, reproduced byte-identical on 2026-09-04 and so
+a known-good baseline.
 
 ### Milestone 4 — Generate domain
 

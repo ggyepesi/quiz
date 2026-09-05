@@ -11,6 +11,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SemanticConvergenceTest {
 
@@ -87,5 +88,61 @@ class SemanticConvergenceTest {
         assertEquals(java.util.Set.of("P570", "P31"),
                 manifest.propertiesFor("Person"),
                 "P570 acquisition must also bank P31 for disambiguation pruning");
+    }
+
+    /** Local reconstruction distinguishes retained evidence from evidence it lacks. */
+    @Test void localConvergenceUsesPriorEvidenceAndReportsWhatIsStillMissing() {
+        GeneratedProjectModel model = kindModel();
+        WikidataDynamicObject target = new WikidataDynamicObject("Q1", "a nominee");
+        target.type("Nominee");
+        WikidataDynamicObject record = new WikidataDynamicObject("N1", "a nomination");
+        record.type("Nomination");
+        record.put("nominee", target);
+        WikidataDynamicObject evidence = new WikidataDynamicObject("Q1", "a nominee");
+        evidence.type("Nominee");
+        evidence.put("type", new WikidataDynamicObject("Q5", "human"));
+
+        SemanticConvergence.Result resolved = SemanticConvergence.apply(
+                model, new java.util.ArrayList<>(List.of(record, target)), List.of(evidence),
+                null, null, List.of(), new GenerationQualityTracker(), null);
+
+        assertEquals("Person", target.typeName());
+        assertTrue(resolved.unresolvedKindQids().isEmpty());
+
+        WikidataDynamicObject missing = new WikidataDynamicObject("Q2", "another nominee");
+        missing.type("Nominee");
+        WikidataDynamicObject otherRecord =
+                new WikidataDynamicObject("N2", "another nomination");
+        otherRecord.type("Nomination");
+        otherRecord.put("nominee", missing);
+        GenerationQualityTracker quality = new GenerationQualityTracker();
+
+        SemanticConvergence.Result unresolved = SemanticConvergence.apply(
+                model, new java.util.ArrayList<>(List.of(otherRecord, missing)), List.of(),
+                null, null, List.of(), quality, null);
+
+        assertEquals(java.util.Set.of("Q2"), unresolved.unresolvedKindQids());
+        assertTrue(quality.quality().complete(),
+                "not acquiring is a run policy, not a new acquisition failure");
+    }
+
+    private static GeneratedProjectModel kindModel() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        var nominee = nomination.addField(
+                "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nominee.entityClassName("Nominee");
+        model.rootClass(nomination);
+        GeneratedClassModel nomineeClass = new GeneratedClassModel("Nominee");
+        var type = nomineeClass.addField(
+                "type", FieldType.ENTITY, FieldCardinality.SINGLE);
+        type.entityClassName("NomineeType");
+        type.mapping().propertyPid("P31");
+        model.addClass(nomineeClass);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+        model.representationClasses(nomineeClass, List.of("Person"));
+        return model;
     }
 }

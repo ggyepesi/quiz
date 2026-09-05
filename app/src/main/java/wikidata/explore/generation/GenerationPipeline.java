@@ -424,8 +424,15 @@ public class GenerationPipeline {
                 kinds.classified() + " kind(s), " + owned.created() + " owned part(s)");
         steps.started(GenerateDomainPipeline.FINALIZE,
                 "Finalize and validate the transformed graph");
-        DomainFinalization.Result finalization = DomainFinalization.apply(
-                snapshot, compiled, pool, List.of(), null, log);
+        // Through the executor. Remap may not acquire, so the context carries no
+        // client — which is what makes finalization's local form the only reachable one
+        // rather than the one it is trusted to choose.
+        PipelineState tailState =
+                PipelineState.over(GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, pool);
+        PipelineContext tailContext = new PipelineContext(run, null, log, null);
+        tailState.useRuntime(runtime);
+        new PipelineExecutor().with(new FinalizeStep()).run(tailContext, tailState);
+        DomainFinalization.Result finalization = tailState.finalization();
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 restricted + " dropped (required-field)"
@@ -441,13 +448,14 @@ public class GenerationPipeline {
 
         steps.started(GenerateDomainPipeline.MATERIALIZE,
                 "Map the final graph into instances");
-        List<Viewable> instances = materialize(runtime, pool);
+        new PipelineExecutor().with(new MaterializeStep()).run(tailContext, tailState);
+        List<Viewable> instances = tailState.instances();
         steps.completed(GenerateDomainPipeline.MATERIALIZE,
                 instances.size() + " instance(s) materialized");
 
         return new GenerationRun(
                 snapshot, previous.depth(), plan,
-                pool, runtime, instances, rs,
+                pool, tailState.runtime(), instances, rs,
                 previous.loadedDeclarations(), previous.quality(), finalization.coverage(),
                 GenerationRun.SelfReferenceAudit.notRun(),
                 GenerationRun.OwnedCompositionAudit.ran(owned.createdComponents()),
@@ -619,8 +627,16 @@ public class GenerationPipeline {
                         + labels.unavailableQids().size() + " unavailable");
         steps.started(GenerateDomainPipeline.FINALIZE,
                 "Canonicalize, prune, check expectations and build vocabularies");
-        DomainFinalization.Result finalization = DomainFinalization.apply(
-                snapshot, compiled, pool, List.of(), entityApi, log);
+        // Through the executor, over one state carried to materialization. Enrich MAY
+        // acquire, so its context carries the client and finalization can resolve what
+        // it needs — the same step, doing more because it was given more.
+        PipelineState tailState =
+                PipelineState.over(GraphCheckpoint.Stage.CONSTRUCTED_GRAPH, pool);
+        PipelineContext tailContext =
+                new PipelineContext(run, entityApi, log, cancellation);
+        tailState.useRuntime(runtime);
+        new PipelineExecutor().with(new FinalizeStep()).run(tailContext, tailState);
+        DomainFinalization.Result finalization = tailState.finalization();
 
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 finalization.requiredDropped() + " dropped (required-field)"
@@ -633,7 +649,8 @@ public class GenerationPipeline {
 
         steps.started(GenerateDomainPipeline.MATERIALIZE,
                 "Map the final graph into instances");
-        List<Viewable> instances = materialize(runtime, pool);
+        new PipelineExecutor().with(new MaterializeStep()).run(tailContext, tailState);
+        List<Viewable> instances = tailState.instances();
         steps.completed(GenerateDomainPipeline.MATERIALIZE,
                 instances.size() + " instance(s) materialized");
 
@@ -646,7 +663,7 @@ public class GenerationPipeline {
         GenerationRun.Quality finalQuality = reconcileQuality(
                 previous.quality(), quality.quality());
         return new GenerationRun(
-                snapshot, previous.depth(), plan, pool, runtime, instances, null,
+                snapshot, previous.depth(), plan, pool, tailState.runtime(), instances, null,
                 List.copyOf(convergence.completedDeclarations().values()), finalQuality,
                 finalization.coverage(),
                 // Enrich converges semantics, which composes owned parts; it never

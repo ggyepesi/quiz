@@ -342,7 +342,7 @@ public record GenerationRun(
         return remapState == null || remapState.enrichedPool() == null
                         || remapState.enrichedPool().isEmpty()
                 ? checkpoint(graphDiscovery)
-                : GraphCheckpoint.normalized(remapState.enrichedPool(),
+                : GraphCheckpoint.normalized(remapState.enrichedPool(), dynamicObjects,
                         loadedDeclarations, requiredGraphDiscovery(graphDiscovery), quality,
                         wikidata.explore.generation.DomainSave.signature(modelSnapshot));
     }

@@ -15,29 +15,40 @@ import java.util.function.Function;
  * flow's: a graph that already holds constructed records would gain a second copy of
  * every one of them.
  *
- * <p>{@link PipelineStep.NetworkUse#OPTIONAL}, because only one part of it can acquire.
- * Companion matching needs sets a request produces, and everything else — reify,
- * restrictions, inverts, projections — is local. A run that cannot acquire supplies the
- * sets it cached instead, which is exactly what makes a Remap from a normalized graph a
- * full reconstruction rather than a partial one.
+ * <p>Companion matching is the only part that may acquire. That choice is explicit in
+ * the factory: {@link #acquiring(Function)} is REQUIRED network work, while
+ * {@link #replaying(Map)} is wholly local. An arbitrary function can therefore never
+ * hide behind OPTIONAL in a Remap.
  */
 public final class ConstructRecordsStep implements PipelineStep {
 
     private final Function<List<WikidataDynamicObject>, Map<String, Set<List<String>>>>
             companionSetsFor;
+    private final NetworkUse networkUse;
 
-    /**
-     * @param companionSetsFor how the companion-match sets are obtained: fetched for a
-     *                         run that may acquire, replayed from cache for one that may
-     *                         not. The difference between fetching and replaying lives
-     *                         here because it is already a parameter of the construct
-     *                         itself — this step does not decide it a second time.
-     */
-    public ConstructRecordsStep(
+    private ConstructRecordsStep(
+            Function<List<WikidataDynamicObject>, Map<String, Set<List<String>>>>
+                    companionSetsFor, NetworkUse networkUse) {
+        this.companionSetsFor = companionSetsFor;
+        this.networkUse = networkUse;
+    }
+
+    /** Construction whose companion sets are acquired from an external source. */
+    public static ConstructRecordsStep acquiring(
             Function<List<WikidataDynamicObject>, Map<String, Set<List<String>>>>
                     companionSetsFor) {
-        this.companionSetsFor = companionSetsFor == null ? records -> Map.of()
-                : companionSetsFor;
+        if (companionSetsFor == null) {
+            throw new IllegalArgumentException("No companion-set acquisition");
+        }
+        return new ConstructRecordsStep(companionSetsFor, NetworkUse.REQUIRED);
+    }
+
+    /** Purely local construction replaying companion sets retained by an earlier run. */
+    public static ConstructRecordsStep replaying(
+            Map<String, Set<List<String>>> companionSets) {
+        Map<String, Set<List<String>>> retained = companionSets == null
+                ? Map.of() : Map.copyOf(companionSets);
+        return new ConstructRecordsStep(records -> retained, NetworkUse.NONE);
     }
 
     @Override public PipelinePhase phase() {
@@ -53,7 +64,7 @@ public final class ConstructRecordsStep implements PipelineStep {
     }
 
     @Override public NetworkUse networkUse() {
-        return NetworkUse.OPTIONAL;
+        return networkUse;
     }
 
     @Override public String execute(PipelineContext context, PipelineState state) {

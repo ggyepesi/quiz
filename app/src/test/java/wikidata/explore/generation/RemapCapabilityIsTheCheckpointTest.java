@@ -51,11 +51,14 @@ class RemapCapabilityIsTheCheckpointTest {
     @Test void aRunKeepingItsEnrichedPoolCanStillBeRebuiltInFull() {
         GenerationRun kept = run(new GenerationRun.RemapState(
                 List.of(star()), Map.of()));
+        GraphCheckpoint checkpoint = kept.remapCheckpoint(ledger());
 
         assertEquals(GraphCheckpoint.Stage.NORMALIZED_SOURCE_GRAPH,
-                kept.remapCheckpoint(ledger()).stage());
+                checkpoint.stage());
         assertEquals(GraphCheckpoint.RemapCapability.FULL_RECONSTRUCTION,
-                kept.remapCheckpoint(ledger()).remapCapability());
+                checkpoint.remapCapability());
+        assertSame(kept.dynamicObjects().getFirst(), checkpoint.evidenceObjects().getFirst(),
+                "local reconstruction retains the settled graph that carries its evidence");
     }
 
     /** After a restart there is only the final graph, and the capability drops. */

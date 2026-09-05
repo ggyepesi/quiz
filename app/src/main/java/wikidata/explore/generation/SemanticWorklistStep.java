@@ -46,8 +46,9 @@ public final class SemanticWorklistStep implements PipelineStep {
 
     @Override public String execute(PipelineContext context, PipelineState state) {
         SemanticConvergence.Result converged = SemanticConvergence.apply(
-                context.run().request().model(), state.pool(), context.entityApi(),
-                context.log(), state.loadedDeclarations(), quality, sourcePlan);
+                context.run().request().model(), state.pool(), state.evidence(),
+                context.entityApi(), context.log(), state.loadedDeclarations(), quality,
+                sourcePlan);
         state.converged(converged);
         state.loadedDeclarations().clear();
         state.loadedDeclarations().addAll(converged.completedDeclarations().values());

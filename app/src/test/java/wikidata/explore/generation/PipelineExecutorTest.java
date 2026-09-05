@@ -52,7 +52,7 @@ class PipelineExecutorTest {
     }
 
     private static GraphCheckpoint checkpoint(GraphCheckpoint.Stage stage) {
-        return new GraphCheckpoint(stage, List.of(), List.of(), List.of(),
+        return new GraphCheckpoint(stage, List.of(), List.of(), List.of(), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
     }
@@ -198,6 +198,30 @@ class PipelineExecutorTest {
 
         assertEquals(GraphCheckpoint.Stage.FINAL_GRAPH, state.stage());
         assertNotNull(state.runtime(), "a runtime was built to map through");
+    }
+
+    /**
+     * A flow that already built a runtime keeps it, rather than compiling twice.
+     *
+     * <p>Enrich and Remap build one before acquisition on purpose: compiling the model's
+     * classes is slow and proves the model compiles at all, so a failure costs a moment
+     * instead of minutes of fetching. Building a second one to map through would compile
+     * the same classes again and leave the run carrying a runtime that did not produce
+     * its own instances.
+     */
+    @Test void materializingUsesTheRuntimeTheFlowAlreadyBuilt() throws Exception {
+        PipelineState state = new PipelineState(
+                GraphCheckpoint.Stage.FINAL_GRAPH, List.of(star()));
+        wikidata.explore.codegen.GeneratedViewableRuntime prebuilt =
+                new GenerationPipeline().buildRuntime(model);
+        state.useRuntime(prebuilt);
+
+        new PipelineExecutor().with(new MaterializeStep()).run(
+                contextFor(PipelineRequest.remap(model,
+                        checkpoint(GraphCheckpoint.Stage.FINAL_GRAPH))), state);
+
+        assertSame(prebuilt, state.runtime(),
+                "the run carries the runtime that produced its instances");
     }
 
     private static WikidataDynamicObject star() {

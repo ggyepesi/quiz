@@ -20,6 +20,7 @@ import java.util.Set;
  *
  * <p>What the checkpoint carries beyond the objects is what a later phase would
  * otherwise have to guess: which constructed objects are the modeled records, which
+ * settled graph supplies retained evidence during local reconstruction, which
  * declarations have been fetched (so acquisition asks only for what is new), what the
  * graph-discovery ledger covers, the run's final-state quality, and the fingerprint of
  * the model that produced it (so a checkpoint is not silently reused under an edited
@@ -29,6 +30,7 @@ public record GraphCheckpoint(
         Stage stage,
         List<WikidataDynamicObject> objects,
         List<WikidataDynamicObject> records,
+        List<WikidataDynamicObject> evidenceObjects,
         List<LoadedDeclaration> loadedDeclarations,
         GraphDiscoveryState graphDiscovery,
         GenerationRun.Quality quality,
@@ -72,6 +74,7 @@ public record GraphCheckpoint(
         if (stage == null) throw new IllegalArgumentException("A checkpoint needs a stage");
         objects = objects == null ? List.of() : List.copyOf(objects);
         records = records == null ? List.of() : List.copyOf(records);
+        evidenceObjects = evidenceObjects == null ? objects : List.copyOf(evidenceObjects);
         if (stage == Stage.NORMALIZED_SOURCE_GRAPH && !records.isEmpty()) {
             throw new IllegalArgumentException(
                     "A normalized checkpoint cannot already contain constructed records");
@@ -99,8 +102,16 @@ public record GraphCheckpoint(
     public static GraphCheckpoint normalized(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
             GenerationRun.Quality quality, String modelSignature) {
-        return new GraphCheckpoint(Stage.NORMALIZED_SOURCE_GRAPH, objects, List.of(), loaded,
-                discovery, quality, modelSignature);
+        return normalized(objects, objects, loaded, discovery, quality, modelSignature);
+    }
+
+    /** A normalized graph plus the settled graph whose retained evidence it may reuse. */
+    public static GraphCheckpoint normalized(List<WikidataDynamicObject> objects,
+            List<WikidataDynamicObject> evidenceObjects, List<LoadedDeclaration> loaded,
+            GraphDiscoveryState discovery, GenerationRun.Quality quality,
+            String modelSignature) {
+        return new GraphCheckpoint(Stage.NORMALIZED_SOURCE_GRAPH, objects, List.of(),
+                evidenceObjects, loaded, discovery, quality, modelSignature);
     }
 
     /** A graph whose modeled records exist but whose semantic work is not settled. */
@@ -108,16 +119,16 @@ public record GraphCheckpoint(
             List<WikidataDynamicObject> records, List<LoadedDeclaration> loaded,
             GraphDiscoveryState discovery, GenerationRun.Quality quality,
             String modelSignature) {
-        return new GraphCheckpoint(Stage.CONSTRUCTED_GRAPH, objects, records, loaded,
-                discovery, quality, modelSignature);
+        return new GraphCheckpoint(Stage.CONSTRUCTED_GRAPH, objects, records, objects,
+                loaded, discovery, quality, modelSignature);
     }
 
     /** A settled graph — a saved snapshot, or the end of a run. */
     public static GraphCheckpoint finalGraph(List<WikidataDynamicObject> objects,
             List<LoadedDeclaration> loaded, GraphDiscoveryState discovery,
             GenerationRun.Quality quality, String modelSignature) {
-        return new GraphCheckpoint(Stage.FINAL_GRAPH, objects, List.of(), loaded, discovery,
-                quality, modelSignature);
+        return new GraphCheckpoint(Stage.FINAL_GRAPH, objects, List.of(), objects, loaded,
+                discovery, quality, modelSignature);
     }
 
     /**
