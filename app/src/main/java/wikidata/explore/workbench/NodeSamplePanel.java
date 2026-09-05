@@ -114,9 +114,6 @@ public class NodeSamplePanel extends JPanel {
 
     private final JPanel resultCards = new JPanel(new CardLayout());
 
-    private final JTextArea sparqlArea =
-            new JTextArea();
-
     public NodeSamplePanel() {
         super(new BorderLayout(4, 4));
         buildUi();
@@ -179,20 +176,12 @@ public class NodeSamplePanel extends JPanel {
 
         installLinkBehavior();
 
-        sparqlArea.setEditable(false);
-        sparqlArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
-
-        JTabbedPane tabs =
-                new JTabbedPane();
-
         failureArea.setEditable(false);
         failureArea.setLineWrap(true);
         failureArea.setWrapStyleWord(true);
         resultCards.add(classResultPanel, "class");
         resultCards.add(new JScrollPane(failureArea), "failure");
         resultCards.add(new JScrollPane(table), "field");
-        tabs.addTab("Results", resultCards);
-        tabs.addTab("SPARQL", new JScrollPane(sparqlArea));
 
         contextLabel.setFont(contextLabel.getFont().deriveFont(Font.BOLD));
 
@@ -218,7 +207,13 @@ public class NodeSamplePanel extends JPanel {
         top.add(hint, BorderLayout.SOUTH);
 
         add(top, BorderLayout.NORTH);
-        add(tabs, BorderLayout.CENTER);
+        // The results, directly — there is no second tab to choose between. A "SPARQL"
+        // tab stood beside them and was only ever cleared, never filled: nothing wrote
+        // the query text into it. Nor should anything have, because the query log
+        // already holds it — a sample's steps carry their request on the log node, which
+        // renders as a link that opens the Wikidata Query Service on that exact query.
+        // A text area here would have been a worse second copy of a thing that exists.
+        add(resultCards, BorderLayout.CENTER);
 
         sampleButton.setEnabled(false);
         cardinalityHintLabel.setVisible(false);
@@ -317,7 +312,6 @@ public class NodeSamplePanel extends JPanel {
         ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
         cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Running class sample...");
-        sparqlArea.setText("");
 
         return query;
     }
@@ -376,7 +370,6 @@ public class NodeSamplePanel extends JPanel {
         ((CardLayout) resultCards.getLayout()).show(resultCards, "field");
         cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Sampling field values...");
-        sparqlArea.setText("");
 
         return new SampleFieldQuery(context, SAMPLE_LIMIT);
     }
@@ -556,7 +549,6 @@ public class NodeSamplePanel extends JPanel {
         classResultPanel.clear();
         tableModel.setRowCount(0);
         failureArea.setText("");
-        sparqlArea.setText("");
         cardinalityHintLabel.setVisible(false);
         contextLabel.setText(" ");
         ((CardLayout) resultCards.getLayout()).show(resultCards, "class");

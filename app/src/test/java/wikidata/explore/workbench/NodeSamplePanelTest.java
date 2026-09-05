@@ -26,6 +26,22 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class NodeSamplePanelTest {
 
+    /**
+     * The query text lives in the query log, not in a tab of its own.
+     *
+     * <p>There was a "SPARQL" tab beside the results, and nothing ever wrote to it — it
+     * was cleared in three places and filled in none. Nor should it have been: a
+     * sample's steps already carry their request on the log node, which renders as a
+     * link that opens the Wikidata Query Service on that exact query. A text area here
+     * would have been a worse second copy of something that exists.
+     */
+    @Test void thereIsNoSecondPlaceForTheQueryText() {
+        NodeSamplePanel sample = new NodeSamplePanel();
+
+        assertNull(find(sample, javax.swing.JTabbedPane.class),
+                "one thing to show, so nothing to choose between");
+    }
+
     /** One renderer — the shared one — and no second table beside it. */
     @Test void aSampledInstanceIsRenderedTheWayAGeneratedOneIs() {
         NodeSamplePanel sample = new NodeSamplePanel();
