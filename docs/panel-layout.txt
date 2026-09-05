@@ -8,21 +8,6 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-  label: Subtype:
-  text: [P31]
-  label: =
-  text: []
-  label: Represent matching entities as:
-  piece: OrderedChoiceList
-    list
-    button: Add  (disabled)
-    button: Remove  (disabled)
-    button: Up  (disabled)
-    button: Down  (disabled)
-    label: Available:
-    combo: 1 item(s)
-  label: Reifies statements of:
-  text: []
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Modelled as:
@@ -56,6 +41,44 @@
     button: Discover subtypes  (disabled)
     button: From parts…  (disabled)
     label: The subject is given: an instance of this class IS the entity at that end.
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 3 item(s)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: birthDate:
+      combo: 2 item(s)
+      label: structuredName:
+      combo: 2 item(s)
+    box: What this would do
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 3 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
+  label: Subtype:
+  text: [P31]
+  label: =
+  text: []
+  label: Represent matching entities as:
+  piece: OrderedChoiceList
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+    label: Available:
+    combo: 1 item(s)
   label: Exclude types:
   text: []
   label: Limit:
@@ -82,31 +105,6 @@
   label: Wikidata id (QID) · Label · Also known as
   label: Additional names:
   check: Add aliases (Also known as)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 3 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
-  piece: ClassIdentityEditor  [Identity]
-    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
-    piece: OrderedChoiceList
-      list
-      button: Add  (disabled)
-      button: Remove  (disabled)
-      button: Up  (disabled)
-      button: Down  (disabled)
-      label: Available:
-      combo: 3 item(s)
-    label: When a key cannot be computed:
-    combo: 3 item(s)
-    box: When the same key occurs
-      label: birthDate:
-      combo: 2 item(s)
-      label: structuredName:
-      combo: 2 item(s)
-    box: What this would do
   label: Current source: items with instance of (not selected)
 
 == Statement class - StatementSourcePanel ==
@@ -163,8 +161,6 @@
       label: category:
       combo: 2 item(s)
     box: What this would do
-  label: When duplicates occur (superseded):
-  combo: 2 item(s)  (disabled)
   piece: DisplayNameEditor
     label: Display name:
     combo: 3 item(s)
@@ -173,6 +169,8 @@
     label: template:
     text: []  (disabled)
     label: These instances have no name of their own — pick Field or Template.
+  label: When duplicates occur (superseded):
+  combo: 2 item(s)  (disabled)
   label: Canonical list:
   combo: 1 item(s)
   box: Derived runtime recipe
@@ -200,13 +198,6 @@
     text: []
     label: Extends:
     combo: 1 item(s)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 2 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Modelled as:
@@ -237,6 +228,29 @@
       combo: 0 item(s)  (disabled)
       label: Bounding the object restricts WHICH statements are collected.
     label: Given: authored on Person, where the field is.
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)  (disabled)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: given:
+      combo: 2 item(s)
+    box: What this would do
+  piece: DisplayNameEditor
+    label: Display name:
+    combo: 3 item(s)
+    label: from field:
+    combo: 2 item(s)  (disabled)
+    label: template:
+    text: []  (disabled)
 
 == Aggregate class - AggregateClassPanel ==
   piece: ClassHeaderEditor
@@ -246,16 +260,6 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-  label: From class:
-  combo: 4 item(s)
-  label: Members field:
-  combo: 2 item(s)
-  piece: OrderedChoiceList  [Grouped from (this class's field ← source class's field)]
-    list
-    button: Add  (disabled)
-    button: Remove  (disabled)
-    label: Available:
-    combo: 1 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -280,5 +284,15 @@
     label: template:
     text: []  (disabled)
     label: These instances have no name of their own — pick Field or Template.
+  label: From class:
+  combo: 4 item(s)
+  label: Members field:
+  combo: 2 item(s)
+  piece: OrderedChoiceList  [Grouped from (this class's field ← source class's field)]
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    label: Available:
+    combo: 1 item(s)
   label: Choices come from compatible fields on this class and its source class.
 

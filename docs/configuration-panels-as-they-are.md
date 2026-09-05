@@ -111,15 +111,23 @@ The only panel in the agreed order.
 6. **Leftovers on screen**: a disabled "When duplicates occur (superseded)" control, and
    an empty grid row in the aggregate panel where the missing-key row used to be.
 
-## The order the design implies
+## The order — agreed, and now what the panels do
 
 ```text
 header      name, alias, extends
-triple      subject · property · object, with the population knobs that qualify it
-identity    the key, and what happens when two candidates share it
+triple      subject · property · object            (absent on an aggregate: no triple)
+identity    the key, what happens when it cannot be computed, and when two share it
 display     how an instance is named
-(reads)     derived recipe, resolved pattern — after the edits, marked as reads
+population  what only this kind acquires with — limit, seeds, exclusions, ranking
+tools       search, discover subtypes, from parts — where they apply
 ```
+
+`OneTriplePerClassTest` fails if a kind assembles them in another order.
+
+**`Reifies statements of` is gone.** It was a free-text field on the source editor that
+made a class a statement class by keystroke — a second editor for the value the triple's
+subject population holds, on the panel for the kind it changed away from. A class's kind
+is not changed from its configuration.
 
 ## Open questions — not decided here
 

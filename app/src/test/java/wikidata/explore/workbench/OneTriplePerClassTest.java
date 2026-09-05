@@ -146,6 +146,95 @@ class OneTriplePerClassTest {
                 "OwnedClassPanel"), shows);
     }
 
+    /**
+     * Every kind assembles the same pieces in the same order.
+     *
+     * <p>Four editors used to lay them out four ways — the triple third on one, last on
+     * another, absent from a fourth — so learning one taught you nothing about the next.
+     * The order is the triple, then what identifies an instance, then what names it;
+     * what only one kind has comes after. An aggregate has no triple, which is the one
+     * gap, and it is a fact about the kind rather than a layout choice.
+     */
+    @Test void everyKindAssemblesTheSamePiecesInTheSameOrder() {
+        GeneratedProjectModel project = project();
+
+        assertEquals(List.of("ClassHeaderEditor", "TripleEditor",
+                        "ClassIdentityEditor", "DisplayNameEditor"),
+                pieces(sourcePanel(project)));
+        assertEquals(List.of("ClassHeaderEditor", "TripleEditor",
+                        "ClassIdentityEditor", "DisplayNameEditor"),
+                pieces(statementPanel(project)));
+        assertEquals(List.of("ClassHeaderEditor", "TripleEditor",
+                        "ClassIdentityEditor", "DisplayNameEditor"),
+                pieces(ownedPanel(project)));
+        assertEquals(List.of("ClassHeaderEditor",
+                        "ClassIdentityEditor", "DisplayNameEditor"),
+                pieces(aggregatePanel(project)));
+    }
+
+    /** The top-level pieces a panel is assembled from, in the order they appear. */
+    private static List<String> pieces(Container panel) {
+        List<String> named = new ArrayList<>();
+        collectPieces(panel, named);
+        return named;
+    }
+
+    private static void collectPieces(Container container, List<String> into) {
+        for (Component child : container.getComponents()) {
+            String name = child.getClass().getSimpleName();
+            if (List.of("ClassHeaderEditor", "TripleEditor", "ClassIdentityEditor",
+                    "DisplayNameEditor").contains(name)) {
+                into.add(name);
+                continue;   // a piece's own contents are its business
+            }
+            if (child instanceof Container nested) collectPieces(nested, into);
+        }
+    }
+
+    private static GeneratedProjectModel project() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        project.addClass(person);
+        GeneratedClassModel award = new GeneratedClassModel("Award");
+        award.statementSource(new StatementClassSource("Person", "P166"));
+        project.addClass(award);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        project.addClass(name);
+        GeneratedClassModel prize = new GeneratedClassModel("Prize");
+        prize.aggregateSource(new wikidata.explore.model.AggregateClassSource(
+                "Award", "awards"));
+        project.addClass(prize);
+        return project;
+    }
+
+    private static Container sourcePanel(GeneratedProjectModel project) {
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(project.findClass("Person"));
+        return panel;
+    }
+
+    private static Container statementPanel(GeneratedProjectModel project) {
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(project.findClass("Award"));
+        return panel;
+    }
+
+    private static Container ownedPanel(GeneratedProjectModel project) {
+        OwnedClassPanel panel = new OwnedClassPanel(project);
+        panel.edit(project.findClass("Name"));
+        return panel;
+    }
+
+    private static Container aggregatePanel(GeneratedProjectModel project) {
+        AggregateClassPanel panel = new AggregateClassPanel(project);
+        panel.edit(project.findClass("Prize"));
+        return panel;
+    }
+
     /** The property row by name: both ends hold text fields of their own. */
     /**
      * A source class occupies one END of its triple: its members are the subject, and

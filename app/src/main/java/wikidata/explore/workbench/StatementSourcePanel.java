@@ -587,7 +587,10 @@ public class StatementSourcePanel extends JPanel {
 
         // The shared editor replaces the checkbox grid: an ordered key, and a reducer
         // per field, asked the same way on every construct.
+        // Identity, then the name — the same order every kind uses. What only a
+        // statement class has follows them.
         GridBagUtils.wideRow(canonical, 0, identityEditor);
+        GridBagUtils.wideRow(canonical, 1, displayNameEditor);
 
         // Superseded, and shown saying so rather than left looking live. It is a
         // class-wide policy, so it could never express "union the laureates while
@@ -598,10 +601,8 @@ public class StatementSourcePanel extends JPanel {
         duplicatePolicyBox.setEnabled(false);
         duplicatePolicyBox.setToolTipText(
                 "Superseded by the per-field rules above. It no longer affects a run.");
-        GridBagUtils.labeledRow(canonical, cc, 1,
+        GridBagUtils.labeledRow(canonical, cc, 2,
             "When duplicates occur (superseded):", duplicatePolicyBox);
-
-        GridBagUtils.wideRow(canonical, 2, displayNameEditor);
 
         primaryListFieldBox.setToolTipText("<html>Which multi-valued entity qualifier "
                 + "marks the CANONICAL copy of a shared statement (#92).<br>"

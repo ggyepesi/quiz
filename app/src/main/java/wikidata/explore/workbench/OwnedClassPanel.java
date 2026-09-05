@@ -22,6 +22,9 @@ final class OwnedClassPanel extends JPanel {
     // owner and the site that produced it is what LABEL resolves to here, which is the
     // default rather than a rule that outranks the model.
     private final DisplayNameEditor displayName = new DisplayNameEditor();
+    // An owned class is identified like any other — by a key, or by the owner and site
+    // its production supplies, which is what the editor reads off the compiled plan.
+    private final ClassIdentityEditor identity = new ClassIdentityEditor();
     // The same three words every other kind uses. An owned class describes a triple
     // like the others; what differs is that two of its tags are settled by which field,
     // on which class, declares the ownership — so they are read here, not asked.
@@ -44,6 +47,7 @@ final class OwnedClassPanel extends JPanel {
         clazz = value;
         header.show(value);
         displayName.show(value);
+        identity.show(value);
         refreshSites();
     }
 
@@ -73,9 +77,12 @@ final class OwnedClassPanel extends JPanel {
         int row = 0;
         GridBagUtils.wideRow(form, row++, new JLabel(
                 "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
+        // The same order as every other kind: the triple, then what identifies an
+        // instance, then what names it.
         GridBagUtils.wideRow(form, row++, header);
-        GridBagUtils.wideRow(form, row++, displayName);
-        GridBagUtils.wideRow(form, row, triple);
+        GridBagUtils.wideRow(form, row++, triple);
+        GridBagUtils.wideRow(form, row++, identity);
+        GridBagUtils.wideRow(form, row, displayName);
         add(form, BorderLayout.NORTH);
     }
 }

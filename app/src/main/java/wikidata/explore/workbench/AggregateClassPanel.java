@@ -54,11 +54,15 @@ final class AggregateClassPanel extends JPanel {
         c.insets = new Insets(4, 6, 4, 6);
         c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1;
+        // The same order as every other kind, minus the triple it does not have:
+        // what identifies an instance, then what names it, then this kind's own rows.
         GridBagUtils.wideRow(form, 0, header);
-        GridBagUtils.labeledRow(form, c, 1, "From class:", sourceClass);
+        GridBagUtils.wideRow(form, 1, identityEditor);
+        GridBagUtils.wideRow(form, 2, displayNameEditor);
+        GridBagUtils.labeledRow(form, c, 3, "From class:", sourceClass);
         membersField.setToolTipText(
                 "List-valued ENTITY fields on this class that hold the selected source class.");
-        GridBagUtils.labeledRow(form, c, 2, "Members field:", membersField);
+        GridBagUtils.labeledRow(form, c, 4, "Members field:", membersField);
         pairs.title("Grouped from (this class's field \u2190 source class's field)");
         pairs.setToolTipText(
                 "Which of this class's fields is grouped from which field of the source "
@@ -68,10 +72,8 @@ final class AggregateClassPanel extends JPanel {
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 3, pairs);
-        GridBagUtils.wideRow(form, 5, identityEditor);
-        GridBagUtils.wideRow(form, 6, displayNameEditor);
-        GridBagUtils.wideRow(form, 7, new JLabel(
+        GridBagUtils.wideRow(form, 5, pairs);
+        GridBagUtils.wideRow(form, 6, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
         add(new JScrollPane(form), BorderLayout.CENTER);
         sourceClass.addActionListener(e -> {

@@ -66,7 +66,6 @@ public class ClassSourcePanel extends JPanel {
     // relation property on each member of the named class (e.g. Nomination = the
     // P1411 statements of Oscarnominations). Its fields draw from the value (ps:)
     // and qualifiers (pq:, set per-field). Blank = a normal class.
-    private final JTextField statementSourceField = new JTextField(12);
 
     // Subject, property and objects in one component, because that is one triple. The
     // property and the QIDs were three controls over one bound, and the QID row was
@@ -205,8 +204,6 @@ public class ClassSourcePanel extends JPanel {
     private void populateClassDetails() {
         discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
         discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
-        StatementClassSource statement = clazz == null ? null : clazz.statementSource();
-        statementSourceField.setText(statement == null ? "" : statement.sourceClassName());
     }
 
     // Rank-by options: none, notability, and the class's sortable (number/date)
@@ -298,6 +295,15 @@ public class ClassSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(form, y++, header);
 
+        // One order, every kind: the triple, then what identifies an instance,
+        // then what names it. What only this kind has comes after them — its
+        // population knobs, then the tools that fill them.
+        GridBagUtils.wideRow(form, y++, triple);
+
+        GridBagUtils.wideRow(form, y++, identityEditor);
+
+        GridBagUtils.wideRow(form, y++, displayNameEditor);
+
         discriminatorPidField.setToolTipText("Discriminator property — defaults to "
                 + "P31 (instance of); set another relation to subclass on a "
                 + "non-type axis.");
@@ -314,29 +320,12 @@ public class ClassSourcePanel extends JPanel {
         discRow.add(discriminatorLabel);
         GridBagUtils.labeledRow(form, c, y++, "Subtype:", discRow);
 
+
         representations.describe(this::representationDescription);
         representations.setToolTipText("Explicit alternatives for this role. A target is used "
                 + "only when its class admission rule matches; this class is the fallback.");
         GridBagUtils.labeledRow(form, c, y++, "Represent matching entities as:", representations);
 
-        statementSourceField.setToolTipText("<html>Make this a <b>statement "
-                + "reification</b>: instances are the statements of the "
-                + "<b>Relation property</b> below on each member of the named class "
-                + "(e.g. <i>Nomination</i> = the P1411 statements of "
-                + "<i>Oscarnominations</i>). Fields draw from the statement value "
-                + "and its qualifiers (\"Qualifier of\" per field). Blank = normal "
-                + "class.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Reifies statements of:", statementSourceField);
-
-        fromPartsButton.setToolTipText("<html>Fill the objects from a parent entity's "
-                + "parts: e.g. Academy Awards (Q19020) <b>P527</b> (has part) → its "
-                + "award categories. Data-driven instead of a pasted QID list.</html>");
-        findRelationButton.setToolTipText(
-                "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
-        findRelationButton.addActionListener(e -> pickProperty());
-        triple.actions(List.of(findRelationButton),
-                List.of(discoverTypesButton, fromPartsButton));
-        GridBagUtils.wideRow(form, y++, triple);
 
         excludeTypesField.setToolTipText("<html>Type QIDs (space-separated) to "
                 + "EXCLUDE: drop any item that is instance-of (P31) one of these, "
@@ -344,6 +333,7 @@ public class ClassSourcePanel extends JPanel {
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Exclude types:", excludeTypesField);
+
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         options.add(new JLabel("Limit:"));
@@ -353,6 +343,7 @@ public class ClassSourcePanel extends JPanel {
         options.add(langField);
         GridBagUtils.wideRow(form, y++, options);
 
+
         notableOnlyBox.setToolTipText("<html>Require an English Wikipedia article "
                 + "(a sitelink). A selective entry that bounds a huge class "
                 + "(e.g. star Q523, ~3M) to its ~2886 NOTABLE members, so the "
@@ -360,6 +351,7 @@ public class ClassSourcePanel extends JPanel {
                 + "out. Combine with a magnitude filter + sort for the brightest "
                 + "famous ones.</html>");
         GridBagUtils.wideRow(form, y++, notableOnlyBox);
+
 
         rankByBox.setToolTipText("<html>Keep the top <b>Limit</b> instances by "
                 + "this measure (importance):<br><b>Notability (sitelinks)</b> — "
@@ -371,6 +363,7 @@ public class ClassSourcePanel extends JPanel {
         rankRow.add(rankDescBox);
         GridBagUtils.labeledRow(form, c, y++, "Rank by:", rankRow);
 
+
         seedQidsArea.setLineWrap(true);
         seedQidsArea.setWrapStyleWord(true);
         seedQidsArea.setToolTipText("<html>Explicit instance QIDs (space/comma "
@@ -381,6 +374,16 @@ public class ClassSourcePanel extends JPanel {
         JScrollPane seedScroll = new JScrollPane(seedQidsArea);
         seedScroll.setPreferredSize(new Dimension(360, 56));
         GridBagUtils.labeledRow(form, c, y++, "Seed QIDs:", seedScroll);
+
+
+        fromPartsButton.setToolTipText("<html>Fill the objects from a parent entity's "
+                + "parts: e.g. Academy Awards (Q19020) <b>P527</b> (has part) → its "
+                + "award categories. Data-driven instead of a pasted QID list.</html>");
+        findRelationButton.setToolTipText(
+                "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
+        findRelationButton.addActionListener(e -> pickProperty());
+        triple.actions(List.of(findRelationButton),
+                List.of(discoverTypesButton, fromPartsButton));
 
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
@@ -423,15 +426,6 @@ public class ClassSourcePanel extends JPanel {
                 + "alternateNames field. They can then be configured for view, search "
                 + "and sort like other fields.");
         GridBagUtils.labeledRow(form, c, y++, "Additional names:", aliasesBox);
-
-        GridBagUtils.wideRow(form, y++, displayNameEditor);
-
-        GridBagUtils.wideRow(form, y++, identityEditor);
-
-        // The editor carries its own hint. This panel's shared one said only what the
-        // display name was missing, so a second copy of it here would be the same
-        // sentence written twice.
-        displayNameEditor.onChange(this::updateCanonicalEnablement);
 
         GridBagUtils.wideRow(form, y++, summaryLabel);
 
@@ -809,35 +803,13 @@ public class ClassSourcePanel extends JPanel {
             String qid = RuleNode.cleanQid(tok);
             if (WikidataIds.isQid(qid)) m.excludedTypeQids().add(qid);
         }
-        String relPid = triple.propertyPid();
-        if (!WikidataIds.isPid(relPid)) {
-            relPid = "P31";
-        }
         // The triple writes the elements it owns — for this kind, the property and the
         // objects. This editor keeps only the knobs beside it.
         triple.applyEdits(clazz);
-        String statementSourceClass = statementSourceField.getText().trim();
-        // This editor owns exactly one statement declaration: the source class. A
-        // blank one does NOT mean "not a statement class" — every shipped statement
-        // class discovers its subjects from the property and has no source class at
-        // all — so the source is dropped only when no property keeps it alive
-        // either. Copying carries the declarations this editor cannot see, by
-        // construction rather than by a list maintained here; the Statement panel
-        // remains their single editor.
-        StatementClassSource previousStatementSource = clazz.statementSource();
-        boolean staysAStatementClass = !statementSourceClass.isBlank()
-                || (previousStatementSource != null
-                        && previousStatementSource.hasProperty());
-        if (!staysAStatementClass) {
-            clazz.statementSource(null);
-        } else if (previousStatementSource == null) {
-            clazz.statementSource(
-                    new StatementClassSource(statementSourceClass, relPid));
-        } else {
-            StatementClassSource nextStatementSource = previousStatementSource.copy();
-            nextStatementSource.sourceClassName(statementSourceClass);
-            clazz.statementSource(nextStatementSource);
-        }
+        // No "Reifies statements of" here. It was a free-text field that turned a class
+        // into a statement class by keystroke, on the editor for the kind it turned it
+        // away from, and it was a second editor for the same value the triple's subject
+        // population holds. A class's kind is not changed from its configuration.
         m.direction(RuleDirection.ITEM_TO_ROOT);
         // Commit a value typed into the spinner editor but not yet entered, so
         // Apply reads what's on screen (an out-of-range value otherwise reverts).
