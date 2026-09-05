@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -47,6 +48,21 @@ class NothingWritesARetiredMembershipFieldTest {
             java.util.regex.Pattern.compile("\\b(\\w+)\\s*=\\s*[\\w.()]*\\b"
                     + "(?:effectiveInstanceMapping\\(|instanceMapping\\(\\))");
 
+    /**
+     * The third way in: a class mapping HANDED to a method, which is how one of the six
+     * hid — {@code classExample(clazz, source)} took it as a parameter and built the
+     * membership triple from it. Every name of this type is watched, because no field
+     * reads either of the two accessors: nothing asks a field mapping for them, and no
+     * saved field carries one.
+     */
+    private static final java.util.regex.Pattern NAMED_AS_A_MAPPING =
+            java.util.regex.Pattern.compile("\\bFieldSourceMapping\\s+(\\w+)\\b");
+
+    /** A chained read has no local receiver for {@link #INTO_A_LOCAL} to discover. */
+    private static final java.util.regex.Pattern DIRECT_RETIRED =
+            java.util.regex.Pattern.compile("(?:effectiveInstanceMapping|instanceMapping)"
+                    + "\\([^;]*\\)\\.(?:sourceQid|additionalTypeQids)\\(");
+
     @Test void noProductionCodeUsesAClassMappingAsItsMembership() throws IOException {
         List<String> offenders = new ArrayList<>();
         Path root = Path.of("src/main/java");
@@ -60,11 +76,18 @@ class NothingWritesARetiredMembershipFieldTest {
                 for (String line : lines) {
                     java.util.regex.Matcher into = INTO_A_LOCAL.matcher(line);
                     while (into.find()) receivers.add(into.group(1));
+                    java.util.regex.Matcher named = NAMED_AS_A_MAPPING.matcher(line);
+                    while (named.find()) receivers.add(named.group(1));
                 }
                 for (int i = 0; i < lines.size(); i++) {
                     String line = lines.get(i);
                     if (line.stripLeading().startsWith("//")
                             || line.stripLeading().startsWith("*")) {
+                        continue;
+                    }
+                    if (DIRECT_RETIRED.matcher(line).find()) {
+                        offenders.add(file.getFileName() + ":" + (i + 1)
+                                + "  " + line.strip());
                         continue;
                     }
                     for (String receiver : receivers) {
@@ -81,5 +104,19 @@ class NothingWritesARetiredMembershipFieldTest {
         assertTrue(offenders.isEmpty(),
                 "a class's membership is GeneratedClassModel.membership(); these read or "
                         + "write the fields it replaced:\n" + String.join("\n", offenders));
+    }
+
+    @Test void guardRecognizesADirectChainedRead() {
+        assertTrue(DIRECT_RETIRED.matcher(
+                "clazz.effectiveInstanceMapping(project).sourceQid()").find());
+    }
+
+    /** And a mapping handed to a method, which is how one of the six hid. */
+    @Test void guardRecognizesAMappingReceivedAsAParameter() {
+        java.util.regex.Matcher named = NAMED_AS_A_MAPPING.matcher(
+                "private static String classExample(GeneratedClassModel clazz, "
+                        + "FieldSourceMapping source) {");
+        assertTrue(named.find());
+        assertEquals("source", named.group(1));
     }
 }

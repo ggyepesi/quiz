@@ -72,7 +72,7 @@ public record DecisionContext(
 
     public boolean hasTargetField() {
         String r = relationPid();
-        return WikidataIds.isPid(r) && !r.equals("P31") && hasFieldWithPid(r);
+        return MembershipPattern.relational(r) && hasFieldWithPid(r);
     }
 
     /** Name of the P31 (type) field, for matching a facet/subclass against it. */

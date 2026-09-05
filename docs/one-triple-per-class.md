@@ -337,8 +337,9 @@ regenerate-versus-migrate explicitly.
 
 ## What is left
 
-Steps 1–5 are done. Two of the five things §"Five things this resolves" claims are not,
-and one of them was never started:
+Steps 1–5 are done. Of the five things §"Five things this resolves" identified,
+the P31 and direction work is complete and the proposed graph-policy relocation was
+withdrawn after testing showed that the two policies govern different traversals:
 
 - **§4, graph expansion.** WITHDRAWN, with the reason in §4 itself: the two policies
   govern different traversals — a recursive field frontier and a cross-class statement

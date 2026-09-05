@@ -606,8 +606,9 @@ public class ModelBuilderFrame extends JFrame {
                 if (c == null) {
                     return;
                 }
-                String qid = c.effectiveInstanceMapping(projectModel).sourceQid();
-                if (qid == null || !WikidataIds.isQid(qid)) {
+                List<String> targets = c.effectiveMembership(projectModel).qids();
+                String qid = targets.isEmpty() ? "" : targets.getFirst();
+                if (!WikidataIds.isQid(qid)) {
                     logWindow.info("Class \"" + name + "\" has no membership target "
                                            + "QID to explore — set a Relation target first.");
                     return;

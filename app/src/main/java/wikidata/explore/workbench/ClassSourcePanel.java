@@ -845,9 +845,10 @@ public class ClassSourcePanel extends JPanel {
             clazz.statementSource(nextStatementSource);
         }
         // Preserve the resolved relation label (from "Find…" or a prior load) so
-        // it persists and renders; default P31 to "instance of".
+        // it persists and renders; a plain membership has the one named default.
         String relLabelText = triple.membershipPropertyLabel();
-        m.propertyLabel(relPid.equals("P31") ? "instance of"
+        m.propertyLabel(!MembershipPattern.relational(relPid)
+                ? MembershipPattern.DEFAULT_PROPERTY_LABEL
                 : (relLabelText.isEmpty() ? "" : relLabelText));
         m.direction(RuleDirection.ITEM_TO_ROOT);
         // Commit a value typed into the spinner editor but not yet entered, so

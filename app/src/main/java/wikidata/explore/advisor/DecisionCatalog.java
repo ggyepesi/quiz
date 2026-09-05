@@ -1,7 +1,5 @@
 package wikidata.explore.advisor;
 
-import wikidata.WikidataIds;
-
 import wikidata.explore.model.MembershipFields;
 import wikidata.explore.model.MembershipPattern;
 
@@ -38,10 +36,7 @@ public final class DecisionCatalog {
                     "Pin the relation's target set (one entity, or a set?).",
                     "\"From parts…\" (e.g. Q19020 → P527), or add target QIDs",
                     "Discover the targets from a parent's parts instead of pasting QIDs.",
-                    ctx -> {
-                        String r = ctx.relationPid();
-                        return WikidataIds.isPid(r) && !r.equals("P31");
-                    },
+                    ctx -> MembershipPattern.relational(ctx.relationPid()),
                     ctx -> ctx.targetCount() >= 1),
 
             new StructuralDecision(
