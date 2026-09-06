@@ -7,6 +7,7 @@ import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import javax.swing.*;
@@ -27,9 +28,17 @@ final class AggregateClassPanel extends JPanel {
     // else. Nothing in the model or the validator restricts those by kind.
     private final ClassHeaderEditor header;
 
-    // Unordered: which field is grouped from which is a set of pairs, and position
-    // says nothing. The key's ORDER is the identity editor's question, below.
-    private final OrderedChoiceList<KeyChoice> pairs = new OrderedChoiceList<>(false);
+    /**
+     * The fields this class inherits from the class it groups — which ARE its key.
+     *
+     * <p>Ordered, because the identifier joins their values in order. It was a list of
+     * ⟨this field ← that field⟩ pairs over fields this class already had, so the same
+     * fact was authored twice: you added a field by hand and then paired it, and the
+     * identity editor showed the result as a key you could edit separately. An
+     * aggregate does not invent fields — it takes them from the class it groups, and
+     * inheriting one is what creates it.
+     */
+    private final OrderedChoiceList<String> inherited = new OrderedChoiceList<>(true);
     // A template, asked the way every kind asks it. This was a row of field
     // checkboxes composed INTO a template and read back out of one by substring: it
     // could only ever produce "{a} — {b}", so a template written with any other
@@ -63,16 +72,21 @@ final class AggregateClassPanel extends JPanel {
         membersField.setToolTipText(
                 "List-valued ENTITY fields on this class that hold the selected source class.");
         GridBagUtils.labeledRow(form, c, 4, "Members field:", membersField);
-        pairs.title("Grouped from (this class's field \u2190 source class's field)");
-        pairs.setToolTipText(
-                "Which of this class's fields is grouped from which field of the source "
-                        + "class. Selecting a row only chooses what Remove would take.");
-        pairs.onChange(() -> {
+        // "Key field", not "grouped from": these pairs ARE the key — one instance per
+        // distinct combination of their values — and naming them after the mechanism
+        // left the reader to work out that the identity list above was the same fact.
+        inherited.title("Key fields — inherited from the class this one groups");
+        inherited.setToolTipText(
+                "One instance per distinct combination of these values. Inheriting a "
+                        + "field creates it on this class, copying the source field's "
+                        + "type; everything NOT inherited is reached through the "
+                        + "grouped records.");
+        inherited.onChange(() -> {
             if (clazz == null) return;
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 5, pairs);
+        GridBagUtils.wideRow(form, 5, inherited);
         GridBagUtils.wideRow(form, 6, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
         add(new JScrollPane(form), BorderLayout.CENTER);
@@ -136,9 +150,10 @@ final class AggregateClassPanel extends JPanel {
                 selection(sourceClass), selection(membersField));
         // The list's CONTENTS, not its selection. Reading the selection made clicking
         // a row to look at it an edit that dropped every other pair.
-        for (KeyChoice choice : pairs.chosen()) {
-            spec.keys().add(new AggregateClassSource.Key(
-                    choice.targetField(), choice.sourceField()));
+        GeneratedClassModel grouped = project.findClass(selection(sourceClass));
+        for (String field : inherited.chosen()) {
+            inherit(grouped, field);
+            spec.keys().add(new AggregateClassSource.Key(field, field));
         }
         clazz.classKind(ClassKind.AGGREGATE);
         clazz.aggregateSource(spec);
@@ -151,6 +166,28 @@ final class AggregateClassPanel extends JPanel {
 
 
 
+
+    /**
+     * Gives this class the field it inherits, shaped by the one it comes from.
+     *
+     * <p>A grouped field holds the source field's values, so it is that field's type,
+     * target class and cardinality. Creating it here is what lets Add field go from an
+     * aggregate: there is nothing to add by hand, because every field it can have comes
+     * from the class it groups.
+     */
+    private void inherit(GeneratedClassModel grouped, String name) {
+        if (grouped == null || clazz.fields().stream()
+                .anyMatch(field -> field != null && name.equals(field.name()))) {
+            return;
+        }
+        GeneratedFieldModel source = grouped.effectiveFields(project).stream()
+                .filter(field -> field != null && name.equals(field.name()))
+                .findFirst().orElse(null);
+        if (source == null) return;
+        GeneratedFieldModel field =
+                clazz.addField(name, source.type(), source.cardinality());
+        field.entityClassName(source.entityClassName());
+    }
 
     private void refreshChoices(AggregateClassSource selected) {
         if (clazz == null) return;
@@ -182,29 +219,26 @@ final class AggregateClassPanel extends JPanel {
                                 + ", so it cannot hold those records. Add one to "
                                 + clazz.className() + " first.");
 
-        LinkedHashSet<KeyChoice> choices = new LinkedHashSet<>();
+        // What can be inherited: the grouped class's own scalar fields. A collection
+        // cannot be a key — one instance per combination of values needs one value.
+        LinkedHashSet<String> offered = new LinkedHashSet<>();
         if (source != null) {
-            for (var target : clazz.fields()) {
-                if (target.cardinality() == FieldCardinality.COLLECTION) continue;
-                for (var input : source.effectiveFields(project)) {
-                    if (input.cardinality() == FieldCardinality.COLLECTION) continue;
-                    if (target.type() == input.type()) {
-                        choices.add(new KeyChoice(target.name(), input.name()));
-                    }
+            for (var field : source.effectiveFields(project)) {
+                if (field == null || field.cardinality() == FieldCardinality.COLLECTION) {
+                    continue;
                 }
+                offered.add(field.name());
             }
         }
-        // The list shows what IS configured; the combo offers what could be added. A
-        // menu whose selection was the configuration could not tell looking from
-        // choosing, so those are now two controls.
-        LinkedHashSet<KeyChoice> configured = new LinkedHashSet<>();
-        if (selected != null) selected.keys().forEach(key ->
-                configured.add(new KeyChoice(key.targetField(), key.sourceField())));
-        pairs.show(new java.util.ArrayList<>(configured), new java.util.ArrayList<>(choices));
-    }
-
-    private record KeyChoice(String targetField, String sourceField) {
-        @Override public String toString() { return targetField + " ← " + sourceField; }
+        LinkedHashSet<String> already = new LinkedHashSet<>();
+        if (selected != null) selected.keys().forEach(key -> {
+            // A pair authored with different names on the two sides still reads as the
+            // source field it takes its values from, which is what is being chosen.
+            already.add(key.sourceField());
+            offered.add(key.sourceField());
+        });
+        inherited.show(new java.util.ArrayList<>(already),
+                new java.util.ArrayList<>(offered));
     }
 
     private static String selection(JComboBox<?> box) {

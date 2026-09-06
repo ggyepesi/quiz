@@ -47,6 +47,8 @@ public class PropertyDiscoveryPanel extends JPanel {
     private Supplier<String> nodeTitleSupplier = () -> null;
     private Runnable applyEdits = () -> {};
     private Consumer<DiscoveredProperty> onAddField = p -> {};
+    /** Why the selected class cannot take a discovered property, or blank when it can. */
+    private java.util.function.Supplier<String> addFieldUnavailable = () -> "";
     private Consumer<String> onAddAllowedQid  = qid -> {};
     private Consumer<String> onAddExcludedQid = qid -> {};
 
@@ -152,6 +154,17 @@ public class PropertyDiscoveryPanel extends JPanel {
         nodeLabel.setText(title == null || title.isBlank()
                 ? "No node selected"
                 : title);
+    }
+
+    /**
+     * Why a discovered property cannot become a field of the selected class.
+     *
+     * <p>An aggregate's fields come from the class it groups — nothing is fetched for
+     * it, so a property found here can never fill one. Offering the button anyway
+     * offered a field that would land in the class and be filled by nothing.
+     */
+    public void addFieldUnavailableReason(java.util.function.Supplier<String> reason) {
+        this.addFieldUnavailable = reason == null ? () -> "" : reason;
     }
 
     public void onAddField(Consumer<DiscoveredProperty> handler) {
@@ -401,7 +414,11 @@ public class PropertyDiscoveryPanel extends JPanel {
         selectedProperties = properties == null ? List.of() : List.copyOf(properties);
         selectedProperty = selectedProperties.size() == 1
                 ? selectedProperties.getFirst() : null;
-        addFieldButton.setEnabled(selectedProperty != null);
+        String cannotAdd = addFieldUnavailable.get();
+        addFieldButton.setEnabled(selectedProperty != null && cannotAdd.isBlank());
+        addFieldButton.setToolTipText(cannotAdd.isBlank()
+                ? "Turn the selected property into a field of this class."
+                : cannotAdd);
         boolean hasExample = selectedProperty != null
                 && !selectedProperty.exampleQid().isBlank();
         allowButton.setEnabled(hasExample);

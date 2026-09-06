@@ -908,6 +908,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         discoveryPanel.setApplyEdits(
                 this::applyEdits);
 
+        discoveryPanel.addFieldUnavailableReason(() ->
+                selected instanceof GeneratedClassModel clazz
+                        && clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE
+                        ? "An aggregate's fields come from the class it groups, and "
+                                + "nothing is fetched for it — a discovered property "
+                                + "cannot fill one."
+                        : "");
+
         discoveryPanel.onAddField(
                 property -> {
                     RuleDirection direction =

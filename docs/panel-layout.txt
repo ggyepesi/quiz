@@ -292,11 +292,13 @@
   combo: 4 item(s)
   label: Members field:
   combo: 2 item(s)
-  piece: OrderedChoiceList  [Grouped from (this class's field ← source class's field)]
+  piece: OrderedChoiceList  [Key fields — inherited from the class this one groups]
     list
     button: Add  (disabled)
     button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
     label: Available:
-    combo: 1 item(s)
+    combo: 2 item(s)
   label: Choices come from compatible fields on this class and its source class.
 

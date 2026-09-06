@@ -32,7 +32,7 @@ class AggregatePairsAreNotSelectionTest {
     }
 
     private static OrderedChoiceList<?> pairs(AggregateClassPanel panel) throws Exception {
-        var field = AggregateClassPanel.class.getDeclaredField("pairs");
+        var field = AggregateClassPanel.class.getDeclaredField("inherited");
         field.setAccessible(true);
         return (OrderedChoiceList<?>) field.get(panel);
     }
@@ -72,10 +72,10 @@ class AggregatePairsAreNotSelectionTest {
         panel.edit(project.findClass("NobelPrize"));
 
         assertEquals(2, pairList(panel).getModel().getSize(),
-                "two pairs are configured, so two are listed — not every compatible one");
+                "two fields are inherited, so two are listed — not every one that could be");
     }
 
-    @Test void removingAPairTakesItsKeyComponentWithIt() throws Exception {
+    @Test void notInheritingAFieldTakesItsKeyComponentWithIt() throws Exception {
         GeneratedProjectModel project = nobel();
         GeneratedClassModel prize = project.findClass("NobelPrize");
 
