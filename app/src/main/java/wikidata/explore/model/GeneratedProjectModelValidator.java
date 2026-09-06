@@ -165,6 +165,16 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(aggregate.className(),
                         "Aggregate grouping fields must be scalar: " + key.targetField() + "."));
             }
+            // A grouped field takes its values from the source field, so it must be
+            // able to hold them. The pair chooser only OFFERS matching types, which is
+            // not a guarantee: the field editor can change either side afterwards, and
+            // nothing said so — the offer was standing in for a rule.
+            if (target != null && input != null && target.type() != input.type()) {
+                problems.add(Problem.error(aggregate.className(),
+                        "Aggregate key '" + key.targetField() + "' is " + target.type()
+                                + " but takes its values from " + source.className() + "."
+                                + key.sourceField() + ", which is " + input.type() + "."));
+            }
         }
     }
 

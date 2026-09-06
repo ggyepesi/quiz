@@ -305,6 +305,18 @@ public class FieldSourcePanel extends JPanel {
      * that had not been configured yet — and a field outside the recipe, which nothing
      * fills at all, looked exactly like one inside it.
      */
+    /** Whether this class's recipe fills this field — a key target, or the members. */
+    private boolean filledByRecipe(GeneratedClassModel owner) {
+        wikidata.explore.model.AggregateClassSource recipe =
+                owner == null ? null : owner.aggregateSource();
+        if (field == null || recipe == null) return false;
+        if (field.name().equals(recipe.membersField())) return true;
+        for (wikidata.explore.model.AggregateClassSource.Key key : recipe.keys()) {
+            if (field.name().equals(key.targetField())) return true;
+        }
+        return false;
+    }
+
     private void refreshProducedBy() {
         GeneratedClassModel owner = ownerClass();
         wikidata.explore.model.AggregateClassSource recipe =
@@ -335,6 +347,15 @@ public class FieldSourcePanel extends JPanel {
     private void refreshOwnedComponentControls() {
         refreshProducedBy();
         GeneratedClassModel owningClass = ownerClass();
+        // What the recipe fills, the recipe also shapes: a grouped field holds the
+        // source field's values, so its type and target class are that field's, and a
+        // key groups one value while the members field holds many. Offering those as
+        // choices offered a way to make the class invalid from the editor that cannot
+        // see the recipe.
+        boolean shapedByRecipe = filledByRecipe(owningClass);
+        typeBox.setEnabled(!shapedByRecipe);
+        objectTypeBox.setEnabled(!shapedByRecipe);
+        shapeBox.setEnabled(!shapedByRecipe);
         // An aggregate is assembled from records that already exist, so none of its
         // fields is acquired — the same "derived, not fetched" state owned and inverted
         // fields are already shown in.
