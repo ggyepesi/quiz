@@ -367,15 +367,21 @@ class ModelSourceWorkbenchPanelTest {
      * field happens to be selected: choosing a field while the class is named by its
      * label says which field to use IF it is named by a field, and nothing more.
      */
+    /**
+     * Names the edited class by one of its fields.
+     *
+     * <p>A name is an ordered list of fields now, the same control the key uses, so
+     * naming by one field is a list of one — not a mode plus a field box.
+     */
     @SuppressWarnings("unchecked")
     private static void nameByField(ModelSourceWorkbenchPanel panel, String field) {
         try {
             DisplayNameEditor editor = component(
                     component(panel, StatementSourcePanel.class),
                     DisplayNameEditor.class);
-            JComboBox<String> mode = (JComboBox<String>) box(editor, "modeBox");
-            mode.setSelectedItem("Field");
-            ((JComboBox<String>) box(editor, "fieldBox")).setSelectedItem(field);
+            OrderedChoiceList<String> fields =
+                    (OrderedChoiceList<String>) box(editor, "fields");
+            fields.show(java.util.List.of(field), java.util.List.of(field));
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);
         }

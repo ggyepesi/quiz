@@ -58,13 +58,15 @@
       combo: 2 item(s)
       label: structuredName:
       combo: 2 item(s)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 3 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 3 item(s)
   label: Subtype:
   text: [P31]
   label: =
@@ -159,14 +161,16 @@
     box: When the same key occurs
       label: category:
       combo: 2 item(s)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 2 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
-    label: These instances have no name of their own — pick Field or Template.
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)
+    label: These instances have no name of their own — name them by a field.
   label: When duplicates occur (superseded):
   combo: 2 item(s)  (disabled)
   label: Canonical list:
@@ -241,13 +245,15 @@
     box: When the same key occurs
       label: given:
       combo: 2 item(s)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 2 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)
 
 == Aggregate class - AggregateClassPanel ==
   piece: ClassHeaderEditor
@@ -272,14 +278,16 @@
     box: When the same key occurs
       label: awards:
       combo: 2 item(s)
-  piece: DisplayNameEditor
-    label: Display name:
-    combo: 3 item(s)
-    label: from field:
-    combo: 1 item(s)  (disabled)
-    label: template:
-    text: []  (disabled)
-    label: These instances have no name of their own — pick Field or Template.
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 1 item(s)
+    label: These instances have no name of their own — name them by a field.
   label: From class:
   combo: 4 item(s)
   label: Members field:

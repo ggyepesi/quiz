@@ -96,12 +96,33 @@ class EveryClassIsNamedTest {
                 prize.canonical().displayNameMode());
     }
 
+    /** Several fields are one name, joined in the order the list shows them. */
+    @Test void severalFieldsAreOneNameInTheOrderChosen() {
+        GeneratedClassModel prize = aggregate("NobelPrize");
+        prize.addField("category", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        prize.addField("year", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        prize.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE);
+        prize.canonical().displayNameTemplate("{category} — {year}");
+
+        AggregateClassPanel panel = new AggregateClassPanel(projectWith(prize));
+        panel.edit(prize);
+        panel.applyEdits();
+
+        assertEquals("{category} — {year}", prize.canonical().displayNameTemplate(),
+                "read as two fields and written back as the same two");
+    }
+
     /**
-     * The mode is stored, not read off whether the template came out blank. A class
-     * being edited towards a template it has not typed yet is not a class named by its
-     * label, and saying so is what tells the reader the name will not resolve.
+     * A name is the list of fields, so a template naming none is no fields — and for a
+     * kind whose instances have no name of their own, that is what the reader is told.
+     *
+     * <p>This used to assert that an empty TEMPLATE stayed TEMPLATE, because the mode
+     * was a separate control that could be set before its value was typed. The list is
+     * both: empty means "the name it already has", which an aggregate does not have.
      */
-    @Test void anEmptyTemplateIsStillTemplateMode() {
+    @Test void aNameWithNoFieldsIsTheNameItAlreadyHas() {
         GeneratedClassModel prize = aggregate("NobelPrize");
         prize.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE);
         prize.canonical().displayNameTemplate("");
@@ -110,10 +131,33 @@ class EveryClassIsNamedTest {
         panel.edit(prize);
         panel.applyEdits();
 
-        assertEquals(CanonicalSpec.DisplayNameMode.TEMPLATE,
+        assertEquals(CanonicalSpec.DisplayNameMode.LABEL,
                 prize.canonical().displayNameMode());
         assertFalse(find(panel, DisplayNameEditor.class).warning().isBlank(),
-                "and the reader is told it will not resolve");
+                "and an aggregate has no name of its own, so it is told so");
+    }
+
+    /**
+     * A template the list cannot express is shown, not rewritten.
+     *
+     * <p>The aggregate editor's field checkboxes composed a template and read it back by
+     * substring, so "Best {category}" came back as "{category}" — a modeller's answer
+     * quietly replaced by the editor's idea of it.
+     */
+    @Test void aTemplateWithWordsInItIsNotRewrittenByTheList() {
+        GeneratedClassModel prize = aggregate("NobelPrize");
+        prize.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE);
+        prize.canonical().displayNameTemplate("Best {category}, {year}");
+
+        AggregateClassPanel panel = new AggregateClassPanel(projectWith(prize));
+        panel.edit(prize);
+        panel.applyEdits();
+
+        assertEquals("Best {category}, {year}",
+                prize.canonical().displayNameTemplate());
+        assertTrue(find(panel, DisplayNameEditor.class).warning()
+                        .contains("cannot express"),
+                "and the reader is told why the list is not showing it");
     }
 
     /** A statement class can be named by a template here, and not only shown one. */

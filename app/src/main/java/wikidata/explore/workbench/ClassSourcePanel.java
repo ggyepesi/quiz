@@ -482,7 +482,12 @@ public class ClassSourcePanel extends JPanel {
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
         form.add(new JLabel("Parent entity QID:"));
         form.add(parentField);
-        form.add(new JLabel("Parts property (P527 = has part):"));
+        // Not "(P527 = has part)": the field takes any property and the query uses
+        // what it is given, so a label naming one asserts a constraint that is not
+        // there. The example belongs in the tooltip, which is where it is.
+        pidField.setToolTipText("The property whose values become the members — "
+                + "P527 (has part) is the usual one, but any property works.");
+        form.add(new JLabel("Parts property:"));
         form.add(pidField);
         int ok = JOptionPane.showConfirmDialog(this, form,
                 "Discover membership from parent's parts",
