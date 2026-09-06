@@ -122,6 +122,8 @@ public class FieldSourcePanel extends JPanel {
     // (CHILD_OBJECTS) fetches full sub-objects with their own fields (a
     // sub-class, e.g. a constellation's stars with magnitude); "Related entity
     // values" keeps just id+label references that resolve within the set.
+    /** Says what fills a field that acquisition does not. */
+    private final javax.swing.JLabel producedBy = new javax.swing.JLabel(" ");
     private final JComboBox<FieldProductionKind> productionBox =
             new JComboBox<>(FieldProductionKind.values());
     private final JComboBox<String> inverseFieldBox = new JComboBox<>();
@@ -292,12 +294,57 @@ public class FieldSourcePanel extends JPanel {
                 });
     }
 
+    /**
+     * What fills this field, when something other than acquisition does.
+     *
+     * <p>An aggregate class is built offline from records that already exist: its key
+     * fields take their values from the source class's fields, through the pairs the
+     * class editor lists, and its members field receives the grouped records
+     * themselves. Nothing is fetched for any of them. The editor showed the ordinary
+     * acquisition controls anyway, so a field that CANNOT be configured looked like one
+     * that had not been configured yet — and a field outside the recipe, which nothing
+     * fills at all, looked exactly like one inside it.
+     */
+    private void refreshProducedBy() {
+        GeneratedClassModel owner = ownerClass();
+        wikidata.explore.model.AggregateClassSource recipe =
+                owner == null ? null : owner.aggregateSource();
+        if (field == null || recipe == null) {
+            producedBy.setText(" ");
+            return;
+        }
+        if (field.name().equals(recipe.membersField())) {
+            producedBy.setText("<html><i>Filled by this class's recipe: it receives the "
+                    + "grouped <b>" + recipe.sourceClassName() + "</b> records "
+                    + "themselves.</i></html>");
+            return;
+        }
+        for (wikidata.explore.model.AggregateClassSource.Key key : recipe.keys()) {
+            if (field.name().equals(key.targetField())) {
+                producedBy.setText("<html><i>Filled by this class's recipe: grouped from "
+                        + "<b>" + recipe.sourceClassName() + "." + key.sourceField()
+                        + "</b>.</i></html>");
+                return;
+            }
+        }
+        producedBy.setText("<html><i>Nothing fills this field: an aggregate's fields "
+                + "come from its recipe — the grouped-from pairs, or the members field "
+                + "— and this one is in neither.</i></html>");
+    }
+
     private void refreshOwnedComponentControls() {
+        refreshProducedBy();
+        GeneratedClassModel owningClass = ownerClass();
+        // An aggregate is assembled from records that already exist, so none of its
+        // fields is acquired — the same "derived, not fetched" state owned and inverted
+        // fields are already shown in.
+        boolean aggregated = owningClass != null
+                && owningClass.aggregateSource() != null;
         boolean owned = productionBox.getSelectedItem()
                 == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = productionBox.getSelectedItem()
                 == FieldProductionKind.INVERT;
-        boolean acquired = !owned && !inverse;
+        boolean acquired = !owned && !inverse && !aggregated;
         propertyPidField.setEnabled(acquired);
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
@@ -561,7 +608,8 @@ public class FieldSourcePanel extends JPanel {
         refreshFallbackLabel();
         refreshCategoryLabel();
         updateRecommendation();
-        refreshGraphExpansionControl();
+refreshOwnedComponentControls();
+                refreshGraphExpansionControl();
         updateSampleButtonState();
     }
 
@@ -706,6 +754,7 @@ public class FieldSourcePanel extends JPanel {
 
         // The source-independent definition is shared with TransformApp's New Field.
         GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
+        GridBagUtils.wideRow(form, y++, producedBy);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
         inverseFieldRow = FormRow.add(form, c, y++, "Inverse of:", inverseFieldBox);
         graphExpansionRow = FormRow.add(form, c, y++, "Graph expansion:", graphExpansionBox);
