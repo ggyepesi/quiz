@@ -193,9 +193,6 @@ public class StatementSourcePanel extends JPanel {
     }
 
     /** Instances to try the identity configuration against, before applying it. */
-    void previewAgainst(java.util.List<canonical.Candidate> candidates) {
-        identityEditor.previewAgainst(candidates);
-    }
 
     public void applyEdits() {
         if (clazz == null) {

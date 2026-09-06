@@ -309,19 +309,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
      * Unlike a helper tool this needs no separate window, so the Explorer is left
      * alone rather than opened over the panel showing the result. */
     /** Hands the sampled instances to whichever editor is showing. */
-    private void previewIdentityAgainst(
-            wikidata.explore.query.result.ClassSampleResult sample) {
-        if (sample == null || sample.instances() == null) return;
-        java.util.List<canonical.Candidate> candidates = new java.util.ArrayList<>();
-        for (objectview.Viewable value : sample.instances().objects()) {
-            if (value instanceof wikidata.explore.extract.WikidataDynamicObject object) {
-                candidates.add(
-                        wikidata.explore.transform.WikidataCandidates.of(object));
-            }
-        }
-        statementSourcePanel.previewAgainst(candidates);
-        classSourcePanel.previewAgainst(candidates);
-    }
 
     private void showSample() {
         editorTabs.setSelectedComponent(samplePanel);
@@ -888,13 +875,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         samplePanel.setClassSampleSupplier(this::classSampleQueryForSelected);
         samplePanel.setClassSampleUnavailableReason(this::classSampleUnavailableReason);
-        samplePanel.onClassSample(result -> {
-            // The sample is also what the identity editor tries a configuration
-            // against: the modeller can see what a key change WOULD do to real
-            // instances before choosing to apply it.
-            previewIdentityAgainst(result);
-            onClassSample.accept(result);
-        });
+        samplePanel.onClassSample(onClassSample);
         samplePanel.setFieldSampleSupplier(
                 this::fieldSampleContextForSelected);
 

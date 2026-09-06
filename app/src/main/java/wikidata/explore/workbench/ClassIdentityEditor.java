@@ -61,8 +61,6 @@ final class ClassIdentityEditor extends JPanel {
     private final Map<String, JComboBox<Reduction>> reducerBoxes = new LinkedHashMap<>();
     private final JLabel proposal = new JLabel(" ");
     private final JButton accept = new JButton(" ");
-    private final JTextArea preview = new JTextArea(5, 40);
-    private List<canonical.Candidate> sampled = List.of();
     private GeneratedClassModel clazz;
     private boolean showing;
     private Consumer<Void> afterChange = ignored -> { };
@@ -98,7 +96,6 @@ final class ClassIdentityEditor extends JPanel {
             if (showing || clazz == null) return;
             clazz.canonical().missingKeyPolicy(
                     (canonical.MissingKeyPolicy) missingKey.getSelectedItem());
-            showPreview();
             afterChange.accept(null);
         });
         JPanel missing = new JPanel(new GridBagLayout());
@@ -113,16 +110,14 @@ final class ClassIdentityEditor extends JPanel {
         keyRules.add(missing, BorderLayout.NORTH);
         keyRules.add(reductions, BorderLayout.CENTER);
 
-        preview.setEditable(false);
-        preview.setOpaque(false);
-        preview.setBorder(BorderFactory.createTitledBorder("What this would do"));
-
-        JPanel below = new JPanel(new BorderLayout(4, 4));
-        below.add(keyRules, BorderLayout.NORTH);
-        below.add(new JScrollPane(preview), BorderLayout.CENTER);
-
+        // No "What this would do" box. It ran the real canonicalization against
+        // sampled instances, which is a genuine question — what a coarser key would
+        // merge — but only two of the four kinds ever fed it, so on the others it could
+        // show nothing but an invitation to sample. Sampling is the Sample tab's, and
+        // the report belongs where the instances are rather than inside a configuration
+        // piece. CanonicalizationEngineAnswersAKeyChangeTest keeps the answer covered.
         add(top, BorderLayout.NORTH);
-        add(below, BorderLayout.CENTER);
+        add(keyRules, BorderLayout.CENTER);
     }
 
 
@@ -131,49 +126,6 @@ final class ClassIdentityEditor extends JPanel {
         afterChange = consumer == null ? ignored -> { } : consumer;
     }
 
-    /**
-     * Instances to try the configuration against, so a change can be SEEN before it is
-     * applied.
-     *
-     * <p>These are already-reduced instances, which is the point rather than a
-     * limitation: each is its own partition under the key that produced it, so the
-     * preview reads "nothing would change" until the key is edited — and then it says
-     * exactly what a coarser one would merge. That is the question a modeller has when
-     * they touch a key, and the only place it could otherwise be answered is a
-     * regenerated snapshot.
-     */
-    void previewAgainst(List<canonical.Candidate> candidates) {
-        sampled = candidates == null ? List.of() : List.copyOf(candidates);
-        showPreview();
-    }
-
-    private void showPreview() {
-        if (clazz == null || sampled.isEmpty()) {
-            preview.setText("Sample this class to see what the configuration would do "
-                    + "to real instances.");
-            return;
-        }
-        CanonicalizationPlan plan = CanonicalizationPlans.of(clazz);
-        if (!plan.identified()) {
-            preview.setText("Nothing identifies this class yet, so there is nothing to "
-                    + "try: every instance would be the same one.");
-            return;
-        }
-        try {
-            var result = canonical.CanonicalizationEngine.canonicalize(
-                    plan, sampled, wikidata.explore.transform.WikidataCandidates.stableForm());
-            StringBuilder text = new StringBuilder(result.report());
-            if (result.reducedPartitions() == 0 && result.conflicts().isEmpty()) {
-                text.append("Nothing is combined: this key tells all ")
-                        .append(sampled.size()).append(" of them apart.\n");
-            }
-            preview.setText(text.toString());
-            preview.setCaretPosition(0);
-        } catch (RuntimeException refused) {
-            preview.setText(refused.getMessage() == null
-                    ? "This configuration cannot be applied." : refused.getMessage());
-        }
-    }
 
     void show(GeneratedClassModel value) {
         clazz = value;
@@ -216,7 +168,6 @@ final class ClassIdentityEditor extends JPanel {
 
         showReductions(plan);
         showProposal();
-        showPreview();
         revalidate();
         repaint();
     }
@@ -240,10 +191,6 @@ final class ClassIdentityEditor extends JPanel {
                     : "Chosen for this field.");
             box.addActionListener(event -> {
                 clazz.canonical().reductions().put(field, (Reduction) box.getSelectedItem());
-                // The preview follows the selection, and only the preview: applying is
-                // still the explicit act it was. Inspecting a consequence must not be
-                // how a configuration gets made.
-                showPreview();
                 afterChange.accept(null);
             });
             reducerBoxes.put(field, box);

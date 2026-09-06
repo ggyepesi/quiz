@@ -58,7 +58,6 @@
       combo: 2 item(s)
       label: structuredName:
       combo: 2 item(s)
-    box: What this would do
   piece: DisplayNameEditor
     label: Display name:
     combo: 3 item(s)
@@ -160,7 +159,6 @@
     box: When the same key occurs
       label: category:
       combo: 2 item(s)
-    box: What this would do
   piece: DisplayNameEditor
     label: Display name:
     combo: 3 item(s)
@@ -243,7 +241,6 @@
     box: When the same key occurs
       label: given:
       combo: 2 item(s)
-    box: What this would do
   piece: DisplayNameEditor
     label: Display name:
     combo: 3 item(s)
@@ -275,7 +272,6 @@
     box: When the same key occurs
       label: awards:
       combo: 2 item(s)
-    box: What this would do
   piece: DisplayNameEditor
     label: Display name:
     combo: 3 item(s)
