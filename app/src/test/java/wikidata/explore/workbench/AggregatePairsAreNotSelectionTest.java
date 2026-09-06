@@ -32,7 +32,7 @@ class AggregatePairsAreNotSelectionTest {
     }
 
     private static OrderedChoiceList<?> pairs(AggregateClassPanel panel) throws Exception {
-        var field = AggregateClassPanel.class.getDeclaredField("inherited");
+        var field = AggregateClassPanel.class.getDeclaredField("keyFields");
         field.setAccessible(true);
         return (OrderedChoiceList<?>) field.get(panel);
     }

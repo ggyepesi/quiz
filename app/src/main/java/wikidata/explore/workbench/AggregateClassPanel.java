@@ -21,7 +21,16 @@ import java.util.stream.IntStream;
 final class AggregateClassPanel extends JPanel {
     private final GeneratedProjectModel project;
     private final JComboBox<String> sourceClass = new JComboBox<>();
-    private final JComboBox<String> membersField = new JComboBox<>();
+    /**
+     * The field that receives the grouped records — the same form as the key, unordered.
+     *
+     * <p>"Members field" named the mechanism; these are the aggregated fields, the other
+     * half of what this class takes from the class it groups: its FIELDS become the key,
+     * its RECORDS go here. One entry, because the model unions whole records into one
+     * field — collecting a single field's values across a group would be a different
+     * production, and it does not exist.
+     */
+    private final OrderedChoiceList<String> aggregated = new OrderedChoiceList<>(false);
     // An aggregate class has a name, an alias and a base like any other class, and
     // this panel showed none of them — so an aggregate could not be renamed at all:
     // RenameClass is used by the Source, Statement and Owned panels and by nothing
@@ -29,16 +38,19 @@ final class AggregateClassPanel extends JPanel {
     private final ClassHeaderEditor header;
 
     /**
-     * The fields this class inherits from the class it groups — which ARE its key.
+     * The key: the fields this class takes from the class it groups.
      *
-     * <p>Ordered, because the identifier joins their values in order. It was a list of
-     * ⟨this field ← that field⟩ pairs over fields this class already had, so the same
-     * fact was authored twice: you added a field by hand and then paired it, and the
-     * identity editor showed the result as a key you could edit separately. An
-     * aggregate does not invent fields — it takes them from the class it groups, and
-     * inheriting one is what creates it.
+     * <p>One name, because there is one thing. "Key fields" and "inherited fields" were
+     * two names for it — a field is taken from the grouped class BECAUSE it identifies
+     * the group, and identifies the group BECAUSE it is taken. Ordered, since the
+     * identifier joins their values in that order.
+     *
+     * <p>It was a list of ⟨this field ← that field⟩ pairs over fields this class
+     * already had, so the same fact was authored twice: you added a field by hand and
+     * then paired it, and the identity editor showed the result as a key you could edit
+     * separately.
      */
-    private final OrderedChoiceList<String> inherited = new OrderedChoiceList<>(true);
+    private final OrderedChoiceList<String> keyFields = new OrderedChoiceList<>(true);
     // A template, asked the way every kind asks it. This was a row of field
     // checkboxes composed INTO a template and read back out of one by substring: it
     // could only ever produce "{a} — {b}", so a template written with any other
@@ -69,24 +81,32 @@ final class AggregateClassPanel extends JPanel {
         GridBagUtils.wideRow(form, 1, identityEditor);
         GridBagUtils.wideRow(form, 2, displayNameEditor);
         GridBagUtils.labeledRow(form, c, 3, "From class:", sourceClass);
-        membersField.setToolTipText(
-                "List-valued ENTITY fields on this class that hold the selected source class.");
-        GridBagUtils.labeledRow(form, c, 4, "Members field:", membersField);
-        // "Key field", not "grouped from": these pairs ARE the key — one instance per
-        // distinct combination of their values — and naming them after the mechanism
-        // left the reader to work out that the identity list above was the same fact.
-        inherited.title("Key fields — inherited from the class this one groups");
-        inherited.setToolTipText(
-                "One instance per distinct combination of these values. Inheriting a "
-                        + "field creates it on this class, copying the source field's "
-                        + "type; everything NOT inherited is reached through the "
-                        + "grouped records.");
-        inherited.onChange(() -> {
+        aggregated.title("Aggregated fields");
+        aggregated.setToolTipText(
+                "The field that receives the grouped records themselves. Everything the "
+                        + "grouped class has that the key does not take is reached "
+                        + "through them.");
+        aggregated.onChange(() -> {
             if (clazz == null) return;
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 5, inherited);
+        GridBagUtils.wideRow(form, 4, aggregated);
+        // "Key field", not "grouped from": these pairs ARE the key — one instance per
+        // distinct combination of their values — and naming them after the mechanism
+        // left the reader to work out that the identity list above was the same fact.
+        keyFields.title("Key fields");
+        keyFields.setToolTipText(
+                "The fields this class takes from the class it groups: one instance per "
+                        + "distinct combination of their values. Taking a field creates "
+                        + "it here, copying the source field's type; everything not "
+                        + "taken is reached through the grouped records.");
+        keyFields.onChange(() -> {
+            if (clazz == null) return;
+            applyEdits();
+            edit(clazz);
+        });
+        GridBagUtils.wideRow(form, 5, keyFields);
         GridBagUtils.wideRow(form, 6, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
         add(new JScrollPane(form), BorderLayout.CENTER);
@@ -146,12 +166,16 @@ final class AggregateClassPanel extends JPanel {
     void applyEdits() {
         if (clazz == null) return;
         header.applyEdits();
+        GeneratedClassModel groupedClass = project.findClass(selection(sourceClass));
+        String members = aggregated.chosen().isEmpty()
+                ? "" : aggregated.chosen().get(0);
+        if (!members.isBlank()) receiveRecords(groupedClass, members);
         AggregateClassSource spec = new AggregateClassSource(
-                selection(sourceClass), selection(membersField));
+                selection(sourceClass), members);
         // The list's CONTENTS, not its selection. Reading the selection made clicking
         // a row to look at it an edit that dropped every other pair.
-        GeneratedClassModel grouped = project.findClass(selection(sourceClass));
-        for (String field : inherited.chosen()) {
+        GeneratedClassModel grouped = groupedClass;
+        for (String field : keyFields.chosen()) {
             inherit(grouped, field);
             spec.keys().add(new AggregateClassSource.Key(field, field));
         }
@@ -189,35 +213,49 @@ final class AggregateClassPanel extends JPanel {
         field.entityClassName(source.entityClassName());
     }
 
+    /**
+     * Gives this class the field the grouped records go into, if it has none.
+     *
+     * <p>Named after the class it holds, which is what every such field is already
+     * called — NobelPrize.laureatesWithMotivation holds LaureatesWithMotivation. It has
+     * to be created here: an aggregate invents no fields, so Add field is refused on
+     * one, and this is the only way the records get somewhere to go.
+     */
+    private void receiveRecords(GeneratedClassModel grouped, String name) {
+        if (grouped == null || clazz.fields().stream()
+                .anyMatch(field -> field != null && name.equals(field.name()))) {
+            return;
+        }
+        clazz.addField(name, FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName(grouped.className());
+    }
+
+    /** What a field holding this class's records is called: the class, decapitalised. */
+    private static String recordsFieldName(GeneratedClassModel grouped) {
+        String name = grouped.className();
+        return name.isEmpty() ? "" : Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
     private void refreshChoices(AggregateClassSource selected) {
         if (clazz == null) return;
         GeneratedClassModel source = project.findClass(
                 selection(sourceClass));
 
-        String selectedMember = selected == null
-                ? selection(membersField) : selected.membersField();
-        membersField.removeAllItems();
-        membersField.addItem("");
+        String selectedMember = selected == null ? "" : selected.membersField();
+        LinkedHashSet<String> holders = new LinkedHashSet<>();
         for (var field : clazz.fields()) {
             if (field.type() == FieldType.ENTITY
                     && field.cardinality() == FieldCardinality.COLLECTION
                     && (source == null || source.className().equals(field.entityClassName()))) {
-                membersField.addItem(field.name());
+                holders.add(field.name());
             }
         }
-        membersField.setSelectedItem(selectedMember);
-        // An aggregate holds its sources in one of its OWN fields, so that field must be
-        // a list of the source class. Choosing a source this class cannot hold left the
-        // control empty and said nothing — a dead end that looks like a bug in the
-        // editor rather than a fact about the model.
-        boolean holdable = membersField.getItemCount() > 1;
-        membersField.setToolTipText(holdable
-                ? "A list field on this class that holds the source records."
-                : source == null
-                        ? "Choose the class to group first."
-                        : "This class has no list field of " + source.className()
-                                + ", so it cannot hold those records. Add one to "
-                                + clazz.className() + " first.");
+        // The field this class does not have yet is offered by the name it would take,
+        // and created when it is chosen — an aggregate invents no fields by hand.
+        if (source != null) holders.add(recordsFieldName(source));
+        java.util.List<String> chosenMember = selectedMember.isBlank()
+                ? java.util.List.of() : java.util.List.of(selectedMember);
+        aggregated.show(chosenMember, new java.util.ArrayList<>(holders));
 
         // What can be inherited: the grouped class's own scalar fields. A collection
         // cannot be a key — one instance per combination of values needs one value.
@@ -237,7 +275,7 @@ final class AggregateClassPanel extends JPanel {
             already.add(key.sourceField());
             offered.add(key.sourceField());
         });
-        inherited.show(new java.util.ArrayList<>(already),
+        keyFields.show(new java.util.ArrayList<>(already),
                 new java.util.ArrayList<>(offered));
     }
 

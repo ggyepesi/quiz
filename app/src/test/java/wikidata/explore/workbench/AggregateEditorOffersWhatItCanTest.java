@@ -56,11 +56,12 @@ class AggregateEditorOffersWhatItCanTest {
     }
 
     /**
-     * And where nothing can be offered, the control says why. An aggregate holds its
-     * sources in one of its own list fields, so choosing a class it cannot hold leaves
-     * the control empty — which looked like a broken editor rather than a fact.
+     * There is no dead end left to explain. Choosing a class this aggregate has no
+     * field for used to empty the members chooser, and the tooltip had to say why; the
+     * aggregated list offers the field it WOULD create, named after the class, because
+     * an aggregate invents no fields by hand — Add field is refused on one.
      */
-    @Test void anImpossibleSourceExplainsItselfRatherThanGoingBlank() throws Exception {
+    @Test void aClassWithNowhereToGoStillOffersTheFieldItWouldCreate() throws Exception {
         GeneratedProjectModel project = nobel();
         AggregateClassPanel panel = new AggregateClassPanel(project);
         panel.edit(project.findClass("NobelPrize"));
@@ -68,8 +69,23 @@ class AggregateEditorOffersWhatItCanTest {
         JComboBox<?> sourceClass = (JComboBox<?>) field(panel, "sourceClass");
         sourceClass.setSelectedItem("Person");
 
-        JComboBox<?> members = (JComboBox<?>) field(panel, "membersField");
-        assertTrue(members.getToolTipText().contains("no list field of Person"),
-                "it says what is missing: " + members.getToolTipText());
+        OrderedChoiceList<?> aggregated =
+                (OrderedChoiceList<?>) field(panel, "aggregated");
+        assertTrue(offered(aggregated).contains("person"),
+                "the records would go into a field named after the class: "
+                        + offered(aggregated));
+    }
+
+    /** What the control offers, read the way the reader sees it. */
+    private static java.util.List<String> offered(OrderedChoiceList<?> list)
+            throws Exception {
+        var field = OrderedChoiceList.class.getDeclaredField("available");
+        field.setAccessible(true);
+        JComboBox<?> available = (JComboBox<?>) field.get(list);
+        java.util.List<String> items = new java.util.ArrayList<>();
+        for (int i = 0; i < available.getItemCount(); i++) {
+            items.add(String.valueOf(available.getItemAt(i)));
+        }
+        return items;
     }
 }

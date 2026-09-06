@@ -290,9 +290,13 @@
     label: These instances have no name of their own — name them by a field.
   label: From class:
   combo: 4 item(s)
-  label: Members field:
-  combo: 2 item(s)
-  piece: OrderedChoiceList  [Key fields — inherited from the class this one groups]
+  piece: OrderedChoiceList  [Aggregated fields]
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    label: Available:
+    combo: 2 item(s)
+  piece: OrderedChoiceList  [Key fields]
     list
     button: Add  (disabled)
     button: Remove  (disabled)
