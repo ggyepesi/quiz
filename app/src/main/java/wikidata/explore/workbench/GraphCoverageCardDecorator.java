@@ -3,22 +3,18 @@ package wikidata.explore.workbench;
 import datasource.graph.GraphDiscoveryState;
 import datasource.graph.GraphExpansionCoverage;
 import objectview.Viewable;
-import wikidata.ui.IdentityChip;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Font;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-/** Adds graph coverage beside the existing native-identity card decoration. */
+/** Adds graph coverage to a card title; datasource provenance remains a field. */
 final class GraphCoverageCardDecorator implements Function<Viewable, JComponent> {
     private record Key(String type, String id) { }
     private record Marker(String label, GraphExpansionCoverage.State state) { }
@@ -44,12 +40,10 @@ final class GraphCoverageCardDecorator implements Function<Viewable, JComponent>
     }
 
     @Override public JComponent apply(Viewable view) {
-        JComponent identity = IdentityChip.ofInstance(view);
         Marker marker = marker(view);
-        if (marker == null) return identity;
-        JComponent coverage = marker.state() == null
+        if (marker == null) return null;
+        return marker.state() == null
                 ? unstampedChip() : coverageChip(marker.state());
-        return combine(coverage, identity);
     }
 
     /** Pure classification seam: tests need not initialize clickable Swing identity UI. */
@@ -73,17 +67,6 @@ final class GraphCoverageCardDecorator implements Function<Viewable, JComponent>
                 .min(java.util.Comparator.comparingInt(GraphCoverageCardDecorator::priority))
                 .orElse(null);
         return state == null ? null : new Marker(label(state), state);
-    }
-
-    private static JComponent combine(JComponent coverage, JComponent identity) {
-        if (identity == null) return coverage;
-        JPanel row = new JPanel();
-        row.setOpaque(false);
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.add(coverage);
-        row.add(Box.createHorizontalStrut(6));
-        row.add(identity);
-        return row;
     }
 
     private static int priority(GraphExpansionCoverage.State state) {

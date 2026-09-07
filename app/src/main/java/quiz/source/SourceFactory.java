@@ -16,8 +16,9 @@ import java.util.List;
  *
  * <p>Its output is fed to resolution (auto when there is a single candidate,
  * otherwise a user pick); the chosen {@code Source} is then consumed by a
- * {@link SourceProducer} to pull data. The source itself is not stored on the
- * instance — a resolved identity lives in the curation history.</p>
+ * {@link SourceProducer} to pull data. A resolved curation identity lives in the
+ * curation history; a producer may separately retain a hidden source descriptor
+ * when generated records need durable provenance.</p>
  *
  * @param <S> the concrete {@link Source} kind this factory produces
  */

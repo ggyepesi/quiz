@@ -148,8 +148,23 @@ public class WikidataDynamicObjectJsonStore {
             List<LoadedDeclaration> loadedDeclarations,
             datasource.graph.GraphDiscoveryState graphDiscovery)
             throws IOException {
+        return saveWithFieldGraph(objects, file, schema, loadedDeclarations,
+                graphDiscovery, wikidata.explore.transform.SelfReferenceLedger.EMPTY);
+    }
+
+    /** Saves both durable run ledgers beside the object graph they describe. */
+    public SnapshotFieldGraph saveWithFieldGraph(
+            List<WikidataDynamicObject> objects,
+            File file,
+            wikidata.explore.model.GeneratedProjectModel schema,
+            List<LoadedDeclaration> loadedDeclarations,
+            datasource.graph.GraphDiscoveryState graphDiscovery,
+            wikidata.explore.transform.SelfReferenceLedger selfReferences)
+            throws IOException {
         this.pendingGraphDiscovery = graphDiscovery == null
                 ? datasource.graph.GraphDiscoveryState.EMPTY : graphDiscovery;
+        this.pendingSelfReferences = selfReferences == null
+                ? wikidata.explore.transform.SelfReferenceLedger.EMPTY : selfReferences;
         return saveWithFieldGraphInternal(objects, file, schema, loadedDeclarations);
     }
 
@@ -183,6 +198,8 @@ public class WikidataDynamicObjectJsonStore {
         } finally {
             this.pendingDeclarations = List.of();
             this.pendingGraphDiscovery = datasource.graph.GraphDiscoveryState.EMPTY;
+            this.pendingSelfReferences =
+                    wikidata.explore.transform.SelfReferenceLedger.EMPTY;
         }
     }
 
@@ -191,6 +208,8 @@ public class WikidataDynamicObjectJsonStore {
     private List<LoadedDeclaration> pendingDeclarations = List.of();
     private datasource.graph.GraphDiscoveryState pendingGraphDiscovery =
             datasource.graph.GraphDiscoveryState.EMPTY;
+    private wikidata.explore.transform.SelfReferenceLedger pendingSelfReferences =
+            wikidata.explore.transform.SelfReferenceLedger.EMPTY;
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
             List<WikidataDynamicObject> memberRoots,
@@ -251,6 +270,7 @@ public class WikidataDynamicObjectJsonStore {
         snapshot.version = FORMAT_VERSION;
         snapshot.loadedDeclarations = new ArrayList<>(pendingDeclarations);
         snapshot.graphDiscovery = pendingGraphDiscovery;
+        snapshot.selfReferences = pendingSelfReferences;
         snapshot.fieldGraph = fieldGraph.build();
         for (WikidataDynamicObject o : memberRoots) {
             String k = poolKey(o);
@@ -390,6 +410,13 @@ public class WikidataDynamicObjectJsonStore {
         java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) aliases.addAll(o.aliases());
         e.aliases.addAll(aliases);
+        java.util.LinkedHashMap<String, quiz.source.WikidataStatementSource> statements =
+                new java.util.LinkedHashMap<>();
+        for (WikidataDynamicObject o : instances) {
+            o.wikidataStatementSources().forEach(source ->
+                    statements.putIfAbsent(source.statement(), source));
+        }
+        e.wikidataStatements.addAll(statements.values());
         java.util.LinkedHashSet<datasource.evidence.CategoryMembership> categories =
                 new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) categories.addAll(o.categoryMemberships());
@@ -615,7 +642,10 @@ public class WikidataDynamicObjectJsonStore {
                         ? List.of() : List.copyOf(snapshot.loadedDeclarations),
                 snapshot.graphDiscovery == null
                         ? datasource.graph.GraphDiscoveryState.EMPTY
-                        : snapshot.graphDiscovery);
+                        : snapshot.graphDiscovery,
+                snapshot.selfReferences == null
+                        ? wikidata.explore.transform.SelfReferenceLedger.EMPTY
+                        : snapshot.selfReferences);
     }
 
     private static Map<String, List<WikidataDynamicObject>> resolveRoleSelections(
@@ -719,6 +749,7 @@ public class WikidataDynamicObjectJsonStore {
             }
             o.referenceLabel(e.referenceLabel);
             o.aliases(e.aliases);
+            o.wikidataStatementSources(e.wikidataStatements);
             if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
                 o.categoryMemberships(categoryMemberships(e));
             }
@@ -850,6 +881,7 @@ public class WikidataDynamicObjectJsonStore {
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
         e.aliases.addAll(w.aliases());
+        e.wikidataStatements.addAll(w.wikidataStatementSources());
         if (!w.categoryMemberships().isEmpty()) {
             e.wikipediaCategoryDocument = w.categoryMemberships().getFirst().document();
             w.categoryMemberships().stream()
@@ -884,6 +916,7 @@ public class WikidataDynamicObjectJsonStore {
         o.directClasses(e.classes);
         o.referenceLabel(e.referenceLabel);
         o.aliases(e.aliases);
+        o.wikidataStatementSources(e.wikidataStatements);
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             o.categoryMemberships(categoryMemberships(e));
         }
@@ -942,6 +975,9 @@ public class WikidataDynamicObjectJsonStore {
         public String name;
         // wbgetentities "Also known as" identity metadata (not a claim field).
         public List<String> aliases = new ArrayList<>();
+        /** Full source triples for statement-derived records. */
+        public List<quiz.source.WikidataStatementSource> wikidataStatements =
+                new ArrayList<>();
         public datasource.evidence.SourceDocument wikipediaCategoryDocument;
         public List<String> wikipediaCategories = new ArrayList<>();
         @com.fasterxml.jackson.annotation.JsonInclude(
@@ -983,6 +1019,9 @@ public class WikidataDynamicObjectJsonStore {
         /** Pattern-relative graph expansion coverage; additive for old snapshots. */
         public datasource.graph.GraphDiscoveryState graphDiscovery =
                 datasource.graph.GraphDiscoveryState.EMPTY;
+        /** Decisions about self-referential records, including records not in entities. */
+        public wikidata.explore.transform.SelfReferenceLedger selfReferences =
+                wikidata.explore.transform.SelfReferenceLedger.EMPTY;
         public SnapshotFieldGraph fieldGraph;
     }
 
@@ -994,7 +1033,8 @@ public class WikidataDynamicObjectJsonStore {
             List<LoadedGroupRoot> groupRootBindings,
             Map<String, List<WikidataDynamicObject>> roleSelections,
             List<LoadedDeclaration> loadedDeclarations,
-            datasource.graph.GraphDiscoveryState graphDiscovery) {
+            datasource.graph.GraphDiscoveryState graphDiscovery,
+            wikidata.explore.transform.SelfReferenceLedger selfReferences) {
 
         public LoadedSnapshot(
                 List<WikidataDynamicObject> objects, SnapshotFieldGraph fieldGraph,
@@ -1003,7 +1043,8 @@ public class WikidataDynamicObjectJsonStore {
                 List<LoadedGroupRoot> groupRootBindings,
                 Map<String, List<WikidataDynamicObject>> roleSelections) {
             this(objects, fieldGraph, memberRoots, groupRoots, groupRootBindings,
-                    roleSelections, List.of(), datasource.graph.GraphDiscoveryState.EMPTY);
+                    roleSelections, List.of(), datasource.graph.GraphDiscoveryState.EMPTY,
+                    wikidata.explore.transform.SelfReferenceLedger.EMPTY);
         }
     }
 

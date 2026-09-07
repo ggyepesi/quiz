@@ -1,12 +1,10 @@
 package wikidata.explore.query.swing;
 
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.ui.IdentityChip;
+import wikidata.ui.WikidataLinks;
 
 import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
-import quiz.source.WikidataSource;
 import work.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -41,7 +39,7 @@ public class QueryObjectResultPanel
 
     private RenderContext activeContext;
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
-            IdentityChip::ofInstance;
+            ignored -> null;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -52,10 +50,10 @@ public class QueryObjectResultPanel
         return activeContext;
     }
 
-    /** Presentation-only title decoration; identity remains the default. */
+    /** Optional presentation-only title decoration. Datasource provenance is a field. */
     public void cardDecorator(
             java.util.function.Function<Viewable, JComponent> decorator) {
-        cardDecorator = decorator == null ? IdentityChip::ofInstance : decorator;
+        cardDecorator = decorator == null ? ignored -> null : decorator;
     }
 
     public void viewMode(ViewMode viewMode) {
@@ -120,9 +118,10 @@ public class QueryObjectResultPanel
         // MultiView supplies its own shared RenderContext rather than going through
         // SearchableView.Builder.cardDecorator(). Configure that context BEFORE build:
         // cards read their header decoration while they are constructed. Without this,
-        // ModelBuilder showed QIDs for a one-type result but silently lost them as soon
-        // as the result contained several types (the normal generated-domain case).
+        // a one-type result could carry graph-coverage decoration while a multi-type
+        // result silently lost it.
         multi.context().setCardDecorator(cardDecorator);
+        multi.context().setValueLinker(WikidataLinks.valueLinker());
 
         for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             List<Viewable> full = e.getValue();
@@ -191,10 +190,8 @@ public class QueryObjectResultPanel
         objectview.view.SearchableView browser =
                 objectview.view.SearchableView.builder(shown)
                         .sample(first)
-                        // Stamp each instance with its Wikidata identity chip — same
-                        // presentation the transform/curation views use, resolved here from the
-                        // instance's native id (ModelBuilder has no curation sidecar).
                         .cardDecorator(cardDecorator)
+                        .valueLinker(WikidataLinks.valueLinker())
                         .build();
         activeContext = browser.renderContext();
 

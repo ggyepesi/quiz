@@ -15,12 +15,21 @@ public class GeneratedViewableSourceGenerator {
     public static final String GENERATED_PACKAGE = "wikidata.generated";
 
     private final String packageName;
+    private final datasource.api.DatasourceRegistry datasourceRegistry;
 
     public GeneratedViewableSourceGenerator(String packageName) {
+        this(packageName, datasource.Datasources.standard());
+    }
+
+    public GeneratedViewableSourceGenerator(
+            String packageName,
+            datasource.api.DatasourceRegistry datasourceRegistry) {
         this.packageName =
                 packageName == null || packageName.isBlank()
                         ? GENERATED_PACKAGE
                         : packageName;
+        this.datasourceRegistry = java.util.Objects.requireNonNull(
+                datasourceRegistry, "datasourceRegistry");
     }
 
     public String qualifiedClassName(GeneratedClassModel model) {
@@ -44,6 +53,9 @@ public class GeneratedViewableSourceGenerator {
 
         List<GeneratedFieldModel> fields =
                 project == null ? model.fields() : model.effectiveFields(project);
+        List<wikidata.explore.model.ConfiguredInstanceFields.Field> instanceFields =
+                wikidata.explore.model.ConfiguredInstanceFields.of(
+                        model, project, datasourceRegistry);
 
         // Own (non-inherited) field names, to tag inherited ones in the source.
         Set<String> ownNames = new HashSet<>();
@@ -73,9 +85,8 @@ public class GeneratedViewableSourceGenerator {
             sb.append("import objectview.annotations.Inline;\n\n");
         }
 
-        // All generated classes extend the neutral GeneratedEntity carrier, which
-        // holds only results. Where the instance came from (entity QID vs statement
-        // GUID) is curation history, not state on the base class.
+        // All generated classes extend the neutral GeneratedEntity carrier. Provider
+        // fields are declared on the generated subclass below, beside modeled fields.
         sb.append("public class ").append(className)
           .append(" extends quiz.source.GeneratedEntity {\n\n");
 
@@ -91,6 +102,36 @@ public class GeneratedViewableSourceGenerator {
             sb.append("    @objectview.annotations.Minor\n")
               .append("    public java.util.List<String> alternateNames")
               .append(" = new java.util.ArrayList<>();\n\n");
+        }
+
+        for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
+                : instanceFields) {
+            datasource.api.DatasourceInstanceField field = configured.declaration();
+            boolean conflicts = fields.stream().filter(java.util.Objects::nonNull)
+                    .anyMatch(modeled -> field.name().equals(
+                            sanitizeFieldName(modeled.name())));
+            if (conflicts) {
+                throw new IllegalArgumentException(
+                        "Datasource field conflicts with modeled field: " + field.name());
+            }
+            sb.append("    @objectview.annotations.Label(\"")
+              .append(escape(field.label())).append("\")\n")
+              .append("    @objectview.annotations.Role(objectview.field.FieldRole.")
+              .append(wikidata.explore.model.ConfiguredInstanceFields
+                      .toFieldRef(field).role().name()).append(")\n");
+            if (field.valueSchema().kind()
+                    == datasource.api.SourceValueKind.ENTITY_REFERENCE) {
+                sb.append("    @objectview.annotations.Reference\n");
+            }
+            sb.append("    public ").append(javaType(field.valueSchema()))
+              .append(" ").append(sanitizeFieldName(field.name()));
+            if (field.valueSchema().collection()) {
+                sb.append(" = new java.util.ArrayList<>()");
+            } else if (field.valueSchema().kind().fieldType()
+                    == datasource.schema.FieldType.STRING) {
+                sb.append(" = \"\"");
+            }
+            sb.append(";\n\n");
         }
 
         if (model.hasBase()) {
@@ -142,6 +183,23 @@ public class GeneratedViewableSourceGenerator {
 
         sb.append("}\n");
         return sb.toString();
+    }
+
+    private static String javaType(datasource.api.SourceValueSchema schema) {
+        String scalar = switch (schema.kind()) {
+            case ENTITY_REFERENCE -> "objectview.Viewable";
+            case QUANTITY -> "quiz.Quantity";
+            case MEDIA -> "objectview.media.MediaValue";
+            case TEXT, LANGUAGE_TEXT, DATE_TIME, URL, MODEL_VALUE, DOCUMENT, UNKNOWN
+                    -> "String";
+        };
+        return schema.collection()
+                ? "java.util.List<" + scalar + ">" : scalar;
+    }
+
+    private static String escape(String text) {
+        return (text == null ? "" : text)
+                .replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     public String javaType(

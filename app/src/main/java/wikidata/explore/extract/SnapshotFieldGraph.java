@@ -148,8 +148,10 @@ public final class SnapshotFieldGraph {
             // guard then suppresses the synthetic "Display label" and rendering consumes
             // the field as the title instead of a duplicate row.
             refs.add(FieldRef.described(
-                    field.name, field.name,
-                    field.display ? FieldRole.DISPLAY : FieldRole.NONE,
+                    field.name,
+                    field.label == null || field.label.isBlank()
+                            ? field.name : field.label,
+                    field.role(),
                     field.domainKind(), valueKind,
                     field.typeLabel(), field.reference, field.collection,
                     field.primaryTargetType(),
@@ -313,6 +315,14 @@ public final class SnapshotFieldGraph {
                                 declared.targetType(), TypeShape::new);
                     }
                 }
+                for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
+                        : wikidata.explore.model.ConfiguredInstanceFields.of(
+                                generatedClass, model, datasource.Datasources.standard())) {
+                    FieldRef declared = wikidata.explore.model.ConfiguredInstanceFields
+                            .toFieldRef(configured.declaration());
+                    type.fields.computeIfAbsent(
+                            declared.name(), FieldShape::new).declare(declared);
+                }
                 if (generatedClass.reifiesStatements()) {
                     type.fields.computeIfAbsent("source", FieldShape::new)
                             .declare(FieldRef.withStructural(
@@ -438,6 +448,10 @@ public final class SnapshotFieldGraph {
         // Persisted so a loaded snapshot knows which field backs getDisplayName(), instead
         // of losing that designation and showing the synthetic "Display label" alongside it.
         public boolean display;
+        /** Human-facing field label; absent in older snapshots. */
+        public String label = "";
+        /** Semantic role; absent in older snapshots, where display is retained above. */
+        public String role = "";
         public String scalarKind = FieldKind.UNKNOWN.name();
         public String scalarTypeLabel = "";
         public List<String> targetTypes = new ArrayList<>();
@@ -463,6 +477,12 @@ public final class SnapshotFieldGraph {
                 linkText = field.linkText();
             }
             annotatedReference |= field.annotatedReference();
+            if (field.label() != null && !field.label().isBlank()) {
+                label = field.label();
+            }
+            if (field.role() != null && field.role() != FieldRole.NONE) {
+                role = field.role().name();
+            }
             // Recognized by ROLE, never by the field name: a real @DisplayField field is
             // DISPLAY-role, while the synthetic contract alias uses the reserved key.
             display |= field.role() == FieldRole.DISPLAY
@@ -489,6 +509,17 @@ public final class SnapshotFieldGraph {
                     scalarTypeLabel = label;
                 }
             }
+        }
+
+        FieldRole role() {
+            if (role != null && !role.isBlank()) {
+                try {
+                    return FieldRole.valueOf(role);
+                } catch (IllegalArgumentException ignored) {
+                    // A newer producer's role remains an ordinary field to this reader.
+                }
+            }
+            return display ? FieldRole.DISPLAY : FieldRole.NONE;
         }
 
         void declareKind(FieldKind kind) {

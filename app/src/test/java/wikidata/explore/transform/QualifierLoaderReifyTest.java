@@ -73,9 +73,14 @@ class QualifierLoaderReifyTest {
 
         Map<String, List<WikidataApiClient.ApiStatement>> statements = Map.of(
                 "Q11", List.of(
-                        stmt("Q11$a", "Q102427", Map.of(
-                                "P585", List.of("+1968-04-10T00:00:00Z"),   // YEAR
-                                "P2453", List.of("Q30", "Q40"))),           // multi ENTITY
+                        new WikidataApiClient.ApiStatement(
+                                "Q11$a", "Q102427", Map.of(
+                                        "P585", List.of("+1968-04-10T00:00:00Z"),
+                                        "P2453", List.of("Q30", "Q40")),
+                                "preferred", List.of(
+                                        new WikidataApiClient.ApiReference(
+                                                "reference-hash",
+                                                Map.of("P248", List.of("Q123"))))),
                         stmt("Q11$b", "Q999", Map.of())));                  // NOT an allowed value
 
         StubApi api = new StubApi(statements, Map.of("Q40", "Fresh Co-nominee"));
@@ -117,6 +122,16 @@ class QualifierLoaderReifyTest {
         // The nomination is named after (and attached to) its value + entity.
         assertEquals("Best Actor", nom.getDisplayName());
         assertSame(nom, nominee.get("__Nomination"));
+
+        var source = nom.wikidataStatementSources().getFirst();
+        assertEquals("Q11$a", source.statement());
+        assertEquals("Q11", source.subject());
+        assertEquals("P1411", source.property());
+        assertEquals("Q102427", source.object());
+        assertEquals("preferred", source.rank());
+        assertEquals(List.of("Q123"),
+                source.references().getFirst().claims().get("P248"));
+        assertEquals("Q11 — P1411 → Best Actor (Q102427)", source.getDisplayName());
     }
 
     @Test

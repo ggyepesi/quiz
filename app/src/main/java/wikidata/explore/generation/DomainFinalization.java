@@ -14,14 +14,18 @@ public final class DomainFinalization {
     public record Result(int dead, int disambiguation, int orphans, int requiredDropped,
                          int ownedRenamed, int ownerlessParts,
                          List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
-                                 coverage) {
+                                 coverage,
+                         List<WikidataDynamicObject> suspectedSelfReferences) {
         public Result {
             coverage = List.copyOf(coverage == null ? List.of() : coverage);
+            suspectedSelfReferences = List.copyOf(suspectedSelfReferences == null
+                    ? List.of() : suspectedSelfReferences);
         }
 
         /** Back-compat: a result with no coverage report. */
         public Result(int dead, int disambiguation, int orphans, int requiredDropped) {
-            this(dead, disambiguation, orphans, requiredDropped, 0, 0, List.of());
+            this(dead, disambiguation, orphans, requiredDropped, 0, 0,
+                    List.of(), List.of());
         }
     }
 
@@ -50,6 +54,7 @@ public final class DomainFinalization {
         // a value rather than only a log line (#96).
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
                 new java.util.ArrayList<>();
+        List<WikidataDynamicObject> suspectedSelfReferences = new java.util.ArrayList<>();
         List<GenerationStage> stages = List.of(
                 stage("canonicalize", "Canonicalize final names",
                         () -> wikidata.explore.transform.Canonicalization.apply(
@@ -110,13 +115,15 @@ public final class DomainFinalization {
                                 log)),
                 stage("consistency", "Audit final statement records", () -> {
                     if (consistencyRecords != null) {
-                        wikidata.explore.transform.ConsistencyReport.check(
-                                compiled, new java.util.ArrayList<>(consistencyRecords), log);
+                        suspectedSelfReferences.addAll(
+                                wikidata.explore.transform.ConsistencyReport.suspected(
+                                        compiled,
+                                        new java.util.ArrayList<>(consistencyRecords), log));
                     }
                 }));
         for (GenerationStage stage : stages) stage.execute();
         return new Result(counts[0], counts[1], counts[2], counts[3], counts[4],
-                counts[5], coverage);
+                counts[5], coverage, suspectedSelfReferences);
     }
 
     private static GenerationStage stage(String id, String title, Checked action) {

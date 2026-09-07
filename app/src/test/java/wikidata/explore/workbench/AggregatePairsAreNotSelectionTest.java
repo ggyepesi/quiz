@@ -10,6 +10,7 @@ import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Clicking a row to look at it must not reconfigure the class.
@@ -91,5 +92,29 @@ class AggregatePairsAreNotSelectionTest {
 
         assertEquals(List.of("category"), prize.canonical().keyFields(),
                 "a field with nothing to group from cannot identify anything");
+    }
+
+    @Test void theIdentityViewCannotCompeteWithTheAggregateKeyList()
+            throws Exception {
+        GeneratedProjectModel project = nobel();
+        AggregateClassPanel panel = new AggregateClassPanel(project);
+        panel.edit(project.findClass("NobelPrize"));
+
+        var identityField = AggregateClassPanel.class.getDeclaredField("identityEditor");
+        identityField.setAccessible(true);
+        ClassIdentityEditor identity =
+                (ClassIdentityEditor) identityField.get(panel);
+        var keyField = ClassIdentityEditor.class.getDeclaredField("key");
+        keyField.setAccessible(true);
+        OrderedChoiceList<?> key = (OrderedChoiceList<?>) keyField.get(identity);
+        var chosenField = OrderedChoiceList.class.getDeclaredField("chosen");
+        chosenField.setAccessible(true);
+        JList<?> chosen = (JList<?>) chosenField.get(key);
+        chosen.setSelectedIndex(0);
+        var removeField = OrderedChoiceList.class.getDeclaredField("remove");
+        removeField.setAccessible(true);
+
+        assertFalse(((javax.swing.JButton) removeField.get(key)).isEnabled(),
+                "the aggregate recipe is the one author of its key");
     }
 }

@@ -20,6 +20,7 @@ import java.util.Map;
 
 public class GeneratedViewableMapper {
     private final GeneratedViewableRuntime runtime;
+    private final datasource.api.DatasourceRegistry datasourceRegistry;
     private final Map<WikidataDynamicObject, Object> generatedByDynamic =
             new IdentityHashMap<>();
     // Real entities (Q\d+) are identified by QID: the same entity arriving as
@@ -35,6 +36,8 @@ public class GeneratedViewableMapper {
             canonicalSourceKeyByType = new java.util.LinkedHashMap<>();
     private final Map<String, Map<WikidataDynamicObject, List<String>>>
             canonicalSourceIdentitiesByType = new java.util.LinkedHashMap<>();
+    private final Map<String, Map<WikidataDynamicObject, List<String>>>
+            canonicalOccurrenceIdentitiesByType = new java.util.LinkedHashMap<>();
     // Classes produced once per owning instance. Such a component BORROWS its owner's
     // QID (one Name per Person, carrying the person's identifier), so it is not "the
     // same entity arriving twice": unifying it by QID would hand the owner's instance
@@ -43,7 +46,15 @@ public class GeneratedViewableMapper {
     private final java.util.Set<String> ownedComponentTypes;
 
     public GeneratedViewableMapper(GeneratedViewableRuntime runtime) {
+        this(runtime, datasource.Datasources.standard());
+    }
+
+    public GeneratedViewableMapper(
+            GeneratedViewableRuntime runtime,
+            datasource.api.DatasourceRegistry datasourceRegistry) {
         this.runtime = runtime;
+        this.datasourceRegistry = java.util.Objects.requireNonNull(
+                datasourceRegistry, "datasourceRegistry");
         this.ownedComponentTypes = ownedComponentTypes(runtime);
     }
 
@@ -68,6 +79,7 @@ public class GeneratedViewableMapper {
         canonicalSourceByType.clear();
         canonicalSourceKeyByType.clear();
         canonicalSourceIdentitiesByType.clear();
+        canonicalOccurrenceIdentitiesByType.clear();
         List<WikidataDynamicObject> reachable =
                 wikidata.explore.extract.WikidataObjectGraph.reachable(roots);
         for (GeneratedViewableRuntime.ClassRuntime classRuntime : runtime.byType().values()) {
@@ -87,6 +99,8 @@ public class GeneratedViewableMapper {
             canonicalSourceKeyByType.put(model.className(), result.keyByCandidate());
             canonicalSourceIdentitiesByType.put(
                     model.className(), result.sourceIdentitiesByCandidate());
+            canonicalOccurrenceIdentitiesByType.put(
+                    model.className(), result.occurrenceIdentitiesByCandidate());
         }
     }
 
@@ -188,6 +202,7 @@ public class GeneratedViewableMapper {
             if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {
                 generatedByDynamic.put(source, byQid);
                 applyFields(cr, byQid, source, true);   // fill any missing fields
+                applyDatasourceFields(cr, byQid, source, true);
                 return byQid;
             }
         }
@@ -199,11 +214,9 @@ public class GeneratedViewableMapper {
             generatedByQid.put(entityQid, target);
         }
 
-        // Stable identity + display come from the source object at creation; the
-        // instance holds only results, never a source field. Where it came from is not
-        // persisted here: a Wikidata entity's origin is derivable from its identity (the
-        // identifier IS the QID), and a durable per-instance creation record is deferred
-        // until the curation-history UI that would consume it.
+        // Stable identity + display come from the source object at creation. Hidden
+        // identities retain canonicalization bookkeeping; ordinary datasource fields
+        // are populated through their provider declarations below.
         if (target instanceof quiz.source.GeneratedEntity ge) {
             String canonicalKey = canonicalSourceKeyByType.getOrDefault(type, Map.of())
                     .get(originalSource);
@@ -217,6 +230,11 @@ public class GeneratedViewableMapper {
                     .getOrDefault(type, Map.of()).getOrDefault(originalSource,
                             source.qid().isBlank() ? List.of()
                                     : List.of("wikidata:" + source.qid())));
+            ge.occurrenceIdentities(canonicalOccurrenceIdentitiesByType
+                    .getOrDefault(type, Map.of()).getOrDefault(originalSource,
+                            wikidata.WikidataIds.isStatementId(source.getIdentifier())
+                                    ? List.of("wikidata:" + source.getIdentifier())
+                                    : List.of()));
             if (wikidata.explore.model.ClassSourceBindings
                     .aliasesEnabled(cr.model())) {
                 assignAliases(target, source.aliases());
@@ -225,6 +243,7 @@ public class GeneratedViewableMapper {
         }
 
         applyFields(cr, target, source, false);
+        applyDatasourceFields(cr, target, source, false);
 
         // Canonicalization: a composed displayName comes from its spec (a
         // field or template), not the loaded label — so reified atoms show e.g. the
@@ -328,6 +347,39 @@ public class GeneratedViewableMapper {
             }
         }
     }
+
+    /** Populates the ordinary fields contributed by this class's datasource config. */
+    private void applyDatasourceFields(
+            GeneratedViewableRuntime.ClassRuntime cr,
+            Object target,
+            WikidataDynamicObject source,
+            boolean merge) throws IllegalAccessException {
+        for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
+                : wikidata.explore.model.ConfiguredInstanceFields.of(
+                        cr.model(), runtime.project(), datasourceRegistry)) {
+            datasource.api.DatasourceInstanceField declaration = configured.declaration();
+            Field javaField = findField(target.getClass(),
+                    GeneratedViewableSourceGenerator.sanitizeFieldName(
+                            declaration.name()));
+            if (javaField == null) continue;
+            javaField.setAccessible(true);
+            Object value = declaration.value(source);
+            if (value == null) continue;
+            Object existing = javaField.get(target);
+            if (merge && existing instanceof java.util.Collection<?> oldValues
+                    && value instanceof java.util.Collection<?> newValues) {
+                @SuppressWarnings("unchecked")
+                java.util.Collection<Object> writable =
+                        (java.util.Collection<Object>) oldValues;
+                for (Object item : newValues) {
+                    if (item != null && !writable.contains(item)) writable.add(item);
+                }
+            } else if (!merge || existing == null) {
+                javaField.set(target, value);
+            }
+        }
+    }
+
 
     /** The displayName to force onto a materialized object from its class's
      *  {@link CanonicalSpec}, or null to leave the default (the loaded label). Only

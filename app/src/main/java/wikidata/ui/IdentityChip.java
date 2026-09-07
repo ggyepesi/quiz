@@ -57,18 +57,4 @@ public final class IdentityChip {
         return statement;
     }
 
-    /**
-     * The card decorator for instances identified by their NATIVE id — the model
-     * builder's case, where there is no curation sidecar to consult. A non-Wikidata
-     * id stays undecorated (null) rather than showing "unidentified", since such an
-     * instance has no Wikidata identity to resolve in the first place.
-     *
-     * <p>THE decorator for that case: every view that renders natively-identified
-     * instances passes this, so the QID link appears the same way everywhere.
-     */
-    public static JComponent ofInstance(objectview.Viewable instance) {
-        String id = instance == null ? null : instance.getIdentifier();
-        if (wikidata.WikidataIds.isStatementId(id)) return statement(id);
-        return quiz.source.WikidataSource.isQid(id) ? of(id) : null;
-    }
 }

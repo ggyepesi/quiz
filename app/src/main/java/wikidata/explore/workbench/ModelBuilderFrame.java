@@ -92,6 +92,9 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton graphFrontierButton =
             new JButton("Graph frontier");
 
+    private final JButton runReportButton =
+            new JButton("Run report");
+
     private final JButton generateButton =
             new JButton("Generate class");
 
@@ -381,6 +384,11 @@ public class ModelBuilderFrame extends JFrame {
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow2.add(showInstancesButton);
+        runReportButton.setToolTipText(
+                "Inspect the kept and dropped self-reference decisions from the last run");
+        updateRunReportButton();
+        runReportButton.addActionListener(e -> showRunReport());
+        runRow2.add(runReportButton);
         showStatementsButton.setToolTipText("Sample the selected class and show its "
                                                     + "instances' statements — property → values with qualifiers nested, "
                                                     + "plus coverage badges (example-first field discovery, #91).");
@@ -1103,6 +1111,13 @@ public class ModelBuilderFrame extends JFrame {
             String title, String phaseId, String domainName,
             GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
             process.ProcessWorkflowPipeline pipeline) {
+        return runResults(title, phaseId, domainName, run, outcome, pipeline, true);
+    }
+
+    private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
+            String title, String phaseId, String domainName,
+            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
+            process.ProcessWorkflowPipeline pipeline, boolean acceptRun) {
 
         java.util.List<wikidata.explore.generation.RuleEffects.Effect> effects =
                 wikidata.explore.generation.RuleEffects.inPipelineOrder(
@@ -1129,12 +1144,10 @@ public class ModelBuilderFrame extends JFrame {
         tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
                 "Summary", java.util.List.of(
                         new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                                summary, () -> run, true))));
+                                summary, () -> acceptRun ? run : null, acceptRun))));
         for (wikidata.explore.generation.RuleEffects.Effect effect : effects) {
             java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<GenerationRun>>
                     cards = new java.util.ArrayList<>();
-            cards.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                    ruleEffectSummary(effect, phaseId + "-result"), () -> null, false));
             cards.addAll(instanceCards(effect.instances()));
             tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
                     effect.phase().label() + " · " + effect.title(), cards));
@@ -1145,11 +1158,12 @@ public class ModelBuilderFrame extends JFrame {
                 title + " — results", outcome.summary(), "Accept", tabs);
     }
 
-    private static java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+    static java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
             GenerationRun>> instanceCards(java.util.List<? extends objectview.Viewable> of) {
         return of.stream()
                 .map(instance -> new process.swing.workflow.ProcessWorkflowResults.Card<
-                        GenerationRun>(instance, () -> null, false))
+                        GenerationRun>(instance, () -> null, false,
+                                () -> null))
                 .toList();
     }
 
@@ -1397,7 +1411,46 @@ public class ModelBuilderFrame extends JFrame {
      */
     private void replaceGenerationRun(GenerationRun next) {
         lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, next);
+        updateRunReportButton();
         sourceWorkbench.refreshDomainOverview();
+    }
+
+    private void updateRunReportButton() {
+        int decisions = lastRun == null ? 0
+                : lastRun.selfReferenceAudit().ledger().entries().size();
+        runReportButton.setText(decisions == 0
+                ? "Run report" : "Self-reference decisions (" + decisions + ")");
+        runReportButton.setEnabled(lastRun != null);
+    }
+
+    /** Reopens the durable result account without pretending to execute or apply a run. */
+    private void showRunReport() {
+        GenerationRun report = lastRun;
+        if (report == null) return;
+        process.ProcessOutcome<GenerationRun> outcome = process.ProcessOutcome.succeeded(
+                report, report.selfReferenceAudit().description());
+        process.swing.workflow.PreparedProcessWorkflowAction<GenerationRun, GenerationRun>
+                action = new process.swing.workflow.PreparedProcessWorkflowAction<>() {
+            @Override public String id() { return "run-report"; }
+            @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                return new process.swing.workflow.ProcessWorkflowPlan(
+                        "Run report", "Inspect the decisions retained with this run.",
+                        java.util.List.of());
+            }
+            @Override public process.ProcessOutcome<GenerationRun> preparedOutcome() {
+                return outcome;
+            }
+            @Override public boolean applyAllowed(process.ProcessStatus status) {
+                return false;
+            }
+            @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
+                    results(process.ProcessOutcome<GenerationRun> ignored) {
+                return runResults("Run report", "run-report", projectModel.name(),
+                        report, outcome, null, false);
+            }
+            @Override public void apply(java.util.List<GenerationRun> decisions) { }
+        };
+        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
 
     /** Fold vocabularies BUILT during generation (from a referenced field's loaded
@@ -2489,7 +2542,12 @@ public class ModelBuilderFrame extends JFrame {
 
             acceptGenerationRun(new GenerationRun(
                     snapshot, 0, plan, objects, runtime, instances,
-                    null, saved.loadedDeclarations()));
+                    null, saved.loadedDeclarations(),
+                    GenerationRun.Quality.completeQuality(), List.of(),
+                    GenerationRun.SelfReferenceAudit.restored(saved.selfReferences()),
+                    GenerationRun.OwnedCompositionAudit.notRun(),
+                    GenerationRun.KindClassificationAudit.notRun(),
+                    GenerationRun.ProjectionAudit.notRun()));
             showInstancesWindow();
 
             logWindow.info("Loaded " + objects.size()
@@ -2789,7 +2847,8 @@ public class ModelBuilderFrame extends JFrame {
                 new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
                         lastRun.dynamicObjects(), snapshotFile(),
                         lastRun.modelSnapshot(),
-                        lastRun.loadedDeclarations(), graphDiscoveryLedger);
+                        lastRun.loadedDeclarations(), graphDiscoveryLedger,
+                        lastRun.selfReferenceAudit().ledger());
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');

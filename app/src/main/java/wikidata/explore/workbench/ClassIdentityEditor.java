@@ -128,6 +128,15 @@ final class ClassIdentityEditor extends JPanel {
 
 
     void show(GeneratedClassModel value) {
+        show(value, null);
+    }
+
+    /** Shows an identity whose key is authored by the construct that produces it. */
+    void showFixedKey(GeneratedClassModel value) {
+        show(value, OrderedChoiceList.Mode.FIXED);
+    }
+
+    private void show(GeneratedClassModel value, OrderedChoiceList.Mode forcedKeyMode) {
         clazz = value;
         reducerBoxes.clear();
         reductions.removeAll();
@@ -161,10 +170,11 @@ final class ClassIdentityEditor extends JPanel {
         boolean sourceDefault = clazz.classKind()
                 == wikidata.explore.model.ClassKind.SOURCE
                 && clazz.canonical().keyFields().isEmpty();
-        key.mode(sourceDefault ? OrderedChoiceList.Mode.REPLACED_BY_ADDING
+        key.mode(forcedKeyMode != null ? forcedKeyMode
+                : sourceDefault ? OrderedChoiceList.Mode.REPLACED_BY_ADDING
                 : plan.key().stream().anyMatch(KeyComponent::structural)
-                        ? OrderedChoiceList.Mode.FIXED
-                        : OrderedChoiceList.Mode.EDITABLE);
+                ? OrderedChoiceList.Mode.FIXED
+                : OrderedChoiceList.Mode.EDITABLE);
 
         showReductions(plan);
         showProposal();
@@ -240,7 +250,6 @@ final class ClassIdentityEditor extends JPanel {
 
 
 
-    /** The list IS the key, in the order shown. */
     /** The list IS the key, in the order shown. */
     private void writeKey() {
         if (clazz == null) return;

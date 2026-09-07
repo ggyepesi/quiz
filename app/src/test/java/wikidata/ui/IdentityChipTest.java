@@ -20,4 +20,10 @@ class IdentityChipTest {
         JLabel chip = assertInstanceOf(JLabel.class, IdentityChip.of(null));
         assertEquals("unidentified", chip.getText());
     }
+
+    @Test void statementOccurrenceLinksToItsContainingEntity() {
+        JLabel chip = assertInstanceOf(JLabel.class,
+                IdentityChip.statement("Q28$a"));
+        assertEquals("statement on Q28", chip.getText());
+    }
 }

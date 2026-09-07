@@ -268,6 +268,15 @@ public class QualifierLoader {
                     WikidataDynamicObject stmt = new WikidataDynamicObject(
                             s.id(), valueRef.getDisplayName());
                     stmt.type(stmtType);
+                    stmt.addWikidataStatementSource(
+                            new quiz.source.WikidataStatementSource(
+                                    s.id(), en.getKey(), cfg.propertyPid(),
+                                    s.value(), valueRef.getDisplayName(),
+                                    s.rank(), s.qualifiers(),
+                                    s.references().stream().map(reference ->
+                                            new quiz.source.WikidataStatementSource.Reference(
+                                                    reference.hash(), reference.claims()))
+                                            .toList()));
                     stmt.put(valueField, valueRef);
                     applyQualifiers(stmt, s, cfg, poolByQid, refCache,
                             untranslated);

@@ -101,7 +101,9 @@ public record ObjectQueryResult(
             }
             objectview.field.FieldSet fields = objectview.field.FieldSet.of(value);
             for (objectview.field.FieldRef field : fields.fields()) {
-                enqueue(fields.read(field.name()), queue);
+                if (field.role().domainValue()) {
+                    enqueue(fields.read(field.name()), queue);
+                }
             }
         }
         return byType;

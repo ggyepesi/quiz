@@ -314,8 +314,7 @@ public final class ViewableToWdo {
                 // getIdentifier()/getDisplayName(), not stored data. Recognized by ROLE
                 // (what they ARE), never by the fabricated key name: a real stored field
                 // that happens to reuse the key has role NONE and is kept as data.
-                if (ref.role() == objectview.field.FieldRole.IDENTITY
-                        || ref.role() == objectview.field.FieldRole.DISPLAY) {
+                if (!ref.role().domainValue()) {
                     continue;
                 }
                 Object cv = convert(

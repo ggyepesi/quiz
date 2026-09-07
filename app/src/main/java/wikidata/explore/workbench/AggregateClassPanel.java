@@ -58,9 +58,10 @@ final class AggregateClassPanel extends JPanel {
     // applied — and the mode was then decided by whether the result came out blank,
     // which is a fact derived from something that merely agrees with it.
     private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
-    // Identity, asked the way every construct asks it. The pair list below says which
-    // of this class's fields HAVE a source to group from; this says which of them
-    // identify an instance, and in what order.
+    // Identity, explained the way every construct explains it. The key list below is
+    // its one author because selecting a key also creates and shapes the field from the
+    // grouped class; the shared identity view therefore shows that key as fixed while
+    // retaining the shared reduction and missing-key controls.
     private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
     private GeneratedClassModel clazz;
     private boolean refreshing;
@@ -133,7 +134,7 @@ final class AggregateClassPanel extends JPanel {
         refreshing = false;
         refreshChoices(spec);
         displayNameEditor.show(value);
-        identityEditor.show(value);
+        identityEditor.showFixedKey(value);
     }
 
     /**
@@ -160,7 +161,7 @@ final class AggregateClassPanel extends JPanel {
         }
         clazz.canonical().keyFields().clear();
         clazz.canonical().keyFields().addAll(key);
-        identityEditor.show(clazz);
+        identityEditor.showFixedKey(clazz);
     }
 
     void applyEdits() {
@@ -200,16 +201,18 @@ final class AggregateClassPanel extends JPanel {
      * from the class it groups.
      */
     private void inherit(GeneratedClassModel grouped, String name) {
-        if (grouped == null || clazz.fields().stream()
-                .anyMatch(field -> field != null && name.equals(field.name()))) {
-            return;
-        }
+        if (grouped == null) return;
         GeneratedFieldModel source = grouped.effectiveFields(project).stream()
                 .filter(field -> field != null && name.equals(field.name()))
                 .findFirst().orElse(null);
         if (source == null) return;
-        GeneratedFieldModel field =
-                clazz.addField(name, source.type(), source.cardinality());
+        GeneratedFieldModel field = clazz.fields().stream()
+                .filter(candidate -> candidate != null && name.equals(candidate.name()))
+                .findFirst()
+                .orElseGet(() -> clazz.addField(
+                        name, source.type(), source.cardinality()));
+        field.type(source.type());
+        field.cardinality(source.cardinality());
         field.entityClassName(source.entityClassName());
     }
 
@@ -222,12 +225,15 @@ final class AggregateClassPanel extends JPanel {
      * one, and this is the only way the records get somewhere to go.
      */
     private void receiveRecords(GeneratedClassModel grouped, String name) {
-        if (grouped == null || clazz.fields().stream()
-                .anyMatch(field -> field != null && name.equals(field.name()))) {
-            return;
-        }
-        clazz.addField(name, FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .entityClassName(grouped.className());
+        if (grouped == null) return;
+        GeneratedFieldModel field = clazz.fields().stream()
+                .filter(candidate -> candidate != null && name.equals(candidate.name()))
+                .findFirst()
+                .orElseGet(() -> clazz.addField(
+                        name, FieldType.ENTITY, FieldCardinality.COLLECTION));
+        field.type(FieldType.ENTITY);
+        field.cardinality(FieldCardinality.COLLECTION);
+        field.entityClassName(grouped.className());
     }
 
     /** What a field holding this class's records is called: the class, decapitalised. */

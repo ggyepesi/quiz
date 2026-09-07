@@ -71,7 +71,7 @@ public class GeneratedViewableRuntimeBuilder {
         String rootQcn = gen.qualifiedClassName(root);
         return new GeneratedViewableRuntime(
                 root, rootQcn, sources.get(rootQcn),
-                compiled.classes().get(rootQcn), compiled.loader(), byType);
+                compiled.classes().get(rootQcn), compiled.loader(), byType, project);
     }
 
     private record Compiled(String qcn, String source,

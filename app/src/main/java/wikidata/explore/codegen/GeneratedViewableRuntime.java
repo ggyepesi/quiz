@@ -17,7 +17,8 @@ public record GeneratedViewableRuntime(GeneratedClassModel model,
                                        String qualifiedClassName, String source,
                                        Class<?> generatedClass,
                                        URLClassLoader classLoader,
-                                       Map<String, ClassRuntime> byType)
+                                       Map<String, ClassRuntime> byType,
+                                       wikidata.explore.model.GeneratedProjectModel project)
         implements AutoCloseable {
 
     /** The compiled class + its model for one generated class. */
@@ -33,7 +34,16 @@ public record GeneratedViewableRuntime(GeneratedClassModel model,
                                     URLClassLoader classLoader) {
         this(model, qualifiedClassName, source, generatedClass, classLoader,
                 Map.of(model.className(),
-                        new ClassRuntime(model, generatedClass, classLoader)));
+                        new ClassRuntime(model, generatedClass, classLoader)), null);
+    }
+
+    /** Compatibility constructor for runtimes assembled directly by tests/tools. */
+    public GeneratedViewableRuntime(
+            GeneratedClassModel model, String qualifiedClassName, String source,
+            Class<?> generatedClass, URLClassLoader classLoader,
+            Map<String, ClassRuntime> byType) {
+        this(model, qualifiedClassName, source, generatedClass, classLoader,
+                byType, null);
     }
 
     /** The compiled class for a model class name (e.g. "Star"), or null. */

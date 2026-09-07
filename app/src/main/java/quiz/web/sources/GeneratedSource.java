@@ -317,7 +317,8 @@ public class GeneratedSource implements ViewableSource {
                     objectview.field.FieldSet.of(viewable);
             for (objectview.field.FieldRef field : fields.fields()) {
                 String name = field.name();
-                if (name != null && !structural.contains(name) && seen.add(name)) {
+                if (field.role().domainValue() && name != null
+                        && !structural.contains(name) && seen.add(name)) {
                     out.add(new Dimension(name, name, Dimension.Kind.VALUE));
                 }
             }

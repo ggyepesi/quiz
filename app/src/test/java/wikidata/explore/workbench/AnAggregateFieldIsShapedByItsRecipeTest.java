@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.model.AggregateClassSource;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelValidator;
 
@@ -114,6 +115,33 @@ class AnAggregateFieldIsShapedByItsRecipeTest {
         assertTrue(result.errors().stream().anyMatch(problem ->
                         problem.message().contains("takes its values from")),
                 result.format());
+    }
+
+    @Test void anEntityKeyTargetingAnotherClassIsRefused() {
+        GeneratedProjectModel project = nobel();
+        project.findClass("Prize").fields().stream()
+                .filter(field -> field.name().equals("category"))
+                .forEach(field -> field.entityClassName("Person"));
+
+        var result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                        problem.message().contains("which targets Category")),
+                result.format());
+    }
+
+    @Test void applyingTheRecipeRepairsTheCompleteInheritedShape() {
+        GeneratedProjectModel project = nobel();
+        GeneratedFieldModel category = project.findClass("Prize").fields().stream()
+                .filter(field -> field.name().equals("category"))
+                .findFirst().orElseThrow();
+        category.entityClassName("Person");
+        AggregateClassPanel panel = new AggregateClassPanel(project);
+        panel.edit(project.findClass("Prize"));
+
+        panel.applyEdits();
+
+        assertEquals("Category", category.entityClassName());
     }
 
     private static List<String> labels(Container root) {

@@ -98,8 +98,9 @@ class FieldSetTest {
 
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
-        assertEquals(3, f.size(),
-                "the two schema fields plus the one Viewable contract field (display name)");
+        assertEquals(4, f.size(),
+                "schema fields plus source provenance and the display-name contract field");
+        assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
         assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
         assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
         // Values still read from the object: cast present, year absent (null).
@@ -128,7 +129,7 @@ class FieldSetTest {
         dynamic.put("cast", new WikidataDynamicObject("Q2", "Actor"));
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
-        assertEquals(List.of("cast", "unexpected",
+        assertEquals(List.of("cast", "unexpected", "wikidataSource",
                         ViewableContractFieldSet.DISPLAY_KEY),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
         assertTrue(dynamicSet.has("cast"));
@@ -144,8 +145,9 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(4, f.size(),
-                "year, category, structural source, + the display-name contract field");
+        assertEquals(5, f.size(),
+                "model fields plus source provenance and the display-name contract field");
+        assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
         assertEquals(FieldKind.ORDERED, f.get("year").kind());
         assertTrue(f.get("category").collection());
         assertTrue(f.get("category").reference());

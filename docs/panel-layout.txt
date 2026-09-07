@@ -272,7 +272,7 @@
       button: Up  (disabled)
       button: Down  (disabled)
       label: Available:
-      combo: 2 item(s)
+      combo: 2 item(s)  (disabled)
     label: When a key cannot be computed:
     combo: 3 item(s)
     box: When the same key occurs
@@ -286,7 +286,7 @@
       button: Up  (disabled)
       button: Down  (disabled)
       label: Available:
-      combo: 1 item(s)
+      combo: 2 item(s)
     label: These instances have no name of their own — name them by a field.
   label: From class:
   combo: 4 item(s)

@@ -8,8 +8,9 @@ import objectview.annotations.Hidden;
  * ModelBuilder emits).
  *
  * <p>Identity is the stable {@code identifier} the mapper assigns at creation.
- * The instance holds only results; where it came from (its originating source)
- * is curation history, not a field on the entity.</p>
+ * Modeled values remain separate from identity bookkeeping. Datasource-declared
+ * fields, including provenance, are emitted on the generated subclass like its
+ * other configured fields.</p>
  */
 public abstract class GeneratedEntity extends ViewableAdapter {
 
@@ -21,6 +22,8 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     private boolean part;
     @Hidden
     private java.util.List<String> sourceIdentities = new java.util.ArrayList<>();
+    @Hidden
+    private java.util.List<String> occurrenceIdentities = new java.util.ArrayList<>();
 
     @Override public String getIdentifier() { return identifier; }
 
@@ -53,11 +56,26 @@ public abstract class GeneratedEntity extends ViewableAdapter {
                 .sorted().forEach(sourceIdentities::add);
     }
 
+    /** Provider-qualified source occurrences retained when modeled keying combines or
+     * renames source records. They identify claims or rows rather than entities. */
+    public java.util.List<String> occurrenceIdentities() {
+        return java.util.List.copyOf(occurrenceIdentities);
+    }
+
+    public void occurrenceIdentities(java.util.Collection<String> values) {
+        occurrenceIdentities.clear();
+        if (values != null) values.stream().filter(java.util.Objects::nonNull)
+                .map(String::trim).filter(value -> !value.isBlank()).distinct()
+                .sorted().forEach(occurrenceIdentities::add);
+    }
+
+    public java.util.List<WikidataStatementSource> wikidataStatementSources() {
+        return SourceIdentities.wikidataStatementSources(this);
+    }
+
     /** Keep the ordinary Wikidata link when a content-keyed instance retains one or
      * more Wikidata source identities instead of using a QID as modeled identity. */
     public String getUrl() {
-        return sourceIdentities.stream().filter(value -> value.startsWith("wikidata:Q"))
-                .map(value -> "https://www.wikidata.org/wiki/" + value.substring(9))
-                .findFirst().orElse("");
+        return SourceIdentities.wikidataUrl(this);
     }
 }

@@ -401,4 +401,28 @@ class RuleEffectsTest {
         assertEquals(RuleEffects.Kind.FLAGGED, result.kind());
         assertTrue(result.detail().contains("were kept"), result.detail());
     }
+
+    @Test void aReloadedLedgerStillProducesInspectableDecisionBuckets() {
+        var ledger = new wikidata.explore.transform.SelfReferenceLedger(true, List.of(
+                new wikidata.explore.transform.SelfReferenceLedger.Entry(
+                        wikidata.explore.transform.SelfReferenceLedger.Decision.DROPPED,
+                        "Nomination", "gone", "phantom", "real", "witness",
+                        List.of("category"), "same-slot witness", null, null),
+                new wikidata.explore.transform.SelfReferenceLedger.Entry(
+                        wikidata.explore.transform.SelfReferenceLedger.Decision.SUSPECTED,
+                        "Nomination", "left", "survivor", "", "",
+                        List.of(), "survived", null, null)));
+
+        List<RuleEffects.Effect> effects = RuleEffects.fromRun(
+                List.of(), GenerationRun.SelfReferenceAudit.restored(ledger),
+                GenerationRun.OwnedCompositionAudit.notRun(),
+                GenerationRun.KindClassificationAudit.notRun(),
+                GenerationRun.ProjectionAudit.notRun());
+
+        assertEquals(List.of(
+                        "Dropped self-reference decisions (1)",
+                        "Suspected self-reference decisions (1)"),
+                effects.stream().map(RuleEffects.Effect::title).toList());
+        assertEquals("gone", effects.getFirst().instances().getFirst().getIdentifier());
+    }
 }

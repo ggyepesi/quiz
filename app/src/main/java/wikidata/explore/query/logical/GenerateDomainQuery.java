@@ -578,7 +578,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                             java.util.List.copyOf(unavailableQids)),
                             finalization.coverage(),
                             GenerationRun.SelfReferenceAudit.ran(
-                                    transformed.selfReferenceFindings()),
+                                    transformed.selfReferenceFindings(),
+                                    finalization.suspectedSelfReferences()),
                             GenerationRun.OwnedCompositionAudit.ran(
                                     convergence.ownedComponentsCreated()),
                             GenerationRun.KindClassificationAudit.ran(

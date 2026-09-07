@@ -390,7 +390,7 @@ public final class ViewableJson {
                 // "__"-prefixed keys are internal plumbing (e.g. the reify's
                 // "__Nomination" statement-list scratch field), never user-facing;
                 // structural fields (a reify class's "source" back-ref) are hidden too.
-                if (fr.role() != objectview.field.FieldRole.NONE
+                if (fr.role().renderedInHeader()
                         || (fn != null && fn.startsWith("__"))
                         || structural.contains(fn)) {
                     continue;
@@ -500,6 +500,19 @@ public final class ViewableJson {
         if (fr.embedded()) {
             List<ViewableView> nodes = inlineNodes(value, visited);
             if (!nodes.isEmpty()) return ViewableView.Field.inline(name, nodes);
+        }
+        if (fr.role() == objectview.field.FieldRole.PROVENANCE) {
+            if (value instanceof Viewable source) {
+                return ViewableView.Field.ref(name, inlineRef(source, visited));
+            }
+            if (value instanceof Collection<?> sources) {
+                List<ViewableView.Ref> refs = sources.stream()
+                        .filter(Viewable.class::isInstance)
+                        .map(Viewable.class::cast)
+                        .map(source -> inlineRef(source, visited))
+                        .toList();
+                if (!refs.isEmpty()) return ViewableView.Field.refs(name, refs);
+            }
         }
 
         // -- value shape (backing-agnostic) --
@@ -696,6 +709,12 @@ public final class ViewableJson {
         return new ViewableView.Ref(
                 valueObject ? null : q.getIdentifier(),
                 q.getDisplayName(), q.typeName(), thumbUrl(q), inline);
+    }
+
+    /** Provenance is inspectable but never a member of the served object pool. */
+    private static ViewableView.Ref inlineRef(Viewable q, Set<Object> visited) {
+        return new ViewableView.Ref(
+                null, q.getDisplayName(), q.typeName(), thumbUrl(q), of(q, visited));
     }
 
     /** A small render URL for {@code q}'s first media field (e.g. a Laureate's portrait),

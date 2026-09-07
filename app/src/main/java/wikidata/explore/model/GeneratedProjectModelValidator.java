@@ -175,6 +175,17 @@ public final class GeneratedProjectModelValidator {
                                 + " but takes its values from " + source.className() + "."
                                 + key.sourceField() + ", which is " + input.type() + "."));
             }
+            if (target != null && input != null
+                    && target.type() == FieldType.ENTITY
+                    && input.type() == FieldType.ENTITY
+                    && !java.util.Objects.equals(
+                            target.entityClassName(), input.entityClassName())) {
+                problems.add(Problem.error(aggregate.className(),
+                        "Aggregate key '" + key.targetField() + "' targets "
+                                + target.entityClassName() + " but takes its values from "
+                                + source.className() + "." + key.sourceField()
+                                + ", which targets " + input.entityClassName() + "."));
+            }
         }
     }
 

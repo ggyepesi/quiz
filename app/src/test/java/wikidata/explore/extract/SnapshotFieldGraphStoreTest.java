@@ -21,6 +21,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -64,6 +65,15 @@ class SnapshotFieldGraphStoreTest {
         assertTrue(richState.fields.containsKey("admissionDate"));
         assertEquals("Date", richState.fields.get("admissionDate").typeLabel());
         assertEquals("Collection<String>", richState.fields.get("tags").typeLabel());
+        var source = richGraph.fieldSchema("State", java.util.Set.of())
+                .field("wikidataSource");
+        assertEquals("Wikidata source", source.label());
+        assertEquals(objectview.field.FieldRole.PROVENANCE, source.role());
+        SnapshotDomain domain = new SnapshotDomain(
+                store.loadAllWithFieldGraph(richFile).objects(), richGraph);
+        assertFalse(domain.fields("State").stream()
+                .anyMatch(field -> "wikidataSource".equals(field.field())),
+                "inspectable provenance is not a domain-operation field");
     }
 
     @Test void generatedModelSubclassHierarchySurvivesTheRichSave() throws Exception {
@@ -100,6 +110,42 @@ class SnapshotFieldGraphStoreTest {
                 "the subclass field does not leak onto the base");
         assertEquals(2, restored.instancesOf("Person").size(),
                 "a Director is polymorphically a Person after reload");
+    }
+
+    @Test void selfReferenceDecisionsSurviveWithoutTheDroppedObjects() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        model.rootClass(nomination);
+        WikidataDynamicObject kept = wdo("Q1$a", "Nomination", false);
+        var statementSource = new quiz.source.WikidataStatementSource(
+                "Q1$a", "Q1", "P1411", "Q2", "Category", "preferred",
+                Map.of("P805", List.of("Q3")),
+                List.of(new quiz.source.WikidataStatementSource.Reference(
+                        "reference-hash", Map.of("P248", List.of("Q4")))));
+        kept.addWikidataStatementSource(statementSource);
+        var ledger = new wikidata.explore.transform.SelfReferenceLedger(true, List.of(
+                new wikidata.explore.transform.SelfReferenceLedger.Entry(
+                        wikidata.explore.transform.SelfReferenceLedger.Decision.DROPPED,
+                        "Nomination", "dropped", "phantom", "real", "witness",
+                        List.of("category", "ceremony"), "same-slot witness",
+                        statementSource, statementSource),
+                new wikidata.explore.transform.SelfReferenceLedger.Entry(
+                        wikidata.explore.transform.SelfReferenceLedger.Decision.SUSPECTED,
+                        "Nomination", "suspect", "survivor", "", "",
+                        List.of(), "survived", null, null)));
+        File file = new File(dir, "self-reference-ledger.snapshot.json");
+
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                List.of(kept), file, model, List.of(),
+                datasource.graph.GraphDiscoveryState.EMPTY, ledger);
+        var loaded = new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
+
+        assertEquals(List.of("Q1$a"), loaded.objects().stream()
+                .map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals(statementSource.getDisplayName(), loaded.objects().getFirst()
+                .wikidataStatementSources().getFirst().getDisplayName());
+        assertEquals(ledger, loaded.selfReferences(),
+                "the decision about an absent object is snapshot metadata, not a field");
     }
 
     @Test void graphRoundTripsWithInlineValuesAndDrivesDomainWithoutInstanceScan()

@@ -1020,7 +1020,7 @@ public class WikidataApiClient {
                 Map<String, Map<String, List<ApiStatement>>> result = new LinkedHashMap<>();
                 for (String pid : statementPids) {
                     Map<String, List<ApiStatement>> byQid = new LinkedHashMap<>();
-                    parseStatements(root, pid, List.of(), byQid);
+                    parseStatements(root, pid, StatementDetail.VALUE_ONLY, byQid);
                     result.put(pid, byQid);
                 }
                 return result;
@@ -1051,7 +1051,7 @@ public class WikidataApiClient {
                 Map<String, List<ApiStatement>> result = new LinkedHashMap<>();
                 parseStatements(getEntitiesBatchWithRetry(qids, true,
                         List.of(statementPid), Set.of()), statementPid,
-                        qualifierPids, result);
+                        StatementDetail.FULL, result);
                 return result;
             }
             @Override public List<? extends WorkUnit<Map<String, List<ApiStatement>>>> split() {
@@ -1433,14 +1433,30 @@ public class WikidataApiClient {
     }
 
     /**
-     * One statement of a claim: the mainsnak value (entity QID or literal) and, per
-     * requested qualifier PID, the qualifier snaks' raw values. {@code id} is the
-     * statement GUID (its reified identity).
+     * One statement of a claim: the mainsnak value, every qualifier and reference,
+     * and its rank. {@code id} is the statement GUID (its reified identity). Parsing
+     * the complete statement costs no extra request: {@code props=claims} already
+     * returned this claim as one document.
      */
     public record ApiStatement(
             String id,
             String value,
-            Map<String, List<String>> qualifiers) {
+            Map<String, List<String>> qualifiers,
+            String rank,
+            List<ApiReference> references) {
+
+        public ApiStatement {
+            id = id == null ? "" : id;
+            value = value == null ? "" : value;
+            qualifiers = immutableSnaks(qualifiers);
+            rank = rank == null || rank.isBlank() ? "normal" : rank;
+            references = List.copyOf(references == null ? List.of() : references);
+        }
+
+        public ApiStatement(
+                String id, String value, Map<String, List<String>> qualifiers) {
+            this(id, value, qualifiers, "normal", List.of());
+        }
 
         /** The raw values of a qualifier PID (empty if absent). */
         public List<String> qualifier(String pid) {
@@ -1448,11 +1464,24 @@ public class WikidataApiClient {
         }
     }
 
+    /** One reference attached to a statement, retaining all of its snaks. */
+    public record ApiReference(String hash, Map<String, List<String>> claims) {
+        public ApiReference {
+            hash = hash == null ? "" : hash;
+            claims = immutableSnaks(claims);
+        }
+    }
+
+    /** How much of an already-downloaded claim the consumer needs to retain. */
+    enum StatementDetail { VALUE_ONLY, FULL }
+
     // Visible for WbGetEntitiesParseTest. Returns the number of entities that had at
     // least one non-deprecated statement for statementPid.
     static int parseStatements(
-            JsonNode root, String statementPid, List<String> qualifierPids,
+            JsonNode root, String statementPid,
+            StatementDetail detail,
             Map<String, List<ApiStatement>> out) {
+        StatementDetail requested = detail == null ? StatementDetail.VALUE_ONLY : detail;
         int[] n = {0};
         root.path("entities").fields().forEachRemaining(entry -> {
             JsonNode entity = entry.getValue();
@@ -1469,19 +1498,21 @@ public class WikidataApiClient {
                 String value = snakValue(claim.path("mainsnak").path("datavalue"));
                 if (value == null) continue;
 
-                Map<String, List<String>> quals = new LinkedHashMap<>();
-                for (String pq : qualifierPids) {
-                    JsonNode snaks = claim.path("qualifiers").path(pq);
-                    if (!snaks.isArray()) continue;
-                    List<String> vals = new ArrayList<>();
-                    for (JsonNode snak : snaks) {
-                        String v = snakValue(snak.path("datavalue"));
-                        if (v != null) vals.add(v);
+                Map<String, List<String>> quals = requested == StatementDetail.FULL
+                        ? parseSnaks(claim.path("qualifiers")) : Map.of();
+                List<ApiReference> references = new ArrayList<>();
+                JsonNode referenceNodes = requested == StatementDetail.FULL
+                        ? claim.path("references") : null;
+                if (referenceNodes != null && referenceNodes.isArray()) {
+                    for (JsonNode reference : referenceNodes) {
+                        references.add(new ApiReference(
+                                reference.path("hash").asText(""),
+                                parseSnaks(reference.path("snaks"))));
                     }
-                    if (!vals.isEmpty()) quals.put(pq, vals);
                 }
                 stmts.add(new ApiStatement(
-                        claim.path("id").asText(""), value, quals));
+                        claim.path("id").asText(""), value, quals,
+                        claim.path("rank").asText("normal"), references));
             }
             if (!stmts.isEmpty()) {
                 out.put(qid, stmts);
@@ -1489,6 +1520,37 @@ public class WikidataApiClient {
             }
         });
         return n[0];
+    }
+
+    /** Every property/value snak in a qualifier or reference map, in source order. */
+    private static Map<String, List<String>> parseSnaks(JsonNode groupedSnaks) {
+        if (groupedSnaks == null || !groupedSnaks.isObject()) return Map.of();
+        Map<String, List<String>> parsed = new LinkedHashMap<>();
+        groupedSnaks.fields().forEachRemaining(entry -> {
+            if (!entry.getValue().isArray()) return;
+            List<String> values = new ArrayList<>();
+            for (JsonNode snak : entry.getValue()) {
+                String value = snakValue(snak.path("datavalue"));
+                if (value == null) {
+                    String kind = snak.path("snaktype").asText("");
+                    if ("somevalue".equals(kind) || "novalue".equals(kind)) {
+                        value = "[" + kind + "]";
+                    }
+                }
+                if (value != null) values.add(value);
+            }
+            if (!values.isEmpty()) parsed.put(entry.getKey(), List.copyOf(values));
+        });
+        return java.util.Collections.unmodifiableMap(parsed);
+    }
+
+    private static Map<String, List<String>> immutableSnaks(
+            Map<String, List<String>> snaks) {
+        if (snaks == null || snaks.isEmpty()) return Map.of();
+        Map<String, List<String>> copy = new LinkedHashMap<>();
+        snaks.forEach((property, values) -> copy.put(property,
+                List.copyOf(values == null ? List.of() : values)));
+        return java.util.Collections.unmodifiableMap(copy);
     }
 
     /** A snak's raw value by datatype: entity → {@code Qxxx}, time → the ISO time

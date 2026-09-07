@@ -27,8 +27,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         implements DynamicFields {
 
     // The stable logical identity — assigned at creation (a qid for a Wikidata
-    // entity, a local key for a manual instance). The instance holds only results;
-    // where it came from (its source) is curation history, never a field here.
+    // entity, a local key for a manual instance). Datasource provenance is the
+    // declared field below, never an invented entry in the dynamic field map.
     @Hidden
     private String identifier = "";
     @Hidden
@@ -37,6 +37,14 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     /** Entity aliases are identity metadata from wbgetentities, not claim fields. */
     @Hidden
     private List<String> aliases = new ArrayList<>();
+
+    /** The datasource-declared provenance field; snapshots restore its values from
+     * their compact Wikidata statement records and the entity identifier. */
+    @objectview.annotations.Label("Wikidata source")
+    @objectview.annotations.Role(objectview.field.FieldRole.PROVENANCE)
+    @objectview.annotations.Reference
+    @JsonIgnore
+    private final List<objectview.Viewable> wikidataSource = new ArrayList<>();
 
     /** Acquired source facts, kept outside the rendered field graph until a configured
      * recipe interprets them. */
@@ -104,6 +112,9 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         String id = normalizeIdentifier(identifier);
         this.identifier = id == null ? "" : id;
         this.name = name == null || name.isBlank() ? this.identifier : name;
+        if (quiz.source.WikidataSource.isQid(this.identifier)) {
+            wikidataSource.add(new quiz.source.WikidataSource(this.identifier));
+        }
     }
 
     private static final Map<String, WikidataDynamicObject> CACHE =
@@ -113,11 +124,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         if (qid == null || qid.isBlank()) {
             throw new IllegalArgumentException("null/blank id");
         }
-        return CACHE.computeIfAbsent(qid, k -> {
-            WikidataDynamicObject o = new WikidataDynamicObject(k, name);
-            o.put("wikidata", o.wikidataUrl());
-            return o;
-        });
+        return CACHE.computeIfAbsent(qid,
+                key -> new WikidataDynamicObject(key, name));
     }
 
     @Override public String getIdentifier() {
@@ -138,6 +146,29 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
                 aliases.add(value.trim());
             }
         }
+    }
+
+    public List<quiz.source.WikidataStatementSource> wikidataStatementSources() {
+        return wikidataSource.stream()
+                .filter(quiz.source.WikidataStatementSource.class::isInstance)
+                .map(quiz.source.WikidataStatementSource.class::cast)
+                .toList();
+    }
+
+    public void wikidataStatementSources(
+            java.util.Collection<quiz.source.WikidataStatementSource> values) {
+        wikidataSource.removeIf(quiz.source.WikidataStatementSource.class::isInstance);
+        if (values == null) return;
+        for (quiz.source.WikidataStatementSource value : values) {
+            addWikidataStatementSource(value);
+        }
+    }
+
+    public void addWikidataStatementSource(quiz.source.WikidataStatementSource value) {
+        if (value == null) return;
+        boolean known = wikidataStatementSources().stream()
+                .anyMatch(existing -> existing.statement().equals(value.statement()));
+        if (!known) wikidataSource.add(value);
     }
 
     public List<datasource.evidence.CategoryMembership> categoryMemberships() {
@@ -449,6 +480,11 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         copy.categoryMembershipsAnswered = categoryMembershipsAnswered;
         copy.infoboxParameters = infoboxParameters;
         copy.infoboxAnswered = infoboxAnswered;
+        // Provenance is a declared field, but unlike domain references its values are
+        // immutable source descriptors. Carry the exact values here; PoolCopy only
+        // rewires the dynamic domain-field graph supplied by its caller.
+        copy.wikidataSource.clear();
+        copy.wikidataSource.addAll(wikidataSource);
         copy.wikidataEntityMissing = wikidataEntityMissing;
         copy.dynamicFieldSchema = dynamicFieldSchema;
         copy.fieldStatuses = fieldStatuses == null

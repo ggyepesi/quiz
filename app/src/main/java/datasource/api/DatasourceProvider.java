@@ -9,6 +9,11 @@ public interface DatasourceProvider {
     String displayName();
     List<? extends DatasourceOperation> operations();
 
+    /** Ordinary fields every instance backed by this provider declares. */
+    default List<? extends DatasourceInstanceField> instanceFields() {
+        return List.of();
+    }
+
     default Optional<DatasourceOperation> operation(String operationId) {
         return operations().stream()
                 .filter(operation -> operation.id().equals(operationId))

@@ -9,6 +9,8 @@ import wikidata.explore.model.FieldRenderMode;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedProjectModel;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +24,8 @@ class GeneratedViewableSourceTypeTest {
 
         assertTrue(source.contains("extends quiz.source.GeneratedEntity"));
         assertFalse(source.contains("public String qid"));
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikidata source\")"));
+        assertTrue(source.contains("public java.util.List<objectview.Viewable> wikidataSource"));
     }
 
     @Test void inlineRenderModeSurvivesCodeGeneration() {
@@ -48,6 +52,70 @@ class GeneratedViewableSourceTypeTest {
         assertTrue(source.contains("extends quiz.source.GeneratedEntity"));
         assertFalse(source.contains("extends quiz.source.WikidataSource"));
         assertFalse(source.contains("public String qid"));
+        assertTrue(source.contains("FieldRole.PROVENANCE"));
+    }
+
+    @Test void anotherDatasourceCanDeclareItsOwnInstanceFieldThroughTheSamePath() {
+        datasource.api.DatasourceInstanceField audit =
+                new datasource.api.DatasourceInstanceField() {
+                    @Override public String name() { return "catalogSource"; }
+                    @Override public String label() { return "Catalog source"; }
+                    @Override public datasource.api.SourceValueSchema valueSchema() {
+                        return new datasource.api.SourceValueSchema(
+                                datasource.api.SourceValueKind.URL, false, "");
+                    }
+                    @Override public Object value(Object source) { return "https://example.test"; }
+                };
+        datasource.api.DatasourceProvider provider =
+                new datasource.api.DatasourceProvider() {
+                    @Override public String id() { return "catalog"; }
+                    @Override public String displayName() { return "Catalog"; }
+                    @Override public List<? extends datasource.api.DatasourceOperation>
+                            operations() { return List.of(); }
+                    @Override public List<? extends datasource.api.DatasourceInstanceField>
+                            instanceFields() { return List.of(audit); }
+                };
+        GeneratedClassModel item = new GeneratedClassModel("Item");
+        item.sourceBindings().add(new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.classIdentity("Item"),
+                new datasource.api.SourceRecipe("catalog", "identity", java.util.Map.of())));
+        var customGenerator = new GeneratedViewableSourceGenerator(
+                "generated.test", new datasource.api.DatasourceRegistry(List.of(provider)));
+
+        String source = customGenerator.sourceFor(item);
+
+        assertTrue(source.contains("@objectview.annotations.Label(\"Catalog source\")"));
+        assertTrue(source.contains("public String catalogSource"));
+        assertFalse(source.contains("wikidataSource"));
+    }
+
+    @Test void aStatementRetainsItsWikidataOccurrenceLink() throws Exception {
+        GeneratedClassModel fact = new GeneratedClassModel("Fact");
+        fact.statementSource(new StatementClassSource("P31"));
+        fact.addField("subject", FieldType.STRING, FieldCardinality.SINGLE);
+        fact.canonical().keyFields().add("subject");
+        var statement = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q28$67ADCA97-2FF9-43AD-A4DC-0349086680AC", "statement fact");
+        statement.type("Fact");
+        statement.put("subject", "Hungary");
+        var source = new quiz.source.WikidataStatementSource(
+                statement.getIdentifier(), "Q28", "P31", "Q6256", "country");
+        statement.addWikidataStatementSource(source);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(fact)) {
+            quiz.source.GeneratedEntity mapped = (quiz.source.GeneratedEntity)
+                    new GeneratedViewableMapper(runtime).mapRoots(List.of(statement)).getFirst();
+
+            assertEquals(List.of("wikidata:Q28$67ADCA97-2FF9-43AD-A4DC-0349086680AC"),
+                    mapped.occurrenceIdentities());
+            assertEquals(List.of(source), mapped.wikidataStatementSources());
+            objectview.field.FieldRef sourceField = objectview.field.FieldSet.of(mapped)
+                    .field("wikidataSource");
+            assertEquals("Wikidata source", sourceField.label());
+            assertEquals(objectview.field.FieldRole.PROVENANCE, sourceField.role());
+            assertEquals("https://www.wikidata.org/wiki/Q28", mapped.getUrl());
+        }
     }
 
     @Test void generatedEntityAndStatementSourcesCompileAndMaterialize() throws Exception {
@@ -62,6 +130,10 @@ class GeneratedViewableSourceTypeTest {
                     .mapRoots(java.util.List.of(source)).getFirst();
             assertTrue(mapped instanceof quiz.source.GeneratedEntity);
             assertEquals("Q28", ((objectview.Viewable) mapped).getIdentifier());
+            Object provenance = objectview.field.FieldSet.of((objectview.Viewable) mapped)
+                    .read("wikidataSource");
+            assertEquals("Q28", ((quiz.source.WikidataSource)
+                    ((java.util.List<?>) provenance).getFirst()).qid());
             java.lang.reflect.Field aliases = mapped.getClass()
                     .getDeclaredField("alternateNames");
             assertEquals(java.util.List.of("Magyarország"),

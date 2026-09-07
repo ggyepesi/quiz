@@ -192,7 +192,16 @@ class WbGetEntitiesParseTest {
                                                   "value": { "id": "Q40" } } } ],
                       "P585":  [ { "datavalue": { "type": "time",
                                                   "value": { "time": "+1968-04-10T00:00:00Z" } } } ]
-                    }
+                    },
+                    "references": [ {
+                      "hash": "reference-hash",
+                      "snaks": {
+                        "P248": [ { "datavalue": { "type": "wikibase-entityid",
+                                                    "value": { "id": "Q123" } } } ],
+                        "P813": [ { "datavalue": { "type": "time",
+                                                    "value": { "time": "+2024-01-02T00:00:00Z" } } } ]
+                      }
+                    } ]
                   },
                   { "rank": "normal",
                     "id": "Q11$bbb",
@@ -313,7 +322,7 @@ class WbGetEntitiesParseTest {
         Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();
         WikidataApiClient.parseStatements(
                 new ObjectMapper().readTree(STATEMENTS_JSON),
-                "P1411", List.of("P805", "P2453", "P585"), out);
+                "P1411", WikidataApiClient.StatementDetail.FULL, out);
 
         assertFalse(out.containsKey("Q22"), "no P1411 statements → entity dropped");
         List<WikidataApiClient.ApiStatement> stmts = out.get("Q11");
@@ -325,10 +334,31 @@ class WbGetEntitiesParseTest {
         assertEquals(List.of("Q1968"), s0.qualifier("P805"));      // entity qualifier
         assertEquals(List.of("Q30", "Q40"), s0.qualifier("P2453")); // repeated qualifier
         assertEquals(List.of("+1968-04-10T00:00:00Z"), s0.qualifier("P585")); // time
+        assertEquals("normal", s0.rank());
+        assertEquals("reference-hash", s0.references().getFirst().hash());
+        assertEquals(List.of("Q123"),
+                s0.references().getFirst().claims().get("P248"));
+        assertEquals(List.of("+2024-01-02T00:00:00Z"),
+                s0.references().getFirst().claims().get("P813"));
 
         // second statement: numeric-id form, no qualifiers requested-present
         assertEquals("Q281939", stmts.get(1).value());
         assertTrue(stmts.get(1).qualifier("P805").isEmpty());
+    }
+
+    @Test
+    void aValueOnlyConsumerDoesNotRetainUnusedStatementEvidence() throws Exception {
+        Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();
+
+        WikidataApiClient.parseStatements(
+                new ObjectMapper().readTree(STATEMENTS_JSON), "P1411",
+                WikidataApiClient.StatementDetail.VALUE_ONLY, out);
+
+        WikidataApiClient.ApiStatement statement = out.get("Q11").getFirst();
+        assertEquals("Q102427", statement.value());
+        assertTrue(statement.qualifiers().isEmpty());
+        assertTrue(statement.references().isEmpty(),
+                "literal-field loads must not pay to retain provenance they discard");
     }
 
     @Test

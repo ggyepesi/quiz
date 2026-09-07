@@ -68,8 +68,9 @@ public final class DomainSchemas {
             return;
         }
         for (FieldRef field : schema.fields()) {
-            if (field.structural()) {
-                // structural = reify/back-ref plumbing, not a domain data field.
+            if (field.structural() || !field.role().domainValue()) {
+                // Structural and provenance fields are inspectable metadata, not
+                // writable domain-operation paths.
                 continue;
             }
             FieldPath path = prefix.append(field.name());

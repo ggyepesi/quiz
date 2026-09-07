@@ -475,7 +475,8 @@ public class GenerationPipeline {
                 previous.loadedDeclarations(),
                 remapQuality(previous.quality(), converged.unresolvedKindQids()),
                 finalization.coverage(),
-                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.SelfReferenceAudit.notRun(
+                        previous.selfReferenceAudit().ledger()),
                 GenerationRun.OwnedCompositionAudit.ran(converged.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(converged.newlyClassifiedKinds()),
                 GenerationRun.ProjectionAudit.ran(projectedRecords));
@@ -686,7 +687,8 @@ public class GenerationPipeline {
                 finalization.coverage(),
                 // Enrich converges semantics, which composes owned parts; it never
                 // reifies, so the self-reference rule genuinely did not run.
-                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.SelfReferenceAudit.notRun(
+                        previous.selfReferenceAudit().ledger()),
                 GenerationRun.OwnedCompositionAudit.ran(
                         convergence.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(
@@ -864,7 +866,9 @@ public class GenerationPipeline {
                 previous.loadedDeclarations(),
                 remapQuality(previous.quality(), converged.unresolvedKindQids()),
                 finalization.coverage(),
-                GenerationRun.SelfReferenceAudit.ran(transformed.selfReferenceFindings()),
+                GenerationRun.SelfReferenceAudit.ran(
+                        transformed.selfReferenceFindings(),
+                        finalization.suspectedSelfReferences()),
                 GenerationRun.OwnedCompositionAudit.ran(
                         converged.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(

@@ -160,6 +160,41 @@ class EveryClassIsNamedTest {
                 "and the reader is told why the list is not showing it");
     }
 
+    @Test void aTemplateTheListCannotExpressCanBeExplicitlyReplaced()
+            throws Exception {
+        GeneratedClassModel prize = aggregate("NobelPrize");
+        prize.addField("category", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        prize.addField("year", datasource.schema.FieldType.DATE,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        prize.canonical().displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE);
+        prize.canonical().displayNameTemplate("Best {category}, {year}");
+        DisplayNameEditor editor = new DisplayNameEditor();
+        editor.show(prize);
+
+        choose(editor, "category");
+        choose(editor, "year");
+        button(editor, "replaceTemplate").doClick();
+
+        assertEquals("{category} — {year}",
+                prize.canonical().displayNameTemplate());
+        assertTrue(editor.warning().isBlank());
+    }
+
+    @Test void aCollectionFieldCanBeAddedToADisplayName() throws Exception {
+        GeneratedClassModel award = new GeneratedClassModel("Award");
+        award.addField("laureates", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        DisplayNameEditor editor = new DisplayNameEditor();
+        editor.show(award);
+
+        choose(editor, "laureates");
+
+        assertEquals(CanonicalSpec.DisplayNameMode.FIELD,
+                award.canonical().displayNameMode());
+        assertEquals("laureates", award.canonical().displayNameField());
+    }
+
     /** A statement class can be named by a template here, and not only shown one. */
     @Test void aStatementTemplateIsEditableWhereItIsShown() {
         GeneratedClassModel award = new GeneratedClassModel("Award");
@@ -198,5 +233,28 @@ class EveryClassIsNamedTest {
             }
         }
         return null;
+    }
+
+    private static void choose(DisplayNameEditor editor, String value)
+            throws Exception {
+        java.lang.reflect.Field field = DisplayNameEditor.class.getDeclaredField("fields");
+        field.setAccessible(true);
+        OrderedChoiceList<?> choices = (OrderedChoiceList<?>) field.get(editor);
+        java.lang.reflect.Field availableField =
+                OrderedChoiceList.class.getDeclaredField("available");
+        availableField.setAccessible(true);
+        javax.swing.JComboBox<?> available =
+                (javax.swing.JComboBox<?>) availableField.get(choices);
+        available.setSelectedItem(value);
+        java.lang.reflect.Field addField = OrderedChoiceList.class.getDeclaredField("add");
+        addField.setAccessible(true);
+        ((javax.swing.JButton) addField.get(choices)).doClick();
+    }
+
+    private static javax.swing.JButton button(DisplayNameEditor editor, String name)
+            throws Exception {
+        java.lang.reflect.Field field = DisplayNameEditor.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return (javax.swing.JButton) field.get(editor);
     }
 }

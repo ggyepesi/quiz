@@ -15,6 +15,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -121,9 +122,11 @@ class PopulationSubjectLoaderTest {
                 "the population subject was discovered, stamped, and pooled");
         assertEquals("The Whale", subject.getDisplayName(),
                 "its label was resolved, not left as a bare QID");
-        assertEquals("https://www.wikidata.org/wiki/Q105883400",
-                subject.get("wikidata"),
-                "direct discovery keeps the same source link as ordinary entities");
+        Object provenance = objectview.field.FieldSet.of(subject)
+                .read("wikidataSource");
+        assertEquals("Q105883400", ((quiz.source.WikidataSource)
+                assertInstanceOf(List.class, provenance).getFirst()).qid(),
+                "direct discovery publishes the same source field as ordinary entities");
         assertFalse(created.isEmpty(),
                 "its statement was loaded, ready to reify");
     }

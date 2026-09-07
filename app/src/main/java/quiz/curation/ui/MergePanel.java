@@ -233,10 +233,10 @@ public final class MergePanel extends JPanel {
     private List<FieldChoice> planRows(Viewable p, Viewable d) {
         List<String> names = new ArrayList<>();
         for (FieldRef ref : FieldSet.of(p).fields()) {
-            names.add(ref.name());
+            if (ref.role().domainValue()) names.add(ref.name());
         }
         for (FieldRef ref : FieldSet.of(d).fields()) {
-            if (!names.contains(ref.name())) {
+            if (ref.role().domainValue() && !names.contains(ref.name())) {
                 names.add(ref.name());
             }
         }

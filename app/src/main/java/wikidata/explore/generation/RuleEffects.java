@@ -343,8 +343,13 @@ public final class RuleEffects {
             GenerationRun.ProjectionAudit projections) {
 
         List<Effect> effects = new ArrayList<>(fromCoverage(coverage, Moment.RESULT));
-        if (audit != null && audit.executed()) {
-            effects.addAll(fromSelfReference(audit.findings(), Moment.RESULT));
+        if (audit != null && audit.ledger().executed()) {
+            if (!audit.findings().isEmpty()) {
+                effects.addAll(fromSelfReference(audit.findings(), Moment.RESULT));
+                effects.addAll(fromSelfReferenceLedger(audit.ledger(), true));
+            } else {
+                effects.addAll(fromSelfReferenceLedger(audit.ledger(), false));
+            }
         }
         effects.addAll(fromOwnedComposition(composition, Moment.RESULT));
         effects.addAll(fromKindClassification(kinds, Moment.RESULT));
@@ -353,21 +358,97 @@ public final class RuleEffects {
         return effects;
     }
 
+    /** Snapshot-safe rendering of decisions whose live atom may no longer exist. */
+    private static List<Effect> fromSelfReferenceLedger(
+            wikidata.explore.transform.SelfReferenceLedger ledger,
+            boolean suspectedOnly) {
+        if (ledger == null || ledger.entries().isEmpty()) return List.of();
+        List<Effect> effects = new ArrayList<>();
+        for (var decision : wikidata.explore.transform.SelfReferenceLedger.Decision.values()) {
+            if (suspectedOnly
+                    && decision != wikidata.explore.transform.SelfReferenceLedger.Decision.SUSPECTED) {
+                continue;
+            }
+            List<Viewable> rows = ledger.entries().stream()
+                    .filter(entry -> entry.decision() == decision)
+                    .map(RuleEffects::selfReferenceDecision)
+                    .map(Viewable.class::cast).toList();
+            if (rows.isEmpty()) continue;
+            String title = switch (decision) {
+                case DROPPED -> "Dropped self-reference decisions";
+                case KEPT -> "Kept self-reference decisions";
+                case SUSPECTED -> "Suspected self-reference decisions";
+            };
+            Kind kind = decision == wikidata.explore.transform.SelfReferenceLedger.Decision.DROPPED
+                    ? Kind.CHANGED : Kind.FLAGGED;
+            effects.add(new Effect(RunPhase.CONSTRUCT, title,
+                    rows.size() + " " + decision.toString().toLowerCase()
+                            + " decision(s) retained with the snapshot",
+                    kind, rows));
+        }
+        return effects;
+    }
+
+    private static DynamicViewable selfReferenceDecision(
+            wikidata.explore.transform.SelfReferenceLedger.Entry entry) {
+        SelfReferenceDecisionView decision = new SelfReferenceDecisionView(
+                entry.identifier(),
+                entry.decision().toString().charAt(0)
+                        + entry.decision().toString().substring(1).toLowerCase()
+                        + " " + (entry.name().isBlank() ? entry.identifier() : entry.name()),
+                entry.source());
+        decision.type("Self-reference decision");
+        decision.put("Decision", entry.decision().toString());
+        decision.put("Type", entry.type());
+        decision.put("Record", entry.identifier());
+        if (!entry.witnessIdentifier().isBlank()) {
+            decision.put("Witness", entry.witnessIdentifier());
+        }
+        if (entry.witnessSource() != null) {
+            decision.put("Witness source", entry.witnessSource());
+        }
+        decision.put("Matching fields", entry.identityFields());
+        decision.put("Reason", entry.reason());
+        return decision;
+    }
+
     /** One inspectable decision, rather than an atom detached from why it was kept or
      * dropped. Atom and witness remain references, so both can be opened as cards. */
     private static Viewable selfReferenceDecision(TransformEngine.SelfRefFinding finding) {
         String atomId = finding.atom().getIdentifier();
-        DynamicViewable decision = new DynamicViewable(
-                "self-reference-" + finding.decision() + "-" + atomId,
+        quiz.source.WikidataStatementSource source = statementSource(finding.atom());
+        SelfReferenceDecisionView decision = new SelfReferenceDecisionView(
+                atomId,
                 (finding.decision() == TransformEngine.SelfRefDecision.DROPPED
-                        ? "Dropped " : "Kept ") + finding.atom().getDisplayName());
+                        ? "Dropped " : "Kept ") + finding.atom().getDisplayName(), source);
         decision.type("Self-reference decision");
         decision.put("Decision", finding.decision().toString());
         decision.put("Atom", finding.atom());
         decision.put("Witness", finding.witness());
+        quiz.source.WikidataStatementSource witness = statementSource(finding.witness());
+        if (witness != null) decision.put("Witness source", witness);
         decision.put("Matching fields", finding.identityFields());
         decision.put("Reason", finding.reason());
         return decision;
+    }
+
+    private static quiz.source.WikidataStatementSource statementSource(
+            wikidata.explore.extract.WikidataDynamicObject value) {
+        return value == null || value.wikidataStatementSources().isEmpty()
+                ? null : value.wikidataStatementSources().getFirst();
+    }
+
+    private static final class SelfReferenceDecisionView extends DynamicViewable {
+        @objectview.annotations.Label("Wikidata source")
+        @objectview.annotations.Role(objectview.field.FieldRole.PROVENANCE)
+        @objectview.annotations.Reference
+        private final quiz.source.WikidataStatementSource wikidataSource;
+
+        private SelfReferenceDecisionView(
+                String id, String name, quiz.source.WikidataStatementSource source) {
+            super(id, name);
+            this.wikidataSource = source;
+        }
     }
 
     /**

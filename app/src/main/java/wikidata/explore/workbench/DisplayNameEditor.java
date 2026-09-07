@@ -1,11 +1,11 @@
 package wikidata.explore.workbench;
 
 import wikidata.explore.model.CanonicalSpec;
-import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
@@ -44,6 +44,9 @@ final class DisplayNameEditor extends JPanel {
     // added. Ordered, because a name reads in the order its parts are joined.
     private final OrderedChoiceList<String> fields = new OrderedChoiceList<>(true);
     private final JLabel hint = new JLabel(" ");
+    private final JButton replaceTemplate =
+            new JButton("Replace configured template with this list");
+    private final JPanel status = new JPanel(new BorderLayout(4, 4));
     /** A stored template this list cannot express, shown rather than overwritten. */
     private String unexpressibleTemplate = "";
 
@@ -61,9 +64,19 @@ final class DisplayNameEditor extends JPanel {
             refreshHint();
             onChange.run();
         });
+        replaceTemplate.addActionListener(event -> {
+            // This is deliberately an action rather than an automatic translation.
+            // A template with literal text cannot be represented by the list, so the
+            // modeller explicitly chooses when the list replaces that stored value.
+            unexpressibleTemplate = "";
+            applyEdits();
+            refreshHint();
+            onChange.run();
+        });
         hint.setForeground(new Color(0xB00020));
         add(fields, BorderLayout.CENTER);
-        add(hint, BorderLayout.SOUTH);
+        status.add(hint, BorderLayout.CENTER);
+        add(status, BorderLayout.SOUTH);
     }
 
     /** Run after the reader changes the name, so an owner can refresh what it shows. */
@@ -131,8 +144,8 @@ final class DisplayNameEditor extends JPanel {
         if (clazz == null) return "";
         if (!unexpressibleTemplate.isBlank()) {
             return "Named by a template this list cannot express: \""
-                    + unexpressibleTemplate + "\". Edit it as a template, or clear it "
-                    + "to name this class by fields.";
+                    + unexpressibleTemplate + "\". Choose the replacement fields above, "
+                    + "then explicitly replace the configured template.";
         }
         if (!fields.chosen().isEmpty()) return "";
         return CanonicalEditorPolicy.labelSource(clazz.classKind()).isBlank()
@@ -143,15 +156,20 @@ final class DisplayNameEditor extends JPanel {
     private void refreshHint() {
         String warning = warning();
         hint.setText(warning.isBlank() ? " " : warning);
+        status.remove(replaceTemplate);
+        if (!unexpressibleTemplate.isBlank()) {
+            status.add(replaceTemplate, BorderLayout.EAST);
+        }
+        status.revalidate();
+        status.repaint();
     }
 
-    /** Only fields that hold one value: a name is one string per instance. */
+    /** Every field the runtime can render as part of a name. */
     private List<String> candidates() {
         List<String> names = new ArrayList<>();
         if (clazz == null) return names;
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.isNameField()) continue;
-            if (field.cardinality() == FieldCardinality.COLLECTION) continue;
             names.add(field.name());
         }
         return names;

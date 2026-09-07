@@ -221,6 +221,7 @@ public final class Merges {
             Viewable primary, Viewable duplicate, Merge merge,
             java.util.function.Function<String, String> baseType) {
         for (FieldRef ref : FieldSet.of(duplicate).fields()) {
+            if (!ref.role().domainValue()) continue;
             String name = ref.name();
             Object duplicateValue = FieldAccess.getPath(duplicate, name);
             Object primaryValue = FieldAccess.getPath(primary, name);
@@ -295,6 +296,7 @@ public final class Merges {
         }
         FieldSet fields = FieldSet.of(object);
         for (FieldRef ref : fields.fields()) {
+            if (!ref.role().domainValue()) continue;
             Object oldValue = fields.read(ref.name());
             Object newValue = rewriteValue(oldValue, replacements, visited);
             if (newValue != oldValue) {

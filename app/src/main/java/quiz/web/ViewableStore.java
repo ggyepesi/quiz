@@ -309,7 +309,9 @@ public class ViewableStore {
         List<Viewable> out = new ArrayList<>();
         objectview.field.FieldSet fields = objectview.field.FieldSet.of(q);
         for (objectview.field.FieldRef field : fields.fields()) {
-            addViewables(fields.read(field.name()), out);
+            if (field.role().domainValue()) {
+                addViewables(fields.read(field.name()), out);
+            }
         }
         return out;
     }

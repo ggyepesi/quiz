@@ -36,13 +36,20 @@ public final class ConsistencyReport {
      *  total number of suspected surviving phantoms (0 = clean). */
     public static int check(CompiledProjectModel project,
                             List<WikidataDynamicObject> atoms, GenerationLog log) {
+        return suspected(project, atoms, log).size();
+    }
+
+    /** The suspected survivors themselves, for the durable self-reference ledger. */
+    public static List<WikidataDynamicObject> suspected(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> atoms, GenerationLog log) {
         if (project == null || atoms == null || atoms.isEmpty()) {
-            return 0;
+            return List.of();
         }
-        int suspects = 0;
+        List<WikidataDynamicObject> suspects = new ArrayList<>();
         for (ModelStatementReifications.Reification reif
                 : ModelStatementReifications.derive(project)) {
-            suspects += checkReify(reif, atoms, log);
+            suspects.addAll(suspectedReify(reif, atoms, log));
         }
         return suspects;
     }
@@ -50,9 +57,15 @@ public final class ConsistencyReport {
     static int checkReify(ModelStatementReifications.Reification reif,
                           List<WikidataDynamicObject> atoms,
                           GenerationLog log) {
+        return suspectedReify(reif, atoms, log).size();
+    }
+
+    private static List<WikidataDynamicObject> suspectedReify(
+            ModelStatementReifications.Reification reif,
+            List<WikidataDynamicObject> atoms, GenerationLog log) {
         ReifyConstruct rc = reif.reify();
         if (rc == null || !rc.promote()) {
-            return 0;
+            return List.of();
         }
         String type = rc.targetType();
         String sourceField = rc.sourceField() == null || rc.sourceField().isBlank()
@@ -72,7 +85,7 @@ public final class ConsistencyReport {
         }
         if (type == null || valueField == null || valueField.isBlank()
                 || roleFields.isEmpty() || refRoleFields.isEmpty()) {
-            return 0;   // nothing to key an identity/witness on
+            return List.of();   // nothing to key an identity/witness on
         }
 
         List<WikidataDynamicObject> mine = new ArrayList<>();
@@ -141,7 +154,7 @@ public final class ConsistencyReport {
                 log.message("  … and " + (suspects.size() - shown) + " more\n");
             }
         }
-        return suspects.size();
+        return List.copyOf(suspects);
     }
 
     private static String qid(Object v) {

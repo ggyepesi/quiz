@@ -3,6 +3,7 @@ package datasource.wikidata;
 import datasource.api.BindingScope;
 import datasource.api.DatasourceOperation;
 import datasource.api.DatasourceProvider;
+import datasource.api.DatasourceInstanceField;
 import datasource.api.ParameterDescriptor;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
@@ -47,6 +48,28 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String PROPERTY_VALUE = "property-value";
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
+    public static final String SOURCE_FIELD = "wikidataSource";
+
+    private static final DatasourceInstanceField SOURCE =
+            new DatasourceInstanceField() {
+                @Override public String name() { return SOURCE_FIELD; }
+                @Override public String label() { return "Wikidata source"; }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof wikidata.explore.extract.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    List<quiz.source.WikidataStatementSource> statements =
+                            o.wikidataStatementSources();
+                    if (!statements.isEmpty()) return List.copyOf(statements);
+                    String qid = o.qid();
+                    return qid.isBlank() ? List.of()
+                            : List.of(new quiz.source.WikidataSource(qid));
+                }
+            };
 
     /**
      * Membership by a statement: the instances whose {@code property} points at one of
@@ -129,6 +152,9 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     @Override public String id() { return ID; }
     @Override public String displayName() { return "Wikidata"; }
     @Override public List<? extends DatasourceOperation> operations() { return operations; }
+    @Override public List<? extends DatasourceInstanceField> instanceFields() {
+        return List.of(SOURCE);
+    }
 
     private static DatasourceOperation offering(
             String id, String displayName, BindingScope scope,

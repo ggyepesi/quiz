@@ -230,25 +230,59 @@ public record GenerationRun(
     /** Whether the self-reference rule was evaluated, distinct from finding nothing. */
     public record SelfReferenceAudit(
             boolean executed,
-            List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings) {
+            List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings,
+            wikidata.explore.transform.SelfReferenceLedger ledger) {
         public SelfReferenceAudit {
             findings = findings == null ? List.of() : List.copyOf(findings);
+            ledger = ledger == null
+                    ? wikidata.explore.transform.SelfReferenceLedger.EMPTY : ledger;
             if (!executed && !findings.isEmpty()) {
                 throw new IllegalArgumentException("A rule that did not run cannot have findings");
             }
+        }
+        public SelfReferenceAudit(boolean executed,
+                List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings) {
+            this(executed, findings, executed
+                    ? wikidata.explore.transform.SelfReferenceLedger.ran(findings, List.of())
+                    : wikidata.explore.transform.SelfReferenceLedger.EMPTY);
         }
         public static SelfReferenceAudit ran(
                 List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings) {
             return new SelfReferenceAudit(true, findings);
         }
+        public static SelfReferenceAudit ran(
+                List<wikidata.explore.transform.TransformEngine.SelfRefFinding> findings,
+                List<WikidataDynamicObject> suspected) {
+            return new SelfReferenceAudit(true, findings,
+                    wikidata.explore.transform.SelfReferenceLedger.ran(findings, suspected));
+        }
+        public static SelfReferenceAudit restored(
+                wikidata.explore.transform.SelfReferenceLedger ledger) {
+            if (ledger == null || !ledger.executed()) return notRun();
+            return new SelfReferenceAudit(false, List.of(), ledger);
+        }
         public static SelfReferenceAudit notRun() {
-            return new SelfReferenceAudit(false, List.of());
+            return new SelfReferenceAudit(false, List.of(),
+                    wikidata.explore.transform.SelfReferenceLedger.EMPTY);
+        }
+        public static SelfReferenceAudit notRun(
+                wikidata.explore.transform.SelfReferenceLedger retained) {
+            return new SelfReferenceAudit(false, List.of(), retained);
         }
         public String description() {
-            if (!executed) return "Not run in this operation";
-            return findings.isEmpty()
+            if (!executed) return ledger.entries().isEmpty()
+                    ? "Not run in this operation"
+                    : "Not run in this operation; " + ledger.entries().size()
+                            + " prior decision(s) retained from the snapshot";
+            return ledger.entries().isEmpty()
                     ? "Ran; no self-reference decisions"
-                    : "Ran; " + findings.size() + " decision(s) recorded";
+                    : "Ran; " + ledger.entries().size() + " decision(s) recorded ("
+                    + ledger.count(wikidata.explore.transform.SelfReferenceLedger.Decision.KEPT)
+                    + " kept, "
+                    + ledger.count(wikidata.explore.transform.SelfReferenceLedger.Decision.DROPPED)
+                    + " dropped, "
+                    + ledger.count(wikidata.explore.transform.SelfReferenceLedger.Decision.SUSPECTED)
+                    + " suspected)";
         }
     }
 

@@ -32,12 +32,15 @@ public final class WikidataCanonicalization {
             Map<WikidataDynamicObject, WikidataDynamicObject> canonicalByCandidate,
             Map<WikidataDynamicObject, String> keyByCandidate,
             Map<WikidataDynamicObject, List<String>> sourceIdentitiesByCandidate,
+            Map<WikidataDynamicObject, List<String>> occurrenceIdentitiesByCandidate,
             KeyedReduction.Result reduction) {
         public Result {
             carriers = List.copyOf(carriers == null ? List.of() : carriers);
             canonicalByCandidate = immutableIdentityMap(canonicalByCandidate);
             keyByCandidate = immutableIdentityMap(keyByCandidate);
             sourceIdentitiesByCandidate = immutableIdentityMap(sourceIdentitiesByCandidate);
+            occurrenceIdentitiesByCandidate = immutableIdentityMap(
+                    occurrenceIdentitiesByCandidate);
         }
 
         private static <V> Map<WikidataDynamicObject, V> immutableIdentityMap(
@@ -72,6 +75,8 @@ public final class WikidataCanonicalization {
         Map<WikidataDynamicObject, WikidataDynamicObject> aliases = new IdentityHashMap<>();
         Map<WikidataDynamicObject, String> keys = new IdentityHashMap<>();
         Map<WikidataDynamicObject, List<String>> sourceIdentities = new IdentityHashMap<>();
+        Map<WikidataDynamicObject, List<String>> occurrenceIdentities =
+                new IdentityHashMap<>();
 
         for (CanonicalInstance instance : reduced.instances()) {
             List<WikidataDynamicObject> partition = instance.candidates().stream()
@@ -91,9 +96,11 @@ public final class WikidataCanonicalization {
                 aliases.put(candidate, carrier);
                 keys.put(candidate, instance.key());
                 sourceIdentities.put(candidate, instance.sourceIdentities());
+                occurrenceIdentities.put(candidate, instance.occurrenceIdentities());
             });
         }
-        return new Result(carriers, aliases, keys, sourceIdentities, reduced);
+        return new Result(carriers, aliases, keys, sourceIdentities,
+                occurrenceIdentities, reduced);
     }
 
     /** Identity metadata is normalized source output too, even when it is not a modeled
@@ -102,15 +109,20 @@ public final class WikidataCanonicalization {
     private static void mergeSourceMetadata(
             List<WikidataDynamicObject> partition, WikidataDynamicObject carrier) {
         java.util.SortedSet<String> aliases = new java.util.TreeSet<>();
+        java.util.LinkedHashMap<String, quiz.source.WikidataStatementSource> statements =
+                new java.util.LinkedHashMap<>();
         java.util.LinkedHashSet<datasource.evidence.CategoryMembership> categories =
                 new java.util.LinkedHashSet<>();
         boolean categoriesAnswered = false;
         for (WikidataDynamicObject candidate : partition) {
             aliases.addAll(candidate.aliases());
+            candidate.wikidataStatementSources().forEach(source ->
+                    statements.putIfAbsent(source.statement(), source));
             categories.addAll(candidate.categoryMemberships());
             categoriesAnswered |= candidate.categoryMembershipsAnswered();
         }
         carrier.aliases(aliases);
+        carrier.wikidataStatementSources(statements.values());
         if (categoriesAnswered) carrier.categoryMemberships(categories);
     }
 }
