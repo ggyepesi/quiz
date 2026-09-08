@@ -92,11 +92,20 @@ public final class TransformController {
      *  TypeSpec projection; a referenced object uses its own actual modeled class. */
     public FieldSchema renderedFieldSchema(Viewable instance, String rootType) {
         if (instance == null) return null;
+        FieldSchema schema;
         if (rootType != null && domain.isInstanceOf(instance, rootType)) {
-            return fieldSchema(mostSpecificClass(instance, rootType));
+            schema = fieldSchema(mostSpecificClass(instance, rootType));
+        } else {
+            String actual = domain.mostSpecificClass(instance);
+            schema = domain.fieldSchema(actual == null ? instance.typeName() : actual);
         }
-        String actual = domain.mostSpecificClass(instance);
-        return domain.fieldSchema(actual == null ? instance.typeName() : actual);
+        if (schema != null) return schema;
+        // Provider-owned reference values (such as Wikidata statement evidence) are
+        // outside the product's domain-class set. Their own declared FieldSet is the
+        // same schema ModelBuilder reflection consumes.
+        java.util.List<objectview.field.FieldRef> fields =
+                objectview.field.FieldSet.of(instance).fields();
+        return fields.isEmpty() ? null : () -> fields;
     }
 
     private DomainModel schemaDomain(String type) {

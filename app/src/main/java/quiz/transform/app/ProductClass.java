@@ -47,6 +47,10 @@ public record ProductClass(String className,
     public FieldSchema asFieldSchema() {
         List<FieldRef> refs = new ArrayList<>();
         for (ProductField f : fields) {
+            if (f.declaration() != null) {
+                refs.add(f.declaration());
+                continue;
+            }
             FieldKind kind = f.collection() ? FieldKind.COLLECTION
                     : f.reference() ? FieldKind.REFERENCE
                     : FieldKind.ofTypeLabel(f.typeLabel());

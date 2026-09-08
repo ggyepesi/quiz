@@ -32,8 +32,9 @@ import java.util.Set;
  *       collapse too (via {@link BareReferenceCollapse});
  *   <li>each field's shape/label comes from the model (cardinality, target class)
  *       cross-checked against the post-collapse instance value;
- *   <li>the {@code wikidata} link and a statement class's {@code source} reify
- *       back-ref are marked structural (hidden everywhere).
+ *   <li>legacy embedded {@code wikidata} links and a statement class's
+ *       {@code source} reify back-ref are removed; datasource provenance is
+ *       supplied by the same declared instance-field mechanism as ModelBuilder.
  * </ul>
  *
  * The result is a typed {@link ProductSchema}; QID never surfaces as a field.
@@ -83,15 +84,10 @@ public final class ProductCompiler {
         Set<String> members = new LinkedHashSet<>(memberList);
         collapseNonMemberReferences(pool, members);
 
-        // Real entities carry the auto-seeded wikidata link; a reified statement
-        // record (a Nomination) does not — so only real-entity classes get a
-        // Wikidata field. (Compute before renaming the key below.)
-        Set<String> entityClasses = entityClasses(pool);
-        // 4. `source` is pure plumbing (the reify back-ref) — strip it. But the
-        //    wikidata link is USEFUL (it IS the instance's identity), so keep it,
-        //    just under a readable name `Wikidata` instead of the seeded `wikidata`.
+        // 4. Remove legacy extraction plumbing. Datasource provenance is exposed
+        //    through ConfiguredInstanceFields below, not a second dynamic field.
         stripSource(pool);
-        renameWikidata(pool);
+        stripLegacyWikidata(pool);
         // 5. Drop the reify forward list (`__Nomination`): the declared model never
         //    had it, so the relation stays one-directional (like Constellation/Star —
         //    navigate Nomination as its own member type, no auto-materialized inverse).
@@ -103,7 +99,7 @@ public final class ProductCompiler {
             if (c == null || !seen.add(c.className())) {
                 continue;
             }
-            classes.add(compileClass(model, c, pool, entityClasses.contains(c.className())));
+            classes.add(compileClass(model, c, pool));
         }
 
         ProductSchema schema = new ProductSchema(classes, memberList);
@@ -149,8 +145,7 @@ public final class ProductCompiler {
 
     private static ProductClass compileClass(GeneratedProjectModel model,
                                              GeneratedClassModel c,
-                                             List<WikidataDynamicObject> pool,
-                                             boolean isEntity) {
+                                             List<WikidataDynamicObject> pool) {
         List<ProductField> fields = new ArrayList<>();
         Set<String> names = new LinkedHashSet<>();
         for (GeneratedFieldModel f : c.effectiveFields(model)) {
@@ -159,10 +154,18 @@ public final class ProductCompiler {
             }
             fields.add(compileField(model, c.className(), f, pool));
         }
-        // A real entity carries a Wikidata link (its identity, as a URL) — a first
-        // class field, not plumbing. Statement records don't, so they get none.
-        if (isEntity && names.add("Wikidata")) {
-            fields.add(new ProductField("Wikidata", "Link", false, false, null, false));
+        // Datasource-contributed fields are ordinary declared fields here exactly as
+        // in generated ModelBuilder classes. Do not reconstruct an older synthetic
+        // Wikidata link in this second schema path.
+        for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
+                : wikidata.explore.model.ConfiguredInstanceFields.of(
+                        c, model, datasource.Datasources.standard())) {
+            objectview.field.FieldRef declaration =
+                    wikidata.explore.model.ConfiguredInstanceFields.toFieldRef(
+                            configured.declaration());
+            if (names.add(declaration.name())) {
+                fields.add(ProductField.declared(declaration));
+            }
         }
         // The reify `source` back-ref is structural — stripped, documented here.
         if (c.reifiesStatements() && names.add("source")) {
@@ -271,30 +274,15 @@ public final class ProductCompiler {
         }
     }
 
-    /** Rename the seeded `wikidata` link to a readable `Wikidata`, in place. */
-    private static void renameWikidata(List<WikidataDynamicObject> pool) {
+    /** Remove the obsolete embedded link; wikidataSource is the declared field. */
+    private static void stripLegacyWikidata(List<WikidataDynamicObject> pool) {
         for (WikidataDynamicObject o : pool) {
             if (o == null) {
                 continue;
             }
-            Object v = o.dynamicFields().remove("wikidata");
-            if (v != null && !o.dynamicFields().containsKey("Wikidata")) {
-                o.dynamicFields().put("Wikidata", v);
-            }
+            o.dynamicFields().remove("wikidata");
+            o.dynamicFields().remove("Wikidata");
         }
-    }
-
-    /** Classes whose stamped instances carry the wikidata link — real entities, as
-     *  opposed to reified statement records (which have no Wikidata page). */
-    private static Set<String> entityClasses(List<WikidataDynamicObject> pool) {
-        Set<String> out = new LinkedHashSet<>();
-        for (WikidataDynamicObject o : pool) {
-            if (o != null && o.hasTypeStamp()
-                    && o.dynamicFieldValues().containsKey("wikidata")) {
-                out.addAll(o.directClassNames());
-            }
-        }
-        return out;
     }
 
     /** A reference is Wikimedia-meta noise (a "Wikimedia list article", a Wikinews

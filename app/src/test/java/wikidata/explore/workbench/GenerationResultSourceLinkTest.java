@@ -74,12 +74,10 @@ class GenerationResultSourceLinkTest {
 
         var model = new wikidata.explore.model.GeneratedProjectModelStore().load(
                 new File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
-        objectview.Viewable record;
-        try (var runtime = new wikidata.explore.codegen.GeneratedViewableRuntimeBuilder()
-                .build(model)) {
-            record = new wikidata.explore.codegen.GeneratedViewableMapper(runtime)
-                    .mapRoots(List.of(storedRecord)).getFirst();
-        }
+        var product = wikidata.explore.transform.ProductCompiler.compile(
+                model, new java.util.ArrayList<>(List.of(storedRecord)));
+        var controller = new quiz.transform.ui.TransformController(product, null);
+        objectview.Viewable record = storedRecord;
 
         objectview.field.FieldSet fields = objectview.field.FieldSet.of(record);
         Object sourceValue = fields.read("wikidataSource");
@@ -92,6 +90,8 @@ class GenerationResultSourceLinkTest {
             objectview.render.RenderContext context =
                     new objectview.render.RenderContext();
             context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+            context.setFieldSchemaResolver(value ->
+                    controller.renderedFieldSchema(value, record.typeName()));
             context.toggleCollectionExpanded(sourceValue, false);
             for (Object source : assertInstanceOf(List.class, sourceValue)) {
                 context.toggleExpanded(source);

@@ -797,7 +797,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
-                    .cardDecorator(this::identityChip)
                     .collapsible(true)
                     .build();
         }
@@ -821,7 +820,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
-                    .cardDecorator(this::identityChip)
                     .collapsible(true)
                     .build();
         }
@@ -830,7 +828,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         mv.context().setCollapsibleCards(true);
         mv.context().setFieldSchemaResolver(
                 q -> controller.fieldSchema(q.typeName()));
-        mv.context().setCardDecorator(this::identityChip);
         for (java.util.Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Viewable> objs = e.getValue();

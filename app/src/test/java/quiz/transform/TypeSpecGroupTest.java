@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import domain.DomainModel;
 import domain.DomainField;
 
@@ -173,6 +174,25 @@ class TypeSpecGroupTest {
                 controller.renderedFieldSchema(person, "Nomination"));
         assertEquals("Q1", person.getReferenceLabel(),
                 "a fieldless Person still has its identity/display label");
+    }
+
+    @Test void providerOwnedStatementSourceUsesItsOwnDeclaredSchema() {
+        WikidataDynamicObject nomination = entity("N1", "Nomination");
+        TransformController controller = new TransformController(
+                new SnapshotDomain(List.of(nomination)), null);
+        quiz.source.WikidataStatementSource source =
+                new quiz.source.WikidataStatementSource(
+                        "Q1$abc", "Q1", "P166", "Q2", "Award");
+
+        objectview.field.FieldSchema schema =
+                controller.renderedFieldSchema(source, "Nomination");
+
+        assertNotNull(schema);
+        assertNotNull(schema.field("statementSubject"));
+        assertNotNull(schema.field("statementProperty"));
+        assertNotNull(schema.field("statementObject"));
+        assertNotNull(schema.field("guid"));
+        assertNotNull(schema.field("statementJson"));
     }
 
     @Test void savingAnEditedLoadedRootKeepsNewTypeSpecGroup(@TempDir Path dir)

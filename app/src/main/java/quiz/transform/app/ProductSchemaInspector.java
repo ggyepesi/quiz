@@ -84,10 +84,9 @@ public final class ProductSchemaInspector extends JPanel {
             }
         }
 
-        // Identity first: `name` is the entity's display label (the card title, not
-        // a data field) — and for a real entity it's the LABEL of the Wikidata page
-        // its `Wikidata` field links to. Neither is in the model's declared fields.
-        boolean entity = pc != null && pc.field("Wikidata") != null;
+        // Identity first: `name` is the display label (the card title, not a data
+        // field). Datasource provenance is listed below as a declared product field.
+        boolean entity = pc != null && pc.entityIdentity();
         rows.addRow(new Object[]{"name", "identity", "String", "title",
                 entity ? "display label (of the linked Wikidata entity)" : "display label"});
 
@@ -135,9 +134,6 @@ public final class ProductSchemaInspector extends JPanel {
         if (mf == null) {                       // product-only: the compile added it
             if (pf.structural()) {
                 return "reify back-ref (structural, stripped)";
-            }
-            if ("Wikidata".equals(pf.name())) {
-                return "identity link (kept, renamed)";
             }
             if (pf.reference() && pf.collection()) {
                 return "reify list (from statementSourceClass)";

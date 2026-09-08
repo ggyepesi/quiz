@@ -23,7 +23,8 @@ import domain.DomainModel;
  * The compile step reads the declared model as the authority: a reference to a
  * modeled class stays a reference (labelled by class), a reference to an UNMODELED
  * class collapses to a display string, cardinality comes from the model, the reify
- * `source` and auto-seeded `wikidata` are structural, and QID is never a field.
+ * `source` and legacy embedded `wikidata` values are removed, datasource fields
+ * use their shared declarations, and QID is never a field.
  */
 class ProductCompilerTest {
 
@@ -213,22 +214,31 @@ class ProductCompilerTest {
                 d.fieldTypes("Nomination").field("target").typeLabel());
     }
 
-    @Test void sourceIsStructuralWikidataIsALinkOnEntities() {
-        ProductDomain d = ProductCompiler.compile(model(), pool());
+    @Test void datasourceSourceIsTheSameDeclaredFieldForEntitiesAndStatements() {
+        List<WikidataDynamicObject> pool = pool();
+        ProductDomain d = ProductCompiler.compile(model(), pool);
 
         // The reify `source` back-ref is the only structural field — plumbing.
         assertEquals(java.util.Set.of("source"), d.structuralFields("Nomination"));
         assertTrue(d.fieldTypes("Nomination").field("source").structural());
         assertNull(field(d, "Nomination", "source"), "not an operation argument");
 
-        // wikidata is a first-class link on a real entity (not structural) — and a
-        // statement class (Nomination) has none.
-        FieldTypeSource.FieldTypeInfo link = d.fieldTypes("OscarNominations").field("Wikidata");
-        assertNotNull(link, "a real entity keeps its Wikidata link");
-        assertFalse(link.structural());
-        assertEquals("Link", link.typeLabel());
-        assertNull(d.fieldTypes("Nomination").field("Wikidata"),
-                "a reified statement has no Wikidata page");
+        FieldTypeSource.FieldTypeInfo entitySource =
+                d.fieldTypes("OscarNominations").field("wikidataSource");
+        FieldTypeSource.FieldTypeInfo statementSource =
+                d.fieldTypes("Nomination").field("wikidataSource");
+        assertNotNull(entitySource);
+        assertNotNull(statementSource);
+        assertEquals("Wikidata source", entitySource.label());
+        assertEquals(objectview.field.FieldRole.PROVENANCE, entitySource.role());
+        assertEquals(entitySource.label(), statementSource.label());
+        assertEquals(entitySource.role(), statementSource.role());
+        assertNull(d.fieldTypes("OscarNominations").field("Wikidata"),
+                "TransformApp must not reconstruct the removed synthetic link");
+        assertTrue(pool.stream().noneMatch(value ->
+                        value.dynamicFieldValues().containsKey("wikidata")
+                                || value.dynamicFieldValues().containsKey("Wikidata")),
+                "the legacy embedded link must not survive as an undeclared extra");
     }
 
     @Test void qidIsNeverAField() {
@@ -267,28 +277,28 @@ class ProductCompilerTest {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         FieldTypeSource ts = d.fieldTypes("Nomination");
 
-        // target -> Category: a reference, and now expandable — Category is a real
-        // entity, so it carries a Wikidata link (no longer a dead-end lone `name`).
+        // target -> Category: a reference and therefore expandable.
         assertTrue(field(d, "Nomination", "target").reference());
         assertNotNull(ts.field("target").nested());
-        assertNotNull(ts.field("target").nested().field("Wikidata"));
+        assertNotNull(ts.field("target").nested().field("wikidataSource"));
 
         // nominee -> OscarNominations (fielded) stays expandable.
         assertNotNull(ts.field("nominee").nested());
     }
 
-    @Test void sourceStrippedWikidataRenamedNoiseFiltered() {
+    @Test void extractionPlumbingStrippedAndNoiseFiltered() {
         List<WikidataDynamicObject> pool = pool();
         ProductCompiler.compile(model(), pool);
         WikidataDynamicObject osc = pool.stream()
                 .filter(o -> "OscarNominations".equals(o.typeName())).findFirst().orElseThrow();
 
-        // source stripped everywhere; the seeded `wikidata` key renamed to `Wikidata`.
+        // Extraction plumbing is stripped everywhere; provenance is read from the
+        // declared wikidataSource property, not retained as a dynamic duplicate.
         for (WikidataDynamicObject o : pool) {
             assertFalse(o.dynamicFieldValues().containsKey("source"), o.getDisplayName());
             assertFalse(o.dynamicFieldValues().containsKey("wikidata"), o.getDisplayName());
+            assertFalse(o.dynamicFieldValues().containsKey("Wikidata"), o.getDisplayName());
         }
-        assertTrue(osc.dynamicFieldValues().containsKey("Wikidata"), "entity keeps the link");
 
         // Wikimedia-meta noise dropped from `type`; the real value survives.
         assertEquals("film", osc.dynamicFieldValues().get("type"));
