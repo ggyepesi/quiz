@@ -47,6 +47,24 @@ public final class WikidataLinks {
         return null;
     }
 
+    /** A readable WDQS request for the P1855 examples qualified by this property. */
+    public static String propertyExamplesUrl(String pid) {
+        if (!wikidata.WikidataIds.isPid(pid == null ? "" : pid.trim())) {
+            return null;
+        }
+        String property = pid.trim();
+        String query = """
+                SELECT ?example ?exampleLabel ?value ?valueLabel WHERE {
+                  wd:%s p:P1855 ?statement.
+                  ?statement ps:P1855 ?example.
+                  OPTIONAL { ?statement pq:%s ?value. }
+                %s
+                }
+                """.formatted(property, property,
+                        wikidata.query.LabelService.service());
+        return wikidata.explore.query.core.Datasource.WIKIDATA.browseUrl(query);
+    }
+
     public static void open(String id) {
         String u = url(id);
         if (u != null) {
