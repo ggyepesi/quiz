@@ -107,6 +107,31 @@ class ClassSourcePanelTest {
         render(panel, "target/ui-artifacts/class-source-descendant-membership.png");
     }
 
+    @Test void applyingTwiceKeepsTheSubclassClosureTheReaderChose() {
+        // Apply re-shows the object QIDs it has just written, and an explicit bound
+        // has nowhere to carry the closure — so the redisplay cleared the checkbox
+        // and the next Apply stored the cleared value. A saved position model came
+        // back with includeDescendants false for a class configured with it on.
+        GeneratedClassModel position = new GeneratedClassModel("PositionKind");
+        position.membership(wikidata.explore.model.EntityBound.relation(
+                "P279", List.of("Q4164871"), true));
+        ClassSourcePanel panel = panelFor(position);
+        panel.edit(position);
+
+        panel.applyEdits();
+        assertTrue(position.membership().includeDescendants(),
+                "the first apply stores what the reader configured");
+        assertTrue(visibleCheckBox(panel,
+                        "include subclasses of these QIDs (P279*)").isSelected(),
+                "and leaves the control showing it");
+
+        panel.applyEdits();
+        assertTrue(position.membership().includeDescendants(),
+                "a second apply must not store a choice nobody made");
+        assertEquals(List.of("Q4164871"), position.membership().qids());
+        assertEquals("P279", position.membership().relationPid());
+    }
+
     @Test void theInheritedPopulationFilterExistsOnlyWhenAClassExtendsAnother() {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         ClassSourcePanel rootPanel = panelFor(position);

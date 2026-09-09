@@ -446,8 +446,20 @@ final class TripleEditor extends JPanel {
         return new ArrayList<>(object.bound().qids());
     }
 
+    /**
+     * Re-shows the object QIDs without disturbing the rest of that end.
+     *
+     * <p>An explicit bound cannot carry subclass closure, so showing one silently
+     * cleared the checkbox beside it — and because Apply re-shows the QIDs it had
+     * just written, the NEXT Apply read the cleared box and stored a membership the
+     * reader never asked for. The closure is a separate authored fact here; it is
+     * carried across a redisplay rather than inferred from a bound that has no room
+     * for it.
+     */
     void objectQids(List<String> qids) {
+        boolean descendants = object.includesDescendants();
         object.show(EntityBound.explicit(qids == null ? List.of() : qids));
+        object.includeDescendants(descendants);
     }
 
     void includeMembershipDescendants(boolean value) {
