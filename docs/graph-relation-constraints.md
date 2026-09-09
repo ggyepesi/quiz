@@ -194,6 +194,15 @@ anchors. It performs no datasource query. This is deliberately separate from fro
 discovery: discovery decides which graph to acquire; the transform group gives the
 downloaded graph a domain-meaningful classification such as King versus Writer.
 
+The chooser offers each candidate with two sizes: how many nodes it reaches through
+any number of steps, and how many name it directly. Both are needed, because an anchor
+is chosen on what it would classify and neither number says that alone. In the
+Wikidata position hierarchy `mayor` names 668 children and reaches 48 175, while
+`mayor of a place in France` names and reaches the same 39 158 — so the reach ranks
+the layer anyone would group by above the flat bucket, and the direct count says which
+of the two a candidate is. The counts are discovery evidence: the group rule persists
+the anchors, never the sizes.
+
 ## First-slice decisions
 
 1. One endpoint constraint is enough. Composition waits for a configured case that

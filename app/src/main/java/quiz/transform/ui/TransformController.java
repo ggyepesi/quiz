@@ -233,14 +233,23 @@ public final class TransformController {
                     || domain.isSubclassOf(field.type(), currentType));
     }
 
-    /** One stable ancestor together with the number of graph nodes that refer to it
-     * directly through the selected field. The count ranks useful semantic anchors;
-     * it is discovery evidence, not persisted group configuration. */
-    public record AncestorCandidate(Viewable value, int directChildren) { }
+    /**
+     * One stable ancestor with the two sizes that decide whether it is worth choosing:
+     * how many nodes name it directly through the selected field, and how many it
+     * reaches through any number of steps.
+     *
+     * <p>Both are needed because neither answers the question alone. In the Wikidata
+     * position hierarchy "mayor" has 668 direct children and 48 175 below it, while
+     * "mayor of a place in France" has 39 158 of each — so ranking on the direct count
+     * puts the flat leaf bucket first and buries the layer anyone would actually group
+     * by. Discovery evidence; neither number is persisted group configuration.
+     */
+    public record AncestorCandidate(
+            Viewable value, int directChildren, int descendants) { }
 
     /** Stable, named entities reachable through the selected reference field, ranked
-     * by direct-child usage. These are chooser candidates only; inspecting them
-     * performs no fetch or mutation. */
+     * by how much each one would classify. These are chooser candidates only;
+     * inspecting them performs no fetch or mutation. */
     public List<AncestorCandidate> ancestorCandidates(
             quiz.transform.EditableGroup parent, DomainField field) {
         if (parent == null || field == null || !field.reference()) return List.of();
@@ -249,6 +258,7 @@ public final class TransformController {
                 .forEach(pending::addLast);
         Map<String, Viewable> stable = new LinkedHashMap<>();
         Map<String, Integer> directChildren = new LinkedHashMap<>();
+        Map<String, Set<String>> childKeys = new LinkedHashMap<>();
         Set<Viewable> anonymous = java.util.Collections.newSetFromMap(
                 new java.util.IdentityHashMap<>());
         while (!pending.isEmpty()) {
@@ -265,19 +275,55 @@ public final class TransformController {
                 String ancestorKey = stableIdentity(ancestor);
                 if (ancestorKey != null && countedParents.add(ancestorKey)) {
                     directChildren.merge(ancestorKey, 1, Integer::sum);
+                    if (key != null) {
+                        childKeys.computeIfAbsent(ancestorKey,
+                                ignored -> new java.util.LinkedHashSet<>()).add(key);
+                    }
                 }
                 pending.addLast(ancestor);
             }
         }
+        Map<String, Integer> descendants = descendantCounts(childKeys);
         return stable.entrySet().stream()
                 .map(entry -> new AncestorCandidate(entry.getValue(),
-                        directChildren.getOrDefault(entry.getKey(), 0)))
+                        directChildren.getOrDefault(entry.getKey(), 0),
+                        descendants.getOrDefault(entry.getKey(), 0)))
                 .sorted(java.util.Comparator
-                        .comparingInt(AncestorCandidate::directChildren).reversed()
+                        .comparingInt(AncestorCandidate::descendants).reversed()
+                        .thenComparing(java.util.Comparator
+                                .comparingInt(AncestorCandidate::directChildren).reversed())
                         .thenComparing(candidate -> candidate.value().getReferenceLabel(),
                                 java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
                         .thenComparing(candidate -> candidate.value().getIdentifier()))
                 .toList();
+    }
+
+    /**
+     * How many distinct nodes each ancestor reaches downward, counted once however
+     * many paths lead to them.
+     *
+     * <p>One search per ancestor, which is enough: the whole position hierarchy is
+     * 4 518 ancestors over 76 924 nodes and the searches together visit 2.3 million
+     * nodes. Repeated visits are cut by the seen set, which is also what makes a
+     * P279 cycle terminate.
+     */
+    private static Map<String, Integer> descendantCounts(
+            Map<String, Set<String>> childKeys) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String ancestor : childKeys.keySet()) {
+            Set<String> seen = new java.util.HashSet<>();
+            seen.add(ancestor);
+            java.util.ArrayDeque<String> pending =
+                    new java.util.ArrayDeque<>(childKeys.get(ancestor));
+            while (!pending.isEmpty()) {
+                String node = pending.removeFirst();
+                if (!seen.add(node)) continue;
+                Set<String> below = childKeys.get(node);
+                if (below != null) pending.addAll(below);
+            }
+            counts.put(ancestor, seen.size() - 1);
+        }
+        return counts;
     }
 
     private static String stableIdentity(Viewable value) {

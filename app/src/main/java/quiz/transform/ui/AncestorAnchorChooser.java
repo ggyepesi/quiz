@@ -151,10 +151,19 @@ final class AncestorAnchorChooser extends JPanel {
     int shownMatchCount() { return foundModel.size(); }
     String matchStatusText() { return matchStatus.getText(); }
 
+    /**
+     * Both sizes, because an anchor is chosen on what it would classify.
+     *
+     * <p>"below it" is what picking this ancestor would catch; "direct" says whether
+     * that is one flat bucket or a layer with structure under it. The two differ by
+     * two orders of magnitude on a real hierarchy, and showing only the direct count
+     * ranked the flattest bucket first.
+     */
     static String candidateChoiceLabel(TransformController.AncestorCandidate candidate) {
         int children = candidate == null ? 0 : candidate.directChildren();
+        int below = candidate == null ? 0 : candidate.descendants();
         return candidateLabel(candidate == null ? null : candidate.value())
-                + "  ·  " + children + (children == 1 ? " direct child" : " direct children");
+                + String.format("  ·  %,d below it, %,d direct", below, children);
     }
 
     static String candidateLabel(Viewable value) {

@@ -22,8 +22,8 @@ class AncestorAnchorChooserTest {
         AncestorAnchorChooser[] chooser = new AncestorAnchorChooser[1];
         SwingUtilities.invokeAndWait(() -> {
             chooser[0] = new AncestorAnchorChooser(List.of(
-                    new TransformController.AncestorCandidate(king, 12),
-                    new TransformController.AncestorCandidate(writer, 4)));
+                    new TransformController.AncestorCandidate(king, 12, 48175),
+                    new TransformController.AncestorCandidate(writer, 4, 9)));
             chooser[0].search("king");
         });
         assertEquals(List.of(), chooser[0].selectedAnchors(),
@@ -35,9 +35,10 @@ class AncestorAnchorChooserTest {
         });
         assertEquals(List.of(king), chooser[0].selectedAnchors());
         assertEquals("King — Q12097", AncestorAnchorChooser.candidateLabel(king));
-        assertEquals("King — Q12097  ·  12 direct children",
+        assertEquals("King — Q12097  ·  48,175 below it, 12 direct",
                 AncestorAnchorChooser.candidateChoiceLabel(
-                        new TransformController.AncestorCandidate(king, 12)));
+                        new TransformController.AncestorCandidate(king, 12, 48175)),
+                "an anchor is chosen on what it would classify, not on its fan-out");
 
         render(chooser[0], "nearest-ancestor-anchor-chooser.png");
     }
@@ -47,7 +48,7 @@ class AncestorAnchorChooserTest {
                 new java.util.ArrayList<>();
         for (int i = 0; i < 250; i++) {
             candidates.add(new TransformController.AncestorCandidate(
-                    value("Q" + i, "Position " + i), 250 - i));
+                    value("Q" + i, "Position " + i), 250 - i, 250 - i));
         }
         AncestorAnchorChooser[] chooser = new AncestorAnchorChooser[1];
         SwingUtilities.invokeAndWait(() ->
