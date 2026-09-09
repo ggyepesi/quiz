@@ -38,17 +38,13 @@ class PresenceFacetTest {
                 nomination("n4", null));
     }
 
-    private static ViewableGroup<?> dimensionOf(FacetGroup group) {
-        return group.getChildren().iterator().next();
-    }
-
     @Test void presenceBucketingSeparatesTheMissingFromThePresent() {
         FacetGroup group = new FacetGroup(
                 "Has edition", "Nomination", "edition", FacetGroup.Bucketing.PRESENCE);
 
         group.reproduce(pool());
 
-        List<String> buckets = dimensionOf(group).getChildren().stream()
+        List<String> buckets = group.getChildren().stream()
                 .map(ViewableGroup::getDisplayName).sorted().toList();
         assertEquals(List.of("missing", "present"), buckets);
     }
@@ -59,7 +55,7 @@ class PresenceFacetTest {
 
         group.reproduce(pool());
 
-        int total = dimensionOf(group).getChildren().stream()
+        int total = group.getChildren().stream()
                 .mapToInt(b -> b.getMembers().size()).sum();
         assertEquals(4, total, "presence is total — nothing falls outside both buckets");
     }
@@ -71,7 +67,7 @@ class PresenceFacetTest {
 
         group.reproduce(pool());
 
-        int total = dimensionOf(group).getChildren().stream()
+        int total = group.getChildren().stream()
                 .mapToInt(b -> b.getMembers().size()).sum();
         assertEquals(2, total, "only the records that HAVE an edition are bucketed");
     }

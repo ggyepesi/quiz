@@ -19,6 +19,79 @@ import domain.DomainSchemas;
  */
 class TransformControllerTest {
 
+    @Test void facetDialogCallsValuePartitionsGroupsRatherThanBuckets() {
+        assertArrayEquals(new Object[] {"One group per value", "Present / missing"},
+                TransformWorkbenchPanel.facetGroupingChoices());
+        assertArrayEquals(new Object[] {"One group per value", "Present / missing",
+                        "Nearest selected ancestor"},
+                TransformWorkbenchPanel.facetGroupingChoices(true));
+    }
+
+    @Test void nearestAncestorCandidatesAndGroupUseTheSelectedReferenceGraph() {
+        quiz.transform.DynamicViewable king = city("Q12097", null);
+        king.type("Position");
+        quiz.transform.DynamicViewable concrete = city("Q1", null);
+        concrete.type("Position");
+        concrete.put("superClasses", List.of(king));
+        DomainField superClasses = new DomainField(
+                "Position", "superClasses", true, true);
+        DomainModel positions = new DomainModel() {
+            @Override public List<String> types() { return List.of("Position"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return () -> List.of(objectview.field.FieldRef.described(
+                        "superClasses", objectview.field.FieldKind.COLLECTION,
+                        objectview.field.FieldKind.REFERENCE, "List<Position>",
+                        true, true, "Position", false, false,
+                        false, false, "", false));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(concrete, king);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(positions, null);
+        quiz.transform.EditableGroup root = (quiz.transform.EditableGroup)
+                controller.groupRoot("Position");
+
+        assertTrue(controller.isRecursiveReference(superClasses));
+        assertEquals(List.of("Q12097", "Q1"),
+                controller.ancestorCandidates(root, superClasses).stream()
+                        .map(candidate -> candidate.value().getDisplayName()).toList());
+        assertEquals(List.of(1, 0),
+                controller.ancestorCandidates(root, superClasses).stream()
+                        .map(TransformController.AncestorCandidate::directChildren).toList());
+        quiz.transform.NearestAncestorGroup group = controller.addNearestAncestorGroup(
+                "Position", root, "By office", superClasses, List.of(king));
+        assertNotNull(group);
+        assertEquals(List.of("Q1", "Q12097"),
+                group.getChild("Q12097").getMembers().stream()
+                        .map(Viewable::getDisplayName).toList());
+    }
+
+    @Test void aReferenceToTheOwnersSuperclassIsRecursive() {
+        DomainModel hierarchy = new DomainModel() {
+            @Override public List<String> types() { return List.of("Position", "Office"); }
+            @Override public String baseType(String type) {
+                return "Position".equals(type) ? "Office" : null;
+            }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                if (!"Position".equals(type)) return () -> List.of();
+                return () -> List.of(objectview.field.FieldRef.described(
+                        "broaderOffice", objectview.field.FieldKind.REFERENCE,
+                        objectview.field.FieldKind.REFERENCE, "Office",
+                        true, false, "Office", false, false,
+                        false, false, "", false));
+            }
+            @Override public Collection<? extends Viewable> instances() { return List.of(); }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(hierarchy, null);
+
+        assertTrue(controller.isRecursiveReference(new DomainField(
+                "Position", "broaderOffice", true, false)),
+                "specialised instances may climb through a field targeting their base class");
+    }
+
     private static quiz.transform.DynamicViewable city(String name, String region) {
         quiz.transform.DynamicViewable c = new quiz.transform.DynamicViewable(name, name);
         c.type("City");
@@ -44,12 +117,12 @@ class TransformControllerTest {
         quiz.transform.FacetGroup facet =
                 c.addFacetGroup("City", root, "Regions",
                         c.field("City", FieldPath.of("region")));
-        assertNotNull(facet.getChild("region").getChild("Europe"));
-        assertNull(facet.getChild("region").getChild("Africa"));
+        assertNotNull(facet.getChild("Europe"));
+        assertNull(facet.getChild("Africa"));
 
         // A hand-nested group under a bucket must survive an access with UNCHANGED data.
         quiz.transform.EditableGroup europe =
-                (quiz.transform.EditableGroup) facet.getChild("region").getChild("Europe");
+                (quiz.transform.EditableGroup) facet.getChild("Europe");
         c.addManualGroup(europe, "Manual pick");
         c.groupRoot("City");
         assertNotNull(europe.getChild("Manual pick"),
@@ -58,7 +131,7 @@ class TransformControllerTest {
         // The instance set changes online -> the facet recomputes from its rule.
         pool.add(city("Cairo", "Africa"));
         c.groupRoot("City");
-        assertNotNull(facet.getChild("region").getChild("Africa"),
+        assertNotNull(facet.getChild("Africa"),
                 "scope changed -> produced descendants recompute");
         assertEquals(3, root.getMembers().size());
     }
@@ -91,7 +164,7 @@ class TransformControllerTest {
                 "City", root, "Regions",
                 c.field("City", FieldPath.of("region")));
         quiz.transform.EditableGroup europe = (quiz.transform.EditableGroup)
-                facet.getChild("region").getChild("Europe");
+                facet.getChild("Europe");
         quiz.transform.OperationGroup filtered = c.addFilterGroup(
                 "City", europe, "Only Paris",
                 new quiz.transform.pipeline.ui.FilterCondition(
@@ -102,7 +175,7 @@ class TransformControllerTest {
         assertSame(europe, filtered.getParent());
         assertEquals(List.of("Paris"), filtered.getMembers().stream()
                 .map(Viewable::getDisplayName).toList());
-        assertNull(facet.getChild("region").getChild("Asia").getChild("Only Paris"));
+        assertNull(facet.getChild("Asia").getChild("Only Paris"));
         assertTrue(c.removeGroup("City", filtered));
         assertTrue(europe.getChildren().isEmpty());
         assertFalse(c.removeGroup("City", root));

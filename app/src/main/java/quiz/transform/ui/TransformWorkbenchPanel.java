@@ -963,15 +963,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "Select a field first.");
             return;
         }
-        // Bucketing by VALUE produces no bucket at all for a member whose field is
+        // Grouping by VALUE produces no group at all for a member whose field is
         // empty, so the records an EXPECTED field reports as missing stay invisible.
         // Present/missing is how that count becomes a set you can select (#96).
-        Object[] choices = {"One bucket per value", "Present / missing"};
+        Object[] choices = facetGroupingChoices(
+                controller.isRecursiveReference(field));
         int choice = JOptionPane.showOptionDialog(this,
-                "How should '" + field.path() + "' bucket its members?",
+                "How should '" + field.path() + "' group its members?",
                 "Facet group", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
         if (choice < 0) return;
+        if (choice == 2) {
+            addNearestAncestorGroup(type, root, field);
+            return;
+        }
         quiz.transform.FacetGroup.Bucketing bucketing = choice == 1
                 ? quiz.transform.FacetGroup.Bucketing.PRESENCE
                 : quiz.transform.FacetGroup.Bucketing.VALUE;
@@ -983,6 +988,41 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) return;
         controller.addFacetGroup(type, selectedOrRoot(root), name.trim(),
                 field, bucketing);
+        render();
+    }
+
+    static Object[] facetGroupingChoices() {
+        return new Object[] {"One group per value", "Present / missing"};
+    }
+
+    static Object[] facetGroupingChoices(boolean recursiveReference) {
+        return recursiveReference
+                ? new Object[] {"One group per value", "Present / missing",
+                        "Nearest selected ancestor"}
+                : facetGroupingChoices();
+    }
+
+    private void addNearestAncestorGroup(
+            String type, objectview.group.ViewableGroup<?> root, DomainField field) {
+        quiz.transform.EditableGroup parent = selectedOrRoot(root);
+        if (parent == null) return;
+        AncestorAnchorChooser chooser = new AncestorAnchorChooser(
+                controller.ancestorCandidates(parent, field));
+        int ok = JOptionPane.showConfirmDialog(this, chooser,
+                "Choose ancestor groups through " + field.displayPath(),
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (ok != JOptionPane.OK_OPTION) return;
+        List<Viewable> anchors = chooser.selectedAnchors();
+        if (anchors.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Add at least one ancestor group.");
+            return;
+        }
+        String name = JOptionPane.showInputDialog(this,
+                "Name the new ancestor group:", "By nearest ancestor");
+        if (name == null || name.isBlank()) return;
+        controller.addNearestAncestorGroup(
+                type, parent, name.trim(), field, anchors);
         render();
     }
 

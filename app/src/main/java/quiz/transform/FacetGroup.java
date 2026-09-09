@@ -10,22 +10,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * A computed group whose bucket children are (re)produced by partitioning its parent scope's
+ * A computed group whose value-group children are (re)produced by partitioning its parent scope's
  * members by a facet field — the facet-result counterpart of a hand-built manual group.
  *
  * <p>It remembers its RULE (the facet {@code field}) and its {@code memberType} (the
  * reproduce universe — needed because a computed group can be empty before the first
  * {@link #reproduce}, so member-inference won't do). {@code reproduce(parentMembers)}
  * re-partitions via a {@link Facet}, so the group stays fresh when the instance set
- * changes. Buckets are ordinary editable groups. Otherwise it behaves exactly
+ * changes. Value groups are ordinary editable groups. Otherwise it behaves exactly
  * like a manual group, with its membership and children populated by the rule.
  */
 public final class FacetGroup extends EditableGroup implements ProducedGroup {
 
     /**
-     * How the facet buckets its members.
+     * How the facet groups its members.
      *
-     * <p>{@link #VALUE} makes one bucket per distinct value — and produces NO bucket for
+     * <p>{@link #VALUE} makes one group per distinct value — and produces NO group for
      * a member whose field is empty, which is exactly what hides an expectation's
      * coverage gap. {@link #PRESENCE} makes two, present and missing, so the N records
      * an EXPECTED field reported as missing become a set you can select and curate
@@ -92,9 +92,6 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
         Facet<Viewable> facet = bucketing == Bucketing.PRESENCE
                 ? Facet.presence(field, field)
                 : Facet.field(field);
-        EditableGroup dimension = new EditableGroup(facet.label());
-        dimension.setRole(Role.FACET);
-        addGroup(dimension);
         Map<String, EditableGroup> buckets = new LinkedHashMap<>();
         java.util.List<Viewable> matchedMembers = new java.util.ArrayList<>();
         java.util.Set<Viewable> matched = java.util.Collections.newSetFromMap(
@@ -115,7 +112,7 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
                     EditableGroup created = new EditableGroup(name);
                     created.setRole(Role.BUCKET);
                     created.setKeyRef(key.ref());
-                    dimension.addGroup(created);
+                    addGroup(created);
                     return created;
                 });
                 java.util.List<Viewable> values =
@@ -124,8 +121,8 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
                 bucket.replaceMembers(values);
             }
         }
-        // The produced group is the union of its value buckets. A source member
-        // without a usable facet value belongs to none of those buckets and is not
+        // The produced group is the union of its value groups. A source member
+        // without a usable facet value belongs to none of those groups and is not
         // silently retained in the facet result.
         replaceMembers(matchedMembers);
     }

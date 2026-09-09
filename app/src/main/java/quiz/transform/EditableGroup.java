@@ -110,6 +110,11 @@ public class EditableGroup extends ViewableGroupAdapter {
                     text(fields.read("facetField")),
                     bucketing.isBlank() ? FacetGroup.Bucketing.VALUE
                             : FacetGroup.Bucketing.valueOf(bucketing));
+        } else if ("nearestAncestor".equals(producer)) {
+            copy = new NearestAncestorGroup(name,
+                    text(fields.read("memberType")),
+                    text(fields.read("ancestorField")),
+                    viewables(fields.read("ancestorAnchors")));
         } else if ("filter".equals(producer)) {
             String memberType = text(fields.read("memberType"));
             String path = text(fields.read("filterField"));
@@ -189,11 +194,7 @@ public class EditableGroup extends ViewableGroupAdapter {
                         objectview.field.FieldKind.REFERENCE, "Viewable",
                         true, false, null, true, true,
                         false, false, "", true));
-                for (String key : ruleFields().keySet()) {
-                    refs.add(objectview.field.FieldRef.of(
-                            key, objectview.field.FieldKind.TEXT, "String",
-                            false, false, true));
-                }
+                refs.addAll(ruleFieldRefs());
                 return List.copyOf(refs);
             }
             @Override public Object read(String field) { return values.get(field); }
@@ -206,5 +207,21 @@ public class EditableGroup extends ViewableGroupAdapter {
 
     private static String text(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private static List<Viewable> viewables(Object value) {
+        if (!(value instanceof Collection<?> values)) return List.of();
+        return values.stream().filter(Viewable.class::isInstance)
+                .map(Viewable.class::cast).toList();
+    }
+
+    /** Descriptors for persisted producer arguments. Most existing producers carry
+     * only text; producers with reference-valued arguments override this method. */
+    protected List<objectview.field.FieldRef> ruleFieldRefs() {
+        return ruleFields().keySet().stream()
+                .map(key -> objectview.field.FieldRef.of(
+                        key, objectview.field.FieldKind.TEXT, "String",
+                        false, false, true))
+                .toList();
     }
 }

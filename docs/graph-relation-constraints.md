@@ -2,8 +2,10 @@
 
 ## Status
 
-First executable core, not yet user-configurable. The neutral evaluator can compare
-direct values and nearest qualifying ancestors from a covered local graph. It extends
+Executable core plus a standalone discovery experiment, not yet ModelBuilder
+configuration. The neutral evaluator can compare direct values and nearest qualifying
+ancestors from a covered local graph. The existing shared-population demo now previews
+one frontier step at a time and profiles its sample for possible constraints. It extends
 the candidate paths and curated frontier described in
 [Configurable Knowledge-Graph Discovery](configurable-knowledge-graph-discovery.md);
 it does not introduce a second graph-discovery mechanism.
@@ -159,6 +161,38 @@ Unknown position
 
 Discovery and preview are inspection only. Adding the constraint to the model remains
 an explicit action.
+
+## Controlled discovery demo
+
+`FrontierConstraintDiscoveryFrame` is the demo entry point. It is separate from the
+console closure engine, and each iteration is deliberately separated:
+
+1. Select the incoming and outgoing relations from the same downloaded-property
+   catalogue used by Explorer, or enter their PIDs.
+2. Preview one bounded `source <- relation - bridge - relation -> candidate` step.
+3. Inspect the candidate nodes and witness edges.
+4. Profile only that bounded sample for candidate ancestors, candidate properties,
+   bridge properties and qualifiers on the candidate statement.
+5. Explicitly apply a selected constraint and preview the same frontier again.
+6. Explicitly select admitted candidates as the next frontier.
+
+Selection itself changes neither the frontier nor the active constraints. The demo is
+a proving ground for which discovered constraints are semantically useful; it does not
+persist another graph plan or wire experimental behavior into ModelBuilder.
+
+## Using a downloaded hierarchy in TransformApp
+
+TransformApp can classify an already-downloaded domain without extending its graph.
+For a recursive reference field, **Nearest selected ancestor** creates a normal
+persisted transform group whose rule contains that field and the explicitly selected
+entity anchors. Each instance is placed under its closest reachable anchor. An
+equal-distance match is placed in **Review** and a member reaching no selected anchor
+is placed in **Unclassified**, so classification never silently removes instances.
+
+The operation indexes the stored graph once and walks it in reverse from all selected
+anchors. It performs no datasource query. This is deliberately separate from frontier
+discovery: discovery decides which graph to acquire; the transform group gives the
+downloaded graph a domain-meaningful classification such as King versus Writer.
 
 ## First-slice decisions
 

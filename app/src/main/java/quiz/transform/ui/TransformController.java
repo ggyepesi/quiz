@@ -6,7 +6,9 @@ import objectview.field.FieldSchema;
 import objectview.field.FieldPath;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -196,6 +198,109 @@ public final class TransformController {
         group.reproduce(parent.getMembers());
         parent.addGroup(group);
         return group;
+    }
+
+    public quiz.transform.NearestAncestorGroup addNearestAncestorGroup(
+            String type, quiz.transform.EditableGroup parent,
+            String name, DomainField field,
+            Collection<? extends Viewable> anchors) {
+        if (parent == null || field == null || !field.reference()
+                || anchors == null || anchors.isEmpty()) return null;
+        quiz.transform.NearestAncestorGroup group =
+                new quiz.transform.NearestAncestorGroup(
+                        name, type, field.field(), anchors);
+        group.reproduce(parent.getMembers());
+        parent.addGroup(group);
+        return group;
+    }
+
+    /** Whether the selected path ends in a reference back to the class that owns
+     * that path. The choice is schema-driven; a currently empty field remains valid. */
+    public boolean isRecursiveReference(DomainField field) {
+        if (field == null || !field.reference()) return false;
+        String currentType = field.type();
+        objectview.field.FieldRef leaf = null;
+        for (String segment : field.fieldPath().segments()) {
+            FieldSchema schema = domain.fieldSchema(currentType);
+            leaf = schema == null ? null : schema.field(segment);
+            if (leaf == null) return false;
+            currentType = leaf.targetType();
+        }
+        return leaf != null && leaf.reference()
+                && currentType != null
+                && (field.type().equals(currentType)
+                    || domain.isSubclassOf(currentType, field.type())
+                    || domain.isSubclassOf(field.type(), currentType));
+    }
+
+    /** One stable ancestor together with the number of graph nodes that refer to it
+     * directly through the selected field. The count ranks useful semantic anchors;
+     * it is discovery evidence, not persisted group configuration. */
+    public record AncestorCandidate(Viewable value, int directChildren) { }
+
+    /** Stable, named entities reachable through the selected reference field, ranked
+     * by direct-child usage. These are chooser candidates only; inspecting them
+     * performs no fetch or mutation. */
+    public List<AncestorCandidate> ancestorCandidates(
+            quiz.transform.EditableGroup parent, DomainField field) {
+        if (parent == null || field == null || !field.reference()) return List.of();
+        java.util.ArrayDeque<Viewable> pending = new java.util.ArrayDeque<>();
+        parent.getMembers().stream().filter(java.util.Objects::nonNull)
+                .forEach(pending::addLast);
+        Map<String, Viewable> stable = new LinkedHashMap<>();
+        Map<String, Integer> directChildren = new LinkedHashMap<>();
+        Set<Viewable> anonymous = java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<>());
+        while (!pending.isEmpty()) {
+            Viewable value = pending.removeFirst();
+            String key = stableIdentity(value);
+            if (key == null ? !anonymous.add(value) : stable.putIfAbsent(key, value) != null) {
+                continue;
+            }
+            List<Viewable> parents = new java.util.ArrayList<>();
+            addViewables(objectview.field.FieldAccess.getPathValues(
+                    value, field.fieldPath()), parents);
+            Set<String> countedParents = new java.util.HashSet<>();
+            for (Viewable ancestor : parents) {
+                String ancestorKey = stableIdentity(ancestor);
+                if (ancestorKey != null && countedParents.add(ancestorKey)) {
+                    directChildren.merge(ancestorKey, 1, Integer::sum);
+                }
+                pending.addLast(ancestor);
+            }
+        }
+        return stable.entrySet().stream()
+                .map(entry -> new AncestorCandidate(entry.getValue(),
+                        directChildren.getOrDefault(entry.getKey(), 0)))
+                .sorted(java.util.Comparator
+                        .comparingInt(AncestorCandidate::directChildren).reversed()
+                        .thenComparing(candidate -> candidate.value().getReferenceLabel(),
+                                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(candidate -> candidate.value().getIdentifier()))
+                .toList();
+    }
+
+    private static String stableIdentity(Viewable value) {
+        if (value == null) return null;
+        String id = value.getIdentifier();
+        return id == null || id.isBlank() ? null
+                : (value.identityTypeName() == null ? "" : value.identityTypeName())
+                + "\u001f" + id;
+    }
+
+    private static void addViewables(Object value, Collection<Viewable> out) {
+        if (value instanceof Viewable viewable) {
+            out.add(viewable);
+        } else if (value instanceof Collection<?> values) {
+            values.stream().filter(Viewable.class::isInstance)
+                    .map(Viewable.class::cast).forEach(out::add);
+        } else if (value != null && value.getClass().isArray()) {
+            int length = java.lang.reflect.Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                Object element = java.lang.reflect.Array.get(value, i);
+                if (element instanceof Viewable viewable) out.add(viewable);
+            }
+        }
     }
 
     public quiz.transform.OperationGroup addFilterGroup(

@@ -26,6 +26,8 @@ public class CachedPropertyViewablePanel extends JPanel {
     private final JPanel propertyBrowser = new JPanel(new BorderLayout(6, 0));
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private List<WikidataPropertyViewable> selectedProperties = List.of();
+    private java.util.function.Consumer<List<WikidataPropertyViewable>> selectionListener =
+            ignored -> { };
     private WorkbenchSelections selections;
 
     private final List<WikidataPropertyViewable> properties =
@@ -37,9 +39,12 @@ public class CachedPropertyViewablePanel extends JPanel {
     public CachedPropertyViewablePanel() {
         super(new BorderLayout(6, 6));
         propertyList.valueLinker(wikidata.ui.WikidataLinks.valueLinker());
-        propertyList.onSelectionSetChanged(selected -> selectedProperties = selected.stream()
-                .filter(WikidataPropertyViewable.class::isInstance)
-                .map(WikidataPropertyViewable.class::cast).toList());
+        propertyList.onSelectionSetChanged(selected -> {
+            selectedProperties = selected.stream()
+                    .filter(WikidataPropertyViewable.class::isInstance)
+                    .map(WikidataPropertyViewable.class::cast).toList();
+            selectionListener.accept(selectedProperties);
+        });
         add(propertyBrowser, BorderLayout.CENTER);
         JPanel footer = new JPanel(new BorderLayout(6, 0));
         footer.add(statusLabel, BorderLayout.CENTER);
@@ -61,6 +66,13 @@ public class CachedPropertyViewablePanel extends JPanel {
         }
         selectionsHolder.revalidate();
         selectionsHolder.repaint();
+    }
+
+    /** Observe transient catalogue selection without changing shared selections. */
+    public void onSelectionChanged(
+            java.util.function.Consumer<List<WikidataPropertyViewable>> listener) {
+        selectionListener = listener == null ? ignored -> { } : listener;
+        selectionListener.accept(selectedProperties);
     }
 
     private void setSelectedProperty() {

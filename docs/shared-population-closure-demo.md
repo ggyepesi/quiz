@@ -3,14 +3,14 @@
 Run the Swing UI:
 
 ```text
-wikidata.explore.demo.closure.SharedPopulationClosureFrame
+wikidata.explore.demo.constraint.FrontierConstraintDiscoveryFrame
 ```
 
-It provides editable configuration, Run/Cancel, live SPARQL progress, and sortable tables
-for values, population members, witnessed connections, and journal events. Physical
-requests, retries and failures are shown in Progress as well as echoed to stdout.
+This frame provides the controlled frontier workflow: preview one bounded step, inspect
+candidate constraints, apply one explicitly, and select the next frontier. It does not
+run a closure.
 
-The console-only entry point remains available as:
+The separate console closure engine remains available as:
 
 ```text
 wikidata.explore.demo.closure.SharedPopulationClosureDemo
