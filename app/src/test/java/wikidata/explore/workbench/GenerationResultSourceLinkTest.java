@@ -167,8 +167,8 @@ class GenerationResultSourceLinkTest {
 
         var paths = objectview.field.ViewableFieldPaths.collectFromSchema(
                 search, schema, true);
-        var hits = new objectview.search.SearchAndSort().searchViewables(
-                records, List.of("duve"), paths);
+        var hits = new objectview.search.SearchAndSort().searchViewablesByPath(
+                records, List.of("duve"), paths, false);
 
         assertTrue(hits.values().stream().flatMap(List::stream)
                         .anyMatch(value -> value == medicine1974),

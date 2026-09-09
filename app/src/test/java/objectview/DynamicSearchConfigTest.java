@@ -59,21 +59,32 @@ class DynamicSearchConfigTest {
         SearchAndSort engine = new SearchAndSort();
 
         // won checked, name not: "casablanca" finds nothing, "true" hits won.
-        Map<String, List<Viewable>> byName = engine.searchViewables(
-                pool, List.of("casablanca"), paths(pool.getFirst(), explicit("won")));
+        var byName = engine.searchViewablesByPath(
+                pool, List.of("casablanca"), paths(pool.getFirst(), explicit("won")), false);
         assertTrue(byName.isEmpty(), byName.toString());
 
-        Map<String, List<Viewable>> byWon = engine.searchViewables(
-                pool, List.of("true"), paths(pool.getFirst(), explicit("won")));
-        assertEquals(1, byWon.getOrDefault("won", List.of()).size(), byWon.toString());
+        var byWon = engine.searchViewablesByPath(
+                pool, List.of("true"), paths(pool.getFirst(), explicit("won")), false);
+        assertEquals(1, hitsLabelled(byWon, "won").size(), byWon.toString());
 
         // name checked: the display name matches again.
         String displayKey = objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
         String displayLabel = objectview.field.ViewableContractFieldSet.label(displayKey);
-        Map<String, List<Viewable>> withName = engine.searchViewables(
-                pool, List.of("casablanca"), paths(pool.getFirst(), explicit(displayKey)));
-        assertEquals(1, withName.getOrDefault(displayLabel, List.of()).size(),
+        var withName = engine.searchViewablesByPath(
+                pool, List.of("casablanca"),
+                paths(pool.getFirst(), explicit(displayKey)), false);
+        assertEquals(1, hitsLabelled(withName, displayLabel).size(),
                 withName.toString());
+    }
+
+    /** Hits shown under one label. Search is identified by field path, because two
+     *  fields can be shown the same label; this test's labels are unambiguous. */
+    private static List<Viewable> hitsLabelled(
+            Map<ViewableFieldPaths.PathInfo, List<Viewable>> hits, String label) {
+        return hits.entrySet().stream()
+                .filter(hit -> label.equals(hit.getKey().title()))
+                .flatMap(hit -> hit.getValue().stream())
+                .toList();
     }
 
     @Test void sortsByADynamicField() {
