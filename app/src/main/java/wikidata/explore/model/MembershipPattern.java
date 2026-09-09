@@ -12,7 +12,8 @@ import java.util.Set;
  * A named classification of how a class gathers its members — the "shape" of its
  * membership configuration — so the pattern is explicit and visible (e.g. on the
  * class tree node) instead of having to be inferred from the relation pid + QID
- * sets. Drives which intrinsic grouping fields apply (see {@link MembershipFields}).
+ * sets. Helps the advisor identify which explicitly declared grouping fields may
+ * be useful (see {@link MembershipFields}).
  */
 public enum MembershipPattern {
 

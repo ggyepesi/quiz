@@ -33,6 +33,15 @@ import java.util.function.Consumer;
 public final class SwingProcessWorkflow {
     private SwingProcessWorkflow() { }
 
+    /** A failure dialog must always say what failed, even for JDK exceptions whose
+     * message is null (for example {@link UnsupportedOperationException}). */
+    static String failureMessage(Throwable failure) {
+        if (failure == null) return "Process failed";
+        String message = failure.getMessage();
+        return message == null || message.isBlank()
+                ? failure.getClass().getSimpleName() : message;
+    }
+
     public static <R, D> JDialog start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
         return start(owner, runner, action, null);
@@ -125,8 +134,9 @@ public final class SwingProcessWorkflow {
             // could strand a completed result behind the stale Running page forever.
             runner.run(action.process(), this::completed, error -> {
                         if (pipeline != null) pipeline.finish(ProcessStatus.FAILED,
-                                error == null ? "Process failed" : error.getMessage());
-                        JOptionPane.showMessageDialog(owner, "Process failed: " + error.getMessage());
+                                failureMessage(error));
+                        JOptionPane.showMessageDialog(owner,
+                                "Process failed: " + failureMessage(error));
                         dialog.dispose();
                     });
         }
@@ -149,7 +159,7 @@ public final class SwingProcessWorkflow {
         private void presentResults(ProcessOutcome<R> outcome) {
             if (outcome == null || outcome.result() == null) {
                 String message = outcome != null && outcome.error() != null
-                        ? outcome.error().getMessage() : "No result was produced.";
+                        ? failureMessage(outcome.error()) : "No result was produced.";
                 JOptionPane.showMessageDialog(owner, message);
                 dialog.dispose();
                 return;
@@ -175,7 +185,7 @@ public final class SwingProcessWorkflow {
                                  ProcessWorkflowResults<D> results, ProcessStatus status) {
             JPanel panel = page(reviewingPrepared ? "Review" : "3 · Results", summary);
             JLabel message = new JLabel("<html>The detailed result preview could not be "
-                    + "rendered.<br>" + html(failure.getMessage()) + "</html>");
+                    + "rendered.<br>" + html(failureMessage(failure)) + "</html>");
             panel.add(message, BorderLayout.CENTER);
             JButton close = new JButton("Close without applying");
             JButton accept = new JButton("Accept completed result");
@@ -358,7 +368,8 @@ public final class SwingProcessWorkflow {
                 dialog.dispose();
             } catch (Exception error) {
                 state.retryApply();
-                JOptionPane.showMessageDialog(owner, "Apply failed: " + error.getMessage());
+                JOptionPane.showMessageDialog(owner,
+                        "Apply failed: " + failureMessage(error));
                 return;
             }
             // A continuation that opens another workflow must run after this window
@@ -368,7 +379,7 @@ public final class SwingProcessWorkflow {
             } catch (RuntimeException continuationFailure) {
                 JOptionPane.showMessageDialog(owner,
                         "Applied, but the next window could not be opened: "
-                                + continuationFailure.getMessage());
+                                + failureMessage(continuationFailure));
             }
         }
 

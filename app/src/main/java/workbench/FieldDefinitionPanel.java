@@ -22,7 +22,10 @@ public final class FieldDefinitionPanel extends JPanel {
     private final JComboBox<FieldType> type = new JComboBox<>(FieldType.values());
     private final JComboBox<String> targetType = new JComboBox<>();
     private final JComboBox<FieldCardinality> cardinality =
-            new JComboBox<>(FieldCardinality.values());
+            new JComboBox<>(new FieldCardinality[]{
+                    FieldCardinality.SINGLE,
+                    FieldCardinality.COLLECTION
+            });
     private final JComboBox<FieldRenderMode> renderMode =
             new JComboBox<>(FieldRenderMode.values());
     // "An entity, unclassed": the values keep their QID and label, and no class is
@@ -48,7 +51,8 @@ public final class FieldDefinitionPanel extends JPanel {
 
         type.setToolTipText("The scalar/media kind, or Entity for a domain reference.");
         targetType.setToolTipText("Logical target class when Holds = Entity.");
-        cardinality.setToolTipText("Single value or collection; Auto is resolved by the producer.");
+        cardinality.setToolTipText("Whether each instance holds one value or a list. "
+                + "Choose explicitly; sampling only inspects the datasource.");
         renderMode.setToolTipText("Auto, inline value/object, or reference rendering.");
         unclassedEntity.setToolTipText("The values are entities — identity and label "
                 + "kept — but this model names no class for them.");
@@ -71,7 +75,7 @@ public final class FieldDefinitionPanel extends JPanel {
     public void edit(FieldDefinition definition) {
         FieldDefinition value = definition == null
                 ? new FieldDefinition("", FieldType.AUTO, "",
-                        FieldCardinality.AUTO, FieldRenderMode.AUTO)
+                        FieldCardinality.SINGLE, FieldRenderMode.AUTO)
                 : definition;
         name.setText(value.name());
         type.setSelectedItem(value.type());
@@ -111,7 +115,6 @@ public final class FieldDefinitionPanel extends JPanel {
                     + "' already exists as a built-in identity/display field.";
         }
         if (value.type() == FieldType.AUTO) return "Choose what the field holds.";
-        if (value.cardinality() == FieldCardinality.AUTO) return "Choose Single or List.";
         if (value.type() == FieldType.ENTITY && value.entityClassName().isBlank()
                 && !value.unclassedEntity()) {
             return "Choose the referenced class, or tick 'no class (keep label)'.";

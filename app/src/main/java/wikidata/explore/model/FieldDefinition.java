@@ -30,7 +30,7 @@ public record FieldDefinition(
         name = name == null ? "" : name.trim();
         type = type == null ? FieldType.AUTO : type;
         entityClassName = entityClassName == null ? "" : entityClassName.trim();
-        cardinality = cardinality == null ? FieldCardinality.AUTO : cardinality;
+        cardinality = cardinality == null ? FieldCardinality.SINGLE : cardinality;
         renderMode = renderMode == null ? FieldRenderMode.AUTO : renderMode;
         // The two are exclusive: naming a class IS classing the value.
         if (unclassedEntity) entityClassName = "";

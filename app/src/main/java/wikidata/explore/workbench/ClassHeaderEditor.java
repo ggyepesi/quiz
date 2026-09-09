@@ -1,19 +1,18 @@
 package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
-import wikidata.explore.codegen.GeneratedViewableSourceGenerator;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.ClassExtensionRules;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -39,6 +38,7 @@ final class ClassHeaderEditor extends JPanel {
     private final JComboBox<String> baseClass = new JComboBox<>();
 
     private final Supplier<GeneratedProjectModel> project;
+    private Consumer<Boolean> baseSelectionChanged = ignored -> { };
     private GeneratedClassModel clazz;
 
     /**
@@ -58,7 +58,8 @@ final class ClassHeaderEditor extends JPanel {
         c.fill = GridBagConstraints.HORIZONTAL;
 
         className.setToolTipText(
-                "The name everything references. Renaming rebinds those references.");
+                "The name everything references. Use Rename class in the class tree to change it.");
+        EditableComponents.keepReadOnly(className);
         GridBagUtils.labeledRow(this, c, 0, "Class name:", className);
         alias.setToolTipText("<html>Display alias: what the UI shows for this class "
                 + "instead of its name. Pure presentation — the class name stays the "
@@ -67,7 +68,18 @@ final class ClassHeaderEditor extends JPanel {
         GridBagUtils.labeledRow(this, c, 1, "Alias:", alias);
         baseClass.setToolTipText("<html>Extend another class: this class inherits its "
                 + "fields and adds its own.</html>");
+        baseClass.addActionListener(event ->
+                baseSelectionChanged.accept(hasSelectedBase()));
         GridBagUtils.labeledRow(this, c, 2, "Extends:", baseClass);
+    }
+
+    void onBaseSelectionChanged(Consumer<Boolean> listener) {
+        baseSelectionChanged = listener == null ? ignored -> { } : listener;
+    }
+
+    boolean hasSelectedBase() {
+        Object selected = baseClass.getSelectedItem();
+        return selected != null && !NO_BASE.equals(selected);
     }
 
     void show(GeneratedClassModel value) {
@@ -89,26 +101,11 @@ final class ClassHeaderEditor extends JPanel {
     }
 
     /**
-     * Writes the name, alias and base back.
-     *
-     * <p>A rename can be refused — by a name already taken — and then the field is put
-     * back to what the class is still called, rather than left showing a name nothing
-     * answers to.
+     * Writes the editable alias and base back. The class name is displayed here but
+     * authored only by the tree's explicit Rename class action.
      */
     void applyEdits() {
         if (clazz == null || clazz.isImported()) return;
-        String typed = className.getText() == null ? "" : className.getText().trim();
-        if (typed.isBlank()) {
-            refuse("A class name is required.");
-        } else if (!typed.equals(clazz.className())) {
-            String requested =
-                    GeneratedViewableSourceGenerator.sanitizeClassName(typed);
-            GeneratedProjectModel owner = project.get();
-            if (owner == null || !owner.renameClass(clazz.className(), requested)) {
-                refuse("A class or vocabulary/population named '" + requested
-                        + "' already exists.");
-            }
-        }
         className.setText(clazz.className());
         clazz.alias(alias.getText());
         Object base = baseClass.getSelectedItem();
@@ -116,9 +113,4 @@ final class ClassHeaderEditor extends JPanel {
                 base == null || NO_BASE.equals(base) ? "" : base.toString());
     }
 
-    private void refuse(String message) {
-        JOptionPane.showMessageDialog(this, message, "Cannot rename class",
-                JOptionPane.WARNING_MESSAGE);
-        className.setText(clazz.className());
-    }
 }

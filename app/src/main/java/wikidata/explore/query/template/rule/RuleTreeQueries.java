@@ -20,11 +20,23 @@ public final class RuleTreeQueries {
     }
 
     public static String valuesQuery(RuleNode node) {
-        return valuesQueryForRoot(node, node.sourceQid(), true);
+        return RuleNodeQueryBuilder.valuesQuery(node);
     }
 
     public static String valuesQueryWithoutIncludedFields(RuleNode node) {
-        return valuesQueryForRoot(node, node.sourceQid(), false);
+        // sampleCopy/backboneCopy already decide which fields participate. Keep
+        // membership construction in the same builder used by generation, including
+        // multi-target and descendant membership.
+        return RuleNodeQueryBuilder.valuesQuery(node);
+    }
+
+    /** Samples population members that actually carry the selected field. */
+    public static String valuesQueryWithRequiredField(
+            RuleNode node,
+            RuleIncludedField field) {
+        RuleNode constrained = node.sampleCopy(node.limit());
+        constrained.addMembershipConstraint(field);
+        return RuleNodeQueryBuilder.valuesQuery(constrained);
     }
 
     public static String valuesQueryForSpecificParent(
@@ -32,30 +44,13 @@ public final class RuleTreeQueries {
             String parentQid,
             boolean includeIncludedFields) {
 
-        return valuesQueryForRoot(node, parentQid, includeIncludedFields);
+        return RuleNodeQueryBuilder.valuesQueryForSpecificParent(node, parentQid);
     }
 
     public static String batchedValuesQuery(
             RuleNode node,
             List<String> parentQids) {
-
-        WikidataQueryBuilder q =
-                new WikidataQueryBuilder()
-                        .selectDistinct("?parent", "?value", "?valueLabel")
-                        .valuesQids("root", parentQids)
-                        .bind("?root", "parent");
-
-        q.where(node.direction().triplePattern(
-                "?root",
-                "?value",
-                RuleNode.cleanPid(node.propertyPid())));
-
-        appendCommonFilters(q, node, "value");
-        appendValueFilters(q, node);
-        appendInlineIncludedFields(q, node);
-        appendLabelPattern(q, "value", "valueLabel", node.labelConfig());
-
-        return q.build();
+        return RuleNodeQueryBuilder.batchedValuesQuery(node, parentQids);
     }
 
     public static String countNodeResultsQuery(RuleNode node) {
@@ -154,7 +149,7 @@ public final class RuleTreeQueries {
                         .selectDistinct("?parent", "?" + var)
                         .valuesQids("parent", parentQids);
 
-        q.truthy("parent", field.propertyPid(), var);
+        appendRequiredFieldPattern(q, field, "parent", var);
 
         if (!field.isMediaField()) {
             q.select(var + "Label");
@@ -180,7 +175,7 @@ public final class RuleTreeQueries {
                         .selectDistinct("?parent", "?" + var)
                         .valuesQids("parent", parentQids);
 
-        q.truthy("parent", field.propertyPid(), var);
+        appendRequiredFieldPattern(q, field, "parent", var);
 
         if (!field.isMediaField()) {
             q.select(var + "Label");
@@ -206,6 +201,15 @@ public final class RuleTreeQueries {
             String rootQidOrVar,
             boolean includeIncludedFields) {
 
+        return valuesQueryForRoot(node, rootQidOrVar, includeIncludedFields, null);
+    }
+
+    private static String valuesQueryForRoot(
+            RuleNode node,
+            String rootQidOrVar,
+            boolean includeIncludedFields,
+            RuleIncludedField requiredField) {
+
         boolean rootIsVariable =
                 rootQidOrVar != null && rootQidOrVar.startsWith("?");
 
@@ -227,6 +231,10 @@ public final class RuleTreeQueries {
         appendCommonFilters(q, node, "value");
         appendValueFilters(q, node);
 
+        if (requiredField != null) {
+            appendRequiredFieldPattern(q, requiredField, "value", "sampledFieldValue");
+        }
+
         if (includeIncludedFields) {
             appendInlineIncludedFields(q, node);
         }
@@ -236,6 +244,22 @@ public final class RuleTreeQueries {
         q.limit(node.limit());
 
         return RuleNodeQueryBuilder.sortAfterLimit(q.build(), "valueLabel");
+    }
+
+    private static void appendRequiredFieldPattern(
+            WikidataQueryBuilder q,
+            RuleIncludedField field,
+            String parentVar,
+            String valueVar) {
+
+        q.where(field.direction().triplePattern(
+                "?" + parentVar,
+                "?" + valueVar,
+                RuleNode.cleanPid(field.propertyPid())));
+        if (field.hasMembership()) {
+            q.where("?" + valueVar + " wdt:" + field.membershipPid()
+                    + " wd:" + field.membershipQid() + " .");
+        }
     }
 
     private static void appendCommonFilters(

@@ -148,9 +148,6 @@ public final class ProductSchemaInspector extends JPanel {
                     ? "collapsed → String (unmodeled " + mf.entityClassName() + ")"
                     : "collapsed → label (Wikimedia-meta filtered)";
         }
-        if (mf.cardinality() == wikidata.explore.model.FieldCardinality.AUTO && pf.collection()) {
-            return "list (cardinality auto-detected)";
-        }
         return "";
     }
 }

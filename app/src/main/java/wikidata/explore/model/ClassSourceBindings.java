@@ -25,6 +25,18 @@ public final class ClassSourceBindings {
         synchronize(clazz, null);
     }
 
+    /**
+     * Declares the required identity and label sources for a newly edited Source
+     * class without silently opting it into optional alias acquisition.
+     */
+    public static void declareRequiredNameSources(GeneratedClassModel clazz) {
+        if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return;
+        putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_IDENTITY,
+                WikidataDatasourceProvider.IDENTIFIER));
+        putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_LABEL,
+                WikidataDatasourceProvider.LABEL));
+    }
+
     private static void synchronize(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null) return;

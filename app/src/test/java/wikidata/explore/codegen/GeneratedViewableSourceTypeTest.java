@@ -155,6 +155,44 @@ class GeneratedViewableSourceTypeTest {
         }
     }
 
+    @Test void repeatedEntityProjectionsUnionDatasourceSourcesInTheirGeneratedField()
+            throws Exception {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        var superClasses = position.addField(
+                "superClasses", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        superClasses.entityClassName("Position");
+
+        // The same entity first arrives as an untyped field reference, then as its
+        // root. This is the shape of Historical Positions: P279 connects members of
+        // the population to other members before those members are mapped as roots.
+        var referenced = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q1", "Referenced position");
+        var owner = new wikidata.explore.extract.WikidataDynamicObject("Q2", "Owner");
+        owner.type("Position");
+        owner.put("superClasses", java.util.List.of(referenced));
+        var root = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q1", "Referenced position");
+        root.type("Position");
+        root.addWikidataStatementSource(new quiz.source.WikidataStatementSource(
+                "Q2$67ADCA97-2FF9-43AD-A4DC-0349086680AC",
+                "Q2", "P279", "Q1", "Position"));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(position)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(owner, root));
+
+            assertEquals(2, mapped.size());
+            Object sources = objectview.field.FieldSet.of(mapped.get(1))
+                    .read("wikidataSource");
+            assertEquals(2, ((java.util.List<?>) sources).size());
+            assertTrue(((java.util.List<?>) sources).stream()
+                    .anyMatch(quiz.source.WikidataSource.class::isInstance));
+            assertTrue(((java.util.List<?>) sources).stream()
+                    .anyMatch(quiz.source.WikidataStatementSource.class::isInstance));
+        }
+    }
+
     @Test void aSourceContentKeyReducesCandidatesAndRetainsEverySourceIdentity()
             throws Exception {
         GeneratedClassModel person = new GeneratedClassModel("Person");

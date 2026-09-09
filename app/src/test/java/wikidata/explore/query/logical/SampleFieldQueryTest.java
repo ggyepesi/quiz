@@ -20,7 +20,7 @@ class SampleFieldQueryTest {
     @Test void aClassWithNoPopulationQidRefusesToSample() {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         GeneratedFieldModel spouse = person.addField(
-                "spouse", FieldType.ENTITY, FieldCardinality.AUTO);
+                "spouse", FieldType.ENTITY, FieldCardinality.SINGLE);
         spouse.mapping().propertyPid("P26");
 
         IllegalStateException failure = assertThrows(IllegalStateException.class,
@@ -37,7 +37,7 @@ class SampleFieldQueryTest {
     @Test void anEvidenceDerivedKindSuppliesThePopulationInstead() {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         GeneratedFieldModel spouse = person.addField(
-                "spouse", FieldType.ENTITY, FieldCardinality.AUTO);
+                "spouse", FieldType.ENTITY, FieldCardinality.SINGLE);
         spouse.mapping().propertyPid("P26");
 
         // Asserting which later failure occurs would pin an implementation detail;

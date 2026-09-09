@@ -476,10 +476,8 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
 
-        // Through the project, so every field target, base class and kind rule that
-        // names this class follows the rename instead of dangling.
         String requested = GeneratedViewableSourceGenerator.sanitizeClassName(s);
-        if (!projectModel.renameClass(cls.className(), requested)) {
+        if (!renameSelectedClassTo(requested)) {
             JOptionPane.showMessageDialog(this,
                     "A class or vocabulary/population named '" + requested
                             + "' already exists.",
@@ -487,8 +485,17 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
 
+    }
+
+    boolean renameSelectedClassTo(String requested) {
+        GeneratedClassModel cls = selectedClassOrRoot();
+        if (cls == null || requested == null || requested.isBlank()) return false;
+        // Through the project, so every field target, base class and kind rule that
+        // names this class follows the rename instead of dangling.
+        if (!projectModel.renameClass(cls.className(), requested)) return false;
         refresh();
         selectClass(cls);
+        return true;
     }
 
     private void addClass() {
@@ -531,7 +538,7 @@ public class SingleRootClassModelPanel extends JPanel {
                 cls.addField(
                         name,
                         FieldType.AUTO,
-                        FieldCardinality.AUTO);
+                        FieldCardinality.SINGLE);
 
         refresh();
         selectField(f);

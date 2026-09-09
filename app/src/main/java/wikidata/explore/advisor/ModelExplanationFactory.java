@@ -123,9 +123,6 @@ public final class ModelExplanationFactory {
         if (source.propertyPid().isBlank()) {
             advice.add("Choose the property that supplies this field.");
         }
-        if (field.cardinality() == FieldCardinality.AUTO) {
-            advice.add("Cardinality is auto-detected; sample the property before relying on a single value.");
-        }
         if (!source.sourceType().implementedNow()) {
             advice.add(source.sourceType() + " is configured but not implemented yet.");
         }

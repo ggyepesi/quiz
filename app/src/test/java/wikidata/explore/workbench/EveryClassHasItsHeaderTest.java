@@ -65,8 +65,8 @@ class EveryClassHasItsHeaderTest {
         assertTrue(textIn(panel).contains("NobelPrize"), textIn(panel).toString());
     }
 
-    /** Renaming through the header rebinds the project, not just the text field. */
-    @Test void renamingThroughTheHeaderRenamesTheClass() {
+    /** The tree's explicit Rename class action is the one author of the class name. */
+    @Test void theHeaderShowsButDoesNotEditTheClassName() {
         GeneratedClassModel part = new GeneratedClassModel("Name");
         part.ownedClass(true);
         GeneratedProjectModel project = projectWith(part);
@@ -74,28 +74,12 @@ class EveryClassHasItsHeaderTest {
         panel.edit(part);
 
         JTextField name = firstField(find(panel, ClassHeaderEditor.class));
+        assertEquals("Name", name.getText());
+        assertFalse(name.isEditable());
         name.setText("StructuredName");
         panel.applyEdits();
-
-        assertEquals("StructuredName", part.className());
-        assertNotNull(project.findClass("StructuredName"));
-    }
-
-    /** A name already taken is refused, and the field goes back to the truth. */
-    @Test void aRefusedRenameLeavesTheFieldShowingTheRealName() {
-        GeneratedClassModel part = new GeneratedClassModel("Name");
-        part.ownedClass(true);
-        GeneratedProjectModel project = projectWith(part);
-        GeneratedClassModel other = new GeneratedClassModel("Taken");
-        other.ownedClass(true);
-        project.addClass(other);
-        OwnedClassPanel panel = new OwnedClassPanel(project);
-        panel.edit(part);
-
-        JTextField name = firstField(find(panel, ClassHeaderEditor.class));
-        name.setText("Taken");
-        // The refusal shows a dialog; what matters is that the model did not move.
         assertEquals("Name", part.className());
+        assertNotNull(project.findClass("Name"));
     }
 
     /** An owned class may extend only another owned class — the validator's rule. */

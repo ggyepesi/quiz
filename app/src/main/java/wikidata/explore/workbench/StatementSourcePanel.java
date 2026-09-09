@@ -206,6 +206,7 @@ public class StatementSourcePanel extends JPanel {
         // The triple writes its own three elements, and the rule that a blank property
         // AND no source class means "not a statement class" travels with them.
         triple.applyEdits(clazz);
+        triple.refreshConfigurationStatus(clazz, projectModel);
 
         // Graph discovery is not part of saying what the statement IS, so it stays
         // here — and it can only be recorded on a source that still exists.

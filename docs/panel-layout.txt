@@ -9,38 +9,22 @@
     label: Extends:
     combo: 4 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
-    piece: EntityEndEditor  [Subject]
-      label: Modelled as:
-      label: Person
-      label: Goes into field:
-      label: an instance of this class IS this end
-      label: Entities allowed:
-      combo: 4 item(s)  (disabled)
-      text: []  (disabled)
-      text: []  (disabled)
-      check: and their subclasses (P279)  (disabled)
-      combo: 0 item(s)  (disabled)
-      label: Bounding the subject restricts WHOSE statements are collected.
-    label: Subject population:
-    combo: 1 item(s)  (disabled)
-    label: Property:
-    text: [P31]
-    button: Find…
+    label: Instances produced: Person
+    label: Restrict to these subject QIDs:
+    textarea
+    box: Property
+      label: Wikidata property:
+      text: [P31]
+      button: Find…
     piece: EntityEndEditor  [Object]
-      label: Modelled as:
-      label: (not selected)
-      label: Goes into field:
-      label: the entities this property must point into
       label: Entities allowed:
       combo: 1 item(s)  (disabled)
-      text: []
       text: [Q5]
-      check: and their subclasses (P279)
-      combo: 0 item(s)
-      label: Bounding the object restricts WHICH statements are collected.
-    button: Discover subtypes  (disabled)
-    button: From parts…  (disabled)
-    label: The subject is given: an instance of this class IS the entity at that end.
+      check: include subclasses of these QIDs (P279*)
+      label: Bounding the object restricts WHICH entities become instances of this class.
+    button: Find related objects…  (disabled)
+    label: Matching subjects become instances of this class.
+    label: ✓ Ready — property + object
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -67,10 +51,6 @@
       button: Down  (disabled)
       label: Available:
       combo: 3 item(s)
-  label: Subtype:
-  text: [P31]
-  label: =
-  text: []
   label: Represent matching entities as:
   piece: OrderedChoiceList
     list
@@ -91,8 +71,6 @@
   label: Rank by:
   combo: 3 item(s)
   check: highest first
-  label: Seed QIDs:
-  textarea
   label: Search:
   text: [Person]
   label: Method:
@@ -103,7 +81,7 @@
   label: Identity:
   label: Source entity (id + label)
   label: Source bindings:
-  label: Wikidata id (QID) · Label · Also known as
+  label: Wikidata id (QID) · Label
   label: Additional names:
   check: Add aliases (Also known as)
   label: Current source: items with instance of (not selected)
@@ -119,33 +97,20 @@
     combo: 4 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
-      label: Modelled as:
-      label: no class named , served as a bare reference
-      label: Goes into field:
-      label: Not projected — nothing on the record holds it. Required before this domain can generate.
       label: Entities allowed:
       combo: 4 item(s)
-      text: []
-      text: []
-      check: and their subclasses (P279)
-      combo: 0 item(s)
       label: Bounding the subject restricts WHOSE statements are collected.
     label: Subject population:
     combo: 4 item(s)
-    label: Property:
-    text: [P166]
+    box: Property
+      label: Wikidata property:
+      text: [P166]
     piece: EntityEndEditor  [Object]
-      label: Modelled as:
-      label: no class named , served as a bare reference
-      label: Goes into field:
-      label: Not projected — the value the statement points at. Required before this domain can generate.
       label: Entities allowed:
       combo: 4 item(s)
-      text: []
       text: [Q35637]
-      check: and their subclasses (P279)
-      combo: 0 item(s)
       label: Bounding the object restricts WHICH statements are collected.
+    label: ✓ Ready — statement property P166
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -201,35 +166,11 @@
     label: Extends:
     combo: 1 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
-    piece: EntityEndEditor  [Subject]
-      label: Modelled as:
-      label: Name
-      label: Goes into field:
-      label: an instance of this class IS this end
-      label: Entities allowed:
-      combo: 4 item(s)  (disabled)
-      text: []  (disabled)
-      text: []  (disabled)
-      check: and their subclasses (P279)  (disabled)
-      combo: 0 item(s)  (disabled)
-      label: Bounding the subject restricts WHOSE statements are collected.
-    label: Subject population:
-    combo: 1 item(s)  (disabled)
-    label: Property:
-    text: [Person.structuredName]  (disabled)
-    piece: EntityEndEditor  [Object]
-      label: Modelled as:
-      label: Person
-      label: Goes into field:
-      label: the owner each part is a view of
-      label: Entities allowed:
-      combo: 4 item(s)  (disabled)
-      text: []  (disabled)
-      text: []  (disabled)
-      check: and their subclasses (P279)  (disabled)
-      combo: 0 item(s)  (disabled)
-      label: Bounding the object restricts WHICH statements are collected.
+    box: Property
+      label: Wikidata property:
+      text: [Person.structuredName]  (disabled)
     label: Given: authored on Person, where the field is.
+    label: ✓ Ready — produced by Person.structuredName
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -305,4 +246,58 @@
     label: Available:
     combo: 2 item(s)
   label: Choices come from compatible fields on this class and its source class.
+
+== Field - FieldSourcePanel ==
+  label: Field: birthDate
+  label: How do we fill this field?
+  box: Field definition
+    label: Field name:
+    text: [birthDate]
+    label: Holds:
+    combo: 8 item(s)
+    label: Of class:
+    combo: 7 item(s)
+      text: [(none)]
+    check: no class (keep label)  (disabled)
+    label: Count:
+    combo: 2 item(s)
+    label: Display:
+    combo: 3 item(s)
+  label: Load as:
+  combo: 9 item(s)
+  label: Source
+  label: From:
+  combo: 9 item(s)
+  label: Property:
+  text: []
+  label: Value language:
+  text: []
+  label: Wikipedia fallback:
+  label: none
+  button: Set Wikipedia fallback…
+  button: Clear  (disabled)
+  label: Wikipedia categories:
+  label: none
+  button: Configure…
+  button: Clear  (disabled)
+  label: Qualifier of:
+  text: []  (disabled)
+  label: Subject field:
+  combo: 2 item(s)
+  label: Match value field:
+  combo: 1 item(s)
+    text: [structuredName]
+  label: Found on:
+  combo: 2 item(s)
+  label: Refine
+  check: Required (membership filter — drops entities without it)
+  label: Expectation:
+  combo: 3 item(s)
+  label: Numeric filter:
+  combo: 7 item(s)
+  text: []
+  check: only related items that are the chosen class
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
 

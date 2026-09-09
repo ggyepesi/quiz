@@ -79,11 +79,14 @@ class NoPerKindApplyButtonTest {
         panel.edit(part);
         // The OWNED panel's header: all four kind editors are cards in this workbench,
         // so the first header found belongs to whichever card was built first.
-        find(find(find(panel, OwnedClassPanel.class), ClassHeaderEditor.class),
-                javax.swing.JTextField.class).setText("StructuredName");
+        ClassHeaderEditor header = find(find(panel, OwnedClassPanel.class),
+                ClassHeaderEditor.class);
+        java.util.List<javax.swing.JTextField> fields = new java.util.ArrayList<>();
+        collect(header, javax.swing.JTextField.class, fields);
+        fields.get(1).setText("Structured name"); // alias remains editable
         panel.changeSelection(other);
 
-        assertEquals("StructuredName", part.className());
+        assertEquals("Structured name", part.alias());
     }
 
     private static <T> T find(Container root, Class<T> type) {

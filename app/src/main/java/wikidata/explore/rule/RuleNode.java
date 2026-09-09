@@ -31,6 +31,7 @@ public class RuleNode {
     private String propertyPid  = "";
     private String propertyLabel = "";
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
+    private boolean membershipIncludesDescendants;
 
     // Membership constraint on the node's values: ?value <membershipPid>
     // <membershipQid> (e.g. P31 Q523 = "instance of star"). Used by a
@@ -118,6 +119,7 @@ public class RuleNode {
         // has NO membership and its query becomes "VALUES ?value { }" -> 0 rows,
         // so Discover/Sample find nothing for a multi-target class.
         additionalSourceQids().forEach(s::addAdditionalSourceQid);
+        s.membershipIncludesDescendants(membershipIncludesDescendants());
         s.membershipPid(membershipPid());
         s.membershipQid(membershipQid());
         s.requireSitelink(requireSitelink());
@@ -181,6 +183,16 @@ public class RuleNode {
     public String propertyLabel() { return propertyLabel; }
     public void   propertyLabel(String propertyLabel)
         { this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim(); }
+
+    /** Whether configured membership targets also admit values below them through
+     * Wikidata's subclass-of hierarchy ({@code P279*}). */
+    public boolean membershipIncludesDescendants() {
+        return membershipIncludesDescendants;
+    }
+
+    public void membershipIncludesDescendants(boolean value) {
+        membershipIncludesDescendants = value;
+    }
 
     public String membershipPid() { return membershipPid; }
     public void   membershipPid(String pid) { this.membershipPid = cleanPid(pid); }

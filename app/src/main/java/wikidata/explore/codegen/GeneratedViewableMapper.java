@@ -365,6 +365,15 @@ public class GeneratedViewableMapper {
             javaField.setAccessible(true);
             Object value = declaration.value(source);
             if (value == null) continue;
+            // Provider declarations are allowed to return immutable collection
+            // values (the Wikidata source field deliberately uses List.of/copyOf).
+            // A later projection of the same QID must union its provider values into
+            // the already materialized instance, so never install the provider's
+            // collection itself as the generated field's mutable accumulator.
+            if (declaration.valueSchema().collection()
+                    && value instanceof java.util.Collection<?> values) {
+                value = new java.util.ArrayList<>(values);
+            }
             Object existing = javaField.get(target);
             if (merge && existing instanceof java.util.Collection<?> oldValues
                     && value instanceof java.util.Collection<?> newValues) {

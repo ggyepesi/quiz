@@ -67,7 +67,6 @@ public class FieldSourcePanel extends JPanel {
     private FormRow reifyRoleRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
-    private Runnable onSampleRequested = () -> {};
     private Consumer<String> onReloadField = key -> {};
 
     private Map<String, WikidataProperty> propertyCache = Map.of();
@@ -170,8 +169,6 @@ public class FieldSourcePanel extends JPanel {
     private final JLabel recommendationLabel =
             new JLabel("Load method: Auto");
 
-    private final JButton sampleShapeButton =
-            new JButton("Sample to set shape");
 
     private final JButton applyButton =
             new JButton("Apply field source");
@@ -241,16 +238,8 @@ public class FieldSourcePanel extends JPanel {
                         + "<b>Single value</b> — at most one (e.g. area, magnitude, "
                         + "abbreviation).<br>"
                         + "<b>List</b> — possibly many (e.g. a constellation's "
-                        + "sharesBorderWith / stars, a figure's children or siblings).<br>"
-                        + "<b>Auto-detect</b> — decide by sampling: shows the \"Sample to "
-                        + "set shape\" button, which checks real instances and picks "
-                        + "List if any has more than one value, else Single.<br><br>"
-                        + "If unsure, leave Auto-detect and click \"Sample to set "
-                        + "shape\".</html>");
-        sampleShapeButton.setToolTipText(
-                "<html>Samples real instances for this property and sets the "
-                        + "shape: <b>List</b> if any instance has more than one value, "
-                        + "else <b>Single</b>. (Shown when Shape = Auto-detect.)</html>");
+                        + "sharesBorderWith / stars, a figure's children or siblings).<br><br>"
+                        + "Sampling shows real values but does not change this choice.</html>");
         String filterTip =
                 "<html>Optional numeric filter on this property — keep only "
                         + "entities whose value satisfies it.<br>E.g. <b>apparentMagnitude "
@@ -564,10 +553,6 @@ public class FieldSourcePanel extends JPanel {
         applyStatusLabel.setText("✓ will re-fetch " + field.name());
     }
 
-    public void onSampleRequested(Runnable r) {
-        this.onSampleRequested = r == null ? () -> {} : r;
-    }
-
     public void afterApplyField(Consumer<GeneratedFieldModel> afterApplyField) {
         this.afterApplyField =
                 afterApplyField == null ? f -> {} : afterApplyField;
@@ -631,7 +616,6 @@ public class FieldSourcePanel extends JPanel {
         updateRecommendation();
 refreshOwnedComponentControls();
                 refreshGraphExpansionControl();
-        updateSampleButtonState();
     }
 
     // Populate the COMPANION_MATCH match-field pickers from the owning class's
@@ -919,7 +903,6 @@ refreshOwnedComponentControls();
                 + "the next Enrich loads its values again — otherwise a field already "
                 + "loaded is skipped, values and all.");
         buttons.add(reloadFieldButton);
-        buttons.add(sampleShapeButton);
         buttons.add(applyButton);
         GridBagUtils.wideRow(form, y++, buttons);
 
@@ -929,7 +912,6 @@ refreshOwnedComponentControls();
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
-        sampleShapeButton.addActionListener(e -> onSampleRequested.run());
         sourceTypeBox.addActionListener(e -> {
             updateRecommendation();
             refreshGraphExpansionControl();
@@ -988,7 +970,6 @@ refreshOwnedComponentControls();
         });
         shapeBox.addActionListener(e -> {
             updateRecommendation();
-            updateSampleButtonState();
             refreshStatementFieldControls();
         });
         renderModeBox.addActionListener(e -> updateRecommendation());
@@ -1195,7 +1176,8 @@ refreshOwnedComponentControls();
         WikidataProperty cached = propertyCache.get(cleanPid);
         if (cached != null && !cached.datatype().isBlank()) {
             field.type(WikidataPropertyScore.fieldType(cached));
-            field.cardinality(WikidataPropertyScore.fieldCardinality(cached));
+            WikidataPropertyScore.fieldCardinality(cached)
+                    .ifPresent(field::cardinality);
             field.renderMode(WikidataPropertyScore.renderMode(cached));
             if (label == null || label.isBlank()) {
                 label = cached.label();
@@ -1219,7 +1201,6 @@ refreshOwnedComponentControls();
         renderModeBox.setSelectedItem(field.renderMode());
         refreshObjectTypeBox(field.entityClassName());
 
-        updateSampleButtonState();
         autoProduction(field.mapping());            // seed a default…
         productionBox.setSelectedItem(field.mapping().productionKind()); // …show it
     }
@@ -1543,11 +1524,6 @@ refreshOwnedComponentControls();
         }
 
         recommendationLabel.setText(text);
-    }
-
-    private void updateSampleButtonState() {
-        boolean autoShape = shapeBox.getSelectedItem() == FieldCardinality.AUTO;
-        sampleShapeButton.setVisible(autoShape);
     }
 
     private void refreshGraphExpansionControl() {

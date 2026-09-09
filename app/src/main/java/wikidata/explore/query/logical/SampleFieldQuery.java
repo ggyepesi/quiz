@@ -126,7 +126,8 @@ public class SampleFieldQuery implements Query<TableQueryResult> {
                         : sampleContext.field().name();
 
         String parentSparql =
-                RuleTreeQueries.valuesQueryWithoutIncludedFields(parentSample);
+                RuleTreeQueries.valuesQueryWithRequiredField(
+                        parentSample, includedField);
 
         List<Parent> parents = context.step(
                 "Sample parent instances",

@@ -34,12 +34,21 @@ public final class EditableComponents {
             EditableComponents.class.getName() + ".originalForeground";
     private static final String INACTIVE_STYLE =
             EditableComponents.class.getName() + ".inactiveStyle";
+    private static final String ALWAYS_READ_ONLY =
+            EditableComponents.class.getName() + ".alwaysReadOnly";
 
     /** Rows sampled to decide whether a table can be typed into. A configuration table
      *  declares the same editability for every row, so sampling keeps a long one cheap. */
     private static final int EDITABLE_SAMPLE_ROWS = 50;
 
     private EditableComponents() {}
+
+    /** Declare text that is informational even while its surrounding editor is unlocked. */
+    public static void keepReadOnly(JTextComponent text) {
+        if (text == null) return;
+        text.putClientProperty(ALWAYS_READ_ONLY, Boolean.TRUE);
+        text.setEditable(false);
+    }
 
     public static void setEditable(Component component, boolean editable) {
         if (component == null) return;
@@ -48,7 +57,9 @@ public final class EditableComponents {
             // Some look-and-feels change the background from inside setEditable(false).
             // Remember the writable appearance before giving them that opportunity;
             // otherwise unlocking faithfully restores the inactive grey it recorded.
-            if (!editable) {
+            boolean writable = editable
+                    && !Boolean.TRUE.equals(text.getClientProperty(ALWAYS_READ_ONLY));
+            if (!writable) {
                 styleText(text, false);
                 text.setEditable(false);
             } else {

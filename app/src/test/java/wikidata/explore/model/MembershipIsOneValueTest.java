@@ -116,12 +116,7 @@ class MembershipIsOneValueTest {
         assertTrue(MembershipPattern.of(byRelation).relational());
     }
 
-    /**
-     * The bound can hold subclass closure, which the three fields could not — and no run
-     * performs it yet, so a model that asks for one is refused rather than quietly
-     * narrowed to the flat backbone.
-     */
-    @Test void aClosureIsPersistableAndRefusedRatherThanIgnored() {
+    @Test void aClosureIsPersistableAndAcceptedByValidation() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel clazz = new GeneratedClassModel("Star");
         clazz.membership(EntityBound.relation("P31", List.of("Q523"), true));
@@ -129,7 +124,7 @@ class MembershipIsOneValueTest {
         project.rootClass(clazz);
 
         assertTrue(clazz.membership().includeDescendants(), "the model can hold it");
-        assertFalse(GeneratedProjectModelValidator.validate(project).valid(),
-                "and no run performs it, so it is refused rather than dropped");
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                "the shared membership backbone now performs the stored closure");
     }
 }

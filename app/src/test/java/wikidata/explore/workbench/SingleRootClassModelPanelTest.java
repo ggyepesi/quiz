@@ -11,6 +11,7 @@ import wikidata.explore.model.StatementClassSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -20,6 +21,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SingleRootClassModelPanelTest {
+
+    @Test void consecutiveExplicitRenamesUpdateTheSelectedClassNode() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("HistoricalPositions");
+        project.rootClass(root);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        assertTrue(panel.renameSelectedClassTo("Positions"));
+        assertTrue(panel.renameSelectedClassTo("Position"));
+
+        assertEquals("Position", root.className());
+        assertSame(root, panel.selectedUserObject());
+    }
 
     @Test void onlyModelLeavesOpenConfigurationEditors() {
         assertTrue(SingleRootClassModelPanel.isConfigurable(new GeneratedProjectModel()));

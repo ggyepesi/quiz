@@ -1,20 +1,15 @@
 package wikidata.explore.model;
 
-import datasource.schema.FieldType;
-
 import wikidata.WikidataIds;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
  * For a class whose membership is a MULTI-TARGET RELATIONAL collection — entities
  * gathered because {@code ?entity <relationPid> <one of a SET of target QIDs>}
  * (Oscars: P1411 → 59 categories; equally "films in a franchise", "members of an
- * org set", …) — two grouping dimensions are intrinsic to how the entities were
- * gathered, so every such class should carry them as fields:
+ * org set", …) — two grouping dimensions can be useful explicit field choices:
  *
  * <ul>
  *   <li><b>target</b> — {@code ?entity <relationPid> ?target}, restricted to the
@@ -24,14 +19,12 @@ import java.util.Set;
  *       unambiguous per entity → the clean subclass key.</li>
  * </ul>
  *
- * Group by target → per-target ViewableGroups; group by type → subclasses, with
- * no extra discovery. Only the relational (non-P31) multi-target case earns these
- * — a plain {@code P31 = Qx} membership has one type and no target set.
+ * Group by target → per-target ViewableGroups; group by type → subclasses. This
+ * class only tells the advisor when those choices are relevant. It never adds fields:
+ * the population rule and the class's declared fields are separate authored facts.
  */
 public final class MembershipFields {
 
-    public static final String TARGET_FIELD = "target";
-    public static final String TYPE_FIELD = "type";
     private static final String P31 = MembershipPattern.DEFAULT_PROPERTY;
 
     private MembershipFields() {}
@@ -73,34 +66,6 @@ public final class MembershipFields {
         return MembershipPattern.relational(pid) || targets(membership).size() > 1;
     }
 
-    /**
-     * Ensure the intrinsic grouping fields exist (visible, editable real model
-     * fields): {@code type} (P31) when membership spans multiple types, plus
-     * {@code target} (the relation, restricted to the target set) for the
-     * relational case. Deduped by property+direction, so a hand-made equivalent
-     * (e.g. Oscars' {@code category} on P1411) is NOT doubled.
-     *
-     * @return names of the fields actually added (for logging)
-     */
-    public static List<String> ensure(GeneratedClassModel clazz) {
-        List<String> added = new ArrayList<>();
-        if (clazz == null) {
-            return added;
-        }
-        EntityBound membership = clazz.membership();
-        String pid = clean(membership.relationPid());
-
-        if (appliesType(clazz) && !hasFieldFor(clazz, P31)) {
-            clazz.fields().add(typeField());
-            added.add(TYPE_FIELD);
-        }
-        if (appliesTarget(clazz) && !hasFieldFor(clazz, pid)) {
-            clazz.fields().add(targetField(pid, targets(membership)));
-            added.add(TARGET_FIELD);
-        }
-        return added;
-    }
-
     private static Set<String> targets(EntityBound membership) {
         Set<String> t = new LinkedHashSet<>();
         for (String q : membership.qids()) {
@@ -110,41 +75,6 @@ public final class MembershipFields {
             }
         }
         return t;
-    }
-
-    // A property is already covered if some field maps it in the ROOT_TO_ITEM
-    // direction (the entity's own outgoing property) — independent of field name.
-    private static boolean hasFieldFor(GeneratedClassModel clazz, String pid) {
-        for (GeneratedFieldModel f : clazz.fields()) {
-            if (pid.equalsIgnoreCase(clean(f.mapping().propertyPid()))
-                    && f.mapping().direction() == RuleDirection.ROOT_TO_ITEM) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static GeneratedFieldModel targetField(String pid, Set<String> targets) {
-        GeneratedFieldModel f = new GeneratedFieldModel(
-                TARGET_FIELD, FieldType.ENTITY, FieldCardinality.COLLECTION);
-        f.renderMode(FieldRenderMode.INLINE);
-        FieldSourceMapping m = f.mapping();
-        m.propertyPid(pid);
-        m.direction(RuleDirection.ROOT_TO_ITEM);
-        // Restrict to the membership target set so a generic relation (e.g. P1411
-        // "nominated for", shared by non-Oscar awards) only yields the targets.
-        m.allowedQids().addAll(targets);
-        return f;
-    }
-
-    private static GeneratedFieldModel typeField() {
-        GeneratedFieldModel f = new GeneratedFieldModel(
-                TYPE_FIELD, FieldType.ENTITY, FieldCardinality.COLLECTION);
-        f.renderMode(FieldRenderMode.INLINE);
-        FieldSourceMapping m = f.mapping();
-        m.propertyPid(P31);
-        m.direction(RuleDirection.ROOT_TO_ITEM);
-        return f;
     }
 
     private static String clean(String s) {

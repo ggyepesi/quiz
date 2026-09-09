@@ -18,14 +18,17 @@ public class WikidataPropertyScore {
         };
     }
 
-    public static FieldCardinality fieldCardinality(WikidataProperty p) {
+    /** A datasource suggestion, not stored cardinality. AUTO in the downloaded
+     * property catalogue means the datatype did not justify a suggestion. */
+    public static java.util.Optional<FieldCardinality> fieldCardinality(WikidataProperty p) {
         return switch (p.cardinality()) {
-            case "SINGLE"     -> FieldCardinality.SINGLE;
-            case "COLLECTION" -> FieldCardinality.COLLECTION;
+            case "SINGLE"     -> java.util.Optional.of(FieldCardinality.SINGLE);
+            case "COLLECTION" -> java.util.Optional.of(FieldCardinality.COLLECTION);
             default           -> switch (p.datatype()) {
                 case "CommonsMedia", "Quantity",
-                     "Time", "GlobeCoordinate"          -> FieldCardinality.SINGLE;
-                default                                 -> FieldCardinality.AUTO;
+                     "Time", "GlobeCoordinate"          ->
+                        java.util.Optional.of(FieldCardinality.SINGLE);
+                default                                 -> java.util.Optional.empty();
             };
         };
     }

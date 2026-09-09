@@ -85,7 +85,7 @@ class PopulationSourceExecutionTest {
      * thing to discover by generating half a domain — so they are exercised with an
      * operation built to say those things.
      */
-    @Test void aPopulationThisBoundaryCannotExpressIsRefusedRatherThanApproximated() {
+    @Test void aForeignPopulationIsRefusedButWikidataSubclassClosureIsRetained() {
         RuleNode node = new RuleNode("Movie", "movie");
 
         assertThrows(IllegalArgumentException.class, () -> PopulationSourceExecution.apply(
@@ -93,10 +93,10 @@ class PopulationSourceExecutionTest {
                         List.of(new EntityRef("dbpedia", "Film")), false))),
                 "a population of identifiers this boundary cannot resolve");
 
-        assertThrows(IllegalArgumentException.class, () -> PopulationSourceExecution.apply(
+        PopulationSourceExecution.apply(
                 node, saying(PopulationRequest.relation(EntityRef.WIKIDATA, "P31",
-                        List.of(EntityRef.wikidata("Q11424")), true))),
-                "subclass closure, which the rule cannot carry");
+                        List.of(EntityRef.wikidata("Q11424")), true)));
+        assertTrue(node.membershipIncludesDescendants());
     }
 
     /** A plan step whose operation reports the given selection. Built directly because

@@ -2,6 +2,7 @@ package wikidata.explore.workbench;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
 import datasource.schema.FieldType;
@@ -11,6 +12,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
 
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.Component;
 import java.awt.Container;
@@ -99,8 +101,9 @@ class OneTriplePerClassTest {
         List<String> text = labels(triple);
         assertTrue(text.stream().anyMatch(t -> t.contains("authored on Person")),
                 "the rows say where they come from: " + text);
-        assertTrue(text.stream().anyMatch(t -> t.contains("Person")),
-                "and the owner is the object: " + text);
+        assertTrue(text.stream().noneMatch(t -> t.contains("Modelled as")
+                        || t.contains("Goes into field")),
+                "field structure belongs to the field editor: " + text);
     }
 
     /**
@@ -132,6 +135,37 @@ class OneTriplePerClassTest {
                 "one title and one border for every kind, so no panel can choose one");
     }
 
+    @Test void subjectPropertyAndObjectAreVerticalSectionsOfTheSharedTriple() {
+        TripleEditor triple = new TripleEditor();
+        assertTrue(triple.getLayout() instanceof java.awt.GridBagLayout);
+        assertTrue(java.util.Arrays.stream(triple.getComponents())
+                        .filter(JPanel.class::isInstance)
+                        .map(JPanel.class::cast)
+                        .noneMatch(component -> component.getLayout()
+                                instanceof java.awt.GridLayout grid
+                                && grid.getColumns() == 3),
+                "the relation reads vertically as Subject, Property, Object");
+    }
+
+    @Test void aSourceTripleShowsOnlyItsPopulationQuestion() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        project.addClass(position);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(position);
+        List<String> text = labels(find(panel, TripleEditor.class));
+
+        assertTrue(text.stream().anyMatch(value -> value.contains(
+                "Instances produced:") && value.contains("Position")));
+        assertTrue(text.contains("Restrict to these subject QIDs:"));
+        assertEquals(1, text.stream().filter("Entities allowed:"::equals).count(),
+                "only the object's constraint is shown; the Source subject is the output");
+        assertFalse(text.contains("Modelled as:"));
+        assertFalse(text.contains("Goes into field:"));
+    }
+
     /** Every kind is shown and asked the same way. */
     @Test void everyPanelUsesTheSameTwoCalls() {
         List<String> shows = new ArrayList<>();
@@ -144,6 +178,51 @@ class OneTriplePerClassTest {
         }
         assertEquals(List.of("ClassSourcePanel", "StatementSourcePanel",
                 "OwnedClassPanel"), shows);
+    }
+
+    @Test void theSharedTripleStatesWhetherItsInstanceConfigurationIsReady() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        project.addClass(position);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(position);
+        TripleEditor triple = find(panel, TripleEditor.class);
+
+        assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
+                        "Incomplete — add explicit QIDs, or choose both a property and object")),
+                "an empty source configuration says exactly what completes it");
+
+        position.seedQids().add("Q11696");
+        triple.show(position, project);
+        assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
+                        "Ready — 1 explicit QID")),
+                "an explicit population is visibly ready");
+
+        position.membership(EntityBound.relation("P279", List.of("Q4164871"), false));
+        triple.show(position, project);
+        assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
+                        "Ready — property + object, restricted to 1 explicit QID")),
+                "the same indicator explains the combined semantics");
+    }
+
+    @Test void theSameIndicatorUsesTheStatementTripleRule() {
+        GeneratedClassModel holding = new GeneratedClassModel("Holding");
+        holding.classKind(ClassKind.STATEMENT);
+        holding.statementSource(new StatementClassSource("Position", ""));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(holding);
+
+        TripleEditor triple = new TripleEditor();
+        triple.show(holding, project);
+        assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
+                "Incomplete — choose a statement property")));
+
+        holding.statementSource().propertyPid("P39");
+        triple.show(holding, project);
+        assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
+                "Ready — statement property P39")));
     }
 
     /**
@@ -274,11 +353,27 @@ class OneTriplePerClassTest {
         panel.setProjectModel(project);
         panel.edit(star);
         TripleEditor triple = find(panel, TripleEditor.class);
-        triple.objectQids(List.of("Q523", "Q6243"), null);
+        triple.objectQids(List.of("Q523", "Q6243"));
         panel.applyEdits();
 
         assertEquals(EntityBound.relation("P31", List.of("Q523", "Q6243"), false),
                 star.membership());
+    }
+
+    @Test void sourceObjectOffersAndStoresSubclassMembership() {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(EntityBound.relation("P31", List.of("Q4164871"), false));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(position);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(position);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        triple.includeMembershipDescendants(true);
+        panel.applyEdits();
+
+        assertTrue(position.membership().includeDescendants());
     }
 
     private static JTextField property(TripleEditor triple) {
@@ -307,6 +402,7 @@ class OneTriplePerClassTest {
     @SuppressWarnings("unchecked")
     private static <T> void collect(Container root, Class<?> type, List<T> into) {
         for (Component child : root.getComponents()) {
+            if (!child.isVisible()) continue;
             if (type.isInstance(child)) into.add((T) child);
             if (child instanceof Container container) collect(container, type, into);
         }

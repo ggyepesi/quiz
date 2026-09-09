@@ -18,7 +18,7 @@ public class GeneratedFieldModel {
     /** ENTITY values whose class the model deliberately does not name — see
      *  {@link FieldDefinition#unclassedEntity()}. */
     private boolean unclassedEntity;
-    private FieldCardinality cardinality = FieldCardinality.AUTO;
+    private FieldCardinality cardinality = FieldCardinality.SINGLE;
     private FieldRenderMode renderMode = FieldRenderMode.AUTO;
     @com.fasterxml.jackson.annotation.JsonInclude(
             com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
@@ -85,7 +85,7 @@ public class GeneratedFieldModel {
 
     // For deserialization (GeneratedProjectModelStore).
     public GeneratedFieldModel() {
-        this("field", FieldType.AUTO, FieldCardinality.AUTO);
+        this("field", FieldType.AUTO, FieldCardinality.SINGLE);
     }
 
     public GeneratedFieldModel(
@@ -96,7 +96,7 @@ public class GeneratedFieldModel {
         this.name = name == null || name.isBlank() ? "field" : name.trim();
         this.type = type == null ? FieldType.AUTO : type;
         this.cardinality =
-                cardinality == null ? FieldCardinality.AUTO : cardinality;
+                cardinality == null ? FieldCardinality.SINGLE : cardinality;
     }
 
     public static GeneratedFieldModel nameField() {
@@ -154,7 +154,7 @@ public class GeneratedFieldModel {
 
     public void cardinality(FieldCardinality cardinality) {
         this.cardinality =
-                cardinality == null ? FieldCardinality.AUTO : cardinality;
+                cardinality == null ? FieldCardinality.SINGLE : cardinality;
     }
 
     public FieldRenderMode renderMode() {

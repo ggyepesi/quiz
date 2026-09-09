@@ -87,7 +87,7 @@ committed inside it. `OneTriplePerClassTest` now fails on a second control per e
   **Shipped.** Three controls became three rows of one triple: "Relation property" is
   the property, and "Wikidata type/class" plus "Also include types" — one ordered list
   shown as a leading target and the rest — are one objects row. The buttons that fill
-  them (Find…, Discover subtypes, From parts…) are injected by the panel, because the
+  them (Find…, Find subclasses of object…, Find related objects…) are injected by the panel, because the
   dialogs and queries behind them are its concern and the rows are not.
 - **Owned** — every row read-only, each pointing at the field that authors it.
   **Shipped.**
@@ -119,8 +119,8 @@ on. In the component the question is asked once, as **which end the members occu
 
 ### 3. The P31 literal, and the questions asked of it
 
-Forty `"P31"` literals in `app/src/main`, one named constant (`MembershipFields.P31`,
-private). Ten are in the workbench, doing four different jobs:
+The code contains many `"P31"` literals and one shared default
+(`MembershipPattern.DEFAULT_PROPERTY`). In the workbench they do four different jobs:
 
 ```java
 new JTextField("P31", 5)                              // the default a reader sees
@@ -254,9 +254,9 @@ The triple is one of four shared components. The others, from the same survey:
 > specialized by evidence rather than asserted here.
 
 It says four things, and after the unification the UI shows three of them: the triple IS
-the component's shape; the qualifier fields carry their PIDs; and `Modelled as: no class
-named — served as a bare reference` is the third. Prose restating what the controls show
-is the rephrasing this session's rules already forbid.
+the component's shape and the qualifier fields carry their PIDs. Representation and the
+receiving field are field configuration, not population constraints, so the triple no
+longer repeats `Modelled as` or `Goes into field` as read-only rows.
 
 The fourth clause — specialized by evidence rather than asserted here — is not about the
 triple. It is the admission-versus-representation rule, and the validator already refuses

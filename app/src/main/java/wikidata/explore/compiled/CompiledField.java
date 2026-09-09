@@ -40,7 +40,7 @@ public record CompiledField(
         entityDeclarationId = clean(entityDeclarationId);
         entityClassName = clean(entityClassName);
         cardinality = cardinality == null
-                ? FieldCardinality.AUTO
+                ? FieldCardinality.SINGLE
                 : cardinality;
         renderMode = renderMode == null
                 ? FieldRenderMode.AUTO

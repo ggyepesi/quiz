@@ -42,11 +42,11 @@ class ProductCompilerTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new wikidata.explore.model.StatementClassSource(
                 "OscarNominations", "P1411"));   // -> reify `source` back-ref
-        ref(nom, "nominee", "OscarNominations", FieldCardinality.AUTO);
-        ref(nom, "forWork", "ForWork", FieldCardinality.AUTO);      // ForWork is UNMODELED
+        ref(nom, "nominee", "OscarNominations", FieldCardinality.SINGLE);
+        ref(nom, "forWork", "ForWork", FieldCardinality.SINGLE);      // ForWork is UNMODELED
         ref(nom, "target", "Category", FieldCardinality.COLLECTION);
         // presenter targets a MODELED member class, but its referent won't be a member.
-        ref(nom, "presenter", "OscarNominations", FieldCardinality.AUTO);
+        ref(nom, "presenter", "OscarNominations", FieldCardinality.SINGLE);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.

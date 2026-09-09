@@ -6,7 +6,6 @@ import wikidata.explore.query.swing.QueryObjectResultPanel;
 import wikidata.explore.model.FieldSampleContext;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleIncludedField;
-import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.query.result.ClassSampleResult;
 import wikidata.explore.query.logical.SampleFieldQuery;
 import wikidata.explore.query.result.TableQueryResult;
@@ -15,7 +14,6 @@ import wikidata.explore.query.swing.SwingQueryRunner;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -41,9 +39,6 @@ public class NodeSamplePanel extends JPanel {
     private Consumer<String> log =
             s -> {};
 
-    private Consumer<FieldCardinality> onCardinalitySuggested =
-            c -> {};
-
     private boolean wired;
 
     /**
@@ -64,9 +59,6 @@ public class NodeSamplePanel extends JPanel {
 
     private final JLabel contextLabel =
             new JLabel(" ");
-
-    private final JLabel cardinalityHintLabel =
-            new JLabel("");
 
     private final DefaultTableModel tableModel =
             new DefaultTableModel(
@@ -165,11 +157,6 @@ public class NodeSamplePanel extends JPanel {
         onSampleFailed = callback == null ? () -> { } : callback;
     }
 
-    public void onCardinalitySuggested(Consumer<FieldCardinality> c) {
-        this.onCardinalitySuggested =
-                c == null ? card -> {} : c;
-    }
-
     private void buildUi() {
         table.setFillsViewportHeight(true);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
@@ -193,13 +180,11 @@ public class NodeSamplePanel extends JPanel {
 
         buttonRow.add(sampleButton);
         buttonRow.add(statusLabel);
-        buttonRow.add(cardinalityHintLabel);
 
         JLabel hint = new JLabel(
                 "<html>Pulls a few instances of the selected class (or a chosen "
-                + "field) and shows their real values — to eyeball the data and "
-                + "to detect a field's <b>cardinality</b> (single vs. list) before "
-                + "you commit to it.</html>");
+                + "field) and shows their real values. Sampling inspects the "
+                + "datasource; it does not change the model.</html>");
         hint.setFont(hint.getFont().deriveFont(java.awt.Font.ITALIC));
 
         top.add(contextLabel, BorderLayout.NORTH);
@@ -216,7 +201,6 @@ public class NodeSamplePanel extends JPanel {
         add(resultCards, BorderLayout.CENTER);
 
         sampleButton.setEnabled(false);
-        cardinalityHintLabel.setVisible(false);
     }
 
     private void wireQueries() {
@@ -310,7 +294,6 @@ public class NodeSamplePanel extends JPanel {
         contextLabel.setText("Class instances: "
                 + query.parameters().getOrDefault("class", "?"));
         ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
-        cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Running class sample...");
 
         return query;
@@ -368,7 +351,6 @@ public class NodeSamplePanel extends JPanel {
 
         tableModel.setRowCount(0);
         ((CardLayout) resultCards.getLayout()).show(resultCards, "field");
-        cardinalityHintLabel.setVisible(false);
         statusLabel.setText("Sampling field values...");
 
         return new SampleFieldQuery(context, SAMPLE_LIMIT);
@@ -424,7 +406,6 @@ public class NodeSamplePanel extends JPanel {
                             + " field row"
                             + (result.size() == 1 ? "" : "s"));
 
-            suggestCardinalityFromTable();
         });
     }
 
@@ -460,65 +441,6 @@ public class NodeSamplePanel extends JPanel {
         return v == null ? "" : String.valueOf(v);
     }
 
-    private void suggestCardinalityFromTable() {
-        int rowCount = tableModel.getRowCount();
-
-        if (rowCount == 0) {
-            cardinalityHintLabel.setVisible(false);
-            return;
-        }
-
-        Map<String, Integer> valuesPerParent =
-                new HashMap<>();
-
-        for (int i = 0; i < rowCount; i++) {
-            String parentQid =
-                    String.valueOf(tableModel.getValueAt(i, 0));
-
-            String value =
-                    String.valueOf(tableModel.getValueAt(i, 2));
-
-            if (parentQid != null
-                    && value != null
-                    && !value.isBlank()) {
-                valuesPerParent.merge(
-                        parentQid,
-                        1,
-                        Integer::sum);
-            }
-        }
-
-        int maxValues =
-                valuesPerParent.values().stream()
-                               .mapToInt(Integer::intValue)
-                               .max()
-                               .orElse(0);
-
-        long multiParents =
-                valuesPerParent.values().stream()
-                               .filter(n -> n > 1)
-                               .count();
-
-        FieldCardinality detected =
-                maxValues > 1
-                        ? FieldCardinality.COLLECTION
-                        : FieldCardinality.SINGLE;
-
-        String hint =
-                detected == FieldCardinality.COLLECTION
-                        ? "Detected: Collection ("
-                          + multiParents
-                          + " of "
-                          + valuesPerParent.size()
-                          + " sampled entities have multiple values)"
-                        : "Detected: Single (all sampled entities have at most one value)";
-
-        cardinalityHintLabel.setText(hint + " → applied");
-        cardinalityHintLabel.setVisible(true);
-
-        onCardinalitySuggested.accept(detected);
-    }
-
     /**
      * Each button is enabled only where it can do something, and a disabled one says
      * why on hover.
@@ -549,7 +471,6 @@ public class NodeSamplePanel extends JPanel {
         classResultPanel.clear();
         tableModel.setRowCount(0);
         failureArea.setText("");
-        cardinalityHintLabel.setVisible(false);
         contextLabel.setText(" ");
         ((CardLayout) resultCards.getLayout()).show(resultCards, "class");
     }

@@ -29,7 +29,7 @@ public final class FieldSemantics {
 
         FieldType effectiveType = type == null ? FieldType.AUTO : type;
         FieldCardinality effectiveCardinality = cardinality == null
-                ? FieldCardinality.AUTO : cardinality;
+                ? FieldCardinality.SINGLE : cardinality;
         RuleDirection effectiveConfigured = configured == null
                 ? RuleDirection.ITEM_TO_ROOT : configured;
 

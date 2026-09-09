@@ -11,6 +11,7 @@ import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.query.result.TableQueryResult;
 
 import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
@@ -20,6 +21,7 @@ import javax.swing.text.JTextComponent;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -77,6 +79,17 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(text.isEditable());
         assertEquals(originalBackground, text.getBackground());
         assertEquals(originalForeground, text.getForeground());
+    }
+
+    @Test void unlockingAContainerDoesNotOpenDeclaredReadOnlyText() {
+        JTextField name = new JTextField("Position");
+        EditableComponents.keepReadOnly(name);
+
+        EditableComponents.setEditable(name, false);
+        EditableComponents.setEditable(name, true);
+
+        assertFalse(name.isEditable(),
+                "an informational field stays read-only when its editor is unlocked");
     }
 
     private static boolean anyEditableText(Container root) {
@@ -159,6 +172,40 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(entityRelations >= 0, "Entity relations tab is present");
         assertInstanceOf(EntityRelationDiscoveryPanel.class,
                 wikidata.getComponentAt(entityRelations));
+        int subclasses = wikidata.indexOfTab("Subclasses");
+        assertTrue(subclasses >= 0, "subclass discovery belongs to Explorer tools");
+        assertInstanceOf(SubclassDiscoveryPanel.class,
+                wikidata.getComponentAt(subclasses));
+    }
+
+    @Test void aDiscoveredSubclassIsAddedOnlyByTheExplicitExplorerAction()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(EntityBound.relation(
+                "P31", List.of("Q4164871"), true));
+        model.rootClass(position);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(position);
+
+        SubclassDiscoveryPanel explorer = panel.subclassDiscoveryPanel();
+        explorer.accept(new TableQueryResult(
+                List.of("subclassLabel", "newCount", "examples", "subclass"),
+                List.of(List.of("historical position", "84320",
+                        "king; mayor; governor", "Q189290"))));
+        SwingUtilities.invokeAndWait(() -> { });
+
+        assertEquals(List.of("Q4164871"), position.membership().qids(),
+                "viewing discovery results must not alter Source configuration");
+        SwingUtilities.invokeAndWait(() -> {
+            explorer.selectRows(0);
+            explorer.addSelectedRows();
+        });
+
+        assertEquals(List.of("Q4164871", "Q189290"), position.membership().qids());
+        assertEquals("P31", position.membership().relationPid());
+        assertTrue(position.membership().includeDescendants(),
+                "adding a target must preserve the configured closure choice");
     }
 
     @Test void editsSurviveNavigatingToAnotherModelNode() {
@@ -338,7 +385,7 @@ class ModelSourceWorkbenchPanelTest {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         person.membership(EntityBound.relation("P31", List.of("Q5"), false));
         var spouse = person.addField(
-                "spouse", FieldType.ENTITY, FieldCardinality.AUTO);
+                "spouse", FieldType.ENTITY, FieldCardinality.SINGLE);
         spouse.mapping().propertyPid("P26");
         model.addClass(person);
 

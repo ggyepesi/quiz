@@ -23,7 +23,6 @@ import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.model.StatementClassSource;
 import datasource.api.SourceBindingSlot;
 import wikidata.explore.query.logical.ClassSearchQuery;
-import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.result.TableQueryResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.api.WikidataApiClient;
@@ -60,6 +59,10 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField discriminatorPidField = new JTextField("P31", 5);
     private final JTextField discriminatorQidField = new JTextField(8);
     private final JLabel discriminatorLabel = new JLabel(" ");
+    private final JLabel inheritedPopulationFilterLabel =
+            new JLabel("Inherited population filter:");
+    private final JPanel inheritedPopulationFilter =
+            new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
     // Ordered: a role's alternatives are tried in order, so position IS the meaning.
     private final OrderedChoiceList<String> representations = new OrderedChoiceList<>(true);
     // STATEMENT reification: instances of this class are the statements of the
@@ -75,11 +78,10 @@ public class ClassSourcePanel extends JPanel {
     // Lazily-created; the property/item name search uses the Wikidata API.
     private WikidataApiClient api;
     private final JTextField excludeTypesField = new JTextField(14);
-    private final JButton discoverTypesButton = new JButton("Discover subtypes");
     // Discover the membership targets from a parent's "has part(s)" relation —
     // e.g. Academy Awards (Q19020) wdt:P527 → its award categories — so the
     // multi-QID membership is data-driven instead of a hand-pasted QID list.
-    private final JButton fromPartsButton = new JButton("From parts…");
+    private final JButton fromPartsButton = new JButton("Find related objects…");
     private final JCheckBox notableOnlyBox =
             new JCheckBox("Notable only (require Wikipedia article)");
 
@@ -92,6 +94,7 @@ public class ClassSourcePanel extends JPanel {
     // Explicit instance QIDs (curated set, e.g. seeded from a WikiProject /
     // category). With no type above, these alone are the class's instances.
     private final JTextArea seedQidsArea = new JTextArea(3, 18);
+    private final JScrollPane seedQidsScroll = new JScrollPane(seedQidsArea);
 
     private final JTextField searchTextField = new JTextField(18);
     private final JButton searchTypeButton = new JButton("Search");
@@ -204,6 +207,14 @@ public class ClassSourcePanel extends JPanel {
     private void populateClassDetails() {
         discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
         discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
+        showInheritedPopulationFilter(clazz != null && !clazz.baseClassName().isBlank());
+    }
+
+    private void showInheritedPopulationFilter(boolean visible) {
+        inheritedPopulationFilterLabel.setVisible(visible);
+        inheritedPopulationFilter.setVisible(visible);
+        revalidate();
+        repaint();
     }
 
     // Rank-by options: none, notability, and the class's sortable (number/date)
@@ -251,9 +262,10 @@ public class ClassSourcePanel extends JPanel {
                         targets, clazz.membership().includeDescendants()));
         clazz.instanceMapping().sourceLabel(label);
 
-        triple.objectQids(targets, clazz.instanceMapping().displaySource());
+        triple.objectQids(targets);
 
         updateSummary();
+        triple.refreshConfigurationStatus(clazz, projectModel);
         afterChange.accept(null);
     }
 
@@ -301,21 +313,21 @@ public class ClassSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(form, y++, displayNameEditor);
 
-        discriminatorPidField.setToolTipText("Discriminator property — defaults to "
-                + "P31 (instance of); set another relation to subclass on a "
-                + "non-type axis.");
-        discriminatorQidField.setToolTipText("<html>Subclass discriminator value "
-                + "(e.g. Q5 human, Q11424 film). The subclass = the inherited "
-                + "membership <b>AND</b> ?value wdt:&lt;prop&gt; wd:&lt;this&gt;. "
-                + "Blank for a non-discriminated class.</html>");
+        discriminatorPidField.setToolTipText("Property used to further restrict the "
+                + "instances inherited from the base class; P31 means instance of.");
+        discriminatorQidField.setToolTipText("<html>Required value of that property "
+                + "(for example Q5 human). This does not allow objects into the "
+                + "population triple; it filters the instances inherited through "
+                + "Extends.</html>");
         WikidataLinks.linkify(discriminatorLabel,
                 () -> RuleNode.cleanQid(discriminatorQidField.getText()));
-        JPanel discRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        discRow.add(discriminatorPidField);
-        discRow.add(new JLabel("="));
-        discRow.add(discriminatorQidField);
-        discRow.add(discriminatorLabel);
-        GridBagUtils.labeledRow(form, c, y++, "Subtype:", discRow);
+        inheritedPopulationFilter.add(discriminatorPidField);
+        inheritedPopulationFilter.add(new JLabel("="));
+        inheritedPopulationFilter.add(discriminatorQidField);
+        inheritedPopulationFilter.add(discriminatorLabel);
+        GridBagUtils.labeledRow(form, c, y++, inheritedPopulationFilterLabel,
+                inheritedPopulationFilter);
+        header.onBaseSelectionChanged(this::showInheritedPopulationFilter);
 
 
         representations.describe(this::representationDescription);
@@ -368,19 +380,18 @@ public class ClassSourcePanel extends JPanel {
                 + "curated set. Leave the Wikidata type empty to use ONLY these "
                 + "(e.g. the 12 Olympians); or set a type too, to restrict it. "
                 + "The WikiProject tab's \"Add selected\" fills this.</html>");
-        JScrollPane seedScroll = new JScrollPane(seedQidsArea);
-        seedScroll.setPreferredSize(new Dimension(360, 56));
-        GridBagUtils.labeledRow(form, c, y++, "Seed QIDs:", seedScroll);
+        seedQidsScroll.setPreferredSize(new Dimension(260, 56));
+        triple.sourceSubjectControl("Restrict to these subject QIDs:", seedQidsScroll);
 
 
-        fromPartsButton.setToolTipText("<html>Fill the objects from a parent entity's "
-                + "parts: e.g. Academy Awards (Q19020) <b>P527</b> (has part) → its "
-                + "award categories. Data-driven instead of a pasted QID list.</html>");
+        fromPartsButton.setToolTipText("<html>Read the values of a property on an entity "
+                + "and choose which values to add as object constraints; for example "
+                + "Academy Awards (Q19020) <b>P527</b> (has part).</html>");
         findRelationButton.setToolTipText(
                 "Search Wikidata properties by name (e.g. \"nominated\" → P1411)");
         findRelationButton.addActionListener(e -> pickProperty());
         triple.actions(List.of(findRelationButton),
-                List.of(discoverTypesButton, fromPartsButton));
+                List.of(fromPartsButton));
 
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
@@ -449,16 +460,6 @@ public class ClassSourcePanel extends JPanel {
                         JOptionPane.ERROR_MESSAGE));
 
         queryRunner.wireButton(
-                discoverTypesButton,
-                this::acceptSubtypeResult,
-                this::buildSubtypeQuery,
-                ex -> JOptionPane.showMessageDialog(
-                        this,
-                        "Discover subtypes failed:\n" + ex.getMessage(),
-                        "Discover failed",
-                        JOptionPane.ERROR_MESSAGE));
-
-        queryRunner.wireButton(
                 fromPartsButton,
                 this::acceptPartsResult,
                 this::buildPartsQuery,
@@ -480,17 +481,17 @@ public class ClassSourcePanel extends JPanel {
         JTextField parentField = new JTextField(triple.firstObjectQid(), 12);
         JTextField pidField = new JTextField("P527", 6);
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
-        form.add(new JLabel("Parent entity QID:"));
+        form.add(new JLabel("Source entity QID:"));
         form.add(parentField);
         // Not "(P527 = has part)": the field takes any property and the query uses
         // what it is given, so a label naming one asserts a constraint that is not
         // there. The example belongs in the tooltip, which is where it is.
         pidField.setToolTipText("The property whose values become the members — "
                 + "P527 (has part) is the usual one, but any property works.");
-        form.add(new JLabel("Parts property:"));
+        form.add(new JLabel("Relation property:"));
         form.add(pidField);
         int ok = JOptionPane.showConfirmDialog(this, form,
-                "Discover membership from parent's parts",
+                "Find related objects",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (ok != JOptionPane.OK_OPTION) {
             return null;
@@ -583,96 +584,6 @@ public class ClassSourcePanel extends JPanel {
         dialog.setVisible(true);
     }
 
-    private DiscoverSubtypesQuery buildSubtypeQuery() {
-        if (clazz == null) {
-            return null;
-        }
-        String base = triple.firstObjectQid();
-        if (base.isBlank()) {
-            JOptionPane.showMessageDialog(this,
-                    "Set the Wikidata type first, then discover its subtypes.",
-                    "No type selected", JOptionPane.INFORMATION_MESSAGE);
-            return null;
-        }
-        log.accept("Discover subtypes of " + base + "\n");
-        return new DiscoverSubtypesQuery(base, 40);
-    }
-
-    private void acceptSubtypeResult(TableQueryResult result) {
-        List<List<Object>> rows =
-                result == null ? List.of() : result.rows();
-        SwingUtilities.invokeLater(() -> showSubtypeDialog(rows));
-    }
-
-    // Each row: how many NEW members the subtype adds + examples; clicking
-    // "Add" appends its QID to the multi-QID membership field.
-    private void showSubtypeDialog(List<List<Object>> rows) {
-        if (rows.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No subtypes found for this type.",
-                    "Discover subtypes", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        String[] cols = {"Subtype", "Instances", "Examples", "QID"};
-        Object[][] data = new Object[rows.size()][4];
-        for (int i = 0; i < rows.size(); i++) {
-            List<Object> r = rows.get(i);
-            for (int j = 0; j < 4; j++) {
-                data[i][j] = j < r.size() ? r.get(j) : "";
-            }
-        }
-
-        DefaultTableModel model = new DefaultTableModel(data, cols) {
-            @Override public boolean isCellEditable(int r, int col) { return false; }
-        };
-        JTable table = new JTable(model);
-        table.setRowHeight(22);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        table.getColumnModel().getColumn(0).setPreferredWidth(160);
-        table.getColumnModel().getColumn(1).setPreferredWidth(50);
-        table.getColumnModel().getColumn(2).setPreferredWidth(360);
-        table.getColumnModel().getColumn(3).setPreferredWidth(80);
-        WikidataLinks.installOnColumn(table, 3); // QID column → clickable link
-
-        JScrollPane sp = new JScrollPane(table);
-        sp.setPreferredSize(new Dimension(720, 300));
-
-        JButton addButton = new JButton("Add selected to membership");
-        addButton.setEnabled(false);
-        table.getSelectionModel().addListSelectionListener(e ->
-                addButton.setEnabled(table.getSelectedRow() >= 0));
-
-        JDialog dialog = new JDialog(
-                SwingUtilities.getWindowAncestor(this),
-                "Subtypes of " + clazz.instanceMapping().displaySource(),
-                Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setLayout(new BorderLayout(0, 6));
-        dialog.add(new JLabel(
-                "  \"Instances\" = how many entities the subtype has (≈ how many it "
-                        + "adds). Add the relevant subtypes."),
-                BorderLayout.NORTH);
-        dialog.add(sp, BorderLayout.CENTER);
-
-        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
-        JButton closeButton = new JButton("Close");
-        south.add(addButton);
-        south.add(closeButton);
-        dialog.add(south, BorderLayout.SOUTH);
-
-        addButton.addActionListener(ev -> {
-            // Add every selected row, not just the first.
-            for (int viewRow : table.getSelectedRows()) {
-                addAdditionalType(String.valueOf(table.getValueAt(viewRow, 3)));
-            }
-        });
-        closeButton.addActionListener(ev -> dialog.dispose());
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-    }
-
     private void addAdditionalType(String rawQid) {
         String qid = RuleNode.cleanQid(rawQid);
         if (!WikidataIds.isQid(qid)) {
@@ -680,7 +591,7 @@ public class ClassSourcePanel extends JPanel {
         }
         java.util.List<String> targets = triple.objectQids();
         if (!targets.contains(qid)) targets.add(qid);
-        triple.objectQids(targets, null);
+        triple.objectQids(targets);
         apply();
         log.accept("Added membership type " + qid + "\n");
     }
@@ -758,7 +669,6 @@ public class ClassSourcePanel extends JPanel {
     private void updateSearchButtonState() {
         boolean ready = clazz != null && queryRunner != null;
         searchTypeButton.setEnabled(ready);
-        discoverTypesButton.setEnabled(ready);
         fromPartsButton.setEnabled(ready);
     }
 
@@ -797,8 +707,10 @@ public class ClassSourcePanel extends JPanel {
         boolean wasStatementClass = clazz.reifiesStatements();
 
         header.applyEdits();
-        clazz.discriminatorPid(RuleNode.cleanPid(discriminatorPidField.getText()));
-        clazz.discriminatorQid(RuleNode.cleanQid(discriminatorQidField.getText()));
+        clazz.discriminatorPid(header.hasSelectedBase()
+                ? RuleNode.cleanPid(discriminatorPidField.getText()) : "");
+        clazz.discriminatorQid(header.hasSelectedBase()
+                ? RuleNode.cleanQid(discriminatorQidField.getText()) : "");
         FieldSourceMapping m = clazz.instanceMapping();
         m.excludedTypeQids().clear();
         for (String tok : excludeTypesField.getText().trim().split("[,;\\s]+")) {
@@ -847,16 +759,7 @@ public class ClassSourcePanel extends JPanel {
         }
 
         titleLabel.setText("Class: " + clazz.className());
-        triple.objectQids(clazz.membership().qids(), m.displaySource());
-
-        // Multi-target/-type membership → auto-add the intrinsic grouping fields
-        // (type, and target for a relation) as real, editable model fields.
-        java.util.List<String> added =
-                wikidata.explore.model.MembershipFields.ensure(clazz);
-        if (!added.isEmpty()) {
-            log.accept("Added membership fields: " + String.join(", ", added)
-                    + " (edit/remove in the class)\n");
-        }
+        triple.objectQids(clazz.membership().qids());
 
         applyCanonical();
 
@@ -877,6 +780,7 @@ public class ClassSourcePanel extends JPanel {
         }
 
         updateSummary();
+        triple.refreshConfigurationStatus(clazz, projectModel);
         afterChange.accept(null);
     }
 
@@ -884,7 +788,7 @@ public class ClassSourcePanel extends JPanel {
 
     /** Loads the class's canonical spec into the section. */
     private void loadCanonical() {
-        if (clazz != null) ClassSourceBindings.synchronize(clazz);
+        if (clazz != null) ClassSourceBindings.declareRequiredNameSources(clazz);
         aliasesBox.setSelected(clazz != null && ClassSourceBindings.binding(clazz,
                 SourceBindingSlot.CLASS_ALIASES) != null);
         displayNameEditor.show(clazz);
@@ -915,7 +819,6 @@ public class ClassSourcePanel extends JPanel {
 
     private String describeClassSources() {
         if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return "—";
-        ClassSourceBindings.synchronize(clazz);
         datasource.api.DatasourceRegistry registry = datasource.Datasources.standard();
         java.util.List<String> labels = new java.util.ArrayList<>();
         for (SourceBindingSlot slot : java.util.List.of(SourceBindingSlot.CLASS_IDENTITY,

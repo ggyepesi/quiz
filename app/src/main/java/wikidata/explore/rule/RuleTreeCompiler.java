@@ -53,6 +53,8 @@ public final class RuleTreeCompiler {
         String pid = membership == null ? "" : membership.relationPid();
         node.propertyPid(pid.isBlank()
                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid);
+        node.membershipIncludesDescendants(
+                membership != null && membership.includeDescendants());
     }
 
     private static RuleNode compileClass(

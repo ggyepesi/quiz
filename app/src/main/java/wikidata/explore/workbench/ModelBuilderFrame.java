@@ -461,8 +461,18 @@ public class ModelBuilderFrame extends JFrame {
         // Stamp the generated class (+ count) on the title — a single-class run
         // renders as a plain search view with no type label, so without this
         // there's no on-screen indication of which class you're looking at.
-        instancesWindow.setTitle(instancesTitle());
+        refreshInstancesWindowTitle();
         showAndFocus(instancesWindow);
+    }
+
+    /** A run may arrive after the window has already opened (notably Load instances,
+     * which materializes the snapshot and then installs it on the EDT). Keep the
+     * visible count attached to the run rather than to whichever action opened the
+     * window first. */
+    private void refreshInstancesWindowTitle() {
+        if (instancesWindow != null) {
+            instancesWindow.setTitle(instancesTitle());
+        }
     }
 
     /** Presents bounded samples with the same Instances component without replacing
@@ -630,7 +640,11 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private String instancesTitle() {
-        if (lastRun == null) {
+        return instancesTitle(lastRun, projectModel);
+    }
+
+    static String instancesTitle(GenerationRun run, GeneratedProjectModel model) {
+        if (run == null) {
             return "Generated instances";
         }
         // Per-class counts, biggest first — the total alone was misleading (it
@@ -643,8 +657,8 @@ public class ModelBuilderFrame extends JFrame {
         // non-QID objects + deduping by QID makes this preview match the reload.
         java.util.Map<String, java.util.Set<String>> qidsByType =
                 new java.util.LinkedHashMap<>();
-        if (lastRun.dynamicObjects() != null) {
-            for (WikidataDynamicObject o : lastRun.dynamicObjects()) {
+        if (run.dynamicObjects() != null) {
+            for (WikidataDynamicObject o : run.dynamicObjects()) {
                 if (o == null || o.typeName() == null || o.typeName().isBlank()
                         // untyped sentinel: demoted duplicate statements / bare
                         // reference children, not first-class class instances.
@@ -660,7 +674,7 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
         if (qidsByType.isEmpty()) {
-            return "Generated instances  (" + lastRun.size() + ")";
+            return "Generated instances  (" + run.size() + ")";
         }
         int total = qidsByType.values().stream().mapToInt(java.util.Set::size).sum();
         String breakdown = qidsByType.entrySet().stream()
@@ -668,24 +682,24 @@ public class ModelBuilderFrame extends JFrame {
                                      .map(e -> e.getKey() + " " + e.getValue().size())
                                      .collect(java.util.stream.Collectors.joining(", "));
         return "Generated instances — " + breakdown
-                + "  (" + total + " distinct)" + partsNote();
+                + "  (" + total + " distinct)" + partsNote(model, run);
     }
 
     /** A single-class preview deliberately does NOT materialize owned components: one
      *  empty part per instance answers neither question a preview asks. Say so on the
      *  panel, or their absence reads as a fault in the model. */
-    private String partsNote() {
-        boolean modelHasParts = projectModel.classes().stream()
+    private static String partsNote(GeneratedProjectModel model, GenerationRun run) {
+        boolean modelHasParts = model != null && model.classes().stream()
                 .filter(java.util.Objects::nonNull)
                 .anyMatch(clazz -> clazz.fields().stream().anyMatch(field ->
                         field != null && field.type()
                                 == datasource.schema.FieldType.ENTITY
                                 && field.mapping().productionKind()
                                 == wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT));
-        if (!modelHasParts || lastRun == null || lastRun.dynamicObjects() == null) {
+        if (!modelHasParts || run == null || run.dynamicObjects() == null) {
             return "";
         }
-        boolean anyPart = lastRun.dynamicObjects().stream()
+        boolean anyPart = run.dynamicObjects().stream()
                 .anyMatch(o -> o != null && o.isPart());
         return anyPart ? "" : "   ⚠ parts not materialized (preview — "
                 + "Generate domain or Enrich produces them with their values)";
@@ -1330,6 +1344,7 @@ public class ModelBuilderFrame extends JFrame {
                 instancesPanel.clear();
                 updateGraphFrontierButton();
             }
+            refreshInstancesWindowTitle();
         });
     }
 

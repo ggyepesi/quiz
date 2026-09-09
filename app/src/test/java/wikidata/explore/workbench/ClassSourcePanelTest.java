@@ -9,12 +9,22 @@ import wikidata.explore.model.GeneratedProjectModel;
 import datasource.api.SourceBindingSlot;
 
 import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JTextArea;
+import javax.imageio.ImageIO;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // The Class editor shows the "Reify from" source class and nothing else about a
 // statement source. Everything it cannot see must survive its apply, because the
@@ -28,11 +38,92 @@ class ClassSourcePanelTest {
 
         JCheckBox aliases = checkBox(panel, "Add aliases (Also known as)");
         assertNotNull(aliases, "the automatic datasource field must be visible in config");
-        aliases.setSelected(false);
+        assertFalse(aliases.isSelected(),
+                "a new class must not silently opt into an optional field");
         panel.applyEdits();
+
+        ClassSourceBindings.synchronize(person);
 
         assertNull(ClassSourceBindings.binding(
                 person, SourceBindingSlot.CLASS_ALIASES));
+    }
+
+    @Test void applyingAPopulationNeverDeclaresInstanceFields() {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(wikidata.explore.model.EntityBound.relation(
+                "P279", List.of("Q12097"), false));
+        ClassSourcePanel panel = panelFor(position);
+        panel.edit(position);
+
+        panel.applyEdits();
+
+        assertTrue(position.fields().isEmpty(),
+                "P31/type and P279/target are field choices, not population side effects");
+    }
+
+    @Test void applyingExplicitSubjectQidsRefreshesTheReadinessIndicator() throws IOException {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        ClassSourcePanel panel = panelFor(position);
+        panel.edit(position);
+        find(panel, JTextArea.class).setText("Q4164871");
+
+        panel.applyEdits();
+
+        assertTrue(labels(panel).stream().anyMatch(text -> text.contains(
+                "Ready — 1 explicit QID")), labels(panel).toString());
+        render(panel, "target/ui-artifacts/class-source-ready-after-apply.png");
+    }
+
+    @Test void aPropertyWithoutAnObjectIsVisiblyAnUnappliedDraft() throws IOException {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        ClassSourcePanel panel = panelFor(position);
+        panel.edit(position);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        triple.propertyPid("P279", "subclass of");
+
+        panel.applyEdits();
+
+        assertFalse(position.membership().bounded());
+        assertEquals("P279", triple.propertyPid(), "the draft stays available to finish");
+        assertTrue(labels(panel).stream().anyMatch(text -> text.contains(
+                "property P279 was not saved — add an object")), labels(panel).toString());
+        render(panel, "target/ui-artifacts/class-source-unapplied-property.png");
+    }
+
+    @Test void descendantMembershipIsAVisibleSourceConfigurationChoice()
+            throws IOException {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", List.of("Q4164871"), true));
+        ClassSourcePanel panel = panelFor(position);
+        panel.edit(position);
+
+        JCheckBox descendants = visibleCheckBox(
+                panel, "include subclasses of these QIDs (P279*)");
+        assertNotNull(descendants);
+        assertTrue(descendants.isVisible());
+        assertTrue(descendants.isSelected());
+
+        render(panel, "target/ui-artifacts/class-source-descendant-membership.png");
+    }
+
+    @Test void theInheritedPopulationFilterExistsOnlyWhenAClassExtendsAnother() {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        ClassSourcePanel rootPanel = panelFor(position);
+        rootPanel.edit(position);
+        assertNull(visibleLabel(rootPanel, "Inherited population filter:"),
+                "a root class has no inherited population to filter");
+
+        GeneratedClassModel king = new GeneratedClassModel("King");
+        king.baseClassName("Position");
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(position);
+        project.addClass(king);
+        ClassSourcePanel subclassPanel = new ClassSourcePanel();
+        subclassPanel.setProjectModel(project);
+        subclassPanel.edit(king);
+
+        assertNotNull(visibleLabel(subclassPanel, "Inherited population filter:"));
     }
 
     @Test void applyEditsKeepsDeclarationsThisEditorCannotSee() {
@@ -86,11 +177,92 @@ class ClassSourcePanelTest {
         return null;
     }
 
+    private static JCheckBox visibleCheckBox(Component component, String text) {
+        if (component instanceof JCheckBox box && box.isVisible()
+                && text.equals(box.getText())) return box;
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                JCheckBox found = visibleCheckBox(child, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static JLabel visibleLabel(Component component, String text) {
+        if (component instanceof JLabel label && label.isVisible()
+                && text.equals(label.getText())) return label;
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                JLabel found = visibleLabel(child, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static <T extends Component> T find(Component component, Class<T> type) {
+        if (type.isInstance(component)) return type.cast(component);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                T found = findOrNull(child, type);
+                if (found != null) return found;
+            }
+        }
+        throw new AssertionError("No " + type.getSimpleName());
+    }
+
+    private static <T extends Component> T findOrNull(Component component, Class<T> type) {
+        if (type.isInstance(component)) return type.cast(component);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                T found = findOrNull(child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static List<String> labels(Component component) {
+        List<String> labels = new java.util.ArrayList<>();
+        collectLabels(component, labels);
+        return labels;
+    }
+
+    private static void collectLabels(Component component, List<String> labels) {
+        if (component instanceof JLabel label && label.getText() != null) {
+            labels.add(label.getText().replaceAll("<[^>]+>", ""));
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) collectLabels(child, labels);
+        }
+    }
+
     private static ClassSourcePanel panelFor(GeneratedClassModel clazz) {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(clazz);
         ClassSourcePanel panel = new ClassSourcePanel();
         panel.setProjectModel(project);
         return panel;
+    }
+
+    private static void render(Component component, String path) throws IOException {
+        component.setSize(900, Math.max(720, component.getPreferredSize().height));
+        layout(component);
+        File artifact = new File(path);
+        assertTrue(artifact.getParentFile().mkdirs() || artifact.getParentFile().isDirectory());
+        BufferedImage image = new BufferedImage(component.getWidth(), component.getHeight(),
+                BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        component.printAll(graphics);
+        graphics.dispose();
+        ImageIO.write(image, "png", artifact);
+    }
+
+    private static void layout(Component component) {
+        if (component instanceof Container container) {
+            container.doLayout();
+            for (Component child : container.getComponents()) layout(child);
+        }
     }
 }

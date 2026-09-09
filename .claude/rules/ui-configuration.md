@@ -74,6 +74,13 @@ editor that picks the property is the one you reach by being a statement class.
 `ClassKindIsStoredNotDerivedTest` holds it, including that the shipped models say which
 kind they are rather than leaving it to be inferred.
 
+## Field count is explicit; sampling only inspects
+
+A field stores either one value or a list. Sampling a few datasource rows cannot prove that a
+property is globally single-valued, and an unresolved "Auto-detect" was compiled as single when
+sampling found nothing. The field editor therefore asks **Single value** or **List** directly.
+Sampling shows values for members that carry the property; it never changes the field.
+
 ## Structure and population are different rows
 
 Which field receives an end is STRUCTURE and the model owns it; which entities may occupy
@@ -81,3 +88,13 @@ that end is POPULATION and the domain owns it; what a value at that end IS once 
 is its class and datatype, authored on the receiving field. Three facts, three rows, each
 saying which it is — shown as one, "Not configured" and "Anything" read as contradicting
 each other when they answer different questions.
+
+**Put each row where it is authored.** The triple editor asks only which subjects,
+property and objects define the population. “Goes into field” and “Modelled as” belong
+to field configuration; repeating them read-only inside the triple makes a Source
+subject restate itself and makes a query-only object look like a stored field.
+
+**A population rule does not declare instance fields.** A relation used to find class
+members may also be useful as a displayed or grouping field, but that is a separate,
+explicit field choice. Applying a population triple must never silently add `type`,
+`target`, or any other field to the class.

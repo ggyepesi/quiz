@@ -29,13 +29,9 @@ public final class PopulationSourceExecution {
             throw new IllegalArgumentException("Generation does not yet adapt population '"
                     + selection.namespace() + "' into its Wikidata extraction boundary");
         }
-        if (selection.includeDescendants()) {
-            throw new IllegalArgumentException(
-                    "Subclass-closure population is not yet supported by generation");
-        }
-
         root.sourceQid("");
         root.additionalSourceQids().clear();
+        root.membershipIncludesDescendants(false);
         if (selection.kind() == PopulationRequest.Kind.RELATION) {
             String pid = selection.relationId().toUpperCase();
             if (!WikidataIds.isPid(pid)) {
@@ -46,6 +42,7 @@ public final class PopulationSourceExecution {
             root.sourceQid(selection.values().getFirst().id());
             selection.values().stream().skip(1)
                     .map(datasource.EntityRef::id).forEach(root::addAdditionalSourceQid);
+            root.membershipIncludesDescendants(selection.includeDescendants());
             // includedQids remain: with a relation they are an independent restriction
             // over the selected population, not the population recipe itself.
         } else {

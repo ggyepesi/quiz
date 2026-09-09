@@ -150,7 +150,7 @@ class StatementSourcePanelTest {
                 "the explicit graph policy must survive an unrelated panel apply");
     }
 
-    @Test void renameUsesTheProjectOperationSoReferencesFollow() throws Exception {
+    @Test void statementHeaderLeavesRenamingToTheExplicitProjectOperation() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel prize = new GeneratedClassModel("NobelPrizes");
         prize.statementSource(new StatementClassSource("P166"));
@@ -165,12 +165,9 @@ class StatementSourcePanelTest {
         StatementSourcePanel panel = new StatementSourcePanel();
         panel.setProjectModel(project);
         panel.edit(prize);
-        // Found in the panel rather than named on it: the class name moved into
-        // ClassHeaderEditor when the four kind editors stopped each having their own,
-        // and this test is about what a rename DOES, not about which class holds the
-        // field it is typed into.
-        nameFieldIn(panel).setText("Nobel Prize");
-        panel.applyEdits();
+        assertFalse(nameFieldIn(panel).isEditable(),
+                "the header must not compete with the Rename class action");
+        assertTrue(project.renameClass("NobelPrizes", "NobelPrize"));
 
         assertEquals("NobelPrize", prize.className());
         assertEquals("NobelPrize", laureate.fields().getFirst().entityClassName(),
@@ -254,25 +251,16 @@ class StatementSourcePanelTest {
         assertEquals(2, ends.size(), "one editor per end, and no more");
 
         String shown = labelTexts(panel);
-        // "Not projected", not "Not configured": an end with no destination field has no
-        // HOME, which is not being unconfigured. Nobel's subject has no QIDs bounding it
-        // and is modelled as Laureate — unbounded and configured — and the old wording
-        // made those read as one state.
-        assertTrue(shown.contains("Not projected"),
-                "an unsettled end says so rather than vanishing: " + shown);
-        // This project acquires, so the projection is required. A model states shape and
-        // never acquires, and there an unprojected end is a legitimate end state — the
-        // same condition the validator gates on.
-        assertTrue(shown.contains("Required before this domain can generate"), shown);
+        assertEquals(2, occurrences(shown, "Entities allowed:"),
+                "both statement ends retain their population constraint: " + shown);
+        assertFalse(shown.contains("Not projected"),
+                "projection is configured and explained by the receiving field: " + shown);
+        assertFalse(shown.contains("Modelled as") || shown.contains("Goes into field"),
+                "field structure is not repeated inside the triple: " + shown);
+    }
 
-        project.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
-        panel.setProjectModel(project);
-        panel.edit(holding);
-        String inAModel = labelTexts(panel);
-        assertTrue(inAModel.contains("Not projected"), inAModel);
-        assertFalse(inAModel.contains("Required before"),
-                "a model may leave a leg unprojected; it yields a reference: " + inAModel);
-        assertTrue(inAModel.contains("Optional in a model"), inAModel);
+    private static int occurrences(String text, String sought) {
+        return text.split(java.util.regex.Pattern.quote(sought), -1).length - 1;
     }
 
     /** A bound set through the editor reaches the model, and comes back on reopening. */

@@ -34,7 +34,7 @@ class FieldRecipesTest {
         GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
         constellation.membership(EntityBound.relation("P31", List.of("Q8928"), false));
         var field = constellation.addField(
-                "stars", FieldType.AUTO, FieldCardinality.AUTO);
+                "stars", FieldType.AUTO, FieldCardinality.SINGLE);
         model.addClass(constellation);
 
         assertFalse(FieldRecipes.applicableTo(model, field).isEmpty());
@@ -44,7 +44,7 @@ class FieldRecipesTest {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel renamed = new GeneratedClassModel("SkyFigure");
         renamed.membership(EntityBound.relation("P31", List.of("Q8928"), false));
-        var field = renamed.addField("neighbours", FieldType.AUTO, FieldCardinality.AUTO);
+        var field = renamed.addField("neighbours", FieldType.AUTO, FieldCardinality.SINGLE);
         model.addClass(renamed);
 
         assertFalse(FieldRecipes.applicableTo(model, field).isEmpty());

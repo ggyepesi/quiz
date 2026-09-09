@@ -192,11 +192,8 @@ public final class ProductCompiler {
         // values collapsed to strings) is NOT a reference despite the ENTITY type.
         boolean reference = sample != null ? isReferenceValue(sample) : targetDeclared;
 
-        boolean collection = switch (f.cardinality()) {
-            case COLLECTION -> true;
-            case SINGLE -> false;
-            case AUTO -> sample instanceof Collection<?>;
-        };
+        boolean collection = f.cardinality() ==
+                wikidata.explore.model.FieldCardinality.COLLECTION;
 
         String label = label(model, type, target, reference, collection);
         String nested = reference ? target : null;

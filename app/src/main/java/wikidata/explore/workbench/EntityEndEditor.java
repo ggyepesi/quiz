@@ -41,7 +41,6 @@ final class EntityEndEditor extends JPanel {
      * Giving the end its own copy would be a second place to say one thing, and the two
      * could then disagree about whether an object is a date.
      */
-    private final JLabel modelledAs = new JLabel(" ");
     private static final String THESE_ENTITIES = "These QIDs";
     private static final String A_VOCABULARY = "A vocabulary";
     // Not "Instances of": the bound carries ANY property, so P279 (subclass of) is as
@@ -52,15 +51,19 @@ final class EntityEndEditor extends JPanel {
     private static final String PROPERTY_INTO = "Property + QIDs";
 
     private final String end;
-    private final JLabel destination = new JLabel(" ");
     private final JComboBox<String> mode = new JComboBox<>(
             new String[] {ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO});
     private final JTextField qids = new JTextField(16);
     private final JTextField relationPid = new JTextField(6);
     private final JCheckBox includeDescendants =
-            new JCheckBox("and their subclasses (P279)");
+            new JCheckBox("include subclasses of these QIDs (P279*)");
     private final JComboBox<String> vocabulary = new JComboBox<>();
     private final JPanel value = new JPanel(new CardLayout());
+    private boolean descendantOptionForExplicitQids;
+    /** What bounding this end does — which differs by the kind of triple being
+     * configured, so the shared editor is told rather than assuming statements. */
+    private final JLabel hint = new JLabel(" ");
+    private final String defaultConsequence;
 
     /**
      * @param end the word for this end — "Subject" or "Object"
@@ -98,23 +101,17 @@ final class EntityEndEditor extends JPanel {
         // subject is bounded by nothing and modelled as Laureate, which is a configured
         // end with an unrestricted population. Tying the class to the field row said
         // those two together and left the bound row looking like the whole answer.
-        modelledAs.setToolTipText(
-                "What an entity at this end IS once acquired — the class it is modelled "
-                        + "as. Independent of how many entities may occupy the end.");
-        GridBagUtils.labeledRow(this, c, 0, "Modelled as:", modelledAs);
-        destination.setToolTipText(
-                "Structure: which field of each record receives this end.");
-        GridBagUtils.labeledRow(this, c, 1, "Goes into field:", destination);
         JPanel bound = modeRow();
         bound.setToolTipText(
                 "Population: which entities may occupy this end BEFORE acquisition. "
                         + "\"Anything\" restricts nothing; it does not mean unconfigured.");
-        GridBagUtils.labeledRow(this, c, 2, "Entities allowed:", bound);
+        GridBagUtils.labeledRow(this, c, 0, "Entities allowed:", bound);
 
-        JLabel hint = new JLabel("<html><i>" + consequence + "</i></html>");
+        defaultConsequence = consequence;
+        consequence(consequence);
         GridBagConstraints hintCell = (GridBagConstraints) c.clone();
         hintCell.gridx = 0;
-        hintCell.gridy = 3;
+        hintCell.gridy = 1;
         hintCell.gridwidth = 2;
         hintCell.anchor = GridBagConstraints.WEST;
         add(hint, hintCell);
@@ -172,6 +169,34 @@ final class EntityEndEditor extends JPanel {
         showValueForMode();
     }
 
+    /**
+     * What bounding this end does, for the kind of triple now being edited.
+     *
+     * <p>One editor serves every kind, so the sentence under it cannot be fixed when
+     * it is built: a Source membership collects no statements, and telling its reader
+     * that bounding the object "restricts WHICH statements are collected" describes a
+     * different editor. Blank restores this end's own default.
+     */
+    void consequence(String text) {
+        hint.setText("<html><i>" + (text == null || text.isBlank()
+                ? defaultConsequence : text) + "</i></html>");
+    }
+
+    /** A Source class authors the relation property in the triple's Property column,
+     * so its Object end is an explicit QID set while still offering subclass closure. */
+    void descendantOptionForExplicitQids(boolean value) {
+        descendantOptionForExplicitQids = value;
+        showValueForMode();
+    }
+
+    void includeDescendants(boolean value) {
+        includeDescendants.setSelected(value);
+    }
+
+    boolean includesDescendants() {
+        return includeDescendants.isSelected();
+    }
+
     /** Every way an end can be bounded, for a kind that may use them all. */
     static List<String> allModes() {
         return List.of(ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO);
@@ -207,55 +232,6 @@ final class EntityEndEditor extends JPanel {
         }
         box.addItem(name);
         box.setSelectedItem(name);
-    }
-
-    /**
-     * Says which field receives this end and how, or that nothing does.
-     *
-     * <p>{@code howItIsFilled} is the route, not a guess at one. The subject has three
-     * authored routes and this used to be told about one, so a class settling its
-     * subject through a participants collection was reported as unconfigured and unable
-     * to generate — of a domain that generates.
-     */
-    void destination(String fieldName, String targetClass, String valueKind,
-            String howItIsFilled, boolean required) {
-        String kind = valueKind == null || valueKind.isBlank() ? "" : valueKind;
-        modelledAs.setText(targetClass == null || targetClass.isBlank()
-                ? "<html>" + (kind.isEmpty() ? "" : "<b>" + kind + "</b> — ")
-                        + "<i>no class named</i>, served as a bare reference</html>"
-                : "<html><b>" + targetClass + "</b>"
-                        + (kind.isEmpty() ? "" : " <i>(" + kind + ")</i>") + "</html>");
-        if (fieldName == null || fieldName.isBlank()) {
-            // Not projected is a legitimate END STATE in a model, which states shape and
-            // never acquires: the class is a placeholder yielding a reference, and
-            // specialization giving it fields is optional. Only a project that acquires
-            // has to settle it — the same condition the validator gates on, so the two
-            // cannot tell a reader different things about one model.
-            destination.setText(required
-                    ? "<html><i>Not projected</i> — " + howItIsFilled
-                            + ". Required before this domain can generate.</html>"
-                    : "<html><i>Not projected</i> — served as a reference (identity and "
-                            + "label). Optional in a model.</html>");
-            return;
-        }
-        destination.setText("<html><b>" + fieldName + "</b> — <i>" + howItIsFilled
-                + "</i></html>");
-    }
-
-    /**
-     * An end this kind does not author: what occupies it, and why it is not asked.
-     *
-     * <p>Distinct from {@link #destination}, which describes an end that IS projected
-     * into a field and may not be yet. A given end is not "not projected": there is no
-     * field because the instances themselves are the entity at this end, and saying
-     * "served as a reference, optional in a model" about that is a sentence from
-     * another situation.
-     */
-    void given(String occupiedBy, String because) {
-        modelledAs.setText(occupiedBy == null || occupiedBy.isBlank()
-                ? "<html><i>nothing yet</i></html>"
-                : "<html><b>" + occupiedBy + "</b></html>");
-        destination.setText("<html><i>" + because + "</i></html>");
     }
 
     void show(EntityBound bound) {
@@ -310,7 +286,8 @@ final class EntityEndEditor extends JPanel {
         ((CardLayout) value.getLayout()).show(value, card);
         boolean viaProperty = PROPERTY_INTO.equals(chosen);
         relationPid.setVisible(viaProperty);
-        includeDescendants.setVisible(viaProperty);
+        includeDescendants.setVisible(viaProperty
+                || descendantOptionForExplicitQids && THESE_ENTITIES.equals(chosen));
         qids.setToolTipText(viaProperty
                 ? "The QIDs the property points INTO, separated by spaces or commas."
                 : "QIDs, separated by spaces or commas.");

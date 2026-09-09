@@ -51,38 +51,6 @@ public final class RuleNodeQueryBuilder {
     }
 
     /**
-     * Membership whose configured P31 values are roots of a subclass closure.
-     *
-     * <p>This cannot be expressed by an ordinary {@link RuleNode}: its source QIDs
-     * are explicit alternatives in the membership relation, whereas this query first
-     * expands each root through {@code P279*} and then applies P31. Keep that one
-     * exceptional graph shape here, beside the other membership queries, so PID/QID
-     * validation, prefixes and query-shape rules do not drift into datasource callers.
-     * It deliberately remains label-free for the same reason as the flat backbone.
-     */
-    public static String subclassMembershipBackboneQuery(
-            String propertyPid, List<String> rootQids) {
-        String pid = RuleNode.cleanPid(propertyPid);
-        if (!WikidataIds.isPid(pid)) {
-            throw new IllegalArgumentException("Invalid membership PID: " + propertyPid);
-        }
-        List<String> roots = rootQids == null ? List.of() : rootQids.stream()
-                .map(RuleNode::cleanQid).filter(WikidataIds::isQid).distinct().toList();
-        if (roots.isEmpty()) {
-            throw new IllegalArgumentException("At least one subclass root QID is required");
-        }
-        WikidataQueryBuilder q = new WikidataQueryBuilder();
-        q.distinct(true).select("value");
-        q.rawWhere("hint:Query hint:optimizer \"None\" .");
-        q.valuesQids("root", roots);
-        // P279* is intentionally raw: WikidataQueryBuilder owns triple assembly,
-        // but does not otherwise model transitive property paths.
-        q.rawWhere("?target wdt:P279* ?root .");
-        q.rawWhere("?value wdt:" + pid + " ?target .");
-        return q.build();
-    }
-
-    /**
      * The flat membership backbone: {@code SELECT ?value [?root]} with a VALUES-first
      * join order and no label / no wrapper. The {@code hint:Query hint:optimizer
      * "None"} is essential — the membership predicate (e.g. P1411 "nominated for") is
@@ -102,7 +70,12 @@ public final class RuleNodeQueryBuilder {
         java.util.Map<String, String> sharedVars = sharedFilterVars(node, List.of(), "");
         appendValueFilterSelects(q, node, sharedVars.keySet());
         q.rawWhere("hint:Query hint:optimizer \"None\" .");
-        q.valuesQids("root", node.allSourceQids());
+        String configuredRoot = node.membershipIncludesDescendants()
+                ? "membershipRoot" : "root";
+        q.valuesQids(configuredRoot, node.allSourceQids());
+        if (node.membershipIncludesDescendants()) {
+            q.rawWhere("?root wdt:P279* ?membershipRoot .");
+        }
         q.rawWhere(node.direction().triplePattern("?root", "?value", pid));
         appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
@@ -423,7 +396,8 @@ public final class RuleNodeQueryBuilder {
                 q.rawWhere("# no membership and no seed QIDs — empty result\n"
                         + "  VALUES ?value { }");
             }
-        } else if (!isVariable && node.additionalSourceQids().isEmpty()) {
+        } else if (!isVariable && node.additionalSourceQids().isEmpty()
+                && !node.membershipIncludesDescendants()) {
             // Single QID: emit the constant directly (?value wdt:P31 wd:Qxxx),
             // NOT BIND(wd:Qxxx AS ?root) + ?value wdt:P31 ?root. The BIND makes
             // the planner miss the constant/sitelink as the entry — ~18s vs ~1s
@@ -432,8 +406,16 @@ public final class RuleNodeQueryBuilder {
                     "wd:" + RuleNode.cleanQid(rootQidOrVar), "?value", pid));
         } else {
             if (!isVariable) {
-                // Multi-QID membership: instance-of ANY of the listed types.
-                q.valuesQids("root", node.allSourceQids());
+                // Multi-QID membership: relation into any configured target. With
+                // descendant membership, ?root is the entity's actual direct target
+                // and ?membershipRoot is the configured ancestor, preserving target
+                // capture while expanding the admission rule through P279*.
+                String configuredRoot = node.membershipIncludesDescendants()
+                        ? "membershipRoot" : "root";
+                q.valuesQids(configuredRoot, node.allSourceQids());
+                if (node.membershipIncludesDescendants()) {
+                    q.rawWhere("?root wdt:P279* ?membershipRoot .");
+                }
                 // Capture the membership root as the target field's value — it's
                 // already bound here, so exposing it costs nothing (the outer
                 // SELECT * carries it out; grouped=false on the backbone, so no
@@ -460,7 +442,8 @@ public final class RuleNodeQueryBuilder {
         // ?root is a bound variable only in the multi-QID / template branch
         // above (not the single-constant case, which emits wd:Qxxx directly).
         boolean rootBound = !blankMembership
-                && (isVariable || !node.additionalSourceQids().isEmpty());
+                && (isVariable || !node.additionalSourceQids().isEmpty()
+                    || node.membershipIncludesDescendants());
         appendInlinedFieldPatterns(q, inlinedFields, node, rootBound);
         // Skip the label pattern for the empty case — with ?value bound to the
         // empty set it would add nothing, but emitting it invites a full label

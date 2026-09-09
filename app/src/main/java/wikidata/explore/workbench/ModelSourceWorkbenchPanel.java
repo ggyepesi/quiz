@@ -107,6 +107,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             new NodeSamplePanel();
     private final PropertyDiscoveryPanel discoveryPanel =
             new PropertyDiscoveryPanel();
+    private final SubclassDiscoveryPanel subclassDiscoveryPanel =
+            new SubclassDiscoveryPanel();
     private final WikiProjectSeedPanel wikiProjectPanel =
             new WikiProjectSeedPanel();
     private final ExploreByExamplePanel explorePanel =
@@ -147,6 +149,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.propertyPanel.selections(selections);
         this.entityRelationPanel.selections(selections);
         this.discoveryPanel.selections(selections);
+        this.subclassDiscoveryPanel.onAddMembershipTarget(
+                this::addMembershipTargetFromExplorer);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
 
@@ -164,6 +168,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         fieldSourcePanel.setQueryRunner(queryRunner);
         samplePanel.setQueryRunner(queryRunner);
         discoveryPanel.setQueryRunner(queryRunner);
+        subclassDiscoveryPanel.setQueryRunner(queryRunner);
         wikiProjectPanel.setQueryRunner(queryRunner);
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
@@ -221,6 +226,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public PropertyDiscoveryPanel discoveryPanel() {
         return discoveryPanel;
+    }
+
+    SubclassDiscoveryPanel subclassDiscoveryPanel() {
+        return subclassDiscoveryPanel;
     }
 
     public WikiProjectSeedPanel wikiProjectPanel() {
@@ -470,6 +479,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
 
         discoveryPanel.refreshNodeTitle();
+        subclassDiscoveryPanel.showClass(classForExplorerMembership());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
         reusableSelectionsPanel.setVisible(!(selected instanceof GeneratedClassModel clazz)
@@ -562,6 +572,34 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 && !qid.isBlank()
                 ? " (" + qid + ")"
                 : "");
+    }
+
+    private GeneratedClassModel classForExplorerMembership() {
+        GeneratedClassModel clazz = selected instanceof GeneratedClassModel selectedClass
+                ? selectedClass
+                : selected instanceof GeneratedFieldModel field
+                        ? projectModel.declaringClass(field) : null;
+        return clazz != null
+                && clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
+                && !clazz.isImported() ? clazz : null;
+    }
+
+    /** Explicit bridge from exploration to configuration. Merely selecting or viewing
+     * a discovered subclass changes nothing; this runs only from the tool's Add action. */
+    private void addMembershipTargetFromExplorer(String rawQid) {
+        applyEdits();
+        GeneratedClassModel clazz = classForExplorerMembership();
+        String qid = RuleNode.cleanQid(rawQid);
+        if (clazz == null || !wikidata.WikidataIds.isQid(qid)) return;
+        wikidata.explore.model.EntityBound membership = clazz.membership();
+        if (membership.kind() != wikidata.explore.model.EntityBound.Kind.RELATION) return;
+        java.util.List<String> targets = new java.util.ArrayList<>(membership.qids());
+        if (!targets.contains(qid)) targets.add(qid);
+        clazz.membership(wikidata.explore.model.EntityBound.relation(
+                membership.relationPid(), targets, membership.includeDescendants()));
+        classSourcePanel.edit(clazz);
+        subclassDiscoveryPanel.showClass(clazz);
+        afterChange.accept(null);
     }
 
     /**
@@ -699,17 +737,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         fieldSourcePanel.useProperty(pid, label);
 
-        if (field.cardinality()
-                == FieldCardinality.AUTO) {
-            // Discovery is a sequence: inspect several properties and add the useful
-            // ones. Cardinality sampling may run without tearing the reader out of
-            // that sequence. Direct property-catalogue actions retain the historical
-            // behaviour of opening Sample so the result is visible immediately.
-            if (showSampleTab) showSample();
-            samplePanel.triggerSample();
-        } else {
-            onFieldAddedFromTool.accept(field);
-        }
+        onFieldAddedFromTool.accept(field);
 
         afterChange.accept(null);
     }
@@ -756,7 +784,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 clazz.addField(
                         uniqueFieldName(clazz, label),
                         FieldType.AUTO,
-                        FieldCardinality.AUTO);
+                        FieldCardinality.SINGLE);
 
         selected = field;
         fieldSourcePanel.edit(field);
@@ -867,12 +895,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         fieldSourcePanel.setProjectModel(
                 projectModel);
 
-        fieldSourcePanel.onSampleRequested(
-                () -> {
-                    showSample();
-                    samplePanel.triggerSample();
-                });
-
         samplePanel.setClassSampleSupplier(this::classSampleQueryForSelected);
         samplePanel.setClassSampleUnavailableReason(this::classSampleUnavailableReason);
         samplePanel.onClassSample(onClassSample);
@@ -882,17 +904,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         // Success stays out of the reader's way; a failure does not, or the message
         // naming the unsampleable field lands on a tab nobody is looking at.
         samplePanel.onSampleFailed(this::showSample);
-        samplePanel.onCardinalitySuggested(
-                cardinality -> {
-                    if (selected
-                            instanceof GeneratedFieldModel field) {
-                        field.cardinality(cardinality);
-                        fieldSourcePanel.edit(field);
-                        afterApplyField.accept(field);
-                        afterChange.accept(null);
-                    }
-                });
-
         fieldSourcePanel.afterApplyField(
                 field -> {
                     selected = field;
@@ -962,6 +973,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         wikidataTools.addTab(
                 "Discover",
                 discoveryPanel);
+        wikidataTools.addTab(
+                "Subclasses",
+                subclassDiscoveryPanel);
         wikidataTools.addTab(
                 "Graph patterns",
                 graphPatternPanel);

@@ -68,6 +68,11 @@ class PanelLayoutIsCheckedInTest {
         aggregate.edit(project.findClass("Prize"));
         describe(actual, "Aggregate class - AggregateClassPanel", aggregate);
 
+        FieldSourcePanel field = new FieldSourcePanel();
+        field.setProjectModel(project);
+        field.edit(project.findClass("Person").fields().get(0));
+        describe(actual, "Field - FieldSourcePanel", field);
+
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
             Files.writeString(golden, actual.toString());
@@ -95,6 +100,7 @@ class PanelLayoutIsCheckedInTest {
 
     private static void walk(StringBuilder out, Container container, int depth) {
         for (Component child : container.getComponents()) {
+            if (!child.isVisible()) continue;
             String line = describe(child);
             int next = depth;
             if (line != null) {

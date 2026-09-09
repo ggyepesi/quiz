@@ -42,8 +42,8 @@ public final class DecisionCatalog {
             new StructuralDecision(
                     "intrinsic-fields",
                     "Capture the intrinsic grouping fields (target + type).",
-                    "Auto on Apply (MembershipFields), or add the fields manually",
-                    "target + type let you group/subclass later — add them now.",
+                    "Add each field explicitly to the class",
+                    "Add only the relation or type field you intend to keep and show.",
                     ctx -> MembershipFields.appliesType(ctx.clazz())
                             || MembershipFields.appliesTarget(ctx.clazz()),
                     ctx -> (!MembershipFields.appliesType(ctx.clazz()) || ctx.hasTypeField())
