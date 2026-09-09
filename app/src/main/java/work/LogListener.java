@@ -14,4 +14,13 @@ public interface LogListener {
      * stop distinguishing completion the moment it did.
      */
     void logChanged(LogNode root, boolean added, boolean terminalUpdate);
+
+    /**
+     * Rich form used by incremental views. The default preserves listeners that only
+     * care about the workflow as a whole.
+     */
+    default void logNodeChanged(
+            LogNode root, LogNode changed, boolean added, boolean terminalUpdate) {
+        logChanged(root, added, terminalUpdate);
+    }
 }

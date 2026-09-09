@@ -18,6 +18,10 @@ import java.awt.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class WorkflowLogWindow implements LogListener {
 
@@ -31,6 +35,18 @@ public class WorkflowLogWindow implements LogListener {
     private CardListView view;
     private JFrame frame;
 
+    /**
+     * Worker-side log events can arrive much faster than a card can be rebuilt. Queue
+     * one latest update per workflow and deliver them in short UI batches; otherwise
+     * thousands of invokeLater/upsert calls sit ahead of a reader's click while a
+     * generation is running.
+     */
+    private final Map<LogNode, PendingUpdate> pendingUpdates =
+            new ConcurrentHashMap<>();
+    private final AtomicBoolean deliveryScheduled = new AtomicBoolean();
+    private final AtomicInteger deliveryPasses = new AtomicInteger();
+    private static final int LIVE_REFRESH_MILLIS = 200;
+
     // Set when an update was skipped because the user had scrolled up (so their
     // selection wasn't destroyed); replayed when they return to the bottom.
     private boolean deferredUpdates;
@@ -40,52 +56,101 @@ public class WorkflowLogWindow implements LogListener {
             LogNode root,
             boolean added,
             boolean terminalUpdate) {
+        logNodeChanged(root, root, added, terminalUpdate);
+    }
 
+    @Override
+    public void logNodeChanged(
+            LogNode root, LogNode changed,
+            boolean added, boolean ignoredTerminalUpdate) {
+        if (root == null) return;
+        pendingUpdates.merge(root, new PendingUpdate(added,
+                        changed == null ? List.of() : List.of(changed)),
+                PendingUpdate::merge);
+        scheduleDelivery();
+    }
+
+    private void scheduleDelivery() {
+        if (!deliveryScheduled.compareAndSet(false, true)) return;
         SwingUtilities.invokeLater(() -> {
-            if (added && !workflows.contains(root)) {
-                workflows.add(root);
-            }
-
-            if (view != null) {
-                // Tail behaviour: follow the newest entry during generation, but
-                // only when already at the bottom — so scrolling up to read isn't
-                // yanked back.
-                JScrollBar bar = verticalBar();
-                boolean atBottom = bar == null
-                        || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
-
-                // Only refresh the cards while tailing (at the bottom). Once the user
-                // has scrolled up to READ or SELECT, the continuous upserts during a
-                // run were rebuilding the cards under the cursor and destroying the
-                // selection — so hold updates until they scroll back down (the LogNode
-                // data still updates; only the redraw is deferred).
-                // A terminal status is important even while the reader has scrolled
-                // up: otherwise the worker finishes and the buttons re-enable while
-                // its visible card keeps saying RUNNING. CardListView itself protects
-                // an active text selection, and the deferred replay below catches up
-                // after that selection/scroll position is released.
-                if (refreshFully(atBottom, root.status(), terminalUpdate)) {
-                    view.upsertViewable(root);
-                    if (atBottom && bar != null) {
-                        // After the upsert lays out, jump to the (new) bottom.
-                        SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
-                    } else if (!atBottom) {
-                        deferredUpdates = true;
-                    }
-                } else {
-                    // Keep cheap mutable titles such as "steps (N)" live while the
-                    // full card rebuild is deferred to protect selection/scroll.
-                    view.refreshInlineCollectionCounts(root);
-                    deferredUpdates = true;
-                }
-            }
+            Timer timer = new Timer(LIVE_REFRESH_MILLIS,
+                    event -> deliverPendingUpdates());
+            timer.setRepeats(false);
+            timer.start();
         });
     }
 
-    static boolean refreshFully(
-            boolean atBottom, LogStatus rootStatus, boolean terminalUpdate) {
-        return atBottom || terminalUpdate
-                || rootStatus != null && rootStatus.isTerminal();
+    private void deliverPendingUpdates() {
+        Map<LogNode, PendingUpdate> batch = new java.util.LinkedHashMap<>(pendingUpdates);
+        for (LogNode root : batch.keySet()) pendingUpdates.remove(root, batch.get(root));
+        deliveryScheduled.set(false);
+        deliveryPasses.incrementAndGet();
+
+        for (Map.Entry<LogNode, PendingUpdate> entry : batch.entrySet()) {
+            applyUpdate(entry.getKey(), entry.getValue());
+        }
+        // Covers an event that arrived during the drain, including the narrow race
+        // between clearing the scheduled flag and checking the map.
+        if (!pendingUpdates.isEmpty()) scheduleDelivery();
+    }
+
+    private void applyUpdate(LogNode root, PendingUpdate update) {
+        if (update.added() && !workflows.contains(root)) workflows.add(root);
+        if (view == null) return;
+
+        // Tail behaviour: follow the newest entry during generation, but only when
+        // already at the bottom — so scrolling up to read isn't yanked back.
+        JScrollBar bar = verticalBar();
+        boolean atBottom = bar == null
+                || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
+
+        // Only refresh the cards while tailing. Terminal state is still shown even
+        // while scrolled up; all intermediate mutations are already present on root.
+        if (update.added() || refreshFully(root.status())) {
+            view.upsertViewable(root);
+            if (atBottom && bar != null) {
+                deferredUpdates = false;
+                SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+            } else if (!atBottom) {
+                deferredUpdates = true;
+            }
+        } else {
+            view.updateNestedViewables(root, update.changed());
+            if (atBottom && bar != null) {
+                SwingUtilities.invokeLater(() -> bar.setValue(bar.getMaximum()));
+            }
+        }
+    }
+
+    private record PendingUpdate(boolean added, List<LogNode> changed) {
+        PendingUpdate {
+            changed = changed == null ? List.of() : List.copyOf(changed);
+        }
+
+        PendingUpdate merge(PendingUpdate newer) {
+            java.util.IdentityHashMap<LogNode, Boolean> seen =
+                    new java.util.IdentityHashMap<>();
+            List<LogNode> combined = new ArrayList<>();
+            for (LogNode node : changed) {
+                if (seen.put(node, Boolean.TRUE) == null) combined.add(node);
+            }
+            for (LogNode node : newer.changed) {
+                if (seen.put(node, Boolean.TRUE) == null) combined.add(node);
+            }
+            return new PendingUpdate(added || newer.added, combined);
+        }
+    }
+
+    // Concurrency-test observations; they do not expose or duplicate log state.
+    int pendingRootCount() { return pendingUpdates.size(); }
+    int deliveryPassCount() { return deliveryPasses.get(); }
+    int workflowCount() { return workflows.size(); }
+
+    static boolean refreshFully(LogStatus rootStatus) {
+        // Completing one child query while the workflow still runs must not rebuild
+        // every chip accumulated so far. The root's final state is the one point at
+        // which a complete redraw is both bounded and necessary.
+        return rootStatus != null && rootStatus.isTerminal();
     }
 
     private JScrollBar verticalBar() {
@@ -168,7 +233,10 @@ public class WorkflowLogWindow implements LogListener {
             catchUpBar.addAdjustmentListener(e -> {
                 boolean atBottom = catchUpBar.getValue() + catchUpBar.getVisibleAmount()
                         >= catchUpBar.getMaximum() - 48;
-                if (atBottom && deferredUpdates && view != null) {
+                if (atBottom && deferredUpdates && view != null
+                        && workflows.stream().noneMatch(workflow ->
+                                workflow.status() != null
+                                        && !workflow.status().isTerminal())) {
                     deferredUpdates = false;
                     for (LogNode w : new ArrayList<>(workflows)) {
                         view.upsertViewable(w);

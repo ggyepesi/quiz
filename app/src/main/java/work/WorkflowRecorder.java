@@ -61,12 +61,12 @@ public class WorkflowRecorder {
     }
 
     public void added() {
-        fire(true);
+        fire(root, true);
     }
 
     public void start() {
         root.start();
-        fire(false);
+        fire(root, false);
     }
 
     /** Opens a query step nested under the current step (or the root). */
@@ -87,7 +87,7 @@ public class WorkflowRecorder {
 
         node.start();
         stack.push(node);
-        fire(false);
+        fire(node, false);
         return node;
     }
 
@@ -145,7 +145,7 @@ public class WorkflowRecorder {
         (parent == null ? root : parent).addStep(node);
         node.start();
         stack.push(node);
-        fire(false);
+        fire(node, false);
         return node;
     }
 
@@ -155,7 +155,7 @@ public class WorkflowRecorder {
         }
 
         node.appendRequest(text);
-        fire(false);
+        fire(node, false);
     }
 
     /** Records a standalone message on the current step, or the root. */
@@ -165,8 +165,9 @@ public class WorkflowRecorder {
         }
 
         LogNode target = stack.peek();
-        (target == null ? root : target).appendMessage(text);
-        fire(false);
+        LogNode changed = target == null ? root : target;
+        changed.appendMessage(text);
+        fire(changed, false);
     }
 
     /** Records a message against an explicit process node (safe for sibling subprocesses). */
@@ -175,7 +176,7 @@ public class WorkflowRecorder {
             return;
         }
         target.appendMessage(text);
-        fire(false);
+        fire(target, false);
     }
 
     /** Uses the current query step when one is open, otherwise the owning Process node. */
@@ -195,7 +196,7 @@ public class WorkflowRecorder {
                 .parameters(LogNode.formatParameters(parameters));
         child.start();
         (parent == null ? root : parent).addStep(child);
-        fire(true);
+        fire(child, false);
         return child;
     }
 
@@ -203,7 +204,7 @@ public class WorkflowRecorder {
             LogNode node, LogStatus status, String summary, Throwable error) {
         if (node == null) return;
         node.complete(status, summary, describeError(error));
-        fireCompletion();
+        fireCompletion(node);
     }
 
     /** Terminally closes all descendants, including entries abandoned by third-party code. */
@@ -211,7 +212,7 @@ public class WorkflowRecorder {
             LogStatus status, String summary, Throwable error) {
         finishTree(root, status, describeError(error));
         root.complete(status, summary, describeError(error));
-        fireCompletion();
+        fireCompletion(root);
     }
 
     private void finishTree(LogNode parent, LogStatus status, String error) {
@@ -239,7 +240,7 @@ public class WorkflowRecorder {
                 describeError(error));
 
         stack.remove(node);
-        fireCompletion();
+        fireCompletion(node);
     }
 
     /**
@@ -267,7 +268,7 @@ public class WorkflowRecorder {
                 terminal,
                 terminal == LogStatus.OK ? summary : null,
                 error);
-        fireCompletion();
+        fireCompletion(root);
     }
 
     /**
@@ -297,7 +298,7 @@ public class WorkflowRecorder {
         }
         child.complete(status == null ? LogStatus.OK : status, summary, null);
         parent.addStep(child);
-        fire(true);
+        fire(child, false);
     }
 
     /**
@@ -319,7 +320,7 @@ public class WorkflowRecorder {
         }
         child.start();
         parent.addStep(child);
-        fire(true);
+        fire(child, false);
         return child;
     }
 
@@ -329,22 +330,23 @@ public class WorkflowRecorder {
             return;
         }
         child.complete(status == null ? LogStatus.OK : status, summary, null);
-        fireCompletion();
+        fireCompletion(child);
     }
 
     /** An ordinary change: a node was added or its running state advanced. */
-    private void fire(boolean added) {
-        notifyListener(added, false);
+    private void fire(LogNode changed, boolean added) {
+        notifyListener(changed, added, false);
     }
 
     /** A change that closed a node, which a view must render even mid-workflow. */
-    private void fireCompletion() {
-        notifyListener(false, true);
+    private void fireCompletion(LogNode changed) {
+        notifyListener(changed, false, true);
     }
 
-    private void notifyListener(boolean added, boolean terminalUpdate) {
+    private void notifyListener(
+            LogNode changed, boolean added, boolean terminalUpdate) {
         if (listener != null) {
-            listener.logChanged(root, added, terminalUpdate);
+            listener.logNodeChanged(root, changed, added, terminalUpdate);
         }
     }
 
