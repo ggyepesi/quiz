@@ -233,6 +233,14 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         return List.copyOf(result);
     }
 
+    /**
+     * Subclass expansion bounds the OBJECT of the membership relation — the targets
+     * and everything below them — so it says nothing about which relation reaches
+     * them. It was refused here for anything but P31 while no run could perform a
+     * closure at all; the membership backbone performs it now, for any property, and
+     * refusing it kept "the subclasses of position" (P279 into Q4164871) from being
+     * a population a class could have.
+     */
     private static void validateMembership(
             String property, List<String> values, boolean subclasses) {
         if (!WikidataIds.isPid(property)) {
@@ -240,10 +248,6 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         }
         if (values == null || values.isEmpty()) {
             throw new IllegalArgumentException("At least one Wikidata value QID is required");
-        }
-        if (subclasses && !"P31".equals(property)) {
-            throw new IllegalArgumentException(
-                    "Subclass expansion is only valid for P31 membership");
         }
     }
 

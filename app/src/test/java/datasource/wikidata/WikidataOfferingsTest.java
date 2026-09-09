@@ -109,4 +109,25 @@ class WikidataOfferingsTest {
         assertEquals(List.of("Q42", "Q1"), explicit.values().stream()
                 .map(datasource.EntityRef::id).toList());
     }
+
+    @Test void subclassExpansionBoundsTheObjectWhateverRelationReachesIt() {
+        // "The subclasses of position": P279 into Q4164871, with the closure on the
+        // object. This was refused for anything but P31 while no run could perform a
+        // closure at all — a class configured with it generated nothing and the log
+        // said only "Skip class — Subclass expansion is only valid for P31
+        // membership". The backbone performs the closure for any property now.
+        ClassPopulationOperation membership = (ClassPopulationOperation)
+                offering(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP);
+
+        PopulationRequest subclassesOfPosition = membership.selection(new SourceRecipe(
+                "wikidata", "statement-membership",
+                Map.of("property", "P279", "values", "Q4164871",
+                        "includeSubclasses", "true")));
+
+        assertEquals(PopulationRequest.Kind.RELATION, subclassesOfPosition.kind());
+        assertEquals("P279", subclassesOfPosition.relationId());
+        assertTrue(subclassesOfPosition.includeDescendants());
+        assertEquals(List.of("Q4164871"), subclassesOfPosition.values().stream()
+                .map(datasource.EntityRef::id).toList());
+    }
 }

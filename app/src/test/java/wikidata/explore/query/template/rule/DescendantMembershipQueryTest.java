@@ -40,6 +40,23 @@ class DescendantMembershipQueryTest {
         }
     }
 
+    @Test void aSubclassLayerIsItsOwnPopulation() {
+        // P279 into "position", with the closure: every transitive subclass, which is
+        // the class layer of a hierarchy rather than its instances. The closure bounds
+        // the OBJECT, so the relation reaching it is free to be P279 as well.
+        RuleNode node = new RuleNode("PositionKind", "positionKind");
+        node.sourceQid("Q4164871");
+        node.propertyPid("P279");
+        node.membershipIncludesDescendants(true);
+
+        String query = RuleNodeQueryBuilder.valuesQuery(node);
+
+        assertTrue(query.contains("VALUES ?membershipRoot { wd:Q4164871 }"), query);
+        assertTrue(query.contains("?root wdt:P279* ?membershipRoot"), query);
+        assertTrue(query.contains("?value wdt:P279 ?root"),
+                "the membership relation is P279 too — subclass of a subclass\n" + query);
+    }
+
     @Test void ruleCompilationCarriesTheAuthoredClosure() {
         wikidata.explore.model.GeneratedClassModel editable =
                 new wikidata.explore.model.GeneratedClassModel("Position");
