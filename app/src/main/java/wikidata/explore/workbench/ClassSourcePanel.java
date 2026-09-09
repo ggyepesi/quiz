@@ -56,7 +56,7 @@ public class ClassSourcePanel extends JPanel {
     // Subclass discriminator: a (property, value) pair narrowing the inherited
     // membership to instances that also have ?value wdt:<pid> wd:<qid> (Person =
     // nominee membership AND P31=human). Property defaults to P31 but can be any.
-    private final JTextField discriminatorPidField = new JTextField("P31", 5);
+    private final JTextField discriminatorPidField = new JTextField(MembershipPattern.INSTANCE_OF, 5);
     private final JTextField discriminatorQidField = new JTextField(8);
     private final JLabel discriminatorLabel = new JLabel(" ");
     private final JLabel inheritedPopulationFilterLabel =
@@ -205,7 +205,8 @@ public class ClassSourcePanel extends JPanel {
     // Fill the extends combo with the other classes (excluding self), selecting
     // this class's current base.
     private void populateClassDetails() {
-        discriminatorPidField.setText(clazz == null ? "P31" : clazz.effectiveDiscriminatorPid());
+        discriminatorPidField.setText(clazz == null
+                ? MembershipPattern.INSTANCE_OF : clazz.effectiveDiscriminatorPid());
         discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
         showInheritedPopulationFilter(clazz != null && !clazz.baseClassName().isBlank());
     }
@@ -341,7 +342,7 @@ public class ClassSourcePanel extends JPanel {
                 + "even if it matched membership.<br>e.g. add Q11688446 (Roman "
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Exclude types:", excludeTypesField);
+        GridBagUtils.labeledRow(form, c, y++, "Exclude instances of:", excludeTypesField);
 
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));

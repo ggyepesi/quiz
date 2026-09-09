@@ -52,6 +52,16 @@ public enum MembershipPattern {
     SEEDED("Seeded");
 
     /**
+     * Wikidata's "instance of". Not a default and not a choice: wherever a filter is
+     * defined as being about what an entity IS — a subtype discriminator, an excluded
+     * type — this is the property that says so, whatever relation the class's own
+     * membership happens to use. {@link #DEFAULT_PROPERTY} is the separate fact that a
+     * membership with nothing configured falls back to the same property, and the two
+     * are only equal by coincidence of Wikidata's modelling.
+     */
+    public static final String INSTANCE_OF = "P31";
+
+    /**
      * The property a membership is by when nothing says otherwise: instance of.
      *
      * <p>A named default, because the literal was doing four different jobs — the value
@@ -60,7 +70,7 @@ public enum MembershipPattern {
      * and {@link #DEFAULT_PROPERTY_LABEL}; the fourth is {@link #relational(String)},
      * which is not a literal problem and must not be solved as one.
      */
-    public static final String DEFAULT_PROPERTY = "P31";
+    public static final String DEFAULT_PROPERTY = INSTANCE_OF;
 
     /** What {@link #DEFAULT_PROPERTY} is called. */
     public static final String DEFAULT_PROPERTY_LABEL = "instance of";

@@ -76,7 +76,8 @@ public final class RuleTreeCompiler {
             String qid = RuleNode.cleanQid(exq);
             if (WikidataIds.isQid(qid)) {
                 node.excludedPredicateObjects().add(
-                        new RuleNode.PredicateObjectExclusion("P31", qid));
+                        new RuleNode.PredicateObjectExclusion(
+                        wikidata.explore.model.MembershipPattern.INSTANCE_OF, qid));
             }
         }
         node.propertyLabel(m.propertyLabel().isBlank()
@@ -248,7 +249,8 @@ public final class RuleTreeCompiler {
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
                         && !childMembership.qids().isEmpty()) {
                     child.membershipPid(childMembership.relationPid().isBlank()
-                                                ? "P31" : childMembership.relationPid());
+                                                ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
+                                                : childMembership.relationPid());
                     child.membershipQid(childMembership.qids().get(0));
                 }
                 // "Notable only" is a notability axis (independent of membership):
@@ -290,7 +292,8 @@ public final class RuleTreeCompiler {
                     EntityBound bound = refClass.effectiveMembership(project);
                     if (!bound.qids().isEmpty()) {
                         included.membershipPid(bound.relationPid().isBlank()
-                                                       ? "P31" : bound.relationPid());
+                                                       ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
+                                          : bound.relationPid());
                         included.membershipQid(bound.qids().get(0));
                     }
                 }
@@ -377,7 +380,8 @@ public final class RuleTreeCompiler {
             String qid = RuleNode.cleanQid(exq);
             if (WikidataIds.isQid(qid)) {
                 node.excludedPredicateObjects().add(
-                        new RuleNode.PredicateObjectExclusion("P31", qid));
+                        new RuleNode.PredicateObjectExclusion(
+                        wikidata.explore.model.MembershipPattern.INSTANCE_OF, qid));
             }
         }
         node.propertyLabel(m.propertyLabel().isBlank()
@@ -498,7 +502,8 @@ public final class RuleTreeCompiler {
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
                         && !childMembership.qids().isEmpty()) {
                     child.membershipPid(childMembership.relationPid().isBlank()
-                                                ? "P31" : childMembership.relationPid());
+                                                ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
+                                                : childMembership.relationPid());
                     child.membershipQid(childMembership.qids().get(0));
                 }
                 child.requireSitelink(cm.requireSitelink());
@@ -528,7 +533,8 @@ public final class RuleTreeCompiler {
                     EntityBound bound = refClass.membership();
                     if (!bound.qids().isEmpty()) {
                         included.membershipPid(bound.relationPid().isBlank()
-                                                       ? "P31" : bound.relationPid());
+                                                       ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
+                                          : bound.relationPid());
                         included.membershipQid(bound.qids().get(0));
                     }
                 }

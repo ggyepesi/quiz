@@ -60,7 +60,7 @@
     button: Down  (disabled)
     label: Available:
     combo: 1 item(s)
-  label: Exclude types:
+  label: Exclude instances of:
   text: []
   label: Limit:
   text: [200]

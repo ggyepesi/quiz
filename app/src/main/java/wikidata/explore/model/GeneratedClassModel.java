@@ -278,7 +278,7 @@ public class GeneratedClassModel {
 
     public String effectiveDiscriminatorPid() {
         String pid = clean(discriminatorPid);
-        return pid.matches("(?i)P\\d+") ? pid : "P31";
+        return pid.matches("(?i)P\\d+") ? pid : MembershipPattern.INSTANCE_OF;
     }
 
     public StatementClassSource statementSource() {
