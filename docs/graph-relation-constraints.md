@@ -94,6 +94,19 @@ Choosing the nearest qualifying ancestor matters. Comparing every ancestor event
 admits unrelated endpoints through a very broad common node such as “political
 position”. A depth bound remains mandatory even with the nearest-match rule.
 
+Exhausting the depth bound without a qualifying ancestor is a **rejection**, not a
+review. The two are different facts and the evaluator already separates them:
+
+| what happened | outcome |
+| --- | --- |
+| the traversal completed within the bound and nothing qualified | **rejected** — the graph was read and gave an answer |
+| adjacency was incomplete or unavailable, so the traversal could not complete | **review** — the graph could not be read |
+
+Only the second is the coverage problem the datasource-boundary section describes.
+Reporting a complete traversal as review would send every unrelated endpoint pair to a
+person; reporting an incomplete one as rejected would let missing acquisition look like
+a decided fact.
+
 ## General form: admit or block a node by evidence reached from it
 
 The section above constrains a discovered *edge* by comparing its two endpoints. The
@@ -112,11 +125,15 @@ selectors were tried against those 28:
 | jurisdiction (P1001) is a country | 18 of 28 | P1001 is missing on 10, including Emperor of Austria; absent on 61% of the domain |
 | nearest P279 ancestor is a chosen kind | 25 of 28 | needs hand-picked anchors; P279 is absent on a fifth of the domain; `P279+` reaches *baryonic matter* in three steps |
 
-What all 28 share is not a level of government but a polity that no longer exists.
-Reading three properties any-of — `P1001` jurisdiction, `P17` country, `P2389`
-organization directed by the office — and testing whether what they reach is dissolved
-keeps **26 of 28**. `P2389` alone recovers King of Sardinia and Corsica and Margrave of
-Moravia, which name nothing through the other two.
+The hypothesis is that what these 28 share is not a level of government but a polity
+that no longer exists. What Wikidata can be made to *establish* is narrower: reading
+three properties any-of — `P1001` jurisdiction, `P17` country, `P2389` organization
+directed by the office — and testing whether what they reach is dissolved accepts
+**26 of the 28**. `P2389` alone recovers King of Sardinia and Corsica and Margrave of
+Moravia, which name nothing through the other two. The remaining two, Count Palatine of
+the Rhine and Head of the House of Habsburg, name no polity at all: the hypothesis may
+still hold of them, and no available evidence decides it. That gap is the reason the
+outcome below is three-valued rather than a boolean.
 
 Applied to the whole population: **8,449 of 92,709** snapshot entities (9.1%), and
 **15,388 of 145,708** live. Of 75,587 distinct polities the population reaches, 6,718
@@ -139,21 +156,40 @@ A test is itself a bounded path plus a comparison, so the construct nests: what 
 condition compares against may be another traversal rather than a constant. That is
 the only recursion required.
 
-### Evidence is a third role for a reached node
+### The reached node is Evidence, in the sense this design already defines
 
-A node reached along a labeled edge can be a **value** kept on the instance (a field's
-property), a **membership target** matched against (the membership triple's object), or
-**evidence** — reached, tested, and discarded, with only the verdict surviving. The
-Kingdom of Hungary is the third: it is not a position, never enters the domain, and
-nothing about it is stored, yet whether it is dissolved decides whether Apostolic King
-of Hungary is acquired. Naming that role is what makes this a general method instead of
-three special cases.
+[Configurable Knowledge-Graph Discovery](configurable-knowledge-graph-discovery.md)
+already names this expansion policy: **Evidence** — "use it for classification or
+validation without adding a served domain object". A condition is the first configured
+consumer of that policy, and it needs no new role.
 
-### Admit and block are one construct with a polarity
+The Kingdom of Hungary is reached under it. It is not a position, it never becomes a
+served domain object, and no field of any instance holds it — but whether it is
+dissolved decides whether Apostolic King of Hungary is acquired.
 
-`excludedTypeQids` is already the blocking form, at one hop with an equality test: it
+**The verdict alone is not enough to keep.** A stored boolean cannot be explained,
+audited, reproduced or re-evaluated when the rule changes, and "8,449 accepted" without
+the witness is the same defect as the exclusions this note already says must be
+recorded rather than silently filtered. What acquisition retains for an evaluated node
+is therefore the verdict *and* its evidence:
+
+```text
+node        Q6412254   Apostolic King of Hungary
+verdict     accepted   by condition "historical polity"
+witness     P1001 -> Q171150 (Kingdom of Hungary), P576 present
+coverage    P1001, P17, P2389 answered for this node
+```
+
+This stays in the acquisition layer, beside the run's other provenance. It does not
+become a served field, which is exactly what the Evidence policy means; and it is not
+discarded, which is what makes a verdict defensible later.
+
+### Accept and reject are one construct with a polarity
+
+`excludedTypeQids` is already the rejecting form, at one hop with an equality test: it
 compiles to `PredicateObjectExclusion(P31, qid)` and is emitted as `FILTER NOT EXISTS`.
-The admitting form emits the same shape:
+The predicate this note needs is expressible in the same backbone — verified live,
+15,388 of 145,708:
 
 ```sparql
 ?value wdt:P31 wd:Q4164871 .
@@ -163,17 +199,50 @@ FILTER EXISTS {
 }
 ```
 
-So this is an extension of the membership backbone rather than a second engine. What
-the existing exclusion cannot express is the second hop, the existence test, and
-any-of over alternative edges.
+**That query is an optimisation, not the acquisition shape.** It returns accepted nodes
+only, so it cannot tell a node that named a present-day polity from one that named
+none, and it discards both the 4,656 unknowns and the witness that justified every
+acceptance. Used as the acquisition query it would contradict the section below before
+it was implemented.
+
+Acquisition asks for a classification instead, keeping the evidence it reached:
+
+```sparql
+?value wdt:P31 wd:Q4164871 .
+OPTIONAL {
+  ?value (wdt:P1001|wdt:P17|wdt:P2389) ?polity .
+  OPTIONAL { ?polity wdt:P576 ?dissolvedOn }
+  OPTIONAL { ?polity wdt:P31 ?polityKind }
+}
+```
+
+No `?polity` row means unknown; a `?polity` with neither test satisfied means rejected;
+either test satisfied means accepted, and the binding is the witness. A provider may
+push the filter down to the `FILTER EXISTS` form **only** when the caller asked for
+accepted nodes alone — a preview count, say. The default must classify, because a
+condition that cannot report what it excluded is not reviewable.
 
 ### The outcome is three-valued
 
-4,656 positions (5%) name no polity at all. Collapsing that into `block` loses Count
-Palatine of the Rhine; collapsing it into `admit` readmits the noise. It is the same
+A condition reports the same three outcomes the endpoint evaluator already reports —
+**accepted**, **rejected**, **review** — and a rejected node is excluded from the
+population, which is what the existing exclusions call blocking.
+
+4,656 positions (5%) name no polity at all. Collapsing that into rejected loses Count
+Palatine of the Rhine; collapsing it into accepted readmits the noise. It is the same
 `REVIEW` requirement the first-slice decisions already state for absence, and for the
-same reason: an unreturned property is not a property that does not exist, so an
-unknown outcome is a visible set and not a boolean.
+same reason: an unreturned property is not a property that does not exist, so review is
+a visible set and not a rounding of a boolean.
+
+The distinction the evaluator must draw is between two different absences:
+
+| what happened | outcome |
+| --- | --- |
+| the evidence properties were answered for this node, and none reached a dissolved polity | **rejected** — evidence exists and contradicts the condition |
+| the evidence properties were not answered for this node, or coverage cannot say | **review** — nothing is known, and silence is not a verdict |
+
+"Named no polity" is the first of those only where acquisition coverage confirms the
+three properties were asked. Otherwise it is the second.
 
 The presence form must compile through the same graph-predicate contract as
 `GraphRelationAbsent`. One is coverage-aware absence and the other coverage-aware
@@ -215,13 +284,20 @@ on the judged denominator, and nearest-not-any).
 
 The initial concept needs only:
 
-- a bounded, directed path from each endpoint;
-- an optional predicate selecting reached values;
+- a bounded, directed path from each endpoint, or from the single node being admitted;
+- an optional predicate selecting reached values, including `EXISTS` on a further edge;
 - `INTERSECTS` as the comparison;
 - `NEAREST_MATCHING` for hierarchical paths;
-- `REJECT` or `REVIEW` when required evidence is missing;
-- later, `ALL`, `ANY` and `NOT` for explicitly composing constraints when a real model
-  forces more than one.
+- `ACCEPT`, `REJECT` and `REVIEW` as the three outcomes;
+- `ANY`, `ALL` and `NOT` for composing constraints.
+
+Composition is in the first vocabulary rather than deferred, because the measured
+condition needs it twice over: any-of across three evidence properties
+(`P1001 | P17 | P2389`) and any-of across two tests (`P576` exists or
+`P31 = Q3024240`). Deferring it would mean the selector that motivates this note
+cannot be expressed by the construct the note proposes. Two operators short of that —
+`ALL` and `NOT` — are included with it because a polarity that can only accept is the
+`excludedTypeQids` asymmetry again.
 
 This can express, for example:
 
@@ -369,7 +445,26 @@ the anchors, never the sizes.
 
 ## Next implementation slice
 
-Attach an optional endpoint constraint to the existing graph plan, compile its
+**Node admission, not endpoint comparison.** The forced case is `Historical Positions`:
+145,708 acquired entities where 15,388 are wanted, and no way to say which. No
+configured domain yet needs two endpoints compared, so the endpoint evaluator — which
+already exists as a core — waits for one.
+
+The slice is issues #182, #183 and #184, in that order:
+
+1. **#182** — a condition that follows one hop of evidence and tests a further edge for
+   existence. Without this nothing else is executable.
+2. **#183** — `ANY` across evidence properties and across tests, and the Evidence
+   expansion policy as the declared role of what the condition reaches.
+3. **#184** — the three-valued result, with the witness and the coverage retained, and
+   the excluded count reported rather than silently filtered.
+
+The classifying query above is the acquisition contract for all three: a run must be
+able to say, for every entity it evaluated, which outcome it reached and on what
+evidence. Pushing the predicate into a `FILTER EXISTS` is an optimisation available
+only where the caller asked for accepted nodes alone.
+
+Then attach an optional endpoint constraint to the existing graph plan, compile its
 relation demands through the datasource provider, and preview accepted, rejected and
 unresolved candidate edges before any configuration is saved. The plan remains the
-owner; the evaluator added here is execution machinery, not another persisted model.
+owner; the evaluator is execution machinery, not another persisted model.
