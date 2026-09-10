@@ -1,0 +1,217 @@
+Generate domain  [OK]  4 objects
+  Generate domain  [OK]  4 objects
+      | Datasource plan: 21 binding(s): 3 Wikidata id (QID), 3 Label, 3 Also known as, 1 Members by explicit list, 11 Statement property. 1 class population binding(s) drive discovery; 0 field acquisition binding(s) drive field acquisition across all configured classes; 3 Wikidata class-name declaration(s) drive label/alias retention; remaining field sources still use the established acquisition passes.
+    Generate domain "History"  [OK]  Position	1
+Person	1
+Name	1
+TOTAL	3 distinct across 3 served type(s); 1 root class query(ies)
+        | Execution settings: cache 768 MB (auto), network balanced (6 concurrent entity requests), completeness require complete.
+        | Skip class "Person" — no population source is configured.
+        | Skip class "Name" — no population source is configured.
+        | === Class "Position" (depth 1) ===
+        | [WIKIDATA] [SPARQL 1] START
+        | SELECT *
+        | WITH {
+        |   SELECT DISTINCT ?value ?valueLabel WHERE {
+        |     VALUES ?value { wd:Q4164871 }
+        |     ?value rdfs:label ?valueLabel .
+        |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+        |   }
+        |   LIMIT 200000
+        | } AS %limited
+        | WHERE {
+        |   INCLUDE %limited .
+        | }
+        | ORDER BY ?valueLabel
+        | [WIKIDATA] [SPARQL 1] OK rows=1 timeMs=1337
+        | 
+        | [API 1] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json
+        | [API 1] OK headersMs=457 timeMs=459 bytes=3193 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass
+        | Batch execution wall time: 492 ms (up to 6 concurrent unit(s)).
+        | Retained prospective downstream claim(s): disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]; bound 1 QID/property and 2 QID/metadata pair(s).
+        |   -> 1 Position
+        | Skip class "PositionHolder" — no population source is configured.
+        | Skip class "OfficeHolding" — no population source is configured.
+        | Statement acquisition plan: OfficeHolding: discover subjects, load P39 with startDate=P580, endDate=P582, predecessor=P1365, successor=P1366
+        | [WIKIDATA] [SPARQL 2] START
+        | SELECT DISTINCT ?subject WHERE {
+        |   ?subject wdt:P39 ?value .
+        |   VALUES ?value { wd:Q4164871 }
+        | }
+        | [WIKIDATA] [SPARQL 2] OK rows=1 timeMs=281
+        | 
+        | [API 2] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json
+        | [API 2] OK headersMs=195 timeMs=195 bytes=1385 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass
+        | Batch execution wall time: 200 ms (up to 6 concurrent unit(s)).
+        | Statement-subject propagation: retained 1 QID/property pair(s) for 3 downstream role consumer(s); 2 QID/metadata pair(s).
+        | Batch execution wall time: 6 ms (up to 6 concurrent unit(s)).
+        | Statement-field propagation OfficeHolding.position: 1 QID(s), 1 planned property pair(s).
+        | Qualifier load __subject_OfficeHolding P39 -> 1 OfficeHolding statements
+        | Reify P39 of __subject_OfficeHolding → OfficeHolding
+        |  value: position
+        |  canonical list: —
+        |  subject-participant fields: —
+        |  subject-fallback fields: source
+        |  statement-value-fallback fields: —
+        |  grouped by: source + position + startDate + endDate
+        |  when two share that: successor: Must agree; predecessor: Must agree
+        |  qualifiers: startDate←P580(date), endDate←P582(date), predecessor←P1365, successor←P1366
+        |  → 1 records
+        | Invert OfficeHolding.source -> Person.offices
+        | Un-stamped 1 discovered subject(s), stripped 1 internal statement field(s) — kept as referents, not served.
+        | Stamped 1 referent(s) with their declared class.
+        | Construct modeled records: 1 record(s) constructed
+        | Semantic acquisition manifest: Person=[P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735]; Name=[P734, P735, P31]; Position=[P31]; PositionHolder=[P31]; OfficeHolding=[P31]; __subject_OfficeHolding=[P39].
+        | Semantic retention preflight iteration 1: 12 planned QID/property pair(s) across 3 class member(s) in 3 class(es), registered before acquisition; 0 pair(s) already loaded and not planned again.
+        | 
+        | [API 3] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims%7Caliases&languages=en%7Cmul&format=json
+        | [API 3] OK headersMs=173 timeMs=173 bytes=1340 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass
+        | Batch execution wall time: 184 ms (up to 6 concurrent unit(s)).
+        | Batch execution wall time: 2 ms (up to 6 concurrent unit(s)).
+        | Referent field load Person.birthName (P1477) -> 0 value(s)
+        | Referent field load Person.nativeName (P1559) -> 0 value(s)
+        | Referent field load Person.pseudonyms (P742) -> 0 value(s)
+        | Referent field load Person.dateOfBirth (P569) -> 1 value(s)
+        | Referent field load Person.dateOfDeath (P570) -> 0 value(s)
+        | Referent field load Person.type (P31) -> 1 value(s)
+        | Referent field load Person.spouse (P26) -> 0 value(s)
+        | Referent field load Person.image (P18) -> 1 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.
+        | Owned components: materialized 1 object(s).
+        | Semantic convergence iteration 1: 0 role stamp(s), 3 field value(s), 0 kind(s), 1 owned value(s).
+        | Semantic fact reuse iteration 1: 1 document(s) fetched, 1 fetch(es) avoided.
+        | Semantic retention preflight iteration 2: 7 planned QID/property pair(s) across 4 class member(s) in 4 class(es), registered before acquisition; 8 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 1 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 1 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 1 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 1 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 1 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 1 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 1 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 1 entities — skipped.
+        | Batch execution wall time: 0 ms (up to 6 concurrent unit(s)).
+        | Referent field load Name.familyName (P734) -> 0 value(s)
+        | Referent field load Name.givenName (P735) -> 0 value(s)
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 2: 1 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 2: 0 document(s) fetched, 1 fetch(es) avoided.
+        | Semantic retention preflight iteration 3: 5 planned QID/property pair(s) across 4 class member(s) in 4 class(es), registered before acquisition; 10 pair(s) already loaded and not planned again.
+        | Referent field Person.birthName (P1477) already loaded for 1 entities — skipped.
+        | Referent field Person.nativeName (P1559) already loaded for 1 entities — skipped.
+        | Referent field Person.pseudonyms (P742) already loaded for 1 entities — skipped.
+        | Referent field Person.dateOfBirth (P569) already loaded for 1 entities — skipped.
+        | Referent field Person.dateOfDeath (P570) already loaded for 1 entities — skipped.
+        | Referent field Person.type (P31) already loaded for 1 entities — skipped.
+        | Referent field Person.spouse (P26) already loaded for 1 entities — skipped.
+        | Referent field Person.image (P18) already loaded for 1 entities — skipped.
+        | Referent field Name.familyName (P734) already loaded for 1 entities — skipped.
+        | Referent field Name.givenName (P735) already loaded for 1 entities — skipped.
+        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.
+        | Semantic convergence iteration 3: 0 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).
+        | Semantic fact reuse iteration 3: 0 document(s) fetched, 0 fetch(es) avoided.
+        | Semantic convergence fixed point reached after 2 productive iteration(s).
+        | Resolve semantic worklist: 1 owned part(s), 0 kind(s), 3 field value(s)
+        | Loaded 3 referent/owned field value(s) from declared PIDs.
+        | 
+        | [API 4] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5&props=labels&languages=en%7Cmul&format=json
+        | [API 4] OK headersMs=384 timeMs=385 bytes=103 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass
+        | Batch execution wall time: 387 ms (up to 6 concurrent unit(s)).
+        | Final label hydration: 1 resolved, 0 explicitly missing, 0 unavailable.
+        | Canonicalization: scanned=4 withModel=4 withSpec=4 derived=1 changed=1  sample: type=OfficeHolding field=source value=[WikidataDynamicObject] 'Tengku Akhmad Thala'a — position' -> 'Tengku Akhmad Thala'a'
+        | Batch execution wall time: 0 ms (up to 6 concurrent unit(s)).
+        | Built vocabulary 'Type' from the served pool -> 1 distinct value(s)
+        | Finalize and validate: 0 dead, 0 orphan(s), 0 dropped for a missing required field
+        | Alias acquisition: aliases rode 3 entity request(s), 0 standalone request(s) of which 0 failed, 3 entity answer(s), ~20 KB alias-bearing response JSON, ~5 KB transferred on the wire; aliases themselves ~0 KB; 827 ms aggregate request time (concurrent, not wall clock).
+        | Wikidata fact store: 4 entity document(s) fetched, 5 later fetch(es) avoided; holding 3 document(s) (~0 MB), 0 evicted, 0 re-fetch(es) of an evicted document.
+        | Fact-demand timing: 3 QID/property demand pair(s) known or retained before first acquisition, 9 unplanned demand pair(s) discovered after the entity had already been fetched; 5 request(s) avoided by retained facts.
+        | Fact-store measurement: ~2 KB.
+        | Fact-store property usage (banked / demanded / unused, retained bytes, cache hits, eviction re-fetches, late demands):
+        |   P39: 1 / 1 / 0, ~4 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 0 late demand(s).
+        |   P569: 1 / 1 / 0, ~2 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P31: 2 / 2 / 0, ~1 KB retained, ~0 KB unused, 3 hit(s), 0 eviction re-fetch(es), 0 late demand(s).
+        |   P18: 1 / 1 / 0, ~1 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P1477: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P1559: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P26: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 0 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P570: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P734: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P735: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        |   P742: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).
+        | Fact demand by consumer: statement acquisition OfficeHolding [P39=1]; Person [P31=1, P26=1, P1477=1, P1559=1, P742=1, P569=1, P570=1, P18=1]; Name [P734=1, P735=1]; disambiguation prune [P31=1].
+        | Fact retention by producer (PID: banked entities, retained / unused bytes):
+        |   discovered statement subjects → statement acquisition / P39: 1, ~4 / ~0 KB.
+        |   semantic preflight → semantic convergence / P569: 1, ~2 / ~0 KB.
+        |   statement-subject role propagation → disambiguation prune / P31: 1, ~1 / ~0 KB.
+        |   semantic preflight → semantic convergence / P18: 1, ~1 / ~0 KB.
+        |   root acquisition → disambiguation prune / P31: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1477: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P1559: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P26: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P570: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P734: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P735: 1, ~0 / ~0 KB.
+        |   semantic preflight → semantic convergence / P742: 1, ~0 / ~0 KB.
+        | Materialize instances: 4 instance(s) materialized
+      Root query  [OK]  1 objects
+          | SELECT *
+          | WITH {
+          |   SELECT DISTINCT ?value ?valueLabel WHERE {
+          |     VALUES ?value { wd:Q4164871 }
+          |     ?value rdfs:label ?valueLabel .
+          |     FILTER(LANG(?valueLabel) IN ("en", "mul"))
+          |   }
+          |   LIMIT 200000
+          | } AS %limited
+          | WHERE {
+          |   INCLUDE %limited .
+          | }
+          | ORDER BY ?valueLabel
+      Fill [] for 1 members — 1 batches of 50 (the members' own claims, fetched via wbgetentities: these properties full-scan in SPARQL); propagated: disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (485 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871&props=labels|claims|aliases&languages=en|mul&format=json
+      Discover subjects: P39 into 1 discovery seed(s)  [OK]  1 request(s)
+        Subjects with P39 into 1 discovery seed(s)  [OK]  1 subjects
+            | SELECT DISTINCT ?subject WHERE {
+            |   ?subject wdt:P39 ?value .
+            |   VALUES ?value { wd:Q4164871 }
+            | }
+      Acquire discovered __subject_OfficeHolding subjects (1 entities, 2 properties)  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (199 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=labels|claims|aliases&languages=en|mul&format=json
+      Qualifier load __subject_OfficeHolding P39 (1 entities)  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (5 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Person for 1 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (180 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims|aliases&languages=en|mul&format=json
+      Load 6 literal referent fields on Person for 1 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (1 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json
+      Load 2 referent field(s) on Name for 1 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (0 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json
+      Hydrate final labels for 1 reachable entities  [OK]  1 request(s)
+        wbgetentities 1 entities  [OK]  ok (386 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5&props=labels&languages=en|mul&format=json
+      Check 2 modeled entity(ies) for Wikimedia internal types  [OK]  1 request(s)
+        wbgetentities 2 entities  [OK]  ok (0 ms)
+            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871|Q105658820&props=claims&languages=en|mul&format=json
+Log message  [OK]  Done
+    | What this run did:
+    |   Rules that named instances: Owned parts newly created: 1 changed
+    |   Self-reference: Ran; no self-reference decisions
+    |   Owned composition: Ran; 1 part(s) newly created
+    |   Kind classification: Ran; every kind was already settled
+    |   Projections: Ran; no projected field value changed
+    |   Objects in the pool: 4
+Log message  [OK]  Done
+    | 1 vocabulary(ies) filled from the generated data — use "Save domain" to persist them.
+Log message  [OK]  Done
+    | Generated 4 objects (in memory — use "Save domain" to persist to history.snapshot.json).
+Log message  [OK]  Done
+    | Saved domain "History":
+    | Config:    data/wikidata/history/history.model.json
+    | Rule tree: data/wikidata/history/history.ruletree.json
+    | Instances: 4 -> data/wikidata/history/history.snapshot.json
+    | Registry:  data/wikidata/datasets.json
+    | Counts:    data/wikidata/history/history.counts.tsv

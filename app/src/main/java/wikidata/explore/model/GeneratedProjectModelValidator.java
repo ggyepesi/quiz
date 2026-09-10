@@ -598,7 +598,9 @@ public final class GeneratedProjectModelValidator {
             return true;
         }
         GeneratedClassModel target = project.findClass(field.entityClassName());
-        return target != null && target.seedQids().stream()
+        if (target == null) return false;
+        if (target.effectiveMembership(project).bounded()) return true;
+        return target.seedQids().stream()
                 .map(GeneratedProjectModelValidator::clean)
                 .anyMatch(q -> q.matches("(?i)Q\\d+"));
     }
@@ -644,7 +646,7 @@ public final class GeneratedProjectModelValidator {
                         "A statement class with no source class discovers its "
                                 + "subjects, so at least one end of the triple must be "
                                 + "bounded: allowed objects (value type, value set, "
-                                + "seeded value class, or a VOCABULARY), or a bound on "
+                                + "populated value class, or a VOCABULARY), or a bound on "
                                 + "which entities may be the subject."));
             }
             return;

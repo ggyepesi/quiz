@@ -152,6 +152,12 @@ public final class ModelStatementReifications {
         if (valueField.isBlank()) {
             valueField = findValueField(statementClass, statementPid);
         }
+        EntityBound objectBound = resolve(statementSource.objectBound(), project);
+        if (!objectBound.bounded()) {
+            EntityBound targetMembership = targetClassMembership(
+                    statementClass, project, valueField);
+            if (targetMembership.bounded()) objectBound = targetMembership;
+        }
         List<String> valueQids = valueQids(
                 statementClass, sourceClassModel, project,
                 statementPid, valueField);
@@ -207,7 +213,6 @@ public final class ModelStatementReifications {
         // be taken apart into a QID list and a type QID and then rebuilt, which could
         // only express what those two variables could: a RELATION on anything but P31
         // was silently dropped, and includeDescendants with it. A bound stays a bound.
-        EntityBound objectBound = resolve(statementSource.objectBound(), project);
         if (objectBound.kind() == EntityBound.Kind.EXPLICIT) {
             valueQids = new ArrayList<>(objectBound.qids());
             discoveryValueQids = new ArrayList<>(objectBound.qids());
@@ -390,6 +395,25 @@ public final class ModelStatementReifications {
         LinkedHashSet<String> seeds = new LinkedHashSet<>();
         addQids(seeds, target.seedQids());
         return new ArrayList<>(seeds);
+    }
+
+    /** The value field's declared class population is its implicit value domain. */
+    private static EntityBound targetClassMembership(
+            CompiledClass statementClass, CompiledProjectModel project,
+            String valueField) {
+        if (statementClass == null || project == null) return EntityBound.unbounded();
+        CompiledField field = statementClass.ownFields().stream()
+                .filter(ModelStatementReifications::runtimeStatementField)
+                .filter(candidate -> valueField.equals(candidate.name()))
+                .filter(candidate -> candidate.type() == FieldType.ENTITY)
+                .findFirst().orElse(null);
+        CompiledClass target = field == null ? null
+                : project.findClass(field.entityClassName()).orElse(null);
+        // Membership plus seeds is an intersection. EntityBound deliberately holds
+        // one bound, so returning only the relation would widen that class. The seed
+        // path below retains the explicit restriction instead.
+        return target == null || !target.seedQids().isEmpty()
+                ? EntityBound.unbounded() : target.membership();
     }
 
     private static List<ReifyConstruct.Role> fallbackRoles(

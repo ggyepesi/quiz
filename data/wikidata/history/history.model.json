@@ -1635,21 +1635,23 @@
       "sourceType" : "SPARQL"
     },
     "membership" : {
-      "kind" : "UNBOUNDED",
-      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
-      "relationPid" : "",
+      "kind" : "RELATION",
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q4164871" ] ],
+      "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ "Q4164871" ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
     "populationSource" : {
       "providerId" : "wikidata",
-      "operationId" : "seed-list",
+      "operationId" : "statement-membership",
       "parameters" : {
-        "@class" : "java.util.ImmutableCollections$Map1",
-        "ids" : "Q4164871"
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "false",
+        "property" : "P31",
+        "values" : "Q4164871"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -1707,10 +1709,12 @@
       },
       "recipe" : {
         "providerId" : "wikidata",
-        "operationId" : "seed-list",
+        "operationId" : "statement-membership",
         "parameters" : {
-          "@class" : "java.util.ImmutableCollections$Map1",
-          "ids" : "Q4164871"
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "false",
+          "property" : "P31",
+          "values" : "Q4164871"
         }
       }
     } ] ],

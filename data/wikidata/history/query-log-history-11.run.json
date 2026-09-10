@@ -1,0 +1,599 @@
+{
+  "formatVersion" : 1,
+  "savedAt" : "2026-09-10T11:04:12.605683Z",
+  "logText" : "Generate domain  [OK]  4 objects\n  Generate domain  [OK]  4 objects\n      | Datasource plan: 21 binding(s): 3 Wikidata id (QID), 3 Label, 3 Also known as, 1 Members by explicit list, 11 Statement property. 1 class population binding(s) drive discovery; 0 field acquisition binding(s) drive field acquisition across all configured classes; 3 Wikidata class-name declaration(s) drive label/alias retention; remaining field sources still use the established acquisition passes.\n    Generate domain \"History\"  [OK]  Position\t1\nPerson\t1\nName\t1\nTOTAL\t3 distinct across 3 served type(s); 1 root class query(ies)\n        | Execution settings: cache 768 MB (auto), network balanced (6 concurrent entity requests), completeness require complete.\n        | Skip class \"Person\" — no population source is configured.\n        | Skip class \"Name\" — no population source is configured.\n        | === Class \"Position\" (depth 1) ===\n        | [WIKIDATA] [SPARQL 1] START\n        | SELECT *\n        | WITH {\n        |   SELECT DISTINCT ?value ?valueLabel WHERE {\n        |     VALUES ?value { wd:Q4164871 }\n        |     ?value rdfs:label ?valueLabel .\n        |     FILTER(LANG(?valueLabel) IN (\"en\", \"mul\"))\n        |   }\n        |   LIMIT 200000\n        | } AS %limited\n        | WHERE {\n        |   INCLUDE %limited .\n        | }\n        | ORDER BY ?valueLabel\n        | [WIKIDATA] [SPARQL 1] OK rows=1 timeMs=1337\n        | \n        | [API 1] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json\n        | [API 1] OK headersMs=457 timeMs=459 bytes=3193 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass\n        | Batch execution wall time: 492 ms (up to 6 concurrent unit(s)).\n        | Retained prospective downstream claim(s): disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]; bound 1 QID/property and 2 QID/metadata pair(s).\n        |   -> 1 Position\n        | Skip class \"PositionHolder\" — no population source is configured.\n        | Skip class \"OfficeHolding\" — no population source is configured.\n        | Statement acquisition plan: OfficeHolding: discover subjects, load P39 with startDate=P580, endDate=P582, predecessor=P1365, successor=P1366\n        | [WIKIDATA] [SPARQL 2] START\n        | SELECT DISTINCT ?subject WHERE {\n        |   ?subject wdt:P39 ?value .\n        |   VALUES ?value { wd:Q4164871 }\n        | }\n        | [WIKIDATA] [SPARQL 2] OK rows=1 timeMs=281\n        | \n        | [API 2] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=labels%7Cclaims%7Caliases&languages=en%7Cmul&format=json\n        | [API 2] OK headersMs=195 timeMs=195 bytes=1385 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass\n        | Batch execution wall time: 200 ms (up to 6 concurrent unit(s)).\n        | Statement-subject propagation: retained 1 QID/property pair(s) for 3 downstream role consumer(s); 2 QID/metadata pair(s).\n        | Batch execution wall time: 6 ms (up to 6 concurrent unit(s)).\n        | Statement-field propagation OfficeHolding.position: 1 QID(s), 1 planned property pair(s).\n        | Qualifier load __subject_OfficeHolding P39 -> 1 OfficeHolding statements\n        | Reify P39 of __subject_OfficeHolding → OfficeHolding\n        |  value: position\n        |  canonical list: —\n        |  subject-participant fields: —\n        |  subject-fallback fields: source\n        |  statement-value-fallback fields: —\n        |  grouped by: source + position + startDate + endDate\n        |  when two share that: successor: Must agree; predecessor: Must agree\n        |  qualifiers: startDate←P580(date), endDate←P582(date), predecessor←P1365, successor←P1366\n        |  → 1 records\n        | Invert OfficeHolding.source -> Person.offices\n        | Un-stamped 1 discovered subject(s), stripped 1 internal statement field(s) — kept as referents, not served.\n        | Stamped 1 referent(s) with their declared class.\n        | Construct modeled records: 1 record(s) constructed\n        | Semantic acquisition manifest: Person=[P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735]; Name=[P734, P735, P31]; Position=[P31]; PositionHolder=[P31]; OfficeHolding=[P31]; __subject_OfficeHolding=[P39].\n        | Semantic retention preflight iteration 1: 12 planned QID/property pair(s) across 3 class member(s) in 3 class(es), registered before acquisition; 0 pair(s) already loaded and not planned again.\n        | \n        | [API 3] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims%7Caliases&languages=en%7Cmul&format=json\n        | [API 3] OK headersMs=173 timeMs=173 bytes=1340 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass\n        | Batch execution wall time: 184 ms (up to 6 concurrent unit(s)).\n        | Batch execution wall time: 2 ms (up to 6 concurrent unit(s)).\n        | Referent field load Person.birthName (P1477) -> 0 value(s)\n        | Referent field load Person.nativeName (P1559) -> 0 value(s)\n        | Referent field load Person.pseudonyms (P742) -> 0 value(s)\n        | Referent field load Person.dateOfBirth (P569) -> 1 value(s)\n        | Referent field load Person.dateOfDeath (P570) -> 0 value(s)\n        | Referent field load Person.type (P31) -> 1 value(s)\n        | Referent field load Person.spouse (P26) -> 0 value(s)\n        | Referent field load Person.image (P18) -> 1 value(s)\n        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.\n        | Owned components: materialized 1 object(s).\n        | Semantic convergence iteration 1: 0 role stamp(s), 3 field value(s), 0 kind(s), 1 owned value(s).\n        | Semantic fact reuse iteration 1: 1 document(s) fetched, 1 fetch(es) avoided.\n        | Semantic retention preflight iteration 2: 7 planned QID/property pair(s) across 4 class member(s) in 4 class(es), registered before acquisition; 8 pair(s) already loaded and not planned again.\n        | Referent field Person.birthName (P1477) already loaded for 1 entities — skipped.\n        | Referent field Person.nativeName (P1559) already loaded for 1 entities — skipped.\n        | Referent field Person.pseudonyms (P742) already loaded for 1 entities — skipped.\n        | Referent field Person.dateOfBirth (P569) already loaded for 1 entities — skipped.\n        | Referent field Person.dateOfDeath (P570) already loaded for 1 entities — skipped.\n        | Referent field Person.type (P31) already loaded for 1 entities — skipped.\n        | Referent field Person.spouse (P26) already loaded for 1 entities — skipped.\n        | Referent field Person.image (P18) already loaded for 1 entities — skipped.\n        | Batch execution wall time: 0 ms (up to 6 concurrent unit(s)).\n        | Referent field load Name.familyName (P734) -> 0 value(s)\n        | Referent field load Name.givenName (P735) -> 0 value(s)\n        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.\n        | Semantic convergence iteration 2: 1 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).\n        | Semantic fact reuse iteration 2: 0 document(s) fetched, 1 fetch(es) avoided.\n        | Semantic retention preflight iteration 3: 5 planned QID/property pair(s) across 4 class member(s) in 4 class(es), registered before acquisition; 10 pair(s) already loaded and not planned again.\n        | Referent field Person.birthName (P1477) already loaded for 1 entities — skipped.\n        | Referent field Person.nativeName (P1559) already loaded for 1 entities — skipped.\n        | Referent field Person.pseudonyms (P742) already loaded for 1 entities — skipped.\n        | Referent field Person.dateOfBirth (P569) already loaded for 1 entities — skipped.\n        | Referent field Person.dateOfDeath (P570) already loaded for 1 entities — skipped.\n        | Referent field Person.type (P31) already loaded for 1 entities — skipped.\n        | Referent field Person.spouse (P26) already loaded for 1 entities — skipped.\n        | Referent field Person.image (P18) already loaded for 1 entities — skipped.\n        | Referent field Name.familyName (P734) already loaded for 1 entities — skipped.\n        | Referent field Name.givenName (P735) already loaded for 1 entities — skipped.\n        | Snapshot entity-kind classification: 0 newly classified, 0 unknown (0 without stored evidence); 1 of 1 role member(s) eligible from evidence producers.\n        | Semantic convergence iteration 3: 0 role stamp(s), 0 field value(s), 0 kind(s), 0 owned value(s).\n        | Semantic fact reuse iteration 3: 0 document(s) fetched, 0 fetch(es) avoided.\n        | Semantic convergence fixed point reached after 2 productive iteration(s).\n        | Resolve semantic worklist: 1 owned part(s), 0 kind(s), 3 field value(s)\n        | Loaded 3 referent/owned field value(s) from declared PIDs.\n        | \n        | [API 4] GET https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5&props=labels&languages=en%7Cmul&format=json\n        | [API 4] OK headersMs=384 timeMs=385 bytes=103 http=HTTP_2 age=0 cache=cp3071 miss, cp3071 pass\n        | Batch execution wall time: 387 ms (up to 6 concurrent unit(s)).\n        | Final label hydration: 1 resolved, 0 explicitly missing, 0 unavailable.\n        | Canonicalization: scanned=4 withModel=4 withSpec=4 derived=1 changed=1  sample: type=OfficeHolding field=source value=[WikidataDynamicObject] 'Tengku Akhmad Thala'a — position' -> 'Tengku Akhmad Thala'a'\n        | Batch execution wall time: 0 ms (up to 6 concurrent unit(s)).\n        | Built vocabulary 'Type' from the served pool -> 1 distinct value(s)\n        | Finalize and validate: 0 dead, 0 orphan(s), 0 dropped for a missing required field\n        | Alias acquisition: aliases rode 3 entity request(s), 0 standalone request(s) of which 0 failed, 3 entity answer(s), ~20 KB alias-bearing response JSON, ~5 KB transferred on the wire; aliases themselves ~0 KB; 827 ms aggregate request time (concurrent, not wall clock).\n        | Wikidata fact store: 4 entity document(s) fetched, 5 later fetch(es) avoided; holding 3 document(s) (~0 MB), 0 evicted, 0 re-fetch(es) of an evicted document.\n        | Fact-demand timing: 3 QID/property demand pair(s) known or retained before first acquisition, 9 unplanned demand pair(s) discovered after the entity had already been fetched; 5 request(s) avoided by retained facts.\n        | Fact-store measurement: ~2 KB.\n        | Fact-store property usage (banked / demanded / unused, retained bytes, cache hits, eviction re-fetches, late demands):\n        |   P39: 1 / 1 / 0, ~4 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 0 late demand(s).\n        |   P569: 1 / 1 / 0, ~2 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P31: 2 / 2 / 0, ~1 KB retained, ~0 KB unused, 3 hit(s), 0 eviction re-fetch(es), 0 late demand(s).\n        |   P18: 1 / 1 / 0, ~1 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P1477: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P1559: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P26: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 0 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P570: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P734: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P735: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        |   P742: 1 / 1 / 0, ~0 KB retained, ~0 KB unused, 1 hit(s), 0 eviction re-fetch(es), 1 late demand(s).\n        | Fact demand by consumer: statement acquisition OfficeHolding [P39=1]; Person [P31=1, P26=1, P1477=1, P1559=1, P742=1, P569=1, P570=1, P18=1]; Name [P734=1, P735=1]; disambiguation prune [P31=1].\n        | Fact retention by producer (PID: banked entities, retained / unused bytes):\n        |   discovered statement subjects → statement acquisition / P39: 1, ~4 / ~0 KB.\n        |   semantic preflight → semantic convergence / P569: 1, ~2 / ~0 KB.\n        |   statement-subject role propagation → disambiguation prune / P31: 1, ~1 / ~0 KB.\n        |   semantic preflight → semantic convergence / P18: 1, ~1 / ~0 KB.\n        |   root acquisition → disambiguation prune / P31: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P1477: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P1559: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P26: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P570: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P734: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P735: 1, ~0 / ~0 KB.\n        |   semantic preflight → semantic convergence / P742: 1, ~0 / ~0 KB.\n        | Materialize instances: 4 instance(s) materialized\n      Root query  [OK]  1 objects\n          | SELECT *\n          | WITH {\n          |   SELECT DISTINCT ?value ?valueLabel WHERE {\n          |     VALUES ?value { wd:Q4164871 }\n          |     ?value rdfs:label ?valueLabel .\n          |     FILTER(LANG(?valueLabel) IN (\"en\", \"mul\"))\n          |   }\n          |   LIMIT 200000\n          | } AS %limited\n          | WHERE {\n          |   INCLUDE %limited .\n          | }\n          | ORDER BY ?valueLabel\n      Fill [] for 1 members — 1 batches of 50 (the members' own claims, fetched via wbgetentities: these properties full-scan in SPARQL); propagated: disambiguation prune needs [P31]; final label hydration needs [LABEL]; alias coverage needs [ALIASES]  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (485 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871&props=labels|claims|aliases&languages=en|mul&format=json\n      Discover subjects: P39 into 1 discovery seed(s)  [OK]  1 request(s)\n        Subjects with P39 into 1 discovery seed(s)  [OK]  1 subjects\n            | SELECT DISTINCT ?subject WHERE {\n            |   ?subject wdt:P39 ?value .\n            |   VALUES ?value { wd:Q4164871 }\n            | }\n      Acquire discovered __subject_OfficeHolding subjects (1 entities, 2 properties)  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (199 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=labels|claims|aliases&languages=en|mul&format=json\n      Qualifier load __subject_OfficeHolding P39 (1 entities)  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (5 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json\n      Load 2 referent field(s) on Person for 1 entities; retain 10 planned property slice(s) (P31, P26, P1477, P1559, P742, P569, P570, P18, P734, P735)  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (180 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims|aliases&languages=en|mul&format=json\n      Load 6 literal referent fields on Person for 1 entities (P1477, P1559, P742, P569, P570, P18)  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (1 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json\n      Load 2 referent field(s) on Name for 1 entities; retain 3 planned property slice(s) (P734, P735, P31)  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (0 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q105658820&props=claims&languages=en|mul&format=json\n      Hydrate final labels for 1 reachable entities  [OK]  1 request(s)\n        wbgetentities 1 entities  [OK]  ok (386 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5&props=labels&languages=en|mul&format=json\n      Check 2 modeled entity(ies) for Wikimedia internal types  [OK]  1 request(s)\n        wbgetentities 2 entities  [OK]  ok (0 ms)\n            | https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q4164871|Q105658820&props=claims&languages=en|mul&format=json\nLog message  [OK]  Done\n    | What this run did:\n    |   Rules that named instances: Owned parts newly created: 1 changed\n    |   Self-reference: Ran; no self-reference decisions\n    |   Owned composition: Ran; 1 part(s) newly created\n    |   Kind classification: Ran; every kind was already settled\n    |   Projections: Ran; no projected field value changed\n    |   Objects in the pool: 4\nLog message  [OK]  Done\n    | 1 vocabulary(ies) filled from the generated data — use \"Save domain\" to persist them.\nLog message  [OK]  Done\n    | Generated 4 objects (in memory — use \"Save domain\" to persist to history.snapshot.json).\nLog message  [OK]  Done\n    | Saved domain \"History\":\n    | Config:    data/wikidata/history/history.model.json\n    | Rule tree: data/wikidata/history/history.ruletree.json\n    | Instances: 4 -> data/wikidata/history/history.snapshot.json\n    | Registry:  data/wikidata/datasets.json\n    | Counts:    data/wikidata/history/history.counts.tsv\n",
+  "pipelines" : [ {
+    "title" : "Generate domain — History",
+    "phases" : [ {
+      "phase" : {
+        "id" : "validate-plan",
+        "title" : "Validate & plan",
+        "description" : "Freeze the model, compile it and derive required operations.",
+        "details" : [ "5 configured classes" ],
+        "explanation" : {
+          "purpose" : "Freeze the model, compile it and derive required operations.",
+          "inputs" : [ ],
+          "operations" : [ "5 configured classes" ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "Model compiled",
+      "startedAtNanos" : 1057763321337098,
+      "elapsedMillis" : 5
+    }, {
+      "phase" : {
+        "id" : "discover",
+        "title" : "Discover populations",
+        "description" : "Discover root members and statement subjects.",
+        "details" : [ "Position — SEEDED, depth 1", "Name — retain P31 for disambiguation prune", "Position — retain P31 for disambiguation prune", "PositionHolder — retain P31 for disambiguation prune", "OfficeHolding — retain P31 for disambiguation prune", "Person — retain P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735 for semantic convergence", "Name — retain P734, P735 for semantic convergence", "__subject_OfficeHolding — retain P39 for statement acquisition", "Person — retain [LABEL] for final label hydration", "Person — retain [ALIASES] for alias coverage", "Name — retain [LABEL] for final label hydration", "Name — retain [ALIASES] for alias coverage", "Position — retain [LABEL] for final label hydration", "Position — retain [ALIASES] for alias coverage", "PositionHolder — retain [LABEL] for final label hydration", "PositionHolder — retain [ALIASES] for alias coverage", "OfficeHolding — retain [LABEL] for final label hydration", "OfficeHolding — retain [ALIASES] for alias coverage" ],
+        "explanation" : {
+          "purpose" : "Establish the root populations and statement subjects from which the domain graph grows.",
+          "inputs" : [ "Compiled class sources and membership patterns" ],
+          "operations" : [ "Execute root discovery", "Bind prospective downstream fact needs to the discovered QIDs", "Acquire configured root fields and retained downstream facts together", "Carry only declared label, alias and sitelink demands on those responses", "Discover subjects required by statement classes" ],
+          "outputs" : [ "Root entity QIDs", "Statement subject populations", "Retained facts for later pipeline consumers" ],
+          "references" : [ {
+            "kind" : "CLASS",
+            "owner" : "",
+            "name" : "Position",
+            "label" : "Position"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P31",
+            "label" : "P31"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1477",
+            "label" : "P1477"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1559",
+            "label" : "P1559"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P742",
+            "label" : "P742"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P569",
+            "label" : "P569"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P570",
+            "label" : "P570"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P26",
+            "label" : "P26"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P18",
+            "label" : "P18"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P734",
+            "label" : "P734"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P735",
+            "label" : "P735"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P39",
+            "label" : "P39"
+          } ],
+          "examples" : [ {
+            "kind" : "PLANNED",
+            "title" : "Discover Position",
+            "input" : [ "Configured source for Position" ],
+            "evidence" : [ "Membership pattern SEEDED", "Traversal depth 1" ],
+            "output" : [ "Seed QIDs that subsequent phases enrich and connect" ],
+            "references" : [ {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "Position",
+              "label" : "Position"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Carry facts forward for Name",
+            "input" : [ "Discovered Name QIDs" ],
+            "evidence" : [ "Fetch P31 with the root fields", "vet modeled entities for Wikimedia-internal page types" ],
+            "output" : [ "disambiguation prune can reuse the retained response instead of refetching" ],
+            "references" : [ {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P31",
+              "label" : "P31"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Carry facts forward for Position",
+            "input" : [ "Discovered Position QIDs" ],
+            "evidence" : [ "Fetch P31 with the root fields", "vet modeled entities for Wikimedia-internal page types" ],
+            "output" : [ "disambiguation prune can reuse the retained response instead of refetching" ],
+            "references" : [ {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P31",
+              "label" : "P31"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Carry facts forward for PositionHolder",
+            "input" : [ "Discovered PositionHolder QIDs" ],
+            "evidence" : [ "Fetch P31 with the root fields", "vet modeled entities for Wikimedia-internal page types" ],
+            "output" : [ "disambiguation prune can reuse the retained response instead of refetching" ],
+            "references" : [ {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P31",
+              "label" : "P31"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Carry facts forward for OfficeHolding",
+            "input" : [ "Discovered OfficeHolding QIDs" ],
+            "evidence" : [ "Fetch P31 with the root fields", "vet modeled entities for Wikimedia-internal page types" ],
+            "output" : [ "disambiguation prune can reuse the retained response instead of refetching" ],
+            "references" : [ {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P31",
+              "label" : "P31"
+            } ]
+          } ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "1 root class query(ies) completed",
+      "startedAtNanos" : 1057763326574356,
+      "elapsedMillis" : 1874
+    }, {
+      "phase" : {
+        "id" : "statement-facts",
+        "title" : "Acquire statement facts",
+        "description" : "Load main statements and configured qualifier facts.",
+        "details" : [ "OfficeHolding — discover subjects into __subject_OfficeHolding; load P39 statements; startDate ← P580 (DATE), endDate ← P582 (DATE), predecessor ← P1365 (ENTITY), successor ← P1366 (ENTITY); value domain: 1 discovery seed(s)", "__subject_OfficeHolding subject response — retain role closure P31" ],
+        "explanation" : {
+          "purpose" : "Acquire the statements and qualifiers needed to build configured statement-class records.",
+          "inputs" : [ "Discovered or reused statement subject QIDs", "Statement recipes" ],
+          "operations" : [ "Propagate the statement property into subject acquisition", "Reuse retained statement bodies when available", "Load main statements", "Load configured qualifiers in batches" ],
+          "outputs" : [ "Raw statement and qualifier facts" ],
+          "references" : [ {
+            "kind" : "CLASS",
+            "owner" : "",
+            "name" : "OfficeHolding",
+            "label" : "OfficeHolding"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P39",
+            "label" : "P39"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P580",
+            "label" : "P580"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P582",
+            "label" : "P582"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1365",
+            "label" : "P1365"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1366",
+            "label" : "P1366"
+          } ],
+          "examples" : [ {
+            "kind" : "PLANNED",
+            "title" : "Acquire OfficeHolding facts",
+            "input" : [ "__subject_OfficeHolding subject QIDs" ],
+            "evidence" : [ "Main statement property P39", "Qualifier properties P580, P582, P1365, P1366" ],
+            "output" : [ "Raw statement records ready for graph construction" ],
+            "references" : [ {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "OfficeHolding",
+              "label" : "OfficeHolding"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P39",
+              "label" : "P39"
+            } ]
+          } ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "OfficeHolding: 1 subject(s), 1 P39 statement(s), 1 discovered",
+      "startedAtNanos" : 1057765200982968,
+      "elapsedMillis" : 520
+    }, {
+      "phase" : {
+        "id" : "construct",
+        "title" : "Construct graph",
+        "description" : "Reify statement records, apply restrictions, inverts and projections.",
+        "details" : [ "OfficeHolding — promote __OfficeHolding records; source → source, value → position; canonical key source + position + startDate + endDate; 1 fallback role(s)" ],
+        "explanation" : {
+          "purpose" : "Turn acquired statement facts into the typed records and relationships promised by the model.",
+          "inputs" : [ "Raw statement and qualifier facts", "Reification recipes" ],
+          "operations" : [ "Promote statement records", "Apply restrictions, inverses and projections", "Deduplicate by the configured canonical key" ],
+          "outputs" : [ "Typed statement-class records connected into the graph" ],
+          "references" : [ {
+            "kind" : "CLASS",
+            "owner" : "",
+            "name" : "OfficeHolding",
+            "label" : "OfficeHolding"
+          } ],
+          "examples" : [ {
+            "kind" : "CHANGED",
+            "title" : "Construct OfficeHolding",
+            "input" : [ "A raw __OfficeHolding statement record" ],
+            "evidence" : [ "Source maps to source", "Value maps to position" ],
+            "output" : [ "A typed OfficeHolding object connected to its source and value" ],
+            "references" : [ {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "OfficeHolding",
+              "label" : "OfficeHolding"
+            } ]
+          } ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "1 statement record(s)",
+      "startedAtNanos" : 1057765721430013,
+      "elapsedMillis" : 50
+    }, {
+      "phase" : {
+        "id" : "semantic-worklist",
+        "title" : "Resolve semantic worklist",
+        "description" : "Repeat role stamping, field/evidence acquisition, kind classification and owned-value construction until stable.",
+        "details" : [ "Role stamping — apply each ENTITY field's declared target class", "Reachability — rescan the graph after every newly loaded or owned value", "Evidence acquisition — fetch all newly reachable declared properties together", "Person acquisition slice — P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735", "Name acquisition slice — P734, P735, P31", "Position acquisition slice — P31", "PositionHolder acquisition slice — P31", "OfficeHolding acquisition slice — P31", "__subject_OfficeHolding acquisition slice — P39", "Kind classification — combine stored evidence with missing remote evidence", "Owned construction — materialize owner-QID components after kinds settle", "Person.birthName — String Single value — P1477", "Person.nativeName — String Single value — P1559", "Person.pseudonyms — String List — P742", "Person.dateOfBirth — Date Single value — P569", "Person.dateOfDeath — Date Single value — P570", "Person.type — Entity/Object List → Type — P31", "Person.spouse — Entity/Object List → Person — P26", "Person.image — Image List — P18", "Person ← P31 in Q5 — candidates from Person.type", "Person.structuredName → Name (owner QID)", "Name.familyName — Entity/Object List — P734", "Name.givenName — Entity/Object List — P735" ],
+        "explanation" : {
+          "purpose" : "Close the semantic gap between records discovered from Wikidata and the typed object graph promised by the model.",
+          "inputs" : [ "Reachable entities and statement records produced so far", "Declared target classes on entity-valued fields", "Persisted field coverage and retained Wikidata facts" ],
+          "operations" : [ "Preflight all currently knowable ⟨entity QID, property⟩ demands before acquisition", "Stamp role membership from configured field targets", "Acquire newly demanded properties in model-derived bundles", "Classify entity kinds from configured evidence rules", "Construct owned values that inherit their owner's QID", "Repeat until no stamp, value, kind or owned component changes" ],
+          "outputs" : [ "Role and entity-kind class memberships", "Loaded referent and owned-field values", "Owned components connected to their owners", "Exact-QID declarations recording answered fields", "Retention plans protecting facts that a later semantic operation will consume", "A fixed-point object graph ready for final labels and validation" ],
+          "references" : [ {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "structuredName",
+            "label" : "Person.structuredName"
+          }, {
+            "kind" : "CLASS",
+            "owner" : "",
+            "name" : "Name",
+            "label" : "Name"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "birthName",
+            "label" : "Person.birthName"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1477",
+            "label" : "P1477"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "nativeName",
+            "label" : "Person.nativeName"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P1559",
+            "label" : "P1559"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "pseudonyms",
+            "label" : "Person.pseudonyms"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P742",
+            "label" : "P742"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "dateOfBirth",
+            "label" : "Person.dateOfBirth"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P569",
+            "label" : "P569"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "dateOfDeath",
+            "label" : "Person.dateOfDeath"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P570",
+            "label" : "P570"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "type",
+            "label" : "Person.type"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P31",
+            "label" : "P31"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "spouse",
+            "label" : "Person.spouse"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P26",
+            "label" : "P26"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Person",
+            "name" : "image",
+            "label" : "Person.image"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P18",
+            "label" : "P18"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Name",
+            "name" : "familyName",
+            "label" : "Name.familyName"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P734",
+            "label" : "P734"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "Name",
+            "name" : "givenName",
+            "label" : "Name.givenName"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P735",
+            "label" : "P735"
+          }, {
+            "kind" : "FIELD",
+            "owner" : "OfficeHolding",
+            "name" : "position",
+            "label" : "OfficeHolding.position"
+          }, {
+            "kind" : "PROPERTY",
+            "owner" : "",
+            "name" : "P39",
+            "label" : "P39"
+          }, {
+            "kind" : "KIND_RULE",
+            "owner" : "Person",
+            "name" : "",
+            "label" : "Person kind rule"
+          }, {
+            "kind" : "CLASS",
+            "owner" : "",
+            "name" : "Person",
+            "label" : "Person"
+          } ],
+          "examples" : [ {
+            "kind" : "PLANNED",
+            "title" : "Plan facts before loading Person",
+            "input" : [ "Every currently reachable Person QID" ],
+            "evidence" : [ "The compiled acquisition slice needs P1477, P1559, P742, P569, P570, P31, P26, P18, P734, P735" ],
+            "output" : [ "Register exact ⟨QID, property⟩ retention plans first", "A fact fetched for one operation remains available to later consumers", "Newly discovered populations are planned before the next iteration" ],
+            "references" : [ {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "Person",
+              "label" : "Person"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P1477",
+              "label" : "P1477"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P1559",
+              "label" : "P1559"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P742",
+              "label" : "P742"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P569",
+              "label" : "P569"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Compose owned Name",
+            "input" : [ "A Person instance with QID Q…" ],
+            "evidence" : [ "Person.structuredName declares owned production" ],
+            "output" : [ "Create Name@Person.structuredName", "The component inherits Q… only for loading its declared fields" ],
+            "references" : [ {
+              "kind" : "FIELD",
+              "owner" : "Person",
+              "name" : "structuredName",
+              "label" : "Person.structuredName"
+            }, {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "Name",
+              "label" : "Name"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Load Person.birthName",
+            "input" : [ "A reachable Person carrying a Wikidata QID" ],
+            "evidence" : [ "P1477 is the configured producing property" ],
+            "output" : [ "Store the answered value as String", "Record coverage even when Wikidata returns no value" ],
+            "references" : [ {
+              "kind" : "FIELD",
+              "owner" : "Person",
+              "name" : "birthName",
+              "label" : "Person.birthName"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P1477",
+              "label" : "P1477"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Load Person.nativeName",
+            "input" : [ "A reachable Person carrying a Wikidata QID" ],
+            "evidence" : [ "P1559 is the configured producing property" ],
+            "output" : [ "Store the answered value as String", "Record coverage even when Wikidata returns no value" ],
+            "references" : [ {
+              "kind" : "FIELD",
+              "owner" : "Person",
+              "name" : "nativeName",
+              "label" : "Person.nativeName"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P1559",
+              "label" : "P1559"
+            } ]
+          }, {
+            "kind" : "PLANNED",
+            "title" : "Classify an entity as Person",
+            "input" : [ "A candidate entity reached through Person.type" ],
+            "evidence" : [ "P31 contains one of Q5" ],
+            "output" : [ "Add Person membership", "Use the deterministic most-specific kind as display carrier" ],
+            "references" : [ {
+              "kind" : "KIND_RULE",
+              "owner" : "Person",
+              "name" : "",
+              "label" : "Person kind rule"
+            }, {
+              "kind" : "PROPERTY",
+              "owner" : "",
+              "name" : "P31",
+              "label" : "P31"
+            }, {
+              "kind" : "CLASS",
+              "owner" : "",
+              "name" : "Person",
+              "label" : "Person"
+            } ]
+          } ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "2 semantic iteration(s) — Owned parts newly created: 1 changed",
+      "startedAtNanos" : 1057765771541207,
+      "elapsedMillis" : 256
+    }, {
+      "phase" : {
+        "id" : "external-evidence",
+        "title" : "Acquire external evidence",
+        "description" : "Acquire configured non-Wikidata source facts in reusable batches.",
+        "details" : [ "No external category recipes" ],
+        "explanation" : {
+          "purpose" : "Acquire source facts once at domain scale; interpretation remains explicit and auditable.",
+          "inputs" : [ "Reachable entity QIDs", "Configured DBpedia, Wikipedia-category and Infobox recipes" ],
+          "operations" : [ "Join DBpedia resources to entity QIDs through owl:sameAs", "Read configured DBpedia properties in batches of 100 QIDs", "Resolve English Wikipedia sitelinks in batches of 50", "Fetch visible category memberships with continuation", "Fetch native Infobox wikitext in retryable batches of 50", "Retain page revision, evidence digest and retrieval time", "Expose matched values to generation/review according to policy" ],
+          "outputs" : [ "DBpedia values merged into configured fields", "Snapshot-backed category memberships", "Per-value provenance usable by Explore and TransformApp" ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "0 category membership(s), 0 infobox value(s), 0 DBpedia value(s)",
+      "startedAtNanos" : 1057766027781362,
+      "elapsedMillis" : 11
+    }, {
+      "phase" : {
+        "id" : "labels",
+        "title" : "Hydrate final labels",
+        "description" : "Resolve labels once for placeholder QIDs in the closed graph.",
+        "details" : [ "English labels with multilingual fallback" ],
+        "explanation" : {
+          "purpose" : "Resolve labels once for placeholder QIDs in the closed graph.",
+          "inputs" : [ ],
+          "operations" : [ "English labels with multilingual fallback" ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "1 label(s) resolved",
+      "startedAtNanos" : 1057766039134681,
+      "elapsedMillis" : 396
+    }, {
+      "phase" : {
+        "id" : "finalize",
+        "title" : "Finalize & validate",
+        "description" : "Canonicalize, prune, apply expectations, audit consistency and build vocabularies.",
+        "details" : [ "5 configured classes" ],
+        "explanation" : {
+          "purpose" : "Canonicalize, prune, apply expectations, audit consistency and build vocabularies.",
+          "inputs" : [ ],
+          "operations" : [ "5 configured classes" ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "4 final object(s)",
+      "startedAtNanos" : 1057766435493900,
+      "elapsedMillis" : 46
+    }, {
+      "phase" : {
+        "id" : "materialize",
+        "title" : "Materialize instances",
+        "description" : "Compile and map the final shared object graph.",
+        "details" : [ "5 configured classes" ],
+        "explanation" : {
+          "purpose" : "Compile and map the final shared object graph.",
+          "inputs" : [ ],
+          "operations" : [ "5 configured classes" ],
+          "outputs" : [ ],
+          "references" : [ ],
+          "examples" : [ ]
+        }
+      },
+      "status" : "COMPLETED",
+      "summary" : "4 instances materialized",
+      "startedAtNanos" : 1057766482188339,
+      "elapsedMillis" : 755
+    } ]
+  } ]
+}

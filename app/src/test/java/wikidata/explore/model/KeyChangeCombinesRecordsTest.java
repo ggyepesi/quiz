@@ -6,11 +6,9 @@ import canonical.CanonicalizationPlan;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.compiled.CanonicalizationPlans;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.transform.WikidataCandidates;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,16 +32,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class KeyChangeCombinesRecordsTest {
 
-    private static List<canonical.Candidate> holdings() throws Exception {
-        List<WikidataDynamicObject> all = new WikidataDynamicObjectJsonStore().loadAll(
-                new File("../data/wikidata/history/history.snapshot.json"));
-        List<canonical.Candidate> holdings = new ArrayList<>();
-        for (WikidataDynamicObject object : all) {
-            if (object != null && "OfficeHolding".equals(object.typeKey())) {
-                holdings.add(WikidataCandidates.of(object));
-            }
-        }
-        return holdings;
+    private static List<canonical.Candidate> holdings() {
+        WikidataDynamicObject person = object("Q1", "Holder", "Person");
+        WikidataDynamicObject position = object("Q2", "Office", "Position");
+        WikidataDynamicObject first = object("Q1$first", "First term", "OfficeHolding");
+        first.put("source", person);
+        first.put("position", position);
+        first.put("startDate", new aux.FlexibleDate(1800));
+        first.put("endDate", new aux.FlexibleDate(1801));
+        WikidataDynamicObject second = object(
+                "Q1$second", "Second term", "OfficeHolding");
+        second.put("source", person);
+        second.put("position", position);
+        second.put("startDate", new aux.FlexibleDate(1810));
+        second.put("endDate", new aux.FlexibleDate(1811));
+        return List.of(WikidataCandidates.of(first), WikidataCandidates.of(second));
+    }
+
+    private static WikidataDynamicObject object(String id, String name, String type) {
+        WikidataDynamicObject object = new WikidataDynamicObject(id, name);
+        object.type(type);
+        return object;
     }
 
     private static GeneratedClassModel officeHolding() throws Exception {

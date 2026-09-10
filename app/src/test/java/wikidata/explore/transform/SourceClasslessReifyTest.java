@@ -129,6 +129,34 @@ class SourceClasslessReifyTest {
                 compiledResult.load().discoveryValueQids());
     }
 
+    @Test void valueEntityClassMembershipBoundsDirectDiscovery() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(EntityBound.relation(
+                "P31", List.of("Q4164871"), false));
+        project.addClass(position);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        holding.instanceMapping().propertyPid("P39");
+        var value = holding.addField(
+                "position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        value.entityClassName("Position");
+        value.mapping().propertyPid("P39");
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
+        project.addClass(holding);
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+        var result = ModelStatementReifications.deriveOne(holding, project);
+        assertEquals(position.membership(), result.load().objectBound());
+        assertTrue(result.load().discoveryValueQids().isEmpty(),
+                "the relation remains a relation instead of becoming a QID list");
+    }
+
     // --- what the discovery log calls a value domain ------------------------
 
     @Test void aDomainThatOnlyFiltersIsNotCalledSeeds() {

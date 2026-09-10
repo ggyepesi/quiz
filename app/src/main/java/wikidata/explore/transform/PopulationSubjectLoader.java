@@ -68,11 +68,31 @@ public final class PopulationSubjectLoader {
             WikidataSparqlClient client,
             GenerationLog log,
             int limit) {
+        return discover(pool, relationPid, targetValues, EntityBound.unbounded(),
+                subjectBound, entityType, domainLabel, client, log, limit);
+    }
+
+    /** As above, retaining a relational object bound as a query pattern instead of
+     * expanding it into an impractically large {@code VALUES} clause. */
+    public List<WikidataDynamicObject> discover(
+            Collection<WikidataDynamicObject> pool,
+            String relationPid,
+            Set<String> targetValues,
+            EntityBound objectBound,
+            EntityBound subjectBound,
+            String entityType,
+            String domainLabel,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            int limit) {
 
         List<WikidataDynamicObject> created = new ArrayList<>();
+        EntityBound objects = objectBound == null
+                ? EntityBound.unbounded() : objectBound;
         EntityBound subjects = subjectBound == null
                 ? EntityBound.unbounded() : subjectBound;
-        boolean objectsBounded = targetValues != null && !targetValues.isEmpty();
+        boolean objectsBounded = targetValues != null && !targetValues.isEmpty()
+                || pinsTheJoin(objects);
         if (client == null
                 || relationPid == null || !relationPid.matches("(?i)P\\d+")
                 || entityType == null || entityType.isBlank()
@@ -95,7 +115,8 @@ public final class PopulationSubjectLoader {
 
         String label = domainLabel == null || domainLabel.isBlank()
                 ? "its value domain" : domainLabel;
-        String query = buildQuery(relationPid, targetValues, subjects, limit);
+        String query = buildQuery(
+                relationPid, targetValues, objects, subjects, limit);
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
                 "Discover subjects: " + relationPid + " into " + label)) {
@@ -159,9 +180,31 @@ public final class PopulationSubjectLoader {
 
     static String buildQuery(
             String relationPid, Set<String> targetValues, EntityBound subjects, int limit) {
+        return buildQuery(relationPid, targetValues, EntityBound.unbounded(),
+                subjects, limit);
+    }
+
+    static String buildQuery(
+            String relationPid, Set<String> targetValues, EntityBound objects,
+            EntityBound subjects, int limit) {
         StringBuilder q = new StringBuilder(
                 "SELECT DISTINCT ?subject WHERE {\n  ?subject wdt:")
                 .append(relationPid).append(" ?value .\n");
+        EntityBound objectBound = objects == null ? EntityBound.unbounded() : objects;
+        switch (objectBound.kind()) {
+            case RELATION -> {
+                q.append("  ?value wdt:").append(objectBound.relationPid())
+                        .append(objectBound.includeDescendants()
+                                ? "/wdt:P279* " : " ")
+                        .append("?valueKind .\n  VALUES ?valueKind {");
+                for (String qid : objectBound.qids()) q.append(" wd:").append(qid);
+                q.append(" }\n");
+            }
+            case EXPLICIT, UNBOUNDED -> { }
+            case VOCABULARY -> throw new IllegalStateException(
+                    "Object vocabulary bound '" + objectBound.selectionName()
+                            + "' reached the loader unresolved");
+        }
         EntityBound subjectBound = subjects == null ? EntityBound.unbounded() : subjects;
         switch (subjectBound.kind()) {
             case EXPLICIT -> {
@@ -190,7 +233,8 @@ public final class PopulationSubjectLoader {
                     "Subject vocabulary bound '" + subjectBound.selectionName()
                             + "' reached the loader unresolved");
         }
-        if (targetValues != null && !targetValues.isEmpty()) {
+        if (objectBound.kind() != EntityBound.Kind.RELATION
+                && targetValues != null && !targetValues.isEmpty()) {
             q.append("  VALUES ?value {");
             for (String qid : targetValues) {
                 if (qid != null && qid.matches("(?i)Q\\d+")) {

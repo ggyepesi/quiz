@@ -58,6 +58,17 @@ class SubjectBoundTest {
         assertTrue(query.contains("?subject wdt:P31/wdt:P279* ?subjectKind"), query);
     }
 
+    @Test void aRelationalObjectDomainStaysAPatternInsteadOfABigValuesList() {
+        String query = PopulationSubjectLoader.buildQuery(
+                "P39", Set.of("Q6412254", "Q45341328"),
+                EntityBound.relation("P31", List.of("Q4164871"), false),
+                EntityBound.unbounded(), 0);
+
+        assertTrue(query.contains("?value wdt:P31 ?valueKind"), query);
+        assertTrue(query.contains("VALUES ?valueKind { wd:Q4164871 }"), query);
+        assertFalse(query.contains("VALUES ?value {"), query);
+    }
+
     /**
      * The guard demanded the OBJECT end specifically. That was never the requirement —
      * it was the only end that COULD be bounded, so the restriction looked like a rule.

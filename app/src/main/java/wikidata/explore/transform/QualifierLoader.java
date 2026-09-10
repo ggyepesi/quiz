@@ -141,6 +141,7 @@ public class QualifierLoader {
             List<WikidataDynamicObject> discovered =
                     new PopulationSubjectLoader().discover(
                             pool, cfg.propertyPid(), discoveryValues,
+                            cfg.objectBound(),
                             cfg.subjectBound(),
                             cfg.entityType(), cfg.valueDomainLabel(), client, log,
                             discoveryLimit);
