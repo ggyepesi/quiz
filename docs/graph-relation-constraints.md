@@ -2,12 +2,14 @@
 
 ## Status
 
-Executable core plus a standalone discovery experiment, not yet ModelBuilder
-configuration. The node-admission form below is derived and measured but unbuilt
-(issues #182, #183, #184). The neutral evaluator can compare direct values and nearest qualifying
-ancestors from a covered local graph. The existing shared-population demo now previews
-one frontier step at a time and profiles its sample for possible constraints. It extends
-the candidate paths and curated frontier described in
+Executable endpoint and node-evidence evaluators plus a standalone discovery
+experiment, not yet provider-bound acquisition, persistence or ModelBuilder
+configuration (issues #182, #183, #184). The neutral node evaluator follows alternative
+direct evidence paths, applies alternative existence/equality tests, and retains its
+three-valued verdict, Review disposition, witnesses and both-hop coverage. The endpoint
+evaluator compares direct values and nearest qualifying ancestors from a covered local
+graph. The existing shared-population demo now previews one frontier step at a time and
+profiles its sample for possible constraints. It extends the candidate paths and curated frontier described in
 [Configurable Knowledge-Graph Discovery](configurable-knowledge-graph-discovery.md);
 it does not introduce a second graph-discovery mechanism.
 
@@ -141,6 +143,12 @@ are dissolved. Domain-wide the sparse property carries most of the verdict —
 jurisdiction 6,417, country 2,093, directs-organization 1,066 — the reverse of the
 28-position sample, where country had the best coverage.
 
+The positive counts are reliable because they came from positive witnesses. The old
+classification also called 79,604 nodes rejected, but it treated every polity omitted
+from a WDQS chunk response as “not dissolved”. That number therefore mixes genuine
+contradiction with missing acquisition and is not a valid rejected count. Rejected and
+Review must be measured again by the coverage-aware evaluator below.
+
 ### The construct
 
 ```text
@@ -149,7 +157,7 @@ evidence condition
   evidence   this -(P1001 | P17 | P2389)-> node      one or more labeled edges, any-of
   test       evidence -P576-> EXISTS                 an edge that exists
           or evidence -P31-> Q3024240                an edge reaching a constant
-  outcome    satisfied -> admit | contradicted -> block | unknown -> policy
+  outcome    satisfied -> accepted | contradicted -> rejected | undecidable -> review
 ```
 
 A test is itself a bounded path plus a comparison, so the construct nests: what a
@@ -176,13 +184,35 @@ is therefore the verdict *and* its evidence:
 ```text
 node        Q6412254   Apostolic King of Hungary
 verdict     accepted   by condition "historical polity"
-witness     P1001 -> Q171150 (Kingdom of Hungary), P576 present
-coverage    P1001, P17, P2389 answered for this node
+witness     P1001 -> Q171150 (Kingdom of Hungary) + Q171150 -P576-> 1946
+            P17   -> Q171150 (Kingdom of Hungary) + Q171150 -P576-> 1946
+coverage    P1001, P17, P2389 answered for Q6412254;
+            P576 and P31 answered for Q171150
 ```
+
+A witness is a PAIR — the evidence edge that reached a node and the test edge that
+satisfied it — because Apostolic King of Hungary reaches the Kingdom of Hungary through
+both jurisdiction and country, and a flat list of test edges cannot say which relation
+carried the verdict. That attribution is the per-relation measurement quoted above
+(6,417 / 2,093 / 1,066, counted with overlap for exactly this reason), so evaluation
+tests every reached evidence node rather than stopping at the first match: an early
+exit decides the same outcome for less work and loses the attribution the record
+exists to support.
+
+An acceptance need not have a witness at all. An absence test matches by there being
+no edge, so it accepts with an empty witness list and its coverage observation as the
+record — acceptance is the test's verdict, never the presence of a witness.
 
 This stays in the acquisition layer, beside the run's other provenance. It does not
 become a served field, which is exactly what the Evidence policy means; and it is not
 discarded, which is what makes a verdict defensible later.
+
+The reusable cache stores the facts and their coverage, not a global “dissolved”
+verdict. P576 and P31 adjacency are datasource facts; “dissolved” is the result of this
+condition's particular alternatives and truthy/statement semantics. Another domain or
+a changed condition may interpret the same facts differently. A derived-verdict cache
+is justified only if later measurement forces it, and must then be keyed by the exact
+condition and fact revision.
 
 ### Accept and reject are one construct with a polarity
 
@@ -205,22 +235,34 @@ none, and it discards both the 4,656 unknowns and the witness that justified eve
 acceptance. Used as the acquisition query it would contradict the section below before
 it was implemented.
 
-Acquisition asks for a classification instead, keeping the evidence it reached:
+The acquisition contract is the classified result, not one large SPARQL query. Joining
+145,708 members to three potentially multi-valued evidence relations and then to P576
+and P31 would cross-product the rows and expose the membership result to a silent WDQS
+partial response. The provider therefore follows the existing R17/R18 shape:
 
-```sparql
-?value wdt:P31 wd:Q4164871 .
-OPTIONAL {
-  ?value (wdt:P1001|wdt:P17|wdt:P2389) ?polity .
-  OPTIONAL { ?polity wdt:P576 ?dissolvedOn }
-  OPTIONAL { ?polity wdt:P31 ?polityKind }
-}
-```
+1. acquire the complete light membership backbone;
+2. acquire P1001, P17 and P2389 adjacency in bounded batches for those members;
+3. acquire P576 and P31 adjacency in bounded batches for the reached polity nodes;
+4. evaluate locally, retaining the evidence edges and coverage used by each verdict.
 
-No `?polity` row means unknown; a `?polity` with neither test satisfied means rejected;
-either test satisfied means accepted, and the binding is the witness. A provider may
-push the filter down to the `FILTER EXISTS` form **only** when the caller asked for
-accepted nodes alone — a preview count, say. The default must classify, because a
-condition that cannot report what it excluded is not reviewable.
+The measured population reaches 75,587 distinct polity QIDs. At the existing
+50-entity entity-document batch size, the second hop is about **1,512 batches** before
+cache hits. This is a first-class acquisition phase, not a cheap predicate check. It
+must go through the existing fact store, which reuses already fetched entity documents
+and records exact adjacency coverage, so later conditions pay only for facts the store
+does not already know.
+
+A positive witness is sufficient for acceptance even if another alternative was
+unavailable, because the condition is `ANY`. Rejection requires a non-empty evidence
+set and complete test coverage for every reached evidence node. An empty evidence set
+does not contradict the condition even when first-hop acquisition completed: it means
+the configured evidence cannot decide, so the node goes to Review. Incomplete
+first-hop or test coverage also goes to Review when no positive witness already decides
+the result.
+
+A provider may push the predicate down to the `FILTER EXISTS` form **only** when the
+caller asked for accepted nodes alone — a preview count, say. The default must classify,
+because a condition that cannot report what it excluded is not reviewable.
 
 ### The outcome is three-valued
 
@@ -234,15 +276,32 @@ Palatine of the Rhine; collapsing it into accepted readmits the noise. It is the
 same reason: an unreturned property is not a property that does not exist, so review is
 a visible set and not a rounding of a boolean.
 
-The distinction the evaluator must draw is between two different absences:
+The evaluator must distinguish an empty evidence set from contradicted evidence, and
+both from acquisition that could not complete:
 
 | what happened | outcome |
 | --- | --- |
-| the evidence properties were answered for this node, and none reached a dissolved polity | **rejected** — evidence exists and contradicts the condition |
-| the evidence properties were not answered for this node, or coverage cannot say | **review** — nothing is known, and silence is not a verdict |
+| at least one reached evidence node satisfies a test | **accepted** — a positive witness decides an `ANY` condition |
+| no evidence node was reached, with or without complete first-hop coverage | **review** — the configured evidence says nothing about this node |
+| evidence nodes were reached, every test relation was answered for all of them, and none satisfied a test | **rejected** — available evidence contradicts the condition |
+| first-hop or test coverage was incomplete and no positive witness was found | **review** — acquisition cannot decide the condition |
 
-"Named no polity" is the first of those only where acquisition coverage confirms the
-three properties were asked. Otherwise it is the second.
+Coverage is nevertheless retained in both Review cases: “the datasource contains no
+configured evidence edge” and “the datasource could not answer the request” are
+different explanations even though neither supplies a verdict.
+
+Review also has an explicit, stored population disposition:
+
+```text
+On Review: include and report | exclude and report
+Default:   include and report
+```
+
+The default preserves members when evidence cannot decide; it never turns missing data
+into exclusion. Either choice keeps the Review members, reasons and coverage visible in
+the run result. The modeller may explicitly choose `exclude and report` when a domain
+prefers a narrow population, and a later evidence condition or hierarchy-based rule may
+reduce Review before that disposition is applied.
 
 The presence form must compile through the same graph-predicate contract as
 `GraphRelationAbsent`. One is coverage-aware absence and the other coverage-aware
@@ -273,7 +332,7 @@ delicate. Three findings matter more than the threshold:
   Parliament in the Parliament of England` is 100%, so only the NEAREST qualifying
   ancestor may be consulted. A rule reading any ancestor judges the England members by
   the general kind and drops them.
-- **The rescue is small.** At two-thirds the nine kinds recover 22 of 217 silent
+- **The rescue is small.** At two-thirds the nine kinds recover 22 of 217 Review
   sampled members. Direct evidence decides thousands; propagation decides tens.
 
 It is therefore a refinement to add after evidence conditions are in use, not with
@@ -289,29 +348,17 @@ The initial concept needs only:
 - `INTERSECTS` as the comparison;
 - `NEAREST_MATCHING` for hierarchical paths;
 - `ACCEPT`, `REJECT` and `REVIEW` as the three outcomes;
-- `ANY`, `ALL` and `NOT` for composing constraints.
+- `ANY` for alternative evidence relations and alternative tests.
 
 Composition is in the first vocabulary rather than deferred, because the measured
 condition needs it twice over: any-of across three evidence properties
 (`P1001 | P17 | P2389`) and any-of across two tests (`P576` exists or
 `P31 = Q3024240`). Deferring it would mean the selector that motivates this note
-cannot be expressed by the construct the note proposes. Two operators short of that —
-`ALL` and `NOT` — are included with it because a polarity that can only accept is the
-`excludedTypeQids` asymmetry again.
-
-This can express, for example:
-
-```text
-shared abstract ancestor AND shared jurisdiction
-```
-
-or:
-
-```text
-shared abstract ancestor OR shared jurisdiction
-```
-
-More comparison operators should be added only when a concrete domain forces them.
+cannot be expressed by the construct the note proposes. General `ALL` and `NOT`
+composition wait for a concrete condition that requires them. Accepting or rejecting a
+condition is its outcome polarity and does not itself require a Boolean `NOT` operator.
+Likewise, composing multiple endpoint constraints waits for a configured domain that
+needs it. More operators should be added only when a concrete domain forces them.
 
 ## Datasource boundary
 
@@ -350,7 +397,7 @@ Ban of Croatia
   rejected — qualifying ancestors King and Ban do not match
 
 Unknown position
-  review — no covered qualifying ancestor within depth 2
+  review — subclass adjacency became incomplete before a qualifying ancestor was found
 ```
 
 Discovery and preview are inspection only. Adding the constraint to the model remains
@@ -397,7 +444,10 @@ the layer anyone would group by above the flat bucket, and the direct count says
 of the two a candidate is. The counts are discovery evidence: the group rule persists
 the anchors, never the sizes.
 
-## First-slice decisions
+## Implemented endpoint-evaluator slice
+
+These decisions describe the already-built endpoint evaluator. They are its historical
+scope line, not the scope of the node-admission slice below.
 
 1. One endpoint constraint is enough. Composition waits for a configured case that
    cannot be expressed by one comparison.
@@ -436,7 +486,8 @@ the anchors, never the sizes.
    - **Absence needs coverage.** As the datasource-boundary section says, an unreturned
      property is not a property that does not exist. A predicate is only usable where
      acquisition coverage answered it for that node. This is the sharper of the two
-     absence problems and nothing consults coverage today.
+     absence problems. The local evaluators now consult coverage; provider acquisition
+     must populate it rather than infer it from an empty result.
 
    Exclusions should be recorded rather than silently filtered: filter in the query so
    the wave stays cheap — a row limit spent on nodes that will be discarded truncates
@@ -450,16 +501,21 @@ the anchors, never the sizes.
 configured domain yet needs two endpoints compared, so the endpoint evaluator — which
 already exists as a core — waits for one.
 
-The slice is issues #182, #183 and #184, in that order:
+The datasource-neutral vertical core now covers the common part of issues #182, #183
+and #184 together: `GraphEvidenceCondition` declares direct alternative paths, `ANY`
+existence/equality tests and Review disposition; `GraphEvidenceConditions` returns the
+decision with evidence edges, test edges, positive witnesses and exact coverage.
 
-1. **#182** — a condition that follows one hop of evidence and tests a further edge for
-   existence. Without this nothing else is executable.
-2. **#183** — `ANY` across evidence properties and across tests, and the Evidence
-   expansion policy as the declared role of what the condition reaches.
-3. **#184** — the three-valued result, with the witness and the coverage retained, and
-   the excluded count reported rather than silently filtered.
+The remaining slice is:
 
-The classifying query above is the acquisition contract for all three: a run must be
+1. **#182** — compile the condition's two adjacency demands into the provider's batched
+   fact acquisition.
+2. **#183** — persist the Evidence policy and condition on the membership owner without
+   adding a parallel field-source representation.
+3. **#184** — retain per-run decisions in the acquisition result, report all three
+   counts, and apply the configured Review disposition during population assembly.
+
+The classified-result acquisition contract above governs all three: a run must be
 able to say, for every entity it evaluated, which outcome it reached and on what
 evidence. Pushing the predicate into a `FILTER EXISTS` is an optimisation available
 only where the caller asked for accepted nodes alone.

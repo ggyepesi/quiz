@@ -33,7 +33,7 @@ class GraphEndpointConstraintsTest {
         edge(store, apostolicKing, JURISDICTION, hungary);
         edge(store, kingOfBohemia, JURISDICTION, hungary);
         covered(store, JURISDICTION, apostolicKing, kingOfBohemia);
-        GraphEndpointPath jurisdiction = GraphEndpointPath.direct(JURISDICTION, OUT);
+        GraphPath jurisdiction = GraphPath.direct(JURISDICTION, OUT);
 
         var result = GraphEndpointConstraints.evaluate(store,
                 intersects(jurisdiction, GraphEndpointConstraint.MissingPolicy.REVIEW),
@@ -48,7 +48,7 @@ class GraphEndpointConstraintsTest {
         edge(store, apostolicKing, JURISDICTION, hungary);
         edge(store, banOfCroatia, JURISDICTION, croatia);
         covered(store, JURISDICTION, apostolicKing, banOfCroatia);
-        GraphEndpointPath jurisdiction = GraphEndpointPath.direct(JURISDICTION, OUT);
+        GraphPath jurisdiction = GraphPath.direct(JURISDICTION, OUT);
 
         var result = GraphEndpointConstraints.evaluate(store,
                 intersects(jurisdiction, GraphEndpointConstraint.MissingPolicy.REVIEW),
@@ -66,8 +66,8 @@ class GraphEndpointConstraintsTest {
         edge(store, kingOfBohemia, JURISDICTION, hungary);
         covered(store, JURISDICTION, kingOfBohemia, king, ban);
 
-        GraphEndpointPath abstraction = new GraphEndpointPath(
-                BROADER, OUT, 3, GraphEndpointPath.Selection.NEAREST_MATCHING,
+        GraphPath abstraction = new GraphPath(
+                BROADER, OUT, 3, GraphPath.Selection.NEAREST_MATCHING,
                 new GraphRelationAbsent(JURISDICTION, OUT));
 
         var sameKind = GraphEndpointConstraints.evaluate(store,
@@ -88,8 +88,8 @@ class GraphEndpointConstraintsTest {
         edge(store, apostolicKing, BROADER, king);
         edge(store, kingOfBohemia, BROADER, king);
         covered(store, BROADER, apostolicKing, kingOfBohemia, king);
-        GraphEndpointPath abstraction = new GraphEndpointPath(
-                BROADER, OUT, 2, GraphEndpointPath.Selection.NEAREST_MATCHING,
+        GraphPath abstraction = new GraphPath(
+                BROADER, OUT, 2, GraphPath.Selection.NEAREST_MATCHING,
                 new GraphRelationAbsent(JURISDICTION, OUT));
 
         var result = GraphEndpointConstraints.evaluate(store,
@@ -110,8 +110,8 @@ class GraphEndpointConstraintsTest {
         covered(store, BROADER, apostolicKing, kingOfBohemia,
                 nearerLeft, nearerRight, king);
         covered(store, JURISDICTION, king); // nearer nodes deliberately unknown
-        GraphEndpointPath abstraction = new GraphEndpointPath(
-                BROADER, OUT, 2, GraphEndpointPath.Selection.NEAREST_MATCHING,
+        GraphPath abstraction = new GraphPath(
+                BROADER, OUT, 2, GraphPath.Selection.NEAREST_MATCHING,
                 new GraphRelationAbsent(JURISDICTION, OUT));
 
         var result = GraphEndpointConstraints.evaluate(store,
@@ -123,7 +123,7 @@ class GraphEndpointConstraintsTest {
     }
 
     private static GraphEndpointConstraint intersects(
-            GraphEndpointPath path, GraphEndpointConstraint.MissingPolicy missing) {
+            GraphPath path, GraphEndpointConstraint.MissingPolicy missing) {
         return new GraphEndpointConstraint(path, path, missing);
     }
 

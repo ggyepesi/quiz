@@ -3,8 +3,8 @@ package datasource.graph.constraint;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 
-/** One bounded path used to derive comparable values from an endpoint. */
-public record GraphEndpointPath(
+/** One bounded path used to derive values from a graph node. */
+public record GraphPath(
         GraphRelation relation,
         GraphTraversalDirection direction,
         int maximumDepth,
@@ -12,13 +12,13 @@ public record GraphEndpointPath(
         GraphNodeCondition condition) {
 
     public enum Selection {
-        /** Compare every node reached within the bound. */
+        /** Return every qualifying node reached within the bound. */
         ALL,
         /** Stop a branch at its first node satisfying {@link #condition}. */
         NEAREST_MATCHING
     }
 
-    public GraphEndpointPath {
+    public GraphPath {
         if (relation == null || direction == null) {
             throw new IllegalArgumentException("Path relation and direction are required");
         }
@@ -32,8 +32,13 @@ public record GraphEndpointPath(
         }
     }
 
-    public static GraphEndpointPath direct(
+    public static GraphPath direct(
             GraphRelation relation, GraphTraversalDirection direction) {
-        return new GraphEndpointPath(relation, direction, 1, Selection.ALL, null);
+        return new GraphPath(relation, direction, 1, Selection.ALL, null);
+    }
+
+    /** The first evidence-condition slice deliberately admits only one-hop paths. */
+    public boolean isDirect() {
+        return maximumDepth == 1 && selection == Selection.ALL && condition == null;
     }
 }

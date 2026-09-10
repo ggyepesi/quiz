@@ -2,8 +2,8 @@ package datasource.graph.constraint;
 
 /** Compare values derived independently from the two endpoints of a candidate edge. */
 public record GraphEndpointConstraint(
-        GraphEndpointPath leftPath,
-        GraphEndpointPath rightPath,
+        GraphPath leftPath,
+        GraphPath rightPath,
         MissingPolicy missingPolicy) {
 
     public enum MissingPolicy { REJECT, REVIEW }

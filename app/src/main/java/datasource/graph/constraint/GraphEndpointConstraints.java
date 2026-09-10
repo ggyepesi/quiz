@@ -2,7 +2,6 @@ package datasource.graph.constraint;
 
 import datasource.EntityRef;
 import datasource.graph.GraphTraversalDirection;
-import datasource.graph.store.GraphAdjacencyCoverage;
 import datasource.graph.store.GraphAdjacencyDemand;
 import datasource.graph.store.GraphAdjacencyResult;
 import datasource.graph.store.GraphEdge;
@@ -30,10 +29,10 @@ public final class GraphEndpointConstraints {
         shared.retainAll(rightResult.values());
         boolean selectionUnresolved =
                 constraint.leftPath().selection()
-                        == GraphEndpointPath.Selection.NEAREST_MATCHING
+                        == GraphPath.Selection.NEAREST_MATCHING
                         && leftResult.unresolved()
                 || constraint.rightPath().selection()
-                        == GraphEndpointPath.Selection.NEAREST_MATCHING
+                        == GraphPath.Selection.NEAREST_MATCHING
                         && rightResult.unresolved();
         if (!shared.isEmpty() && !selectionUnresolved) {
             return result(GraphEndpointConstraintResult.Decision.ACCEPTED,
@@ -61,7 +60,7 @@ public final class GraphEndpointConstraints {
     }
 
     private static PathResult follow(
-            LocalGraphStore store, EntityRef start, GraphEndpointPath path) {
+            LocalGraphStore store, EntityRef start, GraphPath path) {
         Set<EntityRef> values = new LinkedHashSet<>();
         Set<EntityRef> frontier = new LinkedHashSet<>(List.of(start));
         Set<EntityRef> visited = new LinkedHashSet<>(frontier);
@@ -76,12 +75,15 @@ public final class GraphEndpointConstraints {
             Set<EntityRef> reached = endpoints(adjacent.edges(), path.direction());
             Set<EntityRef> next = new LinkedHashSet<>();
             for (EntityRef node : reached) {
-                ConditionResult condition = matches(store, node, path.condition());
-                unresolved |= condition.unresolved();
-                if (path.selection() == GraphEndpointPath.Selection.ALL) {
-                    if (condition.matches()) values.add(node);
+                GraphNodeConditions.Evaluation condition =
+                        GraphNodeConditions.evaluate(store, node, path.condition());
+                unresolved |= condition.decision() == GraphNodeConditions.Decision.REVIEW;
+                if (path.selection() == GraphPath.Selection.ALL) {
+                    if (condition.decision() == GraphNodeConditions.Decision.MATCHED) {
+                        values.add(node);
+                    }
                     if (visited.add(node)) next.add(node);
-                } else if (condition.matches()) {
+                } else if (condition.decision() == GraphNodeConditions.Decision.MATCHED) {
                     values.add(node); // stop this branch at its nearest qualifying node
                 } else if (visited.add(node)) {
                     next.add(node);
@@ -102,22 +104,5 @@ public final class GraphEndpointConstraints {
         return result;
     }
 
-    private static ConditionResult matches(
-            LocalGraphStore store, EntityRef node, GraphNodeCondition condition) {
-        if (condition == null) return new ConditionResult(true, false);
-        if (condition instanceof GraphRelationAbsent absent) {
-            GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
-                    List.of(node), absent.relation(), absent.direction());
-            GraphAdjacencyResult result = store.adjacent(demand);
-            GraphAdjacencyCoverage coverage = store.adjacencyKnowledge(node, demand);
-            if (coverage != GraphAdjacencyCoverage.COMPLETE) {
-                return new ConditionResult(false, true);
-            }
-            return new ConditionResult(result.edges().isEmpty(), false);
-        }
-        throw new IllegalArgumentException("Unsupported graph node condition: " + condition);
-    }
-
     private record PathResult(Set<EntityRef> values, boolean unresolved) { }
-    private record ConditionResult(boolean matches, boolean unresolved) { }
 }
