@@ -1,6 +1,8 @@
 package datasource.graph.constraint;
 
 import datasource.EntityRef;
+import datasource.GraphValue;
+import datasource.LiteralValue;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 import datasource.graph.store.GraphAdjacencyCoverage;
@@ -33,7 +35,8 @@ class GraphEvidenceConditionsTest {
     @Test void aPositiveWitnessAcceptsAndRetainsBothHopsAndTheirCoverage() {
         InMemoryGraphStore store = new InMemoryGraphStore();
         GraphEdge evidence = edge(store, position, JURISDICTION, polity);
-        GraphEdge witness = edge(store, polity, DISSOLVED, entity("date"));
+        GraphEdge witness = edge(store, polity, DISSOLVED,
+                new LiteralValue("+1946-02-01T00:00:00Z"));
         covered(store, position, JURISDICTION, COUNTRY);
         covered(store, polity, DISSOLVED, KIND);
 
@@ -128,7 +131,8 @@ class GraphEvidenceConditionsTest {
     @Test void aPositiveWitnessDecidesAnyDespiteAnotherUnavailableAlternative() {
         InMemoryGraphStore store = new InMemoryGraphStore();
         edge(store, position, JURISDICTION, polity);
-        GraphEdge witness = edge(store, polity, DISSOLVED, entity("date"));
+        GraphEdge witness = edge(store, polity, DISSOLVED,
+                new LiteralValue("+1946-02-01T00:00:00Z"));
         covered(store, position, JURISDICTION); // country deliberately unknown
         covered(store, polity, DISSOLVED);      // kind deliberately unknown
 
@@ -148,7 +152,8 @@ class GraphEvidenceConditionsTest {
         InMemoryGraphStore store = new InMemoryGraphStore();
         GraphEdge viaJurisdiction = edge(store, position, JURISDICTION, polity);
         GraphEdge viaCountry = edge(store, position, COUNTRY, polity);
-        GraphEdge dissolved = edge(store, polity, DISSOLVED, entity("date"));
+        GraphEdge dissolved = edge(store, polity, DISSOLVED,
+                new LiteralValue("+1946-02-01T00:00:00Z"));
         covered(store, position, JURISDICTION, COUNTRY);
         covered(store, polity, DISSOLVED, KIND);
 
@@ -210,7 +215,7 @@ class GraphEvidenceConditionsTest {
             InMemoryGraphStore store,
             EntityRef source,
             GraphRelation relation,
-            EntityRef target) {
+            GraphValue target) {
         GraphEdge edge = new GraphEdge(source, relation, target, "test");
         store.addEdges(List.of(edge));
         return edge;

@@ -1,7 +1,7 @@
 package datasource;
 
 /** A provider-qualified entity identifier. No datasource is privileged as canonical. */
-public record EntityRef(String namespace, String id) {
+public record EntityRef(String namespace, String id) implements GraphValue {
 
     /**
      * The namespace every Wikidata QID lives in.

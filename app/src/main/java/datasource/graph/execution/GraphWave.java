@@ -26,8 +26,8 @@ public final class GraphWave {
                 input, step.relation(), step.direction());
         GraphAdjacencyResult local = store.adjacent(demand);
         List<EntityRef> reached = local.edges().stream()
-                .map(edge -> step.direction() == GraphTraversalDirection.OUTGOING
-                        ? edge.target() : edge.source())
+                .map(edge -> edge.entityEndpoint(step.direction()))
+                .filter(java.util.Objects::nonNull)
                 .distinct().toList();
         GraphAdjacencyDemand missing = local.missingNodes().isEmpty() ? null
                 : new GraphAdjacencyDemand(local.missingNodes(),

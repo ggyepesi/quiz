@@ -2,14 +2,16 @@
 
 ## Status
 
-Executable endpoint and node-evidence evaluators plus a standalone discovery
-experiment, not yet provider-bound acquisition, persistence or ModelBuilder
-configuration (issues #182, #183, #184). The neutral node evaluator follows alternative
-direct evidence paths, applies alternative existence/equality tests, and retains its
-three-valued verdict, Review disposition, witnesses and both-hop coverage. The endpoint
-evaluator compares direct values and nearest qualifying ancestors from a covered local
-graph. The existing shared-population demo now previews one frontier step at a time and
-profiles its sample for possible constraints. It extends the candidate paths and curated frontier described in
+Executable endpoint and node-evidence evaluators, Wikidata's two-phase outgoing-claim
+acquisition, and a standalone discovery experiment; persistence and ModelBuilder
+configuration remain (issues #183 and #184). The neutral node evaluator follows
+alternative direct evidence paths, applies alternative existence/equality tests, and
+retains its three-valued verdict, Review disposition, witnesses and both-hop coverage.
+The Wikidata adapter loads both hops in the existing 50-QID batches, reuses the raw fact
+store and marks failed QIDs unavailable rather than absent. The endpoint evaluator
+compares direct values and nearest qualifying ancestors from a covered local graph. The
+existing shared-population demo now previews one frontier step at a time and profiles
+its sample for possible constraints. It extends the candidate paths and curated frontier described in
 [Configurable Knowledge-Graph Discovery](configurable-knowledge-graph-discovery.md);
 it does not introduce a second graph-discovery mechanism.
 
@@ -244,6 +246,13 @@ partial response. The provider therefore follows the existing R17/R18 shape:
 2. acquire P1001, P17 and P2389 adjacency in bounded batches for those members;
 3. acquire P576 and P31 adjacency in bounded batches for the reached polity nodes;
 4. evaluate locally, retaining the evidence edges and coverage used by each verdict.
+
+This path is now executable for outgoing Wikidata claims. Its graph value retains the
+Wikibase datavalue type as well as the decoded lexical value: P576 therefore produces a
+literal test edge, while P31 produces an entity edge that may be compared or traversed.
+A literal whose text happens to look like a QID cannot become an entity. Only entity
+targets enter the second-hop frontier. Incoming claims require a different provider
+operation and are rejected before acquisition begins in this first slice.
 
 The measured population reaches 75,587 distinct polity QIDs. At the existing
 50-entity entity-document batch size, the second hop is about **1,512 batches** before
@@ -483,6 +492,20 @@ scope line, not the scope of the node-admission slice below.
      as `lacks` — which is right here, since asserting an office has no jurisdiction is
      the strongest evidence it is abstract. Measured, the choice moves 9 nodes of
      91,884, so it is safe to default to truthy and say so where it is configured.
+
+     That measurement is the frontier case only. Choosing truthy in the shared
+     `parseStatements` VALUE_ONLY path also changed the OTHER consumer of
+     `getStatementsByPropertyPartial`: `ReferentFieldLoad`, which loads literal
+     referent fields. Those fields previously took every non-deprecated statement and
+     now take best-rank, which is what the SPARQL path already did through `wdt:` —
+     one discovery path per fact rather than two that disagreed. It is nevertheless a
+     data change, and a measured one: 61,354 entities Wikidata-wide carry both a
+     preferred and a normal `P18`, and image is a field in five shipped models (348
+     entities for `P1477`; `P569`/`P570` are too broad for WDQS to count). Existing
+     snapshots keep their extra values until regenerated, and a regeneration will drop
+     a non-preferred image wherever a preferred one exists. That is the intended
+     reading of the rank, not a loss — but it is a regenerate decision and belongs
+     here rather than in a reader's surprise at a changed count.
    - **Absence needs coverage.** As the datasource-boundary section says, an unreturned
      property is not a property that does not exist. A predicate is only usable where
      acquisition coverage answered it for that node. This is the sharper of the two
@@ -501,18 +524,19 @@ scope line, not the scope of the node-admission slice below.
 configured domain yet needs two endpoints compared, so the endpoint evaluator — which
 already exists as a core — waits for one.
 
-The datasource-neutral vertical core now covers the common part of issues #182, #183
-and #184 together: `GraphEvidenceCondition` declares direct alternative paths, `ANY`
+The datasource-neutral core and Wikidata adapter now cover #182 and the common execution
+part of #183/#184: `GraphEvidenceCondition` declares direct alternative paths, `ANY`
 existence/equality tests and Review disposition; `GraphEvidenceConditions` returns the
-decision with evidence edges, test edges, positive witnesses and exact coverage.
+decision with evidence edges, test edges, positive witnesses and exact coverage;
+`WikidataGraphEvidenceAcquisition` acquires the two demanded claim sets through the
+existing fact store and classifies every supplied member.
 
 The remaining slice is:
 
-1. **#182** — compile the condition's two adjacency demands into the provider's batched
-   fact acquisition.
-2. **#183** — persist the Evidence policy and condition on the membership owner without
+1. **#183** — persist the Evidence policy and condition on the membership owner without
    adding a parallel field-source representation.
-3. **#184** — retain per-run decisions in the acquisition result, report all three
+2. **#184** — invoke the provider adapter from population generation, retain per-run
+   decisions in the acquisition result, report all three
    counts, and apply the configured Review disposition during population assembly.
 
 The classified-result acquisition contract above governs all three: a run must be

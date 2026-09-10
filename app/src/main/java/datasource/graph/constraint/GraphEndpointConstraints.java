@@ -98,8 +98,8 @@ public final class GraphEndpointConstraints {
             List<GraphEdge> edges, GraphTraversalDirection direction) {
         Set<EntityRef> result = new LinkedHashSet<>();
         for (GraphEdge edge : edges) {
-            result.add(direction == GraphTraversalDirection.OUTGOING
-                    ? edge.target() : edge.source());
+            EntityRef endpoint = edge.entityEndpoint(direction);
+            if (endpoint != null) result.add(endpoint);
         }
         return result;
     }

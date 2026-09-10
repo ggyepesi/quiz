@@ -1433,14 +1433,15 @@ public class WikidataApiClient {
     }
 
     /**
-     * One statement of a claim: the mainsnak value, every qualifier and reference,
-     * and its rank. {@code id} is the statement GUID (its reified identity). Parsing
-     * the complete statement costs no extra request: {@code props=claims} already
-     * returned this claim as one document.
+     * One statement of a claim: the mainsnak value and Wikibase datavalue type, every
+     * qualifier and reference, and its rank. {@code id} is the statement GUID (its
+     * reified identity). Parsing the complete statement costs no extra request:
+     * {@code props=claims} already returned this claim as one document.
      */
     public record ApiStatement(
             String id,
             String value,
+            String valueType,
             Map<String, List<String>> qualifiers,
             String rank,
             List<ApiReference> references) {
@@ -1448,14 +1449,21 @@ public class WikidataApiClient {
         public ApiStatement {
             id = id == null ? "" : id;
             value = value == null ? "" : value;
+            valueType = valueType == null ? "" : valueType;
             qualifiers = immutableSnaks(qualifiers);
             rank = rank == null || rank.isBlank() ? "normal" : rank;
             references = List.copyOf(references == null ? List.of() : references);
         }
 
         public ApiStatement(
+                String id, String value, Map<String, List<String>> qualifiers,
+                String rank, List<ApiReference> references) {
+            this(id, value, inferredValueType(value), qualifiers, rank, references);
+        }
+
+        public ApiStatement(
                 String id, String value, Map<String, List<String>> qualifiers) {
-            this(id, value, qualifiers, "normal", List.of());
+            this(id, value, inferredValueType(value), qualifiers, "normal", List.of());
         }
 
         /** The raw values of a qualifier PID (empty if absent). */
@@ -1475,8 +1483,9 @@ public class WikidataApiClient {
     /** How much of an already-downloaded claim the consumer needs to retain. */
     enum StatementDetail { VALUE_ONLY, FULL }
 
-    // Visible for WbGetEntitiesParseTest. Returns the number of entities that had at
-    // least one non-deprecated statement for statementPid.
+    // Visible for WbGetEntitiesParseTest. VALUE_ONLY follows wdt: truthy rank;
+    // FULL retains every non-deprecated statement for reification. Returns the number
+    // of entities for which that selection contained at least one valued statement.
     static int parseStatements(
             JsonNode root, String statementPid,
             StatementDetail detail,
@@ -1493,9 +1502,13 @@ public class WikidataApiClient {
             if (!claims.isArray() || claims.isEmpty()) return;
 
             List<ApiStatement> stmts = new ArrayList<>();
-            for (JsonNode claim : claims) {
-                if ("deprecated".equals(claim.path("rank").asText())) continue;
-                String value = snakValue(claim.path("mainsnak").path("datavalue"));
+            Iterable<JsonNode> selected = requested == StatementDetail.VALUE_ONLY
+                    ? truthy(claims) : claims;
+            for (JsonNode claim : selected) {
+                if (requested == StatementDetail.FULL
+                        && "deprecated".equals(claim.path("rank").asText())) continue;
+                JsonNode datavalue = claim.path("mainsnak").path("datavalue");
+                String value = snakValue(datavalue);
                 if (value == null) continue;
 
                 Map<String, List<String>> quals = requested == StatementDetail.FULL
@@ -1511,7 +1524,8 @@ public class WikidataApiClient {
                     }
                 }
                 stmts.add(new ApiStatement(
-                        claim.path("id").asText(""), value, quals,
+                        claim.path("id").asText(""), value,
+                        datavalue.path("type").asText(""), quals,
                         claim.path("rank").asText("normal"), references));
             }
             if (!stmts.isEmpty()) {
@@ -1520,6 +1534,10 @@ public class WikidataApiClient {
             }
         });
         return n[0];
+    }
+
+    private static String inferredValueType(String value) {
+        return WikidataIds.isQid(value) ? "wikibase-entityid" : "";
     }
 
     /** Every property/value snak in a qualifier or reference map, in source order. */

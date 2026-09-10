@@ -39,9 +39,11 @@ public final class GraphEvidenceConditions {
                     node, path.relation(), path.direction(), known));
             evidenceIncomplete |= known != GraphAdjacencyCoverage.COMPLETE;
             for (GraphEdge edge : adjacent.edges()) {
-                evidenceNodes.computeIfAbsent(
-                        GraphNodeConditions.endpoint(edge, path.direction()),
-                        ignored -> new ArrayList<>()).add(edge);
+                EntityRef reached = edge.entityEndpoint(path.direction());
+                if (reached != null) {
+                    evidenceNodes.computeIfAbsent(
+                            reached, ignored -> new ArrayList<>()).add(edge);
+                }
             }
         }
 

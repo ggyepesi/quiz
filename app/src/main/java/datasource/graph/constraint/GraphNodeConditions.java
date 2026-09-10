@@ -69,15 +69,10 @@ final class GraphNodeConditions {
             GraphNodeCondition condition) {
         if (condition instanceof GraphRelationExists) return edges;
         if (condition instanceof GraphRelationReaches reaches) {
-            return edges.stream().filter(edge -> endpoint(edge, direction)
-                    .equals(reaches.entity())).toList();
+            return edges.stream().filter(edge -> reaches.entity()
+                    .equals(edge.entityEndpoint(direction))).toList();
         }
         return List.of();
-    }
-
-    static EntityRef endpoint(GraphEdge edge, GraphTraversalDirection direction) {
-        return direction == GraphTraversalDirection.OUTGOING
-                ? edge.target() : edge.source();
     }
 
     enum Decision { MATCHED, NOT_MATCHED, REVIEW }

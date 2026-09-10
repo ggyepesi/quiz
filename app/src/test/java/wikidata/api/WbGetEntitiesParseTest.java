@@ -346,6 +346,26 @@ class WbGetEntitiesParseTest {
         assertTrue(stmts.get(1).qualifier("P805").isEmpty());
     }
 
+    @Test void aValueOnlyStatementUsesTruthyRankAndRetainsItsDatavalueType()
+            throws Exception {
+        String json = """
+                {"entities":{"Q1":{"id":"Q1","claims":{"P31":[
+                  {"id":"Q1$normal","rank":"normal","mainsnak":{"datavalue":
+                    {"type":"string","value":"Q3024240"}}},
+                  {"id":"Q1$preferred","rank":"preferred","mainsnak":{"datavalue":
+                    {"type":"wikibase-entityid","value":{"id":"Q6256"}}}}]}}}}
+                """;
+        Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();
+
+        WikidataApiClient.parseStatements(
+                new ObjectMapper().readTree(json), "P31",
+                WikidataApiClient.StatementDetail.VALUE_ONLY, out);
+
+        assertEquals(1, out.get("Q1").size());
+        assertEquals("Q1$preferred", out.get("Q1").getFirst().id());
+        assertEquals("wikibase-entityid", out.get("Q1").getFirst().valueType());
+    }
+
     @Test
     void aValueOnlyConsumerDoesNotRetainUnusedStatementEvidence() throws Exception {
         Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();

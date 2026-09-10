@@ -1,6 +1,7 @@
 package datasource.graph.execution;
 
 import datasource.EntityRef;
+import datasource.LiteralValue;
 import datasource.graph.*;
 import datasource.graph.store.*;
 import org.junit.jupiter.api.Test;
@@ -79,5 +80,26 @@ class GraphWaveTest {
         assertFalse(result.completeLocally());
         assertEquals(List.of(position), result.incomplete());
         assertTrue(result.unavailable().isEmpty());
+    }
+
+    @Test void aLiteralRelationIsKnownButIsNotATraversableEntityNode() {
+        EntityRef polity = EntityRef.wikidata("Q171150");
+        GraphRelation dissolved = new GraphRelation("wikidata", "P576");
+        GraphTraversalStep dates = new GraphTraversalStep(
+                "dissolved", "Polity", "Date", "dissolved", dissolved,
+                GraphTraversalDirection.OUTGOING, GraphExpansionPolicy.CURATED);
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
+                List.of(polity), dissolved, GraphTraversalDirection.OUTGOING);
+        store.addEdges(List.of(new GraphEdge(polity, dissolved,
+                new LiteralValue("time", "+1946-02-01T00:00:00Z"), "Q171150$s")));
+        store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+
+        GraphWaveResult result = GraphWave.evaluate(store, dates, List.of(polity));
+
+        assertTrue(result.completeLocally());
+        assertTrue(result.reached().isEmpty(),
+                "the fact exists, but a literal cannot become an entity frontier node");
+        assertEquals(1, result.edges().size());
     }
 }
