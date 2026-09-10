@@ -3,7 +3,8 @@
 ## Status
 
 Executable core plus a standalone discovery experiment, not yet ModelBuilder
-configuration. The neutral evaluator can compare direct values and nearest qualifying
+configuration. The node-admission form below is derived and measured but unbuilt
+(issues #182, #183, #184). The neutral evaluator can compare direct values and nearest qualifying
 ancestors from a covered local graph. The existing shared-population demo now previews
 one frontier step at a time and profiles its sample for possible constraints. It extends
 the candidate paths and curated frontier described in
@@ -92,6 +93,123 @@ Here “abstract” is not a built-in node kind. It is the configured predicate
 Choosing the nearest qualifying ancestor matters. Comparing every ancestor eventually
 admits unrelated endpoints through a very broad common node such as “political
 position”. A depth bound remains mandatory even with the nearest-match rule.
+
+## General form: admit or block a node by evidence reached from it
+
+The section above constrains a discovered *edge* by comparing its two endpoints. The
+same machinery answers a different question — whether a *node* belongs in a population
+at all — and the History work forced it before edge constraints were needed.
+
+### The measured case
+
+`Historical Positions` acquires `?position wdt:P31 wd:Q4164871`: 145,708 entities, of
+which 39,158 are mayors of French communes. The 28 positions History actually holds are
+Apostolic King of Hungary, Ban of Croatia, Holy Roman Emperor and the like. Two
+selectors were tried against those 28:
+
+| selector | keeps | why it fails |
+| --- | --- | --- |
+| jurisdiction (P1001) is a country | 18 of 28 | P1001 is missing on 10, including Emperor of Austria; absent on 61% of the domain |
+| nearest P279 ancestor is a chosen kind | 25 of 28 | needs hand-picked anchors; P279 is absent on a fifth of the domain; `P279+` reaches *baryonic matter* in three steps |
+
+What all 28 share is not a level of government but a polity that no longer exists.
+Reading three properties any-of — `P1001` jurisdiction, `P17` country, `P2389`
+organization directed by the office — and testing whether what they reach is dissolved
+keeps **26 of 28**. `P2389` alone recovers King of Sardinia and Corsica and Margrave of
+Moravia, which name nothing through the other two.
+
+Applied to the whole population: **8,449 of 92,709** snapshot entities (9.1%), and
+**15,388 of 145,708** live. Of 75,587 distinct polities the population reaches, 6,718
+are dissolved. Domain-wide the sparse property carries most of the verdict —
+jurisdiction 6,417, country 2,093, directs-organization 1,066 — the reverse of the
+28-position sample, where country had the best coverage.
+
+### The construct
+
+```text
+evidence condition
+  name       historical polity
+  evidence   this -(P1001 | P17 | P2389)-> node      one or more labeled edges, any-of
+  test       evidence -P576-> EXISTS                 an edge that exists
+          or evidence -P31-> Q3024240                an edge reaching a constant
+  outcome    satisfied -> admit | contradicted -> block | unknown -> policy
+```
+
+A test is itself a bounded path plus a comparison, so the construct nests: what a
+condition compares against may be another traversal rather than a constant. That is
+the only recursion required.
+
+### Evidence is a third role for a reached node
+
+A node reached along a labeled edge can be a **value** kept on the instance (a field's
+property), a **membership target** matched against (the membership triple's object), or
+**evidence** — reached, tested, and discarded, with only the verdict surviving. The
+Kingdom of Hungary is the third: it is not a position, never enters the domain, and
+nothing about it is stored, yet whether it is dissolved decides whether Apostolic King
+of Hungary is acquired. Naming that role is what makes this a general method instead of
+three special cases.
+
+### Admit and block are one construct with a polarity
+
+`excludedTypeQids` is already the blocking form, at one hop with an equality test: it
+compiles to `PredicateObjectExclusion(P31, qid)` and is emitted as `FILTER NOT EXISTS`.
+The admitting form emits the same shape:
+
+```sparql
+?value wdt:P31 wd:Q4164871 .
+FILTER EXISTS {
+  ?value (wdt:P1001|wdt:P17|wdt:P2389) ?polity .
+  { ?polity wdt:P576 [] } UNION { ?polity wdt:P31 wd:Q3024240 }
+}
+```
+
+So this is an extension of the membership backbone rather than a second engine. What
+the existing exclusion cannot express is the second hop, the existence test, and
+any-of over alternative edges.
+
+### The outcome is three-valued
+
+4,656 positions (5%) name no polity at all. Collapsing that into `block` loses Count
+Palatine of the Rhine; collapsing it into `admit` readmits the noise. It is the same
+`REVIEW` requirement the first-slice decisions already state for absence, and for the
+same reason: an unreturned property is not a property that does not exist, so an
+unknown outcome is a visible set and not a boolean.
+
+The presence form must compile through the same graph-predicate contract as
+`GraphRelationAbsent`. One is coverage-aware absence and the other coverage-aware
+presence; a second `has property` boolean on `FieldSourceMapping` would repeat the
+mistake that section forbids.
+
+### Deliberately not in this construct: propagating a verdict along the hierarchy
+
+A kind can be judged by its members and lend that verdict to members with no evidence
+of their own. Measured over 61 kinds and 2,190 sampled positions, scoring each kind by
+the share of its judged members that name a dissolved polity separates cleanly:
+
+```text
+100%  Member of Parliament in the Parliament of England (40 judged)
+100%  emperor · Ban · margrave · count palatine
+ 89%  king          88%  duke          76%  monarch
+ 39%  head of state 32%  prefect
+  8%  member of parliament · minister
+  0%  mayor · town mayor · village mayor · ambassador of a country
+```
+
+Any threshold from 60% to 75% selects the same nine kinds, so the number is not
+delicate. Three findings matter more than the threshold:
+
+- **`mayor` scores 0% of 40.** The feared failure — a few historical mayors admitting
+  all 48,175 under `mayor` — does not occur.
+- **Specificity carries the signal.** `member of parliament` is 8% while `Member of
+  Parliament in the Parliament of England` is 100%, so only the NEAREST qualifying
+  ancestor may be consulted. A rule reading any ancestor judges the England members by
+  the general kind and drops them.
+- **The rescue is small.** At two-thirds the nine kinds recover 22 of 217 silent
+  sampled members. Direct evidence decides thousands; propagation decides tens.
+
+It is therefore a refinement to add after evidence conditions are in use, not with
+them — and it is the only part of this with tunable numbers in it (a threshold, a floor
+on the judged denominator, and nearest-not-any).
 
 ## Candidate configuration vocabulary
 
