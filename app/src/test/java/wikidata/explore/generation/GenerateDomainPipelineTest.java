@@ -66,11 +66,12 @@ class GenerateDomainPipelineTest {
     @Test void statementAcquisitionShowsItsSourcePropertyQualifiersAndConstruction() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
-        nomination.statementSource(new wikidata.explore.model.StatementClassSource("P1411"));
+        var statementSource = new wikidata.explore.model.StatementClassSource("P1411");
+        statementSource.objectBound(EntityBound.explicit(List.of("Q19020")));
+        nomination.statementSource(statementSource);
         var category = nomination.addField(
                 "category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
-        category.mapping().allowedQids().add("Q19020");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         var nominee = nomination.addField(
                 "nominee", FieldType.ENTITY, FieldCardinality.COLLECTION);
         nominee.mapping().qualifierPid("P2453");

@@ -56,7 +56,8 @@ class AuditReachesTheRunTest {
         nomination.statementSource(new StatementClassSource("Member", "P1411"));
         nomination.instanceMapping().propertyPid("P1411");
         nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                  .mapping().propertyPid("P1411");
+                  .mapping().productionKind(
+                          wikidata.explore.model.FieldProductionKind.STATEMENT_OBJECT);
         GeneratedFieldModel nominee =
                 nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nominee.mapping().qualifierPid("P2453");

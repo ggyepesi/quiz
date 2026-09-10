@@ -15,6 +15,47 @@ public final class StatementFieldSemantics {
     }
 
     /**
+     * One-way compatibility for models saved before the object destination became an
+     * explicit field role. Only an unambiguous field carrying the statement PID is
+     * converted; ambiguous old models remain visible for the modeller to resolve.
+     */
+    public static void migrateLegacyObjectRoles(GeneratedProjectModel project) {
+        if (project == null) return;
+        for (GeneratedClassModel owner : project.classes()) {
+            if (owner == null || !owner.reifiesStatements()
+                    || !statementValueFieldName(owner).isEmpty()) continue;
+            java.util.List<GeneratedFieldModel> candidates =
+                    legacyObjectRoleCandidates(owner);
+            if (candidates.size() != 1) continue;
+            GeneratedFieldModel field = candidates.getFirst();
+            field.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+            field.mapping().propertyPid("");
+            field.mapping().propertyLabel("");
+            field.sourceBindings().clear();
+        }
+    }
+
+    /**
+     * Fields from the pre-role model that could have meant "statement object".
+     * Kept as one predicate for migration and validation: exactly one can migrate;
+     * more than one must remain authored data and be reported as ambiguous.
+     */
+    public static java.util.List<GeneratedFieldModel> legacyObjectRoleCandidates(
+            GeneratedClassModel owner) {
+        if (owner == null || !owner.reifiesStatements()
+                || owner.statementSource() == null) return java.util.List.of();
+        String pid = clean(owner.statementSource().propertyPid());
+        if (pid.isEmpty()) return java.util.List.of();
+        return owner.fields().stream()
+                .filter(field -> field != null
+                        && field.mapping().productionKind()
+                            == FieldProductionKind.AUTO
+                        && !field.mapping().isQualifier()
+                        && pid.equals(clean(field.mapping().propertyPid())))
+                .toList();
+    }
+
+    /**
      * A field exists on the provisional statement record loaded from Wikidata,
      * rather than being produced by a later transform.
      */
@@ -23,9 +64,20 @@ public final class StatementFieldSemantics {
 
         return field != null
                 && !field.isNameField()
-                && (field.mapping().productionKind() == FieldProductionKind.AUTO
-                    || field.mapping().productionKind()
-                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
+                && isRuntimeProduction(field.mapping().productionKind());
+    }
+
+    /**
+     * The productions that put a value on the loaded statement record itself. Asked of
+     * the kind alone, because the compiled model asks the same question of its own
+     * field type and a second copy of the list is a second answer: the object was added
+     * here and stayed missing there, agreeing only for as long as every caller happened
+     * to also demand a qualifier.
+     */
+    public static boolean isRuntimeProduction(FieldProductionKind kind) {
+        return kind == FieldProductionKind.AUTO
+                || kind == FieldProductionKind.STATEMENT_OBJECT
+                || kind == FieldProductionKind.STATEMENT_PARTICIPANTS;
     }
 
     /**
@@ -52,35 +104,25 @@ public final class StatementFieldSemantics {
     }
 
     /**
-     * The name of the field that plays the VALUE role — the reified statement's main
-     * value ({@code ps:<pid>}). It is the runtime, non-qualifier field whose property
-     * is the class's statement-source PID (the explicit link the modeller sets).
-     * Returns {@code ""} when no such field exists — deliberately WITHOUT the old
-     * "first non-qualifier field" guess, so a missing value field is a validation
-     * error rather than a silently wrong reification. Orthogonal to
-     * {@link #isQualifierField}: the value field is never a qualifier.
+     * The field explicitly declared to receive the reified statement's main object
+     * ({@code ps:<pid>}). The property belongs to the statement source; matching a
+     * field's property to it used to make the role an invisible implication and stored
+     * the same PID twice.
      */
     public static String statementValueFieldName(GeneratedClassModel owner) {
         if (owner == null || !owner.reifiesStatements()) {
             return "";
         }
-        StatementClassSource source = owner.statementSource();
-        if (source == null) {
-            return "";
-        }
-        String statementPid = trim(source.propertyPid());
-        if (statementPid.isEmpty()) {
-            return "";
-        }
-        for (GeneratedFieldModel field : owner.fields()) {
-            if (!isRuntimeStatementField(field) || field.mapping().isQualifier()) {
-                continue;
-            }
-            if (statementPid.equals(trim(field.mapping().propertyPid()))) {
-                return field.name();
-            }
-        }
-        return "";
+        return owner.fields().stream()
+                .filter(field -> field != null
+                        && field.mapping().productionKind()
+                            == FieldProductionKind.STATEMENT_OBJECT)
+                .map(GeneratedFieldModel::name)
+                .findFirst().orElse("");
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**
@@ -227,10 +269,6 @@ public final class StatementFieldSemantics {
             GeneratedClassModel owner, GeneratedFieldModel field) {
         return field != null && field.name() != null
                 && field.name().equals(statementValueFieldName(owner));
-    }
-
-    private static String trim(String s) {
-        return s == null ? "" : s.trim();
     }
 
     /**

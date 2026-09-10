@@ -121,6 +121,8 @@
       button: Down  (disabled)
       label: Available:
       combo: 2 item(s)
+    label: Nothing identifies this yet.
+    button: Use category
     label: When a key cannot be computed:
     combo: 3 item(s)
     box: When the same key occurs
@@ -264,7 +266,7 @@
     label: Display:
     combo: 3 item(s)
   label: Load as:
-  combo: 9 item(s)
+  combo: 10 item(s)
   label: Source
   label: From:
   combo: 9 item(s)

@@ -89,8 +89,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P1411",
-        "propertyLabel" : "nominated for",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -105,33 +105,14 @@
         "limit" : 200,
         "rankBy" : "",
         "rankDescending" : true,
-        "productionKind" : "AUTO",
+        "productionKind" : "STATEMENT_OBJECT",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "category",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "nominated for",
-            "property" : "P1411",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
-          }
-        }
-      } ] ],
+      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -437,8 +418,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P1411",
-        "propertyLabel" : "nominated for",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -453,33 +434,14 @@
         "limit" : 200,
         "rankBy" : "",
         "rankDescending" : true,
-        "productionKind" : "AUTO",
+        "productionKind" : "STATEMENT_OBJECT",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "Nomination",
-          "fieldPath" : "category",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "nominated for",
-            "property" : "P1411",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
-          }
-        }
-      } ] ],
+      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",

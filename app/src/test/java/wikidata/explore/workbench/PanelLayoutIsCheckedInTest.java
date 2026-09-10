@@ -180,7 +180,8 @@ class PanelLayoutIsCheckedInTest {
         StatementClassSource statement = new StatementClassSource("Person", "P166");
         statement.objectBound(EntityBound.explicit(List.of("Q35637")));
         award.statementSource(statement);
-        award.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        award.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         project.addClass(award);
 
         GeneratedClassModel name = new GeneratedClassModel("Name");

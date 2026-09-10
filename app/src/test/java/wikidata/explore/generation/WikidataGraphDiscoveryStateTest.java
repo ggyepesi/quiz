@@ -106,9 +106,11 @@ class WikidataGraphDiscoveryStateTest {
 
         WikidataGraphDiscoveryState.applyExpansionLedger(execution, queued);
 
-        assertEquals(List.of("Q6412254"), authored.findClass("Position").seedQids());
+        assertEquals(List.of("Q6412254"), authored.findClass("OfficeHolding")
+                .statementSource().objectBound().qids());
         assertEquals(List.of("Q6412254", "Q253779"),
-                execution.findClass("Position").seedQids());
+                execution.findClass("OfficeHolding").statementSource()
+                        .objectBound().qids());
     }
 
     @Test void aDormantLedgerIsRetainedButNotExecutedWhileThePolicyIsDisabled() {
@@ -122,7 +124,8 @@ class WikidataGraphDiscoveryStateTest {
 
         WikidataGraphDiscoveryState.applyExpansionLedger(model, queued);
 
-        assertEquals(List.of("Q6412254"), model.findClass("Position").seedQids());
+        assertEquals(List.of("Q6412254"), model.findClass("OfficeHolding")
+                .statementSource().objectBound().qids());
     }
 
     @Test void structurallyEligibleStatementDoesNotBecomeAGraphPatternUnlessEnabled() {
@@ -173,27 +176,22 @@ class WikidataGraphDiscoveryStateTest {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
         model.addClass(person);
-        GeneratedClassModel position = new GeneratedClassModel("Position");
-        position.seedQids().add("Q6412254");
-        model.addClass(position);
+        model.addClass(new GeneratedClassModel("Position"));
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         StatementClassSource statementSource = new StatementClassSource("P39");
+        statementSource.objectBound(wikidata.explore.model.EntityBound.explicit(
+                List.of("Q6412254")));
         statementSource.graphExpansionPolicy(GraphExpansionPolicy.CURATED);
         holding.statementSource(statementSource);
         holding.instanceMapping().propertyPid("P39");
         var source = holding.addField("source", FieldType.ENTITY,
                 FieldCardinality.SINGLE);
         source.entityClassName("Person");
+        source.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         var target = holding.addField("position", FieldType.ENTITY,
                 FieldCardinality.SINGLE);
         target.entityClassName("Position");
-        target.mapping().propertyPid("P39");
-        // Declared, not implied: reification used to invent a "source" field for
-        // the subject, so fixtures inherited one they never wrote down. A
-        // statement must now say where its subject goes, and this is the field
-        // it was already using.
-        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        target.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
         holding.canonical().keyFields().addAll(

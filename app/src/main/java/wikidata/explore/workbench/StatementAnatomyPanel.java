@@ -40,7 +40,7 @@ final class StatementAnatomyPanel extends JPanel {
             mappings.setText("");
             return;
         }
-        String property = propertyDisplay(clazz, source.propertyPid());
+        String property = named(source.propertyLabel(), source.propertyPid());
         String subjectType = source.hasSourceClass()
                 ? source.sourceClassName() : subjectEntityClass(clazz);
         String restriction = source.hasValueSelection()
@@ -59,7 +59,7 @@ final class StatementAnatomyPanel extends JPanel {
             if (StatementFieldSemantics.isStatementSubject(clazz, field)) {
                 lines.add("subject entity  → " + field.name() + type(field));
             } else if (field.name().equals(valueField)) {
-                lines.add("statement value → " + field.name() + type(field));
+                lines.add("statement object → " + field.name() + type(field));
             } else if (StatementFieldSemantics.isQualifierField(clazz, field)) {
                 lines.add("qualifier " + named(field.mapping().propertyLabel(),
                         field.mapping().qualifierPid()) + " → " + field.name());
@@ -73,7 +73,7 @@ final class StatementAnatomyPanel extends JPanel {
             }
         }
         mappings.setText(lines.isEmpty()
-                ? "Add fields for the statement subject, value, and qualifiers."
+                ? "Add fields for the statement subject, object, and qualifiers."
                 : String.join("\n", lines));
         mappings.setCaretPosition(0);
     }
@@ -88,16 +88,6 @@ final class StatementAnatomyPanel extends JPanel {
         } catch (IllegalArgumentException | IllegalStateException incompleteDraft) {
             return List.of();
         }
-    }
-
-    private static String propertyDisplay(GeneratedClassModel clazz, String pid) {
-        for (GeneratedFieldModel field : clazz.fields()) {
-            if (pid.equals(field.mapping().propertyPid())
-                    && !field.mapping().propertyLabel().isBlank()) {
-                return named(field.mapping().propertyLabel(), pid);
-            }
-        }
-        return pid;
     }
 
     private static String subjectEntityClass(GeneratedClassModel clazz) {

@@ -30,7 +30,7 @@ class EffectiveClassExplanationsTest {
         var position = holding.addField(
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         position.entityClassName("Position");
-        position.mapping().propertyPid("P39");
+        position.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         position.mapping().propertyLabel("position held");
         var start = holding.addField("startDate", FieldType.DATE, FieldCardinality.SINGLE);
         start.mapping().qualifierPid("P580");

@@ -116,7 +116,9 @@ class CompiledTransformParityTest {
         project.addClass(new GeneratedClassModel("OscarNominations"));
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedFieldModel category =
+                nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         GeneratedFieldModel edition =
                 nom.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE);
         edition.expectation(FieldExpectation.REQUIRED);
@@ -179,6 +181,8 @@ class CompiledTransformParityTest {
         // it was already using.
         nom.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         project.addClass(nom);
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
@@ -239,7 +243,8 @@ class CompiledTransformParityTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
-        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         nom.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
         GeneratedFieldModel won =
                 nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);

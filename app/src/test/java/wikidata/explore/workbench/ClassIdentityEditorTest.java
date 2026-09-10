@@ -33,7 +33,7 @@ class ClassIdentityEditorTest {
         var subject = holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE);
         subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         holding.addField("position", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P39");
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         holding.addField("startDate", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P580");
         holding.addField("aliases", FieldType.STRING, FieldCardinality.COLLECTION);

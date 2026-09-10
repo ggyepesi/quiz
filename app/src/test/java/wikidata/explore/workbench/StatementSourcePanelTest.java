@@ -34,8 +34,8 @@ class StatementSourcePanelTest {
         var position = holding.addField("position", FieldType.ENTITY,
                 wikidata.explore.model.FieldCardinality.SINGLE);
         position.entityClassName("Position");
-        position.mapping().propertyPid("P39");
-        position.mapping().propertyLabel("position held");
+        position.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_OBJECT);
         var start = holding.addField("startDate", FieldType.DATE,
                 wikidata.explore.model.FieldCardinality.SINGLE);
         start.mapping().qualifierPid("P580");
@@ -57,11 +57,11 @@ class StatementSourcePanelTest {
         StatementAnatomyPanel panel = new StatementAnatomyPanel();
         panel.show(project, holding);
 
-        assertTrue(panel.meaningText().contains("position held (P39)"));
+        assertTrue(panel.meaningText().contains("P39"));
         assertTrue(panel.meaningText().contains("stored on a Person entity"));
         assertTrue(panel.meaningText().contains("Positions"));
         assertTrue(panel.mappingsText().contains("subject entity  → source (Person)"));
-        assertTrue(panel.mappingsText().contains("statement value → position (Position)"));
+        assertTrue(panel.mappingsText().contains("statement object → position (Position)"));
         assertTrue(panel.mappingsText().contains("qualifier start time (P580) → startDate"));
         assertTrue(panel.mappingsText().contains(
                 "records whose source is a Person → Person.offices (list)"));

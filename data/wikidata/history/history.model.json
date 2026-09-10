@@ -1854,9 +1854,9 @@
       "propertyPid" : "P39",
       "propertyLabel" : "position held",
       "objectBound" : {
-        "kind" : "UNBOUNDED",
-        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
-        "relationPid" : "",
+        "kind" : "RELATION",
+        "qids" : [ "java.util.ImmutableCollections$List12", [ "Q4164871" ] ],
+        "relationPid" : "P31",
         "selectionName" : "",
         "selectionId" : "",
         "includeDescendants" : false
@@ -1869,7 +1869,7 @@
         "selectionId" : "",
         "includeDescendants" : false
       },
-      "graphExpansionPolicy" : "CURATED"
+      "graphExpansionPolicy" : "NONE"
     },
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -1971,8 +1971,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P39",
-        "propertyLabel" : "position held",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -1987,33 +1987,14 @@
         "limit" : 200,
         "rankBy" : "",
         "rankDescending" : true,
-        "productionKind" : "AUTO",
+        "productionKind" : "STATEMENT_OBJECT",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "OfficeHolding",
-          "fieldPath" : "position",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:78d1f433-938c-30c7-a83b-79d0ea736908"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "position held",
-            "property" : "P39",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
-          }
-        }
-      } ] ],
+      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",

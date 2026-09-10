@@ -20,7 +20,6 @@ import wikidata.explore.model.QualifierDateMode;
 import wikidata.explore.model.StatementFieldSemantics;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -152,25 +151,16 @@ public final class ModelStatementReifications {
         if (valueField.isBlank()) {
             valueField = findValueField(statementClass, statementPid);
         }
+        // Each authored bound is resolved ONCE, as a bound. It used to be taken apart
+        // into a QID list and a type QID and then rebuilt, which could only express
+        // what those two variables could: a RELATION on anything but P31 was silently
+        // dropped, and includeDescendants with it. A bound stays a bound; only an
+        // EXPLICIT one also names the QIDs a discovery walk can start from.
         EntityBound objectBound = resolve(statementSource.objectBound(), project);
-        if (!objectBound.bounded()) {
-            EntityBound targetMembership = targetClassMembership(
-                    statementClass, project, valueField);
-            if (targetMembership.bounded()) objectBound = targetMembership;
-        }
-        List<String> valueQids = valueQids(
-                statementClass, sourceClassModel, project,
-                statementPid, valueField);
-        List<String> discoveryValueQids = new ArrayList<>(valueQids);
-        if (discoverSubjects && !statementSource.hasValueSelection()) {
-            List<String> seeds = targetClassSeeds(
-                    statementClass, project, valueField);
-            if (!seeds.isEmpty()
-                    && explicitAllowedQids(statementClass, valueField).isEmpty()) {
-                discoveryValueQids = seeds;
-                valueQids = List.of();
-            }
-        }
+        List<String> discoveryValueQids =
+                objectBound.kind() == EntityBound.Kind.EXPLICIT
+                        ? new ArrayList<>(objectBound.qids())
+                        : new ArrayList<>();
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
         List<String> listQualifiers = new ArrayList<>();
@@ -209,26 +199,6 @@ public final class ModelStatementReifications {
         List<String> dedup =
                 canonicalKey(statementClass.canonical().keyFields());
 
-        // Each authored bound is resolved ONCE, as a bound, for both ends. It used to
-        // be taken apart into a QID list and a type QID and then rebuilt, which could
-        // only express what those two variables could: a RELATION on anything but P31
-        // was silently dropped, and includeDescendants with it. A bound stays a bound.
-        if (objectBound.kind() == EntityBound.Kind.EXPLICIT) {
-            valueQids = new ArrayList<>(objectBound.qids());
-            discoveryValueQids = new ArrayList<>(objectBound.qids());
-        } else if (!objectBound.bounded()) {
-            // No authored bound. Two older sources of the same fact, in order: values
-            // already derived from the field or the source class's membership, then the
-            // class's own sourceQid, which is where a statement class used to keep its
-            // object type filter. Both are READS of what a model already says, not
-            // second places to write a bound.
-            // Values already derived from the field or from the source class's
-            // membership. The other fallback was the class's own sourceQid, which is
-            // where a statement class kept an object type filter before the object end
-            // had a bound of its own; nothing authors it now, so reading it could only
-            // report a bound no editor could have written.
-            objectBound = EntityBound.explicit(valueQids);
-        }
         EntityBound subjectBound = resolve(statementSource.subjectBound(), project);
 
         QualifierLoadConfig load = new QualifierLoadConfig(
@@ -275,15 +245,11 @@ public final class ModelStatementReifications {
             CompiledClass statementClass,
             String statementPid) {
 
-        // The value role is explicit: the non-qualifier field on the statement PID.
-        // No first-field guess (mirrors StatementFieldSemantics.statementValueFieldName
-        // on the editable model) — a missing value field is a validation error.
+        // The object destination is a stored role. The statement property belongs to
+        // the class and therefore cannot also be the way a field identifies its role.
         for (CompiledField field : statementClass.ownFields()) {
-            if (!runtimeStatementField(field)
-                    || field.source().qualifier()) {
-                continue;
-            }
-            if (statementPid.equals(clean(field.source().propertyPid()))) {
+            if (field.source().productionKind()
+                    == FieldProductionKind.STATEMENT_OBJECT) {
                 return field.name();
             }
         }
@@ -317,103 +283,6 @@ public final class ModelStatementReifications {
         return selection instanceof wikidata.explore.model.VocabularySelection vocabulary
                 ? bound.resolved(vocabulary.valueQids(), vocabulary.valueTypeQid())
                 : bound.resolved(List.of(), "");
-    }
-
-    private static List<String> valueQids(
-            CompiledClass statementClass,
-            CompiledClass sourceClass,
-            CompiledProjectModel project,
-            String statementPid,
-            String valueField) {
-
-        LinkedHashSet<String> values = new LinkedHashSet<>();
-
-        CompiledField valueModel = null;
-        for (CompiledField field : statementClass.ownFields()) {
-            if (runtimeStatementField(field)
-                    && valueField.equals(field.name())) {
-                valueModel = field;
-                break;
-            }
-        }
-
-        if (valueModel != null) {
-            for (String qid : valueModel.source().allowedQids()) {
-                String cleanQid = clean(qid);
-                if (WikidataIds.isQid(cleanQid)) {
-                    values.add(cleanQid);
-                }
-            }
-            if (values.isEmpty() && project != null
-                    && valueModel.type() == FieldType.ENTITY) {
-                project.findClass(valueModel.entityClassName())
-                        .ifPresent(target -> addQids(values, target.seedQids()));
-            }
-        }
-
-        if (values.isEmpty() && sourceClass != null
-                && statementPid.equals(
-                clean(sourceClass.membership().relationPid()))) {
-
-            // The source class's membership IS the set of values this statement points
-            // at, when the statement's property is the one that populates it.
-            for (String qid : sourceClass.membership().qids()) {
-                String cleanQid = clean(qid);
-                if (WikidataIds.isQid(cleanQid)) {
-                    values.add(cleanQid);
-                }
-            }
-        }
-
-        return new ArrayList<>(values);
-    }
-
-    private static List<String> explicitAllowedQids(
-            CompiledClass statementClass, String valueField) {
-        if (statementClass == null) return List.of();
-        CompiledField field = statementClass.ownFields().stream()
-                .filter(ModelStatementReifications::runtimeStatementField)
-                .filter(candidate -> valueField.equals(candidate.name()))
-                .findFirst().orElse(null);
-        return field == null ? List.of() : field.source().allowedQids().stream()
-                .map(ModelStatementReifications::clean)
-                .filter(WikidataIds::isQid).distinct().toList();
-    }
-
-    private static List<String> targetClassSeeds(
-            CompiledClass statementClass, CompiledProjectModel project,
-            String valueField) {
-        if (statementClass == null || project == null) return List.of();
-        CompiledField field = statementClass.ownFields().stream()
-                .filter(ModelStatementReifications::runtimeStatementField)
-                .filter(candidate -> valueField.equals(candidate.name()))
-                .filter(candidate -> candidate.type() == FieldType.ENTITY)
-                .findFirst().orElse(null);
-        CompiledClass target = field == null ? null
-                : project.findClass(field.entityClassName()).orElse(null);
-        if (target == null) return List.of();
-        LinkedHashSet<String> seeds = new LinkedHashSet<>();
-        addQids(seeds, target.seedQids());
-        return new ArrayList<>(seeds);
-    }
-
-    /** The value field's declared class population is its implicit value domain. */
-    private static EntityBound targetClassMembership(
-            CompiledClass statementClass, CompiledProjectModel project,
-            String valueField) {
-        if (statementClass == null || project == null) return EntityBound.unbounded();
-        CompiledField field = statementClass.ownFields().stream()
-                .filter(ModelStatementReifications::runtimeStatementField)
-                .filter(candidate -> valueField.equals(candidate.name()))
-                .filter(candidate -> candidate.type() == FieldType.ENTITY)
-                .findFirst().orElse(null);
-        CompiledClass target = field == null ? null
-                : project.findClass(field.entityClassName()).orElse(null);
-        // Membership plus seeds is an intersection. EntityBound deliberately holds
-        // one bound, so returning only the relation would widen that class. The seed
-        // path below retains the explicit restriction instead.
-        return target == null || !target.seedQids().isEmpty()
-                ? EntityBound.unbounded() : target.membership();
     }
 
     private static List<ReifyConstruct.Role> fallbackRoles(
@@ -477,12 +346,11 @@ public final class ModelStatementReifications {
         return listQualifiers.isEmpty() ? "" : listQualifiers.get(0);
     }
 
-    /** Compiled fields are never name fields (the compiler drops those). */
+    /** Compiled fields are never name fields (the compiler drops those), so the
+     *  production kind is all that remains of the model-side predicate. */
     private static boolean runtimeStatementField(CompiledField field) {
-        return field != null
-                && (field.source().productionKind() == FieldProductionKind.AUTO
-                    || field.source().productionKind()
-                        == FieldProductionKind.STATEMENT_PARTICIPANTS);
+        return field != null && StatementFieldSemantics.isRuntimeProduction(
+                field.source().productionKind());
     }
 
     private static boolean supportsMissingQualifierPolicy(
@@ -494,18 +362,6 @@ public final class ModelStatementReifications {
                 && !field.collection();
     }
 
-    private static void addQids(
-            Set<String> target, Collection<String> candidates) {
-        if (target == null || candidates == null) {
-            return;
-        }
-        for (String candidate : candidates) {
-            String qid = clean(candidate);
-            if (WikidataIds.isQid(qid)) {
-                target.add(qid);
-            }
-        }
-    }
 
     private static List<String> canonicalKey(List<String> storedKeyFields) {
         LinkedHashSet<String> key = new LinkedHashSet<>();
@@ -783,8 +639,8 @@ public final class ModelStatementReifications {
                     + gaps.stream().limit(6).collect(
                             java.util.stream.Collectors.joining(", "))
                     + (gaps.size() > 6 ? ", …" : "")
-                    + " — statements to those WON'T load. Add them to the value "
-                    + "field's allowed values (or align the class membership).\n");
+                    + " — statements to those WON'T load. Add them to the triple's "
+                    + "object bound (or align the class membership).\n");
         }
     }
 

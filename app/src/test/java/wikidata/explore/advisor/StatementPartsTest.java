@@ -40,6 +40,7 @@ class StatementPartsTest {
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         StatementClassSource source = new StatementClassSource("P39");
         source.propertyLabel("position held");
+        source.objectBound(EntityBound.explicit(List.of("Q6412254")));
         holding.statementSource(source);
 
         GeneratedFieldModel subject = holding.addField(
@@ -49,7 +50,7 @@ class StatementPartsTest {
         GeneratedFieldModel position = holding.addField(
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         position.entityClassName("Position");
-        position.mapping().propertyPid("P39");
+        position.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         holding.addField("startDate", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P580");
         holding.addField("endDate", FieldType.DATE, FieldCardinality.SINGLE)
@@ -79,7 +80,7 @@ class StatementPartsTest {
         assertEquals(List.of("source"), names(explanation, Part.SUBJECT),
                 "the entity the fact is about, filled from the statement itself");
         assertEquals(List.of("position"), names(explanation, Part.VALUE),
-                "the field carrying the statement's own property is its value");
+                "the field explicitly storing the statement object is its value");
     }
 
     /** Only the key qualifiers separate two holdings; the rest merely describe one. */

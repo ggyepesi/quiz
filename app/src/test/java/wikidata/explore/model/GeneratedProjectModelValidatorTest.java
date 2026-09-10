@@ -162,7 +162,8 @@ class GeneratedProjectModelValidatorTest {
                   .entityClassName("Edition");
         nomination.fields().get(nomination.fields().size() - 1).mapping()
                 .productionKind(FieldProductionKind.STATEMENT_SUBJECT);
-        nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         project.addClass(new GeneratedClassModel("Edition"));
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
@@ -465,6 +466,59 @@ class GeneratedProjectModelValidatorTest {
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("at most one Statement subject")),
+                result.format());
+    }
+
+    @Test void aStatementClassHasAtMostOneExplicitObjectField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel subject = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        for (String name : java.util.List.of("category", "otherCategory")) {
+            prize.addField(name, FieldType.ENTITY, FieldCardinality.SINGLE)
+                    .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+        }
+        project.rootClass(people);
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("at most one Statement object")),
+                result.format());
+    }
+
+    @Test void statementObjectIsSingleValuedWithoutItsOwnProperty() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel subject = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        GeneratedFieldModel object = prize.addField(
+                "category", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        object.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+        object.mapping().propertyPid("P166");
+        project.rootClass(people);
+        prize.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("must be a single-valued field")),
+                result.format());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("triple declares its property")),
                 result.format());
     }
 

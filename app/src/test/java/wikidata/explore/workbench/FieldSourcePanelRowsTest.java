@@ -8,8 +8,11 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.StatementFieldSemantics;
 
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import java.awt.Component;
@@ -124,6 +127,52 @@ class FieldSourcePanelRowsTest {
         assertTrue(shown.contains("Match role field:"), shown.toString());
     }
 
+    @Test void statementObjectIsAnExplicitFieldSourceNotARepeatedProperty() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        GeneratedFieldModel position = holding.addField(
+                "position", FieldType.ENTITY, FieldCardinality.SINGLE);
+        position.mapping().propertyPid("P39");
+        position.sourceBindings().add(new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "OfficeHolding", "position",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikidata", "property",
+                        java.util.Map.of("property", "P39"))));
+        // An additional source the field carried before it became an end of the
+        // triple. Bindings are re-derived from it at save time, so clearing the
+        // binding list alone let the producer walk back in one save later.
+        wikidata.explore.model.FieldSourceMapping fallback =
+                new wikidata.explore.model.FieldSourceMapping();
+        fallback.propertyPid("birthPlace");
+        fallback.sourceType(wikidata.explore.model.FieldSourceType.DBPEDIA);
+        position.fallbackMapping(fallback);
+        project.addClass(holding);
+
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(position);
+        comboContaining(panel, FieldProductionKind.STATEMENT_OBJECT)
+                .setSelectedItem(FieldProductionKind.STATEMENT_OBJECT);
+        button(panel, "Apply field source").doClick();
+
+        assertEquals(FieldProductionKind.STATEMENT_OBJECT,
+                position.mapping().productionKind());
+        assertEquals("", position.mapping().propertyPid(),
+                "the statement class owns P39; its object field does not repeat it");
+        assertTrue(position.sourceBindings().isEmpty(),
+                "the old direct field recipe must not remain as a second producer");
+        assertEquals("position",
+                StatementFieldSemantics.statementValueFieldName(holding));
+
+        wikidata.explore.model.FieldSourceBindings.synchronizeForSave(project);
+
+        assertTrue(position.sourceBindings().isEmpty(),
+                "and no producer is re-derived when the model is saved: "
+                        + position.sourceBindings());
+    }
+
     // The qualifier SOURCE is the deliberate exception: it stays visible on a class
     // that cannot use it, so the class/field relationship is explicit. Only the
     // settings OF a qualifier disappear when there is no qualifier to settle.
@@ -186,6 +235,20 @@ class FieldSourcePanelRowsTest {
             }
         }
         throw new AssertionError("No combo contains " + value);
+    }
+
+    private static JButton button(Container root, String text) {
+        ArrayDeque<Container> pending = new ArrayDeque<>();
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            for (Component component : pending.removeFirst().getComponents()) {
+                if (component instanceof JButton button && text.equals(button.getText())) {
+                    return button;
+                }
+                if (component instanceof Container child) pending.addLast(child);
+            }
+        }
+        throw new AssertionError("No button named " + text);
     }
 
     /** The labels a reader can actually see, in layout order. */

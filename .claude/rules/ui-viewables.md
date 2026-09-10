@@ -55,6 +55,10 @@ Discovery's results had no search box, because they were a `JTable` rather than 
 - **Keep the painted-row rendering** (drag-to-select text blocks, virtualization for large
   sets). This rule is about WHAT is rendered; that is about HOW. Don't change the card look.
 
+- **Large inline collections stay on the shared virtualized path too.** Expanding one parent
+  must not create one UI component per member. Live appends update only the new suffix and the
+  containing field's count; they do not rescan or relayout all prior members.
+
 ## objectview stays generic
 
 `objectview` must know nothing about Wikidata or any app concept. App knowledge enters through

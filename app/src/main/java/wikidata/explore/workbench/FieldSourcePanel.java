@@ -354,7 +354,11 @@ public class FieldSourcePanel extends JPanel {
                 == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = productionBox.getSelectedItem()
                 == FieldProductionKind.INVERT;
-        boolean acquired = !owned && !inverse && !aggregated;
+        boolean statementEnd = productionBox.getSelectedItem()
+                == FieldProductionKind.STATEMENT_SUBJECT
+                || productionBox.getSelectedItem()
+                == FieldProductionKind.STATEMENT_OBJECT;
+        boolean acquired = !owned && !inverse && !statementEnd && !aggregated;
         propertyPidField.setEnabled(acquired);
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
@@ -377,6 +381,11 @@ public class FieldSourcePanel extends JPanel {
             propertyPidField.setText("");
             qualifierPidField.setText("");
             requiredBox.setSelected(false);
+            onlyRelatedOfTypeBox.setSelected(false);
+        } else if (statementEnd) {
+            qualifierPidField.setEnabled(false);
+            propertyPidField.setText("");
+            qualifierPidField.setText("");
             onlyRelatedOfTypeBox.setSelected(false);
         }
     }
@@ -1035,9 +1044,10 @@ refreshOwnedComponentControls();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = pk == FieldProductionKind.INVERT;
         boolean statementSubject = pk == FieldProductionKind.STATEMENT_SUBJECT;
+        boolean statementObject = pk == FieldProductionKind.STATEMENT_OBJECT;
         boolean statementParticipants =
                 pk == FieldProductionKind.STATEMENT_PARTICIPANTS;
-        if (ownedComponent || inverse || statementSubject) {
+        if (ownedComponent || inverse || statementSubject || statementObject) {
             // The edge itself is the producer. The component's declared fields load
             // their own properties using the owner's identifier.
             m.propertyPid("");
@@ -1045,6 +1055,15 @@ refreshOwnedComponentControls();
             m.qualifierPid("");
             m.valueLanguage("");
             m.qualifierDateMode(QualifierDateMode.YEAR);
+            if (statementSubject || statementObject) {
+                // Every OTHER producer goes with it. Clearing only the bindings left
+                // the fallback mapping and the category rule standing, and the next
+                // save re-derived their bindings from those — so the field came back
+                // with a source of its own one save after being told it had none.
+                field.sourceBindings().clear();
+                field.fallbackMapping(null);
+                field.wikipediaCategoryRule(null);
+            }
         }
         boolean dateProjection = field.type() == FieldType.DATE
                 && pk == FieldProductionKind.AUTO;
@@ -1084,6 +1103,8 @@ refreshOwnedComponentControls();
             field.cardinality(FieldCardinality.SINGLE);
             field.renderMode(FieldRenderMode.REFERENCE);
             m.roleKind(wikidata.explore.model.RoleKind.IDENTITY);
+        } else if (statementObject) {
+            field.cardinality(FieldCardinality.SINGLE);
         } else if (statementParticipants) {
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.COLLECTION);
@@ -1235,6 +1256,11 @@ refreshOwnedComponentControls();
                     + "statement class, copy the entity that carries the statement. "
                     + "No property or qualifier is required.<br><i>Example:</i> "
                     + "NobelPrize.laureate is the subject carrying P166.</html>";
+            case STATEMENT_OBJECT -> "<html><b>Statement object</b> — on a "
+                    + "statement class, store the main value of the statement. The "
+                    + "statement class declares the property; this field declares "
+                    + "where its object goes.<br><i>Example:</i> "
+                    + "OfficeHolding.position is the object of P39.</html>";
             case STATEMENT_PARTICIPANTS -> "<html><b>Statement participants</b> — on "
                     + "a statement class, combine the entity carrying the statement "
                     + "with the configured entity qualifier values, deduplicated by "
@@ -1423,7 +1449,7 @@ refreshOwnedComponentControls();
 
         // A qualifier source is meaningful only on a StatementClass. The field
         // remains visible so the class/field relationship is explicit.
-        qualifierPidField.setEnabled(statementClass);
+        qualifierPidField.setEnabled(statementClass && runtimeField);
         boolean dateQualifier = statementClass
                 && validQualifier
                 && typeBox.getSelectedItem() == FieldType.DATE

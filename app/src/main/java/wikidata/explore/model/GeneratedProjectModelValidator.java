@@ -248,17 +248,58 @@ public final class GeneratedProjectModelValidator {
                     "A Statement class must declare at most one Statement subject field; "
                             + subjects + " are configured."));
         }
-        // Where the subject goes is required to GENERATE, not to declare. A model
-        // states shape and never acquires, so demanding it settle both ends of the
-        // triple would make it answer a question only a domain has — the same reason
-        // an unbounded acquisition is a domain's problem and not a model's. Asked
-        // through the same predicate, so the two rules cannot drift apart.
-        if (owner.reifiesStatements()
-                && project.acquiresInstances()
-                && !StatementFieldSemantics.hasStatementSubjectBinding(owner)) {
+        int objects = 0;
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null || field.mapping().productionKind()
+                    != FieldProductionKind.STATEMENT_OBJECT) continue;
+            objects++;
+            if (!owner.reifiesStatements()) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement object is available only on a Statement class."));
+            }
+            if (field.cardinality() == FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement object must be a single-valued field."));
+            }
+            if (!clean(field.mapping().propertyPid()).isBlank()
+                    || !clean(field.mapping().qualifierPid()).isBlank()) {
+                problems.add(Problem.error(path(owner, field),
+                        "Statement object must not declare a property or qualifier; "
+                                + "the Statement class triple declares its property."));
+            }
+        }
+        if (objects > 1) {
             problems.add(Problem.error(owner.className(),
-                    "A Statement class must explicitly expose its subject as a single "
-                            + "ENTITY field, a subject-fallback field, or a participants list."));
+                    "A Statement class must declare at most one Statement object field; "
+                            + objects + " are configured."));
+        }
+        // Where the two ends go is required to GENERATE, not merely to declare.
+        // Subject and object are one triple and use the same acquisition-scoped
+        // severity: a missing end makes the generated record incomplete either way.
+        if (owner.reifiesStatements()) {
+            addMissingStatementEnd(
+                    project,
+                    owner,
+                    StatementFieldSemantics.hasStatementSubjectBinding(owner),
+                    "subject",
+                    "explicitly expose its subject as a single ENTITY field, a "
+                            + "subject-fallback field, or a participants list",
+                    problems);
+
+            if (StatementFieldSemantics.statementValueFieldName(owner).isEmpty()) {
+                List<GeneratedFieldModel> legacy =
+                        StatementFieldSemantics.legacyObjectRoleCandidates(owner);
+                String action = legacy.size() > 1
+                        ? "resolve the ambiguous legacy fields "
+                            + legacy.stream().map(GeneratedFieldModel::name).toList()
+                            + " (each still declares "
+                            + clean(owner.statementSource().propertyPid())
+                            + ") by choosing exactly one and setting Load as to "
+                            + "Statement object"
+                        : "choose a field and set Load as to Statement object";
+                addMissingStatementEnd(
+                        project, owner, false, "object", action, problems);
+            }
         }
         for (GeneratedFieldModel field : owner.fields()) {
             if (!StatementFieldSemantics.receivesStatementSubject(owner, field)
@@ -271,6 +312,24 @@ public final class GeneratedProjectModelValidator {
                                 + target.className() + " when its admission evidence matches."));
             }
         }
+    }
+
+    private static void addMissingStatementEnd(
+            GeneratedProjectModel project,
+            GeneratedClassModel owner,
+            boolean present,
+            String end,
+            String action,
+            List<Problem> problems) {
+        if (present) return;
+        String message = project.acquiresInstances()
+                ? "A Statement class must " + action + "; otherwise reified records "
+                    + "have an empty " + end + "."
+                : "No Statement " + end + " destination yet: the acquiring domain "
+                    + "must " + action + ".";
+        problems.add(project.acquiresInstances()
+                ? Problem.error(owner.className(), message)
+                : Problem.warning(owner.className(), message));
     }
 
     private static void validateInverseFields(
@@ -573,38 +632,6 @@ public final class GeneratedProjectModelValidator {
     }
 
 
-    // A source-class-less reify must bound the objects it discovers from. That is the
-    // object END's question, and the object end has a bound: this asked the statement
-    // CLASS's sourceQid, which was where the filter lived before the end had one, and
-    // which nothing writes now — so a class bounded by explicit QIDs or by a relation
-    // was reported as unbounded, and only the vocabulary case still answered.
-    private static boolean hasBoundedValueDomain(
-            GeneratedProjectModel project,
-            GeneratedClassModel clazz,
-            StatementClassSource source) {
-        if (source.objectBound().bounded()) {
-            return true;
-        }
-        String valueField = StatementFieldSemantics.statementValueFieldName(clazz);
-        GeneratedFieldModel field = clazz.fields().stream()
-                .filter(f -> valueField.equals(f.name()))
-                .findFirst().orElse(null);
-        if (field == null) {
-            return false;
-        }
-        if (field.mapping().allowedQids().stream()
-                .map(GeneratedProjectModelValidator::clean)
-                .anyMatch(q -> q.matches("(?i)Q\\d+"))) {
-            return true;
-        }
-        GeneratedClassModel target = project.findClass(field.entityClassName());
-        if (target == null) return false;
-        if (target.effectiveMembership(project).bounded()) return true;
-        return target.seedQids().stream()
-                .map(GeneratedProjectModelValidator::clean)
-                .anyMatch(q -> q.matches("(?i)Q\\d+"));
-    }
-
     private static void validateStatementClass(
             GeneratedProjectModel project,
             GeneratedClassModel clazz,
@@ -639,14 +666,12 @@ public final class GeneratedProjectModelValidator {
             // which was never the requirement — it was the only end that COULD be
             // bounded, so a missing capability read as a rule.
             if (project.acquiresInstances()
-                    && !source.hasBoundedEnd(
-                            hasBoundedValueDomain(project, clazz, source))) {
+                    && !source.hasBoundedEnd(source.objectBound().bounded())) {
                 problems.add(Problem.error(
                         clazz.className(),
                         "A statement class with no source class discovers its "
                                 + "subjects, so at least one end of the triple must be "
-                                + "bounded: allowed objects (value type, value set, "
-                                + "populated value class, or a VOCABULARY), or a bound on "
+                                + "bounded: allowed objects in this triple, or a bound on "
                                 + "which entities may be the subject."));
             }
             return;
@@ -686,22 +711,6 @@ public final class GeneratedProjectModelValidator {
             }
         }
 
-        // The value role is explicit: a non-qualifier runtime field must map to the
-        // statement property. Its absence means the reified records get an empty
-        // value (the old code guessed a field instead) — surface it as a warning so
-        // the misconfiguration is visible without blocking save/compile.
-        boolean hasNonQualifierRuntimeField = clazz.fields().stream()
-                .anyMatch(f -> StatementFieldSemantics.isRuntimeStatementField(f)
-                        && !f.mapping().isQualifier());
-        if (hasNonQualifierRuntimeField
-                && StatementFieldSemantics.statementValueFieldName(clazz).isEmpty()) {
-            problems.add(Problem.warning(
-                    clazz.className(),
-                    "No value field: a non-qualifier field should map to the statement "
-                            + "property " + clean(source.propertyPid())
-                            + ", else reified records have an empty value."));
-        }
-
         Set<String> fieldNames = fieldNames(clazz);
 
         for (GeneratedFieldModel field : clazz.fields()) {
@@ -720,11 +729,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             if (policy == MissingQualifierPolicy.STATEMENT_VALUE
-                    && !hasStatementValueField(
-                    clazz,
-                    source == null
-                            ? ""
-                            : source.propertyPid())) {
+                    && !hasStatementValueField(clazz)) {
                 problems.add(Problem.error(
                         path(clazz, field),
                         "STATEMENT_VALUE fallback requires a statement-value field."));
@@ -864,11 +869,7 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
-    private static boolean hasStatementValueField(
-            GeneratedClassModel clazz,
-            String propertyPid) {
-        // Centralized: the value role is the non-qualifier runtime field on the
-        // statement PID (propertyPid is what the predicate derives from the class).
+    private static boolean hasStatementValueField(GeneratedClassModel clazz) {
         return !StatementFieldSemantics.statementValueFieldName(clazz).isEmpty();
     }
 

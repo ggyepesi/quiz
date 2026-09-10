@@ -1,29 +1,32 @@
 package wikidata.explore.model;
 
 import datasource.schema.FieldType;
+import datasource.api.SourceBinding;
+import datasource.api.SourceBindingSlot;
+import datasource.api.SourceBindingTarget;
+import datasource.api.SourceRecipe;
 
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The statement VALUE role is explicit — the non-qualifier field on the statement
- * PID — with no "first non-qualifier field" guess (see refactor step b).
+ * The statement object is a stored field role. Neither a matching PID nor a target
+ * class is allowed to invent it.
  */
 class StatementValueFieldTest {
 
     @Test
-    void theValueIsTheNonQualifierFieldOnTheStatementPid() {
-        // A Nomination reify class like the Oscars model: category is the value
-        // (mapped to P1411, the statement PID); year/forWork are qualifiers.
+    void theObjectIsTheFieldExplicitlyLoadedAsTheStatementObject() {
         GeneratedClassModel n = new GeneratedClassModel("Nomination");
         n.statementSource(new StatementClassSource("OscarNominations", "P1411"));
-        n.instanceMapping().propertyPid("P1411");     // statementSource PID
         GeneratedFieldModel category =
                 n.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");       // value field on the statement PID
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         GeneratedFieldModel year =
                 n.addField("year", FieldType.DATE, FieldCardinality.SINGLE);
         year.mapping().qualifierPid("P585");           // qualifier
@@ -35,18 +38,74 @@ class StatementValueFieldTest {
     }
 
     @Test
-    void noGuessWhenNoFieldIsOnTheStatementPid() {
+    void aMatchingPropertyDoesNotImplicitlyMakeAFieldTheObject() {
         GeneratedClassModel n = new GeneratedClassModel("Nomination");
         n.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         n.instanceMapping().propertyPid("P1411");
-        // a non-qualifier field, but NOT mapped to P1411 — the old code would have
-        // guessed this as the value; now it's not the value.
-        n.addField("note", FieldType.STRING, FieldCardinality.SINGLE);
+        GeneratedFieldModel category =
+                n.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
         n.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P585");
 
         assertEquals("", StatementFieldSemantics.statementValueFieldName(n),
-                "no field on the statement PID → no value (no first-field guess)");
+                "a repeated statement PID is not a stored object role");
+    }
+
+    @Test
+    void anUnambiguousLegacyPropertyIsMigratedOnceToTheStoredRole() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel n = new GeneratedClassModel("Nomination");
+        n.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        GeneratedFieldModel category =
+                n.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
+        category.mapping().propertyPid("P1411");
+        category.mapping().propertyLabel("nominated for");
+        category.sourceBindings().add(new SourceBinding(
+                SourceBindingTarget.fieldValue("Nomination", "category",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "property-value",
+                        Map.of("property", "P1411"))));
+        project.rootClass(n);
+
+        StatementFieldSemantics.migrateLegacyObjectRoles(project);
+
+        assertEquals(FieldProductionKind.STATEMENT_OBJECT,
+                category.mapping().productionKind());
+        assertEquals("", category.mapping().propertyPid());
+        assertTrue(category.sourceBindings().isEmpty());
+    }
+
+    @Test
+    void ambiguousLegacyObjectFieldsAreNotGuessedAndBlockAcquisition() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("OscarNominations");
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(
+                new StatementClassSource("OscarNominations", "P1411"));
+        GeneratedFieldModel subject = nomination.addField(
+                "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        for (String name : java.util.List.of("category", "otherCategory")) {
+            nomination.addField(name, FieldType.ENTITY, FieldCardinality.SINGLE)
+                    .mapping().propertyPid("P1411");
+        }
+        nomination.canonical().keyFields().add("nominee");
+        project.rootClass(root);
+        project.addClass(nomination);
+
+        StatementFieldSemantics.migrateLegacyObjectRoles(project);
+
+        assertEquals("", StatementFieldSemantics.statementValueFieldName(nomination),
+                "migration must not choose between two authored fields");
+        var result = GeneratedProjectModelValidator.validate(project);
+        assertFalse(result.valid(), result.format());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                        problem.message().contains("ambiguous legacy fields")
+                                && problem.message().contains("category")
+                                && problem.message().contains("otherCategory")
+                                && problem.message().contains("P1411")),
+                result.format());
     }
 
     @Test

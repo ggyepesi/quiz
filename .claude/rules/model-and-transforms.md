@@ -49,6 +49,21 @@ an admission alone performs no retyping. See `docs/contextual-entity-representat
 An authored subclass inherits its base's admission, including across a model import; it does
 not duplicate that declaration merely to participate in contextual representation.
 
+# Statement triple ownership
+
+A Statement class owns its source triple. Its property and subject/object population bounds
+are configured on that triple. Its fields explicitly declare `Statement subject` or
+`Statement object` to say where those ends are stored; they do not repeat the property.
+An acquiring domain must declare destinations for both ends: either missing end is a validation
+error because it produces an incomplete reified record. A reusable model may leave an end open,
+but validation reports it as a warning. Legacy fields that repeat the statement property migrate
+only when exactly one candidate exists; ambiguity is reported and never guessed.
+
+The class named by an ENTITY statement field describes the stored value's representation. Its
+membership, seeds, and field-level allowed values must never silently become a statement-end
+bound. Graph-frontier anchors and accepted frontier additions likewise belong to the statement
+triple's object bound, not to the represented class's seeds.
+
 # Generation order
 
 The pipeline's order encodes real dependencies. Changing it means checking these:

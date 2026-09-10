@@ -33,6 +33,12 @@ class ModelValidationScopeTest {
         assertTrue(result.valid(), result.format());
         assertTrue(result.errors().isEmpty(),
                 "bounding an acquisition is not a model's problem: " + result.format());
+        assertTrue(result.warnings().stream().anyMatch(problem ->
+                        problem.message().contains("No Statement subject destination")),
+                "the open subject end remains visible: " + result.format());
+        assertTrue(result.warnings().stream().anyMatch(problem ->
+                        problem.message().contains("No Statement object destination")),
+                "the open object end remains visible: " + result.format());
     }
 
     @Test void theDomainThatGivesItAPopulationMustStillBoundIt() {
@@ -107,6 +113,21 @@ class ModelValidationScopeTest {
                         problem.message().contains("expose its subject")),
                 "the domain that generates it must say where the subject goes: "
                         + asDomain.format());
+    }
+
+    @Test void bothMissingTripleEndsBlockOnlyTheDomainThatAcquiresThem() {
+        var asModel = GeneratedProjectModelValidator.validate(
+                discoveringStatementClass(GeneratedProjectModel.ProjectKind.MODEL));
+        var asDomain = GeneratedProjectModelValidator.validate(
+                discoveringStatementClass(GeneratedProjectModel.ProjectKind.DOMAIN));
+
+        assertTrue(asModel.valid(), asModel.format());
+        for (String end : java.util.List.of("subject", "object")) {
+            assertTrue(asDomain.errors().stream().anyMatch(problem ->
+                            problem.message().contains("empty " + end)),
+                    end + " is an equally required end of the acquired triple: "
+                            + asDomain.format());
+        }
     }
 
     /**

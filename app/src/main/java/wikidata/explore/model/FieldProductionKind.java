@@ -9,6 +9,10 @@ public enum FieldProductionKind {
     /** On a statement class, copy the entity carrying the reified statement.
      *  This is a first-class source, not a missing-qualifier fallback. */
     STATEMENT_SUBJECT,
+    /** On a statement class, copy the main value of the reified statement.
+     *  The statement class owns the property; this field only declares where its
+     *  object is stored. */
+    STATEMENT_OBJECT,
     /** On a statement class, assemble a symmetric participant collection from the
      * statement subject plus the configured entity qualifier values. */
     STATEMENT_PARTICIPANTS,
@@ -33,6 +37,7 @@ public enum FieldProductionKind {
             case CHILD_OBJECTS -> "Related objects";
             case OWNED_COMPONENT -> "Owned component (QID from owner)";
             case STATEMENT_SUBJECT -> "Statement subject";
+            case STATEMENT_OBJECT -> "Statement object";
             case STATEMENT_PARTICIPANTS -> "Statement participants";
             case INVERT -> "Invert (reverse of another field)";
             case COMPANION_MATCH -> "Companion match (outcome flag)";

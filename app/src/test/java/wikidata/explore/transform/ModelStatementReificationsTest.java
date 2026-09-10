@@ -22,7 +22,13 @@ class ModelStatementReificationsTest {
     private static GeneratedFieldModel field(String name, FieldType type,
                                              String pid, String qualifierPid) {
         GeneratedFieldModel f = new GeneratedFieldModel(name, type, FieldCardinality.SINGLE);
-        f.mapping().propertyPid(pid);
+        if (pid != null && !pid.isBlank()
+                && (qualifierPid == null || qualifierPid.isBlank())) {
+            f.mapping().productionKind(
+                    wikidata.explore.model.FieldProductionKind.STATEMENT_OBJECT);
+        } else {
+            f.mapping().propertyPid(pid);
+        }
         f.mapping().qualifierPid(qualifierPid);
         return f;
     }

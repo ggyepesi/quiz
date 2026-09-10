@@ -50,6 +50,8 @@ class ProjectModelCompilerTest {
         // it was already using.
         statement.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        statement.addField("value", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
         statement.canonical().keyFields().addAll(
@@ -119,7 +121,7 @@ class ProjectModelCompilerTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
         nom.canonical().keyFields().addAll(
@@ -149,7 +151,7 @@ class ProjectModelCompilerTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");        // value field on the statement PID
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         nom.addField("year", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().qualifierPid("P585");        // qualifier, not the value
         // A statement class states its key; nothing chooses one for it.

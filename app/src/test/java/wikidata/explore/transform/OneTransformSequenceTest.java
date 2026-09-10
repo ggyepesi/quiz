@@ -54,7 +54,7 @@ class OneTransformSequenceTest {
         nomination.instanceMapping().propertyPid("P1411");
         wikidata.explore.model.GeneratedFieldModel category =
                 nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         category.mapping().allowedQids().add("Q106301");
         // Declared, not implied: reification used to invent a "source" field for the
         // subject, so fixtures inherited one they never wrote down. A statement now has

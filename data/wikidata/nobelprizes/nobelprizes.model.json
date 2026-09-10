@@ -503,8 +503,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P166",
-        "propertyLabel" : "award received",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -519,33 +519,14 @@
         "limit" : 200,
         "rankBy" : "",
         "rankDescending" : true,
-        "productionKind" : "AUTO",
+        "productionKind" : "STATEMENT_OBJECT",
         "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ {
-        "target" : {
-          "scope" : "FIELD_VALUE",
-          "className" : "LaureatesWithMotivation",
-          "fieldPath" : "category",
-          "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f"
-        },
-        "recipe" : {
-          "providerId" : "wikidata",
-          "operationId" : "property-value",
-          "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "award received",
-            "property" : "P166",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
-          }
-        }
-      } ] ],
+      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",

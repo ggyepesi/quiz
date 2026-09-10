@@ -41,7 +41,7 @@ class SourceClasslessReifyTest {
         nom.statementSource(ss);
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for the
         // subject, so every fixture inherited one it never wrote down. A statement now
         // has to say where its subject goes, and this is the field it was always using.
@@ -85,7 +85,7 @@ class SourceClasslessReifyTest {
         assertEquals(r.load().objectBound().qids(), r.load().discoveryValueQids());
     }
 
-    @Test void valueEntityClassOwnsTheDirectDiscoveryDomain() {
+    @Test void aValueEntityClassDoesNotSilentlyBecomeTheDiscoveryDomain() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.seedQids().add("Q6412254");
@@ -97,7 +97,7 @@ class SourceClasslessReifyTest {
         var value = holding.addField(
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         value.entityClassName("Position");
-        value.mapping().propertyPid("P39");
+        value.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for the
         // subject, so fixtures inherited one they never wrote down. A statement now has
         // to say where its subject goes, and this is the field it was always using.
@@ -109,27 +109,15 @@ class SourceClasslessReifyTest {
                 wikidata.explore.model.StatementIdentity.structuralKey(holding));
         project.addClass(holding);
 
-        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
                         .contains("at least one end of the triple must be bounded"),
-                "the seeded value class bounds direct subject discovery");
+                "representing an object as Position is not an acquisition instruction");
 
-        var editable = ModelStatementReifications.deriveOne(holding, project);
-        assertNotNull(editable);
-        assertEquals(List.of(), editable.load().objectBound().qids(),
-                "target seeds discover holders but do not filter their other positions");
-        assertEquals(List.of("Q6412254"), editable.load().discoveryValueQids());
-
-        CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
-        var compiledHolding = compiled.findClass("OfficeHolding").orElseThrow();
-        var compiledResult =
-                ModelStatementReifications.deriveOne(compiledHolding, compiled);
-        assertNotNull(compiledResult);
-        assertEquals(List.of(), compiledResult.load().objectBound().qids());
-        assertEquals(List.of("Q6412254"),
-                compiledResult.load().discoveryValueQids());
+        assertFalse(holding.statementSource().objectBound().bounded(),
+                "the target class contributes no hidden bound to the authored triple");
     }
 
-    @Test void valueEntityClassMembershipBoundsDirectDiscovery() {
+    @Test void theStatementTripleExplicitlyOwnsItsObjectMembershipBound() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.membership(EntityBound.relation(
@@ -137,12 +125,15 @@ class SourceClasslessReifyTest {
         project.addClass(position);
 
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
-        holding.statementSource(new StatementClassSource("P39"));
+        StatementClassSource source = new StatementClassSource("P39");
+        source.objectBound(EntityBound.relation(
+                "P31", List.of("Q4164871"), false));
+        holding.statementSource(source);
         holding.instanceMapping().propertyPid("P39");
         var value = holding.addField(
                 "position", FieldType.ENTITY, FieldCardinality.SINGLE);
         value.entityClassName("Position");
-        value.mapping().propertyPid("P39");
+        value.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
         holding.canonical().keyFields().addAll(

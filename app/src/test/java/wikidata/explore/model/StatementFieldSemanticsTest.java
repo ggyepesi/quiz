@@ -96,7 +96,7 @@ class StatementFieldSemanticsTest {
         GeneratedClassModel nom = reifyingClass();
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         qualifier(nom, "nominee", FieldType.ENTITY,
                 FieldCardinality.SINGLE, "P2453");
         qualifier(nom, "year", FieldType.DATE,
@@ -122,7 +122,7 @@ class StatementFieldSemanticsTest {
         nom.addField("nominees", FieldType.ENTITY, FieldCardinality.COLLECTION);
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         GeneratedFieldModel won =
                 nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
         won.mapping().productionKind(FieldProductionKind.COMPANION_MATCH);
@@ -138,7 +138,7 @@ class StatementFieldSemanticsTest {
         GeneratedClassModel nom = reifyingClass();
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         qualifier(nom, "nominee", FieldType.ENTITY,
                 FieldCardinality.SINGLE, "P2453");
 
@@ -158,12 +158,12 @@ class StatementFieldSemanticsTest {
         GeneratedClassModel dateStatement = reifyingClass();
         GeneratedFieldModel date = dateStatement.addField(
                 "date", FieldType.DATE, FieldCardinality.SINGLE);
-        date.mapping().propertyPid("P1411");
+        date.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
 
         GeneratedClassModel collectionStatement = reifyingClass();
         GeneratedFieldModel values = collectionStatement.addField(
                 "values", FieldType.ENTITY, FieldCardinality.COLLECTION);
-        values.mapping().propertyPid("P1411");
+        values.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
 
         assertEquals(java.util.List.of("date"),
                 StatementIdentity.structuralKey(dateStatement),
@@ -178,7 +178,7 @@ class StatementFieldSemanticsTest {
         GeneratedClassModel nom = reifyingClass();
         GeneratedFieldModel category = nom.addField(
                 "category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         nom.canonical()
                 .displayNameMode(CanonicalSpec.DisplayNameMode.TEMPLATE)
                 .displayNameTemplate("{category} · custom");

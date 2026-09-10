@@ -416,16 +416,13 @@ public class StatementSourcePanel extends JPanel {
             }
         }
 
-        // The value role is explicit: the non-qualifier field on the statement PID.
-        // When none is mapped, deriveOne falls back to the string "value" (a field
-        // that doesn't exist) — flag that here rather than showing "value" as if a
-        // field were configured (mirrors the validator warning).
+        // The object role is explicit on its receiving field. The statement owns the
+        // PID; a field says only that it stores that statement's object.
         String explicitValue =
                 StatementFieldSemantics.statementValueFieldName(clazz);
         String valuePart = explicitValue.isEmpty()
-                ? " · ⚠ no value field — map a non-qualifier field to "
-                        + load.propertyPid()
-                : " · statement value = " + explicitValue;
+                ? " · ⚠ no object field — set a field's Load as to Statement object"
+                : " · statement object = " + explicitValue;
         identityValue.setText(
                 "derived natural key" + valuePart
                         + (reify.canonicalizesByList()
@@ -493,11 +490,10 @@ public class StatementSourcePanel extends JPanel {
                 .structuralPattern(projectModel, clazz.className());
         if (pattern == null) {
             graphPatternValue.setText("⚠ Unavailable — requires direct subject discovery, "
-                    + "target seeds and an unrestricted entity value field.");
+                    + "explicit object QIDs, and a Statement object field.");
             return;
         }
-        GeneratedClassModel targetClass = projectModel.findClass(pattern.targetNodeClass());
-        int seeds = targetClass == null ? 0 : targetClass.seedQids().size();
+        int seeds = clazz.statementSource().objectBound().qids().size();
         graphPatternValue.setText("<html>" + pattern.sourceNodeClass()
                 + " &mdash; " + pattern.relation().relationId() + " / "
                 + pattern.statementClass() + " &rarr; " + pattern.targetNodeClass()

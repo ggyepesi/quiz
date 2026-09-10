@@ -139,6 +139,7 @@ public final class GeneratedProjectModelStore {
         model.reconcileSourceBindingTargets();
         PopulationSourceBindings.synchronize(model);
         ClassSourceBindings.synchronize(model);
+        StatementFieldSemantics.migrateLegacyObjectRoles(model);
         FieldSourceBindings.migrateOnLoad(model);
         model.ensureDeclarationIdentities();
         return model;

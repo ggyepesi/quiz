@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -92,11 +93,7 @@ class OscarReifyTest {
         assertEquals(List.of(one), result.get(0).get("members"));
     }
 
-    @Test void valueQidsInheritedFromSourceMembershipWhenTheFieldHasNone() {
-        // The value field has no allowedQids and the class carries a value-TYPE
-        // (Q19020) — but Best Picture/Director aren't P31=Q19020, so the type filter
-        // would miss them. deriveOne must inherit the SOURCE class's P1411 membership
-        // targets (the categories) as the value filter instead.
+    @Test void sourceMembershipDoesNotSilentlyBecomeTheStatementObjectBound() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
         src.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103360"), false));   // Best Picture
@@ -105,7 +102,7 @@ class OscarReifyTest {
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
         nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");     // value field, no allowedQids
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field
@@ -122,9 +119,8 @@ class OscarReifyTest {
                 ModelStatementReifications.deriveOne(nom, project);
 
         assertNotNull(r);
-        assertTrue(r.load().objectBound().bounded(), "inherits an explicit value set");
-        assertTrue(r.load().objectBound().qids().containsAll(List.of("Q102427", "Q103360")),
-                "value QIDs inherited from source membership: " + r.load().objectBound().qids());
+        assertFalse(r.load().objectBound().bounded(),
+                "a source class's population is not the statement triple's object bound");
     }
 
     @Test void valueFilterGapFlagsAMissedMembershipTarget() {
@@ -134,11 +130,13 @@ class OscarReifyTest {
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        StatementClassSource statement =
+                new StatementClassSource("OscarNominations", "P1411");
+        statement.objectBound(EntityBound.explicit(List.of("Q102427")));
+        nom.statementSource(statement);
         nom.instanceMapping().propertyPid("P1411");
         var cat = nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        cat.mapping().propertyPid("P1411");
-        cat.mapping().allowedQids().add("Q102427");   // explicit, but MISSES Q103360
+        cat.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field
@@ -159,17 +157,21 @@ class OscarReifyTest {
     }
 
     @Test void noValueFilterGapWhenTheFilterCoversMembership() {
-        // No explicit allowedQids → deriveOne inherits ALL membership targets → no gap.
+        // The statement triple explicitly covers every source-membership target.
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel src = new GeneratedClassModel("OscarNominations");
         src.membership(EntityBound.relation("P1411", List.of("Q102427", "Q103360"), false));
         project.addClass(src);
 
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");
-        nom.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        StatementClassSource statement =
+                new StatementClassSource("OscarNominations", "P1411");
+        statement.objectBound(EntityBound.explicit(
+                List.of("Q102427", "Q103360")));
+        nom.statementSource(statement);
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for
         // the subject, so fixtures inherited one they never wrote down. A
         // statement must now say where its subject goes, and this is the field
@@ -186,7 +188,7 @@ class OscarReifyTest {
                 ModelStatementReifications.deriveOne(nom, project);
         assertTrue(ModelStatementReifications.valueFilterGaps(
                 r, ProjectModelCompiler.compile(project)).isEmpty(),
-                "inherited value filter covers all membership targets");
+                "the explicit object bound covers all membership targets");
     }
 
     @Test void describeSurfacesSubjectDefaultFieldsAndDedupKey() {
@@ -538,7 +540,7 @@ class OscarReifyTest {
         nom.membership(EntityBound.relation("P31", List.of("Q19020"), false));
         GeneratedFieldModel category =
                 nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE);
-        category.mapping().propertyPid("P1411");                     // the ps: value field
+        category.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Multiple allowed values in a defined order — valueQids becomes a VALUES
         // clause, so order must survive compilation (guards the Set.copyOf regress).
         category.mapping().allowedQids().add("Q30");

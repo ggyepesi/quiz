@@ -184,7 +184,7 @@ class MembershipPatternTest {
         GeneratedFieldModel held = holding.addField(
                 "position", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
         held.entityClassName("Position");
-        held.mapping().propertyPid("P39");
+        held.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
         holding.canonical().keyFields().addAll(

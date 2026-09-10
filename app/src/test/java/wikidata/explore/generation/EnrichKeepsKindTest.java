@@ -35,6 +35,8 @@ class EnrichKeepsKindTest {
         // statement must now say where its subject goes.
         nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         GeneratedClassModel backbone = new GeneratedClassModel("OscarBackbone");
         // A statement class states its key; nothing chooses one for it.
         nomination.canonical().keyFields().addAll(

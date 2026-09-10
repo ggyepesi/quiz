@@ -75,6 +75,8 @@ class CanonicalSpecTest {
         // it was already using.
         nomination.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         project.addClass(nomination);
 
         java.io.File file = java.io.File.createTempFile("model-canonical", ".json");

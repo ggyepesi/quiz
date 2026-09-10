@@ -41,7 +41,7 @@ class SelectionValueDomainTest {
         nom.statementSource(ss);
         nom.instanceMapping().propertyPid("P1411");
         nom.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P1411");
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
         // Declared, not implied: reification used to invent a "source" field for the
         // subject, so fixtures inherited one they never wrote down. A statement now has
         // to say where its subject goes, and this is the field it was always using.

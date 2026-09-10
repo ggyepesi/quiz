@@ -89,9 +89,9 @@ public final class WikidataGraphDiscoveryState {
                     candidate.id().equals(pattern.id())
                             && candidate.relation().equals(pattern.relation())
                             && candidate.direction() == pattern.direction())) continue;
-            GeneratedClassModel target = model.findClass(pattern.targetNodeClass());
-            if (target == null) continue;
-            seedFromCoverage(ledger, pattern, target);
+            GeneratedClassModel statement = model.findClass(pattern.statementClass());
+            if (statement == null || statement.statementSource() == null) continue;
+            extendStatementObjectBound(ledger, pattern, statement);
         }
         // The same for a field edge. Its definition is derived from the model rather
         // than persisted, so it is re-derived here and matched by id — which is what
@@ -104,10 +104,15 @@ public final class WikidataGraphDiscoveryState {
         }
     }
 
-    /** Nodes this edge has settled on become the target class's acquisition seeds. */
-    private static void seedFromCoverage(GraphDiscoveryState ledger,
-            datasource.graph.GraphEdgeDefinition edge, GeneratedClassModel target) {
-        ledger.coverage().stream()
+    /**
+     * The Wikidata nodes this edge has settled on — queued, expanded, or expanded but
+     * incomplete. Asked once, because where the answer GOES differs between a field
+     * edge and a statement triple but what counts as settled does not, and two copies
+     * of that list are two definitions of the frontier.
+     */
+    private static List<String> settledQids(
+            GraphDiscoveryState ledger, datasource.graph.GraphEdgeDefinition edge) {
+        return ledger.coverage().stream()
                 .filter(item -> item.patternId().equals(edge.id()))
                 .filter(item -> item.relation().equals(edge.relation()))
                 .filter(item -> item.direction() == edge.direction())
@@ -117,8 +122,33 @@ public final class WikidataGraphDiscoveryState {
                 .map(GraphExpansionCoverage::node)
                 .filter(node -> EntityRef.WIKIDATA.equals(node.namespace()))
                 .map(EntityRef::id).filter(WikidataIds::isQid)
-                .filter(qid -> !target.seedQids().contains(qid))
-                .forEach(target.seedQids()::add);
+                .distinct().toList();
+    }
+
+    /** Nodes this edge has settled on become the target class's acquisition seeds. */
+    private static void seedFromCoverage(GraphDiscoveryState ledger,
+            datasource.graph.GraphEdgeDefinition edge, GeneratedClassModel target) {
+        for (String qid : settledQids(ledger, edge)) {
+            if (!target.seedQids().contains(qid)) target.seedQids().add(qid);
+        }
+    }
+
+    /**
+     * A statement graph starts from the object end declared on its triple. Frontier
+     * choices therefore extend that same declaration on the disposable execution
+     * model; they must not silently turn into population seeds on the field's target
+     * class.
+     */
+    private static void extendStatementObjectBound(GraphDiscoveryState ledger,
+            GraphExpansionPattern pattern, GeneratedClassModel statement) {
+        var source = statement.statementSource();
+        var bound = source.objectBound();
+        if (bound.kind() != wikidata.explore.model.EntityBound.Kind.EXPLICIT) return;
+        List<String> qids = new ArrayList<>(bound.qids());
+        for (String qid : settledQids(ledger, pattern)) {
+            if (!qids.contains(qid)) qids.add(qid);
+        }
+        source.objectBound(wikidata.explore.model.EntityBound.explicit(qids));
     }
 
     /**
@@ -147,11 +177,12 @@ public final class WikidataGraphDiscoveryState {
         var load = reification.load();
         GeneratedClassModel statement = model.findClass(load.statementType());
         if (statement == null) return null;
-        // An open forward value domain plus bounded reverse seeds is precisely the
-        // curated-frontier pattern. A vocabulary that filters values has no unseen
-        // frontier by definition and remains an ordinary bounded reification.
+        // Explicit object QIDs are the authored frontier anchors. A relation or
+        // vocabulary bound is a population constraint, not an implicit seed list;
+        // graph discovery must never obtain anchors from the target class.
         if (!load.discoverSubjects() || !load.hasDiscoveryValueQids()
-                || load.objectBound().bounded()) return null;
+                || load.objectBound().kind()
+                        != wikidata.explore.model.EntityBound.Kind.EXPLICIT) return null;
         GeneratedFieldModel target = statement.fields().stream()
                 .filter(field -> load.valueField().equals(field.name()))
                 .filter(field -> field.type() == FieldType.ENTITY)
