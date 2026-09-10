@@ -1,6 +1,7 @@
 package wikidata.explore.compiled;
 
 import wikidata.explore.model.Selection;
+import wikidata.explore.model.EntityRepresentationRule;
 
 import java.util.*;
 
@@ -16,6 +17,7 @@ public final class CompiledProjectModel {
     private final List<CompiledClass> classes;
     private final Map<String, CompiledClass> classesByLowerName;
     private final Map<String, CompiledClass> classesById;
+    private final Map<String, Set<String>> representationTargetsByRole;
 
     // Named non-product Selections (vocabularies/populations) a production
     // references — carried as-is (they are plain value objects, nothing to
@@ -40,6 +42,18 @@ public final class CompiledProjectModel {
             String rootClassName,
             List<CompiledClass> classes,
             List<Selection> selections) {
+        this(name, generationDepth, rootClassId, rootClassName, classes, selections,
+                List.of());
+    }
+
+    public CompiledProjectModel(
+            String name,
+            int generationDepth,
+            String rootClassId,
+            String rootClassName,
+            List<CompiledClass> classes,
+            List<Selection> selections,
+            List<EntityRepresentationRule> representationRules) {
 
         this.name = clean(name);
         this.generationDepth = Math.max(0, generationDepth);
@@ -61,6 +75,24 @@ public final class CompiledProjectModel {
             }
         }
         classesById = Collections.unmodifiableMap(idIndex);
+
+        LinkedHashMap<String, Set<String>> representations = new LinkedHashMap<>();
+        if (representationRules != null) {
+            for (EntityRepresentationRule rule : representationRules) {
+                if (rule == null || !rule.isConfigured()) continue;
+                findClassById(rule.roleClassId()).or(() -> findClass(rule.roleClassName()))
+                        .ifPresent(role -> findClassById(rule.representationClassId())
+                                .or(() -> findClass(rule.representationClassName()))
+                                .ifPresent(target -> representations
+                                        .computeIfAbsent(nameKey(role.className()), ignored ->
+                                                new LinkedHashSet<>())
+                                        .add(nameKey(target.className()))));
+            }
+        }
+        LinkedHashMap<String, Set<String>> frozenRepresentations = new LinkedHashMap<>();
+        representations.forEach((role, targets) ->
+                frozenRepresentations.put(role, Set.copyOf(targets)));
+        representationTargetsByRole = Collections.unmodifiableMap(frozenRepresentations);
 
         this.selections = selections == null ? List.of() : List.copyOf(selections);
         LinkedHashMap<String, Selection> selIndex = new LinkedHashMap<>();
@@ -117,6 +149,16 @@ public final class CompiledProjectModel {
 
     public Optional<CompiledClass> findClassById(String declarationId) {
         return Optional.ofNullable(classesById.get(clean(declarationId)));
+    }
+
+    public boolean mayRepresent(String roleClassName, String className) {
+        return representationTargetsByRole
+                .getOrDefault(nameKey(roleClassName), Set.of())
+                .contains(nameKey(className));
+    }
+
+    private static String nameKey(String value) {
+        return clean(value).toLowerCase(Locale.ROOT);
     }
 
     private static String clean(String value) {

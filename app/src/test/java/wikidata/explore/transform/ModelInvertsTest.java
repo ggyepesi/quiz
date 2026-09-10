@@ -8,6 +8,8 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.EntityKindRule;
+import wikidata.explore.compiled.ProjectModelCompiler;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,6 +73,30 @@ class ModelInvertsTest {
 
         InvertConstruct invert = ModelInverts.derive(project).get(0);
         assertEquals("source", invert.refField());
+    }
+
+    @Test void inverseReachesAContextualRepresentationOfTheDeclaredRole() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField(
+                "offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        offices.mapping().inverseField("source");
+        person.fields().add(offices);
+
+        GeneratedClassModel holder = new GeneratedClassModel("PositionHolder");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("source", "", "PositionHolder"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holder);
+        project.addClass(holding);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        project.representationClasses(holder, List.of("Person"));
+
+        assertEquals("source", ModelInverts.derive(project).get(0).refField());
+        assertEquals("source", ModelInverts.derive(
+                ProjectModelCompiler.compile(project)).get(0).refField());
     }
 
     @Test void legacyInferenceDoesNotChooseByFieldOrderWhenAmbiguous() {

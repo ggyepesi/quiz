@@ -346,7 +346,12 @@ public class ClassSourcePanel extends JPanel {
 
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        options.add(new JLabel("Limit:"));
+        JLabel ownPopulationLimitLabel = new JLabel("Own population limit:");
+        ownPopulationLimitLabel.setToolTipText("Applies only to instances discovered "
+                + "from this class's own population source, not to instances represented "
+                + "from another role class.");
+        limitSpinner.setToolTipText(ownPopulationLimitLabel.getToolTipText());
+        options.add(ownPopulationLimitLabel);
         options.add(limitSpinner);
         options.add(requireLabelBox);
         options.add(new JLabel("lang:"));

@@ -9,6 +9,7 @@ import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.EntityRepresentations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,7 +78,7 @@ public final class ModelInverts {
                 if (src == null) {
                     continue;
                 }
-                String refField = forwardField(src, target.className(),
+                String refField = forwardField(project, src, target.className(),
                         clean(back.mapping().propertyPid()),
                         clean(back.mapping().inverseField()));
                 if (refField == null) {
@@ -113,7 +114,7 @@ public final class ModelInverts {
                 if (src == null) {
                     continue;
                 }
-                String refField = forwardField(src, target.className(),
+                String refField = forwardField(project, src, target.className(),
                         clean(back.source().propertyPid()),
                         clean(back.source().inverseField()));
                 if (refField == null) {
@@ -126,13 +127,15 @@ public final class ModelInverts {
         return out;
     }
 
-    private static String forwardField(CompiledClass src,
+    private static String forwardField(CompiledProjectModel project,
+                                       CompiledClass src,
                                        String targetClass, String pid,
                                        String explicitField) {
         List<String> byProperty = new ArrayList<>();
         List<String> byClass = new ArrayList<>();
         for (CompiledField f : src.ownFields()) {
-            if (!targetClass.equals(f.entityClassName())) {
+            if (!targetClass.equals(f.entityClassName())
+                    && !project.mayRepresent(f.entityClassName(), targetClass)) {
                 continue;
             }
             byClass.add(f.name());
@@ -146,13 +149,16 @@ public final class ModelInverts {
 
     /** The forward field on {@code src} that references {@code targetClass} via the
      *  same property — the field whose references we invert. */
-    private static String forwardField(GeneratedClassModel src,
+    private static String forwardField(GeneratedProjectModel project,
+                                       GeneratedClassModel src,
                                        String targetClass, String pid,
                                        String explicitField) {
         List<String> byProperty = new ArrayList<>();
         List<String> byClass = new ArrayList<>();
         for (GeneratedFieldModel f : src.fields()) {
-            if (f == null || !targetClass.equals(f.entityClassName())) {
+            if (f == null || (!targetClass.equals(f.entityClassName())
+                    && !EntityRepresentations.mayRepresent(project,
+                            f.entityClassName(), targetClass))) {
                 continue;
             }
             byClass.add(f.name());

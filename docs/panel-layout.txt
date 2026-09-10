@@ -62,7 +62,7 @@
     combo: 1 item(s)
   label: Exclude instances of:
   text: []
-  label: Limit:
+  label: Own population limit:
   text: [200]
   check: Require label
   label: lang:

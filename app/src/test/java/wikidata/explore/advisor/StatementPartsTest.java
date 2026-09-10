@@ -108,15 +108,8 @@ class StatementPartsTest {
                 "the one field that is not part of the key, and what becomes of it");
     }
 
-    /**
-     * The saved History model marks no subject: OfficeHolding.source carries production
-     * kind AUTO, as every model built through the UI does. The fixture above DOES mark
-     * it, so asking the stored kind alone passed here while the real model dropped its
-     * subject into "said about it" with nothing filling it — the same trap the reify
-     * tests hit by hand-building roles the saved data never contains. This is the
-     * unmarked shape.
-     */
-    @Test void anUnmarkedSubjectIsRejectedRatherThanInferred() {
+    /** Removing the declaration is invalid; a field name never implies its role. */
+    @Test void removingTheExplicitSubjectIsRejectedRatherThanInferred() {
         var project = history();
         var holding = project.findClass("OfficeHolding");
         holding.fields().stream()

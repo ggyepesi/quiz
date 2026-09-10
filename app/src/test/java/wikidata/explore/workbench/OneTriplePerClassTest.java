@@ -2,6 +2,7 @@ package wikidata.explore.workbench;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldProductionKind;
@@ -223,6 +224,27 @@ class OneTriplePerClassTest {
         triple.show(holding, project);
         assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
                 "Ready — statement property P39")));
+    }
+
+    @Test void aRepresentationTargetNamesTheRoleThatSuppliesItsInstances() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel holder = new GeneratedClassModel("PositionHolder");
+        project.rootClass(person);
+        project.addClass(holder);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        project.representationClasses(holder, List.of("Person"));
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(person);
+
+        assertTrue(labels(find(panel, TripleEditor.class)).stream().anyMatch(text ->
+                        text.contains("Ready — represented from PositionHolder when P31 contains Q5; "
+                                + "own population limit is unused")),
+                "a representation-supplied class is valid and says where it comes from");
+        assertTrue(labels(panel).contains("Own population limit:"),
+                "the limit must not look like a cap on every way instances reach a class");
     }
 
     /**

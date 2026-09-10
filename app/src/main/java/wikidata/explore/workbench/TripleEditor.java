@@ -5,6 +5,8 @@ import workbench.SimpleDocumentListener;
 import wikidata.WikidataIds;
 import wikidata.ui.WikidataLinks;
 import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.EntityKindRule;
+import wikidata.explore.model.EntityRepresentations;
 import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
@@ -390,7 +392,10 @@ final class TripleEditor extends JPanel {
         } else {
             boolean seeds = !clazz.seedQids().isEmpty();
             boolean relation = clazz.membership().bounded();
-            ready = seeds || relation;
+            List<String> representedRoles =
+                    EntityRepresentations.rolesRepresentedAs(project, clazz);
+            boolean represented = !representedRoles.isEmpty();
+            ready = seeds || relation || represented;
             if (seeds && relation) {
                 detail = "property + object, restricted to " + clazz.seedQids().size()
                         + " explicit QID" + (clazz.seedQids().size() == 1 ? "" : "s");
@@ -399,6 +404,13 @@ final class TripleEditor extends JPanel {
             } else if (seeds) {
                 detail = clazz.seedQids().size() + " explicit QID"
                         + (clazz.seedQids().size() == 1 ? "" : "s");
+            } else if (represented) {
+                EntityKindRule admission = MembershipPattern.kindRule(clazz, project);
+                detail = "represented from " + String.join(", ", representedRoles)
+                        + (admission == null ? "" : " when "
+                        + admission.propertyPid() + " contains "
+                        + String.join(", ", admission.evidenceQids()))
+                        + "; own population limit is unused";
             } else {
                 detail = "add explicit QIDs, or choose both a property and object";
             }

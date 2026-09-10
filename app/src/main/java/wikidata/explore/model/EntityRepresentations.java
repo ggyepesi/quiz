@@ -10,6 +10,37 @@ public final class EntityRepresentations {
     /** A representation target together with its nearest inherited admission rule. */
     public record Admission(String className, EntityKindRule evidence) { }
 
+    /** Whether a value declared as {@code roleClassName} may become {@code className}. */
+    public static boolean mayRepresent(GeneratedProjectModel model,
+                                       String roleClassName,
+                                       String className) {
+        if (model == null || roleClassName == null || className == null) return false;
+        GeneratedClassModel role = model.findClass(roleClassName);
+        GeneratedClassModel target = model.findClass(className);
+        if (role == null || target == null) return false;
+        return model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(rule -> model.resolveClass(
+                                rule.roleClassId(), rule.roleClassName()) == role
+                        && model.resolveClass(rule.representationClassId(),
+                                rule.representationClassName()) == target);
+    }
+
+    /** Ordered role classes whose matching instances may be represented as {@code target}. */
+    public static java.util.List<String> rolesRepresentedAs(
+            GeneratedProjectModel model, GeneratedClassModel target) {
+        if (model == null || target == null) return java.util.List.of();
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+        for (EntityRepresentationRule rule : model.entityRepresentationRules()) {
+            if (rule == null || model.resolveClass(rule.representationClassId(),
+                    rule.representationClassName()) != target) continue;
+            GeneratedClassModel role = model.resolveClass(
+                    rule.roleClassId(), rule.roleClassName());
+            if (role != null) roles.add(role.className());
+        }
+        return java.util.List.copyOf(roles);
+    }
+
     public static java.util.List<Admission> admissions(GeneratedProjectModel model) {
         if (model == null) return java.util.List.of();
         java.util.LinkedHashMap<String, Admission> found = new java.util.LinkedHashMap<>();

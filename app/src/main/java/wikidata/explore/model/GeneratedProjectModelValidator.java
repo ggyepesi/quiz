@@ -291,7 +291,9 @@ public final class GeneratedProjectModelValidator {
             List<GeneratedFieldModel> candidates = forwardOwner.fields().stream()
                     .filter(java.util.Objects::nonNull)
                     .filter(field -> field.type() == FieldType.ENTITY)
-                    .filter(field -> owner.className().equals(field.entityClassName()))
+                    .filter(field -> owner.className().equals(field.entityClassName())
+                            || EntityRepresentations.mayRepresent(project,
+                                    field.entityClassName(), owner.className()))
                     .toList();
             String selected = clean(inverse.mapping().inverseField());
             // Ask the question generation asks, not a stricter one: a property match

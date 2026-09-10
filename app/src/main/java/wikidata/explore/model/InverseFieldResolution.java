@@ -22,7 +22,11 @@ public final class InverseFieldResolution {
     /**
      * @param explicitField    the author's declared inverse field, or blank
      * @param referencingOwner names of the forward fields that reference the inverse's
-     *                         owning class
+     *                         owning class, either directly or through a role that may be
+     *                         contextually represented as that class. Representation is
+     *                         therefore part of "references the owner" and can make a
+     *                         blank inverse-field choice ambiguous; authors must then name
+     *                         the intended field explicitly.
      * @param alsoMatchingPid  the subset of those that also carry the inverse's property
      * @return the forward field name, or null when the question has no single answer
      */

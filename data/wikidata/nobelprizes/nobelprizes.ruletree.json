@@ -13,6 +13,7 @@
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
+    "membershipIncludesDescendants" : false,
     "membershipPid" : "",
     "membershipQid" : "",
     "labelConfig" : {

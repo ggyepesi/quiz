@@ -5,8 +5,8 @@
 Implemented statement-model rule, written from one observation: History's Person read
 *"Derived from Person.spouse (P26)"*. The code now requires subject handling to be
 explicit and uses the compiled subject throughout validation, explanation and runtime.
-History's authored configuration still requires the modeller to introduce the role class
-described below; it is deliberately not changed in the background.
+History now declares `PositionHolder` as that role and represents holders as `Person`
+only when their admission evidence matches.
 
 ## Definition
 
@@ -111,7 +111,7 @@ History   OfficeHolding.source -> Person    (no role class, no rule)
 History has the admission half — an entity-kind rule `Person: P31 contains Q5` — but no
 role class for the rule to promote *from*, so the promotion has nothing to refuse.
 
-### Recommended configuration
+### History configuration
 
 ```text
 PositionHolder                          a role class, as Nominee is
@@ -123,9 +123,9 @@ Under this, `Q66023226` stays a `PositionHolder` — correct and visible — ins
 becoming a false `Person`, and the 188 genuine humans are represented as `Person`
 exactly as now.
 
-**Not applied.** This is user-authored model configuration, and the UI is its authority
-(directive 10). It also changes what generation stamps, so it wants a regenerate rather
-than a migration.
+This is now the authored History configuration. It changes what generation stamps, so
+the saved History instances should be regenerated before their types are treated as
+current.
 
 ### This ambiguity is not allowed
 
@@ -175,7 +175,6 @@ role-based population ranking.
 
 ## Open
 
-- Whether `PositionHolder` is adopted, and under what name — the modeller's call.
 - `label (PID)` is now formatted in ten places. They agree today; it is the shape that
   drifts, and one `PropertyDisplay.of(label, pid)` would collapse them.
 - Whether a class reachable *only* by self-reference should say "derived from" anything
@@ -397,8 +396,8 @@ may rescan fields or assume a literal field name such as `source`.
 4. Make reification, sampling, explanations and diagrams consume the compiled triple.
 5. Add forcing tests for the direct-subject, Oscar fallback and Nobel participants forms,
    including a direct subject field whose name is not `source`.
-6. Configure History through the UI with a `PositionHolder` role and
-   `PositionHolder -> Person` evidence representation, then regenerate it.
+6. Configure History with a `PositionHolder` role and `PositionHolder -> Person`
+   evidence representation. Done; the persisted instances still need regeneration.
 7. Remove or demote the redundant field-level subject controls only after every existing
    configuration is expressible through the Statement-class panel.
 

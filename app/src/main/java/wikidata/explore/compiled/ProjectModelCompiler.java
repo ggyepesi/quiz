@@ -64,7 +64,8 @@ public final class ProjectModelCompiler {
                 snapshot.rootClass().declarationId(),
                 snapshot.rootClass().className(),
                 classes,
-                snapshot.selections());
+                snapshot.selections(),
+                snapshot.entityRepresentationRules());
     }
 
     private static CompiledClass compileClass(

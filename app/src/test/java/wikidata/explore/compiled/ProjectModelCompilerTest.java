@@ -10,11 +10,16 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.model.EntityRepresentationRule;
+import wikidata.explore.model.EntityRepresentations;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.StatementIdentity;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -186,6 +191,63 @@ class ProjectModelCompilerTest {
                 .count();
         assertEquals(1, roots,
                 "the split root compiles to a single class, not a duplicate");
+    }
+
+    @Test
+    void shippedHistoryModelCompiles() throws Exception {
+        GeneratedProjectModel history = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/history/history.model.json"));
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(history);
+        CompiledClass holding = compiled.findClass("OfficeHolding").orElseThrow();
+
+        assertEquals("PositionHolder",
+                holding.field("source").orElseThrow().entityClassName());
+        assertTrue(compiled.mayRepresent("PositionHolder", "Person"));
+    }
+
+    @Test
+    void compiledAndAuthoredRepresentationPredicatesAgreeForEveryShippedRule()
+            throws Exception {
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        try (var paths = Files.walk(Path.of("../data/wikidata"))) {
+            for (Path path : paths.filter(p -> p.getFileName().toString()
+                            .endsWith(".model.json"))
+                    .sorted()
+                    .toList()) {
+                GeneratedProjectModel authored = store.load(path.toFile());
+                if (authored.entityRepresentationRules().isEmpty()) continue;
+                CompiledProjectModel compiled = ProjectModelCompiler.compile(authored);
+
+                for (EntityRepresentationRule rule
+                        : authored.entityRepresentationRules()) {
+                    if (rule == null || !rule.isConfigured()) continue;
+                    GeneratedClassModel role = authored.resolveClass(
+                            rule.roleClassId(), rule.roleClassName());
+                    GeneratedClassModel target = authored.resolveClass(
+                            rule.representationClassId(),
+                            rule.representationClassName());
+                    String roleName = alternateCase(role.className());
+                    String targetName = alternateCase(target.className());
+
+                    boolean authoredAnswer = EntityRepresentations.mayRepresent(
+                            authored, roleName, targetName);
+                    boolean compiledAnswer = compiled.mayRepresent(
+                            roleName, targetName);
+                    assertTrue(authoredAnswer,
+                            () -> path + " authored predicate lost " + roleName
+                                    + " -> " + targetName);
+                    assertEquals(authoredAnswer, compiledAnswer,
+                            () -> path + " compiled predicate disagrees for "
+                                    + roleName + " -> " + targetName);
+                }
+            }
+        }
+    }
+
+    private static String alternateCase(String value) {
+        String upper = value.toUpperCase(Locale.ROOT);
+        return upper.equals(value) ? value.toLowerCase(Locale.ROOT) : upper;
     }
 
     @Test
