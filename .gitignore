@@ -53,6 +53,14 @@ data/wikidata/datasets.json
 data/query-log*.txt
 data/query-log*.run.json
 
+### Per-run query logs (regenerable; one pair of files per generation run)
+# A run writes a .txt transcript and a .run.json beside the domain it generated.
+# They are evidence about ONE run on ONE machine, they grow without bound — 132 MB
+# of them were pending here — and nothing reads them back. The 25 MB already in
+# history stays; this stops the pile growing.
+data/wikidata/**/query-log-*.txt
+data/wikidata/**/query-log-*.run.json
+
 ### Generated correction overlays (rebuilt by the *FixMain tools from a snapshot)
 *.autofix.json
 
