@@ -1,8 +1,7 @@
 package wikidata.explore.workbench;
 
-import datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.FieldCardinality;
+import datasource.graph.constraint.GraphEvidenceCondition;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
@@ -25,71 +24,106 @@ class GraphConstraintsPanelTest {
 
         GraphConstraintsPanel panel = find(workbench, GraphConstraintsPanel.class);
         assertTrue(panel.isVisible());
-        assertNotNull(button(panel, "Apply graph constraint"));
+        assertNotNull(button(panel, "Apply graph"));
         assertNull(find(workbench, FieldSourcePanel.class)
                 .getClientProperty("graph constraints"),
                 "the graph editor is not encoded in field configuration");
     }
 
-    @Test void configuredFieldsAreOfferedButApplyingIsExplicit() {
+    @Test void configuredQidsAreReusedButApplyingIsExplicit() {
         GeneratedProjectModel model = model();
         GeneratedClassModel position = model.rootClass();
-        var jurisdiction = position.addField(
-                "jurisdiction", FieldType.ENTITY, FieldCardinality.COLLECTION);
-        jurisdiction.mapping().propertyPid("P1001");
-        jurisdiction.mapping().propertyLabel("jurisdiction");
-        jurisdiction.mapping().direction(wikidata.explore.model.RuleDirection.ROOT_TO_ITEM);
+        position.seedQids().add("Q4164871");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
         panel.refresh();
 
-        JComboBox<?> offered = named(panel, "graph.evidenceField", JComboBox.class);
-        assertTrue(items(offered).contains("Position.jurisdiction — jurisdiction (P1001)"));
+        assertEquals("1 QID", named(panel, "graph.startQids", JLabel.class).getText());
 
-        text(panel, "graph.conditionName").setText("historical polity");
+        text(panel, "graph.edgeProperty").setText("P279");
+        named(panel, "graph.edgeDirection", JComboBox.class).setSelectedIndex(1);
+        named(panel, "graph.targetUse", JComboBox.class).setSelectedIndex(1);
         text(panel, "graph.evidenceProperty").setText("P1001");
-        button(panel, "Add evidence edge").doClick();
+        button(panel, "Add evidence relation").doClick();
         text(panel, "graph.testProperty").setText("P576");
-        button(panel, "Add test").doClick();
+        button(panel, "Add evidence test").doClick();
+        named(panel, "graph.reviewDisposition", JComboBox.class).setSelectedItem(
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT);
 
-        assertNull(position.graphAdmissionCondition(),
+        assertNull(model.graphDiscoveryConfiguration(),
                 "editing the draft must not mutate the model");
-        button(panel, "Apply graph constraint").doClick();
+        button(panel, "Apply graph").doClick();
 
-        assertEquals("historical polity", position.graphAdmissionCondition().name());
-        assertEquals("P1001", position.graphAdmissionCondition()
-                .evidencePaths().getFirst().relation().relationId());
-        assertEquals("P576", position.graphAdmissionCondition()
-                .tests().getFirst().relation().relationId());
+        assertEquals("P279", model.graphDiscoveryConfiguration().nextNodes()
+                .getFirst().property().relationId());
+        GraphEvidenceCondition evidence = model.graphDiscoveryConfiguration().nextNodes()
+                .getFirst().evidenceCondition();
+        assertEquals("P1001", evidence.evidencePaths().getFirst().relation().relationId());
+        assertEquals("P576", evidence.tests().getFirst().relation().relationId());
+        assertEquals(GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT,
+                evidence.reviewDisposition());
     }
 
-    @Test void aStoredConditionSaysGenerationDoesNotApplyItYet() {
-        // A constraint that is saved but not yet read by generation looks exactly like
-        // one that is enforced: configure it, regenerate, and the population does not
-        // move. Until #184 wires the adapter into population assembly, the panel has to
-        // be the thing that says so — on BOTH lines that report a stored condition,
-        // because the one shown after a reload is the one a modeller sees later.
+    @Test void aStoredGraphHasAnExplicitExecutionSeparateFromGeneration() {
         GeneratedProjectModel model = model();
-        GeneratedClassModel position = model.rootClass();
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
         panel.refresh();
 
-        text(panel, "graph.conditionName").setText("historical polity");
-        text(panel, "graph.evidenceProperty").setText("P1001");
-        button(panel, "Add evidence edge").doClick();
-        text(panel, "graph.testProperty").setText("P576");
-        button(panel, "Add test").doClick();
-        button(panel, "Apply graph constraint").doClick();
+        assertNotNull(button(panel, "Run graph"));
+        assertTrue(!button(panel, "Run graph").isEnabled(),
+                "a graph cannot run before it is saved and a runner is available");
 
-        assertNotNull(position.graphAdmissionCondition());
+        text(panel, "graph.edgeProperty").setText("P279");
+        button(panel, "Apply graph").doClick();
+
+        assertNotNull(model.graphDiscoveryConfiguration());
         JLabel applied = named(panel, "graph.status", JLabel.class);
-        assertTrue(applied.getText().contains("generation does not apply it yet"),
+        assertTrue(applied.getText().contains("Generation does not use it yet"),
                 applied.getText());
 
         panel.refresh();
 
         assertTrue(named(panel, "graph.status", JLabel.class).getText()
-                        .contains("generation does not apply it yet"),
-                "a condition read back from the model says it too");
+                        .contains("Generation does not use it yet"),
+                "a graph read back from the model says it too");
+    }
+
+    @Test void evidenceRequiresBothTheRelationAndItsTest() {
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.refresh();
+        text(panel, "graph.edgeProperty").setText("P279");
+        text(panel, "graph.evidenceProperty").setText("P1001");
+        button(panel, "Add evidence relation").doClick();
+
+        button(panel, "Apply graph").doClick();
+
+        assertNull(model.graphDiscoveryConfiguration());
+        assertTrue(named(panel, "graph.status", JLabel.class).getText()
+                .contains("both an evidence relation and an evidence test"));
+    }
+
+    @Test void clearingTheDraftLeavesTheSavedGraphUntilApply() {
+        // Every other control here builds a draft, and the panel says so. One button
+        // writing straight through to the model is the difference between a panel with
+        // a commit point and one without — and it was the destructive one.
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.refresh();
+        text(panel, "graph.edgeProperty").setText("P279");
+        button(panel, "Apply graph").doClick();
+        assertNotNull(model.graphDiscoveryConfiguration());
+
+        button(panel, "Clear draft").doClick();
+
+        assertNotNull(model.graphDiscoveryConfiguration(),
+                "clearing the draft must not remove the saved graph on its own");
+        assertTrue(named(panel, "graph.status", JLabel.class).getText()
+                .contains("Apply graph to remove"));
+
+        button(panel, "Apply graph").doClick();
+
+        assertNull(model.graphDiscoveryConfiguration(),
+                "applying an emptied draft is how the saved graph is removed");
     }
 
     private static GeneratedProjectModel model() {
@@ -100,14 +134,6 @@ class GraphConstraintsPanelTest {
 
     private static JTextComponent text(Container root, String name) {
         return named(root, name, JTextComponent.class);
-    }
-
-    private static java.util.List<String> items(JComboBox<?> box) {
-        java.util.List<String> result = new java.util.ArrayList<>();
-        for (int i = 0; i < box.getItemCount(); i++) {
-            result.add(String.valueOf(box.getItemAt(i)));
-        }
-        return result;
     }
 
     private static JButton button(Container root, String label) {

@@ -1,6 +1,7 @@
 package wikidata.explore.model;
 
 import datasource.schema.FieldType;
+import datasource.graph.GraphDiscoveryConfiguration;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +19,7 @@ public class GeneratedProjectModel {
     private String name = "Generated Wikidata Project";
     private ProjectKind projectKind = ProjectKind.DOMAIN;
     private GeneratedClassModel rootClass;
+    private GraphDiscoveryConfiguration graphDiscoveryConfiguration;
 
     // How many levels of child-object edges generation should traverse. Stored
     // with the project so a saved model remembers it (depth 0 skips all child
@@ -145,6 +147,14 @@ public class GeneratedProjectModel {
 
     public GeneratedClassModel rootClass() {
         return rootClass;
+    }
+
+    public GraphDiscoveryConfiguration graphDiscoveryConfiguration() {
+        return graphDiscoveryConfiguration;
+    }
+
+    public void graphDiscoveryConfiguration(GraphDiscoveryConfiguration value) {
+        graphDiscoveryConfiguration = value;
     }
 
     public void rootClass(GeneratedClassModel rootClass) {
@@ -308,6 +318,7 @@ public class GeneratedProjectModel {
         this.name = other.name;
         this.projectKind = other.projectKind();
         this.generationDepth = other.generationDepth;
+        this.graphDiscoveryConfiguration = other.graphDiscoveryConfiguration;
         this.classes.clear();
         this.classes.addAll(other.classes);
         this.selections.clear();
@@ -412,7 +423,26 @@ public class GeneratedProjectModel {
                 role.ownerReference(target.declarationId(), to);
             }
         }
+        renameGraphClassReference(from, to);
         return true;
+    }
+
+    private void renameGraphClassReference(String from, String to) {
+        GraphDiscoveryConfiguration graph = graphDiscoveryConfiguration;
+        if (graph == null) return;
+        GraphDiscoveryConfiguration.StartNode start = graph.startNode();
+        if (start.qidSourceClass().equalsIgnoreCase(from)) {
+            start = new GraphDiscoveryConfiguration.StartNode(to, start.use());
+        }
+        List<GraphDiscoveryConfiguration.NextNode> nodes = graph.nextNodes().stream()
+                .map(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                        && node.populationClass().equalsIgnoreCase(from)
+                        ? new GraphDiscoveryConfiguration.NextNode(node.property(),
+                                node.directionFromPrevious(), node.use(), to,
+                                node.evidenceCondition())
+                        : node)
+                .toList();
+        graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(start, nodes);
     }
 
     private static void renameFieldTargets(
@@ -844,6 +874,7 @@ public class GeneratedProjectModel {
         c.name = name;
         c.projectKind = projectKind();
         c.generationDepth = generationDepth;
+        c.graphDiscoveryConfiguration = graphDiscoveryConfiguration;
         c.classes.clear();
         c.rootClass = null;
 

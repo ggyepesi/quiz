@@ -5,7 +5,6 @@ import datasource.schema.FieldType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import datasource.api.SourceRecipe;
 import datasource.api.SourceBinding;
-import datasource.graph.constraint.GraphEvidenceCondition;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -85,14 +84,6 @@ public class GeneratedClassModel {
      * could not persist subclass-closure membership yet.
      */
     private EntityBound membership = EntityBound.unbounded();
-
-    /**
-     * Optional coverage-aware gate over this class's acquired population. The class
-     * owns it because it decides membership; the separate graph-configuration panel
-     * edits it without turning evidence paths into served fields.
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private GraphEvidenceCondition graphAdmissionCondition;
 
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
     private final List<String> seedQids = new ArrayList<>();
@@ -240,7 +231,6 @@ public class GeneratedClassModel {
         populationSource = null;
         seedQids.clear();
         membership = EntityBound.unbounded();
-        graphAdmissionCondition = null;
         instanceMapping.sourceLabel("");
         instanceMapping.propertyLabel("");
         instanceMapping.excludedTypeQids().clear();
@@ -367,14 +357,6 @@ public class GeneratedClassModel {
     public GeneratedClassModel membership(EntityBound value) {
         membership = value == null ? EntityBound.unbounded() : value;
         return this;
-    }
-
-    public GraphEvidenceCondition graphAdmissionCondition() {
-        return graphAdmissionCondition;
-    }
-
-    public void graphAdmissionCondition(GraphEvidenceCondition value) {
-        graphAdmissionCondition = value;
     }
 
     /**
@@ -529,7 +511,6 @@ public class GeneratedClassModel {
         // copied on construction and whose tests are records too, so a copy cannot
         // edit the original through it. Adding a mutable field to that record is
         // what would break this line, not this line itself.
-        copy.graphAdmissionCondition = graphAdmissionCondition;
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;
         copy.sourceBindings.addAll(sourceBindings);

@@ -2,14 +2,14 @@
 
 ## Status
 
-Executable endpoint and node-evidence evaluators, Wikidata's two-phase outgoing-claim
-acquisition, a persisted per-class node-admission condition, a first ModelBuilder graph
-configuration form, and a standalone discovery experiment; generation integration and
-the richer graph presentation remain (issues #183 and #184). The neutral node evaluator follows
+Executable endpoint and node-evidence evaluators, Wikidata outgoing- and incoming-adjacency
+acquisition, a persisted linear discovery configuration, a first ModelBuilder graph
+configuration editor with explicit read-only execution, and a standalone discovery experiment;
+generation integration and the richer graph presentation remain (issues #183 and #184). The neutral node evaluator follows
 alternative direct evidence paths, applies alternative existence/equality tests, and
 retains its three-valued verdict, Review disposition, witnesses and both-hop coverage.
-The Wikidata adapter loads both hops in the existing 50-QID batches, reuses the raw fact
-store and marks failed QIDs unavailable rather than absent. The endpoint evaluator
+The Wikidata adapter batches both hops; outgoing claims reuse the raw fact store, and
+failed requests are marked unavailable rather than absent. The endpoint evaluator
 compares direct values and nearest qualifying ancestors from a covered local graph. The
 existing shared-population demo now previews one frontier step at a time and profiles
 its sample for possible constraints. It extends the candidate paths and curated frontier described in
@@ -416,15 +416,21 @@ an explicit action.
 ### Configuration starts as a bounded graph form
 
 Graph constraints have their own model-level configuration panel. They do not appear in
-field configuration: configured fields may be offered as convenient names for relations,
-but using a relation as Evidence does not make it a served field. A PID may therefore be
-entered directly when the evidence is intentionally unstored.
+field configuration. The first bounded editor shows a Start node, the incoming property
+edge of the next node, and the Next node as separate boxes. The edge label is the property
+plus `in` or `out`, relative to the preceding node.
 
-The first usable editor is a compact form for the bounded node-admission shape already
-implemented: candidate class, alternative evidence relations, alternative tests and the
-Review disposition. It persists the same `GraphEvidenceCondition` that acquisition and
-evaluation consume, and Apply is explicit. This establishes the content and ownership
-before investing in a visual arrangement.
+The graph owns no second QID list. Its Start node selects a configured class and reads that
+class's explicit QIDs. Whether those identities join the class population or remain
+Intermediate is independent of being the start. Each reached node likewise says either
+`Intermediate only` or `Members of configured class`; the latter declares which class would
+receive accepted identities when generation integration is added. The current **Run graph**
+action classifies and displays them but changes no class population or snapshot. A Next node
+may follow one or more evidence relations and apply one or more coverage-aware tests to the
+reached evidence entities. Review is always reported, and the node explicitly says whether
+Review members continue to the next step. Apply is explicit, and Run executes only the last
+applied graph. This first slice edits one step in either direction; the neutral record is a linear list
+so another node can be added without changing its meaning.
 
 The later presentation is not a sequence of field-form rows. A condition is already a
 small graph — nodes have roles, edges have properties and statement edges may have
@@ -583,21 +589,30 @@ configured domain yet needs two endpoints compared, so the endpoint evaluator �
 already exists as a core — waits for one.
 
 The datasource-neutral core and Wikidata adapter now cover #182 and the common execution
-part of #183/#184: `GraphEvidenceCondition` declares direct alternative paths, `ANY`
-existence/equality tests and Review disposition; `GraphEvidenceConditions` returns the
-decision with evidence edges, test edges, positive witnesses and exact coverage;
-`WikidataGraphEvidenceAcquisition` acquires the two demanded claim sets through the
-existing fact store and classifies every supplied member.
+part of #183/#184. `GraphDiscoveryExecutor` compiles the persisted linear configuration to
+the existing `GraphTraversalStep`/`GraphWave` path, asks one adapter for missing incoming or
+outgoing adjacency, acquires the same node's evidence relations and evidence tests through that
+adapter, and reports accepted, rejected and Review nodes with their classifications. The Review
+disposition determines the next frontier; it never hides the Review result. ModelBuilder exposes
+this as an explicit **Run graph** action whose searchable, linked results do not mutate generation.
+`GraphEvidenceCondition` declares direct alternative paths, `ANY` existence/equality tests and
+Review disposition; `GraphEvidenceConditions` returns the decision with evidence edges, test
+edges, positive witnesses and exact coverage. There is no second evidence-acquisition path.
+
+Incoming Wikidata adjacency currently uses an unpaged WDQS query. Returned edges are retained,
+but every successful answer is stamped `INCOMPLETE`, never `COMPLETE`: under R18 a syntactically
+valid partial 200 cannot prove absence. Keyset paging remains #199; until it is implemented an
+incoming absence can produce Review but never a confident rejection.
 
 The remaining slice is:
 
-1. **#183** — the condition is now persisted on its membership owner and edited in the
-   separate graph-configuration form without a parallel field-source representation.
-   Replace the compact relation lists with the bounded visual node-admission presentation
-   only after the configuration content has proved sufficient.
-2. **#184** — invoke the provider adapter from population generation, retain per-run
-   decisions in the acquisition result, report all three
-   counts, and apply the configured Review disposition during population assembly.
+1. **#183** — the linear discovery graph is now persisted on the project and edited in
+   the separate graph-configuration panel without a parallel field-source representation.
+   The Start node's QIDs still belong to class configuration.
+2. **#184** — consume the already executable graph result from population generation, retain per-run
+   decisions in the acquisition result, and report all three counts. Review disposition already
+   controls graph execution's next frontier; generation must consume that same result rather than
+   re-evaluate it.
 
 The classified-result acquisition contract above governs all three: a run must be
 able to say, for every entity it evaluated, which outcome it reached and on what

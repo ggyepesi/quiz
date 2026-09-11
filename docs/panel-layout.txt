@@ -305,31 +305,46 @@
   button: Apply field source
 
 == Graph constraints - GraphConstraintsPanel ==
-  label: Admit population nodes using evidence reached through graph relations.
-  label: Population class:
-  combo: 1 item(s)
-  label: Condition name:
-  text: []
-  label: Relations from each candidate to evidence (one or more may match)
-  label: Choose a configured field for its relation, or enter a property without storing it.
-  combo: 1 item(s)
-  label: Property:
-  text: []
-  button: Add evidence edge
-  list
-  button: Remove selected
-  label: Tests on each reached evidence node (one or more may match)
-  combo: 1 item(s)
-  label: Property:
-  text: []
-  combo: 3 item(s)
-  text: []  (disabled)
-  button: Add test
-  list
-  button: Remove selected
-  label: When evidence cannot decide:
-  combo: 2 item(s)
+  box: Start node
+    label: Start with QIDs configured on class:
+    combo: 1 item(s)
+    label: Configured QIDs:
+    label: 0 QIDs
+    label: Use these entities as:
+    combo: 2 item(s)
+    label: The graph has no separate QID list.
+  box: Incoming edge of next node
+    label: ── property out ──▶
+    label: Property:
+    text: []
+    label: Direction from previous node:
+    combo: 2 item(s)
+  box: Next node
+    label: Use reached entities as:
+    combo: 2 item(s)
+    label: Members of class:
+    combo: 1 item(s)  (disabled)
+    label: Evidence relations from this node (one or more may reach evidence)
+    label: Property:
+    text: []
+    combo: 2 item(s)
+    button: Add evidence relation
+    list
+    button: Remove selected evidence relation
+    label: Tests on reached evidence entities (one or more may match)
+    label: Property:
+    text: []
+    combo: 2 item(s)
+    combo: 3 item(s)
+    text: []  (disabled)
+    button: Add evidence test
+    list
+    button: Remove selected evidence test
+    label: When evidence cannot decide:
+    combo: 2 item(s)
+  label: Run the saved graph.
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
   button: Clear draft
-  button: Apply graph constraint
-  label: No population constraint configured.
+  button: Apply graph
 

@@ -176,6 +176,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
         graphPatternPanel.setQueryRunner(queryRunner);
+        graphConstraintsPanel.setQueryRunner(queryRunner);
         entityRelationPanel.setQueryRunner(queryRunner);
     }
 

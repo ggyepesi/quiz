@@ -10,9 +10,9 @@ import java.util.List;
 /**
  * Evaluates the locally known portion of one configured traversal step.
  *
- * <p>This class deliberately does not claim to be bounded: limits belong to the
- * forthcoming plan runner that schedules waves and composes {@code BatchExecutor}.
- * It evaluates exactly the input population it is given.</p>
+ * <p>This class deliberately does not claim to be bounded: the caller schedules
+ * waves and the provider adapter partitions each missing demand. It evaluates
+ * exactly the input population it is given.</p>
  */
 public final class GraphWave {
     private GraphWave() { }
