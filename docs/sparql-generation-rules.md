@@ -206,8 +206,16 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
   the heavy query completing — apply R16/R17 to make queries light enough to
   finish. Make failures LOUD: retry (halve-and-retry) and surface an aggregate
   "N batches/parents failed" so a partial run is visible, not silent.
+- **Complete population enumeration:** use bounded keyset pages ordered by the
+  same expression used by the cursor. A short non-empty page is progress, not
+  completion: continue after the actual last row received. Confirm an empty page
+  with a separate one-row request. If a bounded page is too heavy, halve that
+  page's size while preserving its cursor, and keep the proven smaller size for
+  later pages. If even a one-row page fails, abort the population instead of
+  accepting the prefix accumulated so far.
 - **Hook:** `WikidataSparqlClient` (no truncation check); `RuleTreeExtractor`
-  per-parent `catch … continue`.
+  per-parent `catch … continue`; `RelationalObjectPopulationLoader` (ordered
+  keyset pages for a relational statement-object population).
 
 ### Reusable assembly helper
 `SparqlValues.clause(var, qids)` builds `VALUES ?var { wd:Q… }` (cleans + dedups

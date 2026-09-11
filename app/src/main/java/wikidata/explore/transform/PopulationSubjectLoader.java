@@ -15,6 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import batch.BatchCheckpointStore;
+import batch.BatchExecutor;
+import batch.BatchPolicy;
+import batch.WorkDescriptor;
+import batch.WorkUnit;
+import wikidata.WikidataBatchFailureClassifier;
+
 /**
  * Discovers the subjects of a POPULATION Selection — the entities that carry the
  * reify's statement property into the value domain — so a reify can draw its
@@ -27,6 +34,14 @@ import java.util.Set;
  * product) and reuse any already-labelled pool instance by QID.
  */
 public final class PopulationSubjectLoader {
+
+    private static final int REVERSE_BATCH_SIZE = 50;
+    private work.CancellationToken cancellation = new work.CancellationToken();
+
+    public PopulationSubjectLoader cancellation(work.CancellationToken token) {
+        cancellation = token == null ? new work.CancellationToken() : token;
+        return this;
+    }
 
     /** @return the NEWLY created subject objects (already added to the caller's
      *  indexes by the caller); an existing pool object is reused, not duplicated. */
@@ -72,8 +87,9 @@ public final class PopulationSubjectLoader {
                 subjectBound, entityType, domainLabel, client, log, limit);
     }
 
-    /** As above, retaining a relational object bound as a query pattern instead of
-     * expanding it into an impractically large {@code VALUES} clause. */
+    /** As above, retaining the object's semantic bound. Inspection renders that bound
+     * as one readable query; complete generation resolves its object QIDs and reverses
+     * the statement through bounded {@code VALUES} batches. */
     public List<WikidataDynamicObject> discover(
             Collection<WikidataDynamicObject> pool,
             String relationPid,
@@ -115,36 +131,46 @@ public final class PopulationSubjectLoader {
 
         String label = domainLabel == null || domainLabel.isBlank()
                 ? "its value domain" : domainLabel;
-        String query = buildQuery(
-                relationPid, targetValues, objects, subjects, limit);
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group g = sink.group(
                 "Discover subjects: " + relationPid + " into " + label)) {
-            String title = "Subjects with " + relationPid + " into " + label;
-            GenerationLog.Running running = g.subqueryStarted(title, query);
-            int rows = 0;
-            try {
-                for (WikidataBinding binding : client.query(query)) {
-                    String qid = binding.qid("subject");
-                    if (qid == null || !WikidataIds.isQid(qid)) {
-                        continue;
-                    }
-                    rows++;
-                    WikidataDynamicObject o = known.get(qid);
-                    if (o == null) {
-                        o = new WikidataDynamicObject(qid, qid);
-                        known.put(qid, o);
-                        created.add(o);
-                    }
-                    // Stamp the internal load type so QualifierLoader/reify can select it
-                    // without a modeled source class.
-                    o.type(entityType);
-                }
-                running.done(rows + " subjects");
-            } catch (Exception failure) {
-                running.failed(failure.getMessage());
-                throw failure;
+            List<String> subjectQids;
+            // Inspection deliberately asks one limited question. Complete production
+            // discovery instead resolves a relational object population and reverses
+            // the statement over exact VALUES batches; one relation pattern may still
+            // denote hundreds of thousands of subjects and is not operationally bounded.
+            if (limit > 0) {
+                subjectQids = querySubjects(client, g,
+                        "Subjects with " + relationPid + " into " + label,
+                        buildQuery(relationPid, targetValues, objects, subjects, limit));
+            } else {
+                List<String> explicitDiscoveryObjects = onlyQids(targetValues);
+                boolean hasExactObjectDomain = !explicitDiscoveryObjects.isEmpty()
+                        || objects.kind() == EntityBound.Kind.EXPLICIT
+                        || objects.kind() == EntityBound.Kind.RELATION;
+                List<String> exactObjects = exactDiscoveryObjects(
+                        explicitDiscoveryObjects, objects, client, g);
+                subjectQids = hasExactObjectDomain
+                        ? (exactObjects.isEmpty() ? List.of()
+                                : discoverSubjectsInBatches(
+                                        client, g, relationPid, exactObjects, subjects))
+                        : querySubjects(client, g,
+                                "Subjects with " + relationPid + " into " + label,
+                                buildQuery(relationPid, targetValues, objects, subjects, 0));
             }
+            for (String qid : subjectQids) {
+                WikidataDynamicObject o = known.get(qid);
+                if (o == null) {
+                    o = new WikidataDynamicObject(qid, qid);
+                    known.put(qid, o);
+                    created.add(o);
+                }
+                // Stamp the internal load type so QualifierLoader/reify can select it
+                // without a modeled source class.
+                o.type(entityType);
+            }
+        } catch (java.util.concurrent.CancellationException cancelled) {
+            throw cancelled;
         } catch (Exception e) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -159,6 +185,171 @@ public final class PopulationSubjectLoader {
                             + relationPid + " into " + label, e);
         }
         return created;
+    }
+
+    private List<String> exactDiscoveryObjects(
+            List<String> targetValues,
+            EntityBound objectBound,
+            WikidataSparqlClient client,
+            GenerationLog log) throws Exception {
+        if (!targetValues.isEmpty()) return targetValues;
+        if (objectBound.kind() == EntityBound.Kind.EXPLICIT) {
+            return onlyQids(objectBound.qids());
+        }
+        if (objectBound.kind() != EntityBound.Kind.RELATION) return List.of();
+        return RelationalObjectPopulationLoader.load(
+                client, objectBound, log, cancellation);
+    }
+
+    private List<String> discoverSubjectsInBatches(
+            WikidataSparqlClient client,
+            GenerationLog log,
+            String relationPid,
+            List<String> objectQids,
+            EntityBound subjectBound) throws Exception {
+        List<WorkUnit<List<String>>> units = new ArrayList<>();
+        for (int from = 0; from < objectQids.size(); from += REVERSE_BATCH_SIZE) {
+            units.add(new ReverseSubjectsUnit(client, relationPid,
+                    objectQids.subList(from,
+                            Math.min(objectQids.size(), from + REVERSE_BATCH_SIZE)),
+                    subjectBound));
+        }
+        LinkedHashMap<String, String> subjects = new LinkedHashMap<>();
+        new BatchExecutor<List<String>>(
+                BatchPolicy.defaults().withResume(false),
+                log.batchProgress(),
+                WikidataBatchFailureClassifier.INSTANCE,
+                cancellation,
+                BatchCheckpointStore.NONE)
+                .run(units, (descriptor, qids) ->
+                        qids.forEach(qid -> subjects.putIfAbsent(qid, qid)));
+        log.message("Discovered " + subjects.size() + " distinct subject(s) from "
+                + objectQids.size() + " resolved object(s) in " + units.size()
+                + " initial batch(es).\n");
+        return List.copyOf(subjects.keySet());
+    }
+
+    private static List<String> querySubjects(
+            WikidataSparqlClient client, GenerationLog log,
+            String title, String query) throws Exception {
+        return queryValues(client, log, title, query, "subject");
+    }
+
+    private static List<String> queryValues(
+            WikidataSparqlClient client, GenerationLog log,
+            String title, String query, String variable) throws Exception {
+        GenerationLog.Running running = log.subqueryStarted(title, query);
+        try {
+            LinkedHashMap<String, String> qids = new LinkedHashMap<>();
+            for (WikidataBinding binding : client.query(query)) {
+                String qid = binding.qid(variable);
+                if (qid != null && WikidataIds.isQid(qid)) qids.putIfAbsent(qid, qid);
+            }
+            running.done(qids.size() + " " + variable + "(s)");
+            return List.copyOf(qids.keySet());
+        } catch (Exception failure) {
+            running.failed(failure.getMessage());
+            throw failure;
+        }
+    }
+
+    private static List<String> onlyQids(Collection<String> values) {
+        LinkedHashMap<String, String> qids = new LinkedHashMap<>();
+        if (values != null) {
+            for (String value : values) {
+                if (WikidataIds.isQid(value)) qids.putIfAbsent(value, value);
+            }
+        }
+        return List.copyOf(qids.keySet());
+    }
+
+    static String reverseSubjectsQuery(
+            String relationPid, List<String> objectQids, EntityBound subjects) {
+        StringBuilder q = new StringBuilder("SELECT DISTINCT ?subject WHERE {\n")
+                .append("  VALUES ?value {");
+        for (String qid : objectQids) q.append(" wd:").append(qid);
+        q.append(" }\n  ?subject wdt:").append(relationPid).append(" ?value .\n");
+        appendSubjectBound(q, subjects);
+        return q.append("}").toString();
+    }
+
+    /**
+     * The one emitter for a subject bound, shared by inspection and production.
+     *
+     * <p>VOCABULARY must throw explicitly: this switch is a statement, so adding an
+     * enum kind otherwise still compiles while {@code bounded()} can let an unpinned
+     * all-of-Wikidata scan through. A vocabulary is a project reference and must have
+     * been resolved before reaching this datasource operation.
+     */
+    private static void appendSubjectBound(StringBuilder q, EntityBound subjects) {
+        EntityBound bound = subjects == null ? EntityBound.unbounded() : subjects;
+        switch (bound.kind()) {
+            case EXPLICIT -> {
+                q.append("  VALUES ?subject {");
+                for (String qid : bound.qids()) q.append(" wd:").append(qid);
+                q.append(" }\n");
+            }
+            case RELATION -> {
+                // Descendants are P279* on the TARGET: instances of Q5 or any
+                // subclass of it remain one relational bound.
+                q.append("  ?subject wdt:").append(bound.relationPid())
+                        .append(bound.includeDescendants() ? "/wdt:P279* " : " ")
+                        .append("?subjectKind .\n  VALUES ?subjectKind {");
+                for (String qid : bound.qids()) q.append(" wd:").append(qid);
+                q.append(" }\n");
+            }
+            case UNBOUNDED -> { }
+            case VOCABULARY -> throw new IllegalStateException(
+                    "Subject vocabulary bound '" + bound.selectionName()
+                            + "' reached the loader unresolved");
+        }
+    }
+
+    private static final class ReverseSubjectsUnit implements WorkUnit<List<String>> {
+        private final WikidataSparqlClient client;
+        private final String relationPid;
+        private final List<String> objectQids;
+        private final EntityBound subjectBound;
+        private final WorkDescriptor descriptor;
+
+        private ReverseSubjectsUnit(
+                WikidataSparqlClient client, String relationPid,
+                List<String> objectQids, EntityBound subjectBound) {
+            this.client = client;
+            this.relationPid = relationPid;
+            this.objectQids = List.copyOf(objectQids);
+            this.subjectBound = subjectBound == null
+                    ? EntityBound.unbounded() : subjectBound;
+            String ids = String.join(",", this.objectQids);
+            descriptor = new WorkDescriptor(
+                    "population-subject-reverse",
+                    relationPid + ":" + ids,
+                    relationPid + " reverse subjects for " + this.objectQids.size()
+                            + " object(s)",
+                    Map.of("property", relationPid, "objects", ids));
+        }
+
+        @Override public WorkDescriptor descriptor() { return descriptor; }
+        @Override public String request() {
+            return reverseSubjectsQuery(relationPid, objectQids, subjectBound);
+        }
+        @Override public List<String> execute() throws Exception {
+            LinkedHashMap<String, String> result = new LinkedHashMap<>();
+            for (WikidataBinding binding : client.query(request())) {
+                String qid = binding.qid("subject");
+                if (qid != null && WikidataIds.isQid(qid)) result.putIfAbsent(qid, qid);
+            }
+            return List.copyOf(result.keySet());
+        }
+        @Override public List<? extends WorkUnit<List<String>>> split() {
+            if (objectQids.size() < 2) return List.of();
+            int middle = objectQids.size() / 2;
+            return List.of(
+                    new ReverseSubjectsUnit(client, relationPid,
+                            objectQids.subList(0, middle), subjectBound),
+                    new ReverseSubjectsUnit(client, relationPid,
+                            objectQids.subList(middle, objectQids.size()), subjectBound));
+        }
     }
 
     /**
@@ -205,34 +396,7 @@ public final class PopulationSubjectLoader {
                     "Object vocabulary bound '" + objectBound.selectionName()
                             + "' reached the loader unresolved");
         }
-        EntityBound subjectBound = subjects == null ? EntityBound.unbounded() : subjects;
-        switch (subjectBound.kind()) {
-            case EXPLICIT -> {
-                q.append("  VALUES ?subject {");
-                for (String qid : subjectBound.qids()) q.append(" wd:").append(qid);
-                q.append(" }\n");
-            }
-            case RELATION -> {
-                // Descendants are P279* on the TARGET, so "instances of Q5 or any
-                // subclass of it" is one pattern rather than a pre-expanded QID list.
-                q.append("  ?subject wdt:").append(subjectBound.relationPid())
-                 .append(subjectBound.includeDescendants() ? "/wdt:P279* " : " ")
-                 .append("?subjectKind .\n  VALUES ?subjectKind {");
-                for (String qid : subjectBound.qids()) q.append(" wd:").append(qid);
-                q.append(" }\n");
-            }
-            case UNBOUNDED -> { }
-            // A vocabulary is a REFERENCE and only the project can resolve it, so it
-            // must never arrive here. It could: this switch is a STATEMENT, not an
-            // expression, so adding the kind compiled without covering it and the
-            // missing case emitted no pattern at all — while bounded() still answered
-            // true, so the guard let the query run unpinned. That is the
-            // all-of-Wikidata scan the guard exists to prevent, produced by the
-            // mechanism meant to prevent it.
-            case VOCABULARY -> throw new IllegalStateException(
-                    "Subject vocabulary bound '" + subjectBound.selectionName()
-                            + "' reached the loader unresolved");
-        }
+        appendSubjectBound(q, subjects);
         if (objectBound.kind() != EntityBound.Kind.RELATION
                 && targetValues != null && !targetValues.isEmpty()) {
             q.append("  VALUES ?value {");

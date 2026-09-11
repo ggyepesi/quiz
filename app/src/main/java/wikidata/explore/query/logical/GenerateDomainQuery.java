@@ -208,7 +208,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     .enrichWithReport(
                                             compiledProject, reifyPool,
                                             WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog,
-                                            entityApi, true, factDemandPlan);
+                                            entityApi, true, factDemandPlan,
+                                            context.cancellation());
                     progress(
                             wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             statementAcquisition.summary());

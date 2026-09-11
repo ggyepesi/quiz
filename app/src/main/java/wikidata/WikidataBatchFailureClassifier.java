@@ -24,7 +24,10 @@ public final class WikidataBatchFailureClassifier implements FailureClassifier {
                 return FailureDecision.of(BatchFailure.CANCELLED);
             }
             if (t instanceof WikidataSparqlClient.TruncatedResponseException) {
-                return FailureDecision.of(BatchFailure.TRANSIENT);
+                // The SPARQL transport has already retried a truncated body unchanged.
+                // If it escapes to a caller that supplied a splittable work unit, asking
+                // for that same unit yet again only repeats the transport's attempts.
+                return FailureDecision.of(BatchFailure.TOO_HEAVY);
             }
             if (t instanceof batch.ResponseInterruptedException) {
                 return FailureDecision.of(BatchFailure.TRANSIENT);

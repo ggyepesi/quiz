@@ -525,9 +525,24 @@ public final class ModelStatementReifications {
             wikidata.api.WikidataApiClient entityApi,
             boolean deferLabels,
             wikidata.api.FactDemandPlan demandPlan) {
+        return enrichWithReport(project, pool, client, log, entityApi, deferLabels,
+                demandPlan, null);
+    }
+
+    /** Acquisition bound to the process token that also controls root extraction. */
+    public static AcquisitionReport enrichWithReport(
+            CompiledProjectModel project,
+            List<WikidataDynamicObject> pool,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            boolean deferLabels,
+            wikidata.api.FactDemandPlan demandPlan,
+            work.CancellationToken cancellation) {
         if (client == null) return new AcquisitionReport(List.of());
         QualifierLoader loader = new QualifierLoader().api(entityApi)
-                .deferLabels(deferLabels);
+                .deferLabels(deferLabels)
+                .cancellation(cancellation);
         List<AcquiredStatementClass> acquired = new ArrayList<>();
         for (Reification reification : derive(project)) {
             loader.factDemands(StatementFactDemands.compile(

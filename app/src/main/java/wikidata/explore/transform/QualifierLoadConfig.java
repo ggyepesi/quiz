@@ -84,9 +84,17 @@ public record QualifierLoadConfig(
         // values — the compatibility constructors set them to the accepted values —
         // so their presence says nothing; discovering subjects with a domain that
         // does not also filter them is what makes a value a seed.
-        return discoversOnly()
-                ? discoveryValueQids.size() + " discovery seed(s)"
-                : objectBound.qids().size() + " allowed values";
+        if (discoversOnly()) {
+            return discoveryValueQids.size() + " discovery seed(s)";
+        }
+        return switch (objectBound.kind()) {
+            case RELATION -> "objects matching " + objectBound.relationPid()
+                    + (objectBound.includeDescendants() ? "/P279*" : "")
+                    + " = " + String.join(", ", objectBound.qids());
+            case EXPLICIT -> objectBound.qids().size() + " allowed values";
+            case VOCABULARY -> "Selection '" + objectBound.selectionName() + "'";
+            case UNBOUNDED -> "unbounded objects";
+        };
     }
 
     /** Whether the value domain finds subjects without also filtering their

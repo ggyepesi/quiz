@@ -129,7 +129,9 @@ final class SampledClassProduction {
             pool.addAll(extractor.load(sourcePlan, 0, log));
         }
 
-        QualifierLoader loader = new QualifierLoader().api(WikidataAccess.api(context));
+        QualifierLoader loader = new QualifierLoader()
+                .api(WikidataAccess.api(context))
+                .cancellation(context.cancellation());
         if (bound.bounded()) loader.discoveryLimit(bound.members() + 1);
         loader.enrich(pool, load,
                 WikidataAccess.sparql(context, Datasource.WIKIDATA), log);

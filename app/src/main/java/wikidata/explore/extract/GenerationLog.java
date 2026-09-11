@@ -83,6 +83,32 @@ public interface GenerationLog {
         };
     }
 
+    /** This log as the shared adaptive executor's progress sink. Keeping the adapter
+     * here gives action-API and SPARQL batches the same running/detail/outcome shape;
+     * callers must not each invent a different rendering of one batch lifecycle. */
+    default batch.BatchProgress batchProgress() {
+        GenerationLog self = this;
+        return (title, request) -> {
+            GenerationLog.Running visible = self.subqueryStarted(title, request);
+            java.util.List<String> details = new java.util.ArrayList<>();
+            return new batch.BatchProgress.Running() {
+                @Override public void detail(String text) { details.add(text); }
+                @Override public void adapted(String summary) {
+                    visible.done(wikidata.api.WikidataApiClient.BatchLog
+                            .withDetails(details, summary));
+                }
+                @Override public void done(String summary) {
+                    visible.done(wikidata.api.WikidataApiClient.BatchLog
+                            .withDetails(details, summary));
+                }
+                @Override public void failed(String error) {
+                    visible.failed(wikidata.api.WikidataApiClient.BatchLog
+                            .withDetails(details, error));
+                }
+            };
+        };
+    }
+
     /**
      * A named, collapsible group of sub-entries: sub-queries/messages logged on it
      * nest under one parent node, so a batched load (Qualifier load 1/8, 2/8, …)

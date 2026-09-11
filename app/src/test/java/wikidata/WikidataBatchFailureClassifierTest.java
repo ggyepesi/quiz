@@ -22,7 +22,7 @@ class WikidataBatchFailureClassifierTest {
         assertEquals(BatchFailure.UNAVAILABLE, classify(http(503, -1)).failure());
         assertEquals(BatchFailure.TOO_HEAVY,
                 classify(new HttpTimeoutException("60 seconds")).failure());
-        assertEquals(BatchFailure.TRANSIENT,
+        assertEquals(BatchFailure.TOO_HEAVY,
                 classify(new WikidataSparqlClient.TruncatedResponseException(
                         "partial JSON", new IllegalStateException())).failure());
     }

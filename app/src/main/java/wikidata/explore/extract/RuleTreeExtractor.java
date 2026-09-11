@@ -894,21 +894,10 @@ public class RuleTreeExtractor {
     private batch.BatchExecutor<List<WikidataBinding>> executor(GenerationLog progress) {
         return new batch.BatchExecutor<>(
                 batchPolicy,
-                batchProgress(progress),
+                progress.batchProgress(),
                 wikidata.WikidataBatchFailureClassifier.INSTANCE,
                 cancellation,
                 batch.BatchCheckpointStore.NONE);
-    }
-
-    /** Adapts the extraction log to the executor's progress seam. */
-    private static batch.BatchProgress batchProgress(GenerationLog progress) {
-        return (title, request) -> {
-            GenerationLog.Running running = progress.subqueryStarted(title, request);
-            return new batch.BatchProgress.Running() {
-                @Override public void done(String summary) { running.done(summary); }
-                @Override public void failed(String error) { running.failed(error); }
-            };
-        };
     }
 
     /**

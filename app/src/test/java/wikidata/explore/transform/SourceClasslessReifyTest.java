@@ -201,4 +201,18 @@ class SourceClasslessReifyTest {
         assertFalse(vocabulary.discoversOnly());
         assertEquals("Selection 'OscarCategories'", vocabulary.valueDomainLabel());
     }
+
+    @Test void aRelationalDomainNamesItsConditionRatherThanItsAnchorCount() {
+        QualifierLoadConfig relational = new QualifierLoadConfig(
+                "T",
+                "P39",
+                "__S",
+                "S",
+                "value",
+                EntityBound.instancesOf("Q4164871"),
+                java.util.List.of());
+
+        assertEquals("objects matching P31 = Q4164871",
+                relational.valueDomainLabel());
+    }
 }

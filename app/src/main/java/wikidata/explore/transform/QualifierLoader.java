@@ -43,6 +43,7 @@ public class QualifierLoader {
     private boolean deferLabels;
     private int discoveryLimit;
     private StatementFactDemands factDemands = StatementFactDemands.EMPTY;
+    private work.CancellationToken cancellation = new work.CancellationToken();
 
     /** Override the action-API client (share one / inject a stub for tests). */
     public QualifierLoader api(WikidataApiClient api) {
@@ -52,6 +53,11 @@ public class QualifierLoader {
 
     public QualifierLoader deferLabels(boolean defer) {
         deferLabels = defer;
+        return this;
+    }
+
+    public QualifierLoader cancellation(work.CancellationToken token) {
+        cancellation = token == null ? new work.CancellationToken() : token;
         return this;
     }
 
@@ -139,7 +145,7 @@ public class QualifierLoader {
         if (cfg.discoverSubjects()
                 && (discoveryValues != null || cfg.subjectBound().bounded())) {
             List<WikidataDynamicObject> discovered =
-                    new PopulationSubjectLoader().discover(
+                    new PopulationSubjectLoader().cancellation(cancellation).discover(
                             pool, cfg.propertyPid(), discoveryValues,
                             cfg.objectBound(),
                             cfg.subjectBound(),
@@ -488,33 +494,24 @@ public class QualifierLoader {
      * narrower than it said. Compilation had already stopped narrowing the bound; this
      * was the same loss one layer down.
      */
-    private static List<String> fetchValueQids(
+    private List<String> fetchValueQids(
             WikidataSparqlClient client, wikidata.explore.model.EntityBound bound,
             GenerationLog log) {
-        List<String> out = new ArrayList<>();
-        StringBuilder targets = new StringBuilder();
-        for (String qid : bound.qids()) targets.append(" wd:").append(qid);
-        String valueTypeQid = String.join(",", bound.qids());
-        String q = "SELECT DISTINCT ?value WHERE {\n  ?value wdt:" + bound.relationPid()
-                + (bound.includeDescendants() ? "/wdt:P279* " : " ")
-                + "?type .\n  VALUES ?type {" + targets + " }\n}";
         try {
-            for (WikidataBinding b : client.query(q)) {
-                String qid = b.qid("value");
-                if (qid != null && WikidataIds.isQid(qid)) {
-                    out.add(qid);
-                }
-            }
-            if (log != null) {
-                log.subquery("Qualifier-load value set (P31=" + valueTypeQid + ")",
-                        q, out.size() + " values");
-            }
+            return RelationalObjectPopulationLoader.load(
+                    client, bound, log, cancellation);
+        } catch (java.util.concurrent.CancellationException cancelled) {
+            throw cancelled;
         } catch (Exception e) {
             if (log != null) {
-                log.message("Value-set fetch failed: " + e.getMessage() + "\n");
+                log.message("Required value-domain acquisition failed: "
+                        + e.getMessage() + "\n");
             }
+            throw new IllegalStateException(
+                    "Required value-domain acquisition failed for "
+                            + bound.relationPid() + " into "
+                            + String.join(", ", bound.qids()), e);
         }
-        return out;
     }
 
     // A time qualifier's ISO string reduces to its 4-digit year; a STRING/ENTITY

@@ -40,7 +40,9 @@ classification must reflect what actually happened:
   again.
 - **No response at all** (a connection timeout) → `UNAVAILABLE`: retry unchanged on the
   unavailable budget. There is nothing smaller to ask for yet.
-- **Truncated 200 / EOF** → `TRANSIENT`: retry unchanged, then split.
+- **Truncated 200 / EOF** → `TOO_HEAVY`: split immediately. Repeating the same
+  response is both expensive and cannot establish completeness; if the bounded
+  unit cannot split, fail loudly rather than accepting the accumulated prefix.
 - **429 / 5xx** → `UNAVAILABLE`, honouring `Retry-After` — the server said how long; don't
   second-guess it.
 - **A status the server will not reconsider** (400, 404) → `FATAL`, and not worth five attempts.

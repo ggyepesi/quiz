@@ -58,7 +58,7 @@ class SubjectBoundTest {
         assertTrue(query.contains("?subject wdt:P31/wdt:P279* ?subjectKind"), query);
     }
 
-    @Test void aRelationalObjectDomainStaysAPatternInsteadOfABigValuesList() {
+    @Test void inspectionKeepsARelationalObjectDomainAsAReadablePattern() {
         String query = PopulationSubjectLoader.buildQuery(
                 "P39", Set.of("Q6412254", "Q45341328"),
                 EntityBound.relation("P31", List.of("Q4164871"), false),
@@ -67,6 +67,24 @@ class SubjectBoundTest {
         assertTrue(query.contains("?value wdt:P31 ?valueKind"), query);
         assertTrue(query.contains("VALUES ?valueKind { wd:Q4164871 }"), query);
         assertFalse(query.contains("VALUES ?value {"), query);
+    }
+
+    @Test void productionCanResolveARelationalObjectDomainThenReverseExactValues() {
+        String objects = RelationalObjectPopulationLoader.query(
+                EntityBound.instancesOf("Q4164871"), "", 1000);
+        String subjects = PopulationSubjectLoader.reverseSubjectsQuery(
+                "P39", List.of("Q6412254", "Q45341328"),
+                EntityBound.unbounded());
+
+        assertTrue(objects.startsWith("SELECT DISTINCT ?value WHERE"), objects);
+        assertTrue(objects.contains("?value wdt:P31 ?valueKind"), objects);
+        assertTrue(objects.contains("VALUES ?valueKind { wd:Q4164871 }"), objects);
+        assertTrue(objects.contains("ORDER BY STR(?value)"), objects);
+        assertTrue(objects.contains("LIMIT 1000"), objects);
+        assertTrue(subjects.contains(
+                "VALUES ?value { wd:Q6412254 wd:Q45341328 }"), subjects);
+        assertTrue(subjects.contains("?subject wdt:P39 ?value"), subjects);
+        assertFalse(subjects.contains("?value wdt:P31"), subjects);
     }
 
     /**

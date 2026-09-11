@@ -11,11 +11,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,7 +56,9 @@ class PopulationSubjectLoaderTest {
 
         assertTrue(events.getFirst().startsWith("started:SELECT DISTINCT"), events.toString());
         assertEquals("query", events.get(1));
-        assertEquals("done:0 subjects", events.get(2));
+        assertTrue(events.getFirst().contains("VALUES ?value { wd:Q38104 }"),
+                events.toString());
+        assertEquals("done:ok", events.get(2));
     }
 
     @Test void inspectionCanBoundSubjectDiscoveryWithoutChangingProductionDefault() {
@@ -69,8 +76,157 @@ class PopulationSubjectLoaderTest {
                 "__subject", "Categories", sparql, null);
 
         assertTrue(requests.getFirst().endsWith("LIMIT 9"));
+        assertTrue(requests.get(1).contains("VALUES ?value { wd:Q38104 }"));
         assertFalse(requests.get(1).contains("LIMIT"),
                 "generation keeps complete discovery unless a caller explicitly bounds it");
+    }
+
+    @Test void aRelationalObjectPopulationIsResolvedThenReversedInBoundedBatches() {
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            int reverse;
+            boolean populatedBand;
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                if (query.startsWith("SELECT DISTINCT ?value WHERE")) {
+                    if (populatedBand) return List.of();
+                    populatedBand = true;
+                    List<wikidata.WikidataBinding> values = new ArrayList<>();
+                    for (int i = 1; i <= 105; i++) {
+                        values.add(new wikidata.WikidataBinding(
+                                Map.of("value", "Q" + (10_000 + i))));
+                    }
+                    return values;
+                }
+                reverse++;
+                return List.of(new wikidata.WikidataBinding(
+                        Map.of("subject", "Q" + (90_000 + reverse))));
+            }
+        };
+
+        List<WikidataDynamicObject> created = new PopulationSubjectLoader().discover(
+                new ArrayList<>(), "P39", Set.of(),
+                EntityBound.instancesOf("Q4164871"), EntityBound.unbounded(),
+                "__OfficeHolding", "positions", sparql, null, 0);
+
+        List<String> objectRequests = requests.stream()
+                .filter(q -> q.startsWith("SELECT DISTINCT ?value WHERE")).toList();
+        List<String> reverseRequests = requests.stream()
+                .filter(q -> q.startsWith("SELECT DISTINCT ?subject WHERE")).toList();
+        assertEquals(3, objectRequests.size(),
+                "one data page, one empty page, and its completion probe");
+        assertTrue(objectRequests.getFirst().contains("?value wdt:P31 ?valueKind"));
+        assertTrue(objectRequests.getFirst().contains("LIMIT 1000"));
+        assertTrue(objectRequests.getLast().contains("LIMIT 1"));
+        assertEquals(3, reverseRequests.size());
+        for (String reverse : reverseRequests) {
+            assertTrue(reverse.contains("VALUES ?value {"), reverse);
+            assertFalse(reverse.contains("?value wdt:P31 ?valueKind"), reverse);
+            assertTrue(qidsInValues(reverse) <= 50, reverse);
+        }
+        assertEquals(3, created.size());
+    }
+
+    @Test void alreadyResolvedRelationalObjectsAreNotJoinedAgainInOneHugeQuery() {
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                return List.of();
+            }
+        };
+        Set<String> resolvedObjects = new LinkedHashSet<>();
+        for (int i = 1; i <= 105; i++) resolvedObjects.add("Q" + (20_000 + i));
+
+        new PopulationSubjectLoader().discover(
+                new ArrayList<>(), "P39", resolvedObjects,
+                EntityBound.instancesOf("Q4164871"), EntityBound.unbounded(),
+                "__OfficeHolding", "positions", sparql, null, 0);
+
+        assertEquals(3, requests.size());
+        for (String request : requests) {
+            assertTrue(request.contains("VALUES ?value {"), request);
+            assertFalse(request.contains("?value wdt:P31 ?valueKind"), request);
+            assertTrue(qidsInValues(request) <= 50, request);
+        }
+    }
+
+    @Test void anAnsweredEmptyRelationalObjectPopulationDoesNotFallBackToABroadJoin() {
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                return List.of();
+            }
+        };
+
+        List<WikidataDynamicObject> created = new PopulationSubjectLoader().discover(
+                new ArrayList<>(), "P39", Set.of(),
+                EntityBound.instancesOf("Q4164871"), EntityBound.unbounded(),
+                "__OfficeHolding", "positions", sparql, null, 0);
+
+        assertTrue(created.isEmpty());
+        assertEquals(2, requests.size(), "empty page plus its completion probe");
+        assertTrue(requests.stream().allMatch(
+                q -> q.startsWith("SELECT DISTINCT ?value WHERE")));
+    }
+
+    @Test void processCancellationIsNotReportedAsPopulationFailure() {
+        work.CancellationToken token = new work.CancellationToken();
+        token.cancel();
+
+        assertThrows(CancellationException.class, () ->
+                new PopulationSubjectLoader().cancellation(token).discover(
+                        new ArrayList<>(), "P39", Set.of(),
+                        EntityBound.instancesOf("Q4164871"), EntityBound.unbounded(),
+                        "__OfficeHolding", "positions",
+                        new FakeWikidataSparqlClient(), null, 0));
+    }
+
+    @Test void aTruncatedReverseBatchIsSplitInsteadOfRetriedUnchanged() {
+        List<Integer> reverseBatchSizes = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            boolean populatedPage;
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                if (query.startsWith("SELECT DISTINCT ?value WHERE")) {
+                    if (populatedPage) return List.of();
+                    populatedPage = true;
+                    return List.of("Q101", "Q102", "Q103", "Q104").stream()
+                            .map(qid -> new wikidata.WikidataBinding(Map.of("value", qid)))
+                            .toList();
+                }
+                int size = qidsInValues(query);
+                reverseBatchSizes.add(size);
+                if (size > 1) {
+                    throw new wikidata.WikidataSparqlClient.TruncatedResponseException(
+                            "partial JSON", new IllegalStateException("truncated"));
+                }
+                Matcher qid = Pattern.compile("VALUES \\?value \\{ wd:(Q\\d+)")
+                        .matcher(query);
+                assertTrue(qid.find(), query);
+                return List.of(new wikidata.WikidataBinding(
+                        Map.of("subject", "Q9" + qid.group(1).substring(1))));
+            }
+        };
+
+        List<WikidataDynamicObject> created = new PopulationSubjectLoader().discover(
+                new ArrayList<>(), "P39", Set.of(),
+                EntityBound.instancesOf("Q4164871"), EntityBound.unbounded(),
+                "__OfficeHolding", "positions", sparql, null, 0);
+
+        assertEquals(List.of(4, 2, 1, 1, 2, 1, 1), reverseBatchSizes,
+                "an escaped transport truncation splits immediately; it is not retried");
+        assertEquals(4, created.size());
+    }
+
+    private static int qidsInValues(String query) {
+        Matcher values = Pattern.compile("VALUES \\?value \\{([^}]*)}")
+                .matcher(query);
+        assertTrue(values.find(), query);
+        Matcher qids = Pattern.compile("wd:Q\\d+").matcher(values.group(1));
+        int count = 0;
+        while (qids.find()) count++;
+        return count;
     }
 
     private static final class RecordingApi extends FakeWikidataApiClient {
