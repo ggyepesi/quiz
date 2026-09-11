@@ -18,6 +18,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public enum ConfigurationSection {
         VOCABULARIES("Vocabularies / populations"),
+        GRAPH_CONSTRAINTS("Graph constraints"),
         USES("Uses");
         private final String label;
         ConfigurationSection(String label) { this.label = label; }
@@ -136,6 +137,7 @@ public class SingleRootClassModelPanel extends JPanel {
                 // Only the vocabulary section opens an editor. Uses reports what was
                 // imported and configures nothing, so it is inspection, not a surface.
                 || value == ConfigurationSection.VOCABULARIES
+                || value == ConfigurationSection.GRAPH_CONSTRAINTS
                 || value instanceof GeneratedProjectModel;
     }
 
@@ -313,7 +315,8 @@ public class SingleRootClassModelPanel extends JPanel {
 
         renameClassButton.setEnabled(
                 editingEnabled && (classContext || vocabulary) && !imported);
-        addClassButton.setEnabled(editingEnabled);
+        addClassButton.setEnabled(editingEnabled
+                && selected != ConfigurationSection.GRAPH_CONSTRAINTS);
         // Copying needs a class to copy. Pasting needs something copied and somewhere to
         // put it, and neither is about what happens to be selected.
         copyClassButton.setEnabled(editingEnabled && classContext);
@@ -437,6 +440,9 @@ public class SingleRootClassModelPanel extends JPanel {
             selectionsNode.add(new DefaultMutableTreeNode(s));
         }
         projectNode.add(selectionsNode);
+
+        projectNode.add(new DefaultMutableTreeNode(
+                ConfigurationSection.GRAPH_CONSTRAINTS));
 
         // Derived from the imported classes, so it is present exactly when something is
         // imported. Nothing is configured here — it reports which models this project

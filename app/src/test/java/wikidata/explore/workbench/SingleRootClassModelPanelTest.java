@@ -39,6 +39,8 @@ class SingleRootClassModelPanelTest {
         assertTrue(SingleRootClassModelPanel.isConfigurable(
                 SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
         assertTrue(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
                 new GeneratedClassModel("NobelPrize")));
         assertTrue(SingleRootClassModelPanel.isConfigurable(
                 new VocabularySelection("Categories")));
@@ -53,8 +55,10 @@ class SingleRootClassModelPanelTest {
         DefaultMutableTreeNode root =
                 (DefaultMutableTreeNode) tree.getModel().getRoot();
 
-        assertEquals(SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES,
-                ((DefaultMutableTreeNode) root.getLastChild()).getUserObject());
+        assertNotNull(nodeFor(root,
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
+        assertNotNull(nodeFor(root,
+                SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS));
     }
 
     @Test void aVocabularySelectionSurvivesTreeRefreshAndGetsContextualActions() {

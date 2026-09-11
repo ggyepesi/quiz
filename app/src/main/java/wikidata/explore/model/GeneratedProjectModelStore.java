@@ -1,12 +1,18 @@
 package wikidata.explore.model;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import datasource.graph.constraint.GraphNodeCondition;
+import datasource.graph.constraint.GraphRelationAbsent;
+import datasource.graph.constraint.GraphRelationExists;
+import datasource.graph.constraint.GraphRelationReaches;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +53,19 @@ public final class GeneratedProjectModelStore {
         // Parameters are read by name and their order means nothing, so fixing it costs
         // nothing and makes the signature answer the question it claims to.
         mapper.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+        // Persistence binds to the neutral graph contract here. Jackson annotations
+        // must not leak into datasource.graph, whose boundary test deliberately permits
+        // only neutral foundations.
+        mapper.addMixIn(GraphNodeCondition.class, GraphNodeConditionJson.class);
     }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+    @JsonSubTypes({
+            @JsonSubTypes.Type(value = GraphRelationAbsent.class, name = "relation-absent"),
+            @JsonSubTypes.Type(value = GraphRelationExists.class, name = "relation-exists"),
+            @JsonSubTypes.Type(value = GraphRelationReaches.class, name = "relation-reaches")
+    })
+    private abstract static class GraphNodeConditionJson { }
 
     public void save(
             GeneratedProjectModel model,

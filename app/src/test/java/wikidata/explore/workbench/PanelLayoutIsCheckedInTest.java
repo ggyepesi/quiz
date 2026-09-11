@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.RuleDirection;
 
 import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
@@ -72,6 +73,18 @@ class PanelLayoutIsCheckedInTest {
         field.setProjectModel(project);
         field.edit(project.findClass("Person").fields().get(0));
         describe(actual, "Field - FieldSourcePanel", field);
+
+        GeneratedProjectModel graphProject = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        GeneratedFieldModel jurisdiction = position.addField(
+                "jurisdiction", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        jurisdiction.mapping().propertyPid("P1001");
+        jurisdiction.mapping().propertyLabel("jurisdiction");
+        jurisdiction.mapping().direction(RuleDirection.ROOT_TO_ITEM);
+        graphProject.rootClass(position);
+        GraphConstraintsPanel graph = new GraphConstraintsPanel(graphProject);
+        graph.refresh();
+        describe(actual, "Graph constraints - GraphConstraintsPanel", graph);
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
@@ -173,7 +186,11 @@ class PanelLayoutIsCheckedInTest {
 
         GeneratedClassModel person = new GeneratedClassModel("Person");
         person.membership(EntityBound.relation("P31", List.of("Q5"), false));
-        person.addField("birthDate", FieldType.DATE, FieldCardinality.SINGLE);
+        GeneratedFieldModel birthDate = person.addField(
+                "birthDate", FieldType.DATE, FieldCardinality.SINGLE);
+        birthDate.mapping().propertyPid("P569");
+        birthDate.mapping().propertyLabel("date of birth");
+        birthDate.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         project.addClass(person);
 
         GeneratedClassModel award = new GeneratedClassModel("Award");

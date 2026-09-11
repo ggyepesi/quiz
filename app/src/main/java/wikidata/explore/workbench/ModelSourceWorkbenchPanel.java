@@ -44,6 +44,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private final OwnedClassPanel ownedClassPanel;
     private final AggregateClassPanel aggregateClassPanel;
     private final EffectiveClassPanel effectiveClassPanel = new EffectiveClassPanel();
+    private final GraphConstraintsPanel graphConstraintsPanel;
     private final JTabbedPane editorTabs = new JTabbedPane();
 
     /**
@@ -143,6 +144,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.domainOverview = new DomainOverviewPanel(projectModel);
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
+        this.graphConstraintsPanel = new GraphConstraintsPanel(projectModel);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.aggregateClassPanel = new AggregateClassPanel(projectModel);
         this.explorePanel.selections(selections);
@@ -153,6 +155,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 this::addMembershipTargetFromExplorer);
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
+        this.graphConstraintsPanel.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.setProjectModel(projectModel);
 
@@ -463,6 +466,13 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             showImportedNotice(null);
             selectionEditor.edit(null);
             layout.show(cardPanel, "selection");
+        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
+            effectiveClassPanel.clear();
+            kindBox.setEnabled(editingEnabled);
+            kindHeader.setVisible(false);
+            showImportedNotice(null);
+            graphConstraintsPanel.refresh();
+            layout.show(cardPanel, "graph-constraints");
         } else if (selected instanceof GeneratedProjectModel) {
             effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
@@ -618,6 +628,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 case AGGREGATE -> aggregateClassPanel.applyEdits();
                 case SOURCE -> classSourcePanel.applyEdits();
             }
+        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
+            graphConstraintsPanel.applyEdits();
         }
 
         // A field editor keeps pending Swing values even after another tree node
@@ -877,6 +889,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         cardPanel.add(
                 fieldSourcePanel,
                 "field");
+        cardPanel.add(graphConstraintsPanel, "graph-constraints");
         cardPanel.add(
                 new JLabel(
                         "Select the class or a field."),

@@ -3,8 +3,9 @@
 ## Status
 
 Executable endpoint and node-evidence evaluators, Wikidata's two-phase outgoing-claim
-acquisition, and a standalone discovery experiment; persistence and ModelBuilder
-configuration remain (issues #183 and #184). The neutral node evaluator follows
+acquisition, a persisted per-class node-admission condition, a first ModelBuilder graph
+configuration form, and a standalone discovery experiment; generation integration and
+the richer graph presentation remain (issues #183 and #184). The neutral node evaluator follows
 alternative direct evidence paths, applies alternative existence/equality tests, and
 retains its three-valued verdict, Review disposition, witnesses and both-hop coverage.
 The Wikidata adapter loads both hops in the existing 50-QID batches, reuses the raw fact
@@ -412,6 +413,63 @@ Unknown position
 Discovery and preview are inspection only. Adding the constraint to the model remains
 an explicit action.
 
+### Configuration starts as a bounded graph form
+
+Graph constraints have their own model-level configuration panel. They do not appear in
+field configuration: configured fields may be offered as convenient names for relations,
+but using a relation as Evidence does not make it a served field. A PID may therefore be
+entered directly when the evidence is intentionally unstored.
+
+The first usable editor is a compact form for the bounded node-admission shape already
+implemented: candidate class, alternative evidence relations, alternative tests and the
+Review disposition. It persists the same `GraphEvidenceCondition` that acquisition and
+evaluation consume, and Apply is explicit. This establishes the content and ownership
+before investing in a visual arrangement.
+
+The later presentation is not a sequence of field-form rows. A condition is already a
+small graph — nodes have roles, edges have properties and statement edges may have
+qualifiers — and hiding that shape behind unrelated controls makes the configured meaning
+harder to see than the source query.
+
+That presentation shows one of a small number of supported templates in the same separate
+graph-constraint tab or window. For node admission the template is:
+
+```text
+[candidate] -(one or more evidence properties)-> [evidence]
+                                                  |
+                                                  +-(one or more tests)-> [value]
+```
+
+Selecting an empty edge slot discovers properties against the bounded sample currently
+occupying its source node. The edge shows the chosen property label, direction, sample
+coverage and examples. A node says whether it is the population candidate, Evidence,
+a configured constant, or a produced value; it may explicitly bind to an existing
+domain field or remain `Not stored — evidence only`. Storage is a materialization
+choice, not a consequence of using a node as evidence.
+
+A qualifier belongs to a statement edge, not to an entity node. Expanding an edge to
+its statement form exposes qualifier edges whose values may be bound to fields on a
+reified statement class:
+
+```text
+[subject] -- property --> [object]
+                 |
+                 +-- qualifier --> [qualifier value]
+```
+
+The visual graph is only an editor for the persisted `GraphEvidenceCondition`, endpoint
+constraint and existing graph plan. It is not a second model, and preview executes the
+same provider adapter and evaluator as generation. The standalone demo's temporary
+constraint record must disappear when this shared editor replaces it.
+
+Templates stay bounded to the shapes a configured domain has forced: node admission,
+endpoint comparison and the shared-population frontier. This decision does not bring a
+free-form graph canvas or arbitrary graph-pattern language into scope.
+
+As elsewhere in ModelBuilder, selecting a node, edge, property or example only inspects
+or edits the unsaved draft. Persisting the condition is a separate, verb-labelled Apply
+action naming the population or graph plan it will change.
+
 ## Controlled discovery demo
 
 `FrontierConstraintDiscoveryFrame` is the demo entry point. It is separate from the
@@ -533,8 +591,10 @@ existing fact store and classifies every supplied member.
 
 The remaining slice is:
 
-1. **#183** — persist the Evidence policy and condition on the membership owner without
-   adding a parallel field-source representation.
+1. **#183** — the condition is now persisted on its membership owner and edited in the
+   separate graph-configuration form without a parallel field-source representation.
+   Replace the compact relation lists with the bounded visual node-admission presentation
+   only after the configuration content has proved sufficient.
 2. **#184** — invoke the provider adapter from population generation, retain per-run
    decisions in the acquisition result, report all three
    counts, and apply the configured Review disposition during population assembly.
