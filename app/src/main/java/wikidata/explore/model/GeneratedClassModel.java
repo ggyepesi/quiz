@@ -525,6 +525,10 @@ public class GeneratedClassModel {
         copy.aggregateSource = aggregateSource == null ? null : aggregateSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.membership = membership();   // immutable, so shared rather than cloned
+        // Shared for the same reason as membership above: a record whose lists are
+        // copied on construction and whose tests are records too, so a copy cannot
+        // edit the original through it. Adding a mutable field to that record is
+        // what would break this line, not this line itself.
         copy.graphAdmissionCondition = graphAdmissionCondition;
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;
