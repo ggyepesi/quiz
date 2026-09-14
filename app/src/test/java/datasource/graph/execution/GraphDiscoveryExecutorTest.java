@@ -9,7 +9,9 @@ import datasource.graph.constraint.GraphEvidenceCondition;
 import datasource.graph.constraint.GraphPath;
 import datasource.graph.constraint.GraphRelationExists;
 import datasource.graph.store.GraphAdjacencyCoverage;
+import datasource.graph.store.GraphAdjacencyDemand;
 import datasource.graph.store.GraphEdge;
+import datasource.graph.store.LocalGraphStore;
 import datasource.graph.store.InMemoryGraphStore;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class GraphDiscoveryExecutorTest {
     private static final GraphRelation SUBCLASS = relation("P279");
     private static final GraphRelation JURISDICTION = relation("P1001");
+    private static final GraphRelation COUNTRY = relation("P17");
     private static final GraphRelation DISSOLVED = relation("P576");
     private static final GraphRelation SUCCESSOR = relation("P155");
 
@@ -109,6 +112,55 @@ class GraphDiscoveryExecutorTest {
         assertEquals("cannot acquire birthPlace", refused.getMessage());
         assertEquals(List.of(), demanded,
                 "the refused plan asked for nothing, so no hop was paid for or retained");
+    }
+
+    @Test void evidenceRelationsForTheSameNodesAreOfferedAsOneAcquisition()
+            throws Exception {
+        EntityRef position = entity("Q4164871");
+        EntityRef office = entity("Q123");
+        EntityRef polity = entity("Q28");
+        List<List<GraphRelation>> acquisitionGroups = new ArrayList<>();
+        GraphEvidenceCondition condition = new GraphEvidenceCondition(
+                "polity evidence",
+                List.of(GraphPath.direct(JURISDICTION,
+                                GraphTraversalDirection.OUTGOING),
+                        GraphPath.direct(COUNTRY,
+                                GraphTraversalDirection.OUTGOING)),
+                List.of(new GraphRelationExists(
+                        DISSOLVED, GraphTraversalDirection.OUTGOING)), null);
+        GraphAdjacencyAcquirer acquirer = new GraphAdjacencyAcquirer() {
+            @Override public void acquire(
+                    LocalGraphStore store, GraphAdjacencyDemand demand) {
+                acquisitionGroups.add(List.of(demand.relation()));
+                if (demand.relation().equals(SUBCLASS)) {
+                    store.addEdges(List.of(new GraphEdge(
+                            office, SUBCLASS, position, "position")));
+                }
+                store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+            }
+
+            @Override public void acquireAll(
+                    LocalGraphStore store,
+                    java.util.Collection<GraphAdjacencyDemand> demands) {
+                acquisitionGroups.add(demands.stream()
+                        .map(GraphAdjacencyDemand::relation).toList());
+                for (GraphAdjacencyDemand demand : demands) {
+                    if (demand.relation().equals(JURISDICTION)) {
+                        store.addEdges(List.of(new GraphEdge(
+                                office, JURISDICTION, polity, "jurisdiction")));
+                    }
+                    store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+                }
+            }
+        };
+
+        GraphDiscoveryExecutor.execute(new InMemoryGraphStore(),
+                graph(List.of(node(SUBCLASS, condition))), List.of(position), acquirer);
+
+        assertEquals(List.of(
+                List.of(SUBCLASS),
+                List.of(JURISDICTION, COUNTRY),
+                List.of(DISSOLVED)), acquisitionGroups);
     }
 
     @Test void reviewDispositionAloneDecidesWhetherReviewAdvances() throws Exception {

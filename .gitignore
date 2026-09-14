@@ -61,6 +61,9 @@ data/query-log*.run.json
 data/wikidata/**/query-log-*.txt
 data/wikidata/**/query-log-*.run.json
 
+### Reusable downloaded graph facts (machine-local, rebuilt or refreshed from sources)
+data/wikidata/.graph-cache/
+
 ### Generated correction overlays (rebuilt by the *FixMain tools from a snapshot)
 *.autofix.json
 

@@ -7,6 +7,7 @@ import process.ProcessOutcome;
 
 import java.util.List;
 import javax.swing.JComponent;
+import java.util.function.Function;
 
 /**
  * Plug-in contract for a TransformApp curation operation.
@@ -21,6 +22,8 @@ public interface ProcessWorkflowAction<R, D> {
     default ProcessWorkflowPipeline pipeline() { return null; }
     /** Optional run-scoped controls, hosted consistently on the Plan page. */
     default JComponent executionSettings() { return null; }
+    /** Optional value-to-URL mapping shared by this action's plan and result cards. */
+    default Function<Object, String> valueLinker() { return null; }
     /** Whether this terminal result may be applied. */
     default boolean applyAllowed(process.ProcessStatus status) { return true; }
     /**

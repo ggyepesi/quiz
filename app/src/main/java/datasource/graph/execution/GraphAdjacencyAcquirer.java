@@ -12,6 +12,18 @@ public interface GraphAdjacencyAcquirer {
     void acquire(LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception;
 
     /**
+     * Supplies several independent missing demands which are ready at the same graph
+     * stage. Providers may coalesce compatible demands into one physical request; the
+     * default preserves the one-demand contract for providers which cannot.
+     */
+    default void acquireAll(
+            LocalGraphStore store,
+            Collection<GraphAdjacencyDemand> demands) throws Exception {
+        if (demands == null) return;
+        for (GraphAdjacencyDemand demand : demands) acquire(store, demand);
+    }
+
+    /**
      * Rejects every relation this acquirer could not fetch, before any of them is
      * asked for.
      *

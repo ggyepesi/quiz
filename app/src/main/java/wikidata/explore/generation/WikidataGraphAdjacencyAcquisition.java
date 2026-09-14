@@ -34,6 +34,7 @@ import java.util.Set;
 /** Acquires Wikidata adjacency into the shared graph store in either direction. */
 public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAcquirer {
     private static final String PROVIDER = "wikidata";
+    private static final int ENTITY_BATCH_SIZE = 50;
     private static final int REVERSE_BATCH_SIZE = 50;
 
     private final WikidataApiClient api;
@@ -66,37 +67,87 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
         }
     }
 
+    @Override public void acquireAll(
+            LocalGraphStore store,
+            Collection<GraphAdjacencyDemand> demands) throws Exception {
+        if (store == null) throw new IllegalArgumentException("Graph store is required");
+        if (demands == null || demands.isEmpty()) return;
+        List<GraphAdjacencyDemand> requested = demands.stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(demand -> !demand.nodes().isEmpty())
+                .distinct()
+                .toList();
+        for (GraphAdjacencyDemand demand : requested) {
+            requireWikidata(demand.relation(), demand.nodes());
+        }
+        Map<EntityRef, LinkedHashSet<GraphRelation>> outgoingByNode =
+                new LinkedHashMap<>();
+        for (GraphAdjacencyDemand demand : requested) {
+            if (demand.direction() == GraphTraversalDirection.INCOMING) {
+                acquireIncoming(store, demand);
+                continue;
+            }
+            for (EntityRef node : demand.nodes()) {
+                outgoingByNode.computeIfAbsent(node, ignored -> new LinkedHashSet<>())
+                        .add(demand.relation());
+            }
+        }
+        Map<List<GraphRelation>, List<EntityRef>> nodesByMissingRelations =
+                new LinkedHashMap<>();
+        for (Map.Entry<EntityRef, LinkedHashSet<GraphRelation>> entry
+                : outgoingByNode.entrySet()) {
+            List<GraphRelation> relations = List.copyOf(entry.getValue());
+            nodesByMissingRelations.computeIfAbsent(relations,
+                    ignored -> new ArrayList<>()).add(entry.getKey());
+        }
+        for (Map.Entry<List<GraphRelation>, List<EntityRef>> group
+                : nodesByMissingRelations.entrySet()) {
+            acquireOutgoing(store, group.getValue(), group.getKey());
+        }
+    }
+
     private void acquireOutgoing(
             LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception {
+        acquireOutgoing(store, demand.nodes(), List.of(demand.relation()));
+    }
+
+    private void acquireOutgoing(
+            LocalGraphStore store,
+            List<EntityRef> requested,
+            List<GraphRelation> relations) throws Exception {
         if (api == null) throw new IllegalStateException(
                 "No Wikidata action API is configured for outgoing graph edges");
-        List<EntityRef> requested = demand.nodes();
         List<String> qids = requested.stream().map(EntityRef::id).toList();
-        List<String> pids = List.of(demand.relation().relationId());
+        List<String> pids = relations.stream().map(GraphRelation::relationId).toList();
         String source = "graph adjacency";
         api.facts().recordRetentionPlan(source, qids, pids);
         api.facts().recordDemand(source, qids, pids);
-        WikidataApiClient.PartialStatements loaded = api.getStatementsByPropertyPartial(
-                qids, pids, log.batchSink());
-        Set<String> unavailable = new LinkedHashSet<>(loaded.unavailableQids());
-        List<GraphEdge> edges = new ArrayList<>();
-        Map<String, List<WikidataApiClient.ApiStatement>> byEntity =
-                loaded.statements().getOrDefault(demand.relation().relationId(), Map.of());
-        for (Map.Entry<String, List<WikidataApiClient.ApiStatement>> entry
-                : byEntity.entrySet()) {
-            EntityRef entity = EntityRef.wikidata(entry.getKey());
-            for (WikidataApiClient.ApiStatement statement : entry.getValue()) {
-                edges.add(new GraphEdge(entity, demand.relation(),
-                        value(statement), statement.id()));
-            }
+        WikidataApiClient.PartialStatements loaded;
+        try (GenerationLog.Group group = log.group(acquisitionTitle(
+                requested, relations, GraphTraversalDirection.OUTGOING))) {
+            loaded = api.getStatementsByPropertyPartial(qids, pids, group.batchSink(),
+                    (completedQids, statements) -> {
+                        List<EntityRef> completedNodes = completedQids.stream()
+                                .map(EntityRef::wikidata).toList();
+                        for (GraphRelation relation : relations) {
+                            GraphAdjacencyDemand completed = new GraphAdjacencyDemand(
+                                    completedNodes, relation,
+                                    GraphTraversalDirection.OUTGOING);
+                            store.commitAdjacency(completed, edges(relation, statements),
+                                    GraphAdjacencyCoverage.COMPLETE);
+                        }
+                    });
         }
-        store.addEdges(edges);
+        Set<String> unavailable = new LinkedHashSet<>(loaded.unavailableQids());
         for (EntityRef node : requested) {
-            store.markCoverage(new GraphAdjacencyDemand(List.of(node), demand.relation(),
-                            GraphTraversalDirection.OUTGOING),
-                    unavailable.contains(node.id())
-                            ? GraphAdjacencyCoverage.UNAVAILABLE
-                            : GraphAdjacencyCoverage.COMPLETE);
+            if (unavailable.contains(node.id())) {
+                for (GraphRelation relation : relations) {
+                    store.markCoverage(new GraphAdjacencyDemand(
+                                    List.of(node), relation,
+                                    GraphTraversalDirection.OUTGOING),
+                            GraphAdjacencyCoverage.UNAVAILABLE);
+                }
+            }
         }
     }
 
@@ -109,24 +160,47 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
             units.add(new IncomingUnit(sparql, demand.relation(), demand.nodes().subList(
                     from, Math.min(demand.nodes().size(), from + REVERSE_BATCH_SIZE))));
         }
-        List<WorkDescriptor> failed = new BatchExecutor<List<GraphEdge>>(
-                BatchPolicy.defaults().withResume(false), log.batchProgress(),
-                WikidataBatchFailureClassifier.INSTANCE, cancellation,
-                BatchCheckpointStore.NONE)
-                .runBestEffort(units, (descriptor, edges) -> {
-                    store.addEdges(edges);
-                });
+        List<WorkDescriptor> failed;
+        try (GenerationLog.Group group = log.group(acquisitionTitle(demand))) {
+            failed = new BatchExecutor<List<GraphEdge>>(
+                    BatchPolicy.defaults().withResume(false), group.batchProgress(),
+                    WikidataBatchFailureClassifier.INSTANCE, cancellation,
+                    BatchCheckpointStore.NONE)
+                    .runBestEffort(units, (descriptor, edges) -> {
+                        List<EntityRef> completed = objectsOf(descriptor);
+                        store.commitAdjacency(new GraphAdjacencyDemand(completed,
+                                        demand.relation(), GraphTraversalDirection.INCOMING),
+                                edges, GraphAdjacencyCoverage.INCOMPLETE);
+                    });
+        }
         Set<EntityRef> unavailable = new LinkedHashSet<>();
         for (WorkDescriptor descriptor : failed) unavailable.addAll(objectsOf(descriptor));
         for (EntityRef node : demand.nodes()) {
             // This unpaged WDQS query can return a syntactically valid partial 200.
             // Retain every returned edge, but never turn absence from that answer into
             // proof of completeness. Keyset paging is required before COMPLETE is safe.
-            GraphAdjacencyCoverage coverage = unavailable.contains(node)
-                    ? GraphAdjacencyCoverage.UNAVAILABLE
-                    : GraphAdjacencyCoverage.INCOMPLETE;
-            store.markCoverage(single(node, demand), coverage);
+            if (unavailable.contains(node)) {
+                store.markCoverage(single(node, demand),
+                        GraphAdjacencyCoverage.UNAVAILABLE);
+            }
         }
+    }
+
+    private static List<GraphEdge> edges(
+            GraphRelation relation,
+            Map<String, Map<String, List<WikidataApiClient.ApiStatement>>> statements) {
+        List<GraphEdge> edges = new ArrayList<>();
+        Map<String, List<WikidataApiClient.ApiStatement>> byEntity =
+                statements.getOrDefault(relation.relationId(), Map.of());
+        for (Map.Entry<String, List<WikidataApiClient.ApiStatement>> entry
+                : byEntity.entrySet()) {
+            EntityRef entity = EntityRef.wikidata(entry.getKey());
+            for (WikidataApiClient.ApiStatement statement : entry.getValue()) {
+                edges.add(new GraphEdge(entity, relation,
+                        value(statement), statement.id()));
+            }
+        }
+        return edges;
     }
 
     /** The nodes one unit asked about, read back from the descriptor it reports with.
@@ -144,6 +218,31 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
             EntityRef node, GraphAdjacencyDemand demand) {
         return new GraphAdjacencyDemand(
                 List.of(node), demand.relation(), demand.direction());
+    }
+
+    static String acquisitionTitle(GraphAdjacencyDemand demand) {
+        return acquisitionTitle(demand.nodes(), List.of(demand.relation()),
+                demand.direction());
+    }
+
+    private static String acquisitionTitle(
+            List<EntityRef> nodes,
+            List<GraphRelation> relations,
+            GraphTraversalDirection direction) {
+        int batchSize = direction == GraphTraversalDirection.INCOMING
+                ? REVERSE_BATCH_SIZE : ENTITY_BATCH_SIZE;
+        int initialRequests = batches(nodes.size(), batchSize);
+        String properties = relations.stream().map(GraphRelation::relationId)
+                .collect(java.util.stream.Collectors.joining(" + "));
+        return "Acquire " + properties + " "
+                + (direction == GraphTraversalDirection.INCOMING ? "in" : "out")
+                + " — " + nodes.size() + " node(s), " + initialRequests
+                + " initial request(s)"
+                + (initialRequests == 0 ? "" : "; adaptive splits may add requests");
+    }
+
+    private static int batches(int values, int size) {
+        return values <= 0 ? 0 : (values + size - 1) / size;
     }
 
     private static GraphValue value(WikidataApiClient.ApiStatement statement) {

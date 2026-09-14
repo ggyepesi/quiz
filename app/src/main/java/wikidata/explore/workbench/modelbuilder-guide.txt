@@ -49,7 +49,7 @@ Toolbar:
   Generate instances    Runs extraction for the SELECTED class (or root if none
                         selected). Async; the instances window pops up with the
                         result; watch "Show query logs" for the SPARQL.
-  Cancel                Cancels the running query.
+  Cancel                Asks for confirmation, then cancels the running work.
   Show instances        Opens the generated-instances window (last run).
   Show generated source The Java source the generator would compile for the
                         selected class (preview; not needed for the web path).

@@ -9,6 +9,7 @@ import objectview.utils.swing.SwingWindowActivation;
 import objectview.view.SearchableView;
 import process.ProcessOutcome;
 import process.ProcessStatus;
+import process.swing.SwingCancellationConfirmation;
 import process.swing.SwingProcessRunner;
 
 import javax.swing.JButton;
@@ -121,7 +122,8 @@ public final class SwingProcessWorkflow {
                     ? new JLabel("Queries are running. Progress is recorded in Query logs.")
                     : pipelinePanel, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel process");
-            cancel.addActionListener(e -> runner.cancel());
+            SwingCancellationConfirmation.wire(
+                    cancel, dialog, runner::isRunning, runner::cancel);
             panel.add(buttons(cancel), BorderLayout.SOUTH);
             // The window is named for what the reader started, not for whichever
             // component is currently talking. Expanding graph-frontier nodes runs a
@@ -309,6 +311,9 @@ public final class SwingProcessWorkflow {
                         ProcessWorkflowResults.Card<D> card = cards.get(view);
                         return card == null ? null : card.decoration().get();
                     });
+            if (action.valueLinker() != null) {
+                builder.valueLinker(action.valueLinker());
+            }
             if (action.multipleResultSelection()) {
                 builder.selectionSetListener(values -> {
                         List<ProcessWorkflowResults.Card<D>> chosen = values.stream()
@@ -386,11 +391,22 @@ public final class SwingProcessWorkflow {
         private JTabbedPane tabs(List<ProcessWorkflowPlan.Tab> definitions) {
             JTabbedPane tabs = new JTabbedPane();
             for (ProcessWorkflowPlan.Tab tab : definitions) {
+                if (tab.content() != null) {
+                    JComponent content = tab.content().get();
+                    tabs.addTab(tab.title(), content == null
+                            ? new JLabel("  (none)") : content);
+                    continue;
+                }
                 List<Viewable> cards = new ArrayList<>(tab.cards());
-                JComponent content = cards.isEmpty() ? new JLabel("  (none)")
+                SearchableView.Builder builder = cards.isEmpty() ? null
                         : SearchableView.builder(cards).sample(cards.get(0))
                                 .mode(RenderingMode.CARD).collapsible(false).columns(2)
-                                .cardDecorator(tab.decoration()).build();
+                                .cardDecorator(tab.decoration());
+                if (builder != null && action.valueLinker() != null) {
+                    builder.valueLinker(action.valueLinker());
+                }
+                JComponent content = builder == null ? new JLabel("  (none)")
+                        : builder.build();
                 tabs.addTab(tab.title() + " (" + cards.size() + ")", content);
             }
             return tabs;

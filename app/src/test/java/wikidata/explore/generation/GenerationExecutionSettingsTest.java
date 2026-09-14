@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import process.ProcessOutcome;
 import process.ProcessStatus;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.query.logical.GenerateInstancesQuery;
 
 import java.util.List;
 
@@ -93,6 +95,25 @@ class GenerationExecutionSettingsTest {
 
         assertEquals("960", process.plan().parameters().get("cacheMb"));
         assertEquals("10", process.plan().parameters().get("entityConcurrency"));
+    }
+
+    @Test
+    void classGenerationReadsTheSameExecutionSettingsAsDomainGeneration() {
+        GenerationExecutionSettings settings = new GenerationExecutionSettings(false);
+        settings.memoryProfile(GenerationExecutionSettings.MemoryProfile.CUSTOM);
+        settings.customMemoryMb(960);
+        settings.networkProfile(GenerationExecutionSettings.NetworkProfile.FAST);
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel selected = new GeneratedClassModel("PositionType");
+        model.rootClass(selected);
+        CompiledPipelineRun run = CompiledPipelineRun.compile(
+                PipelineRequest.generateClassPreview(model, "PositionType", 1));
+
+        GenerateInstancesQuery query = new GenerateInstancesQuery(run, settings, 1);
+
+        assertEquals("960", query.parameters().get("cacheMb"));
+        assertEquals("10", query.parameters().get("entityConcurrency"));
+        assertEquals("true", query.parameters().get("requireComplete"));
     }
 
     private static GenerationRun runWithWarning() {

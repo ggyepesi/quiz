@@ -1,5 +1,6 @@
 package wikidata.explore.query.swing;
 
+import process.swing.SwingCancellationConfirmation;
 import work.Query;
 import work.QueryContext;
 import work.QueryResultSink;
@@ -47,7 +48,8 @@ public class SwingQueryRunner {
         if (button != null && !cancelButtons.contains(button)) {
             cancelButtons.add(button);
             button.setEnabled(isRunning());
-            button.addActionListener(e -> cancel());
+            SwingCancellationConfirmation.wire(
+                    button, button, this::isRunning, this::cancel);
         }
     }
 

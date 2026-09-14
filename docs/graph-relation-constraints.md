@@ -4,8 +4,9 @@
 
 Executable endpoint and node-evidence evaluators, Wikidata outgoing- and incoming-adjacency
 acquisition, a persisted linear discovery configuration, a first ModelBuilder graph
-configuration editor with explicit read-only execution, and a standalone discovery experiment;
-generation integration and the richer graph presentation remain (issues #183 and #184). The neutral node evaluator follows
+configuration editor with explicit read-only execution, a plan diagram drawn from that same
+configuration, and a standalone discovery experiment; generation integration remains (issue
+#184). The neutral node evaluator follows
 alternative direct evidence paths, applies alternative existence/equality tests, and
 retains its three-valued verdict, Review disposition, witnesses and both-hop coverage.
 The Wikidata adapter batches both hops; outgoing claims reuse the raw fact store, and
@@ -216,6 +217,24 @@ condition's particular alternatives and truthy/statement semantics. Another doma
 a changed condition may interpret the same facts differently. A derived-verdict cache
 is justified only if later measurement forces it, and must then be keyed by the exact
 condition and fact revision.
+
+Graph execution now keeps that adjacency in a machine-local append-only store, keyed by
+provider, relation, direction and node rather than by domain or condition. Each completed
+bounded request commits its returned edges and coverage in one checksummed frame before
+the answer becomes visible in memory. After cancellation or restart, another run reads
+the saved frames and requests only adjacency whose coverage is still unknown. Empty but
+completely answered adjacency is saved too; otherwise entities without a property would
+be downloaded on every experiment. An interrupted trailing frame is discarded without
+losing the preceding completed batches. Incoming WDQS adjacency remains explicitly
+`INCOMPLETE` until its acquisition is paged, so persistence never upgrades a possibly
+partial query into proof of absence.
+
+When several outgoing relations are required for the same node set at one graph stage,
+the provider acquires them as one entity-document pass and commits separate adjacency
+and coverage for every relation. For example, `P1001` and `P17` over the same position
+population are one set of `wbgetentities` requests, not two downloads of every position.
+Partially cached relations remain independent: a later run asks only for the relation and
+nodes whose coverage is still unknown.
 
 ### Accept and reject are one construct with a polarity
 

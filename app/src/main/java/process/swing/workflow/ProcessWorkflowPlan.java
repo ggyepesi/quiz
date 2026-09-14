@@ -5,6 +5,7 @@ import objectview.Viewable;
 import javax.swing.JComponent;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /** Immutable pre-execution presentation supplied by a workflow action. */
 public record ProcessWorkflowPlan(
@@ -23,14 +24,24 @@ public record ProcessWorkflowPlan(
     }
 
     public record Tab(String title, List<? extends Viewable> cards,
-                      Function<Viewable, JComponent> decoration) {
+                      Function<Viewable, JComponent> decoration,
+                      Supplier<? extends JComponent> content) {
         public Tab {
             title = title == null ? "Items" : title;
             cards = cards == null ? List.of() : List.copyOf(cards);
             decoration = decoration == null ? ignored -> null : decoration;
         }
         public Tab(String title, List<? extends Viewable> cards) {
-            this(title, cards, null);
+            this(title, cards, null, null);
+        }
+        public Tab(String title, List<? extends Viewable> cards,
+                   Function<Viewable, JComponent> decoration) {
+            this(title, cards, decoration, null);
+        }
+        public static Tab component(
+                String title, Supplier<? extends JComponent> content) {
+            return new Tab(title, List.of(), null,
+                    java.util.Objects.requireNonNull(content, "content"));
         }
     }
 }

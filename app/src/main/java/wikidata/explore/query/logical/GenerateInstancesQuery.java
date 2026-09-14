@@ -20,12 +20,30 @@ public class GenerateInstancesQuery
         implements Query<GenerationRun> {
     private final GeneratedProjectModel projectModel;
     private final int depth;
+    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
+    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
 
     public GenerateInstancesQuery(
             GeneratedProjectModel projectModel,
             int depth) {
 
-        this.projectModel = projectModel;
+        this(wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.generateClassPreview(
+                                projectModel, projectModel.rootClass().className(), depth)),
+                new wikidata.explore.generation.GenerationExecutionSettings(), depth);
+    }
+
+    public GenerateInstancesQuery(
+            wikidata.explore.generation.CompiledPipelineRun compiledRun,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
+            int depth) {
+
+        if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
+        this.compiledRun = compiledRun;
+        this.projectModel = compiledRun.request().model();
+        this.executionSettings = executionSettings == null
+                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                : executionSettings;
         this.depth = depth;
     }
 
@@ -43,6 +61,9 @@ public class GenerateInstancesQuery
     public Map<String, String> parameters() {
         Map<String, String> p = new LinkedHashMap<>();
         p.put("Class", projectModel.rootClass().className());
+        p.put("cacheMb", String.valueOf(executionSettings.resolvedMemoryMb()));
+        p.put("entityConcurrency", String.valueOf(executionSettings.concurrency()));
+        p.put("requireComplete", String.valueOf(executionSettings.requireComplete()));
         return p;
     }
 
@@ -50,10 +71,6 @@ public class GenerateInstancesQuery
     public GenerationRun execute(QueryContext context)
             throws Exception {
 
-        wikidata.explore.generation.CompiledPipelineRun compiledRun =
-                wikidata.explore.generation.CompiledPipelineRun.compile(
-                        wikidata.explore.generation.PipelineRequest.generateClassPreview(
-                                projectModel, projectModel.rootClass().className(), depth));
         if (compiledRun.blocked()) throw new IllegalStateException(compiledRun.explain());
 
         datasource.api.SourceExecutionPlan sourcePlan =
@@ -98,13 +115,22 @@ public class GenerateInstancesQuery
                     try (WikidataAccess.RequestLogs requestLogs =
                             WikidataAccess.logRequests(context, genLog::message)) {
 
+                    genLog.message(executionSettings.resolvedDescription());
+                    wikidata.api.WikidataApiClient entityApi =
+                            new wikidata.api.WikidataApiClient(
+                                    wikidata.api.WikidataApiClient.DEFAULT_USER_AGENT)
+                                    .facts(executionSettings.newFactStore())
+                                    .entityConcurrency(executionSettings.concurrency())
+                                    .cancellation(context.cancellation());
+                    entityApi.log(genLog::message);
+
                     GenerationRun run =
                             pipeline.fullRun(
                                     compiledRun,
                                     depth,
                                     WikidataAccess.sparql(context, Datasource.WIKIDATA),
                                     genLog,
-                                    WikidataAccess.api(context),
+                                    entityApi,
                                     context.cancellation(),
                                     sourcePlan,
                                     WikidataAccess.sparql(context, Datasource.DBPEDIA));

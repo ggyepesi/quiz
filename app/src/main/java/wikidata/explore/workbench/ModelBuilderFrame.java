@@ -23,6 +23,8 @@ import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
 import wikidata.explore.model.*;
 import work.QueryContext;
+import datasource.graph.store.GraphStoreProvider;
+import datasource.persistence.PersistentGraphStore;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.EnrichInstancesQuery;
@@ -62,6 +64,11 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel.constellationDemo();
 
     private GenerationRun lastRun;
+    /** The accepted run known to be identical to the saved snapshot. A generated or
+     * transformed replacement is intentionally a different object until Save domain succeeds. */
+    private GenerationRun savedGenerationRun;
+    private boolean closeWhenIdle;
+    private boolean closingApplication;
     /** Data-side graph execution history; never folded back into the authored model. */
     private datasource.graph.GraphDiscoveryState graphDiscoveryLedger =
             datasource.graph.GraphDiscoveryState.EMPTY;
@@ -240,7 +247,11 @@ public class ModelBuilderFrame extends JFrame {
         // datasource wired (WDQS default + DBpedia). client stays the WDQS primary.
         this.queryFactory = new QueryFactory(
                 client, apiClient, "quiz-modelbuilder (ggyepesi@gmail.com)");
-        QueryContext queryContext = queryFactory.newContext();
+        QueryContext queryContext = queryFactory.newContext().with(
+                GraphStoreProvider.class,
+                (GraphStoreProvider) () -> new PersistentGraphStore(
+                        java.nio.file.Path.of(aux.Constants.wikidataDataDirectory,
+                                ".graph-cache")));
         this.querySession = new SwingQuerySession(queryContext);
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(
@@ -268,12 +279,14 @@ public class ModelBuilderFrame extends JFrame {
         wireActions();
         refreshDomainBox();
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                rememberCurrentDomain();
-                queryFactory.close();
-                sourceWorkbench.close();
+                if (closingApplication) {
+                    dispose();
+                    return;
+                }
+                requestApplicationClose();
             }
         });
         setSize(1750, 950);
@@ -287,6 +300,7 @@ public class ModelBuilderFrame extends JFrame {
         rememberCurrentDomain();
         replaceGenerationRun(null);
         queryFactory.close();
+        sourceWorkbench.close();
         super.dispose();
     }
 
@@ -708,8 +722,14 @@ public class ModelBuilderFrame extends JFrame {
     private void wireActions() {
         SwingQueryRunner queryRunner = querySession.runner();
 
-        queryRunner.onRunningChanged(ignored -> updateConfigurationLock());
-        processRunner.onRunningChanged(ignored -> updateConfigurationLock());
+        queryRunner.onRunningChanged(ignored -> {
+            updateConfigurationLock();
+            closeAfterCancellationIfIdle();
+        });
+        processRunner.onRunningChanged(ignored -> {
+            updateConfigurationLock();
+            closeAfterCancellationIfIdle();
+        });
 
         queryRunner.registerCancelButton(cancelButton);
         processRunner.registerCancelButton(cancelButton);
@@ -721,6 +741,7 @@ public class ModelBuilderFrame extends JFrame {
         queryRunner.cancelAction(client::cancelCurrentQuery);
 
         sourceWorkbench.setQueryRunner(queryRunner);
+        sourceWorkbench.setProcessRunner(processRunner);
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());
@@ -782,22 +803,44 @@ public class ModelBuilderFrame extends JFrame {
             }
         });
 
-        queryRunner.wireButton(
-                generateButton,
-                this::acceptGenerationRun,
-                () -> {
-                    sourceWorkbench.applyEdits();
-                    GeneratedProjectModel rooted = modelRootedAtSelected();
-                    String problem = membershipProblem(rooted.rootClass());
-                    if (problem != null) {
-                        warnNothingToGenerate(problem);
-                        return null; // don't run — avoids a silent empty panel
-                    }
-                    return new GenerateInstancesQuery(
-                            rooted,
-                            ((Number) depthSpinner.getValue()).intValue());
-                },
-                this::reportGenerationError);
+        generateButton.addActionListener(e -> {
+            if (processRunner.isRunning() || queryRunner.isRunning()) return;
+            try {
+                sourceWorkbench.applyEdits();
+                GeneratedProjectModel rooted = modelRootedAtSelected();
+                String problem = membershipProblem(rooted.rootClass());
+                if (problem != null) {
+                    warnNothingToGenerate(problem);
+                    return;
+                }
+                int depth = ((Number) depthSpinner.getValue()).intValue();
+                String className = rooted.rootClass().className();
+                var executionSettings =
+                        new wikidata.explore.generation.GenerationExecutionSettings();
+                var compiledRun = wikidata.explore.generation.CompiledPipelineRun.compile(
+                        wikidata.explore.generation.PipelineRequest.generateClassPreview(
+                                rooted, className, depth));
+                var pipeline = new process.ProcessWorkflowPipeline(java.util.List.of(
+                        new process.ProcessWorkflowPipeline.Phase(
+                                "generate-class", "Generate selected class",
+                                "Discover and materialize the selected class with its "
+                                        + "configured depth and fields.",
+                                java.util.List.of(className, "Depth " + depth))));
+                startGenerationOperation(
+                        "Generate class — " + className,
+                        "Generate the selected class, inspect the result, then explicitly "
+                                + "accept it into the instances view.",
+                        "generate-class",
+                        new GenerateInstancesQuery(compiledRun, executionSettings, depth),
+                        pipeline, rooted, executionSettings, true, false,
+                        scope -> {
+                            scope.put("Selected class", className);
+                            scope.put("Depth", depth);
+                        });
+            } catch (Exception ex) {
+                reportGenerationError(ex);
+            }
+        });
 
         generateDomainButton.addActionListener(e -> {
             if (processRunner.isRunning() || queryRunner.isRunning()) {
@@ -946,7 +989,7 @@ public class ModelBuilderFrame extends JFrame {
                             "remap", new RemapInstancesQuery(lastRun, compiledRun,
                                     wikidata.explore.generation.RunSteps.of(pipeline)),
                             pipeline,
-                            snapshot, operationSettings, false,
+                            snapshot, operationSettings, false, true,
                             scope -> scope.put("Self-reference rule", replayable.retransform()
                                     ? "Will run during reification; its keep/drop "
                                             + "decisions are shown in the results"
@@ -987,7 +1030,7 @@ public class ModelBuilderFrame extends JFrame {
                                     lastRun, compiledRun, operationSettings,
                                     wikidata.explore.generation.RunSteps.of(pipeline)),
                             pipeline,
-                            snapshot, operationSettings, true,
+                            snapshot, operationSettings, true, true,
                             scope -> scope.put("Self-reference rule",
                                     "Will not run — Enrich adds values without "
                                             + "reifying statements"));
@@ -1188,6 +1231,7 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel snapshot,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings,
             boolean networked,
+            boolean showExistingRuleEffects,
             java.util.function.Consumer<quiz.transform.DynamicViewable> describeScope) {
         var operation = new wikidata.explore.generation.GenerationOperationProcess(
                 title, description, phaseId, query, pipeline, executionSettings, networked);
@@ -1227,14 +1271,16 @@ public class ModelBuilderFrame extends JFrame {
                                 new java.util.ArrayList<>();
                         tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
                                 "Scope", java.util.List.of(summary)));
-                        for (wikidata.explore.generation.RuleEffects.Effect effect
-                                : ruleEffects(snapshot)) {
-                            java.util.List<objectview.Viewable> contents =
-                                    new java.util.ArrayList<>();
-                            contents.add(ruleEffectSummary(effect, phaseId + "-plan"));
-                            contents.addAll(effect.instances());
-                            tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                    effect.title(), contents));
+                        if (showExistingRuleEffects) {
+                            for (wikidata.explore.generation.RuleEffects.Effect effect
+                                    : ruleEffects(snapshot)) {
+                                java.util.List<objectview.Viewable> contents =
+                                        new java.util.ArrayList<>();
+                                contents.add(ruleEffectSummary(effect, phaseId + "-plan"));
+                                contents.addAll(effect.instances());
+                                tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                        effect.title(), contents));
+                            }
                         }
                         return new process.swing.workflow.ProcessWorkflowPlan(
                                 title, description, tabs);
@@ -1289,12 +1335,17 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void acceptGenerationRun(GenerationRun run) {
+        acceptGenerationRun(run, false);
+    }
+
+    private void acceptGenerationRun(GenerationRun run, boolean alreadySaved) {
         SwingUtilities.invokeLater(() -> {
             datasource.graph.GraphDiscoveryState previousGraph = graphDiscoveryLedger;
             // Closes the runtime this run supersedes — unless the incoming run carries it,
             // which is how forgetFetchedDeclaration replaces a run without shutting one
             // that is still in use.
             replaceGenerationRun(run);
+            savedGenerationRun = alreadySaved ? lastRun : null;
 
             if (run != null) {
                 datasource.graph.GraphDiscoveryState observed =
@@ -1404,6 +1455,7 @@ public class ModelBuilderFrame extends JFrame {
                         edge, datasource.EntityRef.wikidata(decision.qid()));
                 if (next != graphDiscoveryLedger) {
                     graphDiscoveryLedger = next;
+                    savedGenerationRun = null;
                     queued++;
                 }
             }
@@ -1426,6 +1478,7 @@ public class ModelBuilderFrame extends JFrame {
      */
     private void replaceGenerationRun(GenerationRun next) {
         lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, next);
+        if (next == null) savedGenerationRun = null;
         updateRunReportButton();
         sourceWorkbench.refreshDomainOverview();
     }
@@ -2153,6 +2206,64 @@ public class ModelBuilderFrame extends JFrame {
         return saved.isBlank() || now.isBlank() || !now.equals(saved);
     }
 
+    private boolean hasUnsavedGeneratedInstances() {
+        return lastRun != null && lastRun != savedGenerationRun;
+    }
+
+    /** Closing is an explicit decision whenever it would stop work or lose memory-only data. */
+    private void requestApplicationClose() {
+        boolean running = processRunner.isRunning() || querySession.runner().isRunning();
+        if (!running) {
+            try {
+                // Text still visible in the selected editor is configuration work too.
+                // Flush it before comparing with disk so closing cannot bypass the dirty
+                // check merely because the reader had not pressed Apply first.
+                sourceWorkbench.applyEdits();
+            } catch (Exception invalidEdits) {
+                reportGenerationError(invalidEdits);
+                return;
+            }
+        }
+        ModelBuilderCloseGuard.State state = new ModelBuilderCloseGuard.State(
+                hasUnsavedChanges(),
+                hasUnsavedGeneratedInstances() ? lastRun.size() : 0,
+                running);
+        switch (ModelBuilderCloseGuard.ask(this, state)) {
+            case KEEP_OPEN -> { }
+            case SAVE_AND_CLOSE -> {
+                if (saveEverything(true)) closeApplicationNow();
+            }
+            case CLOSE_WITHOUT_SAVING -> closeApplicationNow();
+            case CANCEL_AND_CLOSE -> {
+                // Keep the clients and window alive until both workers report idle. A
+                // blocking HTTP request may take a moment to observe its interruption.
+                closeWhenIdle = true;
+                querySession.runner().cancel();
+                processRunner.cancel();
+                closeAfterCancellationIfIdle();
+            }
+        }
+    }
+
+    private void closeAfterCancellationIfIdle() {
+        if (closeWhenIdle && !processRunner.isRunning()
+                && !querySession.runner().isRunning()) {
+            closeApplicationNow();
+        }
+    }
+
+    private void closeApplicationNow() {
+        if (closingApplication) return;
+        closingApplication = true;
+        closeWhenIdle = false;
+        // Re-enter the normal JFrame close path only after the guard has settled the
+        // decision. EXIT_ON_CLOSE preserves the application's existing process-exit
+        // semantics, including when auxiliary log/instances windows are still open.
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        dispatchEvent(new java.awt.event.WindowEvent(
+                this, java.awt.event.WindowEvent.WINDOW_CLOSING));
+    }
+
     /** This project is now exactly what {@code file} holds. */
     private void markSaved(File file) {
         openModelFile = file;
@@ -2384,6 +2495,11 @@ public class ModelBuilderFrame extends JFrame {
         try {
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(f);
             datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(f);
+            // Detach the editors before the contents are replaced, exactly as
+            // doLoadDomain does. Startup is a load like any other: the editors were
+            // built against the empty starting model, and a panel still holding that
+            // must not be flushed into the domain being loaded.
+            sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
             graphDiscoveryLedger = ledger;
             modelChanged();
@@ -2562,7 +2678,7 @@ public class ModelBuilderFrame extends JFrame {
                     GenerationRun.SelfReferenceAudit.restored(saved.selfReferences()),
                     GenerationRun.OwnedCompositionAudit.notRun(),
                     GenerationRun.KindClassificationAudit.notRun(),
-                    GenerationRun.ProjectionAudit.notRun()));
+                    GenerationRun.ProjectionAudit.notRun()), true);
             showInstancesWindow();
 
             logWindow.info("Loaded " + objects.size()
@@ -2738,9 +2854,13 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void saveEverything() {
+        saveEverything(false);
+    }
+
+    /** @return true only when every requested durable write completed. */
+    private boolean saveEverything(boolean closingAfterSave) {
         if (projectModel.isModel()) {
-            saveModelOnly();
-            return;
+            return saveModelOnly(closingAfterSave);
         }
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
@@ -2757,7 +2877,7 @@ public class ModelBuilderFrame extends JFrame {
                     || lastRun.dynamicObjects() == null
                     || lastRun.dynamicObjects().isEmpty()) {
                 reportGenerationError(brokenRuntime);
-                return;
+                return false;
             }
             int recover = JOptionPane.showConfirmDialog(this,
                     "The live configuration editor could not be applied because the "
@@ -2768,7 +2888,7 @@ public class ModelBuilderFrame extends JFrame {
                             + "Pending editor changes will not be included.",
                     "Recover completed generation",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-            if (recover != JOptionPane.OK_OPTION) return;
+            if (recover != JOptionPane.OK_OPTION) return false;
             modelToSave = lastRun.modelSnapshot();
             recoverCompletedRun = true;
         }
@@ -2793,7 +2913,7 @@ public class ModelBuilderFrame extends JFrame {
                                                   "Model changed since generation",
                                                   JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (d != JOptionPane.OK_OPTION) {
-                return;
+                return false;
             }
         }
 
@@ -2814,7 +2934,7 @@ public class ModelBuilderFrame extends JFrame {
                                                       "Overwriting a multi-class snapshot",
                                                       JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (d != JOptionPane.OK_OPTION) {
-                    return;
+                    return false;
                 }
             }
         }
@@ -2826,11 +2946,13 @@ public class ModelBuilderFrame extends JFrame {
                 + "Instances: " + (haveInstances
                 ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
                 : "(none generated yet — will be skipped)");
-        int choice = JOptionPane.showConfirmDialog(
-                this, plan, "Save domain",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (choice != JOptionPane.OK_OPTION) {
-            return;
+        if (!closingAfterSave) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this, plan, "Save domain",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (choice != JOptionPane.OK_OPTION) {
+                return false;
+            }
         }
 
         StringBuilder report = new StringBuilder();
@@ -2887,28 +3009,33 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.refreshDomainOverview();
             // What is on disk is now what is open, so switching away asks nothing.
             markSaved(modelFile());
+            savedGenerationRun = lastRun;
             logWindow.info("Saved domain \"" + projectModel.name() + "\":\n" + report);
 
-            String hint = instanceCountHint(n);
-            JOptionPane.showMessageDialog(
-                    this,
-                    report + (hint.isBlank() ? "" : "\n" + hint),
-                    "Saved domain",
-                    JOptionPane.INFORMATION_MESSAGE);
+            if (!closingAfterSave) {
+                String hint = instanceCountHint(n);
+                JOptionPane.showMessageDialog(
+                        this,
+                        report + (hint.isBlank() ? "" : "\n" + hint),
+                        "Saved domain",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+            return true;
         } catch (Exception ex) {
             reportGenerationError(ex);
+            return false;
         }
     }
 
-    private void saveModelOnly() {
+    private boolean saveModelOnly(boolean closingAfterSave) {
         try {
             sourceWorkbench.applyEdits();
             String plan = "Save the model \"" + projectModel.name() + "\"?\n\n"
                     + "Configuration: " + modelFile().getPath()
                     + "\n\nModels do not generate or save instances.";
-            if (JOptionPane.showConfirmDialog(this, plan, "Save model",
+            if (!closingAfterSave && JOptionPane.showConfirmDialog(this, plan, "Save model",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
-                    != JOptionPane.OK_OPTION) return;
+                    != JOptionPane.OK_OPTION) return false;
             modelFile().getParentFile().mkdirs();
             new GeneratedProjectModelStore().save(projectModel, modelFile());
             markSaved(modelFile());
@@ -2917,10 +3044,14 @@ public class ModelBuilderFrame extends JFrame {
             refreshDomainBox();
             logWindow.info("Saved model \"" + projectModel.name() + "\" to "
                     + modelFile().getPath());
-            JOptionPane.showMessageDialog(this, "Configuration: " + modelFile().getPath(),
-                    "Saved model", JOptionPane.INFORMATION_MESSAGE);
+            if (!closingAfterSave) {
+                JOptionPane.showMessageDialog(this, "Configuration: " + modelFile().getPath(),
+                        "Saved model", JOptionPane.INFORMATION_MESSAGE);
+            }
+            return true;
         } catch (Exception failure) {
             reportGenerationError(failure);
+            return false;
         }
     }
 

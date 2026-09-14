@@ -342,9 +342,9 @@
     button: Remove selected evidence test
     label: When evidence cannot decide:
     combo: 2 item(s)
-  label: Run the saved graph.
   label: No discovery graph configured.
   button: Run graph  (disabled)
+  button: Remove discovery graph  (disabled)
   button: Clear draft
   button: Apply graph
 

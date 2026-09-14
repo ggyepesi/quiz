@@ -24,7 +24,8 @@ class LoadedInstancesCountVisibilityTest {
     @Test void acceptingAnyRunRefreshesAnAlreadyOpenInstancesWindow() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/wikidata/explore/workbench/ModelBuilderFrame.java"));
-        int accept = source.indexOf("private void acceptGenerationRun(GenerationRun run)");
+        int accept = source.indexOf(
+                "private void acceptGenerationRun(GenerationRun run, boolean alreadySaved)");
         int nextMethod = source.indexOf("\n    private ", accept + 1);
         String body = source.substring(accept, nextMethod);
 

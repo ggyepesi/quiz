@@ -961,6 +961,16 @@ public class WikidataApiClient {
         }
     }
 
+    /** One complete statement batch, including entities with no matching statement. */
+    @FunctionalInterface
+    public interface StatementBatchCommitter {
+        void commit(
+                List<String> qids,
+                Map<String, Map<String, List<ApiStatement>>> statements) throws Exception;
+
+        StatementBatchCommitter NONE = (qids, statements) -> { };
+    }
+
     /**
      * Like {@link #getStatementsByProperty}, but keeps what the reachable batches
      * returned instead of discarding a whole load because some of it failed.
@@ -974,6 +984,18 @@ public class WikidataApiClient {
     public PartialStatements getStatementsByPropertyPartial(
             List<String> entityQids, List<String> statementPids,
             BatchLog batchLog) throws Exception {
+        return getStatementsByPropertyPartial(
+                entityQids, statementPids, batchLog, StatementBatchCommitter.NONE);
+    }
+
+    /**
+     * Loads statement slices while durably publishing each completed adaptive batch.
+     * The callback is inside the executor's commit boundary: if it cannot save the
+     * result, that work unit is not reported as completed.
+     */
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids,
+            BatchLog batchLog, StatementBatchCommitter batchCommitter) throws Exception {
         Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
         if (entityQids == null || statementPids == null) {
             return new PartialStatements(out, 0, List.of());
@@ -994,11 +1016,23 @@ public class WikidataApiClient {
                         batchProgress(batchLog), WikidataBatchFailureClassifier.INSTANCE,
                         cancellation, batch.BatchCheckpointStore.NONE,
                         entityConcurrency);
+        StatementBatchCommitter durable = batchCommitter == null
+                ? StatementBatchCommitter.NONE : batchCommitter;
         List<WorkDescriptor> failed = executor.runBestEffort(roots,
-                (descriptor, statements) -> statements.forEach((pid, byQid) ->
+                (descriptor, statements) -> {
+                    List<String> completedQids = qidsOf(descriptor);
+                    durable.commit(completedQids, statements);
+                    statements.forEach((pid, byQid) ->
                         out.computeIfAbsent(pid, ignored -> new LinkedHashMap<>())
-                                .putAll(byQid)));
+                                .putAll(byQid));
+                });
         return new PartialStatements(out, failed.size(), unavailableQids(failed));
+    }
+
+    private static List<String> qidsOf(WorkDescriptor descriptor) {
+        return java.util.Arrays.stream(
+                        descriptor.parameters().getOrDefault("ids", "").split(","))
+                .filter(WikidataIds::isQid).toList();
     }
 
     private WorkUnit<Map<String, Map<String, List<ApiStatement>>>> statementGroupUnit(

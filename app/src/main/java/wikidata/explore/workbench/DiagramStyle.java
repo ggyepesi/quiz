@@ -38,6 +38,10 @@ final class DiagramStyle {
         return tint(ACCENT);
     }
 
+    static Color warningTint() {
+        return tint(new Color(185, 75, 65));
+    }
+
     /** The same fill for a caller that emphasises with its own colour. */
     static Color tint(Color base) {
         return new Color(base.getRed(), base.getGreen(), base.getBlue(), 28);

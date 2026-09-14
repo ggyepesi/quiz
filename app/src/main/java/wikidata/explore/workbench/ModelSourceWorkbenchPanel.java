@@ -176,8 +176,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         explorePanel.setQueryRunner(queryRunner);
         categoryPanel.setQueryRunner(queryRunner);
         graphPatternPanel.setQueryRunner(queryRunner);
-        graphConstraintsPanel.setQueryRunner(queryRunner);
         entityRelationPanel.setQueryRunner(queryRunner);
+    }
+
+    public void setProcessRunner(process.swing.SwingProcessRunner processRunner) {
+        graphConstraintsPanel.setProcessRunner(processRunner);
     }
 
     public void afterChange(
@@ -557,6 +560,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         ownedClassPanel.edit(null);
         aggregateClassPanel.edit(null);
         fieldSourcePanel.edit(null);
+        graphConstraintsPanel.abandon();
         edit(null);
     }
 
@@ -629,13 +633,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 case AGGREGATE -> aggregateClassPanel.applyEdits();
                 case SOURCE -> classSourcePanel.applyEdits();
             }
-        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
-            graphConstraintsPanel.applyEdits();
         }
 
         // A field editor keeps pending Swing values even after another tree node
         // is selected. Always flush it before save, generation or preview.
         fieldSourcePanel.applyEdits();
+        // The graph editor keeps them too, and used to be flushed only while its own
+        // section was still selected — so constraints edited and then left by clicking
+        // any other node never reached model.json. It decides for itself whether it is
+        // holding anything, which is what lets this be unconditional like the field one.
+        graphConstraintsPanel.applyPendingEdits();
     }
 
     public RuleNode temporaryRuleNodeForSelected() {

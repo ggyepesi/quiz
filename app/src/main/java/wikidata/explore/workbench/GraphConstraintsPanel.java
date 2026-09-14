@@ -5,14 +5,20 @@ import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 import datasource.graph.constraint.*;
+import graphview.GraphViewModel;
 import objectview.Viewable;
-import objectview.render.RenderingMode;
-import objectview.view.SearchableView;
+import process.ProcessOutcome;
+import process.ProcessWorkflowPipeline;
+import process.QuerySubprocess;
+import process.swing.SwingProcessRunner;
+import process.swing.workflow.ProcessWorkflowAction;
+import process.swing.workflow.ProcessWorkflowPlan;
+import process.swing.workflow.ProcessWorkflowResults;
+import process.swing.workflow.SwingProcessWorkflow;
 import quiz.transform.DynamicViewable;
 import wikidata.WikidataIds;
 import wikidata.explore.model.*;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
-import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.ui.WikidataLinks;
 import workbench.SimpleDocumentListener;
 
@@ -20,6 +26,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /** First bounded graph editor: configured-QID start, one property edge and one next node. */
@@ -57,6 +64,9 @@ final class GraphConstraintsPanel extends JPanel {
                     + " executes it, and it changes no class population.";
 
     private final GeneratedProjectModel model;
+    /** Whether the controls hold THIS model's graph, as opposed to construction
+     *  defaults. Read by {@link #applyPendingEdits()}; see there for why it matters. */
+    private boolean populated;
     private final JComboBox<GeneratedClassModel> startClassBox = new JComboBox<>();
     private final JComboBox<GraphDiscoveryConfiguration.NodeUse> startUseBox = useBox();
     private final JLabel startQids = new JLabel();
@@ -81,33 +91,109 @@ final class GraphConstraintsPanel extends JPanel {
             reviewBox();
     private final JLabel status = new JLabel(" ");
     private final JButton run = new JButton("Run graph");
-    private final JTabbedPane results = new JTabbedPane();
-    private SwingQueryRunner runner;
+    /** The model holds ONE discovery graph, so removing it needs no selection — the
+     *  button names the thing it removes. Enabled only while there is one to remove,
+     *  which is also what keeps an unconfigured panel from offering a destructive act. */
+    private final JButton removeGraph = new JButton("Remove discovery graph");
+    private SwingProcessRunner runner;
     private boolean runWired;
     private Consumer<Void> afterChange = ignored -> {};
+    private BiConsumer<String, String> errorDialog;
     private boolean loading;
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
         this.model = java.util.Objects.requireNonNull(model, "model");
+        errorDialog = (title, message) -> JOptionPane.showMessageDialog(
+                this, message, title, JOptionPane.ERROR_MESSAGE);
         buildUi();
         refresh();
+    }
+
+    void errorDialog(BiConsumer<String, String> value) {
+        errorDialog = value == null ? errorDialog : value;
     }
 
     void afterChange(Consumer<Void> value) {
         afterChange = value == null ? ignored -> {} : value;
     }
 
-    void setQueryRunner(SwingQueryRunner value) {
+    void setProcessRunner(SwingProcessRunner value) {
         runner = value;
         if (!runWired && runner != null) {
             runWired = true;
-            runner.wireButton(run, this::showResult,
-                    () -> new ConfiguredGraphDiscoveryQuery(model),
-                    error -> status("Graph discovery failed: " + message(error), true));
+            runner.registerRunButton(run);
+            run.addActionListener(ignored -> runGraph());
             runner.onRunningChanged(ignored -> SwingUtilities.invokeLater(this::updateRunEnabled));
         }
         updateRunEnabled();
+    }
+
+    private void runGraph() {
+        if (runner == null || runner.isRunning()) return;
+        try {
+            GeneratedProjectModel snapshot = model.copy();
+            ConfiguredGraphDiscoveryQuery query =
+                    new ConfiguredGraphDiscoveryQuery(snapshot);
+            ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(List.of(
+                    new ProcessWorkflowPipeline.Phase(
+                            "discover-graph", "Discover and classify graph nodes",
+                            "Follow the configured edge, acquire evidence and classify "
+                                    + "each reached entity.", graphDetails(snapshot))));
+            ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result, Void> action =
+                    graphWorkflow(query, pipeline, snapshot, graphSummary(snapshot));
+            SwingProcessWorkflow.start(this, runner, action);
+        } catch (Exception error) {
+            showGraphFailure(error);
+        }
+    }
+
+    private ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result, Void> graphWorkflow(
+            ConfiguredGraphDiscoveryQuery query, ProcessWorkflowPipeline pipeline,
+            GeneratedProjectModel snapshot, DynamicViewable summary) {
+        return new ProcessWorkflowAction<>() {
+            @Override public String id() { return "discover-graph"; }
+            @Override public ProcessWorkflowPipeline pipeline() { return pipeline; }
+            @Override public java.util.function.Function<Object, String> valueLinker() {
+                return WikidataLinks.valueLinker();
+            }
+            @Override public ProcessWorkflowPlan plan() {
+                return new ProcessWorkflowPlan(
+                        "Run graph", "Inspect the configured traversal and evidence tests, "
+                                + "then explicitly start discovery.",
+                        List.of(ProcessWorkflowPlan.Tab.component(
+                                        "Graph", () -> graphPlanView(snapshot)),
+                                new ProcessWorkflowPlan.Tab(
+                                "Scope", List.of(summary))));
+            }
+            @Override public process.Process<ConfiguredGraphDiscoveryQuery.Result> process() {
+                return new process.Process<>() {
+                    @Override public process.ProcessPlan plan() {
+                        return new process.ProcessPlan(
+                                query.purpose(), query.description(), query.parameters());
+                    }
+                    @Override public ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result>
+                            execute(process.ProcessContext context) {
+                        pipeline.start("discover-graph", query.purpose());
+                        ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome =
+                                context.run(new QuerySubprocess<>(query));
+                        pipeline.finish(outcome.status(), outcome.summary());
+                        return outcome;
+                    }
+                };
+            }
+            @Override public ProcessWorkflowResults<Void> results(
+                    ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome) {
+                return graphResults(outcome.result());
+            }
+            @Override public void apply(List<Void> decisions) { }
+        };
+    }
+
+    private void showGraphFailure(Exception error) {
+        String detail = message(error);
+        status("Graph discovery failed: " + detail, true);
+        errorDialog.accept("Graph discovery failed", detail);
     }
 
     void refresh() {
@@ -124,9 +210,48 @@ final class GraphConstraintsPanel extends JPanel {
             refreshTargetState();
             refreshArrow();
             status(saved == null ? "No discovery graph configured."
+                    : saved.nextNodes().isEmpty()
+                    ? "Start node saved: " + saved.startNode().qidSourceClass()
+                            + ". Add the property connecting the two nodes to complete"
+                            + " the graph."
                     : "Configured." + RUN_ONLY, false);
             updateRunEnabled();
+            populated = true;
         } finally { loading = false; }
+    }
+
+    /**
+     * Flushes the draft the way a save does: the panel contributes what it holds, and
+     * nothing at all when it holds nothing.
+     *
+     * <p>An emptied draft is how a saved graph is REMOVED, and a section that was never
+     * opened looks exactly like one: its controls sit at their construction defaults
+     * because {@link #refresh()} runs only when the section is selected. Applying such a
+     * panel on every save would delete the graph it had never read. Only a panel showing
+     * this model's graph can tell an emptied draft from an unread one, so only that panel
+     * is flushed.
+     */
+    void applyPendingEdits() {
+        if (!populated) return;
+        // A flush persists what the modeller authored; it never CREATES a graph out of
+        // the panel's default control state. The start-class combo always carries a
+        // selection, so without this every save of a domain that has no graph would
+        // quietly store a start node naming whichever class happens to be first.
+        // Pressing Apply is what turns a start class into a saved graph; once one
+        // exists, a flush keeps it up to date like any other editor.
+        if (model.graphDiscoveryConfiguration() == null
+                && !WikidataIds.isPid(cleanPid(edgePidField.getText()))) {
+            return;
+        }
+        applyEdits();
+    }
+
+    /** Detaches the panel from the contents it read, for the same reason the other
+     *  editors are detached before a domain is loaded in place: the model instance is
+     *  reused, so controls still holding the previous domain's graph would otherwise be
+     *  flushed into the new one. */
+    void abandon() {
+        populated = false;
     }
 
     void applyEdits() {
@@ -134,17 +259,23 @@ final class GraphConstraintsPanel extends JPanel {
         if (start == null) return;
         try {
             String pid = cleanPid(edgePidField.getText());
-            // An emptied draft is how a saved graph is removed, so that Apply stays the
-            // one thing that changes the model. Clearing alone must not: every other
-            // control here builds a draft, and one button writing straight through is
-            // the difference between a panel with a commit point and one without.
+            // Apply only ever SAVES; removing is its own button. The start node is a
+            // decision in its own right and is kept as one: a graph is authored in the
+            // order it is read, and refusing to record the start until an edge exists
+            // discarded a choice the modeller had just made — which is how choosing a
+            // start class, pressing Apply and saving still came back as the first class
+            // in the list. An edgeless graph traverses nothing, so Run stays disabled
+            // and the status says what the graph still needs.
             if (pid.isEmpty() && evidenceModel.isEmpty() && testsModel.isEmpty()) {
-                boolean had = model.graphDiscoveryConfiguration() != null;
-                model.graphDiscoveryConfiguration(null);
-                status(had ? "Discovery graph removed." : "No discovery graph configured.",
-                        false);
+                model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+                        new GraphDiscoveryConfiguration.StartNode(
+                                start.className(), use(startUseBox)),
+                        List.of()));
+                status("Start node saved: " + start.className()
+                        + ". Add the property connecting the two nodes to complete"
+                        + " the graph.", false);
                 updateRunEnabled();
-                if (had) afterChange.accept(null);
+                afterChange.accept(null);
                 return;
             }
             if (!WikidataIds.isPid(pid)) {
@@ -190,6 +321,7 @@ final class GraphConstraintsPanel extends JPanel {
         testQidField.setName("graph.testQid");
         reviewBox.setName("graph.reviewDisposition");
         status.setName("graph.status");
+        removeGraph.setName("graph.remove");
 
         JPanel chain = new JPanel();
         chain.setLayout(new BoxLayout(chain, BoxLayout.X_AXIS));
@@ -200,20 +332,13 @@ final class GraphConstraintsPanel extends JPanel {
         chain.add(Box.createHorizontalStrut(8));
         chain.add(nextNodePanel());
         JComponent graph = objectview.utils.swing.ScrollPaneUtils.horizontalOnly(chain);
-        results.addTab("Start (0)", empty("Run the saved graph."));
-        results.addTab("Accepted (0)", empty("Run the saved graph."));
-        results.addTab("Review (0)", empty("Run the saved graph."));
-        results.addTab("Rejected (0)", empty("Run the saved graph."));
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, graph, results);
-        split.setResizeWeight(0.58);
-        split.setBorder(null);
-        add(split, BorderLayout.CENTER);
+        add(graph, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton clear = new JButton("Clear draft");
         JButton apply = new JButton("Apply graph");
-        actions.add(run); actions.add(clear); actions.add(apply);
+        actions.add(run); actions.add(removeGraph); actions.add(clear); actions.add(apply);
         bottom.add(status, BorderLayout.CENTER);
         bottom.add(actions, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
@@ -224,13 +349,15 @@ final class GraphConstraintsPanel extends JPanel {
         targetUseBox.addActionListener(e -> refreshTargetState());
         testKindBox.addActionListener(e -> refreshTestQidState());
         apply.addActionListener(e -> applyEdits());
+        removeGraph.addActionListener(e -> removeGraph());
         clear.addActionListener(e -> {
             evidenceModel.clear();
             testsModel.clear();
             edgePidField.setText("");
-            status(model.graphDiscoveryConfiguration() == null
-                    ? "Draft cleared."
-                    : "Draft cleared; Apply graph to remove the saved graph.", false);
+            // Clearing the DRAFT says nothing about the saved graph. It used to point at
+            // Apply as the way to remove one, which is how a blank draft came to mean
+            // "delete" — the act now has its own button and its own name.
+            status("Draft cleared.", false);
         });
         refreshTestQidState();
     }
@@ -496,15 +623,10 @@ final class GraphConstraintsPanel extends JPanel {
         model.clear(); if (values != null) values.forEach(model::addElement);
     }
 
-    private void showResult(ConfiguredGraphDiscoveryQuery.Result result) {
-        if (result == null || result.graph() == null) return;
+    private ProcessWorkflowResults<Void> graphResults(
+            ConfiguredGraphDiscoveryQuery.Result result) {
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
-        setTab(0, "Start", graph.start(), result, "Start node");
-        setTab(1, "Accepted", last == null ? List.of() : last.accepted(), result,
-                last == null ? "Accepted" : last.traversal().targetNodeClass());
-        setTab(2, "Review", last == null ? List.of() : last.review(), result, "Review");
-        setTab(3, "Rejected", last == null ? List.of() : last.rejected(), result, "Rejected");
         int reached = last == null ? 0 : last.reached().size();
         int accepted = last == null ? 0 : last.accepted().size();
         int review = last == null ? 0 : last.review().size();
@@ -513,36 +635,211 @@ final class GraphConstraintsPanel extends JPanel {
         int incomplete = last == null ? 0 : last.incomplete().size();
         String labels = result.labelledEntities() < graph.start().size() + reached
                 ? "; labels loaded for the first " + result.labelledEntities() : "";
-        status(reached + " reached: " + accepted + " accepted, " + review
+        String summary = reached + " reached: " + accepted + " accepted, " + review
                 + " review, " + rejected + " rejected"
                 + (unavailable + incomplete == 0 ? "" : "; " + unavailable
                         + " unavailable, " + incomplete + " incomplete") + labels
-                + ". No class population was changed.", false);
+                + ". No class population was changed.";
+        status(summary, false);
+        String targetType = last == null ? "Accepted" : last.traversal().targetNodeClass();
+        return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply",
+                List.of(resultTab("Start", graph.start(), result, "Start node"),
+                        resultTab("Accepted", last == null ? List.of() : last.accepted(),
+                                result, targetType),
+                        resultTab("Review", last == null ? List.of() : last.review(),
+                                result, "Review"),
+                        resultTab("Rejected", last == null ? List.of() : last.rejected(),
+                                result, "Rejected")));
     }
 
-    private void setTab(int index, String title, List<EntityRef> entities,
-                        ConfiguredGraphDiscoveryQuery.Result result, String type) {
+    private ProcessWorkflowResults.Tab<Void> resultTab(
+            String title, List<EntityRef> entities,
+            ConfiguredGraphDiscoveryQuery.Result result, String type) {
         List<EntityRef> values = entities == null ? List.of() : entities;
         int shown = Math.min(values.size(), 1_000);
-        List<Viewable> cards = values.stream().limit(shown).map(entity -> {
+        List<ProcessWorkflowResults.Card<Void>> cards = values.stream().limit(shown)
+                .map(entity -> {
             DynamicViewable card = new DynamicViewable(entity.id(), result.label(entity));
             card.type(type); card.put("QID", entity.id());
-            return (Viewable) card;
+            return new ProcessWorkflowResults.Card<Void>((Viewable) card,
+                    () -> null, false);
         }).toList();
-        results.setTitleAt(index, title + " (" + values.size()
-                + (shown < values.size() ? "; showing " + shown : "") + ")");
-        results.setComponentAt(index, cards.isEmpty() ? empty("No " + title.toLowerCase() + " nodes.")
-                : SearchableView.builder(cards).sample(cards.getFirst())
-                        .mode(RenderingMode.CARD).columns(3).collapsible(false)
-                        .valueLinker(WikidataLinks.valueLinker()).build());
+        String count = values.size() + " total"
+                + (shown < values.size() ? "; showing " + shown : "");
+        return new ProcessWorkflowResults.Tab<>(title + " — " + count, cards);
+    }
+
+    static DynamicViewable graphSummary(GeneratedProjectModel snapshot) {
+        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
+        summary.type("Graph discovery");
+        summary.put("Downloaded facts",
+                "Reuse the persistent local cache; fetch only missing adjacency");
+        summary.put("Start class", graph.startNode().qidSourceClass());
+        GeneratedClassModel start = snapshot.findClass(graph.startNode().qidSourceClass());
+        summary.put("Start QIDs", start == null ? 0 : start.seedQids().size());
+        if (!graph.nextNodes().isEmpty()) {
+            GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
+            summary.put("Edge", next.property().relationId() + " "
+                    + directionLabel(next.directionFromPrevious()));
+            summary.put("Reached entities", next.use()
+                    == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                    ? "Members of " + next.populationClass() : "Intermediate only");
+            GraphEvidenceCondition evidence = next.evidenceCondition();
+            summary.put("Evidence relations",
+                    evidence == null ? 0 : evidence.evidencePaths().size());
+            summary.put("Evidence tests", evidence == null ? 0 : evidence.tests().size());
+        }
+        return summary;
+    }
+
+    private static JComponent graphPlanView(GeneratedProjectModel snapshot) {
+        GraphDiscoveryPlanDiagram diagram = new GraphDiscoveryPlanDiagram(
+                graphPlanModel(snapshot), reviewPolicy(snapshot));
+        return new JScrollPane(diagram);
+    }
+
+    /** One graph-model projection of the configuration used by both tests and the plan view. */
+    static GraphViewModel graphPlanModel(GeneratedProjectModel snapshot) {
+        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        if (graph == null) return new GraphViewModel(List.of(), List.of());
+        List<GraphViewModel.Node> nodes = new ArrayList<>();
+        List<GraphViewModel.Edge> edges = new ArrayList<>();
+        GeneratedClassModel startClass = snapshot.findClass(graph.startNode().qidSourceClass());
+        nodes.add(new GraphViewModel.Node("start", graph.startNode().qidSourceClass(), null,
+                0, GraphViewModel.State.EXPANDED,
+                java.util.Map.of(
+                        "QIDs", Integer.toString(startClass == null
+                                ? 0 : startClass.seedQids().size()),
+                        "Use", nodeUse(graph.startNode().use(), graph.startNode().qidSourceClass())),
+                graph.startNode()));
+        String previous = "start";
+        int index = 0;
+        for (GraphDiscoveryConfiguration.NextNode next : graph.nextNodes()) {
+            int nextLevel = index * 3 + 1;
+            String nextId = "next-" + index;
+            String nextLabel = next.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                    ? next.populationClass() : "Intermediate node";
+            nodes.add(new GraphViewModel.Node(nextId, nextLabel, null, nextLevel,
+                    GraphViewModel.State.DEFAULT,
+                    java.util.Map.of("Use", nodeUse(next.use(), next.populationClass())), next));
+            edges.add(new GraphViewModel.Edge("traversal-" + index, previous, nextId,
+                    edgeLabel(next.property(), next.directionFromPrevious()), true));
+
+            GraphEvidenceCondition evidence = next.evidenceCondition();
+            if (evidence != null) {
+                for (int pathIndex = 0; pathIndex < evidence.evidencePaths().size(); pathIndex++) {
+                    GraphPath path = evidence.evidencePaths().get(pathIndex);
+                    String evidenceId = "evidence-" + index + "-" + pathIndex;
+                    nodes.add(new GraphViewModel.Node(evidenceId, "Evidence entity", null,
+                            nextLevel + 1, GraphViewModel.State.DEFAULT,
+                            java.util.Map.of("Condition", evidence.name()), path));
+                    edges.add(new GraphViewModel.Edge("evidence-edge-" + index + "-" + pathIndex,
+                            nextId, evidenceId, edgeLabel(path.relation(), path.direction()), true));
+                    for (int testIndex = 0; testIndex < evidence.tests().size(); testIndex++) {
+                        GraphNodeCondition test = evidence.tests().get(testIndex);
+                        String testId = "test-" + index + "-" + testIndex;
+                        if (nodes.stream().noneMatch(node -> node.id().equals(testId))) {
+                            nodes.add(testNode(testId, nextLevel + 2, test));
+                        }
+                        edges.add(new GraphViewModel.Edge("test-edge-" + index + "-"
+                                + pathIndex + "-" + testIndex, evidenceId, testId,
+                                conditionEdgeLabel(test), true));
+                    }
+                }
+            }
+            previous = nextId;
+            index++;
+        }
+        return new GraphViewModel(nodes, edges);
+    }
+
+    private static GraphViewModel.Node testNode(
+            String id, int level, GraphNodeCondition condition) {
+        String label;
+        String result;
+        if (condition instanceof GraphRelationExists) {
+            label = "Has a value";
+            result = "Accept when present";
+        } else if (condition instanceof GraphRelationAbsent) {
+            label = "Has no value";
+            result = "Accept when absent";
+        } else if (condition instanceof GraphRelationReaches reaches) {
+            label = reaches.entity().id();
+            result = "Accept when reached";
+        } else {
+            label = "Evidence test";
+            result = "Configured condition";
+        }
+        return new GraphViewModel.Node(id, label, null, level,
+                GraphViewModel.State.FRONTIER, java.util.Map.of("Result", result), condition);
+    }
+
+    private static String conditionEdgeLabel(GraphNodeCondition condition) {
+        if (condition instanceof GraphRelationExists exists) {
+            return edgeLabel(exists.relation(), exists.direction());
+        }
+        if (condition instanceof GraphRelationAbsent absent) {
+            return edgeLabel(absent.relation(), absent.direction());
+        }
+        if (condition instanceof GraphRelationReaches reaches) {
+            return edgeLabel(reaches.relation(), reaches.direction());
+        }
+        return "test";
+    }
+
+    private static String edgeLabel(
+            GraphRelation relation, GraphTraversalDirection direction) {
+        return relation.relationId() + " " + directionLabel(direction);
+    }
+
+    private static String nodeUse(
+            GraphDiscoveryConfiguration.NodeUse use, String populationClass) {
+        return use == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                ? "Add to " + populationClass : "Intermediate only";
+    }
+
+    private static String reviewPolicy(GeneratedProjectModel snapshot) {
+        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        if (graph == null) return "";
+        return graph.nextNodes().stream().map(GraphDiscoveryConfiguration.NextNode::evidenceCondition)
+                .filter(java.util.Objects::nonNull)
+                .map(condition -> condition.reviewDisposition()
+                        == GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT
+                        ? "Undecidable nodes continue and are reported in Review."
+                        : "Undecidable nodes stop and are reported in Review.")
+                .distinct().collect(java.util.stream.Collectors.joining(" "));
+    }
+
+    private static List<String> graphDetails(GeneratedProjectModel snapshot) {
+        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        if (graph == null || graph.nextNodes().isEmpty()) return List.of();
+        GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
+        return List.of(graph.startNode().qidSourceClass() + " → "
+                + next.property().relationId() + " "
+                + directionLabel(next.directionFromPrevious()) + " → "
+                + (next.populationClass().isBlank() ? "intermediate node"
+                : next.populationClass()));
     }
 
     private void updateRunEnabled() {
+        GraphDiscoveryConfiguration graph = model.graphDiscoveryConfiguration();
+        // A saved start node is not yet a traversal: with no edge there is nothing to
+        // follow, so the graph is removable and readable but not runnable.
         run.setEnabled(runner != null && !runner.isRunning()
-                && model.graphDiscoveryConfiguration() != null);
+                && graph != null && !graph.nextNodes().isEmpty());
+        removeGraph.setEnabled(graph != null);
     }
 
-    private static JComponent empty(String text) { return new JLabel("  " + text); }
+    /** Removes the one graph the model holds. Explicit, named and separate from Apply,
+     *  so deleting authored configuration can never be something a save infers. */
+    private void removeGraph() {
+        if (model.graphDiscoveryConfiguration() == null) return;
+        model.graphDiscoveryConfiguration(null);
+        status("Discovery graph removed. Save the domain to keep that.", false);
+        updateRunEnabled();
+        afterChange.accept(null);
+    }
     private static String message(Throwable error) {
         return error == null || error.getMessage() == null
                 ? "Unknown error" : error.getMessage();

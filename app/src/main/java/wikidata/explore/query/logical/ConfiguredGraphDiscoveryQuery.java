@@ -3,7 +3,10 @@ package wikidata.explore.query.logical;
 import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.execution.GraphDiscoveryExecutor;
+import datasource.graph.store.GraphStoreProvider;
 import datasource.graph.store.InMemoryGraphStore;
+import datasource.graph.store.LocalGraphStore;
+import datasource.persistence.PersistentGraphStore;
 import wikidata.WikidataIds;
 import wikidata.api.WikidataEntityLabelResolver;
 import wikidata.explore.generation.WikidataGraphAdjacencyAcquisition;
@@ -88,26 +91,50 @@ public final class ConfiguredGraphDiscoveryQuery
                          WikidataAccess.logRequests(context, log::message)) {
                 var acquisition = new WikidataGraphAdjacencyAcquisition(api,
                         access.sparql(Datasource.WIKIDATA), log, context.cancellation());
-                GraphDiscoveryExecutor.Result graph = GraphDiscoveryExecutor.execute(
-                        new InMemoryGraphStore(), configuration, start, acquisition);
-                LinkedHashSet<String> ids = new LinkedHashSet<>();
-                graph.start().forEach(entity -> ids.add(entity.id()));
-                graph.nodes().forEach(node -> node.reached()
-                        .forEach(entity -> ids.add(entity.id())));
-                List<String> labelled = ids.stream().limit(LABEL_LIMIT).toList();
-                Map<String, String> labels = labelled.isEmpty() ? Map.of()
-                        : new WikidataEntityLabelResolver(api).resolve(labelled,
-                                WikidataEntityLabelResolver.Execution.SEQUENTIAL,
-                                log.batchSink()).labels();
-                int accepted = graph.nodes().stream()
-                        .mapToInt(node -> node.accepted().size()).sum();
-                int review = graph.nodes().stream()
-                        .mapToInt(node -> node.review().size()).sum();
-                step.summary(ids.size() + " distinct node(s); " + accepted
-                        + " accepted, " + review + " review");
-                return new Result(graph, new LinkedHashMap<>(labels), labelled.size());
+                GraphStoreProvider provider = context.optional(GraphStoreProvider.class);
+                try (LocalGraphStore store = provider == null
+                        ? new InMemoryGraphStore() : provider.open()) {
+                    GraphDiscoveryExecutor.Result graph = GraphDiscoveryExecutor.execute(
+                            store, configuration, start, acquisition);
+                    if (store instanceof PersistentGraphStore persistent) {
+                        PersistentGraphStore.Statistics cache = persistent.statistics();
+                        log.message("Downloaded graph facts: reused "
+                                + cache.reusedAnswers() + " cached adjacency answer(s); saved "
+                                + cache.savedAnswers() + " new answer(s)."
+                                + (cache.discardedJournals() == 0 ? ""
+                                : " Dropped the unusable tail of "
+                                        + cache.discardedJournals()
+                                        + " cached journal(s); that adjacency was"
+                                        + " downloaded again.")
+                                + "\n");
+                    }
+                    return result(graph, api, log, step);
+                }
             }
         });
+    }
+
+    private Result result(
+            GraphDiscoveryExecutor.Result graph,
+            wikidata.api.WikidataApiClient api,
+            wikidata.explore.extract.GenerationLog log,
+            work.LogStep step) throws Exception {
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        graph.start().forEach(entity -> ids.add(entity.id()));
+        graph.nodes().forEach(node -> node.reached()
+                .forEach(entity -> ids.add(entity.id())));
+        List<String> labelled = ids.stream().limit(LABEL_LIMIT).toList();
+        Map<String, String> labels = labelled.isEmpty() ? Map.of()
+                : new WikidataEntityLabelResolver(api).resolve(labelled,
+                        WikidataEntityLabelResolver.Execution.SEQUENTIAL,
+                        log.batchSink()).labels();
+        int accepted = graph.nodes().stream()
+                .mapToInt(node -> node.accepted().size()).sum();
+        int review = graph.nodes().stream()
+                .mapToInt(node -> node.review().size()).sum();
+        step.summary(ids.size() + " distinct node(s); " + accepted
+                + " accepted, " + review + " review");
+        return new Result(graph, new LinkedHashMap<>(labels), labelled.size());
     }
 
     @Override public int rowCount(Result result) {

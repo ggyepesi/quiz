@@ -165,6 +165,11 @@ construct per thing produced:
   something really forces it.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
+- **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the
+  process alive and stops it only after an explicit confirmation.
+- **Guard application close.** Closing a workbench defaults to keeping it open when a process is
+  running or configuration/generated results are unsaved. Cancelling work, saving, or discarding
+  must be an explicit choice that names what will be lost.
 - **Name an open thread before switching.** If a new direction arrives while another is
   unfinished, say what is open and ask: finish, park, or run in parallel.
 - **File a GitHub issue for every non-trivial agreement** — a design decision, a deferred

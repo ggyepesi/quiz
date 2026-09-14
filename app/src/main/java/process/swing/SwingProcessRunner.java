@@ -47,7 +47,8 @@ public final class SwingProcessRunner {
         if (button != null && !cancelButtons.contains(button)) {
             cancelButtons.add(button);
             button.setEnabled(isRunning());
-            button.addActionListener(e -> cancel());
+            SwingCancellationConfirmation.wire(
+                    button, button, this::isRunning, this::cancel);
         }
     }
 

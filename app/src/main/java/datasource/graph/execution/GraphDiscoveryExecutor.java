@@ -126,30 +126,46 @@ public final class GraphDiscoveryExecutor {
             List<EntityRef> candidates,
             GraphEvidenceCondition condition) throws Exception {
         LinkedHashSet<EntityRef> evidenceNodes = new LinkedHashSet<>();
+        List<GraphAdjacencyDemand> evidenceDemands = condition.evidencePaths().stream()
+                .map(path -> new GraphAdjacencyDemand(
+                        candidates, path.relation(), path.direction()))
+                .map(demand -> missingDemand(store, demand))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        acquirer.acquireAll(store, evidenceDemands);
         for (GraphPath path : condition.evidencePaths()) {
             GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
                     candidates, path.relation(), path.direction());
-            acquireMissing(store, acquirer, demand);
             store.adjacent(demand).edges().stream()
                     .map(edge -> edge.entityEndpoint(path.direction()))
                     .filter(java.util.Objects::nonNull)
                     .forEach(evidenceNodes::add);
         }
-        for (var test : condition.tests()) {
-            acquireMissing(store, acquirer, new GraphAdjacencyDemand(
-                    List.copyOf(evidenceNodes), test.relation(), test.direction()));
-        }
+        List<EntityRef> evidence = List.copyOf(evidenceNodes);
+        List<GraphAdjacencyDemand> testDemands = condition.tests().stream()
+                .map(test -> new GraphAdjacencyDemand(
+                        evidence, test.relation(), test.direction()))
+                .distinct()
+                .map(demand -> missingDemand(store, demand))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        acquirer.acquireAll(store, testDemands);
     }
 
     private static void acquireMissing(
             LocalGraphStore store,
             GraphAdjacencyAcquirer acquirer,
             GraphAdjacencyDemand demand) throws Exception {
+        GraphAdjacencyDemand missing = missingDemand(store, demand);
+        if (missing != null) acquirer.acquire(store, missing);
+    }
+
+    private static GraphAdjacencyDemand missingDemand(
+            LocalGraphStore store,
+            GraphAdjacencyDemand demand) {
         List<EntityRef> missing = store.adjacent(demand).missingNodes();
-        if (!missing.isEmpty()) {
-            acquirer.acquire(store, new GraphAdjacencyDemand(
-                    missing, demand.relation(), demand.direction()));
-        }
+        return missing.isEmpty() ? null : new GraphAdjacencyDemand(
+                missing, demand.relation(), demand.direction());
     }
 
     private static GraphTraversalStep step(
