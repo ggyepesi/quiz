@@ -7,7 +7,7 @@
     "@class" : "wikidata.explore.rule.RuleNode",
     "name" : "Position",
     "itemVar" : "position",
-    "sourceQid" : "Q4164871",
+    "sourceQid" : "Q114962596",
     "sourceLabel" : "",
     "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
     "propertyPid" : "P31",
@@ -31,7 +31,7 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q4164871"
+      "membershipQid" : "Q114962596"
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "jurisdiction",
@@ -86,7 +86,7 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q4164871"
+      "membershipQid" : "Q114962596"
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "replacedBy",
@@ -97,7 +97,7 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q4164871"
+      "membershipQid" : "Q114962596"
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "countries",
