@@ -97,6 +97,11 @@ public final class SnapshotDomain implements DomainModel {
         return DomainSchemas.fieldTypes(this, type);
     }
 
+    @Override public DomainModel.ValueSelection valueSelection(
+            String type, objectview.field.FieldPath path) {
+        return fieldGraph.valueSelection(type, path);
+    }
+
     /** A small graph-derived shape sample; no instance-pool scan is required. */
     @Override public Viewable representativeSample(String type) {
         return fieldGraph.shapeSample(type);

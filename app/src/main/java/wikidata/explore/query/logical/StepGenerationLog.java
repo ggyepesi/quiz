@@ -12,23 +12,27 @@ import work.LogStatus;
 /**
  * A {@link GenerationLog} that records into the query log's TREE, not just its text.
  *
+ * <p>Public because it is the one adapter from a query's {@link LogStep} to the shared
+ * logging contract: with it, {@code StepGenerationLog.of(context, step).batchProgress()}
+ * gives any query the same batch rendering every other batched load already has.
+ *
  * <p>The difference decides whether a long run can be watched. A flat log only prints
  * what has already happened, so a fetch over thousands of entities shows nothing until
  * each batch returns — and nothing at all while one hangs. Recording as steps opens a
  * child entry when a request STARTS and completes it when it returns, so an in-flight
  * request is visible as itself, and groups report how many requests they made.
  */
-final class StepGenerationLog {
+public final class StepGenerationLog {
 
     private StepGenerationLog() {}
 
-    static GenerationLog of(QueryContext context, LogStep step) {
+    public static GenerationLog of(QueryContext context, LogStep step) {
         return of(context, step, null);
     }
 
     /** With {@code echoPrefix}, every message is also printed to stdout with a
      *  timestamp — for a run whose progress must be readable outside the app. */
-    static GenerationLog of(QueryContext context, LogStep step, String echoPrefix) {
+    public static GenerationLog of(QueryContext context, LogStep step, String echoPrefix) {
         return new GenerationLog() {
             @Override public void message(String text) {
                 context.message(text);

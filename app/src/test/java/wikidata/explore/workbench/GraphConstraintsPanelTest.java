@@ -1,14 +1,22 @@
 package wikidata.explore.workbench;
 
 import org.junit.jupiter.api.Test;
+import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 import datasource.graph.constraint.GraphEvidenceCondition;
+import datasource.graph.constraint.GraphEvidenceConditionResult;
+import datasource.graph.execution.GraphDiscoveryExecutor;
 import graphview.GraphViewModel;
+import objectview.render.Card;
+import objectview.viewconfig.ViewConfig;
 import process.swing.SwingProcessRunner;
+import process.swing.workflow.ProcessWorkflowResults;
+import quiz.transform.DynamicViewable;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 
 import javax.swing.*;
 import javax.swing.text.JTextComponent;
@@ -110,6 +118,10 @@ class GraphConstraintsPanelTest {
                 "the graph must show its scope before execution");
         assertTrue(source.contains("ProcessWorkflowPlan.Tab.component("),
                 "the plan must show the configured graph as a diagram");
+        assertTrue(source.contains("graphPlanView(snapshot), true"),
+                "the diagram, not the generic pipeline card, must open first");
+        assertTrue(source.contains(".withoutPipelineTab()"),
+                "the one-step pipeline repeats the graph plan and must stay hidden");
         assertTrue(source.contains("new ProcessWorkflowResults<>("),
                 "the graph results must remain in the same workflow");
         assertTrue(source.contains("return WikidataLinks.valueLinker()"),
@@ -150,18 +162,190 @@ class GraphConstraintsPanelTest {
         ImageIO.write(image, "png", artifact.toFile());
     }
 
-    @Test void theRunPlanSaysDownloadedFactsWillBeReused() {
+    @Test void theRunPlanSeparatesLoadedFactsFromRepeatedWork() throws Exception {
         GeneratedProjectModel model = model();
+        model.name("Test");
         model.rootClass().seedQids().add("Q4164871");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
         text(panel, "graph.edgeProperty").setText("P31");
         button(panel, "Apply graph").doClick();
 
-        Object policy = GraphConstraintsPanel.graphSummary(model)
-                .get("Downloaded facts");
+        DynamicViewable summary = GraphConstraintsPanel.graphSummary(model);
 
-        assertEquals("Reuse the persistent local cache; fetch only missing adjacency",
-                policy);
+        assertEquals("Load saved answers from the persistent graph cache; download only missing answers",
+                summary.get("Adjacency facts"));
+        assertEquals("Repeat locally from the loaded graph facts",
+                summary.get("Classification"));
+        assertEquals("Fetch again; labels are not stored in the graph cache",
+                summary.get("Labels"));
+        assertEquals("Rebuild and save every start and reached entity for TransformApp",
+                summary.get("Results"));
+        assertEquals("data/wikidata/transform/test-graph-result.snapshot.json",
+                summary.get("Results file"));
+        renderArtifact(new Card(summary,
+                        ViewConfig.all(DynamicViewable.class), false),
+                "graph-run-loaded-and-repeated-work.png");
+    }
+
+    @Test void resultTabsGiveEveryEntityToObjectviewsVirtualizedRenderer() {
+        List<EntityRef> entities = java.util.stream.IntStream.rangeClosed(1, 1_001)
+                .mapToObj(value -> EntityRef.wikidata("Q" + value)).toList();
+        ConfiguredGraphDiscoveryQuery.Result result =
+                new ConfiguredGraphDiscoveryQuery.Result(
+                        new GraphDiscoveryExecutor.Result(List.of(), List.of()),
+                        java.util.Map.of(), 0);
+
+        ProcessWorkflowResults.Tab<Void> tab = GraphConstraintsPanel.resultTab(
+                "Accepted", entities, result, "Position");
+
+        assertEquals("Accepted — 1001 total", tab.title());
+        assertEquals(1_001, tab.cards().size(),
+                "objectview virtualizes the complete result; this producer must not truncate it");
+    }
+
+    @Test void completeGraphResultUsesTheOrdinaryTransformappDomainWriter()
+            throws Exception {
+        EntityRef start = EntityRef.wikidata("Q1");
+        EntityRef accepted = EntityRef.wikidata("Q2");
+        EntityRef rejected = EntityRef.wikidata("Q3");
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, null, new datasource.graph.GraphTraversalStep(
+                        "step", "Start", "Position", "Graph",
+                        new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphExpansionPolicy.CURATED),
+                List.of(accepted, rejected), List.of(accepted), List.of(rejected),
+                List.of(), List.of(rejected(rejected, "Kind", "No kind matched")),
+                List.of(), List.of(), List.of());
+        ConfiguredGraphDiscoveryQuery.Result result =
+                new ConfiguredGraphDiscoveryQuery.Result(
+                        new GraphDiscoveryExecutor.Result(List.of(start), List.of(node)),
+                        java.util.Map.of("Q1", "Root", "Q2", "Kept", "Q3", "Dropped"), 3);
+        java.util.concurrent.atomic.AtomicReference<String> savedName =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<java.util.Collection<? extends objectview.Viewable>>
+                savedMembers = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<domain.DomainModel> savedDomain =
+                new java.util.concurrent.atomic.AtomicReference<>();
+
+        GraphDiscoveryResultStore.save("History", result, (name, members, schema) -> {
+            savedName.set(name);
+            savedMembers.set(members);
+            savedDomain.set(schema);
+            return "saved";
+        });
+
+        assertEquals("History — graph result", savedName.get());
+        assertEquals(3, savedMembers.get().size(),
+                "start and every reached entity are persisted");
+        assertEquals(List.of(GraphDiscoveryResultStore.TYPE),
+                savedDomain.get().servedTypes());
+        assertEquals(List.of("Q1", "Q2", "Q3"), savedMembers.get().stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier).toList(),
+                "saved graph members use their ordinary Wikidata identity");
+        assertTrue(savedMembers.get().stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .map(objectview.field.FieldSet::of)
+                .allMatch(fields -> fields.read("wikidataSource")
+                        instanceof java.util.List<?> sources && sources.size() == 1),
+                "every saved graph member has the normal Wikidata source field");
+        objectview.field.FieldRef savedSource = savedDomain.get()
+                .fieldSchema(GraphDiscoveryResultStore.TYPE).fields().stream()
+                .filter(field -> "wikidataSource".equals(field.name()))
+                .findFirst().orElseThrow();
+        assertEquals(objectview.field.FieldRole.PROVENANCE, savedSource.role(),
+                "the artificial class model, not only its instances, declares the source");
+        assertTrue(savedSource.reference());
+        assertEquals(List.of("Start", "Accepted", "Review", "Rejected"),
+                savedDomain.get().valueSelection(GraphDiscoveryResultStore.TYPE,
+                        objectview.field.FieldPath.parse("Decision")).values());
+        List<String> decisions = savedMembers.get().stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .map(value -> String.valueOf(value.get("Decision"))).toList();
+        assertEquals(List.of("Start", "Accepted", "Rejected"), decisions);
+    }
+
+    @Test void graphResultsOfferOneExplicitSaveOfThePreviewedArtificialDomain()
+            throws Exception {
+        EntityRef start = EntityRef.wikidata("Q1");
+        ConfiguredGraphDiscoveryQuery.Result result =
+                new ConfiguredGraphDiscoveryQuery.Result(
+                        new GraphDiscoveryExecutor.Result(List.of(start), List.of()),
+                        java.util.Map.of("Q1", "Root"), 1);
+        GraphDiscoveryResultStore.Artifact artifact =
+                GraphDiscoveryResultStore.artifact(result);
+
+        assertEquals(List.of(GraphDiscoveryResultStore.TYPE), artifact.model().servedTypes());
+        assertEquals("Root", artifact.instances().getFirst().getDisplayName());
+        assertEquals("Q1", artifact.instances().getFirst().getIdentifier());
+        assertNotNull(artifact.model().fieldSchema(GraphDiscoveryResultStore.TYPE)
+                .field("wikidataSource"));
+        ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> preview =
+                GraphConstraintsPanel.artifactTab("Start", artifact, "Start");
+        assertTrue(preview.cards().getFirst().view() == artifact.instances().getFirst(),
+                "the preview must render the exact instance later passed to Save result");
+        assertNotNull(objectview.field.FieldSet.of(preview.shapeSample(),
+                        artifact.model().fieldSchema(GraphDiscoveryResultStore.TYPE))
+                .field("wikidataSource"),
+                "the preview must use the artificial model saved with those instances");
+        assertEquals("Save domain \"History — graph result\" with 1 instance, types "
+                        + "[GraphDiscoveryResult], and their model to data/wikidata/transform/"
+                        + "history-graph-result.snapshot.json.",
+                GraphConstraintsPanel.saveDescription("History", artifact));
+        ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results =
+                new GraphConstraintsPanel(model()).graphResults(result, "History");
+        assertEquals("Save result", results.applyVerb());
+        assertEquals(GraphConstraintsPanel.saveDescription("History", artifact),
+                results.resultConfirmation(),
+                "pressing Save result must show the exact write before it starts");
+    }
+
+    @Test void rejectedNodesAreGroupedByTheirRecordedRejectionReason()
+            throws Exception {
+        EntityRef first = EntityRef.wikidata("Q1");
+        EntityRef second = EntityRef.wikidata("Q2");
+        EntityRef third = EntityRef.wikidata("Q3");
+        List<GraphEvidenceConditionResult> classifications = List.of(
+                rejected(first, "Jurisdiction kind", "No configured kind matched"),
+                rejected(second, "Jurisdiction kind", "No configured kind matched"),
+                rejected(third, "Entity kind", "The entity is a list"));
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, null, null, List.of(first, second, third), List.of(),
+                List.of(first, second, third), List.of(), classifications,
+                List.of(), List.of(), List.of());
+        ConfiguredGraphDiscoveryQuery.Result result =
+                new ConfiguredGraphDiscoveryQuery.Result(
+                        new GraphDiscoveryExecutor.Result(List.of(), List.of(node)),
+                        java.util.Map.of("Q1", "First", "Q2", "Second", "Q3", "Third"),
+                        3);
+
+        ProcessWorkflowResults.Tab<Void> tab =
+                GraphConstraintsPanel.rejectedResultTab(node, result);
+
+        assertEquals("Rejected — 3 total", tab.title());
+        assertEquals(2, tab.cards().size());
+        DynamicViewable unmatched = (DynamicViewable) tab.cards().getFirst().view();
+        assertEquals("No configured kind matched", unmatched.getDisplayName());
+        assertEquals("Jurisdiction kind", unmatched.get("Condition"));
+        assertEquals(2, unmatched.get("Count"));
+        @SuppressWarnings("unchecked")
+        List<DynamicViewable> members =
+                (List<DynamicViewable>) unmatched.get("Rejected nodes");
+        assertEquals(List.of("First", "Second"),
+                members.stream().map(DynamicViewable::getDisplayName).toList());
+
+        renderArtifact(new Card(unmatched,
+                        ViewConfig.all(DynamicViewable.class), false),
+                "rejected-nodes-grouped-by-reason.png");
+    }
+
+    private static GraphEvidenceConditionResult rejected(
+            EntityRef node, String condition, String reason) {
+        return new GraphEvidenceConditionResult(
+                GraphEvidenceConditionResult.Decision.REJECTED, node, condition,
+                GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                List.of(), List.of(), List.of(), List.of(), reason);
     }
 
     @Test void aGraphThatCannotStartExplainsTheConfigurationFailureInADialog() {
@@ -479,5 +663,30 @@ class GraphConstraintsPanelTest {
             }
         }
         return null;
+    }
+
+    private static void layoutTree(Container root) {
+        root.doLayout();
+        for (Component child : root.getComponents()) {
+            if (child instanceof Container nested) layoutTree(nested);
+        }
+    }
+
+    private static void renderArtifact(Card card, String name) throws Exception {
+        int height = Math.max(300, card.getPreferredSize().height);
+        BufferedImage image = new BufferedImage(900, height,
+                BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+        SwingUtilities.invokeAndWait(() -> {
+            card.setSize(image.getWidth(), image.getHeight());
+            layoutTree(card);
+            card.printAll(graphics);
+        });
+        graphics.dispose();
+        Path artifact = Path.of("target/ui-artifacts", name);
+        Files.createDirectories(artifact.getParent());
+        ImageIO.write(image, "png", artifact.toFile());
     }
 }

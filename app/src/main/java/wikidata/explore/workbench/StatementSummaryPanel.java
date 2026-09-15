@@ -1,6 +1,7 @@
 package wikidata.explore.workbench;
 
 import wikidata.WikidataIds;
+import wikidata.statement.EntityStatementSummary;
 
 import wikidata.WikidataSparqlClient;
 

@@ -22,6 +22,16 @@ import java.util.Set;
 public final class DomainSaver implements DomainWriter {
 
     @Override
+    public String describeSave(String name, Collection<? extends Viewable> members,
+                               DomainModel schema) {
+        int count = members == null ? 0 : members.size();
+        return "Save domain \"" + name + "\" with " + count + " instance"
+                + (count == 1 ? "" : "s") + ", types "
+                + (schema == null ? List.of() : schema.servedTypes())
+                + ", and their model to " + destination(name).getPath() + ".";
+    }
+
+    @Override
     public String save(String name, Collection<? extends Viewable> members,
                        DomainModel schema) throws Exception {
         String key = sanitize(name);
@@ -31,8 +41,7 @@ public final class DomainSaver implements DomainWriter {
         var converted = ViewableToWdo.convertDomain(
                 schema.memberRoots(), schema.groupRootBindings(), schema);
 
-        File file = new File(aux.Constants.wikidataDataDirectory
-                + "transform/" + key + ".snapshot.json");
+        File file = destination(name);
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
         var persistedGroups = converted.groupRootBindings().stream()
                 .map(binding -> new WikidataDynamicObjectJsonStore.GroupRootBinding(
@@ -67,5 +76,11 @@ public final class DomainSaver implements DomainWriter {
         String s = (name == null ? "" : name).trim().toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
         return s.isBlank() ? "transform-result" : s;
+    }
+
+    /** Exact file written by {@link #save}; plans can name it before work starts. */
+    public static File destination(String name) {
+        return new File(aux.Constants.wikidataDataDirectory
+                + "transform/" + sanitize(name) + ".snapshot.json");
     }
 }

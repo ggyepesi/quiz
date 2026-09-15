@@ -32,6 +32,9 @@ public final class DomainCatalog {
             if (snap.isFile()) {
                 File model = new File(d.modelPath());
                 out.add(new DomainEntry(d.name(), "generated",
+                        "Load domain \"" + d.name() + "\", its instances and saved model from "
+                                + snap.getPath() + (model.isFile()
+                                ? " and " + model.getPath() : "") + ".",
                         () -> open(snap, model)));
             }
         }
@@ -41,6 +44,7 @@ public final class DomainCatalog {
         // snapshots that match the live field model (no stale-schema translation).
         for (QuizFactory.BuiltInDomain b : QuizFactory.builtInDomains()) {
             out.add(new DomainEntry(b.icon() + " " + b.name(), "built-in",
+                    "Load built-in domain \"" + b.name() + "\" from the running application.",
                     () -> ReflectionDomain.of(b.views())));
         }
 

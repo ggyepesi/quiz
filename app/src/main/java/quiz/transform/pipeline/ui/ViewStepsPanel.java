@@ -122,20 +122,7 @@ public final class ViewStepsPanel extends JPanel {
         };
         selectionCombo.setRenderer(selectionRenderer);
         secondSelectionCombo.setRenderer(selectionRenderer);
-        // Show the instance count beside each type (display only — the item value stays
-        // the plain type name, which selectType and the pipeline rely on).
-        memberTypeCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(
-                    JList<?> list, Object value, int index,
-                    boolean selected, boolean focus) {
-                super.getListCellRendererComponent(list, value, index, selected, focus);
-                if (value instanceof String t) {
-                    setText(t + "  (" + controller.instanceCount(t) + ")");
-                }
-                return this;
-            }
-        });
+        memberTypeCombo.setName("view.class");
 
         memberTypeCombo.addActionListener(e -> {
             if (refreshingTypes) return;
@@ -164,8 +151,10 @@ public final class ViewStepsPanel extends JPanel {
 
         reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
+        filterValue.setName("filter.value");
         addFilterGroup.setToolTipText(
                 "Make the instances matching this condition a named group");
+        addFilterGroup.setName("filter.addGroup");
         addFilterGroup.addActionListener(e -> requestAddFilterGroup());
         ButtonGroup scopeButtons = new ButtonGroup();
         scopeButtons.add(allScope);
@@ -263,20 +252,26 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private JComponent filterPanel() {
-        JPanel p = new JPanel(new BorderLayout(4, 4));
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
-        row.add(new JLabel("Operator:"));
-        row.add(filterOperator);
-        row.add(new JLabel("Value:"));
-        row.add(filterValue);
-        row.add(new JLabel("and:"));
-        row.add(filterValue2);
-        // The control that commits the rule sits with the rule. It used to live only in the
-        // group-tree bar, so nothing beside the operator said where the condition was going.
-        row.add(addFilterGroup);
+        JPanel condition = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        condition.setAlignmentX(Component.LEFT_ALIGNMENT);
+        condition.add(new JLabel("Operator:"));
+        condition.add(filterOperator);
+        condition.add(new JLabel("Value:"));
+        condition.add(filterValue);
+        condition.add(new JLabel("and:"));
+        condition.add(filterValue2);
+        p.add(condition);
 
-        p.add(row, BorderLayout.NORTH);
+        // This action needs its own allocated row. As the final item in the condition's
+        // FlowLayout it wrapped at the real left-pane width, but BorderLayout.NORTH kept
+        // only one line of height and clipped the wrapped button completely.
+        JPanel action = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        action.setAlignmentX(Component.LEFT_ALIGNMENT);
+        action.add(addFilterGroup);
+        p.add(action);
         return p;
     }
 
@@ -436,11 +431,17 @@ public final class ViewStepsPanel extends JPanel {
      *  categorical), leaving it editable for free-text fields. Clears the editor so the
      *  user picks fresh for the newly-selected field. */
     private void populateValueChoices(DomainField f) {
-        List<String> choices = f == null
-                ? List.of()
-                : controller.candidateValues(f.type(), f.fieldPath());
-        filterValue.setModel(new DefaultComboBoxModel<>(choices.toArray(new String[0])));
-        filterValue.setSelectedItem("");
+        domain.DomainModel.ValueSelection selection = f == null
+                ? new domain.DomainModel.ValueSelection(List.of(), false)
+                : controller.candidateValueSelection(f.type(), f.fieldPath());
+        filterValue.setModel(new DefaultComboBoxModel<>(
+                selection.values().toArray(new String[0])));
+        filterValue.setEditable(!selection.exhaustive());
+        if (selection.exhaustive() && !selection.values().isEmpty()) {
+            filterValue.setSelectedIndex(0);
+        } else {
+            filterValue.setSelectedItem("");
+        }
     }
 
     /** The value shape of a field: the domain-populated {@link DomainField#kind()}
@@ -510,12 +511,19 @@ public final class ViewStepsPanel extends JPanel {
         Object v2 = parseValue(filterValue2.getText());
 
         FilterCondition c = new FilterCondition(f, op, v1, v2);
-        String name = JOptionPane.showInputDialog(this,
-                "Name the new filter group:", "Filtered " + f.displayPath());
-        if (name == null || name.isBlank()) return;
-        if (filterGroupCreator != null) {
-            filterGroupCreator.accept(name.trim(), c);
-        }
+        JTextField name = new JTextField("Filter", 24);
+        name.selectAll();
+        int answer = JOptionPane.showConfirmDialog(this, name,
+                "Name the new filter group", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) return;
+        createFilterGroup(name.getText(), c);
+    }
+
+    void createFilterGroup(String name, FilterCondition condition) {
+        if (name == null || name.isBlank() || condition == null
+                || filterGroupCreator == null) return;
+        filterGroupCreator.accept(name.trim(), condition);
     }
 
     public DomainField selectedDomainField() {

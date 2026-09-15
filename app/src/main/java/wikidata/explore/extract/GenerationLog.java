@@ -88,24 +88,33 @@ public interface GenerationLog {
      * callers must not each invent a different rendering of one batch lifecycle. */
     default batch.BatchProgress batchProgress() {
         GenerationLog self = this;
-        return (title, request) -> {
-            GenerationLog.Running visible = self.subqueryStarted(title, request);
-            java.util.List<String> details = new java.util.ArrayList<>();
-            return new batch.BatchProgress.Running() {
-                @Override public void detail(String text) { details.add(text); }
-                @Override public void adapted(String summary) {
-                    visible.done(wikidata.api.WikidataApiClient.BatchLog
-                            .withDetails(details, summary));
-                }
-                @Override public void done(String summary) {
-                    visible.done(wikidata.api.WikidataApiClient.BatchLog
-                            .withDetails(details, summary));
-                }
-                @Override public void failed(String error) {
-                    visible.failed(wikidata.api.WikidataApiClient.BatchLog
-                            .withDetails(details, error));
-                }
-            };
+        return new batch.BatchProgress() {
+            @Override public Running started(String title, String request) {
+                GenerationLog.Running visible = self.subqueryStarted(title, request);
+                java.util.List<String> details = new java.util.ArrayList<>();
+                return new batch.BatchProgress.Running() {
+                    @Override public void detail(String text) { details.add(text); }
+                    @Override public void adapted(String summary) {
+                        visible.done(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, summary));
+                    }
+                    @Override public void done(String summary) {
+                        visible.done(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, summary));
+                    }
+                    @Override public void failed(String error) {
+                        visible.failed(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, error));
+                    }
+                };
+            }
+
+            // What the executor says BETWEEN units — the wall time, a split, a resume,
+            // a batch continued after exhausting its budget. A lambda here left this as
+            // BatchProgress's no-op default, so those lines reached the action-API log
+            // (which adapts its own) and silently vanished from every SPARQL batch that
+            // reports through a GenerationLog.
+            @Override public void message(String text) { self.message(text); }
         };
     }
 

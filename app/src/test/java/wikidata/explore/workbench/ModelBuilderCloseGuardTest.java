@@ -36,6 +36,21 @@ class ModelBuilderCloseGuardTest {
         assertTrue(closeBody.contains("processRunner.cancel();"));
     }
 
+    @Test void savePromptsBelongToTheFrontmostWorkflowNotTheMainFrame()
+            throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/wikidata/explore/workbench/ModelBuilderFrame.java"));
+        int save = source.indexOf("private boolean saveEverything(boolean closingAfterSave)");
+        int afterSave = source.indexOf("// The domain's counts log", save);
+        String saveBody = source.substring(save, afterSave);
+
+        assertTrue(saveBody.contains("Window dialogOwner = quiz.ui.Dialogs.owner(this);"));
+        assertTrue(saveBody.contains("JOptionPane.showConfirmDialog(dialogOwner"));
+        assertTrue(saveBody.contains("JOptionPane.showMessageDialog(\n                        dialogOwner"));
+        assertFalse(saveBody.contains("JOptionPane.showConfirmDialog(this"));
+        assertFalse(saveBody.contains("JOptionPane.showMessageDialog(this"));
+    }
+
     @Test void unsavedConfigurationAndInstancesCanBeSavedOrExplicitlyDiscarded() {
         var state = new ModelBuilderCloseGuard.State(true, 153, false);
 

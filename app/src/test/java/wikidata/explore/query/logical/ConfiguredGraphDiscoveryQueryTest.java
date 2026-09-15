@@ -70,7 +70,7 @@ class ConfiguredGraphDiscoveryQueryTest {
         assertEquals(0, position.fields().size());
     }
 
-    @Test void aSecondGraphExperimentReadsCompletedAdjacencyWithoutAnotherRequest()
+    @Test void savedAdjacencyRunsThroughTheSameGraphWithoutAnotherWbgetentitiesRequest()
             throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
@@ -108,10 +108,12 @@ class ConfiguredGraphDiscoveryQueryTest {
                 .with(GraphStoreProvider.class,
                         (GraphStoreProvider) () -> new PersistentGraphStore(cacheDirectory));
 
-        new ConfiguredGraphDiscoveryQuery(model).execute(context);
+        var acquired = new ConfiguredGraphDiscoveryQuery(model).execute(context);
         var repeated = new ConfiguredGraphDiscoveryQuery(model).execute(context);
 
         assertEquals(1, requests.get());
+        assertEquals(acquired.graph(), repeated.graph(),
+                "disk replay supplies the same executor; only acquisition is skipped");
         assertEquals(List.of("Q1"), repeated.graph().nodes().getFirst().accepted()
                 .stream().map(datasource.EntityRef::id).toList());
     }

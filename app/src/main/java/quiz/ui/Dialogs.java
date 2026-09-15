@@ -1,12 +1,17 @@
 package quiz.ui;
 
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -20,13 +25,59 @@ public final class Dialogs {
 
     private Dialogs() {}
 
-    /** The best owner for a new dialog: the invoking component's window, else the currently
-     *  active window — so the dialog stacks above whatever is actually frontmost (the
-     *  component's ancestor may be a modeless tool window sitting behind the main frame). */
+    /** One point-of-action confirmation for every Save/Load workflow. The producer owns
+     * the exact description; this shared UI owns the verb, Cancel behavior and owner. */
+    public static boolean confirmPersistence(
+            Component parent, String verb, String description) {
+        String action = verb == null || verb.isBlank() ? "Continue" : verb;
+        int answer = JOptionPane.showOptionDialog(owner(parent), description, action,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, new Object[]{action, "Cancel"}, "Cancel");
+        return answer == 0;
+    }
+
+    /** The best owner for a new dialog, including a visible modeless child of the
+     * requested window. A modal prompt owned by the main frame while such a child
+     * remains above it is an invisible input blocker on macOS. */
     public static Window owner(Component parent) {
-        Window w = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
-        return w != null ? w
-                : KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        Window requested = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
+        Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        return owner(requested, active, Window::isVisible);
+    }
+
+    static Window owner(Window requested, Window active, Predicate<Window> visible) {
+        return chooseOwner(requested, active, Dialogs::root,
+                window -> Arrays.asList(window.getOwnedWindows()), visible);
+    }
+
+    static <T> T chooseOwner(T requested, T active,
+                             Function<T, T> root,
+                             Function<T, List<T>> children,
+                             Predicate<T> visible) {
+        if (requested == null) return active;
+        T starting = active != null && root.apply(active) == root.apply(requested)
+                ? active : requested;
+        return frontmostVisibleDescendant(starting, children, visible);
+    }
+
+    private static <T> T frontmostVisibleDescendant(
+            T owner, Function<T, List<T>> children, Predicate<T> visible) {
+        List<T> owned = children.apply(owner);
+        // Later-created siblings are the best available z-order approximation when
+        // clicking the main frame has just replaced the previously active child.
+        for (int i = owned.size() - 1; i >= 0; i--) {
+            T child = owned.get(i);
+            if (visible.test(child)) {
+                return frontmostVisibleDescendant(child, children, visible);
+            }
+        }
+        return owner;
+    }
+
+    private static Window root(Window window) {
+        Window root = window;
+        while (root != null && root.getOwner() != null) root = root.getOwner();
+        return root;
     }
 
     /** Raise {@code dialog} to the front and focus it whenever it opens — the fix for a

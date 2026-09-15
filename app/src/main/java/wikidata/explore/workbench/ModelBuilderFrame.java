@@ -2108,7 +2108,8 @@ public class ModelBuilderFrame extends JFrame {
 
         SwingUtilities.invokeLater(() ->
                                            JOptionPane.showMessageDialog(
-                                                   this, body, "Generation failed",
+                                                   quiz.ui.Dialogs.owner(this), body,
+                                                   "Generation failed",
                                                    JOptionPane.ERROR_MESSAGE));
     }
 
@@ -2862,6 +2863,7 @@ public class ModelBuilderFrame extends JFrame {
         if (projectModel.isModel()) {
             return saveModelOnly(closingAfterSave);
         }
+        Window dialogOwner = quiz.ui.Dialogs.owner(this);
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
         try {
@@ -2879,7 +2881,7 @@ public class ModelBuilderFrame extends JFrame {
                 reportGenerationError(brokenRuntime);
                 return false;
             }
-            int recover = JOptionPane.showConfirmDialog(this,
+            int recover = JOptionPane.showConfirmDialog(dialogOwner,
                     "The live configuration editor could not be applied because the "
                             + "running application has an inconsistent classpath:\n"
                             + brokenRuntime + "\n\n"
@@ -2905,7 +2907,7 @@ public class ModelBuilderFrame extends JFrame {
         String runSig = generatedInstancesSignature();
         if (!recoverCompletedRun && haveInstances
                 && wikidata.explore.generation.DomainSave.instancesWouldBeStale(runSig, modelToSave)) {
-            int d = JOptionPane.showConfirmDialog(this,
+            int d = JOptionPane.showConfirmDialog(dialogOwner,
                                                   "The model has changed since these instances were generated.\n"
                                                           + "The saved snapshot will be STALE (not match the saved model).\n\n"
                                                           + "Regenerate (Cancel, then \"Generate class instances\") before saving,\n"
@@ -2925,7 +2927,7 @@ public class ModelBuilderFrame extends JFrame {
             java.util.List<String> dropped = wikidata.explore.generation.DomainSave.typesDropped(
                     lastRun.dynamicObjects(), snapshotObjectsOnDisk());
             if (!dropped.isEmpty()) {
-                int d = JOptionPane.showConfirmDialog(this,
+                int d = JOptionPane.showConfirmDialog(dialogOwner,
                                                       "This run produced only: "
                                                               + String.join(", ", runTypes) + ".\n"
                                                               + "Saving will OVERWRITE the snapshot and DROP these "
@@ -2948,7 +2950,7 @@ public class ModelBuilderFrame extends JFrame {
                 : "(none generated yet — will be skipped)");
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
-                    this, plan, "Save domain",
+                    dialogOwner, plan, "Save domain",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (choice != JOptionPane.OK_OPTION) {
                 return false;
@@ -3015,7 +3017,7 @@ public class ModelBuilderFrame extends JFrame {
             if (!closingAfterSave) {
                 String hint = instanceCountHint(n);
                 JOptionPane.showMessageDialog(
-                        this,
+                        dialogOwner,
                         report + (hint.isBlank() ? "" : "\n" + hint),
                         "Saved domain",
                         JOptionPane.INFORMATION_MESSAGE);
@@ -3028,12 +3030,13 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private boolean saveModelOnly(boolean closingAfterSave) {
+        Window dialogOwner = quiz.ui.Dialogs.owner(this);
         try {
             sourceWorkbench.applyEdits();
             String plan = "Save the model \"" + projectModel.name() + "\"?\n\n"
                     + "Configuration: " + modelFile().getPath()
                     + "\n\nModels do not generate or save instances.";
-            if (!closingAfterSave && JOptionPane.showConfirmDialog(this, plan, "Save model",
+            if (!closingAfterSave && JOptionPane.showConfirmDialog(dialogOwner, plan, "Save model",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
                     != JOptionPane.OK_OPTION) return false;
             modelFile().getParentFile().mkdirs();
@@ -3045,7 +3048,8 @@ public class ModelBuilderFrame extends JFrame {
             logWindow.info("Saved model \"" + projectModel.name() + "\" to "
                     + modelFile().getPath());
             if (!closingAfterSave) {
-                JOptionPane.showMessageDialog(this, "Configuration: " + modelFile().getPath(),
+                JOptionPane.showMessageDialog(dialogOwner,
+                        "Configuration: " + modelFile().getPath(),
                         "Saved model", JOptionPane.INFORMATION_MESSAGE);
             }
             return true;

@@ -68,6 +68,8 @@ public final class DomainNavigator {
                 existing.requestFocus();
                 return;
             }
+            if (!quiz.ui.Dialogs.confirmPersistence(
+                    list, "Load domain", e.loadDescription())) return;
             open.setEnabled(false);
             status.setText("Loading \"" + e.name() + "\"…");
             new SwingWorker<DomainModel, Void>() {

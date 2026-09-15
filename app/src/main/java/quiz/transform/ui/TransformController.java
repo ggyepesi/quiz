@@ -480,8 +480,16 @@ public final class TransformController {
      *  the value input offer a picker for enum/categorical fields — e.g. a domain enum
      *  like NobelPrize.Domain or a low-cardinality vocabulary — instead of a blank box. */
     public List<String> candidateValues(String type, FieldPath path) {
+        return candidateValueSelection(type, path).values();
+    }
+
+    public DomainModel.ValueSelection candidateValueSelection(String type, FieldPath path) {
         if (type == null || path == null) {
-            return List.of();
+            return new DomainModel.ValueSelection(List.of(), false);
+        }
+        DomainModel.ValueSelection declared = domain.valueSelection(type, path);
+        if (declared != null) {
+            return declared;
         }
         Object sample = sampleFieldValue(type, path);
         if (sample instanceof Enum<?> e) {
@@ -492,13 +500,13 @@ public final class TransformController {
                     out.add(s);
                 }
             }
-            return out;
+            return new DomainModel.ValueSelection(out, true);
         }
         if (sample instanceof Boolean) {
-            return List.of("true", "false");
+            return new DomainModel.ValueSelection(List.of("true", "false"), true);
         }
         if (!(sample instanceof CharSequence)) {
-            return List.of();
+            return new DomainModel.ValueSelection(List.of(), false);
         }
         final int cap = 25;
         java.util.TreeSet<String> distinct = new java.util.TreeSet<>();
@@ -511,17 +519,17 @@ public final class TransformController {
                 continue;
             }
             if (!(v instanceof CharSequence)) {
-                return List.of();
+                return new DomainModel.ValueSelection(List.of(), false);
             }
             String s = v.toString();
             if (!s.isBlank()) {
                 distinct.add(s);
             }
             if (distinct.size() > cap) {
-                return List.of();
+                return new DomainModel.ValueSelection(List.of(), false);
             }
         }
-        return new ArrayList<>(distinct);
+        return new DomainModel.ValueSelection(new ArrayList<>(distinct), false);
     }
 
     /** The per-type {@code path -> representative non-null value} map, built in ONE
@@ -603,6 +611,10 @@ public final class TransformController {
     // --- save -----------------------------------------------------------------
 
     public boolean canSave() { return writer != null; }
+
+    public String describeSaveAsDomain(String name) {
+        return writer == null ? "" : writer.describeSave(name, domain.instances(), domain);
+    }
 
     /** Persist the WHOLE domain — every type's instances, the full reachable closure —
      *  as a first-class domain, regardless of the selected type or pipeline, so picking

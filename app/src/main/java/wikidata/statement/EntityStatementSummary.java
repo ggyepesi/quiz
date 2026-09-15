@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package wikidata.statement;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
@@ -24,9 +24,10 @@ import java.util.Map;
  */
 public final class EntityStatementSummary {
 
-    public record Qualifier(String pid, String label, String value) { }
+    public record Qualifier(String pid, String label, String value, String valueQid) { }
 
-    public record Statement(String value, String valueQid, List<Qualifier> qualifiers) { }
+    public record Statement(
+            String id, String value, String valueQid, List<Qualifier> qualifiers) { }
 
     public record Property(String pid, String label, List<Statement> statements) { }
 
@@ -42,14 +43,19 @@ public final class EntityStatementSummary {
 
     public List<Property> properties() { return properties; }
 
+    public static EntityStatementSummary of(String qid, List<Property> properties) {
+        return new EntityStatementSummary(qid,
+                properties == null ? List.of() : List.copyOf(properties));
+    }
+
     private static final String ENTITY_PREFIX = "http://www.wikidata.org/entity/";
 
     private static final String QUERY = """
             PREFIX wd: <http://www.wikidata.org/entity/>
             PREFIX wikibase: <http://wikiba.se/ontology#>
             PREFIX bd: <http://www.bigdata.com/rdf#>
-            SELECT ?prop ?propLabel ?st ?val ?valLabel ?qualp ?qualpLabel ?qv ?qvLabel WHERE {
-              VALUES ?e { wd:%s }
+            SELECT ?e ?prop ?propLabel ?st ?val ?valLabel ?qualp ?qualpLabel ?qv ?qvLabel WHERE {
+              VALUES ?e { %s }
               ?e ?p ?st .
               ?prop wikibase:claim ?p .
               ?prop wikibase:statementProperty ?ps .
@@ -65,7 +71,32 @@ public final class EntityStatementSummary {
 
     public static EntityStatementSummary fetch(String qid, WikidataSparqlClient client)
             throws Exception {
-        List<WikidataBinding> rows = client.query(QUERY.formatted(qid, wikidata.query.LabelService.service()));
+        List<WikidataBinding> rows = client.query(query(List.of(qid)));
+        return fromRows(qid, rows);
+    }
+
+    /** One bounded VALUES query for several entities; used by the adaptive batch executor. */
+    public static String query(List<String> qids) {
+        String values = (qids == null ? List.<String>of() : qids).stream()
+                .map(qid -> "wd:" + qid).collect(java.util.stream.Collectors.joining(" "));
+        return QUERY.formatted(values, wikidata.query.LabelService.service());
+    }
+
+    /** Restores one summary per requested QID, including entities with no returned rows. */
+    public static List<EntityStatementSummary> fromRows(
+            List<String> qids, List<WikidataBinding> rows) {
+        Map<String, List<WikidataBinding>> byEntity = new LinkedHashMap<>();
+        if (qids != null) for (String qid : qids) byEntity.putIfAbsent(qid, new ArrayList<>());
+        if (rows != null) for (WikidataBinding row : rows) {
+            String qid = row.qid("e");
+            if (qid != null) byEntity.computeIfAbsent(qid, ignored -> new ArrayList<>()).add(row);
+        }
+        return byEntity.entrySet().stream()
+                .map(entry -> fromRows(entry.getKey(), entry.getValue())).toList();
+    }
+
+    private static EntityStatementSummary fromRows(
+            String qid, List<WikidataBinding> rows) {
 
         // property PID -> (statement node -> aggregated statement)
         Map<String, PropAgg> byProp = new LinkedHashMap<>();
@@ -77,7 +108,9 @@ public final class EntityStatementSummary {
             PropAgg pa = byProp.computeIfAbsent(propPid,
                     k -> new PropAgg(propPid, orPid(b.label("prop"), propPid)));
 
-            StAgg sa = pa.statements.computeIfAbsent(b.value("st"), k -> new StAgg());
+            String statementId = b.value("st");
+            StAgg sa = pa.statements.computeIfAbsent(statementId, k -> new StAgg());
+            sa.id = statementId;
             if (sa.value == null) {
                 String valUri = b.value("val");
                 if (isEntity(valUri)) {
@@ -91,9 +124,12 @@ public final class EntityStatementSummary {
             String qualPid = b.qid("qualp");
             if (qualPid != null && !qualPid.isBlank()) {
                 String qvUri = b.value("qv");
-                String qv = isEntity(qvUri) ? orPid(b.label("qv"), b.qid("qv")) : shortLiteral(qvUri);
+                String qualifierQid = isEntity(qvUri) ? b.qid("qv") : null;
+                String qv = qualifierQid != null
+                        ? orPid(b.label("qv"), qualifierQid) : shortLiteral(qvUri);
                 sa.qualifiers.putIfAbsent(qualPid + "=" + qv,
-                        new Qualifier(qualPid, orPid(b.label("qualp"), qualPid), qv));
+                        new Qualifier(qualPid, orPid(b.label("qualp"), qualPid),
+                                qv, qualifierQid));
             }
         }
 
@@ -101,7 +137,8 @@ public final class EntityStatementSummary {
         for (PropAgg pa : byProp.values()) {
             List<Statement> sts = new ArrayList<>();
             for (StAgg sa : pa.statements.values()) {
-                sts.add(new Statement(sa.value, sa.valueQid, new ArrayList<>(sa.qualifiers.values())));
+                sts.add(new Statement(sa.id, sa.value, sa.valueQid,
+                        new ArrayList<>(sa.qualifiers.values())));
             }
             props.add(new Property(pa.pid, pa.label, sts));
         }
@@ -165,6 +202,7 @@ public final class EntityStatementSummary {
     }
 
     private static final class StAgg {
+        String id;
         String value;
         String valueQid;
         final Map<String, Qualifier> qualifiers = new LinkedHashMap<>();

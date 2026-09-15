@@ -159,6 +159,28 @@ construct per thing produced:
    throughout, because no test could see that the triple had landed seventh on one
    editor and last on another.
 
+16. **Tell the user straight what is happening and what will happen next.** Do not
+   reformulate, euphemize or substitute a more general description for the actual
+   operation. Before work starts, name the work that will be done; while it runs,
+   continuously name the work being done now and the work that follows. Loading and
+   saving a domain, model, instances, cache or run log names the exact file being read
+   or written. A running operation must not leave the user with only “Running…” or an
+   unchanged log when the application knows the current stage. *(Trigger: the user has
+   to ask whether a running operation is loading, downloading, recomputing, saving or
+   stuck.)*
+
+17. **Same concept means the same processing and the same UI.** A preview, saved
+   result and subsequently loaded domain are not three representations that may merely
+   resemble one another: they use the same instances and the same declared model through
+   the normal domain workflow. An action that writes a result says **Save result** and
+   writes only when that button is pressed; closing the result does not secretly save it.
+   *(Trigger: introducing a special result renderer, inferred substitute schema, or a
+   workflow verb that differs from the operation it performs.)*
+
+   Save and Load are concepts, not local button implementations. Every save/load entry
+   point uses the shared persistence confirmation UI and names the domain, instances,
+   model/types and exact files that the specific operation will read or write.
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until

@@ -121,6 +121,30 @@ public final class SnapshotFieldGraph {
                 ? null : type.baseType;
     }
 
+    public void declareExhaustiveValues(
+            String typeName, String fieldName, Collection<String> values) {
+        TypeShape type = types.computeIfAbsent(typeName, TypeShape::new);
+        FieldShape field = type.fields.computeIfAbsent(fieldName, FieldShape::new);
+        field.allowedValues = values == null ? new ArrayList<>()
+                : values.stream().filter(java.util.Objects::nonNull).distinct()
+                        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        field.exhaustiveValues = true;
+    }
+
+    public domain.DomainModel.ValueSelection valueSelection(
+            String typeName, objectview.field.FieldPath path) {
+        if (typeName == null || path == null || path.segments().isEmpty()) return null;
+        TypeShape type = types.get(typeName);
+        FieldShape field = null;
+        for (int i = 0; type != null && i < path.segments().size(); i++) {
+            field = type.fields.get(path.segments().get(i));
+            if (field == null) return null;
+            if (i + 1 < path.segments().size()) type = types.get(field.primaryTargetType());
+        }
+        return field != null && field.exhaustiveValues
+                ? new domain.DomainModel.ValueSelection(field.allowedValues, true) : null;
+    }
+
     private static boolean hasSubstance(TypeShape type) {
         return !type.fields.isEmpty()
                 && !(type.fields.size() == 1
@@ -240,6 +264,21 @@ public final class SnapshotFieldGraph {
                         : object.dynamicFieldValues().entrySet()) {
                     type.fields.computeIfAbsent(entry.getKey(), FieldShape::new)
                             .observe(entry.getValue());
+                }
+                // Dynamic values are only one half of the artificial class. Keep the
+                // annotation-declared semantic fields on their shared carrier too — in
+                // particular WikidataDynamicObject.wikidataSource. Otherwise an object
+                // can visibly carry provenance before save while its persisted class
+                // configuration says the field does not exist.
+                if (!object.dynamicFieldValues().isEmpty()) {
+                    objectview.field.FieldSet fields = objectview.field.FieldSet.of(object);
+                    for (objectview.field.FieldRef field : fields.fields()) {
+                        if (object.dynamicFieldValues().containsKey(field.name())) continue;
+                        if (field.role() == objectview.field.FieldRole.NONE && !field.link()) continue;
+                        FieldShape shape = type.fields.computeIfAbsent(field.name(), FieldShape::new);
+                        shape.declare(field);
+                        shape.observe(fields.read(field.name()));
+                    }
                 }
             }
         }
@@ -394,6 +433,12 @@ public final class SnapshotFieldGraph {
                 FieldShape field = type.fields.computeIfAbsent(
                         declared.name(), FieldShape::new);
                 field.declare(declared);
+                domain.DomainModel.ValueSelection selection = domain.valueSelection(
+                        typeName, objectview.field.FieldPath.of(declared.name()));
+                if (selection != null && selection.exhaustive()) {
+                    field.allowedValues = new ArrayList<>(selection.values());
+                    field.exhaustiveValues = true;
+                }
                 String target = declared.targetType();
                 if (!declared.structural() && target != null
                         && !target.isBlank()
@@ -455,6 +500,9 @@ public final class SnapshotFieldGraph {
         public String scalarKind = FieldKind.UNKNOWN.name();
         public String scalarTypeLabel = "";
         public List<String> targetTypes = new ArrayList<>();
+        /** Explicit closed vocabulary; unlike observed values, safe for a non-editable picker. */
+        public List<String> allowedValues = new ArrayList<>();
+        public boolean exhaustiveValues;
 
         public FieldShape() {}
 

@@ -17,6 +17,7 @@ import process.swing.workflow.ProcessWorkflowResults;
 import process.swing.workflow.SwingProcessWorkflow;
 import quiz.transform.DynamicViewable;
 import wikidata.WikidataIds;
+import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.*;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 import wikidata.ui.WikidataLinks;
@@ -25,7 +26,9 @@ import workbench.SimpleDocumentListener;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -140,7 +143,8 @@ final class GraphConstraintsPanel extends JPanel {
                             "discover-graph", "Discover and classify graph nodes",
                             "Follow the configured edge, acquire evidence and classify "
                                     + "each reached entity.", graphDetails(snapshot))));
-            ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result, Void> action =
+            ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result,
+                    GraphDiscoveryResultStore.Artifact> action =
                     graphWorkflow(query, pipeline, snapshot, graphSummary(snapshot));
             SwingProcessWorkflow.start(this, runner, action);
         } catch (Exception error) {
@@ -148,7 +152,8 @@ final class GraphConstraintsPanel extends JPanel {
         }
     }
 
-    private ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result, Void> graphWorkflow(
+    private ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result,
+            GraphDiscoveryResultStore.Artifact> graphWorkflow(
             ConfiguredGraphDiscoveryQuery query, ProcessWorkflowPipeline pipeline,
             GeneratedProjectModel snapshot, DynamicViewable summary) {
         return new ProcessWorkflowAction<>() {
@@ -162,9 +167,9 @@ final class GraphConstraintsPanel extends JPanel {
                         "Run graph", "Inspect the configured traversal and evidence tests, "
                                 + "then explicitly start discovery.",
                         List.of(ProcessWorkflowPlan.Tab.component(
-                                        "Graph", () -> graphPlanView(snapshot)),
+                                        "Graph", () -> graphPlanView(snapshot), true),
                                 new ProcessWorkflowPlan.Tab(
-                                "Scope", List.of(summary))));
+                                "Scope", List.of(summary)))).withoutPipelineTab();
             }
             @Override public process.Process<ConfiguredGraphDiscoveryQuery.Result> process() {
                 return new process.Process<>() {
@@ -182,11 +187,14 @@ final class GraphConstraintsPanel extends JPanel {
                     }
                 };
             }
-            @Override public ProcessWorkflowResults<Void> results(
+            @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
                     ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome) {
-                return graphResults(outcome.result());
+                return graphResults(outcome.result(), snapshot.name());
             }
-            @Override public void apply(List<Void> decisions) { }
+            @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
+                    throws Exception {
+                GraphDiscoveryResultStore.save(snapshot.name(), decisions.getFirst());
+            }
         };
     }
 
@@ -623,8 +631,10 @@ final class GraphConstraintsPanel extends JPanel {
         model.clear(); if (values != null) values.forEach(model::addElement);
     }
 
-    private ProcessWorkflowResults<Void> graphResults(
-            ConfiguredGraphDiscoveryQuery.Result result) {
+    ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
+            ConfiguredGraphDiscoveryQuery.Result result, String projectName) {
+        GraphDiscoveryResultStore.Artifact artifact =
+                GraphDiscoveryResultStore.artifact(result);
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -639,42 +649,128 @@ final class GraphConstraintsPanel extends JPanel {
                 + " review, " + rejected + " rejected"
                 + (unavailable + incomplete == 0 ? "" : "; " + unavailable
                         + " unavailable, " + incomplete + " incomplete") + labels
-                + ". No class population was changed.";
+                + ". No class population was changed. "
+                + saveDescription(projectName, artifact);
         status(summary, false);
-        String targetType = last == null ? "Accepted" : last.traversal().targetNodeClass();
-        return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply",
-                List.of(resultTab("Start", graph.start(), result, "Start node"),
-                        resultTab("Accepted", last == null ? List.of() : last.accepted(),
-                                result, targetType),
-                        resultTab("Review", last == null ? List.of() : last.review(),
-                                result, "Review"),
-                        resultTab("Rejected", last == null ? List.of() : last.rejected(),
-                                result, "Rejected")));
+        String saveDescription = saveDescription(projectName, artifact);
+        return new ProcessWorkflowResults<>("Run graph — results", summary, "Save result",
+                List.of(artifactTab("Start", artifact, "Start"),
+                        artifactTab("Accepted", artifact, "Accepted"),
+                        artifactTab("Review", artifact, "Review"),
+                        artifactTab("Rejected", artifact, "Rejected")),
+                () -> artifact, "Close without saving result", saveDescription);
     }
 
-    private ProcessWorkflowResults.Tab<Void> resultTab(
+    static String saveDescription(String projectName,
+                                  GraphDiscoveryResultStore.Artifact artifact) {
+        return new quiz.transform.app.DomainSaver().describeSave(
+                GraphDiscoveryResultStore.domainName(projectName),
+                artifact.instances(), artifact.model());
+    }
+
+    static ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> artifactTab(
+            String title, GraphDiscoveryResultStore.Artifact artifact, String decision) {
+        List<ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>> cards =
+                artifact.instances().stream()
+                        .filter(value -> decisionValue(value).contains(decision))
+                        .map(value -> new ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>(
+                                value, () -> null, false)).toList();
+        return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
+                artifact.model().representativeSample(GraphDiscoveryResultStore.TYPE));
+    }
+
+    private static List<String> decisionValue(WikidataDynamicObject value) {
+        Object decision = value.get("Decision");
+        if (decision instanceof List<?> values) return values.stream().map(String::valueOf).toList();
+        return decision == null ? List.of() : List.of(String.valueOf(decision));
+    }
+
+    static ProcessWorkflowResults.Tab<Void> resultTab(
             String title, List<EntityRef> entities,
             ConfiguredGraphDiscoveryQuery.Result result, String type) {
         List<EntityRef> values = entities == null ? List.of() : entities;
-        int shown = Math.min(values.size(), 1_000);
-        List<ProcessWorkflowResults.Card<Void>> cards = values.stream().limit(shown)
+        List<ProcessWorkflowResults.Card<Void>> cards = values.stream()
                 .map(entity -> {
-            DynamicViewable card = new DynamicViewable(entity.id(), result.label(entity));
-            card.type(type); card.put("QID", entity.id());
-            return new ProcessWorkflowResults.Card<Void>((Viewable) card,
+            return new ProcessWorkflowResults.Card<Void>((Viewable) entityView(
+                            entity, result, type),
                     () -> null, false);
         }).toList();
-        String count = values.size() + " total"
-                + (shown < values.size() ? "; showing " + shown : "");
-        return new ProcessWorkflowResults.Tab<>(title + " — " + count, cards);
+        return new ProcessWorkflowResults.Tab<>(
+                title + " — " + values.size() + " total", cards);
+    }
+
+    /** Rejections stay inspectable as complete, virtualized member collections, grouped
+     *  by the reason retained by the evaluator. The result view must not rediscover a
+     *  reason from evidence edges: that would create a second classification path. */
+    static ProcessWorkflowResults.Tab<Void> rejectedResultTab(
+            datasource.graph.execution.GraphDiscoveryExecutor.NodeResult node,
+            ConfiguredGraphDiscoveryQuery.Result result) {
+        if (node == null) {
+            return new ProcessWorkflowResults.Tab<>("Rejected — 0 total", List.of());
+        }
+        Map<RejectionReason, List<GraphEvidenceConditionResult>> grouped =
+                new LinkedHashMap<>();
+        node.classifications().stream()
+                .filter(classification -> classification.decision()
+                        == GraphEvidenceConditionResult.Decision.REJECTED)
+                .forEach(classification -> grouped.computeIfAbsent(
+                        RejectionReason.of(classification), ignored -> new ArrayList<>())
+                        .add(classification));
+
+        List<ProcessWorkflowResults.Card<Void>> cards = new ArrayList<>();
+        int index = 0;
+        for (Map.Entry<RejectionReason, List<GraphEvidenceConditionResult>> entry
+                : grouped.entrySet()) {
+            RejectionReason reason = entry.getKey();
+            List<DynamicViewable> rejected = entry.getValue().stream()
+                    .map(classification -> entityView(
+                            classification.node(), result, "Rejected"))
+                    .toList();
+            DynamicViewable group = new DynamicViewable(
+                    "rejection-reason-" + (++index), reason.reason());
+            group.type("Rejection reason");
+            if (!reason.condition().isBlank()) {
+                group.put("Condition", reason.condition());
+            }
+            group.put("Count", rejected.size());
+            group.put("Rejected nodes", rejected);
+            cards.add(new ProcessWorkflowResults.Card<>((Viewable) group,
+                    () -> null, false));
+        }
+        return new ProcessWorkflowResults.Tab<>(
+                "Rejected — " + node.rejected().size() + " total", cards);
+    }
+
+    private static DynamicViewable entityView(EntityRef entity,
+            ConfiguredGraphDiscoveryQuery.Result result, String type) {
+        DynamicViewable card = new DynamicViewable(entity.id(), result.label(entity));
+        card.type(type);
+        card.put("QID", entity.id());
+        return card;
+    }
+
+    private record RejectionReason(String condition, String reason) {
+        private static RejectionReason of(GraphEvidenceConditionResult result) {
+            String reason = result.reason().isBlank()
+                    ? "No rejection reason was recorded" : result.reason();
+            return new RejectionReason(result.conditionName(), reason);
+        }
     }
 
     static DynamicViewable graphSummary(GeneratedProjectModel snapshot) {
         GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
         DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
         summary.type("Graph discovery");
-        summary.put("Downloaded facts",
-                "Reuse the persistent local cache; fetch only missing adjacency");
+        summary.put("Adjacency facts",
+                "Load saved answers from the persistent graph cache; download only missing answers");
+        summary.put("Classification",
+                "Repeat locally from the loaded graph facts");
+        summary.put("Labels",
+                "Fetch again; labels are not stored in the graph cache");
+        summary.put("Results",
+                "Rebuild and save every start and reached entity for TransformApp");
+        summary.put("Results file",
+                GraphDiscoveryResultStore.destination(snapshot.name()).getPath());
         summary.put("Start class", graph.startNode().qidSourceClass());
         GeneratedClassModel start = snapshot.findClass(graph.startNode().qidSourceClass());
         summary.put("Start QIDs", start == null ? 0 : start.seedQids().size());

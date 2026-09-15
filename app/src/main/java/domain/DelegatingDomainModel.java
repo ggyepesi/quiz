@@ -43,6 +43,11 @@ public abstract class DelegatingDomainModel implements DomainModel {
         return base.entityKindRule(className);
     }
 
+    @Override public ValueSelection valueSelection(
+            String type, objectview.field.FieldPath path) {
+        return base.valueSelection(type, path);
+    }
+
     @Override public List<String> types() { return base.types(); }
 
     @Override public List<String> servedTypes() { return base.servedTypes(); }

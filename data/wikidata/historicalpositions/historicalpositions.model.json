@@ -631,7 +631,78 @@
       "primaryListField" : ""
     }
   },
-  "graphDiscoveryConfiguration" : null,
+  "graphDiscoveryConfiguration" : {
+    "startNode" : {
+      "qidSourceClass" : "PositionDiscoveryStart",
+      "use" : "INTERMEDIATE_ONLY"
+    },
+    "nextNodes" : [ "java.util.ImmutableCollections$List12", [ {
+      "property" : {
+        "providerId" : "wikidata",
+        "relationId" : "P31"
+      },
+      "directionFromPrevious" : "INCOMING",
+      "use" : "CLASS_POPULATION",
+      "populationClass" : "Position",
+      "evidenceCondition" : {
+        "name" : "Node evidence",
+        "evidencePaths" : [ "java.util.ImmutableCollections$List12", [ {
+          "relation" : {
+            "providerId" : "wikidata",
+            "relationId" : "P1001"
+          },
+          "direction" : "OUTGOING",
+          "maximumDepth" : 1,
+          "selection" : "ALL",
+          "condition" : null
+        }, {
+          "relation" : {
+            "providerId" : "wikidata",
+            "relationId" : "P17"
+          },
+          "direction" : "OUTGOING",
+          "maximumDepth" : 1,
+          "selection" : "ALL",
+          "condition" : null
+        } ] ],
+        "tests" : [ "java.util.ImmutableCollections$ListN", [ {
+          "kind" : "relation-reaches",
+          "relation" : {
+            "providerId" : "wikidata",
+            "relationId" : "P31"
+          },
+          "direction" : "OUTGOING",
+          "entity" : {
+            "namespace" : "wikidata",
+            "id" : "Q3024240"
+          }
+        }, {
+          "kind" : "relation-reaches",
+          "relation" : {
+            "providerId" : "wikidata",
+            "relationId" : "P31"
+          },
+          "direction" : "OUTGOING",
+          "entity" : {
+            "namespace" : "wikidata",
+            "id" : "Q48349"
+          }
+        }, {
+          "kind" : "relation-reaches",
+          "relation" : {
+            "providerId" : "wikidata",
+            "relationId" : "P31"
+          },
+          "direction" : "OUTGOING",
+          "entity" : {
+            "namespace" : "wikidata",
+            "id" : "Q6256"
+          }
+        } ] ],
+        "reviewDisposition" : "INCLUDE_AND_REPORT"
+      }
+    } ] ]
+  },
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
@@ -1311,8 +1382,7 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "subClasses",
       "type" : "ENTITY",
-      "entityClassName" : "Position",
-      "entityDeclarationId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
+      "entityClassName" : "SubClass",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -1508,6 +1578,123 @@
           "includeSubclasses" : "false",
           "property" : "P31",
           "values" : "Q136649946"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
+  }, {
+    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:6a66fe0b-9740-416b-b477-e576b64bb9ba",
+    "className" : "PositionDiscoveryStart",
+    "baseClassName" : "",
+    "discriminatorPid" : "",
+    "discriminatorQid" : "",
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "generationDepth" : 1,
+    "instanceMapping" : {
+      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "",
+      "propertyPid" : "",
+      "propertyLabel" : "instance of",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 200,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ "Q4164871" ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "seed-list",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$Map1",
+        "ids" : "Q4164871"
+      }
+    },
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "PositionDiscoveryStart",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:6a66fe0b-9740-416b-b477-e576b64bb9ba"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "PositionDiscoveryStart",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:6a66fe0b-9740-416b-b477-e576b64bb9ba"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "PositionDiscoveryStart",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:6a66fe0b-9740-416b-b477-e576b64bb9ba"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "seed-list",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$Map1",
+          "ids" : "Q4164871"
         }
       }
     } ] ],

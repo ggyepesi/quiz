@@ -172,6 +172,7 @@ public final class PersistentGraphStore implements LocalGraphStore {
             size = channel.size();
             long position = 0;
             while (size - position >= FRAME_HEADER_BYTES) {
+                throwIfInterrupted();
                 ByteBuffer header = ByteBuffer.allocate(FRAME_HEADER_BYTES);
                 if (!readFully(channel, header, position)) break;
                 header.flip();
@@ -211,6 +212,13 @@ public final class PersistentGraphStore implements LocalGraphStore {
                 channel.truncate(validBytes);
                 channel.force(false);
             }
+        }
+    }
+
+    private static void throwIfInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new java.util.concurrent.CancellationException(
+                    "Graph-cache load cancelled");
         }
     }
 

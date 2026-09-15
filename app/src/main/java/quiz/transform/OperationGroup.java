@@ -22,7 +22,7 @@ public final class OperationGroup extends EditableGroup implements ProducedGroup
     public FilterCondition condition() { return condition; }
 
     @Override public String getDisplayName() {
-        return name() + "  [filter: " + condition + "]";
+        return name();
     }
 
     @Override public String ruleDescription() { return "Filter: " + condition; }

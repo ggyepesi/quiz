@@ -43,6 +43,15 @@ public final class SwingProcessWorkflow {
                 ? failure.getClass().getSimpleName() : message;
     }
 
+    /** Index after framework-owned tabs have been inserted before action tabs. */
+    static int initialPlanTabIndex(List<ProcessWorkflowPlan.Tab> actionTabs,
+                                   int leadingTabs, boolean hasPipeline) {
+        for (int i = 0; i < actionTabs.size(); i++) {
+            if (actionTabs.get(i).initiallySelected()) return leadingTabs + i;
+        }
+        return hasPipeline ? 0 : -1;
+    }
+
     public static <R, D> JDialog start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
         return start(owner, runner, action, null);
@@ -91,17 +100,23 @@ public final class SwingProcessWorkflow {
             ProcessWorkflowPlan plan = action.plan();
             JPanel panel = page("1 · Plan", plan.description());
             JTabbedPane planTabs = tabs(plan.tabs());
-            if (pipelinePanel != null) {
+            int leadingTabs = 0;
+            boolean pipelineInPlan = pipelinePanel != null && plan.pipelineVisible();
+            if (pipelineInPlan) {
                 planTabs.insertTab("Pipeline", null, pipelinePanel,
                         "Configured execution pipeline", 0);
-                planTabs.setSelectedIndex(0);
+                leadingTabs++;
             }
             JComponent executionSettings = action.executionSettings();
             if (executionSettings != null) {
                 planTabs.insertTab("Execution settings", null, executionSettings,
                         "Run-scoped resource and reliability settings",
-                        pipelinePanel == null ? 0 : 1);
+                        pipelineInPlan ? 1 : 0);
+                leadingTabs++;
             }
+            int initialTab = initialPlanTabIndex(
+                    plan.tabs(), leadingTabs, pipelineInPlan);
+            if (initialTab >= 0) planTabs.setSelectedIndex(initialTab);
             panel.add(planTabs, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel");
             JButton execute = new JButton(plan.executable()
@@ -189,14 +204,22 @@ public final class SwingProcessWorkflow {
             JLabel message = new JLabel("<html>The detailed result preview could not be "
                     + "rendered.<br>" + html(failureMessage(failure)) + "</html>");
             panel.add(message, BorderLayout.CENTER);
-            JButton close = new JButton("Close without applying");
-            JButton accept = new JButton("Accept completed result");
+            JButton close = new JButton(results == null
+                    ? "Close without applying" : results.closeVerb());
+            boolean wholeResult = results != null && results.resultDecision() != null;
+            JButton accept = new JButton(wholeResult
+                    ? results.applyVerb() : "Accept completed result");
             close.addActionListener(e -> dialog.dispose());
             List<ProcessWorkflowResults.Card<D>> safe = results == null ? List.of()
                     : results.tabs().stream().flatMap(tab -> tab.cards().stream())
                             .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
-            accept.setEnabled(action.applyAllowed(status) && !safe.isEmpty());
-            accept.addActionListener(e -> apply(safe));
+            accept.setEnabled(action.applyAllowed(status)
+                    && (wholeResult || !safe.isEmpty()));
+            accept.addActionListener(e -> {
+                if (wholeResult) applyDecision(results.resultDecision().get(), true,
+                        results.resultConfirmation());
+                else apply(safe);
+            });
             panel.add(buttons(close, accept), BorderLayout.SOUTH);
             install(action.plan().title() + " — results", panel);
         }
@@ -267,7 +290,7 @@ public final class SwingProcessWorkflow {
             buildSelectedTab.run(); // Summary is normally first and intentionally small.
             syncApplyToTab.run();
             panel.add(tabs, BorderLayout.CENTER);
-            JButton close = new JButton("Close without applying");
+            JButton close = new JButton(results.closeVerb());
             close.addActionListener(e -> dialog.dispose());
             applySelected.addActionListener(e -> apply(selected.get()));
             // Offered only when some result opted into it. A workflow whose every
@@ -275,7 +298,15 @@ public final class SwingProcessWorkflow {
             // is the growth a curated frontier exists to prevent — and a permanently
             // dead button reading "all safe results (0)" reads as "no results" rather
             // than "this action is not on offer here".
-            if (bulk.isEmpty()) {
+            if (results.resultDecision() != null) {
+                applySelected.setVisible(false);
+                JButton applyResult = new JButton(results.applyVerb());
+                applyResult.setEnabled(applicationAllowed);
+                applyResult.addActionListener(e ->
+                        applyDecision(results.resultDecision().get(), true,
+                                results.resultConfirmation()));
+                panel.add(buttons(close, applyResult), BorderLayout.SOUTH);
+            } else if (bulk.isEmpty()) {
                 panel.add(buttons(close, applySelected), BorderLayout.SOUTH);
             } else {
                 JButton applyAll = new JButton(
@@ -303,7 +334,8 @@ public final class SwingProcessWorkflow {
             java.util.Map<Viewable, ProcessWorkflowResults.Card<D>> cards =
                     new java.util.IdentityHashMap<>();
             tab.cards().forEach(card -> cards.put(card.view(), card));
-            SearchableView.Builder builder = SearchableView.builder(views).sample(views.get(0))
+            Viewable shapeSample = tab.shapeSample() == null ? views.get(0) : tab.shapeSample();
+            SearchableView.Builder builder = SearchableView.builder(views).sample(shapeSample)
                     .mode(RenderingMode.CARD).collapsible(false).columns(2)
                     // RenderContext also asks about nested referenced Viewables.
                     // Only top-level result cards have workflow decorations.
@@ -364,12 +396,25 @@ public final class SwingProcessWorkflow {
             List<D> decisions = cards.stream().map(card -> card == null ? null : card.decision().get())
                     .filter(java.util.Objects::nonNull).toList();
             if (decisions.isEmpty()) return;
+            applyDecisions(decisions, false);
+        }
+
+        void applyDecision(D decision, boolean wholeResult, String confirmation) {
+            if (decision == null) return;
+            if (wholeResult && confirmation != null && !confirmation.isBlank()) {
+                if (!quiz.ui.Dialogs.confirmPersistence(owner, applyVerb, confirmation)) return;
+            }
+            applyDecisions(List.of(decision), wholeResult);
+        }
+
+        private void applyDecisions(List<D> decisions, boolean wholeResult) {
             state.apply();
             try {
                 action.apply(decisions);
                 state.applied();
                 JOptionPane.showMessageDialog(owner,
-                        applyVerb + ": " + decisions.size() + " decision(s).");
+                        wholeResult ? applyVerb + " completed."
+                                : applyVerb + ": " + decisions.size() + " decision(s).");
                 dialog.dispose();
             } catch (Exception error) {
                 state.retryApply();

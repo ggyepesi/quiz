@@ -15,6 +15,18 @@ import java.util.List;
  * Nobel, State, SportTeam — via reflection ({@link ReflectionDomain}).
  */
 public interface DomainModel {
+    /** A field's declared closed value set. Observed suggestions are deliberately not
+     * returned here: exhaustive controls must never be inferred from current data. */
+    record ValueSelection(java.util.List<String> values, boolean exhaustive) {
+        public ValueSelection {
+            values = values == null ? java.util.List.of() : java.util.List.copyOf(values);
+        }
+    }
+
+    @Declared
+    default ValueSelection valueSelection(String type, objectview.field.FieldPath path) {
+        return null;
+    }
 
     /** Optional additive Wikipedia-category recipe declared by the producing model. */
     @Declared

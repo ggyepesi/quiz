@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.statement.EntityStatementSummary;
+
 import wikidata.WikidataSparqlClient;
 
 import java.util.ArrayList;
