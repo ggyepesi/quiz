@@ -1642,13 +1642,13 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ "Q4164871" ] ],
+    "seedQids" : [ "java.util.ArrayList", [ "Q114962596" ] ],
     "populationSource" : {
       "providerId" : "wikidata",
       "operationId" : "seed-list",
       "parameters" : {
         "@class" : "java.util.ImmutableCollections$Map1",
-        "ids" : "Q4164871"
+        "ids" : "Q114962596"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -1694,7 +1694,7 @@
         "operationId" : "seed-list",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$Map1",
-          "ids" : "Q4164871"
+          "ids" : "Q114962596"
         }
       }
     } ] ],
