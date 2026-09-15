@@ -31,6 +31,9 @@ final class GraphNodeConditions {
         } else if (condition instanceof GraphRelationReaches reaches) {
             relation = reaches.relation();
             direction = reaches.direction();
+        } else if (condition instanceof GraphRelationReachesUnder under) {
+            relation = under.relation();
+            direction = under.direction();
         } else {
             throw new IllegalArgumentException(
                     "Unsupported graph node condition: " + condition);
@@ -43,6 +46,9 @@ final class GraphNodeConditions {
         GraphAdjacencyObservation observation = new GraphAdjacencyObservation(
                 node, relation, direction, coverage);
 
+        if (condition instanceof GraphRelationReachesUnder under) {
+            return generalisation(store, adjacent, observation, direction, under);
+        }
         List<GraphEdge> matches = matchingEdges(adjacent.edges(), direction, condition);
         if (!matches.isEmpty()) {
             return new Evaluation(
@@ -61,6 +67,78 @@ final class GraphNodeConditions {
         }
         return new Evaluation(
                 Decision.REVIEW, adjacent.edges(), List.of(), observation);
+    }
+
+    /**
+     * Whether any reached endpoint is the target or is generalised by it.
+     *
+     * <p>Coverage decides the difference between "no" and "not known yet". A walk that
+     * runs out of KNOWN generalisations is only a refusal if every step it took was
+     * complete; if any was partial the answer is REVIEW, because the hop that would have
+     * matched may simply not have been fetched. Refusing on an unfetched hop is how a
+     * condition quietly turns a gap in acquisition into a verdict about the world.
+     */
+    private static Evaluation generalisation(
+            LocalGraphStore store,
+            GraphAdjacencyResult adjacent,
+            GraphAdjacencyObservation observation,
+            GraphTraversalDirection direction,
+            GraphRelationReachesUnder under) {
+        List<GraphEdge> endpointEdges = adjacent.edges().stream()
+                .filter(edge -> edge.entityEndpoint(direction) != null).toList();
+        List<GraphEdge> witnesses = new java.util.ArrayList<>();
+        boolean complete = true;
+        for (GraphEdge edge : endpointEdges) {
+            Reach reach = reaches(store, edge.entityEndpoint(direction), under);
+            if (reach == Reach.YES) witnesses.add(edge);
+            if (reach == Reach.UNKNOWN) complete = false;
+        }
+        if (!witnesses.isEmpty()) {
+            return new Evaluation(
+                    Decision.MATCHED, adjacent.edges(), List.copyOf(witnesses), observation);
+        }
+        if (!complete || observation.coverage() != GraphAdjacencyCoverage.COMPLETE) {
+            return new Evaluation(
+                    Decision.REVIEW, adjacent.edges(), List.of(), observation);
+        }
+        return new Evaluation(
+                Decision.NOT_MATCHED, adjacent.edges(), List.of(), observation);
+    }
+
+    private enum Reach { YES, NO, UNKNOWN }
+
+    /** Breadth-first over the generalising relation, bounded by the configured depth and
+     *  by what the store already knows. Visited nodes are kept by identity of reference
+     *  so a hierarchy that is a DAG — which P279 is — is not walked twice. */
+    private static Reach reaches(
+            LocalGraphStore store, EntityRef start, GraphRelationReachesUnder under) {
+        if (under.entity().equals(start)) return Reach.YES;
+        java.util.Set<EntityRef> visited = new java.util.LinkedHashSet<>();
+        List<EntityRef> frontier = List.of(start);
+        visited.add(start);
+        boolean complete = true;
+        for (int depth = 0; depth < under.maximumDepth() && !frontier.isEmpty(); depth++) {
+            GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
+                    frontier, under.via(), GraphTraversalDirection.OUTGOING);
+            GraphAdjacencyResult step = store.adjacent(demand);
+            for (EntityRef node : frontier) {
+                if (store.adjacencyKnowledge(node, demand)
+                        != GraphAdjacencyCoverage.COMPLETE) {
+                    complete = false;
+                }
+            }
+            List<EntityRef> next = new java.util.ArrayList<>();
+            for (GraphEdge edge : step.edges()) {
+                EntityRef reached = edge.entityEndpoint(GraphTraversalDirection.OUTGOING);
+                if (reached == null) continue;
+                if (under.entity().equals(reached)) return Reach.YES;
+                if (visited.add(reached)) next.add(reached);
+            }
+            frontier = next;
+        }
+        // Stopping because the depth ran out is not a refusal either: the answer may lie
+        // one hop past the bound, and the bound is a cost control, not a claim.
+        return complete && frontier.isEmpty() ? Reach.NO : Reach.UNKNOWN;
     }
 
     private static List<GraphEdge> matchingEdges(

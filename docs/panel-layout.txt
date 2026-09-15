@@ -335,7 +335,9 @@
     label: Property:
     text: []
     combo: 2 item(s)
-    combo: 3 item(s)
+    combo: 4 item(s)
+    text: []  (disabled)
+    label: via
     text: []  (disabled)
     button: Add evidence test
     list

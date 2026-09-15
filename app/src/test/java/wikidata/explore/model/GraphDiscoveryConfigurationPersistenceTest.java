@@ -7,6 +7,7 @@ import datasource.graph.GraphTraversalDirection;
 import datasource.graph.constraint.GraphEvidenceCondition;
 import datasource.graph.constraint.GraphPath;
 import datasource.graph.constraint.GraphRelationReaches;
+import datasource.graph.constraint.GraphRelationReachesUnder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class GraphDiscoveryConfigurationPersistenceTest {
     @TempDir Path temp;
@@ -45,6 +47,45 @@ class GraphDiscoveryConfigurationPersistenceTest {
                 .tests().getFirst().relation().relationId());
         assertEquals(GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT,
                 restored.nextNodes().getFirst().evidenceCondition().reviewDisposition());
+    }
+
+    @Test void aGeneralisingTestSurvivesBeingSavedAndReloaded() throws Exception {
+        // A sealed hierarchy persisted by a "kind" discriminator fails at LOAD, not at
+        // compile: a subtype missing from the mixin writes happily and comes back as an
+        // unreadable type, so the condition would quietly disappear from a saved graph.
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("History");
+        project.rootClass(new GeneratedClassModel("Position"));
+        project.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.INCOMING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "Position",
+                        new GraphEvidenceCondition("Node evidence",
+                                List.of(GraphPath.direct(new GraphRelation("wikidata", "P1001"),
+                                        GraphTraversalDirection.OUTGOING)),
+                                List.of(GraphRelationReachesUnder.of(
+                                        new GraphRelation("wikidata", "P31"),
+                                        GraphTraversalDirection.OUTGOING,
+                                        datasource.EntityRef.wikidata("Q7275"),
+                                        new GraphRelation("wikidata", "P279"))),
+                                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT)))));
+
+        Path file = temp.resolve("generalising.model.json");
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        store.save(project, file.toFile());
+        GeneratedProjectModel loaded = store.load(file.toFile());
+
+        var test = loaded.graphDiscoveryConfiguration().nextNodes().getFirst()
+                .evidenceCondition().tests().getFirst();
+        assertInstanceOf(GraphRelationReachesUnder.class, test,
+                "the generalising test must come back as itself");
+        GraphRelationReachesUnder under = (GraphRelationReachesUnder) test;
+        assertEquals("Q7275", under.entity().id());
+        assertEquals("P279", under.via().relationId());
+        assertEquals(GraphRelationReachesUnder.DEFAULT_MAXIMUM_DEPTH, under.maximumDepth());
     }
 
     @Test void projectCopyCarriesTheAuthoredGraph() {

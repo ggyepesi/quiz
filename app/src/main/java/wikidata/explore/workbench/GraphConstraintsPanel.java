@@ -37,7 +37,8 @@ final class GraphConstraintsPanel extends JPanel {
     private static final String PROVIDER = "wikidata";
 
     private enum TestKind {
-        HAS_VALUE("has a value"), REACHES_ENTITY("reaches QID"), HAS_NO_VALUE("has no value");
+        HAS_VALUE("has a value"), REACHES_ENTITY("reaches QID"),
+        REACHES_UNDER("reaches QID or anything under it"), HAS_NO_VALUE("has no value");
         private final String label;
         TestKind(String label) { this.label = label; }
         @Override public String toString() { return label; }
@@ -88,6 +89,8 @@ final class GraphConstraintsPanel extends JPanel {
             new JComboBox<>(DirectionChoice.values());
     private final JComboBox<TestKind> testKindBox = new JComboBox<>(TestKind.values());
     private final JTextField testQidField = new JTextField(9);
+    /** The relation that generalises the tested entity — P279 for a subclass hierarchy. */
+    private final JTextField testViaField = new JTextField(6);
     private final DefaultListModel<GraphNodeCondition> testsModel = new DefaultListModel<>();
     private final JList<GraphNodeCondition> testsList = new JList<>(testsModel);
     private final JComboBox<GraphEvidenceCondition.ReviewDisposition> reviewBox =
@@ -327,6 +330,7 @@ final class GraphConstraintsPanel extends JPanel {
         testDirectionBox.setName("graph.testDirection");
         testKindBox.setName("graph.testKind");
         testQidField.setName("graph.testQid");
+        testViaField.setName("graph.testVia");
         reviewBox.setName("graph.reviewDisposition");
         status.setName("graph.status");
         removeGraph.setName("graph.remove");
@@ -409,6 +413,7 @@ final class GraphConstraintsPanel extends JPanel {
         JPanel testRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         testRow.add(new JLabel("Property:")); testRow.add(testPidField);
         testRow.add(testDirectionBox); testRow.add(testKindBox); testRow.add(testQidField);
+        testRow.add(new JLabel("via")); testRow.add(testViaField);
         JButton addTest = new JButton("Add evidence test"); testRow.add(addTest);
         panel.add(testRow);
         testsList.setVisibleRowCount(2);
@@ -471,7 +476,12 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void refreshTestQidState() {
-        testQidField.setEnabled(testKindBox.getSelectedItem() == TestKind.REACHES_ENTITY);
+        // Both reaching tests name the entity they look for; only the generalising one
+        // also needs the relation that generalises it.
+        Object kind = testKindBox.getSelectedItem();
+        testQidField.setEnabled(
+                kind == TestKind.REACHES_ENTITY || kind == TestKind.REACHES_UNDER);
+        testViaField.setEnabled(kind == TestKind.REACHES_UNDER);
     }
 
     private void addEvidencePath() {
@@ -497,13 +507,24 @@ final class GraphConstraintsPanel extends JPanel {
         GraphNodeCondition condition;
         TestKind kind = (TestKind) testKindBox.getSelectedItem();
         GraphTraversalDirection direction = selectedDirection(testDirectionBox).direction;
-        if (kind == TestKind.REACHES_ENTITY) {
+        if (kind == TestKind.REACHES_ENTITY || kind == TestKind.REACHES_UNDER) {
             String qid = cleanQid(testQidField.getText());
             if (!WikidataIds.isQid(qid)) {
                 status("Enter the QID the evidence property must reach", true);
                 return;
             }
-            condition = new GraphRelationReaches(relation, direction, EntityRef.wikidata(qid));
+            if (kind == TestKind.REACHES_ENTITY) {
+                condition = new GraphRelationReaches(
+                        relation, direction, EntityRef.wikidata(qid));
+            } else {
+                String via = cleanPid(testViaField.getText());
+                if (!WikidataIds.isPid(via)) {
+                    status("Enter the property that generalises it, for example P279", true);
+                    return;
+                }
+                condition = GraphRelationReachesUnder.of(relation, direction,
+                        EntityRef.wikidata(qid), new GraphRelation(PROVIDER, via));
+            }
         } else if (kind == TestKind.HAS_NO_VALUE) {
             condition = new GraphRelationAbsent(relation, direction);
         } else condition = new GraphRelationExists(relation, direction);

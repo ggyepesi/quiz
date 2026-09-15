@@ -665,8 +665,8 @@
           "selection" : "ALL",
           "condition" : null
         } ] ],
-        "tests" : [ "java.util.ImmutableCollections$ListN", [ {
-          "kind" : "relation-reaches",
+        "tests" : [ "java.util.ImmutableCollections$List12", [ {
+          "kind" : "relation-reaches-under",
           "relation" : {
             "providerId" : "wikidata",
             "relationId" : "P31"
@@ -674,30 +674,13 @@
           "direction" : "OUTGOING",
           "entity" : {
             "namespace" : "wikidata",
-            "id" : "Q3024240"
-          }
-        }, {
-          "kind" : "relation-reaches",
-          "relation" : {
-            "providerId" : "wikidata",
-            "relationId" : "P31"
+            "id" : "Q1048835"
           },
-          "direction" : "OUTGOING",
-          "entity" : {
-            "namespace" : "wikidata",
-            "id" : "Q48349"
-          }
-        }, {
-          "kind" : "relation-reaches",
-          "relation" : {
+          "via" : {
             "providerId" : "wikidata",
-            "relationId" : "P31"
+            "relationId" : "P279"
           },
-          "direction" : "OUTGOING",
-          "entity" : {
-            "namespace" : "wikidata",
-            "id" : "Q6256"
-          }
+          "maximumDepth" : 4
         } ] ],
         "reviewDisposition" : "INCLUDE_AND_REPORT"
       }

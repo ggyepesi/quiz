@@ -3,6 +3,7 @@ package datasource.graph.execution;
 import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphExpansionPolicy;
+import datasource.graph.GraphTraversalDirection;
 import datasource.graph.GraphTraversalStep;
 import datasource.graph.constraint.GraphEvidenceCondition;
 import datasource.graph.constraint.GraphEvidenceConditionResult;
@@ -115,7 +116,14 @@ public final class GraphDiscoveryExecutor {
             GraphEvidenceCondition condition = node.evidenceCondition();
             if (condition == null) continue;
             condition.evidencePaths().forEach(path -> relations.add(path.relation()));
-            condition.tests().forEach(test -> relations.add(test.relation()));
+            condition.tests().forEach(test -> {
+                relations.add(test.relation());
+                // The generalising relation is asked for too, so an acquirer that cannot
+                // supply it says so before the run is paid for rather than mid-way.
+                if (test instanceof datasource.graph.constraint.GraphRelationReachesUnder under) {
+                    relations.add(under.via());
+                }
+            });
         }
         return List.copyOf(relations);
     }
@@ -150,6 +158,47 @@ public final class GraphDiscoveryExecutor {
                 .filter(java.util.Objects::nonNull)
                 .toList();
         acquirer.acquireAll(store, testDemands);
+        acquireGeneralisations(store, acquirer, condition, evidence);
+    }
+
+    /**
+     * Fetches the generalisation hops a {@code reaches-under} test will walk.
+     *
+     * <p>The evaluator answers only from what the store holds, and treats an unfetched
+     * hop as UNKNOWN rather than as a refusal — so without this every such test would
+     * report REVIEW forever. One wave per hop, each asking only for what the previous
+     * wave newly reached, bounded by the test's own depth.
+     */
+    private static void acquireGeneralisations(
+            LocalGraphStore store,
+            GraphAdjacencyAcquirer acquirer,
+            GraphEvidenceCondition condition,
+            List<EntityRef> evidence) throws Exception {
+        for (var test : condition.tests()) {
+            if (!(test instanceof datasource.graph.constraint.GraphRelationReachesUnder under)) {
+                continue;
+            }
+            LinkedHashSet<EntityRef> seen = new LinkedHashSet<>();
+            List<EntityRef> frontier = new java.util.ArrayList<>();
+            GraphAdjacencyDemand reached = new GraphAdjacencyDemand(
+                    evidence, under.relation(), under.direction());
+            store.adjacent(reached).edges().stream()
+                    .map(edge -> edge.entityEndpoint(under.direction()))
+                    .filter(java.util.Objects::nonNull)
+                    .filter(seen::add)
+                    .forEach(frontier::add);
+            for (int hop = 0; hop < under.maximumDepth() && !frontier.isEmpty(); hop++) {
+                GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
+                        frontier, under.via(), GraphTraversalDirection.OUTGOING);
+                acquireMissing(store, acquirer, demand);
+                List<EntityRef> next = new java.util.ArrayList<>();
+                for (GraphEdge edge : store.adjacent(demand).edges()) {
+                    EntityRef value = edge.entityEndpoint(GraphTraversalDirection.OUTGOING);
+                    if (value != null && seen.add(value)) next.add(value);
+                }
+                frontier = next;
+            }
+        }
     }
 
     private static void acquireMissing(
