@@ -2,10 +2,12 @@
 
 ## Status
 
-Design note, no code. Works out how to narrow a large, flat Wikidata population to the
-members worth serving, using a declared gold set rather than a discovered heuristic.
-Written against Historical Positions, where `P31 = Q4164871` yields ~92,300 members of
-which a large minority are bulk-imported municipal offices.
+Design note, no code. Works out how to reach the members of a Wikidata population worth
+serving: start from the marker the source states, then refine and extend it with a
+declared gold set rather than a discovered heuristic. Written against Historical
+Positions, where the configured population (`P31 = Q4164871`, ~92,300 members, largely
+bulk-imported municipal offices) turned out to miss ~90% of what Wikidata explicitly marks
+as a historical position.
 
 Companion to [[graph-relation-constraints]] (the traversal step 1 uses),
 [[effective-class-explanation-and-sampling]] (what a sample may and may not establish)
@@ -37,6 +39,45 @@ The generic office classes are in neither population. Of 40 `P279` values reache
 the QID that *defines* the population. They sit above it, belonging to no stated
 population at all.
 
+## The stated key, found by asking
+
+Q136649946 was the wrong marker to stop at. There is another, and it names this domain:
+
+```text
+Q114962596  historical position    1,314 instances
+Q17279032   elective office        1,027 instances
+```
+
+A sample of `P31 = Q114962596`:
+
+> khedive · janissary · Sapa Inca · Emperor of Austria · vizier · Holy Roman Emperor ·
+> shah · khagan · Ban of Croatia · Emperor of China · monarch of Italy · German Emperor ·
+> King of the Geats · Minister President of Prussia · king of Macedonia ·
+> Governor-General of India · Reichsstatthalter · president of Germany
+
+That is the domain, near enough as one would write it by hand. And it is almost disjoint
+from what the domain currently generates:
+
+```text
+P31 Q114962596  ∩  P31 Q4164871   =   126  of 1,314
+```
+
+About 90% of the entities Wikidata explicitly marks as historical positions are absent
+from the 92,300-member population, which meanwhile carries 39,158 French commune
+mayoralties. The population was not too broad; it was the wrong population.
+
+This is the third time the rule has paid here: **look for the stated marker before
+deriving the distinction from shape.** Fan-out looked like it separated templates from
+offices, and Q136649946 said it properly; Q136649946 then looked like the top of the
+hierarchy, and Q114962596 is what actually names the domain. Each time the derived answer
+agreed with the data long enough to be convincing.
+
+Two honest limits. The marker is not clean — `janissary`, `Sipahi`, `zeybek` and
+`Rashidun` are military or social roles and a dynasty, not offices — and the 40-row sample
+above had no `ORDER BY`, so it is what WDQS returned first rather than a random draw: the
+character is unmistakable, the proportions are not measured. Refining and extending that
+1,314 is what the rest of this note is for.
+
 ## Why relevance is not discoverable from the data
 
 Every property profile of this population describes what Wikidata contains, and what it
@@ -49,28 +90,51 @@ labels and the population supplies the contrast.
 
 ## The four steps
 
-### 1. Propose the tops by traversal, ranked by how widely known they are
+### 1. Start from the stated population, and extend it by traversal
 
-Walk `P279` upward from the `Position` population and classify what is reached: the
-configured discovery graph, with the population as its start node, `P279` outgoing as its
-edge, and the reached node intermediate. Rank the reached ancestors by sitelink count.
+Generate `P31 = Q114962596` and look at all 1,314. That is the population; `Position` is
+not, and a class built on the marker starts 90% ahead of one built on Q4164871 and then
+filtered.
 
-Sitelinks are the right signal here because they measure how widely a concept is known,
-which is nearer to quiz relevance than any property profile, and because ranking by them
-is existing configuration — `FieldSourceMapping.RANK_BY_SITELINKS`, which
-`RuleNodeQueryBuilder` compiles to `?value wikibase:sitelinks ?rankMeasure`.
+The marker does not cover everything. `President of the United States` is not an instance
+of it — it is a current office, and the domain presumably wants some of those. So the
+traversal earns its place as the **extension** mechanism rather than the discovery one:
+walk up from the stated population, see which generic classes it reaches, and use those to
+propose offices the marker misses.
+
+**That walk must follow `P31` and `P279` both.** Measured:
+
+```text
+President of the United States (Q11696)
+    P279  president · head of state · head of government · commander-in-chief
+Holy Roman Emperor (Q181765)
+    P279  emperor
+    P31   head of state · elective office · historical position · noble title
+King of Spain (Q111670995)
+    P279  Monarch of Spain · king regnant
+```
+
+The presidency reaches `head of state` (Q48352) by `P279`; the Holy Roman Emperor reaches
+the same node by `P31`. A traversal following one relation misses the half that uses the
+other. And `King of Spain` reaches no generic `king` in one hop — only the
+country-specific `Monarch of Spain` — so the walk needs depth as well as both edges.
+
+Rank what the walk reaches by sitelink count: it measures how widely a concept is known,
+which is nearer to quiz relevance than any property profile, and it is existing
+configuration — `FieldSourceMapping.RANK_BY_SITELINKS`, which `RuleNodeQueryBuilder`
+compiles to `?value wikibase:sitelinks ?rankMeasure`.
 
 **The ranking is read, not applied.** It proposes candidates; a modeller declares the ones
 that survive. A threshold that runs is the fan-out mistake with a better number: it agrees
 with the answer without being the fact, and drifts the moment a commune is tidied up.
 
-*Unverified, and it decides the edge:* whether `King of Spain` reaches `king` by `P279` at
-all, or by `P31` to a class that is itself `P279` under `monarch`. One query settles it;
-the graph configuration differs.
-
 ### 2. Declare a gold set, built out of hard cases
 
-A few tens of entities, named by hand. The worked starting set:
+A few tens of entities, named by hand, **as QIDs**. Labels cannot address them:
+`"Holy Roman Emperor"@en` also matches a horse (Q5885972), and `"King of Spain"@en`
+matches a single, a musical work and a disambiguation page alongside the title itself.
+
+The worked starting set:
 
 ```
 Apostolic King of Hungary      historical, national, defunct polity
