@@ -350,6 +350,47 @@ class GraphDiscoveryExecutorTest {
         assertEquals(List.of(), result.nodes().getFirst().rejected());
     }
 
+    @Test void runningOutOfDepthIsARefusalRatherThanAReview() throws Exception {
+        // P279 never exhausts — everything generalises to "entity" eventually — so a
+        // bound treated as "unknown" makes refusal unreachable and sends every
+        // non-matching node to review. The bound is the scope the test declares.
+        EntityRef root = entity("Q114962596");
+        EntityRef target = entity("Q56061");
+        EntityRef office = entity("Q123");
+        EntityRef near = entity("Q9001");
+        EntityRef far = entity("Q9002");
+
+        var condition = new GraphEvidenceCondition("Node evidence",
+                List.of(GraphPath.direct(JURISDICTION, GraphTraversalDirection.OUTGOING)),
+                List.of(new GraphRelationReachesUnder(INSTANCE_OF,
+                        GraphTraversalDirection.OUTGOING, target, SUBCLASS, 1)),
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT);
+
+        var result = GraphDiscoveryExecutor.execute(new InMemoryGraphStore(),
+                graph(List.of(node(INSTANCE_OF, condition))), List.of(root),
+                (store, demand) -> {
+                    List<GraphEdge> edges = new ArrayList<>();
+                    if (demand.relation().equals(INSTANCE_OF)
+                            && demand.direction() == GraphTraversalDirection.INCOMING) {
+                        edges.add(new GraphEdge(office, INSTANCE_OF, root, "p31"));
+                    } else if (demand.relation().equals(JURISDICTION)) {
+                        edges.add(new GraphEdge(office, JURISDICTION, entity("Q9"), "j"));
+                    } else if (demand.relation().equals(INSTANCE_OF)) {
+                        edges.add(new GraphEdge(entity("Q9"), INSTANCE_OF, near, "t"));
+                    } else if (demand.relation().equals(SUBCLASS)) {
+                        // The target is two hops away; the test allows one.
+                        edges.add(new GraphEdge(near, SUBCLASS, far, "s1"));
+                        edges.add(new GraphEdge(far, SUBCLASS, target, "s2"));
+                    }
+                    store.addEdges(edges);
+                    store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+                });
+
+        assertEquals(List.of(office), result.nodes().getFirst().rejected(),
+                "a target beyond the declared depth is refused, not reviewed");
+        assertEquals(List.of(), result.nodes().getFirst().review());
+    }
+
     private static GraphDiscoveryConfiguration graph(
             List<GraphDiscoveryConfiguration.NextNode> nodes) {
         return new GraphDiscoveryConfiguration(

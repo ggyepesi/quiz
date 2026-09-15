@@ -136,9 +136,13 @@ final class GraphNodeConditions {
             }
             frontier = next;
         }
-        // Stopping because the depth ran out is not a refusal either: the answer may lie
-        // one hop past the bound, and the bound is a cost control, not a claim.
-        return complete && frontier.isEmpty() ? Reach.NO : Reach.UNKNOWN;
+        // Running out of depth IS a refusal. The bound is the scope the test declares —
+        // "reaches this within four generalisations" — and a hierarchy like P279 never
+        // exhausts, since everything has ancestors up to "entity". Treating an exhausted
+        // bound as unknown therefore made NOT_MATCHED unreachable in practice: a first
+        // run over 1,314 offices returned one refusal and 633 reviews, which decides
+        // nothing. Only adjacency the store could not answer is genuinely unknown.
+        return complete ? Reach.NO : Reach.UNKNOWN;
     }
 
     private static List<GraphEdge> matchingEdges(

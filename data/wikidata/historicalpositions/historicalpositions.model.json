@@ -674,7 +674,7 @@
           "direction" : "OUTGOING",
           "entity" : {
             "namespace" : "wikidata",
-            "id" : "Q1048835"
+            "id" : "Q56061"
           },
           "via" : {
             "providerId" : "wikidata",
