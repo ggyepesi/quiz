@@ -208,9 +208,9 @@ class ProjectModelCompilerTest {
                 holding.field("source").orElseThrow().entityClassName());
         assertTrue(compiled.mayRepresent("PositionHolder", "Person"));
         assertEquals("P31", position.membership().relationPid());
-        assertEquals(List.of("Q4164871"), position.membership().qids());
+        assertEquals(List.of("Q114962596"), position.membership().qids());
         assertTrue(position.seedQids().isEmpty(),
-                "Q4164871 is the object of the membership triple, not one explicit member");
+                "Q114962596 is the object of the membership triple, not one explicit member");
     }
 
     @Test
