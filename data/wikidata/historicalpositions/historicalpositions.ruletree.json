@@ -18,7 +18,7 @@
     "membershipQid" : "",
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
-      "requireLabel" : true,
+      "requireLabel" : false,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {

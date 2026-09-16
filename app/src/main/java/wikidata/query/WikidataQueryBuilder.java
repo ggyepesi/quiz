@@ -375,7 +375,7 @@ public class WikidataQueryBuilder {
      * When required=false:
      *   OPTIONAL {
      *     ?entityVar rdfs:label ?entityVarLabel .
-     *     FILTER(LANG(?entityVarLabel) = "lang")  ← omitted when lang is "any"
+     *     FILTER(LANG(?entityVarLabel) IN (…))  ← omitted when lang is "any"
      *   }
      *
      * The label variable is always entityVar + "Label".
@@ -389,9 +389,7 @@ public class WikidataQueryBuilder {
                 || "any".equalsIgnoreCase(lang);
 
         String triple = "?" + entityVar + " rdfs:label ?" + labelVar + " .";
-        String langFilter = anyLang
-                ? null
-                : LabelService.labelFilter(labelVar, lang);
+        String langFilter = anyLang ? null : LabelService.labelFilter(labelVar, lang);
 
         if (required) {
             where.append("  ").append(triple).append("\n");

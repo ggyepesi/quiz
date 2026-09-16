@@ -405,23 +405,15 @@ public final class RuleTreeQueries {
         String triple =
                 "?" + itemVar + " rdfs:label ?" + labelVar + " .";
 
+        // One place decides what a configured language means; see LabelService, which
+        // owns the mul fallback, comma-separated lists, and "any" for no restriction.
+        String restriction = any ? ""
+                : wikidata.query.LabelService.labelFilter(labelVar, lang);
         if (required) {
             q.where(triple);
-
-            if (!any) {
-                q.filterLang(labelVar, lang);
-            }
+            if (!restriction.isEmpty()) q.rawWhere(restriction);
         } else {
-            if (any) {
-                q.optional(triple);
-            } else {
-                q.optional(triple
-                        + "\nFILTER(LANG(?"
-                        + labelVar
-                        + ") = \""
-                        + WikidataQueryBuilder.sparqlString(lang)
-                        + "\")");
-            }
+            q.optional(restriction.isEmpty() ? triple : triple + "\n" + restriction);
         }
     }
 }

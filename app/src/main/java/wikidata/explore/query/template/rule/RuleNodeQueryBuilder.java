@@ -853,6 +853,7 @@ public final class RuleNodeQueryBuilder {
         String pid = RuleNode.cleanPid(node.propertyPid());
         String parentTerm = "wd:" + RuleNode.cleanQid(parentQid);
         String lang = labelLanguage(node);
+        wikidata.query.LabelService.requireValidLanguages(lang);
         boolean requireLabel =
                 node.labelConfig() != null && node.labelConfig().requireLabel();
 
@@ -939,13 +940,21 @@ public final class RuleNodeQueryBuilder {
             q.rawWhere(includedPatterns.toString());
         }
 
+        // Both branches ask LabelService, which owns what a configured language means:
+        // the mul fallback, a comma-separated list, and "any" for no restriction at all.
+        // Spelled here by hand, the required branch was = "en" — English or nothing, so
+        // 126 offices named only in Turkish, Czech or Spanish were dropped from a domain
+        // about historical positions — and a list inlined as one tag matched nothing and
+        // generated an empty class in silence.
+        String labelRestriction = wikidata.query.LabelService
+                .labelFilter("valueLabel_s", lang);
         if (requireLabel) {
-            q.rawWhere("  ?value rdfs:label ?valueLabel_s . FILTER(LANG(?valueLabel_s) = \""
-                    + lang + "\")");
+            q.rawWhere("  ?value rdfs:label ?valueLabel_s ."
+                    + (labelRestriction.isEmpty() ? "" : " " + labelRestriction));
         } else {
-            // No hard requirement: still surface a name, with the mul fallback.
+            // No hard requirement: still surface a name, with the same fallback.
             q.rawWhere("  OPTIONAL { ?value rdfs:label ?valueLabel_s ."
-                    + " FILTER(LANG(?valueLabel_s) IN (\"" + lang + "\", \"mul\")) }");
+                    + (labelRestriction.isEmpty() ? "" : " " + labelRestriction) + " }");
         }
 
         q.groupBy("value");

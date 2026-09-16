@@ -1,5 +1,8 @@
 package wikidata.query;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The single home for the Wikidata label SERVICE, so the {@code en,mul} language
  * fallback lives in ONE place instead of drifting across query builders (see #90).
@@ -10,6 +13,7 @@ package wikidata.query;
  * QID. Every entity-name query should route through here so the fallback is uniform.
  */
 public final class LabelService {
+
 
     private LabelService() {}
 
@@ -84,5 +88,24 @@ public final class LabelService {
             in.append('"').append(l.trim()).append('"');
         }
         return "FILTER(LANG(?" + bare + ") IN (" + in + "))";
+    }
+
+    /**
+     * Rejects a language setting that would match nothing.
+     *
+     * <p>A list inlined as one tag — {@code LANG(?l) = "en,tr,es"} — is a filter no
+     * label can satisfy, so the class generated empty and said nothing about why. A
+     * setting that cannot match is a configuration error, and it is reported as one.
+     */
+    public static void requireValidLanguages(String lang) {
+        if (lang == null || lang.isBlank() || "any".equalsIgnoreCase(lang.trim())) return;
+        for (String code : lang.split(",")) {
+            String trimmed = code.trim();
+            if (!trimmed.matches("[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*")) {
+                throw new IllegalArgumentException(
+                        "Not a language code: \"" + trimmed + "\". Use codes separated by"
+                                + " commas, for example \"en,tr,es\", or \"any\".");
+            }
+        }
     }
 }
