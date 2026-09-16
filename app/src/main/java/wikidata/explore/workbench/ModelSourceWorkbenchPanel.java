@@ -183,6 +183,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         graphConstraintsPanel.setProcessRunner(processRunner);
     }
 
+    public void graphInstances(
+            Supplier<java.util.Collection<? extends objectview.Viewable>> instances) {
+        graphConstraintsPanel.loadedInstances(instances);
+    }
+
     public void afterChange(
             Consumer<Void> afterChange) {
 

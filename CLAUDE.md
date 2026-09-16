@@ -181,6 +181,18 @@ construct per thing produced:
    point uses the shared persistence confirmation UI and names the domain, instances,
    model/types and exact files that the specific operation will read or write.
 
+18. **A reusable instance population is a `PopulationSelection`.** It stores one class
+   name and the stable datasource identities of explicitly chosen instances, never copies
+   of their mutable objects. Sampling and highlighting only edit the draft; saving is an
+   explicit action that names the selection, count and model file. Graphs consume this same
+   saved construct rather than owning another QID list.
+
+19. **A graph constraint names its annotation set.** Its name is authored, persisted and
+   shaped like a Java class name. A run uses that exact name for the produced annotation
+   instance type and saved TransformApp domain; the containing domain's name is not a
+   substitute. A class graph input means all currently loaded instances of that class,
+   while a saved population is one alternative input that already names its class.
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until

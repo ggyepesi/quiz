@@ -58,11 +58,11 @@ class SelectionTest {
                 ((VocabularySelection) found).valueQids());
     }
 
-    @Test void aPopulationNeedsARelationToBeConfigured() {
+    @Test void aPopulationNeedsAClassAndInstancesToBeConfigured() {
         PopulationSelection pop = new PopulationSelection("OscarNominees");
-        assertFalse(pop.isConfigured(), "no relation yet");
-        pop.relationPid("P1411");
-        pop.targetQids(List.of("Q102427"));
+        assertFalse(pop.isConfigured(), "no class or instances yet");
+        pop.className("Position");
+        pop.instanceQids(List.of("Q102427"));
         assertTrue(pop.isConfigured());
     }
 
@@ -73,8 +73,8 @@ class SelectionTest {
                 .entityClassName("Person");
         p.addSelection(oscarCategories());
         PopulationSelection pop = new PopulationSelection("OscarNominees");
-        pop.relationPid("P1411");
-        pop.targetQids(List.of("Q102427", "Q106301"));
+        pop.className("Position");
+        pop.instanceQids(List.of("Q102427", "Q106301"));
         p.addSelection(pop);
         p.addSelection(new RoleSelection("Nominee", "Nomination", "nominee"));
         p.addClass(new GeneratedClassModel("Person"));
@@ -94,8 +94,8 @@ class SelectionTest {
         PopulationSelection pop2 =
                 (PopulationSelection) loaded.findSelection("OscarNominees");
         assertEquals(Selection.Kind.POPULATION, pop2.kind());
-        assertEquals("P1411", pop2.relationPid());
-        assertEquals(List.of("Q102427", "Q106301"), pop2.targetQids());
+        assertEquals("Position", pop2.className());
+        assertEquals(List.of("Q102427", "Q106301"), pop2.instanceQids());
 
         RoleSelection role = (RoleSelection) loaded.findSelection("Nominee");
         assertEquals(Selection.Kind.ROLE, role.kind());

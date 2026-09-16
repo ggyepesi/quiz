@@ -12,6 +12,7 @@ import wikidata.api.WikidataEntityLabelResolver;
 import wikidata.explore.generation.WikidataGraphAdjacencyAcquisition;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.query.core.Datasource;
 import wikidata.explore.query.core.WikidataAccess;
 import work.Query;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
 
 /** Explicit, read-only execution of the graph saved in ModelBuilder configuration. */
 public final class ConfiguredGraphDiscoveryQuery
@@ -41,27 +43,46 @@ public final class ConfiguredGraphDiscoveryQuery
 
     private final GraphDiscoveryConfiguration configuration;
     private final List<EntityRef> start;
+    private final String startClass;
 
-    public ConfiguredGraphDiscoveryQuery(GeneratedProjectModel model) {
+    public ConfiguredGraphDiscoveryQuery(
+            GeneratedProjectModel model, Collection<? extends objectview.Viewable> loadedInstances) {
         if (model == null || model.graphDiscoveryConfiguration() == null) {
             throw new IllegalArgumentException("Apply a discovery graph before running it");
         }
         configuration = model.graphDiscoveryConfiguration();
-        String startClass = configuration.startNode().qidSourceClass();
-        GeneratedClassModel source = model.findClass(startClass);
-        // A class can be deleted after the graph names it, and nothing validates the
-        // reference until here. Saying it has no QIDs would send the reader to look
-        // at QIDs on a class that is not there.
-        if (source == null) {
-            throw new IllegalArgumentException("The graph starts from class '"
-                    + startClass + "', which this model no longer has");
+        String selectionName = configuration.startNode().populationSelection();
+        List<String> qids;
+        if (!selectionName.isBlank()) {
+            var selected = model.findSelection(selectionName);
+            if (!(selected instanceof PopulationSelection population)) {
+                throw new IllegalArgumentException("The graph starts from population selection '"
+                        + selectionName + "', which this model no longer has");
+            }
+            startClass = population.className();
+            qids = population.instanceQids();
+        } else {
+            startClass = configuration.startNode().qidSourceClass();
+            if (model.findClass(startClass) == null) {
+                throw new IllegalArgumentException("The graph starts from class '"
+                        + startClass + "', which this model no longer has");
+            }
+            qids = (loadedInstances == null ? List.<objectview.Viewable>of()
+                    : loadedInstances.stream().map(objectview.Viewable.class::cast).toList())
+                    .stream()
+                    .filter(instance -> instance.directClassNames().contains(startClass))
+                    .map(quiz.source.SourceIdentities::wikidataQid)
+                    .filter(java.util.Objects::nonNull).toList();
         }
-        start = source.seedQids().stream()
+        start = qids.stream()
                 .filter(WikidataIds::isQid).distinct()
                 .map(EntityRef::wikidata).toList();
         if (start.isEmpty()) {
             throw new IllegalArgumentException(
-                    "The start class '" + startClass + "' has no configured QIDs");
+                    selectionName.isBlank()
+                            ? "No loaded " + configuration.startNode().qidSourceClass()
+                                    + " instance has a Wikidata source QID"
+                            : "Population selection '" + selectionName + "' has no instance QIDs");
         }
     }
 
@@ -74,7 +95,8 @@ public final class ConfiguredGraphDiscoveryQuery
         return "Runs the saved graph without changing class populations or generation.";
     }
     @Override public Map<String, String> parameters() {
-        return Map.of("startClass", configuration.startNode().qidSourceClass(),
+        return Map.of("startClass", startClass,
+                "populationSelection", configuration.startNode().populationSelection(),
                 "startQids", String.valueOf(start.size()),
                 "nodes", String.valueOf(configuration.nextNodes().size()));
     }

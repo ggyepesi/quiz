@@ -752,8 +752,8 @@ public class SingleRootClassModelPanel extends JPanel {
                 if (seln instanceof VocabularySelection v) {
                     detail = "vocabulary · " + v.valueQids().size() + " value(s)";
                 } else if (seln instanceof PopulationSelection p) {
-                    detail = "population"
-                            + (p.relationPid().isBlank() ? "" : " · " + p.relationPid());
+                    detail = "population · " + p.className() + " · "
+                            + p.instanceQids().size() + " instance(s)";
                 } else {
                     detail = String.valueOf(seln.kind());
                 }

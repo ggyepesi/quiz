@@ -1,10 +1,5 @@
 package wikidata.explore.extract;
 
-import wikidata.WikidataIds;
-
-import wikidata.explore.extract.WikidataDynamicObject;
-
-import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.PopulationSelection;
@@ -20,7 +15,7 @@ import java.util.Map;
  * browse even though a Selection is never a served product. This is what keeps a
  * Selection's content inspectable: a vocabulary genuinely IS its values, so you can
  * see its members (labelled) in the workbench without it being a class; a population
- * IS the subjects its relation selects, so a bounded sample of them is browsable too.
+ * IS its explicitly saved instance identities, so those same members are browsable too.
  *
  * <p>The same resolution feeds the later slices — the reify value constraint reads
  * the QID set, and reference rendering reads the labels.
@@ -35,10 +30,8 @@ public final class SelectionContentResolver {
      *       objects via {@code wbgetentities}. A type-only vocabulary (bounded solely
      *       by a P31 filter) resolves to nothing here (it needs a query, not a QID
      *       lookup).</li>
-     *   <li>{@link PopulationSelection} — a BOUNDED SPARQL sample of the subjects that
-     *       carry its relation into its targets, then labelled. Requires a {@code Pxxx}
-     *       relation AND at least one {@code Qxxx} target and a non-null {@code sparql}
-     *       client — otherwise empty (no unbounded all-of-Wikidata scan).</li>
+     *   <li>{@link PopulationSelection} — its explicit instance QIDs, labelled through
+     *       the same entity lookup as a vocabulary.</li>
      * </ul>
      *
      * @param limit the maximum number of population subjects to sample (ignored for a
@@ -60,66 +53,17 @@ public final class SelectionContentResolver {
             return labelled(vocab.valueQids(), api, selection.name(), sink);
         }
         if (selection instanceof PopulationSelection population) {
-            return resolvePopulation(population, sparql, api, limit, sink);
+            return labelled(population.instanceQids(), api, selection.name(), sink);
         }
         return new ArrayList<>();
     }
 
     /**
-     * Thin overload without a SPARQL client: a {@link VocabularySelection} still
-     * resolves; a {@link PopulationSelection} returns empty (it needs the client for
-     * its bounded query).
+     * Thin overload without a SPARQL client: both explicit selection kinds resolve.
      */
     public List<WikidataDynamicObject> resolve(
             Selection selection, WikidataApiClient api, GenerationLog log) {
         return resolve(selection, null, api, 0, log);
-    }
-
-    private List<WikidataDynamicObject> resolvePopulation(
-            PopulationSelection population,
-            WikidataSparqlClient sparql,
-            WikidataApiClient api,
-            int limit,
-            GenerationLog sink) {
-
-        List<WikidataDynamicObject> out = new ArrayList<>();
-        String relationPid = population.relationPid();
-        List<String> targets = new ArrayList<>();
-        for (String q : population.targetQids()) {
-            if (q != null && q.matches("(?i)Q\\d+")) {
-                targets.add(q);
-            }
-        }
-
-        // Guard: a bounded query needs a relation, at least one target and a client.
-        // Otherwise we'd scan all of Wikidata (or have nothing to run at all).
-        if (sparql == null
-                || limit <= 0
-                || !relationPid.matches("(?i)P\\d+")
-                || targets.isEmpty()) {
-            return out;
-        }
-
-        List<String> qids = new ArrayList<>();
-        String query = buildPopulationQuery(relationPid, targets, limit);
-        try {
-            for (WikidataBinding binding : sparql.query(query)) {
-                String qid = binding.qid("subject");
-                if (qid != null && WikidataIds.isQid(qid) && !qids.contains(qid)) {
-                    qids.add(qid);
-                }
-            }
-        } catch (Exception ex) {
-            if (Thread.currentThread().isInterrupted()) {
-                Thread.currentThread().interrupt();
-            } else {
-                sink.message("Selection \"" + population.name()
-                        + "\" subject sampling failed (" + ex.getMessage() + ")\n");
-            }
-            return out;
-        }
-
-        return labelled(qids, api, population.name(), sink);
     }
 
     /** Labels a list of QIDs via {@code wbgetentities}, in the given order,
@@ -160,15 +104,4 @@ public final class SelectionContentResolver {
         return out;
     }
 
-    private static String buildPopulationQuery(
-            String relationPid, List<String> targets, int limit) {
-        StringBuilder q = new StringBuilder(
-                "SELECT DISTINCT ?subject WHERE {\n  ?subject wdt:")
-                .append(relationPid).append(" ?value .\n  VALUES ?value {");
-        for (String qid : targets) {
-            q.append(" wd:").append(qid);
-        }
-        q.append(" }\n} LIMIT ").append(limit);
-        return q.toString();
-    }
 }

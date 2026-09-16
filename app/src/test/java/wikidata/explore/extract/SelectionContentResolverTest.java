@@ -3,13 +3,11 @@ package wikidata.explore.extract;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import org.junit.jupiter.api.Test;
-import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
 import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.VocabularySelection;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,20 +55,17 @@ class SelectionContentResolverTest {
                 .resolve(s, new FakeWikidataApiClient(), null).isEmpty());
     }
 
-    @Test void populationResolvesItsSampledSubjectsLabelled() {
-        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
-                .row(Map.of("subject", "Q105883400"))
-                .row(Map.of("subject", "Q38195662"));
+    @Test void populationResolvesItsSavedInstancesLabelled() {
         FakeWikidataApiClient api = new FakeWikidataApiClient()
                 .entity("Q105883400", "The Whale")
                 .entity("Q38195662", "Everything Everywhere All at Once");
 
         PopulationSelection pop = new PopulationSelection("OscarNominees");
-        pop.relationPid("P1411");                 // nominated for
-        pop.targetQids(List.of("Q106301"));       // into a category (bounds the scan)
+        pop.className("Film");
+        pop.instanceQids(List.of("Q105883400", "Q38195662"));
 
         List<WikidataDynamicObject> content = new SelectionContentResolver()
-                .resolve(pop, sparql, api, 200, null);
+                .resolve(pop, api, null);
 
         assertEquals(2, content.size());
         assertEquals("Q105883400", content.get(0).qid());
@@ -79,10 +74,9 @@ class SelectionContentResolverTest {
                 content.get(1).getDisplayName());
     }
 
-    @Test void populationWithoutASparqlClientResolvesToNothing() {
+    @Test void emptyPopulationResolvesToNothing() {
         PopulationSelection pop = new PopulationSelection("OscarNominees");
-        pop.relationPid("P1411");
-        pop.targetQids(List.of("Q106301"));
+        pop.className("Film");
         assertTrue(new SelectionContentResolver()
                 .resolve(pop, new FakeWikidataApiClient(), null).isEmpty());
     }

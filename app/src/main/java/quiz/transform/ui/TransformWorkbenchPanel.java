@@ -1169,7 +1169,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         fetch.setEnabled(!sample.isEmpty());
         fetch.addActionListener(e -> startWikidataStatementDiscovery(
                 List.copyOf(experimentSelection.values())));
-        actions.add(remove); actions.add(fetch);
+        actions.add(remove);
+        PopulationSelectionStore selectionStore =
+                controller.domain().capability(PopulationSelectionStore.class);
+        if (selectionStore != null) {
+            JButton saveSelection = new JButton("Save population selection…");
+            saveSelection.addActionListener(e -> savePopulationSelection(selectionStore, type));
+            actions.add(saveSelection);
+        }
+        actions.add(fetch);
         selected.add(actions, BorderLayout.NORTH);
         experimentSelectedView = flatView(sample, type,
                 values -> selectedExperimentInstances = values, value -> null);
@@ -1187,6 +1195,37 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             experimentTabs.setTitleAt(1, "Selected for experiment — " + count);
         }
         if (experimentFetchButton != null) experimentFetchButton.setEnabled(count > 0);
+    }
+
+    private void savePopulationSelection(PopulationSelectionStore store, String className) {
+        List<String> qids = experimentSelection.keySet().stream().toList();
+        if (qids.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No instances are selected for the experiment.");
+            return;
+        }
+        String proposed = className + "Selection";
+        String name = JOptionPane.showInputDialog(this,
+                "Selection name:", proposed);
+        if (name == null) return;
+        name = name.trim();
+        if (name.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Enter a selection name.");
+            return;
+        }
+        // The shared persistence confirmation, like every other point that writes:
+        // one verb, one Cancel default, one owner, and the exact file named.
+        String description = "Save population selection \"" + name + "\" with "
+                + qids.size() + " " + className + " instance QIDs to\n"
+                + store.modelFile().getPath();
+        if (!quiz.ui.Dialogs.confirmPersistence(this, "Save selection", description)) return;
+        try {
+            store.savePopulationSelection(name, className, qids);
+            JOptionPane.showMessageDialog(this, description,
+                    "Population selection saved", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
+                    "Population selection not saved", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private static void appendViewables(

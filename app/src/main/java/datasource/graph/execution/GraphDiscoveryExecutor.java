@@ -221,7 +221,10 @@ public final class GraphDiscoveryExecutor {
             GraphDiscoveryConfiguration graph,
             GraphDiscoveryConfiguration.NextNode node,
             int index) {
-        String source = index == 1 ? graph.startNode().qidSourceClass()
+        String source = index == 1
+                ? (graph.startNode().populationSelection().isBlank()
+                        ? graph.startNode().qidSourceClass()
+                        : graph.startNode().populationSelection())
                 : "Graph node " + (index - 1);
         String target = node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                 ? node.populationClass() : "Graph node " + index;

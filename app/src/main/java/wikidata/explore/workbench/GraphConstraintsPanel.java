@@ -68,10 +68,19 @@ final class GraphConstraintsPanel extends JPanel {
                     + " executes it, and it changes no class population.";
 
     private final GeneratedProjectModel model;
+    private final JTextField graphNameField = new JTextField("GraphConstraint", 22);
     /** Whether the controls hold THIS model's graph, as opposed to construction
      *  defaults. Read by {@link #applyPendingEdits()}; see there for why it matters. */
     private boolean populated;
-    private final JComboBox<GeneratedClassModel> startClassBox = new JComboBox<>();
+    private record StartInput(String className, String populationName, int count) {
+        boolean population() { return !populationName.isBlank(); }
+        @Override public String toString() {
+            return population() ? "Population: " + populationName + " · " + className
+                    + " · " + count + " instances"
+                    : "Class: " + className + " · " + count + " loaded instances";
+        }
+    }
+    private final JComboBox<StartInput> startInputBox = new JComboBox<>();
     private final JComboBox<GraphDiscoveryConfiguration.NodeUse> startUseBox = useBox();
     private final JLabel startQids = new JLabel();
     private final JTextField edgePidField = new JTextField(8);
@@ -106,6 +115,8 @@ final class GraphConstraintsPanel extends JPanel {
     private Consumer<Void> afterChange = ignored -> {};
     private BiConsumer<String, String> errorDialog;
     private boolean loading;
+    private java.util.function.Supplier<java.util.Collection<? extends Viewable>> loadedInstances =
+            java.util.List::of;
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
@@ -135,12 +146,18 @@ final class GraphConstraintsPanel extends JPanel {
         updateRunEnabled();
     }
 
+    void loadedInstances(
+            java.util.function.Supplier<java.util.Collection<? extends Viewable>> value) {
+        loadedInstances = value == null ? java.util.List::of : value;
+        refreshStartInputs();
+    }
+
     private void runGraph() {
         if (runner == null || runner.isRunning()) return;
         try {
             GeneratedProjectModel snapshot = model.copy();
             ConfiguredGraphDiscoveryQuery query =
-                    new ConfiguredGraphDiscoveryQuery(snapshot);
+                    new ConfiguredGraphDiscoveryQuery(snapshot, loadedInstances.get());
             ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(List.of(
                     new ProcessWorkflowPipeline.Phase(
                             "discover-graph", "Discover and classify graph nodes",
@@ -148,7 +165,8 @@ final class GraphConstraintsPanel extends JPanel {
                                     + "each reached entity.", graphDetails(snapshot))));
             ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result,
                     GraphDiscoveryResultStore.Artifact> action =
-                    graphWorkflow(query, pipeline, snapshot, graphSummary(snapshot));
+                    graphWorkflow(query, pipeline, snapshot,
+                            graphSummary(snapshot, loadedInstances.get()));
             SwingProcessWorkflow.start(this, runner, action);
         } catch (Exception error) {
             showGraphFailure(error);
@@ -170,7 +188,8 @@ final class GraphConstraintsPanel extends JPanel {
                         "Run graph", "Inspect the configured traversal and evidence tests, "
                                 + "then explicitly start discovery.",
                         List.of(ProcessWorkflowPlan.Tab.component(
-                                        "Graph", () -> graphPlanView(snapshot), true),
+                                        "Graph", () -> graphPlanView(
+                                                snapshot, loadedInstances.get()), true),
                                 new ProcessWorkflowPlan.Tab(
                                 "Scope", List.of(summary)))).withoutPipelineTab();
             }
@@ -192,11 +211,14 @@ final class GraphConstraintsPanel extends JPanel {
             }
             @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
                     ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome) {
-                return graphResults(outcome.result(), snapshot.name());
+                return graphResults(outcome.result(),
+                        snapshot.graphDiscoveryConfiguration().name());
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
                     throws Exception {
-                GraphDiscoveryResultStore.save(snapshot.name(), decisions.getFirst());
+                // The artifact was built from the graph's name and its instances carry
+                // it; naming it again here is how the two would come apart.
+                GraphDiscoveryResultStore.save(decisions.getFirst());
             }
         };
     }
@@ -212,17 +234,18 @@ final class GraphConstraintsPanel extends JPanel {
         try {
             refreshClasses();
             GraphDiscoveryConfiguration saved = model.graphDiscoveryConfiguration();
+            refreshStartInputs();
             if (saved != null) {
-                selectClass(startClassBox, saved.startNode().qidSourceClass());
+                graphNameField.setText(saved.name());
+                selectStart(saved.startNode());
                 startUseBox.setSelectedItem(saved.startNode().use());
                 if (!saved.nextNodes().isEmpty()) load(saved.nextNodes().getFirst());
             }
-            refreshForStartClass();
             refreshTargetState();
             refreshArrow();
             status(saved == null ? "No discovery graph configured."
                     : saved.nextNodes().isEmpty()
-                    ? "Start node saved: " + saved.startNode().qidSourceClass()
+                    ? "Start node saved: " + startInputLabel(model, saved.startNode())
                             + ". Add the property connecting the two nodes to complete"
                             + " the graph."
                     : "Configured." + RUN_ONLY, false);
@@ -266,9 +289,14 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     void applyEdits() {
-        GeneratedClassModel start = selectedClass(startClassBox);
+        StartInput start = selectedStart();
         if (start == null) return;
         try {
+            String graphName = graphNameField.getText().trim();
+            if (!graphName.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
+                throw new IllegalArgumentException(
+                        "Enter a graph constraint name shaped like a Java class name");
+            }
             String pid = cleanPid(edgePidField.getText());
             // Apply only ever SAVES; removing is its own button. The start node is a
             // decision in its own right and is kept as one: a graph is authored in the
@@ -278,11 +306,12 @@ final class GraphConstraintsPanel extends JPanel {
             // in the list. An edgeless graph traverses nothing, so Run stays disabled
             // and the status says what the graph still needs.
             if (pid.isEmpty() && evidenceModel.isEmpty() && testsModel.isEmpty()) {
-                model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+                model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(graphName,
                         new GraphDiscoveryConfiguration.StartNode(
-                                start.className(), use(startUseBox)),
+                                start.population() ? "" : start.className(),
+                                start.populationName(), use(startUseBox)),
                         List.of()));
-                status("Start node saved: " + start.className()
+                status("Start node saved: " + start
                         + ". Add the property connecting the two nodes to complete"
                         + " the graph.", false);
                 updateRunEnabled();
@@ -306,8 +335,10 @@ final class GraphConstraintsPanel extends JPanel {
                     targetUse == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                             && targetClass != null ? targetClass.className() : "",
                     evidence);
-            model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
-                    new GraphDiscoveryConfiguration.StartNode(start.className(), use(startUseBox)),
+            model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(graphName,
+                    new GraphDiscoveryConfiguration.StartNode(
+                            start.population() ? "" : start.className(),
+                            start.populationName(), use(startUseBox)),
                     List.of(target)));
             status("Applied discovery graph." + RUN_ONLY, false);
             updateRunEnabled();
@@ -316,7 +347,8 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void buildUi() {
-        startClassBox.setName("graph.startClass");
+        graphNameField.setName("graph.name");
+        startInputBox.setName("graph.startInput");
         startUseBox.setName("graph.startUse");
         startQids.setName("graph.startQids");
         edgePidField.setName("graph.edgeProperty");
@@ -355,7 +387,7 @@ final class GraphConstraintsPanel extends JPanel {
         bottom.add(actions, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
 
-        startClassBox.addActionListener(e -> { if (!loading) refreshForStartClass(); });
+        startInputBox.addActionListener(e -> { if (!loading) refreshStartCount(); });
         edgePidField.getDocument().addDocumentListener(SimpleDocumentListener.of(this::refreshArrow));
         directionBox.addActionListener(e -> refreshArrow());
         targetUseBox.addActionListener(e -> refreshTargetState());
@@ -376,10 +408,11 @@ final class GraphConstraintsPanel extends JPanel {
 
     private JPanel startNodePanel() {
         JPanel panel = nodePanel("Start node");
-        addLine(panel, "Start with QIDs configured on class:", startClassBox);
-        addLine(panel, "Configured QIDs:", startQids);
+        addLine(panel, "Graph constraint name:", graphNameField);
+        addLine(panel, "Start with:", startInputBox);
+        addLine(panel, "Usable Wikidata QIDs:", startQids);
         addLine(panel, "Use these entities as:", startUseBox);
-        panel.add(new JLabel("The graph has no separate QID list."));
+        panel.add(new JLabel("A saved population selection is an exact reusable QID set."));
         return panel;
     }
 
@@ -446,23 +479,71 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void refreshClasses() {
-        startClassBox.removeAllItems(); targetClassBox.removeAllItems();
+        targetClassBox.removeAllItems();
         for (GeneratedClassModel clazz : model.classes()) {
             if (clazz == null || clazz.isImported()) continue;
-            startClassBox.addItem(clazz); targetClassBox.addItem(clazz);
+            targetClassBox.addItem(clazz);
         }
     }
 
-    private void refreshForStartClass() {
+    private void refreshStartInputs() {
         boolean previousLoading = loading;
         loading = true;
         try {
-        GeneratedClassModel start = selectedClass(startClassBox);
-        int count = start == null ? 0 : start.seedQids().size();
-        startQids.setText(count + (count == 1 ? " QID" : " QIDs"));
+            StartInput keep = selectedStart();
+            startInputBox.removeAllItems();
+            java.util.Collection<? extends Viewable> instances = loadedInstances.get();
+            for (GeneratedClassModel clazz : model.classes()) {
+                if (clazz == null || clazz.isImported()) continue;
+                int count = loadedQids(instances, clazz.className()).size();
+                startInputBox.addItem(new StartInput(clazz.className(), "", count));
+            }
+            for (Selection selection : model.selections()) {
+                if (selection instanceof PopulationSelection population) {
+                    startInputBox.addItem(new StartInput(population.className(),
+                            population.name(), population.instanceQids().size()));
+                }
+            }
+            if (keep != null) selectStart(keep);
+            refreshStartCount();
         } finally {
             loading = previousLoading;
         }
+    }
+
+    private void refreshStartCount() {
+        StartInput start = selectedStart();
+        int count = start == null ? 0 : start.count();
+        startQids.setText(count + (count == 1 ? " QID" : " QIDs"));
+    }
+
+    private StartInput selectedStart() {
+        return startInputBox.getSelectedItem() instanceof StartInput input ? input : null;
+    }
+
+    private void selectStart(GraphDiscoveryConfiguration.StartNode start) {
+        selectStart(new StartInput(start.qidSourceClass(), start.populationSelection(), 0));
+    }
+
+    private void selectStart(StartInput wanted) {
+        for (int i = 0; i < startInputBox.getItemCount(); i++) {
+            StartInput candidate = startInputBox.getItemAt(i);
+            if (wanted.populationName().equals(candidate.populationName())
+                    && (wanted.population() || wanted.className().equals(candidate.className()))) {
+                startInputBox.setSelectedIndex(i);
+                refreshStartCount();
+                return;
+            }
+        }
+    }
+
+    private static List<String> loadedQids(
+            java.util.Collection<? extends Viewable> instances, String className) {
+        if (instances == null) return List.of();
+        return instances.stream()
+                .filter(value -> value.directClassNames().contains(className))
+                .map(quiz.source.SourceIdentities::wikidataQid)
+                .filter(java.util.Objects::nonNull).distinct().toList();
     }
 
     private void refreshTargetState() {
@@ -655,7 +736,7 @@ final class GraphConstraintsPanel extends JPanel {
     ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
             ConfiguredGraphDiscoveryQuery.Result result, String projectName) {
         GraphDiscoveryResultStore.Artifact artifact =
-                GraphDiscoveryResultStore.artifact(result);
+                GraphDiscoveryResultStore.artifact(projectName, result);
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -697,7 +778,7 @@ final class GraphConstraintsPanel extends JPanel {
                         .map(value -> new ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>(
                                 value, () -> null, false)).toList();
         return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
-                artifact.model().representativeSample(GraphDiscoveryResultStore.TYPE));
+                artifact.model().representativeSample(artifact.type()));
     }
 
     private static List<String> decisionValue(WikidataDynamicObject value) {
@@ -779,6 +860,11 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     static DynamicViewable graphSummary(GeneratedProjectModel snapshot) {
+        return graphSummary(snapshot, List.of());
+    }
+
+    static DynamicViewable graphSummary(GeneratedProjectModel snapshot,
+            java.util.Collection<? extends Viewable> instances) {
         GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
         DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
         summary.type("Graph discovery");
@@ -791,10 +877,13 @@ final class GraphConstraintsPanel extends JPanel {
         summary.put("Results",
                 "Rebuild and save every start and reached entity for TransformApp");
         summary.put("Results file",
-                GraphDiscoveryResultStore.destination(snapshot.name()).getPath());
-        summary.put("Start class", graph.startNode().qidSourceClass());
-        GeneratedClassModel start = snapshot.findClass(graph.startNode().qidSourceClass());
-        summary.put("Start QIDs", start == null ? 0 : start.seedQids().size());
+                GraphDiscoveryResultStore.destination(graph.name()).getPath());
+        summary.put("Annotation set", graph.name());
+        summary.put("Start class", startClassName(snapshot, graph.startNode()));
+        summary.put("Start input", graph.startNode().populationSelection().isBlank()
+                ? "All loaded " + graph.startNode().qidSourceClass() + " instances"
+                : "Saved population " + graph.startNode().populationSelection());
+        summary.put("Start QIDs", startQidCount(snapshot, graph.startNode(), instances));
         if (!graph.nextNodes().isEmpty()) {
             GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
             summary.put("Edge", next.property().relationId() + " "
@@ -811,24 +900,37 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private static JComponent graphPlanView(GeneratedProjectModel snapshot) {
+        return graphPlanView(snapshot, List.of());
+    }
+
+    private static JComponent graphPlanView(GeneratedProjectModel snapshot,
+            java.util.Collection<? extends Viewable> instances) {
         GraphDiscoveryPlanDiagram diagram = new GraphDiscoveryPlanDiagram(
-                graphPlanModel(snapshot), reviewPolicy(snapshot));
+                graphPlanModel(snapshot, instances), reviewPolicy(snapshot));
         return new JScrollPane(diagram);
     }
 
     /** One graph-model projection of the configuration used by both tests and the plan view. */
     static GraphViewModel graphPlanModel(GeneratedProjectModel snapshot) {
+        return graphPlanModel(snapshot, List.of());
+    }
+
+    static GraphViewModel graphPlanModel(GeneratedProjectModel snapshot,
+            java.util.Collection<? extends Viewable> instances) {
         GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
         if (graph == null) return new GraphViewModel(List.of(), List.of());
         List<GraphViewModel.Node> nodes = new ArrayList<>();
         List<GraphViewModel.Edge> edges = new ArrayList<>();
-        GeneratedClassModel startClass = snapshot.findClass(graph.startNode().qidSourceClass());
-        nodes.add(new GraphViewModel.Node("start", graph.startNode().qidSourceClass(), null,
+        nodes.add(new GraphViewModel.Node("start", startClassName(snapshot, graph.startNode()), null,
                 0, GraphViewModel.State.EXPANDED,
                 java.util.Map.of(
-                        "QIDs", Integer.toString(startClass == null
-                                ? 0 : startClass.seedQids().size()),
-                        "Use", nodeUse(graph.startNode().use(), graph.startNode().qidSourceClass())),
+                        "QIDs", Integer.toString(startQidCount(
+                                snapshot, graph.startNode(), instances)),
+                        "Population", graph.startNode().populationSelection().isBlank()
+                                ? "All loaded class instances"
+                                : graph.startNode().populationSelection(),
+                        "Use", nodeUse(graph.startNode().use(),
+                                startClassName(snapshot, graph.startNode()))),
                 graph.startNode()));
         String previous = "start";
         int index = 0;
@@ -932,11 +1034,36 @@ final class GraphConstraintsPanel extends JPanel {
         GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
         if (graph == null || graph.nextNodes().isEmpty()) return List.of();
         GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
-        return List.of(graph.startNode().qidSourceClass() + " → "
+        return List.of(startInputLabel(snapshot, graph.startNode()) + " → "
                 + next.property().relationId() + " "
                 + directionLabel(next.directionFromPrevious()) + " → "
                 + (next.populationClass().isBlank() ? "intermediate node"
                 : next.populationClass()));
+    }
+
+    private static int startQidCount(GeneratedProjectModel model,
+            GraphDiscoveryConfiguration.StartNode start,
+            java.util.Collection<? extends Viewable> instances) {
+        Selection selection = model.findSelection(start.populationSelection());
+        if (selection instanceof PopulationSelection population) {
+            return population.instanceQids().size();
+        }
+        return loadedQids(instances, start.qidSourceClass()).size();
+    }
+
+    private static String startClassName(GeneratedProjectModel model,
+            GraphDiscoveryConfiguration.StartNode start) {
+        Selection selection = model.findSelection(start.populationSelection());
+        return selection instanceof PopulationSelection population
+                ? population.className() : start.qidSourceClass();
+    }
+
+    private static String startInputLabel(GeneratedProjectModel model,
+            GraphDiscoveryConfiguration.StartNode start) {
+        return start.populationSelection().isBlank()
+                ? "All loaded " + start.qidSourceClass() + " instances"
+                : "Population " + start.populationSelection() + " ("
+                        + startClassName(model, start) + ")";
     }
 
     private void updateRunEnabled() {

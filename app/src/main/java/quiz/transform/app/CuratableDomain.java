@@ -23,7 +23,7 @@ import domain.DomainSchemas;
  * SchemaView} when the base has one).
  */
 final class CuratableDomain extends DelegatingDomainModel implements Curatable,
-        quiz.curation.FieldRulePromoter {
+        quiz.curation.FieldRulePromoter, quiz.transform.ui.PopulationSelectionStore {
 
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
@@ -118,6 +118,30 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         if (modelFile == null || !modelFile.isFile()) return null;
         try { return new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile); }
         catch (Exception ignored) { return null; }
+    }
+
+    @Override public java.io.File modelFile() { return modelFile; }
+
+    @Override public void savePopulationSelection(
+            String name, String className, java.util.List<String> qids) throws Exception {
+        if (modelFile == null || !modelFile.isFile()) {
+            throw new IllegalStateException("This domain has no saved model file");
+        }
+        wikidata.explore.model.GeneratedProjectModel model =
+                new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile);
+        if (model.findClass(className) == null) {
+            throw new IllegalArgumentException("The model has no class named " + className);
+        }
+        wikidata.explore.model.PopulationSelection selection =
+                new wikidata.explore.model.PopulationSelection(name);
+        selection.className(className);
+        selection.instanceQids(qids);
+        if (!selection.isConfigured()) {
+            throw new IllegalArgumentException(
+                    "A population selection needs a name, a class and at least one QID");
+        }
+        model.replaceSelection(selection);
+        new wikidata.explore.model.GeneratedProjectModelStore().save(model, modelFile);
     }
     @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {

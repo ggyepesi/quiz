@@ -132,7 +132,7 @@ different layers:
 | | `wikidata.explore.model.PopulationSelection` | `datasource.api.acquisition.PopulationSelection` |
 |---|---|---|
 | what | an AUTHORED `Selection` the modeller names and saves | a RESOLVED instruction handed to a provider |
-| holds | `relationPid` + `targetQids` | `Kind` + `relationId` + `values` + `includeDescendants` |
+| holds | a class name + explicit instance QIDs | `Kind` + `relationId` + `values` + `includeDescendants` |
 | lives in | `model.json`, under `selections` | memory, during a run |
 | validity | a free-form bean; anything can be half-set | enforced in the constructor |
 
@@ -157,12 +157,9 @@ model.
 
 ### One thing to check before relying on the model-side one
 
-`wikidata.explore.model.PopulationSelection` is read by `SelectionContentResolver` and
-rendered by `SingleRootClassModelPanel`, but **nothing constructs one outside tests**, and
-no saved model contains one — every persisted selection is a `VocabularySelection`. So it
-may be an aspirational construct rather than a live one. Worth deciding deliberately: if
-`subjectBound`'s `instances of a class` mode covers what it was for, it should be deleted
-rather than left as a second way to say the same thing.
+`wikidata.explore.model.PopulationSelection` is the authored explicit population: TransformApp
+constructs it from a manually edited sample and saves its class-bound QIDs; Graph Constraints
+can select it as the exact reusable start population. It is not a second membership query.
 
 ## Sequence
 
@@ -182,7 +179,8 @@ rather than left as a second way to say the same thing.
    made before this or edited by hand. The object's authored form is still two fields
    behind one control — consolidating them into an authored `objectBound` is what
    remains.
-6. Decide the fate of the model-side `PopulationSelection`.
+6. ~~Decide the fate of the model-side `PopulationSelection`.~~ — **done**: it is the
+   persisted, class-bound explicit instance set used by TransformApp and graph inputs.
 
 Steps 1–3 change no behaviour on a correctly configured model; step 3 changes behaviour
 only where a model set both object bounds, which is the case that is silently broken now.

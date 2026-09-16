@@ -16,6 +16,7 @@ import process.swing.workflow.ProcessWorkflowResults;
 import quiz.transform.DynamicViewable;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 
 import javax.swing.*;
@@ -36,6 +37,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphConstraintsPanelTest {
 
+    @Test void graphStartIsOneChoiceBetweenALoadedClassAndASavedPopulation() {
+        GeneratedProjectModel model = model();
+        PopulationSelection positions = new PopulationSelection("PositionsForHistory");
+        positions.className("Position");
+        positions.instanceQids(List.of("Q1", "Q2"));
+        model.addSelection(positions);
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        wikidata.explore.extract.WikidataDynamicObject loaded =
+                new wikidata.explore.extract.WikidataDynamicObject("Q9", "Position 9");
+        loaded.type("Position");
+        panel.loadedInstances(() -> List.of(loaded));
+        JComboBox<?> inputs = named(panel, "graph.startInput", JComboBox.class);
+
+        assertEquals(List.of("Class: Position · 1 loaded instances",
+                        "Population: PositionsForHistory · Position · 2 instances"),
+                java.util.stream.IntStream.range(0, inputs.getItemCount())
+                        .mapToObj(i -> inputs.getItemAt(i).toString()).toList());
+        inputs.setSelectedIndex(1);
+        assertEquals("2 QIDs", named(panel, "graph.startQids", JLabel.class).getText());
+    }
+
     @Test void graphConstraintIsASeparateConfigurationSection() {
         GeneratedProjectModel model = model();
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
@@ -50,12 +72,13 @@ class GraphConstraintsPanelTest {
                 "the graph editor is not encoded in field configuration");
     }
 
-    @Test void configuredQidsAreReusedButApplyingIsExplicit() {
+    @Test void loadedClassInstancesAreShownButApplyingIsExplicit() {
         GeneratedProjectModel model = model();
-        GeneratedClassModel position = model.rootClass();
-        position.seedQids().add("Q4164871");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
-        panel.refresh();
+        wikidata.explore.extract.WikidataDynamicObject loaded =
+                new wikidata.explore.extract.WikidataDynamicObject("Q4164871", "Position");
+        loaded.type("Position");
+        panel.loadedInstances(() -> List.of(loaded));
 
         assertEquals("1 QID", named(panel, "graph.startQids", JLabel.class).getText());
 
@@ -118,7 +141,7 @@ class GraphConstraintsPanelTest {
                 "the graph must show its scope before execution");
         assertTrue(source.contains("ProcessWorkflowPlan.Tab.component("),
                 "the plan must show the configured graph as a diagram");
-        assertTrue(source.contains("graphPlanView(snapshot), true"),
+        assertTrue(source.contains("snapshot, loadedInstances.get()), true"),
                 "the diagram, not the generic pipeline card, must open first");
         assertTrue(source.contains(".withoutPipelineTab()"),
                 "the one-step pipeline repeats the graph plan and must stay hidden");
@@ -167,6 +190,7 @@ class GraphConstraintsPanelTest {
         model.name("Test");
         model.rootClass().seedQids().add("Q4164871");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        text(panel, "graph.name").setText("PositionValidity");
         text(panel, "graph.edgeProperty").setText("P31");
         button(panel, "Apply graph").doClick();
 
@@ -180,8 +204,9 @@ class GraphConstraintsPanelTest {
                 summary.get("Labels"));
         assertEquals("Rebuild and save every start and reached entity for TransformApp",
                 summary.get("Results"));
-        assertEquals("data/wikidata/transform/test-graph-result.snapshot.json",
+        assertEquals("data/wikidata/transform/positionvalidity.snapshot.json",
                 summary.get("Results file"));
+        assertEquals("PositionValidity", summary.get("Annotation set"));
         renderArtifact(new Card(summary,
                         ViewConfig.all(DynamicViewable.class), false),
                 "graph-run-loaded-and-repeated-work.png");
@@ -235,10 +260,10 @@ class GraphConstraintsPanelTest {
             return "saved";
         });
 
-        assertEquals("History — graph result", savedName.get());
+        assertEquals("History", savedName.get());
         assertEquals(3, savedMembers.get().size(),
                 "start and every reached entity are persisted");
-        assertEquals(List.of(GraphDiscoveryResultStore.TYPE),
+        assertEquals(List.of("History"),
                 savedDomain.get().servedTypes());
         assertEquals(List.of("Q1", "Q2", "Q3"), savedMembers.get().stream()
                 .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
@@ -251,14 +276,14 @@ class GraphConstraintsPanelTest {
                         instanceof java.util.List<?> sources && sources.size() == 1),
                 "every saved graph member has the normal Wikidata source field");
         objectview.field.FieldRef savedSource = savedDomain.get()
-                .fieldSchema(GraphDiscoveryResultStore.TYPE).fields().stream()
+                .fieldSchema("History").fields().stream()
                 .filter(field -> "wikidataSource".equals(field.name()))
                 .findFirst().orElseThrow();
         assertEquals(objectview.field.FieldRole.PROVENANCE, savedSource.role(),
                 "the artificial class model, not only its instances, declares the source");
         assertTrue(savedSource.reference());
         assertEquals(List.of("Start", "Accepted", "Review", "Rejected"),
-                savedDomain.get().valueSelection(GraphDiscoveryResultStore.TYPE,
+                savedDomain.get().valueSelection("History",
                         objectview.field.FieldPath.parse("Decision")).values());
         List<String> decisions = savedMembers.get().stream()
                 .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
@@ -274,24 +299,24 @@ class GraphConstraintsPanelTest {
                         new GraphDiscoveryExecutor.Result(List.of(start), List.of()),
                         java.util.Map.of("Q1", "Root"), 1);
         GraphDiscoveryResultStore.Artifact artifact =
-                GraphDiscoveryResultStore.artifact(result);
+                GraphDiscoveryResultStore.artifact("History", result);
 
-        assertEquals(List.of(GraphDiscoveryResultStore.TYPE), artifact.model().servedTypes());
+        assertEquals(List.of("History"), artifact.model().servedTypes());
         assertEquals("Root", artifact.instances().getFirst().getDisplayName());
         assertEquals("Q1", artifact.instances().getFirst().getIdentifier());
-        assertNotNull(artifact.model().fieldSchema(GraphDiscoveryResultStore.TYPE)
+        assertNotNull(artifact.model().fieldSchema("History")
                 .field("wikidataSource"));
         ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> preview =
                 GraphConstraintsPanel.artifactTab("Start", artifact, "Start");
         assertTrue(preview.cards().getFirst().view() == artifact.instances().getFirst(),
                 "the preview must render the exact instance later passed to Save result");
         assertNotNull(objectview.field.FieldSet.of(preview.shapeSample(),
-                        artifact.model().fieldSchema(GraphDiscoveryResultStore.TYPE))
+                        artifact.model().fieldSchema("History"))
                 .field("wikidataSource"),
                 "the preview must use the artificial model saved with those instances");
-        assertEquals("Save domain \"History — graph result\" with 1 instance, types "
-                        + "[GraphDiscoveryResult], and their model to data/wikidata/transform/"
-                        + "history-graph-result.snapshot.json.",
+        assertEquals("Save domain \"History\" with 1 instance, types "
+                        + "[History], and their model to data/wikidata/transform/"
+                        + "history.snapshot.json.",
                 GraphConstraintsPanel.saveDescription("History", artifact));
         ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results =
                 new GraphConstraintsPanel(model()).graphResults(result, "History");
@@ -364,9 +389,9 @@ class GraphConstraintsPanelTest {
         button(panel, "Run graph").doClick();
 
         assertEquals(List.of("Graph discovery failed",
-                "The start class 'Position' has no configured QIDs"), dialog);
+                "No loaded Position instance has a Wikidata source QID"), dialog);
         assertTrue(named(panel, "graph.status", JLabel.class).getText()
-                .contains("has no configured QIDs"));
+                .contains("No loaded Position instance"));
     }
 
     @Test void evidenceRequiresBothTheRelationAndItsTest() {
@@ -560,9 +585,8 @@ class GraphConstraintsPanelTest {
         GraphConstraintsPanel reopened =
                 find(reopenedWorkbench, GraphConstraintsPanel.class);
 
-        assertEquals("PositionDiscoveryStart", ((GeneratedClassModel) named(
-                        reopened, "graph.startClass", JComboBox.class).getSelectedItem())
-                        .className(),
+        assertTrue(named(reopened, "graph.startInput", JComboBox.class).getSelectedItem()
+                        .toString().startsWith("Class: PositionDiscoveryStart"),
                 "reopening the section must show the saved start class, not the first one");
     }
 
@@ -570,12 +594,10 @@ class GraphConstraintsPanelTest {
         return named(root, "graph.status", JLabel.class).getText();
     }
 
-    @SuppressWarnings("unchecked")
     private static void selectClass(Container root, String className) {
-        JComboBox<GeneratedClassModel> box =
-                named(root, "graph.startClass", JComboBox.class);
+        JComboBox<?> box = named(root, "graph.startInput", JComboBox.class);
         for (int i = 0; i < box.getItemCount(); i++) {
-            if (className.equals(box.getItemAt(i).className())) {
+            if (box.getItemAt(i).toString().startsWith("Class: " + className + " ·")) {
                 box.setSelectedIndex(i);
                 return;
             }
@@ -609,6 +631,44 @@ class GraphConstraintsPanelTest {
 
         assertNull(model.graphDiscoveryConfiguration(),
                 "an abandoned draft belongs to the domain that was closed, not the next one");
+    }
+
+    @Test void theSavedDomainIsNamedByWhatTheInstancesAreStampedWith() throws Exception {
+        // The artifact carries the graph constraint's name and stamps every instance
+        // with it. Passing a name to the write as well let the two come apart: rows
+        // typed one way inside a domain called another, with nothing to object.
+        EntityRef start = EntityRef.wikidata("Q1");
+        EntityRef accepted = EntityRef.wikidata("Q2");
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, null, new datasource.graph.GraphTraversalStep(
+                        "step", "Start", "Position", "Graph",
+                        new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphExpansionPolicy.CURATED),
+                List.of(accepted), List.of(accepted), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of());
+        ConfiguredGraphDiscoveryQuery.Result result =
+                new ConfiguredGraphDiscoveryQuery.Result(
+                        new GraphDiscoveryExecutor.Result(List.of(start), List.of(node)),
+                        java.util.Map.of("Q1", "Root", "Q2", "Kept"), 2);
+        GraphDiscoveryResultStore.Artifact artifact =
+                GraphDiscoveryResultStore.artifact("PositionLineage", result);
+        java.util.concurrent.atomic.AtomicReference<String> savedName =
+                new java.util.concurrent.atomic.AtomicReference<>();
+
+        GraphDiscoveryResultStore.save(artifact, (name, members, schema) -> {
+            savedName.set(name);
+            return "saved";
+        });
+
+        assertEquals("PositionLineage", artifact.type());
+        assertEquals(artifact.type(), savedName.get(),
+                "the write asks the artifact rather than being told a second time");
+        assertEquals(List.of("PositionLineage"),
+                artifact.instances().stream().map(
+                        wikidata.explore.extract.WikidataDynamicObject::typeName)
+                        .distinct().toList(),
+                "and the instances carry that same name");
     }
 
     private static GeneratedProjectModel model() {

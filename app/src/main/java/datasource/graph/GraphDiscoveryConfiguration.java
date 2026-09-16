@@ -9,16 +9,30 @@ import java.util.List;
  * independent: configured identities may start a traversal without becoming served
  * population members.
  */
-public record GraphDiscoveryConfiguration(StartNode startNode, List<NextNode> nextNodes) {
+public record GraphDiscoveryConfiguration(String name, StartNode startNode, List<NextNode> nextNodes) {
+    public GraphDiscoveryConfiguration(StartNode startNode, List<NextNode> nextNodes) {
+        this("GraphConstraint", startNode, nextNodes);
+    }
     public enum NodeUse {
         INTERMEDIATE_ONLY,
         CLASS_POPULATION
     }
 
-    /** QIDs come from the named class configuration; the graph owns no second QID list. */
-    public record StartNode(String qidSourceClass, NodeUse use) {
+    /**
+     * A class start reads QIDs from its currently loaded instances. A population start
+     * reads the exact QIDs owned by that saved population selection.
+     */
+    public record StartNode(String qidSourceClass, String populationSelection, NodeUse use) {
+        public StartNode(String qidSourceClass, NodeUse use) {
+            this(qidSourceClass, "", use);
+        }
         public StartNode {
-            qidSourceClass = required(qidSourceClass, "Start-node QID source class is required");
+            qidSourceClass = qidSourceClass == null ? "" : qidSourceClass.trim();
+            populationSelection = populationSelection == null ? "" : populationSelection.trim();
+            if (qidSourceClass.isBlank() == populationSelection.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Choose exactly one graph start: a loaded class or a saved population");
+            }
             use = use == null ? NodeUse.INTERMEDIATE_ONLY : use;
         }
     }
@@ -46,6 +60,9 @@ public record GraphDiscoveryConfiguration(StartNode startNode, List<NextNode> ne
     }
 
     public GraphDiscoveryConfiguration {
+        // Models saved before graph constraints were named load as the explicit legacy
+        // default; the editor requires a Java-style authored name on the next Apply.
+        name = name == null || name.isBlank() ? "GraphConstraint" : name.trim();
         if (startNode == null) throw new IllegalArgumentException("Start node is required");
         nextNodes = nextNodes == null ? List.of() : List.copyOf(nextNodes);
         if (nextNodes.stream().anyMatch(java.util.Objects::isNull)) {

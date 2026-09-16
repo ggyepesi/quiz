@@ -442,7 +442,8 @@ public class GeneratedProjectModel {
                                 node.evidenceCondition())
                         : node)
                 .toList();
-        graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(start, nodes);
+        graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(
+                graph.name(), start, nodes);
     }
 
     private static void renameFieldTargets(
@@ -616,6 +617,13 @@ public class GeneratedProjectModel {
             if (fieldsPointHere) renameFieldSelection(
                     clazz.fields(), previous, next, selection.declarationId());
         }
+        GraphDiscoveryConfiguration graph = graphDiscoveryConfiguration;
+        if (graph != null && graph.startNode().populationSelection()
+                .equalsIgnoreCase(previous)) {
+            graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(graph.name(),
+                    new GraphDiscoveryConfiguration.StartNode("", next,
+                            graph.startNode().use()), graph.nextNodes());
+        }
         return true;
     }
 
@@ -628,6 +636,9 @@ public class GeneratedProjectModel {
 
     public boolean selectionReferenced(String name) {
         if (name == null || name.isBlank()) return false;
+        if (graphDiscoveryConfiguration != null
+                && graphDiscoveryConfiguration.startNode().populationSelection()
+                        .equalsIgnoreCase(name)) return true;
         boolean fieldsPointHere = fieldTargetsResolveToSelection(name);
         for (GeneratedClassModel clazz : classes) {
             // A statement source names a SELECTION explicitly, so it is never ambiguous.

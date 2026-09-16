@@ -33,6 +33,7 @@ class GraphDiscoveryConfigurationPersistenceTest {
         GeneratedProjectModel loaded = store.load(file.toFile());
 
         GraphDiscoveryConfiguration restored = loaded.graphDiscoveryConfiguration();
+        assertEquals("PositionValidity", restored.name());
         assertEquals(GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
                 restored.startNode().use());
         assertEquals("Position", restored.startNode().qidSourceClass());
@@ -108,7 +109,7 @@ class GraphDiscoveryConfigurationPersistenceTest {
     }
 
     private static GraphDiscoveryConfiguration configuration() {
-        return new GraphDiscoveryConfiguration(
+        return new GraphDiscoveryConfiguration("PositionValidity",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(

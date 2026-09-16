@@ -11,6 +11,8 @@ import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.PopulationSelection;
+import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.query.core.WikidataAccess;
 
 import java.util.List;
@@ -27,7 +29,7 @@ class ConfiguredGraphDiscoveryQueryTest {
     @Test void executionReadsConfiguredSeedsWithoutChangingTheModel() throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
-        position.seedQids().add("Q4164871");
+        position.seedQids().add("Q999");
         model.rootClass(position);
         model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
                 new GraphDiscoveryConfiguration.StartNode("Position",
@@ -61,12 +63,14 @@ class ConfiguredGraphDiscoveryQueryTest {
             }
         };
 
-        var result = new ConfiguredGraphDiscoveryQuery(model).execute(
+        var result = new ConfiguredGraphDiscoveryQuery(model,
+                List.of(instance("Q4164871", "Position"))).execute(
                 WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind());
 
         assertEquals(List.of("Q1"), result.graph().nodes().getFirst().accepted()
                 .stream().map(datasource.EntityRef::id).toList());
-        assertEquals(List.of("Q4164871"), position.seedQids());
+        assertEquals(List.of("Q999"), position.seedQids(),
+                "class seeds are acquisition configuration, not the graph input");
         assertEquals(0, position.fields().size());
     }
 
@@ -74,7 +78,7 @@ class ConfiguredGraphDiscoveryQueryTest {
             throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
-        position.seedQids().add("Q4164871");
+        position.seedQids().add("Q999");
         model.rootClass(position);
         model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
                 new GraphDiscoveryConfiguration.StartNode("Position",
@@ -108,13 +112,40 @@ class ConfiguredGraphDiscoveryQueryTest {
                 .with(GraphStoreProvider.class,
                         (GraphStoreProvider) () -> new PersistentGraphStore(cacheDirectory));
 
-        var acquired = new ConfiguredGraphDiscoveryQuery(model).execute(context);
-        var repeated = new ConfiguredGraphDiscoveryQuery(model).execute(context);
+        var acquired = new ConfiguredGraphDiscoveryQuery(model,
+                List.of(instance("Q4164871", "Position"))).execute(context);
+        var repeated = new ConfiguredGraphDiscoveryQuery(model,
+                List.of(instance("Q4164871", "Position"))).execute(context);
 
         assertEquals(1, requests.get());
         assertEquals(acquired.graph(), repeated.graph(),
                 "disk replay supplies the same executor; only acquisition is skipped");
         assertEquals(List.of("Q1"), repeated.graph().nodes().getFirst().accepted()
                 .stream().map(datasource.EntityRef::id).toList());
+    }
+
+    @Test void aSavedPopulationSelectionIsTheExactGraphStart() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.seedQids().add("Q_CLASS_SEED_IS_NOT_A_QID");
+        model.rootClass(position);
+        PopulationSelection selected = new PopulationSelection("PositionsForHistory");
+        selected.className("Position");
+        selected.instanceQids(List.of("Q1", "Q2", "Q1"));
+        model.addSelection(selected);
+        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+                new GraphDiscoveryConfiguration.StartNode("", "PositionsForHistory",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY), List.of()));
+
+        ConfiguredGraphDiscoveryQuery query = new ConfiguredGraphDiscoveryQuery(model, List.of());
+
+        assertEquals("2", query.parameters().get("startQids"));
+        assertEquals("PositionsForHistory", query.parameters().get("populationSelection"));
+    }
+
+    private static WikidataDynamicObject instance(String qid, String type) {
+        WikidataDynamicObject value = new WikidataDynamicObject(qid, qid);
+        value.type(type);
+        return value;
     }
 }

@@ -6,18 +6,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A {@link Selection.Kind#POPULATION} Selection: a subject set — the entities that
- * carry {@link #relationPid()} into {@link #targetQids()} (e.g. the entities with
- * P1411 into the Oscar categories) that a reify draws its subjects from. An empty
- * {@code targetQids} means the relation alone.
- */
+/** A named, persisted set of instances of one declared class. The QIDs are stable
+ * datasource identities; the selection does not duplicate the instance objects. */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PopulationSelection extends Selection {
 
-    private String relationPid = "";
-    private final List<String> targetQids = new ArrayList<>();
+    private String className = "";
+    private final List<String> instanceQids = new ArrayList<>();
 
     public PopulationSelection() {
         super();
@@ -28,34 +24,34 @@ public class PopulationSelection extends Selection {
         super(name, Kind.POPULATION);
     }
 
-    public String relationPid() {
-        return relationPid == null ? "" : relationPid;
+    public String className() {
+        return className == null ? "" : className;
     }
 
-    public void relationPid(String value) {
-        relationPid = value == null ? "" : value.trim();
+    public void className(String value) {
+        className = value == null ? "" : value.trim();
     }
 
-    public List<String> targetQids() {
-        return targetQids;
+    public List<String> instanceQids() {
+        return instanceQids;
     }
 
-    public void targetQids(List<String> values) {
-        targetQids.clear();
-        addQids(targetQids, values);
+    public void instanceQids(List<String> values) {
+        instanceQids.clear();
+        addQids(instanceQids, values);
     }
 
     @Override
     public boolean isConfigured() {
-        return !name().isBlank() && relationPid().matches("(?i)P\\d+");
+        return !name().isBlank() && !className().isBlank() && !instanceQids.isEmpty();
     }
 
     @Override
     public PopulationSelection copy() {
         PopulationSelection c = new PopulationSelection(name());
         copyIdentityTo(c);
-        c.relationPid = relationPid;
-        c.targetQids.addAll(targetQids);
+        c.className = className;
+        c.instanceQids.addAll(instanceQids);
         return c;
     }
 }

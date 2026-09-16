@@ -742,6 +742,8 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.setQueryRunner(queryRunner);
         sourceWorkbench.setProcessRunner(processRunner);
+        sourceWorkbench.graphInstances(() -> lastRun == null
+                ? List.of() : lastRun.instances());
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> modelChanged());
@@ -1345,6 +1347,8 @@ public class ModelBuilderFrame extends JFrame {
             // which is how forgetFetchedDeclaration replaces a run without shutting one
             // that is still in use.
             replaceGenerationRun(run);
+            sourceWorkbench.graphInstances(() -> lastRun == null
+                    ? List.of() : lastRun.instances());
             savedGenerationRun = alreadySaved ? lastRun : null;
 
             if (run != null) {

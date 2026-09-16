@@ -306,13 +306,15 @@
 
 == Graph constraints - GraphConstraintsPanel ==
   box: Start node
-    label: Start with QIDs configured on class:
+    label: Graph constraint name:
+    text: [GraphConstraint]
+    label: Start with:
     combo: 1 item(s)
-    label: Configured QIDs:
+    label: Usable Wikidata QIDs:
     label: 0 QIDs
     label: Use these entities as:
     combo: 2 item(s)
-    label: The graph has no separate QID list.
+    label: A saved population selection is an exact reusable QID set.
   box: Incoming edge of next node
     label: ── property out ──▶
     label: Property:

@@ -303,15 +303,22 @@ carries only its own fields and illegal combinations are unrepresentable:
   - **union tag set** — the value *is an instance-of a member*. `nominee →
     NomineeTypes`: the value is Meryl Streep, whose `P31` *is* "human", one of the
     tags. The members are *types*, not values (see below).
-- **`PopulationSelection`** — a **subject set**: the entities matching a membership
-  relation (`relationPid` into `targetQids`), for a reify to draw its subjects from
-  — e.g. "the entities with `P1411` into the Oscar categories" (the nominee
-  subjects). Browsable (sampled) in the viewer via the resolver's POPULATION path.
+- **`PopulationSelection`** — a named, explicit set of instances of one class. It
+  stores the class name and the stable QIDs of the chosen instances, not copies of
+  their mutable objects. A sample can be edited in TransformApp, saved as a population,
+  and then reused exactly as a graph start without sampling again.
 
-A Selection is the right home for a **closed, known vocabulary**; a **bare
-identity-holder class** is the right home for an **open set discovered from data**.
-That asymmetry is the design rule: closed vocabulary → Selection; open discovered
-set → referenced-only class.
+A graph start is one choice: **Class: Position** means all currently loaded Position
+instances carrying a Wikidata source QID; **Population: PositionsForHistory** means the
+saved population, which already declares that its members are Positions. Class seed QIDs
+remain acquisition configuration and are not a third graph-input mode. Each graph
+constraint has an authored Java-style name; that exact name identifies the annotation
+instance type and saved result domain it produces.
+
+A Selection is the right home for an explicitly saved set; a **bare identity-holder
+class** is the right home for an open population discovered from data. Sampling and
+highlighting alone do not create a Selection: **Save population selection** names the
+selection, its class, its QID count and the model file it writes.
 
 ### Vocabulary as a union's type — `nominee` vs `ceremony`
 
