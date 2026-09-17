@@ -5,6 +5,7 @@ import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 import datasource.graph.constraint.*;
+import datasource.graph.execution.GraphDiscoveryExecutor;
 import graphview.GraphViewModel;
 import objectview.Viewable;
 import process.ProcessOutcome;
@@ -57,18 +58,18 @@ final class GraphConstraintsPanel extends JPanel {
 
     /**
      * What a saved graph does NOT do. Run graph classifies and displays; no class
-     * population and no snapshot move until #184 consumes the result. "Applied" is
+     * population and no snapshot move merely because the constraint was saved. "Applied" is
      * the word a reader takes for "in effect", so every line that reports a saved
      * graph carries this — the one after Apply most of all, because that is the line
      * shown at the moment the modeller acts. Delete it when generation consumes the
      * graph.
      */
     private static final String RUN_ONLY =
-            " Generation does not use it yet (#184); Run graph is the only thing that"
-                    + " executes it, and it changes no class population.";
+            " Run graph is the only thing that executes it. A run never changes a class"
+                    + " population; Create population selection stages reusable QIDs.";
 
     private final GeneratedProjectModel model;
-    private final JTextField graphNameField = new JTextField("GraphConstraint", 22);
+    private final JTextField graphNameField = new JTextField(22);
     /** Whether the controls hold THIS model's graph, as opposed to construction
      *  defaults. Read by {@link #applyPendingEdits()}; see there for why it matters. */
     private boolean populated;
@@ -106,6 +107,8 @@ final class GraphConstraintsPanel extends JPanel {
             reviewBox();
     private final JLabel status = new JLabel(" ");
     private final JButton run = new JButton("Run graph");
+    private final JButton createPopulationSelection =
+            new JButton("Create population selection…");
     /** The model holds ONE discovery graph, so removing it needs no selection — the
      *  button names the thing it removes. Enabled only while there is one to remove,
      *  which is also what keeps an unconfigured panel from offering a destructive act. */
@@ -117,6 +120,7 @@ final class GraphConstraintsPanel extends JPanel {
     private boolean loading;
     private java.util.function.Supplier<java.util.Collection<? extends Viewable>> loadedInstances =
             java.util.List::of;
+    private PopulationDraft lastPopulationDraft;
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
@@ -155,6 +159,7 @@ final class GraphConstraintsPanel extends JPanel {
     private void runGraph() {
         if (runner == null || runner.isRunning()) return;
         try {
+            clearCompletedPopulation();
             GeneratedProjectModel snapshot = model.copy();
             ConfiguredGraphDiscoveryQuery query =
                     new ConfiguredGraphDiscoveryQuery(snapshot, loadedInstances.get());
@@ -211,7 +216,7 @@ final class GraphConstraintsPanel extends JPanel {
             }
             @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
                     ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome) {
-                return graphResults(outcome.result(),
+                return graphResults(outcome.result(), snapshot.name(),
                         snapshot.graphDiscoveryConfiguration().name());
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
@@ -311,6 +316,7 @@ final class GraphConstraintsPanel extends JPanel {
                                 start.population() ? "" : start.className(),
                                 start.populationName(), use(startUseBox)),
                         List.of()));
+                clearCompletedPopulation();
                 status("Start node saved: " + start
                         + ". Add the property connecting the two nodes to complete"
                         + " the graph.", false);
@@ -340,6 +346,7 @@ final class GraphConstraintsPanel extends JPanel {
                             start.population() ? "" : start.className(),
                             start.populationName(), use(startUseBox)),
                     List.of(target)));
+            clearCompletedPopulation();
             status("Applied discovery graph." + RUN_ONLY, false);
             updateRunEnabled();
             afterChange.accept(null);
@@ -382,7 +389,10 @@ final class GraphConstraintsPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton clear = new JButton("Clear draft");
         JButton apply = new JButton("Apply graph");
-        actions.add(run); actions.add(removeGraph); actions.add(clear); actions.add(apply);
+        createPopulationSelection.setEnabled(false);
+        createPopulationSelection.setName("graph.createPopulationSelection");
+        actions.add(run); actions.add(createPopulationSelection); actions.add(removeGraph);
+        actions.add(clear); actions.add(apply);
         bottom.add(status, BorderLayout.CENTER);
         bottom.add(actions, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
@@ -393,6 +403,7 @@ final class GraphConstraintsPanel extends JPanel {
         targetUseBox.addActionListener(e -> refreshTargetState());
         testKindBox.addActionListener(e -> refreshTestQidState());
         apply.addActionListener(e -> applyEdits());
+        createPopulationSelection.addActionListener(e -> createPopulationSelection());
         removeGraph.addActionListener(e -> removeGraph());
         clear.addActionListener(e -> {
             evidenceModel.clear();
@@ -734,9 +745,17 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
-            ConfiguredGraphDiscoveryQuery.Result result, String projectName) {
+            ConfiguredGraphDiscoveryQuery.Result result, String graphName) {
+        return graphResults(result, model.name(), graphName);
+    }
+
+    ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
+            ConfiguredGraphDiscoveryQuery.Result result,
+            String projectName, String graphName) {
         GraphDiscoveryResultStore.Artifact artifact =
-                GraphDiscoveryResultStore.artifact(projectName, result);
+                GraphDiscoveryResultStore.artifact(projectName, graphName, result);
+        lastPopulationDraft = populationDraft(result);
+        createPopulationSelection.setEnabled(lastPopulationDraft != null);
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -752,9 +771,14 @@ final class GraphConstraintsPanel extends JPanel {
                 + (unavailable + incomplete == 0 ? "" : "; " + unavailable
                         + " unavailable, " + incomplete + " incomplete") + labels
                 + ". No class population was changed. "
-                + saveDescription(projectName, artifact);
+                + saveDescription(artifact)
+                + (lastPopulationDraft == null ? ""
+                : " Create population selection… will stage "
+                        + lastPopulationDraft.qids().size() + " "
+                        + lastPopulationDraft.className()
+                        + " QIDs in " + projectName + ".");
         status(summary, false);
-        String saveDescription = saveDescription(projectName, artifact);
+        String saveDescription = saveDescription(artifact);
         return new ProcessWorkflowResults<>("Run graph — results", summary, "Save result",
                 List.of(artifactTab("Start", artifact, "Start"),
                         artifactTab("Accepted", artifact, "Accepted"),
@@ -763,11 +787,112 @@ final class GraphConstraintsPanel extends JPanel {
                 () -> artifact, "Close without saving result", saveDescription);
     }
 
-    static String saveDescription(String projectName,
-                                  GraphDiscoveryResultStore.Artifact artifact) {
-        return new quiz.transform.app.DomainSaver().describeSave(
-                GraphDiscoveryResultStore.domainName(projectName),
-                artifact.instances(), artifact.model());
+    static String saveDescription(GraphDiscoveryResultStore.Artifact artifact) {
+        return "Save graph annotations \"" + artifact.type() + "\" for \""
+                + artifact.projectName() + "\" with " + artifact.instances().size()
+                + " instance" + (artifact.instances().size() == 1 ? "" : "s")
+                + " and their field model to "
+                + GraphDiscoveryResultStore.destination(
+                        artifact.projectName(), artifact.type()).getPath() + ".";
+    }
+
+    record PopulationDraft(String className, List<String> qids,
+                           int accepted, int review, int reviewIncluded, int rejected) {
+        PopulationDraft {
+            className = className == null ? "" : className.trim();
+            qids = qids == null ? List.of() : List.copyOf(qids);
+        }
+    }
+
+    static PopulationDraft populationDraft(ConfiguredGraphDiscoveryQuery.Result result) {
+        if (result == null || result.graph() == null) return null;
+        List<GraphDiscoveryExecutor.NodeResult> nodes = result.graph().nodes();
+        for (int i = nodes.size() - 1; i >= 0; i--) {
+            GraphDiscoveryExecutor.NodeResult node = nodes.get(i);
+            GraphDiscoveryConfiguration.NextNode configuration = node.configuration();
+            if (configuration == null
+                    || configuration.use()
+                            != GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                    || configuration.populationClass().isBlank()) continue;
+            java.util.LinkedHashSet<EntityRef> included = new java.util.LinkedHashSet<>(
+                    node.accepted());
+            node.classifications().stream()
+                    .filter(GraphEvidenceConditionResult::includedInPopulation)
+                    .map(GraphEvidenceConditionResult::node).forEach(included::add);
+            List<String> qids = node.reached().stream().filter(included::contains)
+                    .filter(entity -> "wikidata".equalsIgnoreCase(entity.namespace()))
+                    .map(EntityRef::id).distinct().toList();
+            int reviewIncluded = (int) node.classifications().stream()
+                    .filter(value -> value.decision()
+                            == GraphEvidenceConditionResult.Decision.REVIEW)
+                    .filter(GraphEvidenceConditionResult::includedInPopulation).count();
+            if (qids.isEmpty()) return null;
+            return new PopulationDraft(configuration.populationClass(), qids,
+                    node.accepted().size(), node.review().size(), reviewIncluded,
+                    node.rejected().size());
+        }
+        return null;
+    }
+
+    private void createPopulationSelection() {
+        PopulationDraft draft = lastPopulationDraft;
+        if (draft == null) {
+            status("Run a graph whose reached entities populate a class first.", true);
+            return;
+        }
+        if (model.findClass(draft.className()) == null) {
+            status("The completed graph populated class " + draft.className()
+                    + ", which is no longer in the loaded project. Run the graph again.", true);
+            return;
+        }
+        String graphName = model.graphDiscoveryConfiguration() == null ? ""
+                : model.graphDiscoveryConfiguration().name();
+        String proposed = graphName + draft.className() + "Population";
+        String name = JOptionPane.showInputDialog(this, "Population selection name:", proposed);
+        if (name == null) return;
+        name = name.trim();
+        if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
+            status("Enter a population selection name shaped like a Java class name", true);
+            return;
+        }
+        if (model.findClass(name) != null) {
+            status("A class already has the name " + name + ".", true);
+            return;
+        }
+        Selection existing = model.findSelection(name);
+        if (existing != null && existing.isImported()) {
+            status("Selection " + name + " is imported from " + existing.importedFrom()
+                    + " and must be changed there.", true);
+            return;
+        }
+        java.io.File modelFile = dataset.DomainStorage.inDefaultLocation()
+                .modelFileOf(model.name());
+        String description = "Create population selection \"" + name + "\" for class "
+                + draft.className() + " with " + draft.qids().size() + " QIDs ("
+                + draft.accepted() + " Accepted included; " + draft.reviewIncluded()
+                + " of " + draft.review() + " Review included; " + draft.rejected()
+                + " Rejected excluded).\n\n"
+                + "This changes the loaded " + (model.isModel() ? "model" : "domain")
+                + ". Save " + (model.isModel() ? "model" : "domain") + " will write it to\n"
+                + modelFile.getPath() + "."
+                + (existing == null ? "" : "\n\nThe existing selection of this name will be replaced.");
+        if (!quiz.ui.Dialogs.confirmPersistence(
+                this, "Create population selection", description)) return;
+        PopulationSelection selection = new PopulationSelection(name);
+        selection.className(draft.className());
+        selection.instanceQids(draft.qids());
+        model.replaceSelection(selection);
+        status("Created population selection " + name + " with " + draft.qids().size()
+                + " " + draft.className() + " QIDs in the loaded "
+                + (model.isModel() ? "model" : "domain") + ". Use \"Save "
+                + (model.isModel() ? "model" : "domain") + "\" to write "
+                + modelFile.getPath() + ".", false);
+        afterChange.accept(null);
+    }
+
+    private void clearCompletedPopulation() {
+        lastPopulationDraft = null;
+        createPopulationSelection.setEnabled(false);
     }
 
     static ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> artifactTab(
@@ -877,7 +1002,8 @@ final class GraphConstraintsPanel extends JPanel {
         summary.put("Results",
                 "Rebuild and save every start and reached entity for TransformApp");
         summary.put("Results file",
-                GraphDiscoveryResultStore.destination(graph.name()).getPath());
+                GraphDiscoveryResultStore.destination(
+                        snapshot.name(), graph.name()).getPath());
         summary.put("Annotation set", graph.name());
         summary.put("Start class", startClassName(snapshot, graph.startNode()));
         summary.put("Start input", graph.startNode().populationSelection().isBlank()
@@ -1080,7 +1206,9 @@ final class GraphConstraintsPanel extends JPanel {
     private void removeGraph() {
         if (model.graphDiscoveryConfiguration() == null) return;
         model.graphDiscoveryConfiguration(null);
-        status("Discovery graph removed. Save the domain to keep that.", false);
+        clearCompletedPopulation();
+        status("Discovery graph removed. Save the "
+                + (model.isModel() ? "model" : "domain") + " to keep that.", false);
         updateRunEnabled();
         afterChange.accept(null);
     }

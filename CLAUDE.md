@@ -187,11 +187,15 @@ construct per thing produced:
    explicit action that names the selection, count and model file. Graphs consume this same
    saved construct rather than owning another QID list.
 
-19. **A graph constraint names its annotation set.** Its name is authored, persisted and
-   shaped like a Java class name. A run uses that exact name for the produced annotation
-   instance type and saved TransformApp domain; the containing domain's name is not a
-   substitute. A class graph input means all currently loaded instances of that class,
-   while a saved population is one alternative input that already names its class.
+19. **A graph constraint names its annotation set.** Its name is explicitly authored (there
+   is no silent default), persisted and shaped like a Java class name. A run uses that exact
+   name for the produced annotation instance type. The annotation snapshot is a separate
+   TransformApp-loadable result but lives under the owning model/domain directory; it is not
+   an unrelated top-level dataset. From a completed `CLASS_POPULATION` node, an explicit
+   **Create population selection** action may stage the included QIDs as a class-bound
+   `PopulationSelection` in the loaded project; Save model/domain persists it. A class graph
+   input means all currently loaded instances of that class, while a saved population is one
+   alternative input that already names its class.
 
 20. **Model reuse and local execution are independent.** `MODEL` means its declarations
    and relevant selections may be imported; it does not mean the project cannot generate.

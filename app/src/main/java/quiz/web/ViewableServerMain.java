@@ -36,6 +36,10 @@ public class ViewableServerMain {
                             + "constellations.snapshot.json"));
         } else {
             for (quiz.DatasetRegistry.Dataset d : registry.datasets()) {
+                // Listed is not the same as served. A graph constraint's annotations are
+                // registered so TransformApp can load them; they are a record of a
+                // classification run, not quiz content.
+                if (!d.served()) continue;
                 java.io.File snap = new java.io.File(d.snapshotPath());
                 if (snap.isFile()) {
                     java.io.File model = d.modelPath().isBlank()

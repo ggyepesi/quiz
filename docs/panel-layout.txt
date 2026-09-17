@@ -329,7 +329,7 @@
 == Graph constraints - GraphConstraintsPanel ==
   box: Start node
     label: Graph constraint name:
-    text: [GraphConstraint]
+    text: []
     label: Start with:
     combo: 1 item(s)
     label: Usable Wikidata QIDs:
@@ -370,6 +370,7 @@
     combo: 2 item(s)
   label: No discovery graph configured.
   button: Run graph  (disabled)
+  button: Create population selection…  (disabled)
   button: Remove discovery graph  (disabled)
   button: Clear draft
   button: Apply graph

@@ -3,9 +3,11 @@ package wikidata.explore.workbench;
 import datasource.EntityRef;
 import datasource.graph.constraint.GraphEvidenceConditionResult;
 import datasource.graph.execution.GraphDiscoveryExecutor;
-import quiz.transform.app.DomainSaver;
 import quiz.transform.app.SnapshotDomain;
+import quiz.DatasetRegistry;
+import dataset.DomainStorage;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 
 import java.io.File;
@@ -24,22 +26,34 @@ final class GraphDiscoveryResultStore {
                 ? TYPE : graphConstraintName;
     }
 
-    static File destination(String graphConstraintName) {
-        return DomainSaver.destination(domainName(graphConstraintName));
+    static File destination(String projectName, String graphConstraintName) {
+        return destination(DomainStorage.inDefaultLocation(),
+                projectName, graphConstraintName);
+    }
+
+    static File destination(
+            DomainStorage storage, String projectName, String graphConstraintName) {
+        return new File(storage.directory(projectName),
+                DomainStorage.key(graphConstraintName) + ".graph.snapshot.json");
     }
 
     static String save(
-            String graphConstraintName, ConfiguredGraphDiscoveryQuery.Result result)
+            String projectName, String graphConstraintName,
+            ConfiguredGraphDiscoveryQuery.Result result)
             throws Exception {
-        return save(artifact(graphConstraintName, result),
-                (name, members, schema) -> new DomainSaver().save(name, members, schema));
+        return save(artifact(projectName, graphConstraintName, result));
     }
 
     static Artifact artifact(ConfiguredGraphDiscoveryQuery.Result result) {
-        return artifact(TYPE, result);
+        return artifact("", TYPE, result);
     }
 
     static Artifact artifact(String graphConstraintName,
+                             ConfiguredGraphDiscoveryQuery.Result result) {
+        return artifact("", graphConstraintName, result);
+    }
+
+    static Artifact artifact(String projectName, String graphConstraintName,
                              ConfiguredGraphDiscoveryQuery.Result result) {
         String type = domainName(graphConstraintName);
         List<WikidataDynamicObject> records = records(type, result);
@@ -47,12 +61,46 @@ final class GraphDiscoveryResultStore {
                 wikidata.explore.extract.SnapshotFieldGraph.derive(records);
         model.declareExhaustiveValues(type, "Decision",
                 List.of("Start", "Accepted", "Review", "Rejected"));
-        return new Artifact(type, records, new SnapshotDomain(records, model));
+        return new Artifact(projectName, type, records, new SnapshotDomain(records, model));
     }
 
     static String save(Artifact artifact) throws Exception {
-        return save(artifact,
-                (name, members, schema) -> new DomainSaver().save(name, members, schema));
+        return save(artifact, DomainStorage.inDefaultLocation(),
+                DatasetRegistry.defaultFile());
+    }
+
+    /**
+     * The write itself, with its two destinations as parameters so the path production
+     * takes is the path a test takes. Tested through a writer stand-in instead, the file
+     * and the registry entry — the two things this method exists to produce — were the
+     * parts nothing looked at.
+     */
+    static String save(Artifact artifact, DomainStorage storage, File registryFile)
+            throws Exception {
+        if (artifact.projectName().isBlank()) {
+            throw new IllegalArgumentException("The graph result has no owning project");
+        }
+        File file = destination(storage, artifact.projectName(), artifact.type());
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                artifact.instances(), file, artifact.model());
+
+        DatasetRegistry.Dataset dataset = new DatasetRegistry.Dataset();
+        dataset.name(artifact.projectName() + " — " + artifact.type());
+        dataset.key(DomainStorage.key(artifact.projectName()) + "--"
+                + DomainStorage.key(artifact.type()));
+        dataset.snapshotPath(file.getPath());
+        dataset.types().add(artifact.type());
+        dataset.rootClass(artifact.type());
+        dataset.savedAt(java.time.LocalDateTime.now().toString());
+        // Loadable in TransformApp, never served: these rows describe a run.
+        dataset.served(false);
+        DatasetRegistry registry = DatasetRegistry.load(registryFile);
+        registry.upsert(dataset);
+        registry.save(registryFile);
+        return "Saved graph annotations \"" + artifact.type() + "\" for \""
+                + artifact.projectName() + "\": " + artifact.instances().size()
+                + " instances to " + file.getPath()
+                + ". Loadable in TransformApp; not served.";
     }
 
     static String save(
@@ -71,8 +119,10 @@ final class GraphDiscoveryResultStore {
         return writer.save(artifact.type(), artifact.instances(), artifact.model());
     }
 
-    record Artifact(String type, List<WikidataDynamicObject> instances, SnapshotDomain model) {
+    record Artifact(String projectName, String type,
+                    List<WikidataDynamicObject> instances, SnapshotDomain model) {
         Artifact {
+            projectName = projectName == null ? "" : projectName.trim();
             instances = List.copyOf(instances);
             java.util.Objects.requireNonNull(model, "model");
         }

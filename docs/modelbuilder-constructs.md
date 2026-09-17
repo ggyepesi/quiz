@@ -312,8 +312,17 @@ A graph start is one choice: **Class: Position** means all currently loaded Posi
 instances carrying a Wikidata source QID; **Population: PositionsForHistory** means the
 saved population, which already declares that its members are Positions. Class seed QIDs
 remain acquisition configuration and are not a third graph-input mode. Each graph
-constraint has an authored Java-style name; that exact name identifies the annotation
-instance type and saved result domain it produces.
+constraint has an explicitly authored Java-style name; that exact name identifies the
+annotation instance type it produces. Its separately TransformApp-loadable annotation
+snapshot is saved beneath the owning project's directory, using that graph name. It does
+not become a new independent model/domain owner.
+
+When a graph node says **Add to Position**, its completed population is eligible for the
+explicit **Create population selection…** action. The selection contains the Wikidata QIDs
+included by the graph's authored decision policy: Accepted, plus Review when Review is
+configured to continue; Rejected nodes are excluded. The action stages a named
+`PopulationSelection` on `Position` in the loaded project. It does not save automatically:
+**Save model** or **Save domain** writes it into that project's model file.
 
 A reusable Model may generate and save a local snapshot when its acquisition configuration
 is complete. This is how a model such as Historical Positions obtains the Position instances

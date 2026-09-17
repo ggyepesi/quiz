@@ -34,6 +34,18 @@ public final class DatasetRegistry {
         // generated from — so a later load can detect the model drifted past
         // the instances. Blank for pre-signature datasets.
         private String modelSignature = "";
+        /**
+         * Whether the quiz web app serves this dataset. True for everything saved as a
+         * domain, and FALSE for working data that is loadable in TransformApp but is not
+         * product — a graph constraint's annotations, whose fields are Step, Decision and
+         * the witnesses behind a classification run.
+         *
+         * <p>Stored rather than inferred. The registry has two readers — the server and
+         * the TransformApp catalog — so being listed used to mean being served, and the
+         * only way to make a result loadable was to publish it. A default of true is what
+         * keeps every dataset written before this one servable.
+         */
+        private boolean served = true;
 
         public Dataset() {}
 
@@ -69,6 +81,8 @@ public final class DatasetRegistry {
         public void savedAt(String v) { savedAt = v == null ? "" : v; }
         public String modelSignature() { return modelSignature; }
         public void modelSignature(String v) { modelSignature = v == null ? "" : v; }
+        public boolean served() { return served; }
+        public void served(boolean v) { served = v; }
     }
 
     private final List<Dataset> datasets = new ArrayList<>();
