@@ -57,7 +57,7 @@ class GraphDiscoveryConfigurationPersistenceTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("History");
         project.rootClass(new GeneratedClassModel("Position"));
-        project.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+        project.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(

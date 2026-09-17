@@ -83,7 +83,7 @@ class GraphDiscoveryExecutorTest {
                 List.of(new GraphRelationExists(
                         unacquirable, GraphTraversalDirection.OUTGOING)),
                 null);
-        GraphDiscoveryConfiguration graph = new GraphDiscoveryConfiguration(
+        GraphDiscoveryConfiguration graph = new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position", null),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
                         SUBCLASS, GraphTraversalDirection.INCOMING,
@@ -393,7 +393,7 @@ class GraphDiscoveryExecutorTest {
 
     private static GraphDiscoveryConfiguration graph(
             List<GraphDiscoveryConfiguration.NextNode> nodes) {
-        return new GraphDiscoveryConfiguration(
+        return new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY), nodes);
     }

@@ -1,6 +1,11 @@
 package wikidata.explore.generation;
 
 import wikidata.explore.codegen.GeneratedViewableRuntime;
+import wikidata.explore.extract.WikidataDynamicObject;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Handing the workbench from one generation run to the next.
@@ -36,5 +41,43 @@ public final class GenerationRuns {
         GeneratedViewableRuntime finished = superseded(previous, next);
         if (finished != null) finished.close();
         return next;
+    }
+
+    /** What {@link #narrowedTo} produced: the new pool, and what the ids accounted for. */
+    public record NarrowedPool(List<WikidataDynamicObject> pool, Set<String> kept,
+                               Set<String> ungenerated) { }
+
+    /**
+     * Restricts one class's instances to a population given as identities, leaving every
+     * other class untouched.
+     *
+     * <p>A population says WHICH entities belong; it never says what they contain. So the
+     * instances that survive are the pool's own — kept whole, with everything acquisition
+     * gave them — and an id with no instance behind it stays an id. Building a stand-in
+     * object for it would put something in the pool that is indistinguishable from an
+     * instance whose acquisition failed, and no later pass can tell the two apart.
+     */
+    public static NarrowedPool narrowedTo(
+            List<WikidataDynamicObject> pool, String outputClass, Set<String> accepted) {
+        List<WikidataDynamicObject> narrowed = new java.util.ArrayList<>();
+        Set<String> kept = new LinkedHashSet<>();
+        Set<String> population = accepted == null ? Set.of() : accepted;
+        String className = outputClass == null ? "" : outputClass.trim();
+        for (WikidataDynamicObject value : pool == null ? List.<WikidataDynamicObject>of() : pool) {
+            if (value == null) continue;
+            if (className.isBlank() || !value.directClassNames().contains(className)) {
+                narrowed.add(value);
+                continue;
+            }
+            String id = value.getIdentifier();
+            if (id != null && population.contains(id)) {
+                narrowed.add(value);
+                kept.add(id);
+            }
+        }
+        Set<String> ungenerated = new LinkedHashSet<>(population);
+        ungenerated.removeAll(kept);
+        return new NarrowedPool(List.copyOf(narrowed), Set.copyOf(kept),
+                Set.copyOf(ungenerated));
     }
 }

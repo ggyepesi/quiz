@@ -759,7 +759,7 @@ class GraphConstraintsPanelTest {
     }
 
     private static GraphDiscoveryConfiguration graph(String pid) {
-        return new GraphDiscoveryConfiguration(
+        return new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode(
                         "Position", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(

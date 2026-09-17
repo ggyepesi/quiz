@@ -1407,23 +1407,33 @@ public class ModelBuilderFrame extends JFrame {
         acceptGenerationRun(run, false);
     }
 
-    /** Installs the one output class produced by a graph constraint into the same
-     * project-owned pool as ordinary generation. Graph annotations stay in their named
-     * result artifact; only effectively accepted candidate instances become roots. */
+    /**
+     * Narrows the output class to the population the graph accepted. A graph decides
+     * WHICH entities belong, never what they contain: the instances are the project's
+     * own generated ones and they are kept whole, so applying a result selects among
+     * them and drops the rest.
+     *
+     * <p>It used to remove every instance of the output class and put the run's
+     * candidate objects in their place. A candidate carries a QID, a label and a
+     * reverse reference to its annotation and nothing else, so one Apply replaced 1317
+     * generated Positions — superClasses, jurisdiction, inception, the lot — with 1307
+     * shells whose only field was "Graph annotation", and dragged all 1307 annotation
+     * records into the domain snapshot with them through that reference.
+     *
+     * <p>Accepted ids the project has not generated yet are reported rather than
+     * invented: an empty instance is indistinguishable from one whose acquisition
+     * failed, and a snapshot cannot tell the two apart afterwards.
+     */
     private void acceptGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
         if (artifact == null || artifact.outputClass().isBlank()) return;
         try {
             GeneratedProjectModel snapshot = projectModel.copy();
-            java.util.List<WikidataDynamicObject> pool = new java.util.ArrayList<>();
-            if (lastRun != null && lastRun.dynamicObjects() != null) {
-                for (WikidataDynamicObject value : lastRun.dynamicObjects()) {
-                    if (value == null
-                            || !value.directClassNames().contains(artifact.outputClass())) {
-                        pool.add(value);
-                    }
-                }
-            }
-            pool.addAll(artifact.acceptedCandidates());
+            wikidata.explore.generation.GenerationRuns.NarrowedPool narrowed =
+                    wikidata.explore.generation.GenerationRuns.narrowedTo(
+                            lastRun == null ? List.of() : lastRun.dynamicObjects(),
+                            artifact.outputClass(), artifact.acceptedIdentities());
+            java.util.List<WikidataDynamicObject> pool =
+                    new java.util.ArrayList<>(narrowed.pool());
             GenerationPipeline pipeline = new GenerationPipeline();
             GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
             java.util.List<Viewable> instances = pipeline.materialize(runtime, pool);
@@ -1437,10 +1447,13 @@ public class ModelBuilderFrame extends JFrame {
                     GenerationRun.KindClassificationAudit.notRun(),
                     GenerationRun.ProjectionAudit.notRun());
             acceptGenerationRun(run);
+            int missing = narrowed.ungenerated().size();
             logWindow.info("Applied graph result \"" + artifact.type() + "\": "
-                    + artifact.acceptedCandidates().size() + " "
-                    + artifact.outputClass() + " instances are now in the project. "
-                    + "Use \"Save " + (projectModel.isModel() ? "model" : "domain")
+                    + artifact.outputClass() + " is now the " + narrowed.kept().size()
+                    + " accepted instance(s) the project has generated"
+                    + (missing == 0 ? "" : ", and " + missing + " accepted id(s) have no "
+                            + "generated instance yet — generate to acquire them")
+                    + ". Use \"Save " + (projectModel.isModel() ? "model" : "domain")
                     + "\" to persist them.");
             showInstancesWindow();
         } catch (Exception error) {

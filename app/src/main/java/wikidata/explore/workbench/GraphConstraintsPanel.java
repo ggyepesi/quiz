@@ -213,9 +213,11 @@ final class GraphConstraintsPanel extends JPanel {
                 .filter(value -> decisionValue(value).contains("Rejected")).count();
         String summary = artifact.instances().size() + " reached: " + accepted
                 + " accepted, " + review + " review, " + rejected + " rejected. "
-                + "Apply result will install " + artifact.acceptedCandidates().size()
-                + " " + artifact.outputClass() + " instances in "
-                + artifact.projectName() + ".";
+                + "Apply result will narrow " + artifact.outputClass() + " in "
+                + artifact.projectName() + " to the "
+                + artifact.acceptedIdentities().size()
+                + " accepted entity(ies), keeping the instances already generated for "
+                + "them and dropping the rest.";
         return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply result",
                 List.of(artifactTab("All", artifact, null),
                         artifactTab("Accepted", artifact, "Accepted"),
@@ -317,6 +319,9 @@ final class GraphConstraintsPanel extends JPanel {
             refreshTargetState();
             refreshArrow();
             status(saved == null ? "No discovery graph configured."
+                    : saved.name().isBlank()
+                    ? "This graph constraint has no name. Name it and Apply: the name is "
+                            + "where its annotation set is written."
                     : saved.nextNodes().isEmpty()
                     ? "Start node saved: " + startInputLabel(model, saved.startNode())
                             + ". Add the property connecting the two nodes to complete"
@@ -330,6 +335,9 @@ final class GraphConstraintsPanel extends JPanel {
 
     private void loadSavedGraphResult(GraphDiscoveryConfiguration saved) {
         if (lastGraphResult != null || saved == null) return;
+        // An unnamed constraint has no annotation set to load; saying so beats looking
+        // for a file whose name we would have had to invent.
+        if (saved.name().isBlank()) return;
         String outputClass = saved.nextNodes().stream()
                 .filter(node -> node.use()
                         == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
@@ -1291,9 +1299,12 @@ final class GraphConstraintsPanel extends JPanel {
     private void updateRunEnabled() {
         GraphDiscoveryConfiguration graph = model.graphDiscoveryConfiguration();
         // A saved start node is not yet a traversal: with no edge there is nothing to
-        // follow, so the graph is removable and readable but not runnable.
+        // follow, so the graph is removable and readable but not runnable. Nor is an
+        // unnamed one: the name is where the annotation set is written, so running
+        // without it would produce a result with nowhere to go.
         run.setEnabled(runner != null && !runner.isRunning()
-                && graph != null && !graph.nextNodes().isEmpty());
+                && graph != null && !graph.nextNodes().isEmpty()
+                && !graph.name().isBlank());
         removeGraph.setEnabled(graph != null);
     }
 

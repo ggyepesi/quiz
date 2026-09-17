@@ -10,9 +10,6 @@ import java.util.List;
  * population members.
  */
 public record GraphDiscoveryConfiguration(String name, StartNode startNode, List<NextNode> nextNodes) {
-    public GraphDiscoveryConfiguration(StartNode startNode, List<NextNode> nextNodes) {
-        this("GraphConstraint", startNode, nextNodes);
-    }
     public enum NodeUse {
         INTERMEDIATE_ONLY,
         CLASS_POPULATION
@@ -60,9 +57,13 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
     }
 
     public GraphDiscoveryConfiguration {
-        // Models saved before graph constraints were named load as the explicit legacy
-        // default; the editor requires a Java-style authored name on the next Apply.
-        name = name == null || name.isBlank() ? "GraphConstraint" : name.trim();
+        // The name is authored, never defaulted. It IS the identity of the annotation
+        // set — the result file is keyed by it — so a default that appears without
+        // anyone choosing it silently re-points the constraint at a different set and
+        // orphans the one it had. A model saved before constraints were named loads
+        // with this blank, which reads as unset everywhere and refuses to run or save
+        // until the editor is given a name.
+        name = name == null ? "" : name.trim();
         if (startNode == null) throw new IllegalArgumentException("Start node is required");
         nextNodes = nextNodes == null ? List.of() : List.copyOf(nextNodes);
         if (nextNodes.stream().anyMatch(java.util.Objects::isNull)) {

@@ -31,7 +31,7 @@ class ConfiguredGraphDiscoveryQueryTest {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.seedQids().add("Q999");
         model.rootClass(position);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
@@ -80,7 +80,7 @@ class ConfiguredGraphDiscoveryQueryTest {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.seedQids().add("Q999");
         model.rootClass(position);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
@@ -133,7 +133,7 @@ class ConfiguredGraphDiscoveryQueryTest {
         selected.className("Position");
         selected.instanceQids(List.of("Q1", "Q2", "Q1"));
         model.addSelection(selected);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(
+        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("", "PositionsForHistory",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY), List.of()));
 

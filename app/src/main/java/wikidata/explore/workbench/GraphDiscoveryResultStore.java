@@ -17,7 +17,6 @@ import java.util.Map;
 
 /** Materializes one graph execution as an ordinary TransformApp snapshot. */
 final class GraphDiscoveryResultStore {
-    static final String TYPE = "GraphDiscoveryResult";
     static final String GRAPH_DECISION = "Graph decision";
     static final String MANUAL_DECISION = "Manual decision";
     static final String ANNOTATED_INSTANCE = "Annotated instance";
@@ -25,9 +24,19 @@ final class GraphDiscoveryResultStore {
 
     private GraphDiscoveryResultStore() { }
 
+    /**
+     * The annotation set is keyed by the constraint's authored name, so substituting a
+     * default here is how a set gets written under one name and looked for under
+     * another. Refuse instead: an unnamed constraint has nowhere to put its result.
+     */
     static String domainName(String graphConstraintName) {
-        return graphConstraintName == null || graphConstraintName.isBlank()
-                ? TYPE : graphConstraintName;
+        String name = graphConstraintName == null ? "" : graphConstraintName.trim();
+        if (name.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Name the graph constraint before running or saving it: its name is "
+                    + "the identity of its annotation set");
+        }
+        return name;
     }
 
     static File destination(String projectName, String graphConstraintName) {
@@ -46,10 +55,6 @@ final class GraphDiscoveryResultStore {
             ConfiguredGraphDiscoveryQuery.Result result)
             throws Exception {
         return save(artifact(projectName, graphConstraintName, result));
-    }
-
-    static Artifact artifact(ConfiguredGraphDiscoveryQuery.Result result) {
-        return artifact("", TYPE, result);
     }
 
     static Artifact artifact(String graphConstraintName,
@@ -171,16 +176,26 @@ final class GraphDiscoveryResultStore {
                     .filter(WikidataDynamicObject.class::isInstance)
                     .map(WikidataDynamicObject.class::cast).distinct().toList();
         }
+
+        /**
+         * The effective population as IDENTITIES. A candidate object carries a QID, a
+         * label and a reverse reference to its annotation — it is a record of what the
+         * traversal reached, never a generated instance, so what a graph result
+         * contributes to the project is this set of ids and nothing else.
+         */
+        java.util.Set<String> acceptedIdentities() {
+            java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+            for (WikidataDynamicObject candidate : acceptedCandidates()) {
+                String id = candidate == null ? null : candidate.getIdentifier();
+                if (id != null && !id.isBlank()) ids.add(id);
+            }
+            return ids;
+        }
     }
 
     private record ResultObjects(String outputClass,
                                  List<WikidataDynamicObject> annotations,
                                  List<WikidataDynamicObject> candidates) { }
-
-    static List<WikidataDynamicObject> records(
-            ConfiguredGraphDiscoveryQuery.Result result) {
-        return records(TYPE, result);
-    }
 
     static List<WikidataDynamicObject> records(String type,
             ConfiguredGraphDiscoveryQuery.Result result) {
