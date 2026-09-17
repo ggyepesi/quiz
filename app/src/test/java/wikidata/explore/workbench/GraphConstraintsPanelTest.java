@@ -130,6 +130,22 @@ class GraphConstraintsPanelTest {
                 "a graph read back from the model says it too");
     }
 
+    @Test void modelKindDoesNotDisableAReadyGraphConstraint() {
+        GeneratedProjectModel model = model();
+        model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        model.graphDiscoveryConfiguration(graph("P279"));
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        wikidata.explore.extract.WikidataDynamicObject position =
+                new wikidata.explore.extract.WikidataDynamicObject("Q4164871", "Position");
+        position.type("Position");
+        panel.loadedInstances(() -> List.of(position));
+        panel.setProcessRunner(new SwingProcessRunner(null, null, null));
+        panel.refresh();
+
+        assertTrue(button(panel, "Run graph").isEnabled(),
+                "graph readiness is determined by the graph and its input, not project kind");
+    }
+
     @Test void graphDiscoveryUsesTheSharedPlanRunningResultsWorkflow()
             throws Exception {
         String source = Files.readString(Path.of(

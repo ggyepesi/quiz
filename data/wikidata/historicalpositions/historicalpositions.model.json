@@ -1,7 +1,7 @@
 {
   "@class" : "wikidata.explore.model.GeneratedProjectModel",
   "name" : "Historical Positions",
-  "projectKind" : "DOMAIN",
+  "projectKind" : "MODEL",
   "rootClass" : {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "declarationId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
@@ -632,8 +632,10 @@
     }
   },
   "graphDiscoveryConfiguration" : {
+    "name" : "GraphConstraint",
     "startNode" : {
       "qidSourceClass" : "PositionDiscoveryStart",
+      "populationSelection" : "",
       "use" : "INTERMEDIATE_ONLY"
     },
     "nextNodes" : [ "java.util.ImmutableCollections$List12", [ {
@@ -1957,7 +1959,6 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -2152,7 +2153,6 @@
       "primaryListField" : ""
     }
   } ] ],
-
   "selections" : [ "java.util.ArrayList", [ ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],

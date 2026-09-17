@@ -35,6 +35,15 @@ class ProjectKindPersistenceTest {
         assertFalse(loaded.supportsExecution());
     }
 
+    @Test void aCompleteModelCanGenerateItsOwnLocalInstances() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        project.rootClass().membership(EntityBound.relation(
+                "P31", java.util.List.of("Q4164871"), false));
+
+        assertTrue(project.supportsExecution());
+    }
+
     @Test void copyingAProjectKeepsItsKind() {
         GeneratedProjectModel source = new GeneratedProjectModel();
         source.name("People");

@@ -63,6 +63,18 @@ public final class GeneratedProjectModelValidator {
     }
 
     /**
+     * Validates a project as something that is about to acquire instances. A reusable
+     * model may leave acquisition decisions open, but a run must satisfy the same
+     * acquisition rules as a domain.
+     */
+    public static ValidationResult validateForAcquisition(GeneratedProjectModel project) {
+        if (project == null || project.acquiresInstances()) return validate(project);
+        GeneratedProjectModel acquiring = project.copy();
+        acquiring.projectKind(GeneratedProjectModel.ProjectKind.DOMAIN);
+        return validate(acquiring);
+    }
+
+    /**
      * Every cycle in the class dependency graph, over the kinds that must not have one.
      *
      * <p>Three checks stood here — base, owned, aggregate — and each walked only its own

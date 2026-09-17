@@ -193,6 +193,15 @@ construct per thing produced:
    substitute. A class graph input means all currently loaded instances of that class,
    while a saved population is one alternative input that already names its class.
 
+20. **Model reuse and local execution are independent.** `MODEL` means its declarations
+   and relevant selections may be imported; it does not mean the project cannot generate.
+   A model whose acquisition configuration is complete may generate, load and save its own
+   local instances for curation and graph work. Graph constraints are likewise runnable
+   whenever their own configuration and instance/population input are ready. Imports read
+   configuration and selections only — never another project's snapshot, graph annotations
+   or other run results. An imported selection stays owned by its model and is read-only in
+   the importer, just like an imported class; edit it in the model that owns it.
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until

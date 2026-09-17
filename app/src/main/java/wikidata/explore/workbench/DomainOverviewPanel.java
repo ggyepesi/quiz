@@ -5,9 +5,10 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** Read-only configuration landing page for the domain tree node. */
+/** Project-level configuration and status shown for the tree root. */
 final class DomainOverviewPanel extends JPanel {
     record Status(boolean modelSaved, boolean snapshotSaved, int generatedObjects) {
         static final Status EMPTY = new Status(false, false, 0);
@@ -15,8 +16,10 @@ final class DomainOverviewPanel extends JPanel {
 
     private final GeneratedProjectModel project;
     private Supplier<Status> status = () -> Status.EMPTY;
+    private Consumer<Void> afterChange = ignored -> { };
     private final JLabel projectName = new JLabel();
-    private final JLabel projectKind = new JLabel();
+    private final JComboBox<GeneratedProjectModel.ProjectKind> projectKind =
+            new JComboBox<>(GeneratedProjectModel.ProjectKind.values());
     private final JLabel rootClass = new JLabel();
     private final JLabel classes = new JLabel();
     private final JLabel selections = new JLabel();
@@ -24,10 +27,13 @@ final class DomainOverviewPanel extends JPanel {
     private final JLabel modelFile = new JLabel();
     private final JLabel snapshot = new JLabel();
     private final JLabel generated = new JLabel();
+    private boolean refreshing;
 
     DomainOverviewPanel(GeneratedProjectModel project) {
         super(new GridBagLayout());
         this.project = project;
+        projectKind.setName("project.kind");
+        projectKind.addActionListener(event -> changeKind());
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(5, 5, 5, 5);
@@ -60,22 +66,39 @@ final class DomainOverviewPanel extends JPanel {
         refresh();
     }
 
+    void afterChange(Consumer<Void> consumer) {
+        afterChange = consumer == null ? ignored -> { } : consumer;
+    }
+
+    private void changeKind() {
+        if (refreshing) return;
+        GeneratedProjectModel.ProjectKind selected =
+                (GeneratedProjectModel.ProjectKind) projectKind.getSelectedItem();
+        if (selected == null || selected == project.projectKind()) return;
+        project.projectKind(selected);
+        refresh();
+        afterChange.accept(null);
+    }
+
     void refresh() {
-        Status current = status.get();
-        if (current == null) current = Status.EMPTY;
-        projectName.setText(project.name());
-        projectKind.setText(project.isModel() ? "Model" : "Domain");
-        rootClass.setText(project.isModel() ? "not applicable"
-                : project.rootClass() == null ? "—" : project.rootClass().className());
-        classes.setText(Integer.toString(project.classes().size()));
-        selections.setText(Integer.toString(project.selections().size()));
-        long configuredKinds = project.entityKindRules().stream()
-                .filter(rule -> rule != null && rule.isConfigured()).count();
-        kinds.setText(configuredKinds + " configured / " + project.entityKindRules().size());
-        modelFile.setText(current.modelSaved() ? "saved" : "not saved yet");
-        snapshot.setText(project.isModel() ? "not applicable"
-                : current.snapshotSaved() ? "saved" : "not generated yet");
-        generated.setText(project.isModel() ? "not applicable"
-                : Integer.toString(current.generatedObjects()));
+        refreshing = true;
+        try {
+            Status current = status.get();
+            if (current == null) current = Status.EMPTY;
+            projectName.setText(project.name());
+            projectKind.setSelectedItem(project.projectKind());
+            rootClass.setText(project.rootClass() == null
+                    ? "—" : project.rootClass().className());
+            classes.setText(Integer.toString(project.classes().size()));
+            selections.setText(Integer.toString(project.selections().size()));
+            long configuredKinds = project.entityKindRules().stream()
+                    .filter(rule -> rule != null && rule.isConfigured()).count();
+            kinds.setText(configuredKinds + " configured / " + project.entityKindRules().size());
+            modelFile.setText(current.modelSaved() ? "saved" : "not saved yet");
+            snapshot.setText(current.snapshotSaved() ? "saved" : "not generated yet");
+            generated.setText(Integer.toString(current.generatedObjects()));
+        } finally {
+            refreshing = false;
+        }
     }
 }

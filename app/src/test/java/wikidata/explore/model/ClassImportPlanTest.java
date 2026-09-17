@@ -64,6 +64,29 @@ class ClassImportPlanTest {
         assertNotSame(source.findClass("Person"), target.findClass("Person"));
     }
 
+    @Test void aPopulationSelectionFollowsTheClassWhoseInstancesItNames() {
+        GeneratedProjectModel positions = new GeneratedProjectModel();
+        positions.name("Historical Positions");
+        positions.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        positions.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection selected = new PopulationSelection("PositionsForHistory");
+        selected.className("Position");
+        selected.instanceQids(java.util.List.of("Q11696", "Q12548"));
+        positions.addSelection(selected);
+
+        GeneratedProjectModel history = history();
+        ClassImportPlan plan = ClassImportPlan.of(positions, history, "Position");
+
+        assertEquals(java.util.List.of("PositionsForHistory"),
+                plan.selections().stream().map(Selection::name).toList());
+        plan.apply(Set.of("Position"), ClassImportPlan.Ownership.IMPORT);
+        PopulationSelection imported = (PopulationSelection)
+                history.findSelection("PositionsForHistory");
+        assertEquals("Position", imported.className());
+        assertEquals(java.util.List.of("Q11696", "Q12548"), imported.instanceQids());
+        assertTrue(imported.isImported());
+    }
+
     @Test void refusesToCreateADanglingTargetWhenDependencyIsDeselected() {
         ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), history(), "Person");
 

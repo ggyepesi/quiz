@@ -1,8 +1,8 @@
 # Models and domains
 
 Status: model configuration and model use are implemented — the latter as copy and
-import, see step 2. Instance ownership is decided: instances stay per-domain, and nothing
-is shared between domains.
+import, see step 2. Instance ownership is decided: generated instances stay local to the
+project that ran, and nothing crosses an import.
 
 ## Rule number 1: keep it simple
 
@@ -22,9 +22,9 @@ language and editors as a domain:
 - identity and presentation configuration.
 
 A model may contain classes that are structurally valid but not independently generatable.
-It has no generated instances and no snapshot. Consequently ModelBuilder does not show
-Generate, Remap, Enrich or instance-result controls while a model is open. Explore, sampling,
-validation and configuration remain available.
+When its acquisition configuration is complete, it may also generate, load and save a local
+snapshot for curation and graph work. That snapshot remains working data of the model project;
+an importer reads only declarations and relevant selections from `model.json`.
 
 ### What validation means for each
 
@@ -35,14 +35,13 @@ resolving, no cycles through bases or owned components, field shapes consistent 
 they claim to be. A model whose classes do not hold together is wrong wherever it is used,
 so these apply to both kinds.
 
-**Runnable** — can this actually be acquired? Today that is one rule: a statement class
+**Runnable** — can this actually be acquired? Today that includes the rule that a statement class
 that discovers its subjects needs a bounded value domain, or its membership scan is
-unbounded. That rule exists to bound an acquisition, and a model performs none, so it
-applies to a domain only. The domain that gives the class a population is where the bound
-has to exist.
+unbounded. A model declaration may leave that decision open for an importing project, but
+the rule applies whenever the model itself is run.
 
-The distinction is asked as `acquiresInstances()` rather than by comparing the kind,
-so a skipped rule says why it was skipped.
+The ordinary model validator remains structural. Execution asks the same model through
+`validateForAcquisition()`, so a local model run cannot use relaxed declaration rules.
 
 The user supplies the model's unique name when creating it. The exact name is its identity.
 Class names are unique inside their owning model. A later reference from another project will
@@ -55,12 +54,9 @@ should be reconciled is deliberately left to experience with real imports.
 
 ## Domain
 
-A domain applies configured classes to one or more populations and owns the result. It adds:
-
-- generation entry points;
-- Generate, Remap and Enrich operations;
-- generated instances;
-- a saved snapshot.
+A domain applies configured classes to one or more populations and owns a served result.
+Unlike a model it must be runnable, and a saved domain snapshot may be registered for serving.
+Local model snapshots are never registered merely because they were generated.
 
 A domain is not restricted conceptually to one root class. The existing `rootClass` property is
 a legacy generation/UI detail, not the definition of a domain.
@@ -68,8 +64,8 @@ a legacy generation/UI detail, not the definition of a domain.
 ## Current UI
 
 **New…** asks for one name and whether the project is a Domain or Model. Both kinds use the
-ordinary configuration tree and editors. Saving a model writes configuration only. Execution
-and instance controls do not appear for a model.
+ordinary configuration tree and editors. A runnable model shows generation, instance loading
+and explicit save controls. Saving its local snapshot does not register it as a served domain.
 
 The former Shared modules panel and shortcut are not part of this design. The committed
 version/pin implementation is not exposed by the first-step UI and will be removed as model use
@@ -124,6 +120,11 @@ The lock applies to the declaration as a whole. In particular:
   importer;
 - the complete configuration is nevertheless shown, rather than being replaced by a
   read-only summary.
+
+Selections that accompany an imported class follow the same ownership rule. The importer
+may use and inspect them but cannot rename, remove or edit their values. A population change
+is made in the model that owns the `PopulationSelection`; import resolution then supplies its
+current declaration. Generated instances and graph annotations still do not cross the import.
 
 This is an ownership rule, not merely disabled Swing controls. The editor combines it
 with the temporary global lock used during generation: returning the workbench to its
@@ -300,12 +301,12 @@ the intermediary model and `Person` to the original one. Domains and models use 
 mechanism. Field subtraction is deliberately not part of inheritance; a concrete need must
 force an omission construct before one is added.
 
-## Step 3: instance ownership — instances stay per-domain
+## Step 3: instance ownership — instances stay with the project that generated them
 
-**Decided: a domain owns its instances, and two domains that import the same class hold
-their own.** If Nobel and Oscars both import `People.Person`, each generates its own Marie
-Curie. Nothing is shared, and importing a class says nothing about where its instances
-live — which is what kept step 2 small and is why this stayed a separate decision.
+**Decided: a project owns the instances it generates, and import never transfers them.**
+If Nobel and Oscars both import `People.Person`, each generates its own Marie Curie. A local
+People model run may also have one, but none of the three snapshots is shared. Importing a
+class says nothing about where its instances live.
 
 The reason is reproducibility. A domain's snapshot is currently derivable from that
 domain's own model, and every part of the pipeline leans on it: regenerating is the answer
@@ -316,9 +317,9 @@ store is recoverable later while reproducibility, once lost, is not.
 The cost is accepted and worth stating plainly: identity work is repeated per domain, and
 the same real entity drifts as each domain curates its own copy.
 
-A model still generates nothing. It has no instances, no snapshot, and no store. "A
-model's class" only ever means configuration; instances of it belong to the domain that
-generated them.
+A model snapshot is local working data, useful for curation, population selections and graph
+constraints. "A model's class" in an import still means configuration: its snapshot and named
+graph annotations are never resolved into the importing project.
 
 ### What sharing would have to answer first
 

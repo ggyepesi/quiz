@@ -56,6 +56,13 @@ public record CompiledPipelineRun(
         CompiledProjectModel model = null;
         String refusal = "";
         try {
+            if (request.scope().discovers()) {
+                var executable = wikidata.explore.model.GeneratedProjectModelValidator
+                        .validateForAcquisition(request.model());
+                if (!executable.valid()) {
+                    throw new ProjectModelCompiler.ModelCompilationException(executable);
+                }
+            }
             model = ProjectModelCompiler.compile(request.model());
         } catch (RuntimeException uncompilable) {
             refusal = uncompilable.getMessage() == null

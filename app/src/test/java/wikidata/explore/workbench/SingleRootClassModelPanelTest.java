@@ -81,6 +81,19 @@ class SingleRootClassModelPanelTest {
         assertTrue(button(panel, "Add class").isEnabled());
     }
 
+    @Test void anImportedSelectionCannotBeRenamedOrRemovedByTheImporter() {
+        GeneratedProjectModel project = modelWithEdition();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        categories.importedFrom("Shared Vocabularies");
+        project.addSelection(categories);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(categories);
+
+        assertFalse(button(panel, "Rename vocabulary").isEnabled());
+        assertFalse(button(panel, "Remove").isEnabled());
+    }
+
     private static GeneratedProjectModel modelWithEdition() {
         GeneratedProjectModel p = new GeneratedProjectModel();
         GeneratedClassModel nom = new GeneratedClassModel("Nomination");

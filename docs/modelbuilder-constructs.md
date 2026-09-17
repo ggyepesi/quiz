@@ -315,6 +315,12 @@ remain acquisition configuration and are not a third graph-input mode. Each grap
 constraint has an authored Java-style name; that exact name identifies the annotation
 instance type and saved result domain it produces.
 
+A reusable Model may generate and save a local snapshot when its acquisition configuration
+is complete. This is how a model such as Historical Positions obtains the Position instances
+from which a `PopulationSelection` is curated. Importing `Position` brings its configuration
+and class-bound population selections; it never imports that local snapshot or any named graph
+annotation result.
+
 A Selection is the right home for an explicitly saved set; a **bare identity-holder
 class** is the right home for an open population discovered from data. Sampling and
 highlighting alone do not create a Selection: **Save population selection** names the

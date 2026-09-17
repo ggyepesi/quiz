@@ -345,8 +345,8 @@ public class ModelBuilderFrame extends JFrame {
         domainFiles.add(saveEverythingButton);
         domainFiles.add(loadProjectButton);
         loadSavedButton.setToolTipText(
-                "Load the instances saved beside this domain's model. "
-                        + "Which folder that is follows from the open domain.");
+                "Load the instances saved beside this project's model. "
+                        + "Which folder that is follows from the open project.");
         domainFiles.add(loadSavedButton);
 
         JPanel domainSection = new JPanel(new GridLayout(0, 1, 0, 0));
@@ -375,8 +375,8 @@ public class ModelBuilderFrame extends JFrame {
         // Two rows so nothing overflows (and "Depth" stays visible) in this
         // narrower panel: generate/depth on top, the result viewers below.
         generateButton.setToolTipText("Generate the SELECTED class only.");
-        generateDomainButton.setToolTipText("Generate EVERY class in the domain "
-                                                    + "into one snapshot — each served as its own quiz type.");
+        generateDomainButton.setToolTipText("Generate EVERY class in the project "
+                                                    + "into one local snapshot.");
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
@@ -746,7 +746,10 @@ public class ModelBuilderFrame extends JFrame {
                 ? List.of() : lastRun.instances());
         sourceWorkbench.log(logWindow::info);
 
-        sourceWorkbench.afterChange(v -> modelChanged());
+        sourceWorkbench.afterChange(v -> {
+            modelChanged();
+            refreshProjectKindUi();
+        });
         classModelPanel.onCopyClass(this::copyClassConfiguration);
         classModelPanel.onPasteClass(this::pasteClassConfiguration);
         classModelPanel.onImportClass(this::importClassConfiguration);
@@ -1375,17 +1378,20 @@ public class ModelBuilderFrame extends JFrame {
                 // must not linger; an authored constraint vocabulary (OscarCategories)
                 // is not a descriptive target and is never touched.
                 int filledVocabs = mergeBuiltVocabularies(run.modelSnapshot());
+                String saveAction = projectModel.isModel() ? "Save model" : "Save domain";
                 if (filledVocabs > 0) {
                     modelChanged();
                     logWindow.info(filledVocabs + " vocabulary(ies) filled from the "
-                                           + "generated data — use \"Save domain\" to persist them.");
+                                           + "generated data — use \"" + saveAction
+                                           + "\" to persist them.");
                 }
                 // Do NOT auto-save: generating used to silently overwrite the
                 // project snapshot (a greekmyth run clobbered constellations).
                 // The run is held in memory + shown here; persisting is explicit
                 // and confirmed via "Save domain".
                 logWindow.info("Generated " + run.size()
-                                       + " objects (in memory — use \"Save domain\" to persist "
+                                       + " objects (in memory — use \"" + saveAction
+                                       + "\" to persist "
                                        + "to " + snapshotFile().getName() + ").");
                 reportNameCollisions(run);
                 updateGraphFrontierButton();
@@ -2056,11 +2062,15 @@ public class ModelBuilderFrame extends JFrame {
         renameDomainButton.setText(model ? "Rename model" : "Rename domain");
         deleteDomainButton.setText(model ? "Delete model" : "Delete domain");
         saveEverythingButton.setText(model ? "Save model" : "Save domain");
+        generateDomainButton.setText(model ? "Generate model instances" : "Generate domain");
         saveEverythingButton.setToolTipText(model
-                ? "Save this model's reusable configuration. Models have no instances."
+                ? "Save this model's reusable configuration and generated instances together."
                 : "Save this domain's configuration and generated instances together.");
-        runSection.setVisible(projectModel.supportsExecution());
-        loadSavedButton.setVisible(projectModel.supportsExecution());
+        // Asked once: for a MODEL this validates the whole project, and this method runs
+        // on every edit through sourceWorkbench.afterChange.
+        boolean runnable = projectModel.supportsExecution();
+        runSection.setVisible(runnable);
+        loadSavedButton.setVisible(runnable);
         boolean editable = !configurationLocked;
         renameDomainButton.setEnabled(editable);
         classModelPanel.setEditingEnabled(editable);
@@ -2293,7 +2303,8 @@ public class ModelBuilderFrame extends JFrame {
                 this,
                 "Discard any unsaved changes to \"" + projectModel.name()
                         + "\" and continue?\n"
-                        + "(Use \"Save domain\" first to keep them.)",
+                        + "(Use \"" + (projectModel.isModel() ? "Save model" : "Save domain")
+                        + "\" first to keep them.)",
                 title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         return c == JOptionPane.OK_OPTION;
     }
@@ -2630,7 +2641,10 @@ public class ModelBuilderFrame extends JFrame {
                                                           + "saved yet, so it has no instances to load."
                                                   : "No saved instances for \"" + projectModel.name()
                                                           + "\" in\n" + dir.getPath()
-                                                          + "\n(generate, then \"Save domain\")",
+                                                          + "\n(generate, then \""
+                                                          + (projectModel.isModel()
+                                                                  ? "Save model" : "Save domain")
+                                                          + "\")",
                                           "Load instances", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -2864,10 +2878,9 @@ public class ModelBuilderFrame extends JFrame {
 
     /** @return true only when every requested durable write completed. */
     private boolean saveEverything(boolean closingAfterSave) {
-        if (projectModel.isModel()) {
-            return saveModelOnly(closingAfterSave);
-        }
         Window dialogOwner = quiz.ui.Dialogs.owner(this);
+        String projectKind = projectModel.isModel() ? "model" : "domain";
+        String projectKindTitle = projectModel.isModel() ? "Model" : "Domain";
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
         try {
@@ -2945,7 +2958,7 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
 
-        String plan = "Save the domain \"" + modelToSave.name()
+        String plan = "Save the " + projectKind + " \"" + modelToSave.name()
                 + "\" — write these files?\n\n"
                 + "Config:    " + modelFile().getPath() + "\n"
                 + "Rule tree: " + ruleTreeFile().getPath() + "\n"
@@ -2954,7 +2967,7 @@ public class ModelBuilderFrame extends JFrame {
                 : "(none generated yet — will be skipped)");
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
-                    dialogOwner, plan, "Save domain",
+                    dialogOwner, plan, "Save " + projectKind,
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (choice != JOptionPane.OK_OPTION) {
                 return false;
@@ -2995,12 +3008,13 @@ public class ModelBuilderFrame extends JFrame {
                 n = lastRun.dynamicObjects().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');
-                // Register the dataset: model + rule-tree + snapshot saved
-                // TOGETHER as one consistent triple, so the web serves it and a
-                // snapshot is never paired with a mismatched model.
-                registerDataset(runSig);
-                report.append("Registry:  ")
-                      .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
+                // Domains are served. A model's snapshot is local working data for
+                // curation and graph inputs; importing the model never imports it.
+                if (!projectModel.isModel()) {
+                    registerDataset(runSig);
+                    report.append("Registry:  ")
+                          .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
+                }
 
                 File counts = countsFile();
                 appendCountsRecord(counts, lastRun.dynamicObjects());
@@ -3016,49 +3030,20 @@ public class ModelBuilderFrame extends JFrame {
             // What is on disk is now what is open, so switching away asks nothing.
             markSaved(modelFile());
             savedGenerationRun = lastRun;
-            logWindow.info("Saved domain \"" + projectModel.name() + "\":\n" + report);
+            logWindow.info("Saved " + projectKind + " \"" + projectModel.name()
+                    + "\":\n" + report);
 
             if (!closingAfterSave) {
                 String hint = instanceCountHint(n);
                 JOptionPane.showMessageDialog(
                         dialogOwner,
                         report + (hint.isBlank() ? "" : "\n" + hint),
-                        "Saved domain",
+                        "Saved " + projectKindTitle,
                         JOptionPane.INFORMATION_MESSAGE);
             }
             return true;
         } catch (Exception ex) {
             reportGenerationError(ex);
-            return false;
-        }
-    }
-
-    private boolean saveModelOnly(boolean closingAfterSave) {
-        Window dialogOwner = quiz.ui.Dialogs.owner(this);
-        try {
-            sourceWorkbench.applyEdits();
-            String plan = "Save the model \"" + projectModel.name() + "\"?\n\n"
-                    + "Configuration: " + modelFile().getPath()
-                    + "\n\nModels do not generate or save instances.";
-            if (!closingAfterSave && JOptionPane.showConfirmDialog(dialogOwner, plan, "Save model",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
-                    != JOptionPane.OK_OPTION) return false;
-            modelFile().getParentFile().mkdirs();
-            new GeneratedProjectModelStore().save(projectModel, modelFile());
-            markSaved(modelFile());
-            rememberCurrentDomain();
-            sourceWorkbench.refreshDomainOverview();
-            refreshDomainBox();
-            logWindow.info("Saved model \"" + projectModel.name() + "\" to "
-                    + modelFile().getPath());
-            if (!closingAfterSave) {
-                JOptionPane.showMessageDialog(dialogOwner,
-                        "Configuration: " + modelFile().getPath(),
-                        "Saved model", JOptionPane.INFORMATION_MESSAGE);
-            }
-            return true;
-        } catch (Exception failure) {
-            reportGenerationError(failure);
             return false;
         }
     }

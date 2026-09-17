@@ -51,6 +51,9 @@ class PanelLayoutIsCheckedInTest {
         GeneratedProjectModel project = project();
         StringBuilder actual = new StringBuilder();
 
+        DomainOverviewPanel overview = new DomainOverviewPanel(project);
+        describe(actual, "Project - DomainOverviewPanel", overview);
+
         ClassSourcePanel source = new ClassSourcePanel();
         source.setProjectModel(project);
         source.edit(project.findClass("Person"));

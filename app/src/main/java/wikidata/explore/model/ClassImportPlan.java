@@ -84,6 +84,9 @@ public final class ClassImportPlan {
             if (selection instanceof RoleSelection role
                     && closure.containsKey(role.ownerClassName())) {
                 selectionNames.add(role.name());
+            } else if (selection instanceof PopulationSelection population
+                    && closure.containsKey(population.className())) {
+                selectionNames.add(population.name());
             }
         }
 
@@ -261,6 +264,8 @@ public final class ClassImportPlan {
         for (Selection selection : selections) {
             if (selection instanceof RoleSelection role
                     && selected.contains(role.ownerClassName())) names.add(role.name());
+            else if (selection instanceof PopulationSelection population
+                    && selected.contains(population.className())) names.add(population.name());
         }
         return names;
     }

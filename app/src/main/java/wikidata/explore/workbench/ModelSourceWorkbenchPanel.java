@@ -156,6 +156,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.graphConstraintsPanel.afterChange(ignored -> afterChange.accept(null));
+        this.domainOverview.afterChange(ignored -> afterChange.accept(null));
 
         classSourcePanel.setProjectModel(projectModel);
 

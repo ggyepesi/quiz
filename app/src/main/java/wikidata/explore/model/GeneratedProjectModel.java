@@ -114,10 +114,9 @@ public class GeneratedProjectModel {
     }
 
     /**
-     * Whether this project acquires instances. A DOMAIN does; a MODEL is configuration
-     * and has no generation, so a rule that exists to bound acquisition has nothing to
-     * bound here. Asked by name rather than by comparing the enum, so the reason a rule
-     * is skipped is stated where it is skipped.
+     * Whether acquisition completeness is required of the saved declaration. A domain
+     * must be runnable; a model may remain reusable while incomplete. A model that is
+     * actually run is checked separately through validateForAcquisition.
      */
     public boolean acquiresInstances() {
         return projectKind() == ProjectKind.DOMAIN;
@@ -128,7 +127,14 @@ public class GeneratedProjectModel {
     }
 
     public boolean isModel() { return projectKind() == ProjectKind.MODEL; }
-    public boolean supportsExecution() { return projectKind() == ProjectKind.DOMAIN; }
+
+    /** Reuse and execution are independent: a complete model can generate locally. */
+    public boolean supportsExecution() {
+        return !isModel()
+                || rootClass != null
+                && MembershipPattern.of(rootClass, this) != MembershipPattern.UNCONFIGURED
+                && GeneratedProjectModelValidator.validateForAcquisition(this).valid();
+    }
 
     public int generationDepth() {
         return generationDepth;
@@ -575,14 +581,33 @@ public class GeneratedProjectModel {
             addSelection(replacement);
             return;
         }
+        if (!replacement.isImported()
+                || !existing.importedFrom().equalsIgnoreCase(replacement.importedFrom())) {
+            requireOwned(existing, "changed");
+        }
         replacement.declarationId(existing.declarationId());
         selections.set(selections.indexOf(existing), replacement);
+    }
+
+    /**
+     * An imported declaration is owned by the model it came from, and saying so is a
+     * different answer from "that name is taken" or "something still points at it". The
+     * boolean reports the ordinary refusals; ownership throws, so a caller cannot report
+     * one as the other — which is what sent a reader looking for a name clash that was
+     * not there.
+     */
+    private static void requireOwned(Selection selection, String verb) {
+        if (selection == null || !selection.isImported()) return;
+        throw new IllegalStateException("Selection '" + selection.name()
+                + "' is imported from " + selection.importedFrom()
+                + " and cannot be " + verb + " here; change it in that model.");
     }
 
     /** Renames one selection and every model reference to it. */
     public boolean renameSelection(String oldName, String newName) {
         Selection selection = findSelection(oldName);
         String next = newName == null ? "" : newName.trim();
+        requireOwned(selection, "renamed");
         if (selection == null || next.isBlank()) return false;
         Selection conflict = findSelection(next);
         if (conflict != null && conflict != selection) return false;
@@ -630,6 +655,7 @@ public class GeneratedProjectModel {
     /** Removes an unreferenced selection; referenced declarations must be redirected first. */
     public boolean removeSelection(String name) {
         Selection selection = findSelection(name);
+        requireOwned(selection, "removed");
         if (selection == null || selectionReferenced(selection.name())) return false;
         return selections.remove(selection);
     }

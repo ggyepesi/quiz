@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -64,6 +65,34 @@ class SelectionTest {
         pop.className("Position");
         pop.instanceQids(List.of("Q102427"));
         assertTrue(pop.isConfigured());
+    }
+
+    @Test void anImporterCannotModifyAnImportedSelection() {
+        GeneratedProjectModel importer = new GeneratedProjectModel();
+        VocabularySelection imported = oscarCategories();
+        imported.importedFrom("Oscars");
+        importer.addSelection(imported);
+
+        // All three refuse the same way, because "you do not own this" is a different
+        // answer from "that name is taken" or "something still points at it". Returning
+        // false for it made the editor report an ownership refusal as a name clash.
+        for (var attempt : List.<org.junit.jupiter.api.function.Executable>of(
+                () -> importer.renameSelection("OscarCategories", "Awards"),
+                () -> importer.removeSelection("OscarCategories"),
+                () -> importer.replaceSelection(
+                        new VocabularySelection("OscarCategories")))) {
+            IllegalStateException refused =
+                    assertThrows(IllegalStateException.class, attempt);
+            assertTrue(refused.getMessage().contains("imported from Oscars"),
+                    refused.getMessage());
+        }
+
+        VocabularySelection refreshedFromOwner = oscarCategories();
+        refreshedFromOwner.importedFrom("Oscars");
+        refreshedFromOwner.valueQids(List.of("Q999"));
+        importer.replaceSelection(refreshedFromOwner);
+        assertEquals(List.of("Q999"), ((VocabularySelection)
+                importer.findSelection("OscarCategories")).valueQids());
     }
 
     @Test void allKindsRoundTripThroughTheStore(@TempDir Path dir) throws Exception {

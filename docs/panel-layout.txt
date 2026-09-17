@@ -1,3 +1,25 @@
+== Project - DomainOverviewPanel ==
+  label: Project overview
+  label: Name:
+  label: Generated Wikidata Project
+  label: Kind:
+  combo: 2 item(s)
+  label: Generation root:
+  label: Person
+  label: Classes:
+  label: 4
+  label: Vocabularies / populations:
+  label: 0
+  label: Entity-kind rules:
+  label: 0 configured / 0
+  label: Model:
+  label: not saved yet
+  label: Snapshot:
+  label: not generated yet
+  label: Current generated objects:
+  label: 0
+  label: Select a class, field, or vocabulary below the domain to configure it.
+
 == Source class - ClassSourcePanel ==
   label: Class: Person
   label: How do we find instances of this class?

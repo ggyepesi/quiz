@@ -324,7 +324,8 @@ public class SingleRootClassModelPanel extends JPanel {
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !imported);
         removeButton.setEnabled(editingEnabled && (classContext || vocabulary)
-                && !(imported && selected instanceof GeneratedFieldModel));
+                && !(imported && (selected instanceof GeneratedFieldModel
+                        || selected instanceof wikidata.explore.model.Selection)));
     }
 
     private void buildUi() {
@@ -380,10 +381,18 @@ public class SingleRootClassModelPanel extends JPanel {
         String name = JOptionPane.showInputDialog(
                 this, "Vocabulary name:", vocabulary.name());
         if (name == null) return;
-        if (!projectModel.renameSelection(vocabulary.name(), name)) {
-            JOptionPane.showMessageDialog(this,
-                    "A class or vocabulary/population named '" + name.trim()
-                            + "' already exists, or the name is blank.",
+        try {
+            if (!projectModel.renameSelection(vocabulary.name(), name)) {
+                JOptionPane.showMessageDialog(this,
+                        "A class or vocabulary/population named '" + name.trim()
+                                + "' already exists, or the name is blank.",
+                        "Cannot rename vocabulary", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        } catch (IllegalStateException imported) {
+            // Say the actual reason: reporting an ownership refusal as a name clash
+            // sends the reader looking for a conflict that does not exist.
+            JOptionPane.showMessageDialog(this, imported.getMessage(),
                     "Cannot rename vocabulary", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -559,10 +568,16 @@ public class SingleRootClassModelPanel extends JPanel {
                     "Delete vocabulary", JOptionPane.OK_CANCEL_OPTION,
                     JOptionPane.WARNING_MESSAGE);
             if (answer != JOptionPane.OK_OPTION) return;
-            if (!projectModel.removeSelection(vocabulary.name())) {
-                JOptionPane.showMessageDialog(this,
-                        "Cannot delete " + vocabulary.name()
-                                + ": the model still references it.",
+            try {
+                if (!projectModel.removeSelection(vocabulary.name())) {
+                    JOptionPane.showMessageDialog(this,
+                            "Cannot delete " + vocabulary.name()
+                                    + ": the model still references it.",
+                            "Cannot delete vocabulary", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            } catch (IllegalStateException imported) {
+                JOptionPane.showMessageDialog(this, imported.getMessage(),
                         "Cannot delete vocabulary", JOptionPane.WARNING_MESSAGE);
                 return;
             }

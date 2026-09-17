@@ -125,6 +125,43 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(overview.isVisible());
     }
 
+    @Test void anExistingProjectCanBeChangedFromDomainToModelInItsOverview() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        int[] changes = { 0 };
+        panel.afterChange(ignored -> changes[0]++);
+        panel.edit(model);
+
+        JComboBox<?> kind = namedComponent(panel, JComboBox.class, "project.kind");
+        kind.setSelectedItem(GeneratedProjectModel.ProjectKind.MODEL);
+
+        assertEquals(GeneratedProjectModel.ProjectKind.MODEL, model.projectKind());
+        assertEquals(1, changes[0]);
+    }
+
+    @Test void modelsAndDomainsUseOneInstancePersistenceWorkflow() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/wikidata/explore/workbench/ModelBuilderFrame.java"));
+
+        assertFalse(source.contains("saveModelOnly"),
+                "model instances must not be bypassed by a configuration-only save path");
+        assertTrue(source.contains("if (!projectModel.isModel()) {\n"
+                        + "                    registerDataset(runSig);"),
+                "only serving registration differs; snapshot persistence is shared");
+    }
+
+    private static <T extends Component> T namedComponent(
+            Container root, Class<T> type, String name) {
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child) && name.equals(child.getName())) return type.cast(child);
+            if (child instanceof Container container) {
+                try { return namedComponent(container, type, name); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No " + type.getSimpleName() + " named " + name);
+    }
+
     @Test void aVocabularyUsesTheConfigurationAreaRatherThanAnExternalWindow() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         VocabularySelection categories = new VocabularySelection("Categories");
