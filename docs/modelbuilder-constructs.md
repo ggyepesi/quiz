@@ -312,17 +312,18 @@ A graph start is one choice: **Class: Position** means all currently loaded Posi
 instances carrying a Wikidata source QID; **Population: PositionsForHistory** means the
 saved population, which already declares that its members are Positions. Class seed QIDs
 remain acquisition configuration and are not a third graph-input mode. Each graph
-constraint has an explicitly authored Java-style name; that exact name identifies the
-annotation instance type it produces. Its separately TransformApp-loadable annotation
-snapshot is saved beneath the owning project's directory, using that graph name. It does
-not become a new independent model/domain owner.
+constraint has an explicitly authored Java-style name and exactly one terminal output class.
+That name identifies its annotation type. Every annotation references the candidate output
+instance and the candidate carries a hidden reverse reference. The fixed All, Accepted,
+Review and Rejected ObjectView panels preserve the graph's original classification; manual
+accept/reject is stored separately as an override mark.
 
-When a graph node says **Add to Position**, its completed population is eligible for the
-explicit **Create population selection…** action. The selection contains the Wikidata QIDs
-included by the graph's authored decision policy: Accepted, plus Review when Review is
-configured to continue; Rejected nodes are excluded. The action stages a named
-`PopulationSelection` on `Position` in the loaded project. It does not save automatically:
-**Save model** or **Save domain** writes it into that project's model file.
+Applying the graph result installs its effective accepted candidates as ordinary instances of
+the output class. Manual decisions override the graph decision; otherwise the authored Review
+policy decides whether Review candidates are included. **Create population selection…** lives
+with the class instances and records the QIDs of those loaded instances. **Save model** or
+**Save domain** is the only persistence action: it writes configuration, generated class
+instances, selections and the named graph annotation result beneath the project directory.
 
 A reusable Model may generate and save a local snapshot when its acquisition configuration
 is complete. This is how a model such as Historical Positions obtains the Position instances

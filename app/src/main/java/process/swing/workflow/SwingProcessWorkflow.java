@@ -351,8 +351,7 @@ public final class SwingProcessWorkflow {
                         List<ProcessWorkflowResults.Card<D>> chosen = values.stream()
                                 .filter(Viewable.class::isInstance)
                                 .map(Viewable.class::cast).map(cards::get)
-                                .filter(java.util.Objects::nonNull)
-                                .filter(card -> card.decision().get() != null).toList();
+                                .filter(java.util.Objects::nonNull).toList();
                         selected.set(chosen);
                         applySelected.setText(resultsApplyLabel(
                                 applyVerb, chosen.size()));
@@ -372,7 +371,8 @@ public final class SwingProcessWorkflow {
             // above already filter those out, so selecting there moves nothing. Showing
             // Select all beside cards that answer nothing is an offer the workflow
             // cannot keep.
-            if (!action.multipleResultSelection() || !actionable(tab)) return view;
+            if (!action.multipleResultSelection()
+                    || (!actionable(tab) && tab.selectionActions().isEmpty())) return view;
             JPanel panel = new JPanel(new BorderLayout(4, 4));
             JPanel selection = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
             JButton selectAll = new JButton("Select all");
@@ -381,6 +381,17 @@ public final class SwingProcessWorkflow {
             clear.addActionListener(e -> view.renderContext().clearSelection());
             selection.add(selectAll);
             selection.add(clear);
+            for (ProcessWorkflowResults.SelectionAction edit : tab.selectionActions()) {
+                JButton button = new JButton(edit.label());
+                button.addActionListener(ignored -> {
+                    List<Viewable> chosen = selected.get().stream()
+                            .map(ProcessWorkflowResults.Card::view).toList();
+                    if (chosen.isEmpty()) return;
+                    edit.apply().accept(chosen);
+                    view.refreshViewables(chosen);
+                });
+                selection.add(button);
+            }
             selection.add(new JLabel("Shift-click selects an interval"));
             panel.add(selection, BorderLayout.NORTH);
             panel.add(view, BorderLayout.CENTER);

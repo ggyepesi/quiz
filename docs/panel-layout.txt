@@ -344,16 +344,17 @@
     label: Direction from previous node:
     combo: 2 item(s)
   box: Next node
-    label: Use reached entities as:
-    combo: 2 item(s)
-    label: Members of class:
-    combo: 1 item(s)  (disabled)
+    label: Graph output:
+    label: Instances of one configured class
+    label: Output class:
+    combo: 1 item(s)
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
     text: []
     combo: 2 item(s)
     button: Add evidence relation
     list
+    button: Edit selected evidence relation
     button: Remove selected evidence relation
     label: Tests on reached evidence entities (one or more may match)
     label: Property:
@@ -365,12 +366,12 @@
     text: []  (disabled)
     button: Add evidence test
     list
+    button: Edit selected evidence test
     button: Remove selected evidence test
-    label: When evidence cannot decide:
+    label: Review candidates in output class:
     combo: 2 item(s)
   label: No discovery graph configured.
   button: Run graph  (disabled)
-  button: Create population selection…  (disabled)
   button: Remove discovery graph  (disabled)
   button: Clear draft
   button: Apply graph

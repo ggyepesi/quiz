@@ -8,8 +8,9 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.VocabularySelection;
 import workbench.SelectionsButton;
-import workbench.EntityResultPanel;
 import workbench.WorkbenchSelections;
+import objectview.Viewable;
+import objectview.view.SearchableView;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,14 +22,14 @@ import java.util.function.Consumer;
 
 /** A deliberately small editor: one named selection and one list of its entities. */
 public class SelectionViewerPanel extends JPanel {
-    private static final int POPULATION_SAMPLE_LIMIT = 200;
-
     private final GeneratedProjectModel project;
     private final WikidataApiClient api;
     private final WikidataSparqlClient sparql;
     private final JComboBox<Selection> selectionBox = new JComboBox<>();
-    private final EntityResultPanel entities = new EntityResultPanel(
-            List.of("QID", "Label"), 0, true);
+    private final JPanel entities = new JPanel(new BorderLayout());
+    private SearchableView entitiesView;
+    private List<? extends Viewable> shownEntities = List.of();
+    private List<String> selectedQids = List.of();
     private final JPanel reusableHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JButton removeButton = new JButton("Remove selected");
     // Labels this panel has been told, by QID. A vocabulary stores QIDs only, so
@@ -57,8 +58,6 @@ public class SelectionViewerPanel extends JPanel {
             return label;
         });
 
-        entities.setColumnWidths(90, 260);
-
         JPanel entityActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
         entityActions.add(reusableHolder);
         entityActions.add(removeButton);
@@ -71,7 +70,6 @@ public class SelectionViewerPanel extends JPanel {
         add(south, BorderLayout.SOUTH);
 
         selectionBox.addActionListener(e -> showChosen());
-        entities.onSelectionChanged(this::updateActions);
         removeButton.addActionListener(e -> removeSelectedEntities());
         refreshSelections();
     }
@@ -131,7 +129,7 @@ public class SelectionViewerPanel extends JPanel {
     }
 
     private void showChosen() {
-        entities.setRows(List.of());
+        showEntities(List.of());
         Selection selection = chosenSelection();
         if (selection == null) {
             status.setText("No vocabulary or population declared in this domain.");
@@ -141,34 +139,53 @@ public class SelectionViewerPanel extends JPanel {
         if (selection instanceof VocabularySelection vocabulary) {
             // Show what is known WITHOUT waiting: a vocabulary is explicit QIDs, and the
             // panel must stay usable offline. Labels arrive after, if a client exists.
-            entities.setEntities(vocabulary.valueQids().stream().map(this::row).toList());
+            showEntities(vocabulary.valueQids().stream().map(this::entity).toList());
             status.setText(vocabulary.name() + ": " + vocabulary.valueQids().size() + " entities");
             updateActions();
             if (api != null && !vocabulary.valueQids().isEmpty()) resolveLabels(vocabulary);
             return;
         }
-        status.setText("Loading a sample of " + selection.name() + "…");
+        if (selection instanceof wikidata.explore.model.PopulationSelection population) {
+            showEntities(population.instanceQids().stream().map(this::entity).toList());
+            status.setText(selection.name() + ": " + population.instanceQids().size()
+                    + " instances");
+        }
         updateActions();
-        new SwingWorker<List<WikidataDynamicObject>, Void>() {
-            @Override protected List<WikidataDynamicObject> doInBackground() {
-                return new SelectionContentResolver().resolve(
-                        selection, sparql, api, POPULATION_SAMPLE_LIMIT, null);
-            }
-            @Override protected void done() {
-                if (selection != chosenSelection()) return;
-                List<WikidataDynamicObject> content;
-                try { content = get(); } catch (Exception ex) { content = List.of(); }
-                entities.setEntities(content.stream().map(value -> new WorkbenchSelections.Entity(
-                        value.qid(), value.getDisplayName(), "")).toList());
-                status.setText(selection.name() + ": " + content.size() + " sampled entities");
-                updateActions();
-            }
-        }.execute();
     }
 
-    private WorkbenchSelections.Entity row(String qid) {
-        return new WorkbenchSelections.Entity(qid, knownLabels.get(qid), "");
+    private WikidataDynamicObject entity(String qid) {
+        WikidataDynamicObject value = new WikidataDynamicObject(
+                qid, knownLabels.getOrDefault(qid, qid));
+        value.type("Selection member");
+        return value;
     }
+
+    private void showEntities(List<? extends Viewable> values) {
+        shownEntities = List.copyOf(values);
+        selectedQids = List.of();
+        entities.removeAll();
+        if (values.isEmpty()) {
+            entities.add(new JLabel("  (none)"), BorderLayout.CENTER);
+            entitiesView = null;
+        } else {
+            entitiesView = SearchableView.builder(values)
+                    .sample(values.getFirst()).columns(2)
+                    .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
+                    .selectionSetListener(selected -> {
+                        selectedQids = selected.stream().filter(Viewable.class::isInstance)
+                                .map(Viewable.class::cast)
+                                .map(quiz.source.SourceIdentities::wikidataQid)
+                                .filter(java.util.Objects::nonNull).distinct().toList();
+                        updateActions();
+                    }).build();
+            entities.add(entitiesView, BorderLayout.CENTER);
+        }
+        entities.revalidate();
+        entities.repaint();
+    }
+
+    SearchableView entitiesViewForTest() { return entitiesView; }
+    List<? extends Viewable> shownEntitiesForTest() { return shownEntities; }
 
     /** Learns the labels of a vocabulary's QIDs, then redraws it with them. */
     private void resolveLabels(VocabularySelection vocabulary) {
@@ -181,8 +198,8 @@ public class SelectionViewerPanel extends JPanel {
                 try { content = get(); } catch (Exception ex) { return; }
                 content.forEach(value -> learn(value.qid(), value.getDisplayName()));
                 if (vocabulary != chosenSelection()) return;
-                entities.setEntities(vocabulary.valueQids().stream()
-                        .map(SelectionViewerPanel.this::row).toList());
+                showEntities(vocabulary.valueQids().stream()
+                        .map(SelectionViewerPanel.this::entity).toList());
             }
         }.execute();
     }
@@ -216,7 +233,7 @@ public class SelectionViewerPanel extends JPanel {
 
     private void removeSelectedEntities() {
         if (!(chosenSelection() instanceof VocabularySelection vocabulary)) return;
-        LinkedHashSet<String> removed = new LinkedHashSet<>(entities.selectedQids());
+        LinkedHashSet<String> removed = new LinkedHashSet<>(selectedQids);
         vocabulary.valueQids(vocabulary.valueQids().stream()
                 .filter(qid -> !removed.contains(qid)).toList());
         showChosen();
@@ -227,6 +244,6 @@ public class SelectionViewerPanel extends JPanel {
 
     private void updateActions() {
         boolean vocabulary = chosenSelection() instanceof VocabularySelection;
-        removeButton.setEnabled(vocabulary && entities.hasSelection());
+        removeButton.setEnabled(vocabulary && !selectedQids.isEmpty());
     }
 }

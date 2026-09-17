@@ -99,6 +99,9 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton graphFrontierButton =
             new JButton("Graph frontier");
 
+    private final JButton createPopulationSelectionButton =
+            new JButton("Create population selection…");
+
     private final JButton runReportButton =
             new JButton("Run report");
 
@@ -466,6 +469,11 @@ public class ModelBuilderFrame extends JFrame {
                             + "expanded in the reverse direction");
             graphFrontierButton.addActionListener(e -> showGraphFrontier());
             toolbar.add(graphFrontierButton);
+            createPopulationSelectionButton.setToolTipText(
+                    "Create a reusable population from the selected class's loaded instances");
+            createPopulationSelectionButton.addActionListener(
+                    ignored -> createPopulationSelectionFromActiveClass());
+            toolbar.add(createPopulationSelectionButton);
 
             instancesWindow.add(toolbar, BorderLayout.NORTH);
             instancesWindow.add(instancesPanel, BorderLayout.CENTER);
@@ -477,6 +485,51 @@ public class ModelBuilderFrame extends JFrame {
         // there's no on-screen indication of which class you're looking at.
         refreshInstancesWindowTitle();
         showAndFocus(instancesWindow);
+    }
+
+    private void createPopulationSelectionFromActiveClass() {
+        GeneratedClassModel clazz = activeClass();
+        if (clazz == null || lastRun == null) return;
+        List<String> qids = lastRun.instances().stream()
+                .filter(value -> value.directClassNames().contains(clazz.className()))
+                .map(quiz.source.SourceIdentities::wikidataQid)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (qids.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No loaded " + clazz.className() + " instances have Wikidata QIDs.");
+            return;
+        }
+        String entered = JOptionPane.showInputDialog(this, "Population selection name:",
+                clazz.className() + "Population");
+        if (entered == null) return;
+        String name = entered.trim();
+        if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
+            JOptionPane.showMessageDialog(this,
+                    "Enter a population selection name shaped like a Java class name.");
+            return;
+        }
+        Selection existing = projectModel.findSelection(name);
+        if (existing != null && existing.isImported()) {
+            JOptionPane.showMessageDialog(this, "Population " + name
+                    + " is imported from " + existing.importedFrom()
+                    + " and must be changed there.");
+            return;
+        }
+        String description = "Create population selection \"" + name + "\" from all "
+                + qids.size() + " loaded " + clazz.className() + " instances.\n\n"
+                + "Save " + (projectModel.isModel() ? "model" : "domain")
+                + " will write it to\n" + modelFile().getPath() + ".";
+        if (!quiz.ui.Dialogs.confirmPersistence(
+                this, "Create population selection", description)) return;
+        PopulationSelection population = new PopulationSelection(name);
+        population.className(clazz.className());
+        population.instanceQids(qids);
+        projectModel.replaceSelection(population);
+        modelChanged();
+        classModelPanel.refresh();
+        logWindow.info("Created population selection " + name + " with " + qids.size()
+                + " " + clazz.className() + " QIDs. Use \"Save "
+                + (projectModel.isModel() ? "model" : "domain") + "\" to persist it.");
     }
 
     /** A run may arrive after the window has already opened (notably Load instances,
@@ -744,6 +797,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.setProcessRunner(processRunner);
         sourceWorkbench.graphInstances(() -> lastRun == null
                 ? List.of() : lastRun.instances());
+        sourceWorkbench.onGraphResult(this::acceptGraphResult);
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> {
@@ -1046,7 +1100,17 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
 
-        showInstancesButton.addActionListener(e -> showInstancesWindow());
+        showInstancesButton.addActionListener(e -> {
+            if (classModelPanel.selectedUserObject()
+                    == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
+                if (!sourceWorkbench.showLastGraphResult()) {
+                    JOptionPane.showMessageDialog(this,
+                            "No graph result is loaded. Run the graph first.");
+                }
+                return;
+            }
+            showInstancesWindow();
+        });
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
@@ -1341,6 +1405,47 @@ public class ModelBuilderFrame extends JFrame {
 
     private void acceptGenerationRun(GenerationRun run) {
         acceptGenerationRun(run, false);
+    }
+
+    /** Installs the one output class produced by a graph constraint into the same
+     * project-owned pool as ordinary generation. Graph annotations stay in their named
+     * result artifact; only effectively accepted candidate instances become roots. */
+    private void acceptGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
+        if (artifact == null || artifact.outputClass().isBlank()) return;
+        try {
+            GeneratedProjectModel snapshot = projectModel.copy();
+            java.util.List<WikidataDynamicObject> pool = new java.util.ArrayList<>();
+            if (lastRun != null && lastRun.dynamicObjects() != null) {
+                for (WikidataDynamicObject value : lastRun.dynamicObjects()) {
+                    if (value == null
+                            || !value.directClassNames().contains(artifact.outputClass())) {
+                        pool.add(value);
+                    }
+                }
+            }
+            pool.addAll(artifact.acceptedCandidates());
+            GenerationPipeline pipeline = new GenerationPipeline();
+            GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
+            java.util.List<Viewable> instances = pipeline.materialize(runtime, pool);
+            RuleNode plan = RuleTreeCompiler.compileProject(snapshot);
+            GenerationRun run = new GenerationRun(
+                    snapshot, 0, plan, pool, runtime, instances, null,
+                    lastRun == null ? List.of() : lastRun.loadedDeclarations(),
+                    GenerationRun.Quality.completeQuality(), List.of(),
+                    GenerationRun.SelfReferenceAudit.notRun(),
+                    GenerationRun.OwnedCompositionAudit.notRun(),
+                    GenerationRun.KindClassificationAudit.notRun(),
+                    GenerationRun.ProjectionAudit.notRun());
+            acceptGenerationRun(run);
+            logWindow.info("Applied graph result \"" + artifact.type() + "\": "
+                    + artifact.acceptedCandidates().size() + " "
+                    + artifact.outputClass() + " instances are now in the project. "
+                    + "Use \"Save " + (projectModel.isModel() ? "model" : "domain")
+                    + "\" to persist them.");
+            showInstancesWindow();
+        } catch (Exception error) {
+            reportGenerationError(error);
+        }
     }
 
     private void acceptGenerationRun(GenerationRun run, boolean alreadySaved) {
@@ -2965,6 +3070,12 @@ public class ModelBuilderFrame extends JFrame {
                 + "Instances: " + (haveInstances
                 ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
                 : "(none generated yet — will be skipped)");
+        GraphDiscoveryResultStore.Artifact graphResult = sourceWorkbench.lastGraphResult();
+        if (graphResult != null) {
+            plan += "\nGraph annotations: " + graphResult.instances().size() + " -> "
+                    + GraphDiscoveryResultStore.destination(modelToSave.name(),
+                            graphResult.type()).getPath();
+        }
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
                     dialogOwner, plan, "Save " + projectKind,
@@ -3024,6 +3135,10 @@ public class ModelBuilderFrame extends JFrame {
                                       + "\"Generate class instances\" first; not "
                                       + "registered until model + snapshot are "
                                       + "saved together)\n");
+            }
+
+            if (graphResult != null) {
+                report.append(GraphDiscoveryResultStore.save(graphResult)).append('\n');
             }
 
             sourceWorkbench.refreshDomainOverview();

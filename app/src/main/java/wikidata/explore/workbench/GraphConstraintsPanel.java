@@ -65,8 +65,7 @@ final class GraphConstraintsPanel extends JPanel {
      * graph.
      */
     private static final String RUN_ONLY =
-            " Run graph is the only thing that executes it. A run never changes a class"
-                    + " population; Create population selection stages reusable QIDs.";
+            " Run graph previews the output class; Apply result installs its accepted instances.";
 
     private final GeneratedProjectModel model;
     private final JTextField graphNameField = new JTextField(22);
@@ -107,8 +106,6 @@ final class GraphConstraintsPanel extends JPanel {
             reviewBox();
     private final JLabel status = new JLabel(" ");
     private final JButton run = new JButton("Run graph");
-    private final JButton createPopulationSelection =
-            new JButton("Create population selection…");
     /** The model holds ONE discovery graph, so removing it needs no selection — the
      *  button names the thing it removes. Enabled only while there is one to remove,
      *  which is also what keeps an unconfigured panel from offering a destructive act. */
@@ -120,7 +117,11 @@ final class GraphConstraintsPanel extends JPanel {
     private boolean loading;
     private java.util.function.Supplier<java.util.Collection<? extends Viewable>> loadedInstances =
             java.util.List::of;
-    private PopulationDraft lastPopulationDraft;
+    private java.util.function.Supplier<Map<String, wikidata.explore.WikidataProperty>>
+            propertyCache = Map::of;
+    private Consumer<GraphDiscoveryResultStore.Artifact> graphResultConsumer = ignored -> {};
+    private GraphDiscoveryResultStore.Artifact lastGraphResult;
+    private ConfiguredGraphDiscoveryQuery.Result lastQueryResult;
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
@@ -156,6 +157,73 @@ final class GraphConstraintsPanel extends JPanel {
         refreshStartInputs();
     }
 
+    void propertyCache(
+            java.util.function.Supplier<Map<String, wikidata.explore.WikidataProperty>> value) {
+        propertyCache = value == null ? Map::of : value;
+        evidenceList.repaint();
+        testsList.repaint();
+        refreshArrow();
+    }
+
+    void onGraphResult(Consumer<GraphDiscoveryResultStore.Artifact> value) {
+        graphResultConsumer = value == null ? ignored -> {} : value;
+    }
+
+    GraphDiscoveryResultStore.Artifact lastGraphResult() { return lastGraphResult; }
+
+    boolean showLastGraphResult() {
+        if (runner == null || lastGraphResult == null) return false;
+        GraphDiscoveryResultStore.Artifact shown = lastGraphResult;
+        ProcessWorkflowAction<GraphDiscoveryResultStore.Artifact,
+                GraphDiscoveryResultStore.Artifact> action = new ProcessWorkflowAction<>() {
+            @Override public String id() { return "show-graph-result"; }
+            @Override public ProcessWorkflowPlan plan() {
+                return new ProcessWorkflowPlan("Graph result", "Already completed", List.of());
+            }
+            @Override public ProcessOutcome<GraphDiscoveryResultStore.Artifact> preparedOutcome() {
+                return ProcessOutcome.succeeded(shown, "Last graph run");
+            }
+            @Override public process.Process<GraphDiscoveryResultStore.Artifact> process() {
+                throw new UnsupportedOperationException("Prepared graph result");
+            }
+            @Override public boolean multipleResultSelection() { return true; }
+            @Override public java.util.function.Function<Object, String> valueLinker() {
+                return WikidataLinks.valueLinker();
+            }
+            @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
+                    ProcessOutcome<GraphDiscoveryResultStore.Artifact> outcome) {
+                return graphResults(outcome.result());
+            }
+            @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions) {
+                lastGraphResult = decisions.getFirst();
+                graphResultConsumer.accept(lastGraphResult);
+            }
+        };
+        SwingProcessWorkflow.start(this, runner, action);
+        return true;
+    }
+
+    private ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
+            GraphDiscoveryResultStore.Artifact artifact) {
+        long accepted = artifact.instances().stream()
+                .filter(value -> decisionValue(value).contains("Accepted")).count();
+        long review = artifact.instances().stream()
+                .filter(value -> decisionValue(value).contains("Review")).count();
+        long rejected = artifact.instances().stream()
+                .filter(value -> decisionValue(value).contains("Rejected")).count();
+        String summary = artifact.instances().size() + " reached: " + accepted
+                + " accepted, " + review + " review, " + rejected + " rejected. "
+                + "Apply result will install " + artifact.acceptedCandidates().size()
+                + " " + artifact.outputClass() + " instances in "
+                + artifact.projectName() + ".";
+        return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply result",
+                List.of(artifactTab("All", artifact, null),
+                        artifactTab("Accepted", artifact, "Accepted"),
+                        artifactTab("Review", artifact, "Review"),
+                        artifactTab("Rejected", artifact, "Rejected")),
+                () -> artifact, "Close without applying result");
+    }
+
     private void runGraph() {
         if (runner == null || runner.isRunning()) return;
         try {
@@ -188,6 +256,7 @@ final class GraphConstraintsPanel extends JPanel {
             @Override public java.util.function.Function<Object, String> valueLinker() {
                 return WikidataLinks.valueLinker();
             }
+            @Override public boolean multipleResultSelection() { return true; }
             @Override public ProcessWorkflowPlan plan() {
                 return new ProcessWorkflowPlan(
                         "Run graph", "Inspect the configured traversal and evidence tests, "
@@ -221,9 +290,8 @@ final class GraphConstraintsPanel extends JPanel {
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
                     throws Exception {
-                // The artifact was built from the graph's name and its instances carry
-                // it; naming it again here is how the two would come apart.
-                GraphDiscoveryResultStore.save(decisions.getFirst());
+                lastGraphResult = decisions.getFirst();
+                graphResultConsumer.accept(lastGraphResult);
             }
         };
     }
@@ -254,9 +322,34 @@ final class GraphConstraintsPanel extends JPanel {
                             + ". Add the property connecting the two nodes to complete"
                             + " the graph."
                     : "Configured." + RUN_ONLY, false);
+            if (saved != null) loadSavedGraphResult(saved);
             updateRunEnabled();
             populated = true;
         } finally { loading = false; }
+    }
+
+    private void loadSavedGraphResult(GraphDiscoveryConfiguration saved) {
+        if (lastGraphResult != null || saved == null) return;
+        String outputClass = saved.nextNodes().stream()
+                .filter(node -> node.use()
+                        == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
+                .map(GraphDiscoveryConfiguration.NextNode::populationClass)
+                .findFirst().orElse("");
+        if (outputClass.isBlank()) return;
+        try {
+            lastGraphResult = GraphDiscoveryResultStore.load(
+                    model.name(), saved.name(), outputClass);
+            if (lastGraphResult != null) {
+                status("Loaded " + lastGraphResult.instances().size()
+                        + " saved graph annotations from "
+                        + GraphDiscoveryResultStore.destination(
+                                model.name(), saved.name()).getPath() + ".", false);
+            }
+        } catch (Exception error) {
+            status("Could not load saved graph annotations from "
+                    + GraphDiscoveryResultStore.destination(model.name(), saved.name()).getPath()
+                    + ": " + message(error), true);
+        }
     }
 
     /**
@@ -334,12 +427,15 @@ final class GraphConstraintsPanel extends JPanel {
             GraphEvidenceCondition evidence = evidenceModel.isEmpty() ? null
                     : new GraphEvidenceCondition("Node evidence", elements(evidenceModel),
                             elements(testsModel), reviewDisposition());
-            GraphDiscoveryConfiguration.NodeUse targetUse = use(targetUseBox);
             GeneratedClassModel targetClass = selectedClass(targetClassBox);
+            if (targetClass == null) {
+                throw new IllegalArgumentException(
+                        "Choose the single output class produced by this graph constraint");
+            }
             var target = new GraphDiscoveryConfiguration.NextNode(
-                    new GraphRelation(PROVIDER, pid), direction().direction, targetUse,
-                    targetUse == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
-                            && targetClass != null ? targetClass.className() : "",
+                    new GraphRelation(PROVIDER, pid), direction().direction,
+                    GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                    targetClass.className(),
                     evidence);
             model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(graphName,
                     new GraphDiscoveryConfiguration.StartNode(
@@ -373,6 +469,8 @@ final class GraphConstraintsPanel extends JPanel {
         reviewBox.setName("graph.reviewDisposition");
         status.setName("graph.status");
         removeGraph.setName("graph.remove");
+        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
+        targetUseBox.setEnabled(false);
 
         JPanel chain = new JPanel();
         chain.setLayout(new BoxLayout(chain, BoxLayout.X_AXIS));
@@ -389,9 +487,7 @@ final class GraphConstraintsPanel extends JPanel {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton clear = new JButton("Clear draft");
         JButton apply = new JButton("Apply graph");
-        createPopulationSelection.setEnabled(false);
-        createPopulationSelection.setName("graph.createPopulationSelection");
-        actions.add(run); actions.add(createPopulationSelection); actions.add(removeGraph);
+        actions.add(run); actions.add(removeGraph);
         actions.add(clear); actions.add(apply);
         bottom.add(status, BorderLayout.CENTER);
         bottom.add(actions, BorderLayout.EAST);
@@ -403,7 +499,6 @@ final class GraphConstraintsPanel extends JPanel {
         targetUseBox.addActionListener(e -> refreshTargetState());
         testKindBox.addActionListener(e -> refreshTestQidState());
         apply.addActionListener(e -> applyEdits());
-        createPopulationSelection.addActionListener(e -> createPopulationSelection());
         removeGraph.addActionListener(e -> removeGraph());
         clear.addActionListener(e -> {
             evidenceModel.clear();
@@ -438,8 +533,8 @@ final class GraphConstraintsPanel extends JPanel {
 
     private JPanel nextNodePanel() {
         JPanel panel = nodePanel("Next node");
-        addLine(panel, "Use reached entities as:", targetUseBox);
-        addLine(panel, "Members of class:", targetClassBox);
+        addLine(panel, "Graph output:", new JLabel("Instances of one configured class"));
+        addLine(panel, "Output class:", targetClassBox);
         panel.add(new JLabel("Evidence relations from this node (one or more may reach evidence)"));
         JPanel evidenceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         evidenceRow.add(new JLabel("Property:")); evidenceRow.add(evidencePidField);
@@ -451,6 +546,9 @@ final class GraphConstraintsPanel extends JPanel {
         panel.add(new JScrollPane(evidenceList));
         JButton removeEvidence = new JButton("Remove selected evidence relation");
         removeEvidence.addActionListener(e -> removeSelected(evidenceList, evidenceModel));
+        JButton editEvidence = new JButton("Edit selected evidence relation");
+        editEvidence.addActionListener(e -> editSelectedEvidence());
+        panel.add(editEvidence);
         panel.add(removeEvidence);
 
         panel.add(new JLabel("Tests on reached evidence entities (one or more may match)"));
@@ -465,8 +563,11 @@ final class GraphConstraintsPanel extends JPanel {
         panel.add(new JScrollPane(testsList));
         JButton removeTest = new JButton("Remove selected evidence test");
         removeTest.addActionListener(e -> removeSelected(testsList, testsModel));
+        JButton editTest = new JButton("Edit selected evidence test");
+        editTest.addActionListener(e -> editSelectedTest());
+        panel.add(editTest);
         panel.add(removeTest);
-        addLine(panel, "When evidence cannot decide:", reviewBox);
+        addLine(panel, "Review candidates in output class:", reviewBox);
         addEvidence.addActionListener(e -> addEvidencePath());
         addTest.addActionListener(e -> addTest());
         return panel;
@@ -558,13 +659,13 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void refreshTargetState() {
-        targetClassBox.setEnabled(use(targetUseBox)
-                == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
+        targetClassBox.setEnabled(true);
     }
 
     private void refreshArrow() {
         String pid = cleanPid(edgePidField.getText());
-        arrowLabel.setText("── " + (pid.isBlank() ? "property" : pid) + " " + direction() + " ──▶");
+        arrowLabel.setText("── " + (pid.isBlank() ? "property" : labelledPid(pid))
+                + " " + direction() + " ──▶");
     }
 
     private void refreshTestQidState() {
@@ -587,6 +688,16 @@ final class GraphConstraintsPanel extends JPanel {
         if (!elements(evidenceModel).contains(path)) evidenceModel.addElement(path);
         evidencePidField.setText("");
         status("Draft changed; Apply graph to save it.", false);
+    }
+
+    private void editSelectedEvidence() {
+        int index = evidenceList.getSelectedIndex();
+        if (index < 0) return;
+        GraphPath path = evidenceModel.remove(index);
+        evidencePidField.setText(path.relation().relationId());
+        evidenceDirectionBox.setSelectedItem(path.direction()
+                == GraphTraversalDirection.INCOMING ? DirectionChoice.IN : DirectionChoice.OUT);
+        status("Edit the property or direction, then press Add evidence relation.", false);
     }
 
     private void addTest() {
@@ -625,11 +736,39 @@ final class GraphConstraintsPanel extends JPanel {
         status("Draft changed; Apply graph to save it.", false);
     }
 
+    private void editSelectedTest() {
+        int index = testsList.getSelectedIndex();
+        if (index < 0) return;
+        GraphNodeCondition condition = testsModel.remove(index);
+        GraphRelation relation;
+        GraphTraversalDirection direction;
+        if (condition instanceof GraphRelationExists value) {
+            testKindBox.setSelectedItem(TestKind.HAS_VALUE);
+            relation = value.relation(); direction = value.direction();
+        } else if (condition instanceof GraphRelationAbsent value) {
+            testKindBox.setSelectedItem(TestKind.HAS_NO_VALUE);
+            relation = value.relation(); direction = value.direction();
+        } else if (condition instanceof GraphRelationReaches value) {
+            testKindBox.setSelectedItem(TestKind.REACHES_ENTITY);
+            relation = value.relation(); direction = value.direction();
+            testQidField.setText(value.entity().id());
+        } else {
+            status("This condition cannot yet be edited in the form.", true);
+            testsModel.add(index, condition);
+            return;
+        }
+        testPidField.setText(relation.relationId());
+        testDirectionBox.setSelectedItem(direction == GraphTraversalDirection.INCOMING
+                ? DirectionChoice.IN : DirectionChoice.OUT);
+        refreshTestQidState();
+        status("Edit the condition, then press Add evidence test.", false);
+    }
+
     private void load(GraphDiscoveryConfiguration.NextNode node) {
         edgePidField.setText(node.property().relationId());
         directionBox.setSelectedItem(node.directionFromPrevious() == GraphTraversalDirection.INCOMING
                 ? DirectionChoice.IN : DirectionChoice.OUT);
-        targetUseBox.setSelectedItem(node.use());
+        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         selectClass(targetClassBox, node.populationClass());
         GraphEvidenceCondition evidence = node.evidenceCondition();
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
@@ -653,26 +792,26 @@ final class GraphConstraintsPanel extends JPanel {
         return box;
     }
 
-    private static ListCellRenderer<Object> conditionRenderer() {
+    private ListCellRenderer<Object> conditionRenderer() {
         return new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
-                if (value instanceof GraphRelationExists c) setText(c.relation().relationId() + " has a value");
-                else if (value instanceof GraphRelationAbsent c) setText(c.relation().relationId() + " has no value");
-                else if (value instanceof GraphRelationReaches c) setText(c.relation().relationId() + " reaches " + c.entity().id());
+                if (value instanceof GraphRelationExists c) setText(labelledPid(c.relation().relationId()) + " has a value");
+                else if (value instanceof GraphRelationAbsent c) setText(labelledPid(c.relation().relationId()) + " has no value");
+                else if (value instanceof GraphRelationReaches c) setText(labelledPid(c.relation().relationId()) + " reaches " + labelledQid(c.entity().id()));
                 return this;
             }
         };
     }
 
-    private static ListCellRenderer<Object> pathRenderer() {
+    private ListCellRenderer<Object> pathRenderer() {
         return new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
                 if (value instanceof GraphPath path) {
-                    setText(path.relation().relationId() + " "
+                    setText(labelledPid(path.relation().relationId()) + " "
                             + directionLabel(path.direction()));
                 }
                 return this;
@@ -687,12 +826,31 @@ final class GraphConstraintsPanel extends JPanel {
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
                 setText(value == GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT
-                        ? "Exclude from the next step and report in Review"
-                        : "Include in the next step and report in Review");
+                        ? "Exclude unless manually accepted"
+                        : "Include unless manually rejected");
                 return this;
             }
         });
         return box;
+    }
+
+    private String labelledPid(String pid) {
+        wikidata.explore.WikidataProperty property = propertyCache.get().get(pid);
+        String label = property == null ? "" : property.label();
+        return label == null || label.isBlank() ? pid : label + " (" + pid + ")";
+    }
+
+    private String labelledQid(String qid) {
+        for (Viewable value : loadedInstances.get()) {
+            String found = quiz.source.SourceIdentities.wikidataQid(value);
+            if (qid.equalsIgnoreCase(found)) {
+                String label = value.getDisplayName();
+                if (label != null && !label.isBlank() && !qid.equalsIgnoreCase(label)) {
+                    return label + " (" + qid + ")";
+                }
+            }
+        }
+        return qid;
     }
 
     private static String directionLabel(GraphTraversalDirection direction) {
@@ -754,8 +912,9 @@ final class GraphConstraintsPanel extends JPanel {
             String projectName, String graphName) {
         GraphDiscoveryResultStore.Artifact artifact =
                 GraphDiscoveryResultStore.artifact(projectName, graphName, result);
-        lastPopulationDraft = populationDraft(result);
-        createPopulationSelection.setEnabled(lastPopulationDraft != null);
+        preserveManualDecisions(lastGraphResult, artifact);
+        lastQueryResult = result;
+        lastGraphResult = artifact;
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -770,21 +929,15 @@ final class GraphConstraintsPanel extends JPanel {
                 + " review, " + rejected + " rejected"
                 + (unavailable + incomplete == 0 ? "" : "; " + unavailable
                         + " unavailable, " + incomplete + " incomplete") + labels
-                + ". No class population was changed. "
-                + saveDescription(artifact)
-                + (lastPopulationDraft == null ? ""
-                : " Create population selection… will stage "
-                        + lastPopulationDraft.qids().size() + " "
-                        + lastPopulationDraft.className()
-                        + " QIDs in " + projectName + ".");
+                + ". Apply result will install " + artifact.acceptedCandidates().size()
+                + " " + artifact.outputClass() + " instances in " + projectName + ".";
         status(summary, false);
-        String saveDescription = saveDescription(artifact);
-        return new ProcessWorkflowResults<>("Run graph — results", summary, "Save result",
-                List.of(artifactTab("Start", artifact, "Start"),
+        return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply result",
+                List.of(artifactTab("All", artifact, null),
                         artifactTab("Accepted", artifact, "Accepted"),
                         artifactTab("Review", artifact, "Review"),
                         artifactTab("Rejected", artifact, "Rejected")),
-                () -> artifact, "Close without saving result", saveDescription);
+                () -> artifact, "Close without applying result");
     }
 
     static String saveDescription(GraphDiscoveryResultStore.Artifact artifact) {
@@ -796,118 +949,61 @@ final class GraphConstraintsPanel extends JPanel {
                         artifact.projectName(), artifact.type()).getPath() + ".";
     }
 
-    record PopulationDraft(String className, List<String> qids,
-                           int accepted, int review, int reviewIncluded, int rejected) {
-        PopulationDraft {
-            className = className == null ? "" : className.trim();
-            qids = qids == null ? List.of() : List.copyOf(qids);
-        }
-    }
-
-    static PopulationDraft populationDraft(ConfiguredGraphDiscoveryQuery.Result result) {
-        if (result == null || result.graph() == null) return null;
-        List<GraphDiscoveryExecutor.NodeResult> nodes = result.graph().nodes();
-        for (int i = nodes.size() - 1; i >= 0; i--) {
-            GraphDiscoveryExecutor.NodeResult node = nodes.get(i);
-            GraphDiscoveryConfiguration.NextNode configuration = node.configuration();
-            if (configuration == null
-                    || configuration.use()
-                            != GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
-                    || configuration.populationClass().isBlank()) continue;
-            java.util.LinkedHashSet<EntityRef> included = new java.util.LinkedHashSet<>(
-                    node.accepted());
-            node.classifications().stream()
-                    .filter(GraphEvidenceConditionResult::includedInPopulation)
-                    .map(GraphEvidenceConditionResult::node).forEach(included::add);
-            List<String> qids = node.reached().stream().filter(included::contains)
-                    .filter(entity -> "wikidata".equalsIgnoreCase(entity.namespace()))
-                    .map(EntityRef::id).distinct().toList();
-            int reviewIncluded = (int) node.classifications().stream()
-                    .filter(value -> value.decision()
-                            == GraphEvidenceConditionResult.Decision.REVIEW)
-                    .filter(GraphEvidenceConditionResult::includedInPopulation).count();
-            if (qids.isEmpty()) return null;
-            return new PopulationDraft(configuration.populationClass(), qids,
-                    node.accepted().size(), node.review().size(), reviewIncluded,
-                    node.rejected().size());
-        }
-        return null;
-    }
-
-    private void createPopulationSelection() {
-        PopulationDraft draft = lastPopulationDraft;
-        if (draft == null) {
-            status("Run a graph whose reached entities populate a class first.", true);
-            return;
-        }
-        if (model.findClass(draft.className()) == null) {
-            status("The completed graph populated class " + draft.className()
-                    + ", which is no longer in the loaded project. Run the graph again.", true);
-            return;
-        }
-        String graphName = model.graphDiscoveryConfiguration() == null ? ""
-                : model.graphDiscoveryConfiguration().name();
-        String proposed = graphName + draft.className() + "Population";
-        String name = JOptionPane.showInputDialog(this, "Population selection name:", proposed);
-        if (name == null) return;
-        name = name.trim();
-        if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
-            status("Enter a population selection name shaped like a Java class name", true);
-            return;
-        }
-        if (model.findClass(name) != null) {
-            status("A class already has the name " + name + ".", true);
-            return;
-        }
-        Selection existing = model.findSelection(name);
-        if (existing != null && existing.isImported()) {
-            status("Selection " + name + " is imported from " + existing.importedFrom()
-                    + " and must be changed there.", true);
-            return;
-        }
-        java.io.File modelFile = dataset.DomainStorage.inDefaultLocation()
-                .modelFileOf(model.name());
-        String description = "Create population selection \"" + name + "\" for class "
-                + draft.className() + " with " + draft.qids().size() + " QIDs ("
-                + draft.accepted() + " Accepted included; " + draft.reviewIncluded()
-                + " of " + draft.review() + " Review included; " + draft.rejected()
-                + " Rejected excluded).\n\n"
-                + "This changes the loaded " + (model.isModel() ? "model" : "domain")
-                + ". Save " + (model.isModel() ? "model" : "domain") + " will write it to\n"
-                + modelFile.getPath() + "."
-                + (existing == null ? "" : "\n\nThe existing selection of this name will be replaced.");
-        if (!quiz.ui.Dialogs.confirmPersistence(
-                this, "Create population selection", description)) return;
-        PopulationSelection selection = new PopulationSelection(name);
-        selection.className(draft.className());
-        selection.instanceQids(draft.qids());
-        model.replaceSelection(selection);
-        status("Created population selection " + name + " with " + draft.qids().size()
-                + " " + draft.className() + " QIDs in the loaded "
-                + (model.isModel() ? "model" : "domain") + ". Use \"Save "
-                + (model.isModel() ? "model" : "domain") + "\" to write "
-                + modelFile.getPath() + ".", false);
-        afterChange.accept(null);
-    }
-
-    private void clearCompletedPopulation() {
-        lastPopulationDraft = null;
-        createPopulationSelection.setEnabled(false);
-    }
+    private void clearCompletedPopulation() { lastGraphResult = null; }
 
     static ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> artifactTab(
             String title, GraphDiscoveryResultStore.Artifact artifact, String decision) {
         List<ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>> cards =
                 artifact.instances().stream()
-                        .filter(value -> decisionValue(value).contains(decision))
+                        .filter(value -> decision == null
+                                || decisionValue(value).contains(decision))
                         .map(value -> new ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>(
-                                value, () -> null, false)).toList();
+                                value, () -> null, false,
+                                () -> manualDecisionMark(value))).toList();
+        List<ProcessWorkflowResults.SelectionAction> actions = List.of(
+                selectionAction("Accept selection", "Accepted"),
+                selectionAction("Reject selection", "Rejected"),
+                selectionAction("Clear manual decision", null));
         return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
-                artifact.model().representativeSample(artifact.type()));
+                artifact.model().representativeSample(artifact.type()), actions);
+    }
+
+    private static ProcessWorkflowResults.SelectionAction selectionAction(
+            String label, String decision) {
+        return new ProcessWorkflowResults.SelectionAction(label, values -> values.stream()
+                .filter(WikidataDynamicObject.class::isInstance)
+                .map(WikidataDynamicObject.class::cast)
+                .forEach(value -> GraphDiscoveryResultStore.manualDecision(value, decision)));
+    }
+
+    private static JComponent manualDecisionMark(WikidataDynamicObject value) {
+        Object decision = value.get(GraphDiscoveryResultStore.MANUAL_DECISION);
+        if (decision == null) return null;
+        JLabel mark = new JLabel("Accepted".equals(decision) ? "● accepted" : "● rejected");
+        mark.setForeground("Accepted".equals(decision)
+                ? new Color(35, 125, 55) : new Color(175, 45, 40));
+        return mark;
+    }
+
+    private static void preserveManualDecisions(
+            GraphDiscoveryResultStore.Artifact previous,
+            GraphDiscoveryResultStore.Artifact replacement) {
+        if (previous == null || replacement == null
+                || !previous.type().equals(replacement.type())) return;
+        Map<String, Object> decisions = new LinkedHashMap<>();
+        for (WikidataDynamicObject value : previous.instances()) {
+            Object decision = value.get(GraphDiscoveryResultStore.MANUAL_DECISION);
+            if (decision != null) decisions.put(value.getIdentifier(), decision);
+        }
+        for (WikidataDynamicObject value : replacement.instances()) {
+            Object decision = decisions.get(value.getIdentifier());
+            if (decision != null) GraphDiscoveryResultStore.manualDecision(
+                    value, String.valueOf(decision));
+        }
     }
 
     private static List<String> decisionValue(WikidataDynamicObject value) {
-        Object decision = value.get("Decision");
+        Object decision = value.get(GraphDiscoveryResultStore.GRAPH_DECISION);
         if (decision instanceof List<?> values) return values.stream().map(String::valueOf).toList();
         return decision == null ? List.of() : List.of(String.valueOf(decision));
     }

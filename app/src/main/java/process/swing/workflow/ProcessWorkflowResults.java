@@ -39,13 +39,30 @@ public record ProcessWorkflowResults<D>(
         this(title, summary, "Apply", tabs, null, "Close without applying", "");
     }
 
-    public record Tab<D>(String title, List<Card<D>> cards, Viewable shapeSample) {
+    public record Tab<D>(String title, List<Card<D>> cards, Viewable shapeSample,
+                         List<SelectionAction> selectionActions) {
         public Tab {
             title = title == null ? "Results" : title;
             cards = cards == null ? List.of() : List.copyOf(cards);
+            selectionActions = selectionActions == null
+                    ? List.of() : List.copyOf(selectionActions);
         }
         public Tab(String title, List<Card<D>> cards) {
-            this(title, cards, null);
+            this(title, cards, null, List.of());
+        }
+        public Tab(String title, List<Card<D>> cards, Viewable shapeSample) {
+            this(title, cards, shapeSample, List.of());
+        }
+    }
+
+    /** A result-tab edit that changes only the selected displayed values. The host
+     * refreshes those cards in place; it does not close the workflow or rebuild the
+     * complete virtualized panel. */
+    public record SelectionAction(
+            String label, java.util.function.Consumer<List<Viewable>> apply) {
+        public SelectionAction {
+            label = label == null ? "Apply to selection" : label;
+            java.util.Objects.requireNonNull(apply, "apply");
         }
     }
 

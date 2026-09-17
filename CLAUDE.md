@@ -172,8 +172,9 @@ construct per thing produced:
 17. **Same concept means the same processing and the same UI.** A preview, saved
    result and subsequently loaded domain are not three representations that may merely
    resemble one another: they use the same instances and the same declared model through
-   the normal domain workflow. An action that writes a result says **Save result** and
-   writes only when that button is pressed; closing the result does not secretly save it.
+   the normal domain workflow. A result is applied to project state; **Save model/domain**
+   is the single persistence boundary for configuration, generated instances and named
+   run results. Closing a result does not secretly apply or save it.
    *(Trigger: introducing a special result renderer, inferred substitute schema, or a
    workflow verb that differs from the operation it performs.)*
 
@@ -187,15 +188,18 @@ construct per thing produced:
    explicit action that names the selection, count and model file. Graphs consume this same
    saved construct rather than owning another QID list.
 
-19. **A graph constraint names its annotation set.** Its name is explicitly authored (there
-   is no silent default), persisted and shaped like a Java class name. A run uses that exact
-   name for the produced annotation instance type. The annotation snapshot is a separate
-   TransformApp-loadable result but lives under the owning model/domain directory; it is not
-   an unrelated top-level dataset. From a completed `CLASS_POPULATION` node, an explicit
-   **Create population selection** action may stage the included QIDs as a class-bound
-   `PopulationSelection` in the loaded project; Save model/domain persists it. A class graph
-   input means all currently loaded instances of that class, while a saved population is one
-   alternative input that already names its class.
+19. **A graph constraint has one named annotation set and one output class.** Its name is
+   explicitly authored (there is no silent default), persisted and shaped like a Java class
+   name. Its terminal node produces instances of exactly one configured class. The named
+   annotation instances reference those candidates and the candidates carry a hidden reverse
+   reference, so ObjectView/MultiInstance renders one connected object graph. Result tabs keep
+   the graph's original Accepted/Review/Rejected classification; manual accept/reject is a
+   separate override mark and never rewrites or moves that original result. Applying installs
+   the effective output population into the project's ordinary generated-instance pool.
+   Population selections are created from class instances, not from the graph editor. The
+   annotation snapshot lives beneath the owning project and is written only by Save
+   model/domain. A class graph input means all currently loaded instances of that class, while
+   a saved population is one alternative input that already names its class.
 
 20. **Model reuse and local execution are independent.** `MODEL` means its declarations
    and relevant selections may be imported; it does not mean the project cannot generate.

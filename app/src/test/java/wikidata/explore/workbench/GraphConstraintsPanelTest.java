@@ -87,7 +87,6 @@ class GraphConstraintsPanelTest {
         text(panel, "graph.edgeProperty").setText("P279");
         text(panel, "graph.name").setText("PositionGraph");
         named(panel, "graph.edgeDirection", JComboBox.class).setSelectedIndex(1);
-        named(panel, "graph.targetUse", JComboBox.class).setSelectedIndex(1);
         text(panel, "graph.evidenceProperty").setText("P1001");
         button(panel, "Add evidence relation").doClick();
         text(panel, "graph.testProperty").setText("P576");
@@ -109,6 +108,18 @@ class GraphConstraintsPanelTest {
                 evidence.reviewDisposition());
     }
 
+    @Test void graphPropertiesUseTheAlreadyLoadedCatalogueLabels() {
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model());
+        panel.propertyCache(() -> java.util.Map.of("P279",
+                new wikidata.explore.WikidataProperty(
+                        "P279", "subclass of", "", "", "")));
+
+        text(panel, "graph.edgeProperty").setText("P279");
+
+        assertEquals("── subclass of (P279) out ──▶",
+                named(panel, "graph.edgeLabel", JLabel.class).getText());
+    }
+
     @Test void aStoredGraphHasAnExplicitExecutionSeparateFromGeneration() {
         GeneratedProjectModel model = model();
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
@@ -124,13 +135,13 @@ class GraphConstraintsPanelTest {
 
         assertNotNull(model.graphDiscoveryConfiguration());
         JLabel applied = named(panel, "graph.status", JLabel.class);
-        assertTrue(applied.getText().contains("Run graph is the only thing that executes it"),
+        assertTrue(applied.getText().contains("Run graph previews the output class"),
                 applied.getText());
 
         panel.refresh();
 
         assertTrue(named(panel, "graph.status", JLabel.class).getText()
-                        .contains("Run graph is the only thing that executes it"),
+                        .contains("Run graph previews the output class"),
                 "a graph read back from the model says it too");
     }
 
@@ -146,7 +157,7 @@ class GraphConstraintsPanelTest {
                 status(panel));
     }
 
-    @Test void aCompletedClassPopulationCanBecomeAPopulationSelection() {
+    @Test void aCompletedGraphProducesOneOutputClassForLaterApplication() {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
@@ -180,22 +191,56 @@ class GraphConstraintsPanelTest {
                         new GraphDiscoveryExecutor.Result(List.of(), List.of(node)),
                         java.util.Map.of(), 0);
 
-        GraphConstraintsPanel.PopulationDraft draft =
-                GraphConstraintsPanel.populationDraft(result);
-        panel.graphResults(result, "PositionValidity");
+        ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results =
+                panel.graphResults(result, "PositionValidity");
+        GraphDiscoveryResultStore.Artifact artifact = results.resultDecision().get();
 
-        assertNotNull(draft);
-        assertEquals("Position", draft.className());
-        assertEquals(List.of("Q1", "Q2"), draft.qids(),
+        assertEquals("Position", artifact.outputClass());
+        assertEquals(List.of("Q1", "Q2"), artifact.acceptedCandidates().stream()
+                        .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier).toList(),
                 "Review is included because the authored policy says INCLUDE_AND_REPORT");
-        assertEquals(1, draft.accepted());
-        assertEquals(1, draft.review());
-        assertEquals(1, draft.reviewIncluded());
-        assertEquals(1, draft.rejected());
-        assertTrue(button(panel, "Create population selection…").isEnabled());
+        assertEquals("Apply result", results.applyVerb());
+        assertNull(button(panel, "Create population selection…"));
         assertEquals("data/wikidata/historicalpositions/positionvalidity.graph.snapshot.json",
                 GraphDiscoveryResultStore.destination(
                         "Historical Positions", "PositionValidity").getPath());
+    }
+
+    @Test void graphAnnotationsReferenceCandidatesAndManualDecisionsOverrideInclusion() {
+        EntityRef accepted = EntityRef.wikidata("Q1");
+        EntityRef rejected = EntityRef.wikidata("Q2");
+        GraphDiscoveryConfiguration.NextNode output = new GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation("wikidata", "P31"), GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "Position", null);
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, output, null, List.of(accepted, rejected), List.of(accepted),
+                List.of(rejected), List.of(), List.of(), List.of(), List.of(), List.of());
+        ConfiguredGraphDiscoveryQuery.Result result = new ConfiguredGraphDiscoveryQuery.Result(
+                new GraphDiscoveryExecutor.Result(List.of(), List.of(node)),
+                java.util.Map.of("Q1", "One", "Q2", "Two"), 2);
+
+        GraphDiscoveryResultStore.Artifact artifact =
+                GraphDiscoveryResultStore.artifact("Project", "PositionValidity", result);
+        var firstAnnotation = artifact.instances().getFirst();
+        var firstCandidate = artifact.candidates().getFirst();
+        assertTrue(firstAnnotation.get(GraphDiscoveryResultStore.ANNOTATED_INSTANCE)
+                == firstCandidate);
+        assertTrue(firstCandidate.get(GraphDiscoveryResultStore.GRAPH_ANNOTATION)
+                == firstAnnotation);
+        assertEquals(List.of("Q1"), artifact.acceptedCandidates().stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject::qid).toList());
+
+        GraphDiscoveryResultStore.manualDecision(artifact.instances().get(1), "Accepted");
+        GraphDiscoveryResultStore.manualDecision(firstAnnotation, "Rejected");
+        assertEquals(List.of("Q2"), artifact.acceptedCandidates().stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject::qid).toList());
+
+        ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> shown =
+                new GraphConstraintsPanel(model()).graphResults(result, "PositionValidity");
+        assertEquals(List.of("All — 2 total", "Accepted — 1 total",
+                        "Review — 0 total", "Rejected — 1 total"),
+                shown.tabs().stream().map(ProcessWorkflowResults.Tab::title).toList());
+        assertTrue(shown.tabs().stream().allMatch(tab -> tab.selectionActions().size() == 3));
     }
 
     @Test void modelKindDoesNotDisableAReadyGraphConstraint() {
@@ -251,7 +296,7 @@ class GraphConstraintsPanelTest {
 
         GraphViewModel graph = GraphConstraintsPanel.graphPlanModel(model);
 
-        assertEquals(List.of("Position", "Intermediate node", "Evidence entity",
+        assertEquals(List.of("Position", "Position", "Evidence entity",
                         "Has a value"),
                 graph.nodes().stream().map(GraphViewModel.Node::label).toList());
         assertEquals(List.of("P279 out", "P1001 out", "P576 out"),
@@ -319,7 +364,7 @@ class GraphConstraintsPanelTest {
         EntityRef accepted = EntityRef.wikidata("Q2");
         EntityRef rejected = EntityRef.wikidata("Q3");
         GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
-                1, null, new datasource.graph.GraphTraversalStep(
+                1, outputNode("Position"), new datasource.graph.GraphTraversalStep(
                         "step", "Start", "Position", "Graph",
                         new GraphRelation("wikidata", "P31"),
                         GraphTraversalDirection.OUTGOING,
@@ -346,11 +391,11 @@ class GraphConstraintsPanelTest {
         });
 
         assertEquals("History", savedName.get());
-        assertEquals(3, savedMembers.get().size(),
-                "start and every reached entity are persisted");
+        assertEquals(2, savedMembers.get().size(),
+                "the output candidates are persisted as annotations");
         assertEquals(List.of("History"),
                 savedDomain.get().servedTypes());
-        assertEquals(List.of("Q1", "Q2", "Q3"), savedMembers.get().stream()
+        assertEquals(List.of("Q2", "Q3"), savedMembers.get().stream()
                 .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
                 .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier).toList(),
                 "saved graph members use their ordinary Wikidata identity");
@@ -367,21 +412,27 @@ class GraphConstraintsPanelTest {
         assertEquals(objectview.field.FieldRole.PROVENANCE, savedSource.role(),
                 "the artificial class model, not only its instances, declares the source");
         assertTrue(savedSource.reference());
-        assertEquals(List.of("Start", "Accepted", "Review", "Rejected"),
+        assertEquals(List.of("Accepted", "Review", "Rejected"),
                 savedDomain.get().valueSelection("History",
-                        objectview.field.FieldPath.parse("Decision")).values());
+                        objectview.field.FieldPath.parse("Graph decision")).values());
         List<String> decisions = savedMembers.get().stream()
                 .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
-                .map(value -> String.valueOf(value.get("Decision"))).toList();
-        assertEquals(List.of("Start", "Accepted", "Rejected"), decisions);
+                .map(value -> String.valueOf(value.get("Graph decision"))).toList();
+        assertEquals(List.of("Accepted", "Rejected"), decisions);
     }
 
-    @Test void graphResultsOfferOneExplicitSaveOfThePreviewedArtificialDomain()
+    @Test void graphResultsAreAppliedToTheProjectAndSavedOnlyWithTheProject()
             throws Exception {
         EntityRef start = EntityRef.wikidata("Q1");
+        GraphDiscoveryConfiguration.NextNode output = new GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation("wikidata", "P31"), GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "Position", null);
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, output, null, List.of(start), List.of(start), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of());
         ConfiguredGraphDiscoveryQuery.Result result =
                 new ConfiguredGraphDiscoveryQuery.Result(
-                        new GraphDiscoveryExecutor.Result(List.of(start), List.of()),
+                        new GraphDiscoveryExecutor.Result(List.of(), List.of(node)),
                         java.util.Map.of("Q1", "Root"), 1);
         GraphDiscoveryResultStore.Artifact artifact =
                 GraphDiscoveryResultStore.artifact(
@@ -393,7 +444,7 @@ class GraphConstraintsPanelTest {
         assertNotNull(artifact.model().fieldSchema("History")
                 .field("wikidataSource"));
         ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> preview =
-                GraphConstraintsPanel.artifactTab("Start", artifact, "Start");
+                GraphConstraintsPanel.artifactTab("All", artifact, null);
         assertTrue(preview.cards().getFirst().view() == artifact.instances().getFirst(),
                 "the preview must render the exact instance later passed to Save result");
         assertNotNull(objectview.field.FieldSet.of(preview.shapeSample(),
@@ -408,10 +459,9 @@ class GraphConstraintsPanelTest {
         owner.name("Historical Positions");
         ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results =
                 new GraphConstraintsPanel(owner).graphResults(result, "History");
-        assertEquals("Save result", results.applyVerb());
-        assertEquals(GraphConstraintsPanel.saveDescription(artifact),
-                results.resultConfirmation(),
-                "pressing Save result must show the exact write before it starts");
+        assertEquals("Apply result", results.applyVerb());
+        assertTrue(results.resultConfirmation().isBlank(),
+                "graph results have no separate persistence action");
     }
 
     @Test void rejectedNodesAreGroupedByTheirRecordedRejectionReason()
@@ -424,7 +474,7 @@ class GraphConstraintsPanelTest {
                 rejected(second, "Jurisdiction kind", "No configured kind matched"),
                 rejected(third, "Entity kind", "The entity is a list"));
         GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
-                1, null, null, List.of(first, second, third), List.of(),
+                1, outputNode("Position"), null, List.of(first, second, third), List.of(),
                 List.of(first, second, third), List.of(), classifications,
                 List.of(), List.of(), List.of());
         ConfiguredGraphDiscoveryQuery.Result result =
@@ -743,7 +793,7 @@ class GraphConstraintsPanelTest {
         EntityRef start = EntityRef.wikidata("Q1");
         EntityRef accepted = EntityRef.wikidata("Q2");
         GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
-                1, null, new datasource.graph.GraphTraversalStep(
+                1, outputNode("Position"), new datasource.graph.GraphTraversalStep(
                         "step", "Start", "Position", "Graph",
                         new GraphRelation("wikidata", "P31"),
                         GraphTraversalDirection.OUTGOING,
@@ -784,7 +834,7 @@ class GraphConstraintsPanelTest {
         EntityRef start = EntityRef.wikidata("Q1");
         EntityRef accepted = EntityRef.wikidata("Q2");
         GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
-                1, null, new datasource.graph.GraphTraversalStep(
+                1, outputNode("Position"), new datasource.graph.GraphTraversalStep(
                         "step", "Start", "Position", "Graph",
                         new GraphRelation("wikidata", "P31"),
                         GraphTraversalDirection.OUTGOING,
@@ -816,6 +866,17 @@ class GraphConstraintsPanelTest {
         assertEquals("PositionValidity", entry.rootClass());
         assertFalse(entry.served(),
                 "listed so TransformApp can load it, never served to the quiz");
+    }
+
+    /** A node that says it produces a class population, which is what makes it the
+     *  graph's output. Omitting it is what made the store guess from a label. */
+    private static datasource.graph.GraphDiscoveryConfiguration.NextNode outputNode(
+            String populationClass) {
+        return new datasource.graph.GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation("wikidata", "P31"),
+                GraphTraversalDirection.OUTGOING,
+                datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                populationClass, null);
     }
 
     private static GeneratedProjectModel model() {

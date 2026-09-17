@@ -145,6 +145,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
         this.graphConstraintsPanel = new GraphConstraintsPanel(projectModel);
+        this.graphConstraintsPanel.propertyCache(propertyPanel::propertyCache);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.aggregateClassPanel = new AggregateClassPanel(projectModel);
         this.explorePanel.selections(selections);
@@ -187,6 +188,19 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     public void graphInstances(
             Supplier<java.util.Collection<? extends objectview.Viewable>> instances) {
         graphConstraintsPanel.loadedInstances(instances);
+    }
+
+    public void onGraphResult(
+            java.util.function.Consumer<GraphDiscoveryResultStore.Artifact> consumer) {
+        graphConstraintsPanel.onGraphResult(consumer);
+    }
+
+    GraphDiscoveryResultStore.Artifact lastGraphResult() {
+        return graphConstraintsPanel.lastGraphResult();
+    }
+
+    public boolean showLastGraphResult() {
+        return graphConstraintsPanel.showLastGraphResult();
     }
 
     public void afterChange(

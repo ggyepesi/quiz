@@ -45,9 +45,10 @@ class VocabularyFromSelectionsTest {
         project.addSelection(prize);
         SelectionViewerPanel panel = new SelectionViewerPanel(project, null, null);
 
-        EntityResultPanel list = component(panel, EntityResultPanel.class);
-        assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.selectionMode());
-        list.selectRows(0, 2);
+        objectview.view.SearchableView list = panel.entitiesViewForTest();
+        List<? extends objectview.Viewable> shown = panel.shownEntitiesForTest();
+        list.renderContext().select(shown.get(0), false, false);
+        list.renderContext().select(shown.get(2), true, false);
         button(panel, "Remove selected").doClick();
 
         assertEquals(List.of("Q44585"), prize.valueQids());
@@ -116,9 +117,9 @@ class VocabularyFromSelectionsTest {
         component(entityTab, EntityResultPanel.class).selectRows(0);
         button(entityTab, "Add selected entities").doClick();
 
-        EntityResultPanel shown = component(panel, EntityResultPanel.class);
-        assertEquals(1, shown.rowCount());
-        assertTrue(shown.valueAt(0, 1).toString().contains("Nobel Prize in Physics"),
+        assertEquals(1, panel.shownEntitiesForTest().size());
+        assertTrue(panel.shownEntitiesForTest().getFirst().getDisplayName()
+                        .contains("Nobel Prize in Physics"),
                 "the label survives into the vocabulary view");
     }
 
@@ -136,9 +137,10 @@ class VocabularyFromSelectionsTest {
         component(entityTab, EntityResultPanel.class).selectRows(0);
         button(entityTab, "Add selected entities").doClick();
 
-        EntityResultPanel shown = component(panel, EntityResultPanel.class);
-        assertEquals(2, ((JTable) component(shown, JTable.class)).getColumnCount(),
-                "a vocabulary stores QIDs, not transient search descriptions");
+        assertTrue(panel.shownEntitiesForTest().stream()
+                        .map(objectview.Viewable::getDisplayName)
+                        .noneMatch("award category"::equals),
+                "a vocabulary stores QIDs and labels, not transient search descriptions");
     }
 
     /**
