@@ -207,6 +207,17 @@ public class ModelBuilderFrame extends JFrame {
     private String savedSignature = "";
 
     /**
+     * The configuration the generated instances correspond to, and its generation
+     * signature. Settled whenever the model and the instances are known to agree — a
+     * project loaded, saved, generated, or whose snapshots were just discarded.
+     *
+     * <p>The copy is kept, not only the signature, because abandoning a change means
+     * putting the model back exactly as it was; a signature can only say that it moved.
+     */
+    private GeneratedProjectModel snapshotBaseline;
+    private String snapshotBaselineSignature = "";
+
+    /**
      * Where this project lives: the model file it was last loaded from or saved to.
      *
      * <p>Blank for a draft that has never been saved, which is the one state that has no
@@ -1496,6 +1507,10 @@ public class ModelBuilderFrame extends JFrame {
                 // must not linger; an authored constraint vocabulary (OscarCategories)
                 // is not a descriptive target and is never touched.
                 int filledVocabs = mergeBuiltVocabularies(run.modelSnapshot());
+                // These instances were just produced FROM this configuration, so the two
+                // agree by construction — including the vocabularies the run folded back
+                // into the model, which are derived from the very data being installed.
+                markSnapshotBaseline();
                 String saveAction = projectModel.isModel() ? "Save model" : "Save domain";
                 if (filledVocabs > 0) {
                     modelChanged();
@@ -2121,7 +2136,68 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
+    /** The model and the generated instances agree as of now. */
+    private void markSnapshotBaseline() {
+        snapshotBaseline = projectModel.copy();
+        snapshotBaselineSignature = modelSignature(projectModel);
+    }
+
+    /**
+     * A configuration change and the instances it invalidates are settled together,
+     * before the change is allowed to stand.
+     *
+     * <p>The question is whether the model MOVED, never whether an editor called Apply:
+     * the class editors call their apply paths on every Apply with unchanged values, so
+     * asking about the gesture would offer to delete every snapshot each time a reader
+     * clicked out of a field. {@code modelSignature} answers the real question — it is
+     * the signature of the rule tree generation compiles to, so an identical signature
+     * means identical instances — and it is the same fact the unsaved-changes check and
+     * the stale-instances warning already read, so the three cannot drift apart.
+     *
+     * <p>Abandoning restores the model from the baseline rather than trying to undo the
+     * individual edit: the editors write through to the model as they go, and there is no
+     * one edit to reverse by the time this runs.
+     */
+    private void guardSnapshotsAgainstEdit() {
+        if (snapshotBaseline == null || openModelFile == null) return;
+        String now = modelSignature(projectModel);
+        if (now.isBlank() || now.equals(snapshotBaselineSignature)) return;
+
+        String project = projectModel.name();
+        dataset.DomainStorage storage = dataset.DomainStorage.inDefaultLocation();
+        SnapshotInvalidationGuard.State state = new SnapshotInvalidationGuard.State(
+                project, storage.snapshotFiles(project), true);
+        if (!state.needsAttention()) {
+            markSnapshotBaseline();
+            return;
+        }
+        if (SnapshotInvalidationGuard.ask(this, state)
+                == SnapshotInvalidationGuard.Decision.ABANDON_CHANGE) {
+            projectModel.copyContentsFrom(snapshotBaseline);
+            snapshotBaselineSignature = modelSignature(projectModel);
+            logWindow.info("Configuration change abandoned; the generated instances of \""
+                    + project + "\" are untouched.");
+            return;
+        }
+        try {
+            List<File> removed = storage.deleteSnapshots(project);
+            replaceGenerationRun(null);
+            instancesPanel.clear();
+            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
+            sourceWorkbench.graphInstances(List::of);
+            for (File file : removed) {
+                logWindow.info("Discarded generated instances: " + file.getPath());
+            }
+            logWindow.info("The configuration changed, so \"" + project
+                    + "\" has no generated instances until it is generated again.");
+        } catch (Exception failed) {
+            reportGenerationError(failed);
+        }
+        markSnapshotBaseline();
+    }
+
     private void modelChanged() {
+        guardSnapshotsAgainstEdit();
         classModelPanel.refresh();
         sourceWorkbench.refreshDomainOverview();
         if (graphWindow != null && graphWindow.isVisible()) {
@@ -2401,6 +2477,7 @@ public class ModelBuilderFrame extends JFrame {
     private void markSaved(File file) {
         openModelFile = file;
         savedSignature = file == null ? "" : modelSignature(projectModel);
+        markSnapshotBaseline();
     }
 
     /** The folder this project lives in, or null for a draft that has no home yet. */
@@ -2460,6 +2537,9 @@ public class ModelBuilderFrame extends JFrame {
             // newly loaded domain.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
+            // Replacing the model wholesale is not editing it: the instances that go with
+            // it are settled by this same step, so there is nothing to invalidate.
+            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
@@ -2524,6 +2604,9 @@ public class ModelBuilderFrame extends JFrame {
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
+        // Replacing the model wholesale is not editing it: the instances that go with
+        // it are settled by this same step, so there is nothing to invalidate.
+        markSnapshotBaseline();
         replaceGenerationRun(null);
         graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
         instancesPanel.clear();
@@ -2602,6 +2685,9 @@ public class ModelBuilderFrame extends JFrame {
         boolean switched = nextFile != null && nextFile.isFile() && doLoadDomain(nextFile);
         if (!switched) {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
+            // Replacing the model wholesale is not editing it: the instances that go with
+            // it are settled by this same step, so there is nothing to invalidate.
+            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
@@ -2635,6 +2721,9 @@ public class ModelBuilderFrame extends JFrame {
             // must not be flushed into the domain being loaded.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
+            // Replacing the model wholesale is not editing it: the instances that go with
+            // it are settled by this same step, so there is nothing to invalidate.
+            markSnapshotBaseline();
             graphDiscoveryLedger = ledger;
             modelChanged();
             syncDepthSpinnerToActiveClass();
@@ -2721,6 +2810,9 @@ public class ModelBuilderFrame extends JFrame {
             datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
             projectModel.copyContentsFrom(loaded);
+            // Replacing the model wholesale is not editing it: the instances that go with
+            // it are settled by this same step, so there is nothing to invalidate.
+            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();

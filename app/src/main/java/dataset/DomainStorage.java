@@ -300,6 +300,57 @@ public final class DomainStorage {
         return false;
     }
 
+    /**
+     * Every file of generated instances this project owns: the domain snapshot and any
+     * graph annotation snapshots beside it. The model and the rule tree are
+     * configuration and are never in this list.
+     */
+    public List<File> snapshotFiles(String name) {
+        List<File> files = new ArrayList<>();
+        File snapshot = snapshotFile(name);
+        if (snapshot.isFile()) files.add(snapshot);
+        File[] beside = directory(name).listFiles();
+        if (beside != null) {
+            List<File> graphs = new ArrayList<>();
+            for (File file : beside) {
+                if (file.isFile() && file.getName().endsWith(".graph.snapshot.json")) {
+                    graphs.add(file);
+                }
+            }
+            graphs.sort(java.util.Comparator.comparing(File::getName));
+            files.addAll(graphs);
+        }
+        return List.copyOf(files);
+    }
+
+    /**
+     * Deletes every snapshot of a project and the registry entries that serve them,
+     * leaving the configuration untouched. Returns what it removed.
+     *
+     * <p>This is the whole answer to a configuration change outliving the instances it
+     * produced. A snapshot records what one model version generated — its entities are
+     * stamped with class NAMES, its fields keyed by field names, its population decided
+     * by the evidence tests in force at the time — so a model that has moved on does not
+     * describe it any more, and there is no general way to tell which parts still hold.
+     * Rather than a migration for each kind of edit, or a staleness warning nobody can
+     * act on, the instances go and are regenerated from the model that now exists.
+     */
+    public List<File> deleteSnapshots(String name) throws IOException {
+        List<File> removed = snapshotFiles(name);
+        if (removed.isEmpty()) return removed;
+        java.util.Set<String> paths = new LinkedHashSet<>();
+        for (File file : removed) paths.add(file.getAbsolutePath());
+        DatasetRegistry registry = registry();
+        registry.datasets().removeIf(dataset -> {
+            String path = dataset.snapshotPath();
+            return path != null && !path.isBlank()
+                    && paths.contains(new File(path).getAbsolutePath());
+        });
+        registry.save(registryFile());
+        for (File file : removed) Files.deleteIfExists(file.toPath());
+        return removed;
+    }
+
     /** Removes the registry entry and the domain's folder. */
     public void delete(String name) throws IOException {
         String key = key(name);
