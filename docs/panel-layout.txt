@@ -326,10 +326,15 @@
   button: Re-fetch on next enrich
   button: Apply field source
 
-== Graph constraints - GraphConstraintsPanel ==
-  box: Start node
-    label: Graph constraint name:
+== Graph class - GraphConstraintsPanel ==
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
     text: []
+    label: Extends:
+    combo: 2 item(s)
+  box: Start node
     label: Start with:
     combo: 1 item(s)
     label: Usable Wikidata QIDs:
@@ -370,9 +375,31 @@
     button: Remove selected evidence test
     label: Review candidates in output class:
     combo: 2 item(s)
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 1 item(s)  (disabled)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: Every field is part of the key, so nothing is combined.
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 1 item(s)
   label: No discovery graph configured.
   button: Run graph  (disabled)
-  button: Remove discovery graph  (disabled)
   button: Clear draft
   button: Apply graph
 

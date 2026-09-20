@@ -39,8 +39,6 @@ class SingleRootClassModelPanelTest {
         assertTrue(SingleRootClassModelPanel.isConfigurable(
                 SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
         assertTrue(SingleRootClassModelPanel.isConfigurable(
-                SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS));
-        assertTrue(SingleRootClassModelPanel.isConfigurable(
                 new GeneratedClassModel("NobelPrize")));
         assertTrue(SingleRootClassModelPanel.isConfigurable(
                 new VocabularySelection("Categories")));
@@ -57,8 +55,29 @@ class SingleRootClassModelPanelTest {
 
         assertNotNull(nodeFor(root,
                 SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
-        assertNotNull(nodeFor(root,
-                SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS));
+    }
+
+    /**
+     * A graph constraint is a class, so it is listed among the classes.
+     *
+     * <p>It had a configuration section of its own, which is what limited a project to
+     * one graph: the section held the project's single configuration, so a second
+     * discovery rule could only be had by editing the first and destroying its result.
+     */
+    @Test void aGraphClassIsListedAmongTheClasses() {
+        GeneratedProjectModel project = modelWithEdition();
+        GeneratedClassModel graphClass = new GeneratedClassModel("PositionRelevance");
+        graphClass.classKind(wikidata.explore.model.ClassKind.GRAPH);
+        project.addClass(graphClass);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode root =
+                (DefaultMutableTreeNode) tree.getModel().getRoot();
+
+        assertTrue(SingleRootClassModelPanel.isConfigurable(graphClass));
+        assertNotNull(nodeFor(root, graphClass),
+                "a graph class is reached where every other class is reached");
     }
 
     @Test void aVocabularySelectionSurvivesTreeRefreshAndGetsContextualActions() {

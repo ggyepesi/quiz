@@ -813,6 +813,7 @@ public class ClassSourcePanel extends JPanel {
                     case STATEMENT -> KIND_DERIVED;
                     case OWNED -> "Owned (owner + production site)";
                     case AGGREGATE -> "Aggregate (grouping key)";
+                    case GRAPH -> "Graph (classified candidate)";
                 });
         canonicalSourcesLabel.setText(describeClassSources());
 

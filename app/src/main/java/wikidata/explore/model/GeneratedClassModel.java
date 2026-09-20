@@ -61,6 +61,9 @@ public class GeneratedClassModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private AggregateClassSource aggregateSource;
 
+    /** Present exactly on a GRAPH class: what it traverses and how it classifies. */
+    private GraphClassSource graphSource;
+
     private int generationDepth = 1;
 
     private final FieldSourceMapping instanceMapping =
@@ -215,13 +218,29 @@ public class GeneratedClassModel {
     public void classKind(ClassKind value) {
         classKind = value == null ? ClassKind.SOURCE : value;
         switch (classKind) {
-            case SOURCE -> aggregateSource = null;
-            case STATEMENT -> aggregateSource = null;
+            case SOURCE -> {
+                aggregateSource = null;
+                graphSource = null;
+            }
+            case STATEMENT -> {
+                aggregateSource = null;
+                graphSource = null;
+            }
             case OWNED -> {
+                aggregateSource = null;
+                graphSource = null;
+                clearIndependentPopulation();
+            }
+            case AGGREGATE -> {
+                graphSource = null;
+                clearIndependentPopulation();
+            }
+            // A graph class is populated by its traversal, so it keeps no query, seeds
+            // or reification of its own either.
+            case GRAPH -> {
                 aggregateSource = null;
                 clearIndependentPopulation();
             }
-            case AGGREGATE -> clearIndependentPopulation();
         }
     }
 
@@ -294,8 +313,34 @@ public class GeneratedClassModel {
 
         if (aggregateSource != null) {
             statementSource = null;
+            graphSource = null;
             classKind = ClassKind.AGGREGATE;
             canonical().keyFields().clear();
+        }
+    }
+
+    public GraphClassSource graphSource() {
+        return graphSource;
+    }
+
+    /**
+     * Assigning a graph source makes this a GRAPH class, and records it.
+     *
+     * <p>Symmetrical with {@link #statementSource(StatementClassSource)}: taking the
+     * source away takes the kind with it, because a graph class with no graph is not a
+     * kind but a leftover. The identity regime follows the kind rather than being chosen
+     * beside it, so there are no canonical key fields to pick — a graph annotation is
+     * identified by the candidate it classifies.
+     */
+    public void graphSource(GraphClassSource value) {
+        graphSource = value == null ? null : value.copy();
+        if (graphSource != null) {
+            statementSource = null;
+            aggregateSource = null;
+            classKind = ClassKind.GRAPH;
+            canonical().keyFields().clear();
+        } else if (classKind == ClassKind.GRAPH) {
+            classKind = ClassKind.SOURCE;
         }
     }
 
@@ -319,6 +364,7 @@ public class GeneratedClassModel {
         statementSource = value == null ? null : value.copy();
         if (statementSource != null) {
             aggregateSource = null;
+            graphSource = null;
             classKind = ClassKind.STATEMENT;
         } else if (classKind == ClassKind.STATEMENT) {
             // Taking the source away takes the kind with it: a statement class with no
@@ -505,6 +551,7 @@ public class GeneratedClassModel {
                         ? null
                         : statementSource.copy();
         copy.aggregateSource = aggregateSource == null ? null : aggregateSource.copy();
+        copy.graphSource = graphSource == null ? null : graphSource.copy();
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.membership = membership();   // immutable, so shared rather than cloned
         // Shared for the same reason as membership above: a record whose lists are

@@ -26,6 +26,7 @@ final class CanonicalEditorPolicy {
         return switch (kind) {
             case SOURCE -> "the datasource's label";
             case OWNED -> "its owner and the field that produced it";
+            case GRAPH -> "the candidate it classifies";
             case STATEMENT, AGGREGATE -> "";
         };
     }

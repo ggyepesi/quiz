@@ -19,7 +19,6 @@ public class GeneratedProjectModel {
     private String name = "Generated Wikidata Project";
     private ProjectKind projectKind = ProjectKind.DOMAIN;
     private GeneratedClassModel rootClass;
-    private GraphDiscoveryConfiguration graphDiscoveryConfiguration;
 
     // How many levels of child-object edges generation should traverse. Stored
     // with the project so a saved model remembers it (depth 0 skips all child
@@ -155,12 +154,19 @@ public class GeneratedProjectModel {
         return rootClass;
     }
 
-    public GraphDiscoveryConfiguration graphDiscoveryConfiguration() {
-        return graphDiscoveryConfiguration;
-    }
-
-    public void graphDiscoveryConfiguration(GraphDiscoveryConfiguration value) {
-        graphDiscoveryConfiguration = value;
+    /**
+     * The classes discovered by traversal, in declaration order.
+     *
+     * <p>There was one graph per project, held here as a singleton field. A graph
+     * constraint is a class now, so several cost nothing — and a domain needs more than
+     * one discovery rule: one narrowing the offices worth asking about, another reaching
+     * their holders. With a singleton the second could only be had by editing the first
+     * and destroying the first's result.
+     */
+    public List<GeneratedClassModel> graphClasses() {
+        return classes.stream()
+                .filter(clazz -> clazz != null && clazz.classKind() == ClassKind.GRAPH)
+                .toList();
     }
 
     public void rootClass(GeneratedClassModel rootClass) {
@@ -324,7 +330,6 @@ public class GeneratedProjectModel {
         this.name = other.name;
         this.projectKind = other.projectKind();
         this.generationDepth = other.generationDepth;
-        this.graphDiscoveryConfiguration = other.graphDiscoveryConfiguration;
         this.classes.clear();
         this.classes.addAll(other.classes);
         this.selections.clear();
@@ -433,23 +438,29 @@ public class GeneratedProjectModel {
         return true;
     }
 
+    /**
+     * Re-points every graph class's start and output at a renamed class.
+     *
+     * <p>A graph names the classes at both ends of it by name, so a rename that does not
+     * reach here leaves a graph starting from a class that no longer exists.
+     */
     private void renameGraphClassReference(String from, String to) {
-        GraphDiscoveryConfiguration graph = graphDiscoveryConfiguration;
-        if (graph == null) return;
-        GraphDiscoveryConfiguration.StartNode start = graph.startNode();
-        if (start.qidSourceClass().equalsIgnoreCase(from)) {
-            start = new GraphDiscoveryConfiguration.StartNode(to, start.use());
+        for (GeneratedClassModel clazz : graphClasses()) {
+            GraphClassSource graph = clazz.graphSource();
+            if (graph == null) continue;
+            GraphDiscoveryConfiguration.StartNode start = graph.startNode();
+            if (start != null && start.qidSourceClass().equalsIgnoreCase(from)) {
+                graph.startNode(new GraphDiscoveryConfiguration.StartNode(to, start.use()));
+            }
+            graph.nextNodes(graph.nextNodes().stream()
+                    .map(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                            && node.populationClass().equalsIgnoreCase(from)
+                            ? new GraphDiscoveryConfiguration.NextNode(node.property(),
+                                    node.directionFromPrevious(), node.use(), to,
+                                    node.evidenceCondition())
+                            : node)
+                    .toList());
         }
-        List<GraphDiscoveryConfiguration.NextNode> nodes = graph.nextNodes().stream()
-                .map(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
-                        && node.populationClass().equalsIgnoreCase(from)
-                        ? new GraphDiscoveryConfiguration.NextNode(node.property(),
-                                node.directionFromPrevious(), node.use(), to,
-                                node.evidenceCondition())
-                        : node)
-                .toList();
-        graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(
-                graph.name(), start, nodes);
     }
 
     private static void renameFieldTargets(
@@ -642,12 +653,13 @@ public class GeneratedProjectModel {
             if (fieldsPointHere) renameFieldSelection(
                     clazz.fields(), previous, next, selection.declarationId());
         }
-        GraphDiscoveryConfiguration graph = graphDiscoveryConfiguration;
-        if (graph != null && graph.startNode().populationSelection()
-                .equalsIgnoreCase(previous)) {
-            graphDiscoveryConfiguration = new GraphDiscoveryConfiguration(graph.name(),
-                    new GraphDiscoveryConfiguration.StartNode("", next,
-                            graph.startNode().use()), graph.nextNodes());
+        for (GeneratedClassModel graphClass : graphClasses()) {
+            GraphClassSource graph = graphClass.graphSource();
+            if (graph == null || graph.startNode() == null) continue;
+            if (graph.startNode().populationSelection().equalsIgnoreCase(previous)) {
+                graph.startNode(new GraphDiscoveryConfiguration.StartNode(
+                        "", next, graph.startNode().use()));
+            }
         }
         return true;
     }
@@ -662,9 +674,12 @@ public class GeneratedProjectModel {
 
     public boolean selectionReferenced(String name) {
         if (name == null || name.isBlank()) return false;
-        if (graphDiscoveryConfiguration != null
-                && graphDiscoveryConfiguration.startNode().populationSelection()
-                        .equalsIgnoreCase(name)) return true;
+        for (GeneratedClassModel graphClass : graphClasses()) {
+            GraphClassSource graph = graphClass.graphSource();
+            if (graph != null && graph.startNode() != null
+                    && graph.startNode().populationSelection()
+                            .equalsIgnoreCase(name)) return true;
+        }
         boolean fieldsPointHere = fieldTargetsResolveToSelection(name);
         for (GeneratedClassModel clazz : classes) {
             // A statement source names a SELECTION explicitly, so it is never ambiguous.
@@ -911,7 +926,6 @@ public class GeneratedProjectModel {
         c.name = name;
         c.projectKind = projectKind();
         c.generationDepth = generationDepth;
-        c.graphDiscoveryConfiguration = graphDiscoveryConfiguration;
         c.classes.clear();
         c.rootClass = null;
 

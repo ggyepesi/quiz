@@ -25,7 +25,14 @@ public enum ClassKind {
     OWNED,
 
     /** Built offline by grouping records of another modeled class. */
-    AGGREGATE;
+    AGGREGATE,
+
+    /**
+     * Discovered by traversing a configured relation from a start population, and
+     * classified by evidence tests. Identified by the candidate it classifies together
+     * with the class that classified it — never by anything of its own.
+     */
+    GRAPH;
 
     /**
      * Whether instances take their identity from the datasource, rather than deriving it.
@@ -50,6 +57,19 @@ public enum ClassKind {
     }
 
     /**
+     * Whether identity is the candidate classified, together with the classifying class.
+     *
+     * <p>Its own regime rather than one of the four above. A graph annotation carries a
+     * QID, which makes it read as SOURCE-identified to anything asking the id alone —
+     * the same mistake a part's borrowed owner QID caused, and the confusion that let an
+     * Apply put 1307 annotation shells where 1307 generated Positions had been. The QID
+     * belongs to the candidate; what the annotation is, is the verdict about it.
+     */
+    public boolean identityFromClassifiedCandidate() {
+        return this == GRAPH;
+    }
+
+    /**
      * What a reader calls this kind.
      *
      * <p>Here rather than in a parallel array of strings beside a combo box, where the
@@ -62,6 +82,7 @@ public enum ClassKind {
             case STATEMENT -> "Statement class";
             case OWNED -> "Owned class";
             case AGGREGATE -> "Aggregate class";
+            case GRAPH -> "Graph class";
         };
     }
 }

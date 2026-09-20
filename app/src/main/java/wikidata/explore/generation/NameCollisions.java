@@ -178,6 +178,11 @@ public final class NameCollisions {
             case STATEMENT -> Meaning.STATEMENT_REPETITION;
             case OWNED -> Meaning.OWNED_REPETITION;
             case AGGREGATE -> Meaning.STATEMENT_REPETITION;
+            // An annotation is one per candidate, and takes its label from the candidate
+            // it classifies. Two sharing a label therefore means two distinct discovered
+            // entities share one — ambiguity among them, not a display rule repeating a
+            // borrowed name the way a part repeats its owner's.
+            case GRAPH -> Meaning.ENTITY_AMBIGUITY;
         };
     }
 }

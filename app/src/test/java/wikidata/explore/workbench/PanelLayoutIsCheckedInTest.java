@@ -85,9 +85,12 @@ class PanelLayoutIsCheckedInTest {
         jurisdiction.mapping().propertyLabel("jurisdiction");
         jurisdiction.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         graphProject.rootClass(position);
+        GeneratedClassModel relevance = new GeneratedClassModel("PositionRelevance");
+        relevance.classKind(wikidata.explore.model.ClassKind.GRAPH);
+        graphProject.addClass(relevance);
         GraphConstraintsPanel graph = new GraphConstraintsPanel(graphProject);
-        graph.refresh();
-        describe(actual, "Graph constraints - GraphConstraintsPanel", graph);
+        graph.edit(relevance);
+        describe(actual, "Graph class - GraphConstraintsPanel", graph);
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {

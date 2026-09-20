@@ -45,12 +45,21 @@ public final class ConfiguredGraphDiscoveryQuery
     private final List<EntityRef> start;
     private final String startClass;
 
+    /**
+     * Runs the graph one class declares.
+     *
+     * <p>Which graph is a parameter now rather than the project's single one: a project
+     * may declare several, and the run is named by the class that declares it — the one
+     * place ⟨class, source⟩ becomes a configuration, so the run's name and the class's
+     * name cannot be two facts that drift.
+     */
     public ConfiguredGraphDiscoveryQuery(
-            GeneratedProjectModel model, Collection<? extends objectview.Viewable> loadedInstances) {
-        if (model == null || model.graphDiscoveryConfiguration() == null) {
+            GeneratedProjectModel model, GeneratedClassModel graphClass,
+            Collection<? extends objectview.Viewable> loadedInstances) {
+        if (model == null || graphClass == null || graphClass.graphSource() == null) {
             throw new IllegalArgumentException("Apply a discovery graph before running it");
         }
-        configuration = model.graphDiscoveryConfiguration();
+        configuration = graphClass.graphSource().configurationFor(graphClass.className());
         String selectionName = configuration.startNode().populationSelection();
         List<String> qids;
         if (!selectionName.isBlank()) {

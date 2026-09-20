@@ -54,6 +54,30 @@ class ClassKindIsStoredNotDerivedTest {
                 "an aggregate source on a statement class is the previous kind's leftover");
     }
 
+    /**
+     * A graph source makes the class a GRAPH class, and taking it away takes the kind.
+     *
+     * <p>Symmetrical with the statement source above, and for the same reason: a graph
+     * class with no graph is a leftover, not a kind. A graph constraint had no kind at
+     * all before — it was a singleton field on the project — which is why it had no
+     * declarationId, and why its name was both its identity and free text.
+     */
+    @Test void assigningAGraphSourceIsWhatChangesTheKind() {
+        GeneratedClassModel relevance = new GeneratedClassModel("PositionRelevance");
+        assertEquals(ClassKind.SOURCE, relevance.classKind());
+
+        relevance.graphSource(new GraphClassSource(
+                new datasource.graph.GraphDiscoveryConfiguration.StartNode("Position",
+                        datasource.graph.GraphDiscoveryConfiguration.NodeUse
+                                .INTERMEDIATE_ONLY),
+                List.of()));
+        assertEquals(ClassKind.GRAPH, relevance.classKind());
+
+        relevance.graphSource(null);
+        assertEquals(ClassKind.SOURCE, relevance.classKind(),
+                "a graph class with no graph is a leftover, not a kind");
+    }
+
     /** The saved models say which kind they are, rather than leaving it to be inferred. */
     @Test void theShippedModelsStoreTheirStatementKind() throws Exception {
         for (String domain : List.of("nobelprizes", "oscarnominations", "history")) {

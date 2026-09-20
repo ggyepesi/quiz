@@ -25,15 +25,20 @@ class GraphDiscoveryConfigurationPersistenceTest {
         project.name("History");
         project.rootClass(new GeneratedClassModel("Position"));
         project.rootClass().seedQids().add("Q4164871");
-        project.graphDiscoveryConfiguration(configuration());
+        project.addClass(graphClass(project, "PositionValidity"));
 
         Path file = temp.resolve("history.model.json");
         GeneratedProjectModelStore store = new GeneratedProjectModelStore();
         store.save(project, file.toFile());
         GeneratedProjectModel loaded = store.load(file.toFile());
 
-        GraphDiscoveryConfiguration restored = loaded.graphDiscoveryConfiguration();
-        assertEquals("PositionValidity", restored.name());
+        GeneratedClassModel restoredClass = loaded.findClass("PositionValidity");
+        assertEquals(ClassKind.GRAPH, restoredClass.classKind(),
+                "the kind is stored, so a reloaded graph class is still one");
+        GraphDiscoveryConfiguration restored =
+                restoredClass.graphSource().configurationFor(restoredClass.className());
+        assertEquals("PositionValidity", restored.name(),
+                "the run is named by the class that declares it");
         assertEquals(GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
                 restored.startNode().use());
         assertEquals("Position", restored.startNode().qidSourceClass());
@@ -57,7 +62,8 @@ class GraphDiscoveryConfigurationPersistenceTest {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("History");
         project.rootClass(new GeneratedClassModel("Position"));
-        project.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
+        GeneratedClassModel generalising = new GeneratedClassModel("PositionGraph");
+        generalising.graphSource(new GraphClassSource(
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
@@ -72,14 +78,16 @@ class GraphDiscoveryConfigurationPersistenceTest {
                                         GraphTraversalDirection.OUTGOING,
                                         datasource.EntityRef.wikidata("Q7275"),
                                         new GraphRelation("wikidata", "P279"))),
-                                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT)))));
+                                GraphEvidenceCondition.ReviewDisposition
+                                        .EXCLUDE_AND_REPORT)))));
+        project.addClass(generalising);
 
         Path file = temp.resolve("generalising.model.json");
         GeneratedProjectModelStore store = new GeneratedProjectModelStore();
         store.save(project, file.toFile());
         GeneratedProjectModel loaded = store.load(file.toFile());
 
-        var test = loaded.graphDiscoveryConfiguration().nextNodes().getFirst()
+        var test = loaded.findClass("PositionGraph").graphSource().nextNodes().getFirst()
                 .evidenceCondition().tests().getFirst();
         assertInstanceOf(GraphRelationReachesUnder.class, test,
                 "the generalising test must come back as itself");
@@ -91,21 +99,65 @@ class GraphDiscoveryConfigurationPersistenceTest {
 
     @Test void projectCopyCarriesTheAuthoredGraph() {
         GeneratedProjectModel project = new GeneratedProjectModel();
-        project.graphDiscoveryConfiguration(configuration());
-        assertEquals(configuration(), project.copy().graphDiscoveryConfiguration());
+        project.addClass(graphClass(project, "PositionValidity"));
+
+        GeneratedClassModel copied = project.copy().findClass("PositionValidity");
+
+        assertEquals(configuration(), copied.graphSource().configurationFor("PositionValidity"),
+                "a run handed a snapshot must get the graph the snapshot's class declares");
     }
 
     @Test void classRenameRetargetsBothGraphUses() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.rootClass(new GeneratedClassModel("Position"));
-        project.graphDiscoveryConfiguration(configuration());
+        project.addClass(graphClass(project, "PositionValidity"));
 
         project.renameClass("Position", "Office");
 
-        assertEquals("Office", project.graphDiscoveryConfiguration()
-                .startNode().qidSourceClass());
-        assertEquals("Office", project.graphDiscoveryConfiguration()
-                .nextNodes().getFirst().populationClass());
+        GraphClassSource graph = project.findClass("PositionValidity").graphSource();
+        assertEquals("Office", graph.startNode().qidSourceClass());
+        assertEquals("Office", graph.nextNodes().getFirst().populationClass());
+    }
+
+    /**
+     * Renaming the graph class renames the run, and the annotation set with it.
+     *
+     * <p>The name used to live on the configuration and be edited as free text, which is
+     * how a run saved as PositionFilter came to sit beside a model calling itself
+     * GraphConstraint. It is the class name now, so there is one name and the rename
+     * path every other construct uses moves it.
+     */
+    @Test void renamingTheGraphClassRenamesTheRunItDeclares() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Position"));
+        project.addClass(graphClass(project, "PositionValidity"));
+
+        project.renameClass("PositionValidity", "PositionFilter");
+
+        GeneratedClassModel renamed = project.findClass("PositionFilter");
+        assertEquals("PositionFilter",
+                renamed.graphSource().configurationFor(renamed.className()).name());
+    }
+
+    /** A project may declare several graphs; the singleton allowed exactly one. */
+    @Test void aProjectMayDeclareMoreThanOneGraph() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Position"));
+        project.addClass(graphClass(project, "PositionValidity"));
+        project.addClass(graphClass(project, "PositionHolders"));
+
+        assertEquals(List.of("PositionValidity", "PositionHolders"),
+                project.graphClasses().stream()
+                        .map(GeneratedClassModel::className).toList());
+    }
+
+    private static GeneratedClassModel graphClass(
+            GeneratedProjectModel project, String name) {
+        GeneratedClassModel graphClass = new GeneratedClassModel(name);
+        GraphDiscoveryConfiguration authored = configuration();
+        graphClass.graphSource(new GraphClassSource(
+                authored.startNode(), authored.nextNodes()));
+        return graphClass;
     }
 
     private static GraphDiscoveryConfiguration configuration() {

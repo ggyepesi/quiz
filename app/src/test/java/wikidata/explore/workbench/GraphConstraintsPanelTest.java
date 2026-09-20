@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphConstraintsPanelTest {
@@ -45,7 +46,7 @@ class GraphConstraintsPanelTest {
         positions.className("Position");
         positions.instanceQids(List.of("Q1", "Q2"));
         model.addSelection(positions);
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         wikidata.explore.extract.WikidataDynamicObject loaded =
                 new wikidata.explore.extract.WikidataDynamicObject("Q9", "Position 9");
         loaded.type("Position");
@@ -60,15 +61,25 @@ class GraphConstraintsPanelTest {
         assertEquals("2 QIDs", named(panel, "graph.startQids", JLabel.class).getText());
     }
 
-    @Test void graphConstraintIsASeparateConfigurationSection() {
+    /**
+     * Selecting a graph class opens the graph editor, the way selecting any class opens
+     * the editor for its kind.
+     *
+     * <p>It used to be a configuration section of the project's own, which is what held
+     * the one graph a project could have.
+     */
+    @Test void aGraphClassOpensItsEditorLikeEveryOtherKind() {
         GeneratedProjectModel model = model();
+        graphClass(model, "PositionGraph");
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
 
-        workbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        workbench.edit(model.findClass("PositionGraph"));
 
         GraphConstraintsPanel panel = find(workbench, GraphConstraintsPanel.class);
         assertTrue(panel.isVisible());
         assertNotNull(button(panel, "Apply graph"));
+        assertSame(model.findClass("PositionGraph"), panel.editing(),
+                "the editor edits the selected class, not the project");
         assertNull(find(workbench, FieldSourcePanel.class)
                 .getClientProperty("graph constraints"),
                 "the graph editor is not encoded in field configuration");
@@ -76,7 +87,7 @@ class GraphConstraintsPanelTest {
 
     @Test void loadedClassInstancesAreShownButApplyingIsExplicit() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         wikidata.explore.extract.WikidataDynamicObject loaded =
                 new wikidata.explore.extract.WikidataDynamicObject("Q4164871", "Position");
         loaded.type("Position");
@@ -85,7 +96,6 @@ class GraphConstraintsPanelTest {
         assertEquals("1 QID", named(panel, "graph.startQids", JLabel.class).getText());
 
         text(panel, "graph.edgeProperty").setText("P279");
-        text(panel, "graph.name").setText("PositionGraph");
         named(panel, "graph.edgeDirection", JComboBox.class).setSelectedIndex(1);
         text(panel, "graph.evidenceProperty").setText("P1001");
         button(panel, "Add evidence relation").doClick();
@@ -94,13 +104,13 @@ class GraphConstraintsPanelTest {
         named(panel, "graph.reviewDisposition", JComboBox.class).setSelectedItem(
                 GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT);
 
-        assertNull(model.graphDiscoveryConfiguration(),
+        assertNull(graph(model),
                 "editing the draft must not mutate the model");
         button(panel, "Apply graph").doClick();
 
-        assertEquals("P279", model.graphDiscoveryConfiguration().nextNodes()
+        assertEquals("P279", graph(model).nextNodes()
                 .getFirst().property().relationId());
-        GraphEvidenceCondition evidence = model.graphDiscoveryConfiguration().nextNodes()
+        GraphEvidenceCondition evidence = graph(model).nextNodes()
                 .getFirst().evidenceCondition();
         assertEquals("P1001", evidence.evidencePaths().getFirst().relation().relationId());
         assertEquals("P576", evidence.tests().getFirst().relation().relationId());
@@ -109,7 +119,7 @@ class GraphConstraintsPanelTest {
     }
 
     @Test void graphPropertiesUseTheAlreadyLoadedCatalogueLabels() {
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model());
+        GraphConstraintsPanel panel = graphPanel(model());
         panel.propertyCache(() -> java.util.Map.of("P279",
                 new wikidata.explore.WikidataProperty(
                         "P279", "subclass of", "", "", "")));
@@ -122,7 +132,7 @@ class GraphConstraintsPanelTest {
 
     @Test void aStoredGraphHasAnExplicitExecutionSeparateFromGeneration() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
 
         assertNotNull(button(panel, "Run graph"));
@@ -130,10 +140,9 @@ class GraphConstraintsPanelTest {
                 "a graph cannot run before it is saved and a runner is available");
 
         text(panel, "graph.edgeProperty").setText("P279");
-        text(panel, "graph.name").setText("PositionGraph");
         button(panel, "Apply graph").doClick();
 
-        assertNotNull(model.graphDiscoveryConfiguration());
+        assertNotNull(graph(model));
         JLabel applied = named(panel, "graph.status", JLabel.class);
         assertTrue(applied.getText().contains("Run graph previews the output class"),
                 applied.getText());
@@ -145,22 +154,32 @@ class GraphConstraintsPanelTest {
                 "a graph read back from the model says it too");
     }
 
-    @Test void aGraphConstraintHasNoSilentDefaultName() {
+    /**
+     * The graph is named by the class that declares it, and nothing else names it.
+     *
+     * <p>It used to carry a name of its own, which was at once the identity of its
+     * annotation set — the result file is keyed by it — and a free-text field an editor
+     * rewrote, so a run saved as PositionFilter came to sit beside a model calling
+     * itself GraphConstraint with nothing able to notice.
+     */
+    @Test void theGraphIsNamedByTheClassThatDeclaresIt() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         text(panel, "graph.edgeProperty").setText("P279");
 
         button(panel, "Apply graph").doClick();
 
-        assertNull(model.graphDiscoveryConfiguration());
-        assertTrue(status(panel).contains("Enter a graph constraint name shaped like a Java"),
-                status(panel));
+        GeneratedClassModel declaring = model.findClass("PositionGraph");
+        assertEquals("PositionGraph",
+                declaring.graphSource().configurationFor(declaring.className()).name());
+        assertNotNull(find(panel, ClassHeaderEditor.class),
+                "the class's own name editor is where a graph is named");
     }
 
     @Test void aCompletedGraphProducesOneOutputClassForLaterApplication() {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         EntityRef accepted = EntityRef.wikidata("Q1");
         EntityRef review = EntityRef.wikidata("Q2");
         EntityRef rejected = EntityRef.wikidata("Q3");
@@ -236,7 +255,7 @@ class GraphConstraintsPanelTest {
                 .map(wikidata.explore.extract.WikidataDynamicObject::qid).toList());
 
         ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> shown =
-                new GraphConstraintsPanel(model()).graphResults(result, "PositionValidity");
+                graphPanel(model()).graphResults(result, "PositionValidity");
         assertEquals(List.of("All — 2 total", "Accepted — 1 total",
                         "Review — 0 total", "Rejected — 1 total"),
                 shown.tabs().stream().map(ProcessWorkflowResults.Tab::title).toList());
@@ -246,8 +265,8 @@ class GraphConstraintsPanelTest {
     @Test void modelKindDoesNotDisableAReadyGraphConstraint() {
         GeneratedProjectModel model = model();
         model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
-        model.graphDiscoveryConfiguration(graph("P279"));
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        graphClass(model, "PositionGraph").graphSource(source("P279"));
+        GraphConstraintsPanel panel = graphPanel(model);
         wikidata.explore.extract.WikidataDynamicObject position =
                 new wikidata.explore.extract.WikidataDynamicObject("Q4164871", "Position");
         position.type("Position");
@@ -270,7 +289,7 @@ class GraphConstraintsPanelTest {
                 "the graph must show its scope before execution");
         assertTrue(source.contains("ProcessWorkflowPlan.Tab.component("),
                 "the plan must show the configured graph as a diagram");
-        assertTrue(source.contains("snapshot, loadedInstances.get()), true"),
+        assertTrue(source.contains("loadedInstances.get()), true"),
                 "the diagram, not the generic pipeline card, must open first");
         assertTrue(source.contains(".withoutPipelineTab()"),
                 "the one-step pipeline repeats the graph plan and must stay hidden");
@@ -285,16 +304,15 @@ class GraphConstraintsPanelTest {
     @Test void executionPlanDrawsTraversalEvidenceAndTestEdges() throws Exception {
         GeneratedProjectModel model = model();
         model.rootClass().seedQids().add("Q4164871");
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         text(panel, "graph.edgeProperty").setText("P279");
-        text(panel, "graph.name").setText("PositionGraph");
         text(panel, "graph.evidenceProperty").setText("P1001");
         button(panel, "Add evidence relation").doClick();
         text(panel, "graph.testProperty").setText("P576");
         button(panel, "Add evidence test").doClick();
         button(panel, "Apply graph").doClick();
 
-        GraphViewModel graph = GraphConstraintsPanel.graphPlanModel(model);
+        GraphViewModel graph = GraphConstraintsPanel.graphPlanModel(model, model.findClass("PositionGraph"));
 
         assertEquals(List.of("Position", "Position", "Evidence entity",
                         "Has a value"),
@@ -319,12 +337,11 @@ class GraphConstraintsPanelTest {
         GeneratedProjectModel model = model();
         model.name("Test");
         model.rootClass().seedQids().add("Q4164871");
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
-        text(panel, "graph.name").setText("PositionValidity");
+        GraphConstraintsPanel panel = graphPanel(model);
         text(panel, "graph.edgeProperty").setText("P31");
         button(panel, "Apply graph").doClick();
 
-        DynamicViewable summary = GraphConstraintsPanel.graphSummary(model);
+        DynamicViewable summary = GraphConstraintsPanel.graphSummary(model, model.findClass("PositionGraph"));
 
         assertEquals("Load saved answers from the persistent graph cache; download only missing answers",
                 summary.get("Adjacency facts"));
@@ -334,9 +351,10 @@ class GraphConstraintsPanelTest {
                 summary.get("Labels"));
         assertEquals("Rebuild and save every start and reached entity for TransformApp",
                 summary.get("Results"));
-        assertEquals("data/wikidata/test/positionvalidity.graph.snapshot.json",
-                summary.get("Results file"));
-        assertEquals("PositionValidity", summary.get("Annotation set"));
+        assertEquals("data/wikidata/test/positiongraph.graph.snapshot.json",
+                summary.get("Results file"),
+                "the annotation set is keyed by the class name, so a rename moves it");
+        assertEquals("PositionGraph", summary.get("Annotation set"));
         renderArtifact(new Card(summary,
                         ViewConfig.all(DynamicViewable.class), false),
                 "graph-run-loaded-and-repeated-work.png");
@@ -458,7 +476,7 @@ class GraphConstraintsPanelTest {
         GeneratedProjectModel owner = model();
         owner.name("Historical Positions");
         ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results =
-                new GraphConstraintsPanel(owner).graphResults(result, "History");
+                graphPanel(owner).graphResults(result, "History");
         assertEquals("Apply result", results.applyVerb());
         assertTrue(results.resultConfirmation().isBlank(),
                 "graph results have no separate persistence action");
@@ -521,8 +539,7 @@ class GraphConstraintsPanelTest {
 
     @Test void aGraphThatCannotStartExplainsTheConfigurationFailureInADialog() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
-        text(panel, "graph.name").setText("PositionGraph");
+        GraphConstraintsPanel panel = graphPanel(model);
         text(panel, "graph.edgeProperty").setText("P31");
         button(panel, "Apply graph").doClick();
 
@@ -543,16 +560,15 @@ class GraphConstraintsPanelTest {
 
     @Test void evidenceRequiresBothTheRelationAndItsTest() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
-        text(panel, "graph.name").setText("PositionGraph");
         text(panel, "graph.edgeProperty").setText("P279");
         text(panel, "graph.evidenceProperty").setText("P1001");
         button(panel, "Add evidence relation").doClick();
 
         button(panel, "Apply graph").doClick();
 
-        assertNull(model.graphDiscoveryConfiguration());
+        assertNull(graph(model));
         assertTrue(named(panel, "graph.status", JLabel.class).getText()
                 .contains("both an evidence relation and an evidence test"));
     }
@@ -561,46 +577,50 @@ class GraphConstraintsPanelTest {
         // Every other control here builds a draft, and the panel says so. Clearing the
         // draft touches the controls only; removing the graph is a separate, named act.
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
-        text(panel, "graph.name").setText("PositionGraph");
         text(panel, "graph.edgeProperty").setText("P279");
         button(panel, "Apply graph").doClick();
-        assertNotNull(model.graphDiscoveryConfiguration());
+        assertNotNull(graph(model));
 
         button(panel, "Clear draft").doClick();
         button(panel, "Apply graph").doClick();
 
-        assertNotNull(model.graphDiscoveryConfiguration(),
+        assertNotNull(graph(model),
                 "neither clearing the draft nor re-applying it may delete the graph");
     }
 
-    @Test void removingTheGraphIsItsOwnNamedAction() {
+    /**
+     * A graph constraint is removed where every class is removed.
+     *
+     * <p>This editor had a Remove of its own, because the graph was the project's single
+     * configuration rather than a class. A second, kind-specific delete beside the one
+     * that already exists is exactly the exception a general construct is meant to
+     * retire.
+     */
+    @Test void removingAGraphClassIsRemovingAClass() {
         GeneratedProjectModel model = model();
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
-        panel.refresh();
-        assertFalse(button(panel, "Remove discovery graph").isEnabled(),
-                "nothing saved, nothing to remove");
-
-        text(panel, "graph.name").setText("PositionGraph");
+        GraphConstraintsPanel panel = graphPanel(model);
         text(panel, "graph.edgeProperty").setText("P279");
         button(panel, "Apply graph").doClick();
-        assertTrue(button(panel, "Remove discovery graph").isEnabled());
+        assertNotNull(graph(model));
 
-        button(panel, "Remove discovery graph").doClick();
+        assertNull(button(panel, "Remove discovery graph"),
+                "the graph editor offers no delete of its own");
 
-        assertNull(model.graphDiscoveryConfiguration());
-        assertFalse(button(panel, "Remove discovery graph").isEnabled());
-        assertTrue(status(panel).contains("removed"), status(panel));
+        model.removeClass(model.findClass("PositionGraph"));
+
+        assertNull(model.findClass("PositionGraph"));
+        assertTrue(model.graphClasses().isEmpty());
     }
 
     @Test void graphConstraintsEditedAndThenLeftAreStillSavedWithTheDomain() {
         GeneratedProjectModel model = model();
         model.rootClass().seedQids().add("Q4164871");
+        graphClass(model, "PositionGraph");
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
-        workbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        workbench.edit(model.findClass("PositionGraph"));
         GraphConstraintsPanel panel = find(workbench, GraphConstraintsPanel.class);
-        text(panel, "graph.name").setText("PositionGraph");
         text(panel, "graph.edgeProperty").setText("P279");
 
         // Clicking any other node is what used to lose the draft: the graph editor was
@@ -608,9 +628,9 @@ class GraphConstraintsPanelTest {
         workbench.edit(model.rootClass());
         workbench.applyEdits();
 
-        assertNotNull(model.graphDiscoveryConfiguration(),
+        assertNotNull(graph(model),
                 "constraints left by selecting another node must still reach the model");
-        assertEquals("P279", model.graphDiscoveryConfiguration().nextNodes()
+        assertEquals("P279", graph(model).nextNodes()
                 .getFirst().property().relationId());
     }
 
@@ -625,18 +645,17 @@ class GraphConstraintsPanelTest {
         GeneratedClassModel start = new GeneratedClassModel("PositionDiscoveryStart");
         start.seedQids().add("Q4164871");
         model.addClass(start);
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
 
-        text(panel, "graph.name").setText("PositionGraph");
         selectClass(panel, "PositionDiscoveryStart");
         button(panel, "Apply graph").doClick();
 
-        assertNotNull(model.graphDiscoveryConfiguration(),
+        assertNotNull(graph(model),
                 "the start class is a decision of its own and must be kept");
-        assertEquals("PositionDiscoveryStart", model.graphDiscoveryConfiguration()
+        assertEquals("PositionDiscoveryStart", graph(model)
                 .startNode().qidSourceClass());
-        assertTrue(model.graphDiscoveryConfiguration().nextNodes().isEmpty(),
+        assertTrue(graph(model).nextNodes().isEmpty(),
                 "no edge was given, so the graph has no traversal yet");
         assertTrue(status(panel).contains("Add the property connecting the two nodes"),
                 "Apply must still say what the graph needs, was: " + status(panel));
@@ -651,16 +670,16 @@ class GraphConstraintsPanelTest {
         // by the button that says so.
         GeneratedProjectModel model = model();
         model.rootClass().seedQids().add("Q4164871");
-        model.graphDiscoveryConfiguration(graph("P279"));
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        graphClass(model, "PositionGraph").graphSource(source("P279"));
+        GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
 
         text(panel, "graph.edgeProperty").setText("");
         button(panel, "Apply graph").doClick();
 
-        assertNotNull(model.graphDiscoveryConfiguration(),
+        assertNotNull(graph(model),
                 "an emptied draft must not delete the graph behind it");
-        assertTrue(model.graphDiscoveryConfiguration().nextNodes().isEmpty());
+        assertTrue(graph(model).nextNodes().isEmpty());
         assertTrue(status(panel).contains("Add the property"), status(panel));
     }
 
@@ -674,15 +693,15 @@ class GraphConstraintsPanelTest {
 
         GeneratedProjectModel loaded = model();
         loaded.rootClass().seedQids().add("Q4164871");
-        loaded.graphDiscoveryConfiguration(graph("P279"));
+        graphClass(loaded, "PositionGraph").graphSource(source("P279"));
 
         workbench.abandonEdits();
         model.copyContentsFrom(loaded);
         workbench.applyEdits();
 
-        assertNotNull(model.graphDiscoveryConfiguration(),
+        assertNotNull(graph(model),
                 "the loaded domain's graph must survive the first save after loading");
-        assertEquals("P279", model.graphDiscoveryConfiguration().nextNodes()
+        assertEquals("P279", graph(model).nextNodes()
                 .getFirst().property().relationId());
     }
 
@@ -692,13 +711,14 @@ class GraphConstraintsPanelTest {
         // first — configuration the modeller never authored, written by a save.
         GeneratedProjectModel model = model();
         model.addClass(new GeneratedClassModel("PositionType"));
+        graphClass(model, "PositionGraph");
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
-        workbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        workbench.edit(model.findClass("PositionGraph"));
 
         workbench.edit(model.rootClass());
         workbench.applyEdits();
 
-        assertNull(model.graphDiscoveryConfiguration(),
+        assertNull(graph(model),
                 "a save must not author a discovery graph nobody asked for");
     }
 
@@ -712,10 +732,10 @@ class GraphConstraintsPanelTest {
         start.seedQids().add("Q4164871");
         model.addClass(start);
 
+        graphClass(model, "PositionGraph");
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
-        workbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        workbench.edit(model.findClass("PositionGraph"));
         GraphConstraintsPanel panel = find(workbench, GraphConstraintsPanel.class);
-        text(panel, "graph.name").setText("PositionGraph");
         selectClass(panel, "PositionDiscoveryStart");
         button(panel, "Apply graph").doClick();
         // Leaving the section and saving is the flush that used to lose the draft.
@@ -730,11 +750,11 @@ class GraphConstraintsPanelTest {
                 new wikidata.explore.model.GeneratedProjectModelStore().load(file);
 
         assertEquals("PositionDiscoveryStart",
-                reloaded.graphDiscoveryConfiguration().startNode().qidSourceClass(),
+                graph(reloaded).startNode().qidSourceClass(),
                 "the saved file must carry the chosen start class");
 
         ModelSourceWorkbenchPanel reopenedWorkbench = new ModelSourceWorkbenchPanel(reloaded);
-        reopenedWorkbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        reopenedWorkbench.edit(reloaded.findClass("PositionGraph"));
         GraphConstraintsPanel reopened =
                 find(reopenedWorkbench, GraphConstraintsPanel.class);
 
@@ -758,8 +778,8 @@ class GraphConstraintsPanelTest {
         throw new AssertionError(className + " is not offered as a start class");
     }
 
-    private static GraphDiscoveryConfiguration graph(String pid) {
-        return new GraphDiscoveryConfiguration("PositionGraph",
+    private static wikidata.explore.model.GraphClassSource source(String pid) {
+        return new wikidata.explore.model.GraphClassSource(
                 new GraphDiscoveryConfiguration.StartNode(
                         "Position", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
@@ -773,16 +793,17 @@ class GraphConstraintsPanelTest {
         // panel still holding the previous domain's graph would flush it into the new one.
         GeneratedProjectModel model = model();
         model.rootClass().seedQids().add("Q4164871");
+        graphClass(model, "PositionGraph");
         ModelSourceWorkbenchPanel workbench = new ModelSourceWorkbenchPanel(model);
-        workbench.edit(SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS);
+        workbench.edit(model.findClass("PositionGraph"));
         text(find(workbench, GraphConstraintsPanel.class), "graph.edgeProperty")
                 .setText("P279");
 
         workbench.abandonEdits();
-        model.graphDiscoveryConfiguration(null);
+        model.findClass("PositionGraph").graphSource(null);
         workbench.applyEdits();
 
-        assertNull(model.graphDiscoveryConfiguration(),
+        assertNull(graph(model),
                 "an abandoned draft belongs to the domain that was closed, not the next one");
     }
 
@@ -877,6 +898,33 @@ class GraphConstraintsPanelTest {
                 GraphTraversalDirection.OUTGOING,
                 datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                 populationClass, null);
+    }
+
+    /** The editor opens on a GRAPH class, the way every other kind editor does. */
+    private static GraphConstraintsPanel graphPanel(GeneratedProjectModel model) {
+        GeneratedClassModel graphClass = model.findClass("PositionGraph") == null
+                ? graphClass(model, "PositionGraph") : model.findClass("PositionGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graphClass);
+        return panel;
+    }
+
+    private static GeneratedClassModel graphClass(
+            GeneratedProjectModel model, String name) {
+        GeneratedClassModel graphClass = model.findClass(name);
+        if (graphClass == null) {
+            graphClass = new GeneratedClassModel(name);
+            model.addClass(graphClass);
+        }
+        graphClass.classKind(wikidata.explore.model.ClassKind.GRAPH);
+        return graphClass;
+    }
+
+    /** The graph the project's one graph class declares. */
+    private static wikidata.explore.model.GraphClassSource graph(
+            GeneratedProjectModel model) {
+        GeneratedClassModel graphClass = model.findClass("PositionGraph");
+        return graphClass == null ? null : graphClass.graphSource();
     }
 
     private static GeneratedProjectModel model() {

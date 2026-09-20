@@ -68,7 +68,18 @@ final class GraphConstraintsPanel extends JPanel {
             " Run graph previews the output class; Apply result installs its accepted instances.";
 
     private final GeneratedProjectModel model;
-    private final JTextField graphNameField = new JTextField(22);
+    /**
+     * The GRAPH class being edited. A graph constraint used to be the project's one
+     * singleton, so this panel edited "the" graph and named it in a field of its own —
+     * which was simultaneously the identity of its annotation set and free text. It is
+     * a class now: named through the shared header like every other kind, with a
+     * declarationId underneath that a rename does not move, and a project may hold
+     * several.
+     */
+    private GeneratedClassModel clazz;
+    private final ClassHeaderEditor header;
+    private final ClassIdentityEditor identityEditor = new ClassIdentityEditor();
+    private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
     /** Whether the controls hold THIS model's graph, as opposed to construction
      *  defaults. Read by {@link #applyPendingEdits()}; see there for why it matters. */
     private boolean populated;
@@ -106,10 +117,6 @@ final class GraphConstraintsPanel extends JPanel {
             reviewBox();
     private final JLabel status = new JLabel(" ");
     private final JButton run = new JButton("Run graph");
-    /** The model holds ONE discovery graph, so removing it needs no selection — the
-     *  button names the thing it removes. Enabled only while there is one to remove,
-     *  which is also what keeps an unconfigured panel from offering a destructive act. */
-    private final JButton removeGraph = new JButton("Remove discovery graph");
     private SwingProcessRunner runner;
     private boolean runWired;
     private Consumer<Void> afterChange = ignored -> {};
@@ -126,6 +133,7 @@ final class GraphConstraintsPanel extends JPanel {
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
         this.model = java.util.Objects.requireNonNull(model, "model");
+        this.header = new ClassHeaderEditor(() -> this.model);
         errorDialog = (title, message) -> JOptionPane.showMessageDialog(
                 this, message, title, JOptionPane.ERROR_MESSAGE);
         buildUi();
@@ -231,17 +239,22 @@ final class GraphConstraintsPanel extends JPanel {
         try {
             clearCompletedPopulation();
             GeneratedProjectModel snapshot = model.copy();
-            ConfiguredGraphDiscoveryQuery query =
-                    new ConfiguredGraphDiscoveryQuery(snapshot, loadedInstances.get());
+            // The run is named by the class that declares it, so the snapshot's own copy
+            // of that class is what the run reads — not the live one an edit could move
+            // underneath it.
+            GeneratedClassModel snapshotClass = snapshot.findClass(clazz.className());
+            ConfiguredGraphDiscoveryQuery query = new ConfiguredGraphDiscoveryQuery(
+                    snapshot, snapshotClass, loadedInstances.get());
             ProcessWorkflowPipeline pipeline = new ProcessWorkflowPipeline(List.of(
                     new ProcessWorkflowPipeline.Phase(
                             "discover-graph", "Discover and classify graph nodes",
                             "Follow the configured edge, acquire evidence and classify "
-                                    + "each reached entity.", graphDetails(snapshot))));
+                                    + "each reached entity.",
+                            graphDetails(snapshot, snapshotClass))));
             ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result,
                     GraphDiscoveryResultStore.Artifact> action =
-                    graphWorkflow(query, pipeline, snapshot,
-                            graphSummary(snapshot, loadedInstances.get()));
+                    graphWorkflow(query, pipeline, snapshot, snapshotClass,
+                            graphSummary(snapshot, snapshotClass, loadedInstances.get()));
             SwingProcessWorkflow.start(this, runner, action);
         } catch (Exception error) {
             showGraphFailure(error);
@@ -251,7 +264,8 @@ final class GraphConstraintsPanel extends JPanel {
     private ProcessWorkflowAction<ConfiguredGraphDiscoveryQuery.Result,
             GraphDiscoveryResultStore.Artifact> graphWorkflow(
             ConfiguredGraphDiscoveryQuery query, ProcessWorkflowPipeline pipeline,
-            GeneratedProjectModel snapshot, DynamicViewable summary) {
+            GeneratedProjectModel snapshot, GeneratedClassModel graphClass,
+            DynamicViewable summary) {
         return new ProcessWorkflowAction<>() {
             @Override public String id() { return "discover-graph"; }
             @Override public ProcessWorkflowPipeline pipeline() { return pipeline; }
@@ -265,7 +279,8 @@ final class GraphConstraintsPanel extends JPanel {
                                 + "then explicitly start discovery.",
                         List.of(ProcessWorkflowPlan.Tab.component(
                                         "Graph", () -> graphPlanView(
-                                                snapshot, loadedInstances.get()), true),
+                                                snapshot, graphClass,
+                                                loadedInstances.get()), true),
                                 new ProcessWorkflowPlan.Tab(
                                 "Scope", List.of(summary)))).withoutPipelineTab();
             }
@@ -288,7 +303,7 @@ final class GraphConstraintsPanel extends JPanel {
             @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
                     ProcessOutcome<ConfiguredGraphDiscoveryQuery.Result> outcome) {
                 return graphResults(outcome.result(), snapshot.name(),
-                        snapshot.graphDiscoveryConfiguration().name());
+                        graphClass.className());
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
                     throws Exception {
@@ -296,6 +311,29 @@ final class GraphConstraintsPanel extends JPanel {
                 graphResultConsumer.accept(lastGraphResult);
             }
         };
+    }
+
+    /** The graph a class declares, or null while it declares none. */
+    private static GraphDiscoveryConfiguration configurationOf(GeneratedClassModel graphClass) {
+        return graphClass == null || graphClass.graphSource() == null ? null
+                : graphClass.graphSource().configurationFor(graphClass.className());
+    }
+
+    /** Opens the editor on a GRAPH class, the way every other kind editor is opened. */
+    void edit(GeneratedClassModel value) {
+        clazz = value;
+        header.show(value);
+        // The key is fixed, like an aggregate's and an owned class's: a graph annotation
+        // is identified by the candidate it classifies, so there is nothing to pick.
+        identityEditor.showFixedKey(value);
+        displayNameEditor.show(value);
+        populated = false;
+        refresh();
+        populated = clazz != null;
+    }
+
+    GeneratedClassModel editing() {
+        return clazz;
     }
 
     private void showGraphFailure(Exception error) {
@@ -308,10 +346,9 @@ final class GraphConstraintsPanel extends JPanel {
         loading = true;
         try {
             refreshClasses();
-            GraphDiscoveryConfiguration saved = model.graphDiscoveryConfiguration();
+            GraphDiscoveryConfiguration saved = configurationOf(clazz);
             refreshStartInputs();
             if (saved != null) {
-                graphNameField.setText(saved.name());
                 selectStart(saved.startNode());
                 startUseBox.setSelectedItem(saved.startNode().use());
                 if (!saved.nextNodes().isEmpty()) load(saved.nextNodes().getFirst());
@@ -319,9 +356,6 @@ final class GraphConstraintsPanel extends JPanel {
             refreshTargetState();
             refreshArrow();
             status(saved == null ? "No discovery graph configured."
-                    : saved.name().isBlank()
-                    ? "This graph constraint has no name. Name it and Apply: the name is "
-                            + "where its annotation set is written."
                     : saved.nextNodes().isEmpty()
                     ? "Start node saved: " + startInputLabel(model, saved.startNode())
                             + ". Add the property connecting the two nodes to complete"
@@ -379,7 +413,8 @@ final class GraphConstraintsPanel extends JPanel {
         // quietly store a start node naming whichever class happens to be first.
         // Pressing Apply is what turns a start class into a saved graph; once one
         // exists, a flush keeps it up to date like any other editor.
-        if (model.graphDiscoveryConfiguration() == null
+        if (clazz == null) return;
+        if (clazz.graphSource() == null
                 && !WikidataIds.isPid(cleanPid(edgePidField.getText()))) {
             return;
         }
@@ -395,14 +430,15 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     void applyEdits() {
+        if (clazz == null) return;
+        // The name is the class's, written by the shared header like every other kind's.
+        // It was a free-text field here, and a field an editor rewrites cannot also be
+        // the identity of the annotation set written under it.
+        header.applyEdits();
+        displayNameEditor.applyEdits();
         StartInput start = selectedStart();
         if (start == null) return;
         try {
-            String graphName = graphNameField.getText().trim();
-            if (!graphName.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
-                throw new IllegalArgumentException(
-                        "Enter a graph constraint name shaped like a Java class name");
-            }
             String pid = cleanPid(edgePidField.getText());
             // Apply only ever SAVES; removing is its own button. The start node is a
             // decision in its own right and is kept as one: a graph is authored in the
@@ -412,7 +448,7 @@ final class GraphConstraintsPanel extends JPanel {
             // in the list. An edgeless graph traverses nothing, so Run stays disabled
             // and the status says what the graph still needs.
             if (pid.isEmpty() && evidenceModel.isEmpty() && testsModel.isEmpty()) {
-                model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(graphName,
+                clazz.graphSource(new GraphClassSource(
                         new GraphDiscoveryConfiguration.StartNode(
                                 start.population() ? "" : start.className(),
                                 start.populationName(), use(startUseBox)),
@@ -445,7 +481,7 @@ final class GraphConstraintsPanel extends JPanel {
                     GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                     targetClass.className(),
                     evidence);
-            model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration(graphName,
+            clazz.graphSource(new GraphClassSource(
                     new GraphDiscoveryConfiguration.StartNode(
                             start.population() ? "" : start.className(),
                             start.populationName(), use(startUseBox)),
@@ -458,7 +494,6 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void buildUi() {
-        graphNameField.setName("graph.name");
         startInputBox.setName("graph.startInput");
         startUseBox.setName("graph.startUse");
         startQids.setName("graph.startQids");
@@ -476,7 +511,6 @@ final class GraphConstraintsPanel extends JPanel {
         testViaField.setName("graph.testVia");
         reviewBox.setName("graph.reviewDisposition");
         status.setName("graph.status");
-        removeGraph.setName("graph.remove");
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         targetUseBox.setEnabled(false);
 
@@ -489,13 +523,30 @@ final class GraphConstraintsPanel extends JPanel {
         chain.add(Box.createHorizontalStrut(8));
         chain.add(nextNodePanel());
         JComponent graph = objectview.utils.swing.ScrollPaneUtils.horizontalOnly(chain);
-        add(graph, BorderLayout.CENTER);
+
+        // Header, then this kind's own construct, then identity and name — the order
+        // every kind editor reads in. The graph IS this kind's triple: what it starts
+        // from, the edge it follows, and what the node it reaches produces.
+        JPanel form = new JPanel();
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        header.setAlignmentX(LEFT_ALIGNMENT);
+        graph.setAlignmentX(LEFT_ALIGNMENT);
+        identityEditor.setAlignmentX(LEFT_ALIGNMENT);
+        displayNameEditor.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(header);
+        form.add(graph);
+        form.add(identityEditor);
+        form.add(displayNameEditor);
+        add(new JScrollPane(form), BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton clear = new JButton("Clear draft");
         JButton apply = new JButton("Apply graph");
-        actions.add(run); actions.add(removeGraph);
+        // No Remove button: a graph constraint is a class, and a class is removed where
+        // every other class is removed. A second, kind-specific delete would be a
+        // construct's own exception to the one that already exists.
+        actions.add(run);
         actions.add(clear); actions.add(apply);
         bottom.add(status, BorderLayout.CENTER);
         bottom.add(actions, BorderLayout.EAST);
@@ -507,7 +558,6 @@ final class GraphConstraintsPanel extends JPanel {
         targetUseBox.addActionListener(e -> refreshTargetState());
         testKindBox.addActionListener(e -> refreshTestQidState());
         apply.addActionListener(e -> applyEdits());
-        removeGraph.addActionListener(e -> removeGraph());
         clear.addActionListener(e -> {
             evidenceModel.clear();
             testsModel.clear();
@@ -522,7 +572,6 @@ final class GraphConstraintsPanel extends JPanel {
 
     private JPanel startNodePanel() {
         JPanel panel = nodePanel("Start node");
-        addLine(panel, "Graph constraint name:", graphNameField);
         addLine(panel, "Start with:", startInputBox);
         addLine(panel, "Usable Wikidata QIDs:", startQids);
         addLine(panel, "Use these entities as:", startUseBox);
@@ -600,9 +649,13 @@ final class GraphConstraintsPanel extends JPanel {
 
     private void refreshClasses() {
         targetClassBox.removeAllItems();
-        for (GeneratedClassModel clazz : model.classes()) {
-            if (clazz == null || clazz.isImported()) continue;
-            targetClassBox.addItem(clazz);
+        for (GeneratedClassModel candidate : model.classes()) {
+            if (candidate == null || candidate.isImported()) continue;
+            // A graph produces entities, and the annotations about them are what a
+            // graph class holds — so no graph class is another graph's output, this
+            // one least of all.
+            if (candidate.classKind() == ClassKind.GRAPH) continue;
+            targetClassBox.addItem(candidate);
         }
     }
 
@@ -613,10 +666,14 @@ final class GraphConstraintsPanel extends JPanel {
             StartInput keep = selectedStart();
             startInputBox.removeAllItems();
             java.util.Collection<? extends Viewable> instances = loadedInstances.get();
-            for (GeneratedClassModel clazz : model.classes()) {
-                if (clazz == null || clazz.isImported()) continue;
-                int count = loadedQids(instances, clazz.className()).size();
-                startInputBox.addItem(new StartInput(clazz.className(), "", count));
+            for (GeneratedClassModel candidate : model.classes()) {
+                if (candidate == null || candidate.isImported()) continue;
+                // A graph class's instances are the annotations a run produced, not
+                // entities to traverse from — and this editor's own class would
+                // otherwise be offered as its own start.
+                if (candidate.classKind() == ClassKind.GRAPH) continue;
+                int count = loadedQids(instances, candidate.className()).size();
+                startInputBox.addItem(new StartInput(candidate.className(), "", count));
             }
             for (Selection selection : model.selections()) {
                 if (selection instanceof PopulationSelection population) {
@@ -1088,13 +1145,15 @@ final class GraphConstraintsPanel extends JPanel {
         }
     }
 
-    static DynamicViewable graphSummary(GeneratedProjectModel snapshot) {
-        return graphSummary(snapshot, List.of());
+    static DynamicViewable graphSummary(
+            GeneratedProjectModel snapshot, GeneratedClassModel graphClass) {
+        return graphSummary(snapshot, graphClass, List.of());
     }
 
     static DynamicViewable graphSummary(GeneratedProjectModel snapshot,
+            GeneratedClassModel graphClass,
             java.util.Collection<? extends Viewable> instances) {
-        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        GraphDiscoveryConfiguration graph = configurationOf(graphClass);
         DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
         summary.type("Graph discovery");
         summary.put("Adjacency facts",
@@ -1129,25 +1188,29 @@ final class GraphConstraintsPanel extends JPanel {
         return summary;
     }
 
-    private static JComponent graphPlanView(GeneratedProjectModel snapshot) {
-        return graphPlanView(snapshot, List.of());
+    private static JComponent graphPlanView(
+            GeneratedProjectModel snapshot, GeneratedClassModel graphClass) {
+        return graphPlanView(snapshot, graphClass, List.of());
     }
 
     private static JComponent graphPlanView(GeneratedProjectModel snapshot,
+            GeneratedClassModel graphClass,
             java.util.Collection<? extends Viewable> instances) {
         GraphDiscoveryPlanDiagram diagram = new GraphDiscoveryPlanDiagram(
-                graphPlanModel(snapshot, instances), reviewPolicy(snapshot));
+                graphPlanModel(snapshot, graphClass, instances), reviewPolicy(graphClass));
         return new JScrollPane(diagram);
     }
 
     /** One graph-model projection of the configuration used by both tests and the plan view. */
-    static GraphViewModel graphPlanModel(GeneratedProjectModel snapshot) {
-        return graphPlanModel(snapshot, List.of());
+    static GraphViewModel graphPlanModel(
+            GeneratedProjectModel snapshot, GeneratedClassModel graphClass) {
+        return graphPlanModel(snapshot, graphClass, List.of());
     }
 
     static GraphViewModel graphPlanModel(GeneratedProjectModel snapshot,
+            GeneratedClassModel graphClass,
             java.util.Collection<? extends Viewable> instances) {
-        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+        GraphDiscoveryConfiguration graph = configurationOf(graphClass);
         if (graph == null) return new GraphViewModel(List.of(), List.of());
         List<GraphViewModel.Node> nodes = new ArrayList<>();
         List<GraphViewModel.Edge> edges = new ArrayList<>();
@@ -1248,8 +1311,8 @@ final class GraphConstraintsPanel extends JPanel {
                 ? "Add to " + populationClass : "Intermediate only";
     }
 
-    private static String reviewPolicy(GeneratedProjectModel snapshot) {
-        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+    private static String reviewPolicy(GeneratedClassModel graphClass) {
+        GraphDiscoveryConfiguration graph = configurationOf(graphClass);
         if (graph == null) return "";
         return graph.nextNodes().stream().map(GraphDiscoveryConfiguration.NextNode::evidenceCondition)
                 .filter(java.util.Objects::nonNull)
@@ -1260,8 +1323,9 @@ final class GraphConstraintsPanel extends JPanel {
                 .distinct().collect(java.util.stream.Collectors.joining(" "));
     }
 
-    private static List<String> graphDetails(GeneratedProjectModel snapshot) {
-        GraphDiscoveryConfiguration graph = snapshot.graphDiscoveryConfiguration();
+    private static List<String> graphDetails(
+            GeneratedProjectModel snapshot, GeneratedClassModel graphClass) {
+        GraphDiscoveryConfiguration graph = configurationOf(graphClass);
         if (graph == null || graph.nextNodes().isEmpty()) return List.of();
         GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
         return List.of(startInputLabel(snapshot, graph.startNode()) + " → "
@@ -1297,7 +1361,7 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void updateRunEnabled() {
-        GraphDiscoveryConfiguration graph = model.graphDiscoveryConfiguration();
+        GraphDiscoveryConfiguration graph = configurationOf(clazz);
         // A saved start node is not yet a traversal: with no edge there is nothing to
         // follow, so the graph is removable and readable but not runnable. Nor is an
         // unnamed one: the name is where the annotation set is written, so running
@@ -1305,19 +1369,6 @@ final class GraphConstraintsPanel extends JPanel {
         run.setEnabled(runner != null && !runner.isRunning()
                 && graph != null && !graph.nextNodes().isEmpty()
                 && !graph.name().isBlank());
-        removeGraph.setEnabled(graph != null);
-    }
-
-    /** Removes the one graph the model holds. Explicit, named and separate from Apply,
-     *  so deleting authored configuration can never be something a save infers. */
-    private void removeGraph() {
-        if (model.graphDiscoveryConfiguration() == null) return;
-        model.graphDiscoveryConfiguration(null);
-        clearCompletedPopulation();
-        status("Discovery graph removed. Save the "
-                + (model.isModel() ? "model" : "domain") + " to keep that.", false);
-        updateRunEnabled();
-        afterChange.accept(null);
     }
     private static String message(Throwable error) {
         return error == null || error.getMessage() == null

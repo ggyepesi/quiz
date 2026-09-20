@@ -109,7 +109,7 @@ this codebase. Nothing here is invented; it is a survey, which is the point:
 | the shape of a value | **datatype** | Wikidata's own: properties are `WikibaseItem`, `String`, `Time`, `CommonsMedia`, … (`properties.tsv` column 4) |
 | what P31 evidence says an entity *is* | **kind** | `EntityKindRule` — *"maps Wikidata evidence (normally P31 values) to one modeled entity kind"*; `MembershipPattern.EVIDENCE_KIND` |
 | a modeled population | **class** | `GeneratedClassModel` — `Person`, `Nominee`, `PositionHolder` |
-| Source / Statement / Owned / Aggregate | **construct** | `CLAUDE.md` and the README already say construct |
+| Source / Statement / Owned / Aggregate / Graph | **construct** | `CLAUDE.md` and the README already say construct |
 
 So `Nominee.type` — the field holding P31 values such as Q5 — is `Nominee.kind`. And
 `FieldType` and `objectview.FieldKind` collapse into one **datatype**, which was a
@@ -137,7 +137,7 @@ is what a rename converges on, not a description of today.
 | `ITEM_TO_ROOT` / "item → root" | **incoming** | |
 | "type" (of an entity), "Wikidata type/class" | **kind** | what P31 evidence says it is; `EntityKindRule` already |
 | "type" (of a field), `FieldType` vs `FieldKind` | **datatype** | Wikidata's word for a value's shape |
-| `ClassKind` | **construct** | Source / Statement / Owned / Aggregate |
+| `ClassKind` | **construct** | Source / Statement / Owned / Aggregate / Graph |
 | "record" | **instance** | one noun for a class's members |
 
 Direction is the cheapest first target: three vocabularies exist for it today — the enum
@@ -226,6 +226,33 @@ Name's fields and should not also compose a nested Name; validation rejects that
 redundant/cyclic shape.
 
 ---
+
+### Graph classes — a population discovered by traversal
+
+A **graph class** (`ClassKind.GRAPH`, configured by `GraphClassSource`) is the fifth
+construct: its instances are *discovered* by following a configured relation from a start
+population and *classified* by evidence tests. Its instances are the annotation set — one
+verdict per candidate, carrying the candidate's QID, the step that reached it and the
+witnesses behind the decision — so its identity regime is neither the datasource's id nor
+a content key nor an owner, but **the candidate it classifies together with the class that
+classified it** (`ClassKind.identityFromClassifiedCandidate`).
+
+It is a class in every other respect: named through the shared class header, carrying a
+`declarationId` that a rename does not move, listed among the classes, edited by selecting
+it, and persisted with the rest of the model. It was a singleton field on the project
+before — which is why it had no identity apart from its name, and why a project could hold
+only one. A project may now declare several, which is what a domain needs: one graph
+narrowing the offices worth asking about, another reaching their holders.
+
+Its terminal node names exactly one **output class**, which is an ordinary class of
+another kind — never a graph class, and never itself. Running the graph classifies;
+**applying the result NARROWS** that output class to the accepted population, keeping the
+instances the project already generated for those entities and dropping the rest. It never
+replaces them with candidate shells: a candidate carries a QID, a label and a reverse
+reference to its annotation and nothing else, so installing candidates in place of
+instances silently discards every field that was acquired.
+
+See [[graph-relation-constraints.md]] for the traversal and evidence model.
 
 ## Statement (reified class — `StatementClassSource` + `ReifyConstruct`)
 

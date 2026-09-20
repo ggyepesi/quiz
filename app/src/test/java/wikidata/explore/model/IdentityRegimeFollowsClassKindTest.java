@@ -27,9 +27,47 @@ class IdentityRegimeFollowsClassKindTest {
                 "a part is identified by its owner and the site that produced it — "
                         + "borrowing the owner's QID is how its fields load, not what "
                         + "makes it itself");
+        assertFalse(ClassKind.GRAPH.identityFromSource(),
+                "an annotation carries the candidate's QID, which is not its own id — "
+                        + "the same borrowed-identifier mistake a part's owner QID made, "
+                        + "and what let an Apply put annotation shells where the "
+                        + "generated instances had been");
         assertTrue(ClassKind.STATEMENT.usesCanonicalKey());
         assertFalse(ClassKind.OWNED.usesCanonicalKey());
+        assertFalse(ClassKind.GRAPH.usesCanonicalKey());
         assertTrue(ClassKind.OWNED.identityFromOwner());
+        assertFalse(ClassKind.GRAPH.identityFromOwner(),
+                "a candidate is classified by the graph, not owned by it");
+        assertTrue(ClassKind.GRAPH.identityFromClassifiedCandidate());
+    }
+
+    /**
+     * Exactly one regime answers for each kind, and every kind has one.
+     *
+     * <p>The allowlist can only shrink. AGGREGATE is on it because it answers NONE while
+     * being keyed in fact: {@code AggregateClassSource} says its identity is
+     * {@code canonical().keyFields()}, the editor shows that key as fixed and syncs it,
+     * but {@code usesCanonicalKey()} is true only for STATEMENT — so validation, which
+     * asks that method, never reports an aggregate whose key is empty. Tracked
+     * separately; it is a fault in the kind that predates GRAPH, not a property of it.
+     */
+    private static final java.util.Set<ClassKind> WITHOUT_A_STATED_REGIME =
+            java.util.Set.of(ClassKind.AGGREGATE);
+
+    @Test void everyKindHasExactlyOneIdentityRegime() {
+        for (ClassKind kind : ClassKind.values()) {
+            if (WITHOUT_A_STATED_REGIME.contains(kind)) continue;
+            long regimes = java.util.stream.Stream.of(
+                            kind.identityFromSource(), kind.usesCanonicalKey(),
+                            kind.identityFromOwner(),
+                            kind.identityFromClassifiedCandidate())
+                    .filter(Boolean::booleanValue).count();
+            assertEquals(1, regimes,
+                    kind + " must answer exactly one identity regime; a kind that "
+                            + "answers none is one whose identity nothing states, and a "
+                            + "kind that answers two is the second discriminator this "
+                            + "enum exists to remove");
+        }
     }
 
     @Test void ownedClassesAreNotAskedForStatementKeysByValidation() {

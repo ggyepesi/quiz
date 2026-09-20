@@ -31,14 +31,14 @@ class ConfiguredGraphDiscoveryQueryTest {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.seedQids().add("Q999");
         model.rootClass(position);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
                         new GraphRelation("wikidata", "P279"),
                         GraphTraversalDirection.OUTGOING,
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
-                        "", null))));
+                        "", null)));
         WikidataApiClient api = new WikidataApiClient("test") {
             @Override public PartialStatements getStatementsByPropertyPartial(
                     List<String> qids, List<String> pids, BatchLog log,
@@ -63,7 +63,7 @@ class ConfiguredGraphDiscoveryQueryTest {
             }
         };
 
-        var result = new ConfiguredGraphDiscoveryQuery(model,
+        var result = new ConfiguredGraphDiscoveryQuery(model, graphClass,
                 List.of(instance("Q4164871", "Position"))).execute(
                 WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind());
 
@@ -80,14 +80,14 @@ class ConfiguredGraphDiscoveryQueryTest {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.seedQids().add("Q999");
         model.rootClass(position);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("Position",
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
                 List.of(new GraphDiscoveryConfiguration.NextNode(
                         new GraphRelation("wikidata", "P279"),
                         GraphTraversalDirection.OUTGOING,
                         GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
-                        "", null))));
+                        "", null)));
         AtomicInteger requests = new AtomicInteger();
         WikidataApiClient api = new WikidataApiClient("test") {
             @Override public PartialStatements getStatementsByPropertyPartial(
@@ -112,9 +112,9 @@ class ConfiguredGraphDiscoveryQueryTest {
                 .with(GraphStoreProvider.class,
                         (GraphStoreProvider) () -> new PersistentGraphStore(cacheDirectory));
 
-        var acquired = new ConfiguredGraphDiscoveryQuery(model,
+        var acquired = new ConfiguredGraphDiscoveryQuery(model, graphClass,
                 List.of(instance("Q4164871", "Position"))).execute(context);
-        var repeated = new ConfiguredGraphDiscoveryQuery(model,
+        var repeated = new ConfiguredGraphDiscoveryQuery(model, graphClass,
                 List.of(instance("Q4164871", "Position"))).execute(context);
 
         assertEquals(1, requests.get());
@@ -133,14 +133,25 @@ class ConfiguredGraphDiscoveryQueryTest {
         selected.className("Position");
         selected.instanceQids(List.of("Q1", "Q2", "Q1"));
         model.addSelection(selected);
-        model.graphDiscoveryConfiguration(new GraphDiscoveryConfiguration("PositionGraph",
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph",
                 new GraphDiscoveryConfiguration.StartNode("", "PositionsForHistory",
-                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY), List.of()));
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY), List.of());
 
-        ConfiguredGraphDiscoveryQuery query = new ConfiguredGraphDiscoveryQuery(model, List.of());
+        ConfiguredGraphDiscoveryQuery query =
+                new ConfiguredGraphDiscoveryQuery(model, graphClass, List.of());
 
         assertEquals("2", query.parameters().get("startQids"));
         assertEquals("PositionsForHistory", query.parameters().get("populationSelection"));
+    }
+
+    /** A graph is declared by a class of kind GRAPH; the project no longer holds one. */
+    private static GeneratedClassModel graphClass(GeneratedProjectModel model, String name,
+            GraphDiscoveryConfiguration.StartNode start,
+            List<GraphDiscoveryConfiguration.NextNode> nodes) {
+        GeneratedClassModel graphClass = new GeneratedClassModel(name);
+        graphClass.graphSource(new wikidata.explore.model.GraphClassSource(start, nodes));
+        model.addClass(graphClass);
+        return graphClass;
     }
 
     private static WikidataDynamicObject instance(String qid, String type) {

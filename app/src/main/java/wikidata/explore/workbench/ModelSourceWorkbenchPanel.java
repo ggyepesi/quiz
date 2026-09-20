@@ -434,7 +434,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
             kindHeader.setVisible(true);
 
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
+                graphConstraintsPanel.edit(clazz);
+                layout.show(cardPanel, "graph-constraints");
+            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 aggregateClassPanel.edit(clazz);
                 layout.show(cardPanel, "aggregate");
             } else if (clazz.reifiesStatements()) {
@@ -490,13 +493,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             showImportedNotice(null);
             selectionEditor.edit(null);
             layout.show(cardPanel, "selection");
-        } else if (selected == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
-            effectiveClassPanel.clear();
-            kindBox.setEnabled(editingEnabled);
-            kindHeader.setVisible(false);
-            showImportedNotice(null);
-            graphConstraintsPanel.refresh();
-            layout.show(cardPanel, "graph-constraints");
         } else if (selected instanceof GeneratedProjectModel) {
             effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
@@ -576,6 +572,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     void abandonEdits() {
         selected = null;
         classSourcePanel.edit(null);
+        graphConstraintsPanel.edit(null);
         statementSourcePanel.edit(null);
         ownedClassPanel.edit(null);
         aggregateClassPanel.edit(null);
@@ -651,6 +648,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 case STATEMENT -> statementSourcePanel.applyEdits();
                 case OWNED -> ownedClassPanel.applyEdits();
                 case AGGREGATE -> aggregateClassPanel.applyEdits();
+                case GRAPH -> graphConstraintsPanel.applyEdits();
                 case SOURCE -> classSourcePanel.applyEdits();
             }
         }
@@ -1170,7 +1168,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
 
         if (kind == wikidata.explore.model.ClassKind.OWNED) {
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
+                graphConstraintsPanel.edit(clazz);
+                layout.show(cardPanel, "graph-constraints");
+            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 aggregateClassPanel.applyEdits();
                 clazz.aggregateSource(null);
             }
@@ -1198,7 +1199,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
 
         if (toStatement) {
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
+                graphConstraintsPanel.edit(clazz);
+                layout.show(cardPanel, "graph-constraints");
+            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 aggregateClassPanel.applyEdits();
                 clazz.aggregateSource(null);
                 clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
@@ -1236,7 +1240,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             statementSourcePanel.edit(clazz);
             layout.show(cardPanel, "statement");
         } else {
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
+                graphConstraintsPanel.edit(clazz);
+                layout.show(cardPanel, "graph-constraints");
+            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 aggregateClassPanel.applyEdits();
                 clazz.aggregateSource(null);
                 clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);

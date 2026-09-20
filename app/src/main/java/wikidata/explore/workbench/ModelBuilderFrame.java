@@ -1113,7 +1113,9 @@ public class ModelBuilderFrame extends JFrame {
 
         showInstancesButton.addActionListener(e -> {
             if (classModelPanel.selectedUserObject()
-                    == SingleRootClassModelPanel.ConfigurationSection.GRAPH_CONSTRAINTS) {
+                    instanceof wikidata.explore.model.GeneratedClassModel selectedClass
+                    && selectedClass.classKind()
+                            == wikidata.explore.model.ClassKind.GRAPH) {
                 if (!sourceWorkbench.showLastGraphResult()) {
                     JOptionPane.showMessageDialog(this,
                             "No graph result is loaded. Run the graph first.");

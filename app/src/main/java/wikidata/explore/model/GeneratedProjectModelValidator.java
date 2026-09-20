@@ -51,6 +51,7 @@ public final class GeneratedProjectModelValidator {
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
             validateAggregateClass(project, clazz, problems);
+            validateGraphClass(project, clazz, problems);
             if (clazz.reifiesStatements()) {
                 validateStatementClass(
                         project,
@@ -113,6 +114,45 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
+
+    /**
+     * A graph class needs a start it can read QIDs from and an output class it produces.
+     *
+     * <p>Both are named by name and both can be renamed or removed out from under the
+     * graph, so this says what a traversal cannot run without, in the same place every
+     * other kind's requirements are said.
+     */
+    private static void validateGraphClass(GeneratedProjectModel project,
+            GeneratedClassModel graphClass, List<Problem> problems) {
+        GraphClassSource graph = graphClass.graphSource();
+        if (graphClass.classKind() != ClassKind.GRAPH && graph == null) return;
+        if (graph == null || graph.startNode() == null) {
+            problems.add(Problem.error(graphClass.className(),
+                    "Graph class requires a start: a class whose loaded instances supply "
+                            + "the QIDs, or a saved population selection."));
+            return;
+        }
+        String startSelection = graph.startNode().populationSelection();
+        if (!startSelection.isBlank()) {
+            if (!(project.findSelection(startSelection) instanceof PopulationSelection)) {
+                problems.add(Problem.error(graphClass.className(),
+                        "Graph start population selection '" + startSelection
+                                + "' does not exist."));
+            }
+        } else if (project.findClass(graph.startNode().qidSourceClass()) == null) {
+            problems.add(Problem.error(graphClass.className(),
+                    "Graph start class '" + graph.startNode().qidSourceClass()
+                            + "' does not exist."));
+        }
+        // An edgeless graph is a start node someone has saved and not finished, which
+        // the editor reports and Run refuses. It is not a broken model, so it is not an
+        // error here; what IS an error is naming an output class that is not there.
+        String output = graph.outputClassName();
+        if (!output.isBlank() && project.findClass(output) == null) {
+            problems.add(Problem.error(graphClass.className(),
+                    "Graph output class '" + output + "' does not exist."));
+        }
+    }
 
     private static void validateAggregateClass(GeneratedProjectModel project,
             GeneratedClassModel aggregate, List<Problem> problems) {

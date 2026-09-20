@@ -188,18 +188,33 @@ construct per thing produced:
    explicit action that names the selection, count and model file. Graphs consume this same
    saved construct rather than owning another QID list.
 
-19. **A graph constraint has one named annotation set and one output class.** Its name is
-   explicitly authored (there is no silent default), persisted and shaped like a Java class
-   name. Its terminal node produces instances of exactly one configured class. The named
-   annotation instances reference those candidates and the candidates carry a hidden reverse
-   reference, so ObjectView/MultiInstance renders one connected object graph. Result tabs keep
-   the graph's original Accepted/Review/Rejected classification; manual accept/reject is a
-   separate override mark and never rewrites or moves that original result. Applying installs
-   the effective output population into the project's ordinary generated-instance pool.
-   Population selections are created from class instances, not from the graph editor. The
-   annotation snapshot lives beneath the owning project and is written only by Save
-   model/domain. A class graph input means all currently loaded instances of that class, while
-   a saved population is one alternative input that already names its class.
+19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
+   identity, its name, rename propagation, its place in the classes list, its editor and its
+   persistence all come from the class construct, and its instances are its annotation set.
+   Its configuration is a `GraphClassSource` — start node, next nodes, evidence condition —
+   the sibling of `StatementClassSource` and `AggregateClassSource`. It is named where every
+   class is named, so there is no name of its own beside the class's: the name that keys the
+   annotation file and the name shown in the editor are one fact, and `declarationId`
+   underneath it is what a rename does not move. **A project may declare several**, because a
+   domain needs more than one discovery rule — one narrowing the offices worth asking about,
+   another reaching their holders. Its terminal node produces instances of exactly one
+   configured class, which is never itself or another graph class. The annotation instances
+   reference those candidates and the candidates carry a hidden reverse reference, so
+   ObjectView/MultiInstance renders one connected object graph. Result tabs keep the graph's
+   original Accepted/Review/Rejected classification; manual accept/reject is a separate
+   override mark and never rewrites or moves that original result. Applying NARROWS the output
+   class to the accepted population, keeping the project's own instances whole — it never
+   replaces them with candidate shells. Population selections are created from class
+   instances, not from the graph editor. The annotation snapshot lives beneath the owning
+   project and is written only by Save model/domain. A class graph input means all currently
+   loaded instances of that class, while a saved population is one alternative input that
+   already names its class.
+
+   *(This supersedes the earlier rule that a graph constraint carries its own authored name.
+   That name was at once the identity of its annotation set and a free-text field an editor
+   rewrote, which is how a run saved as PositionFilter came to sit beside a model calling
+   itself GraphConstraint with nothing able to notice. Refusing a silent default treated the
+   symptom; the cause was a construct with no identity apart from its name.)*
 
 20. **Model reuse and local execution are independent.** `MODEL` means its declarations
    and relevant selections may be imported; it does not mean the project cannot generate.
