@@ -85,6 +85,82 @@ class GraphConstraintsPanelTest {
                 "the graph editor is not encoded in field configuration");
     }
 
+    @Test void eachGraphClassKeepsItsOwnCompletedResult() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel first = graphClass(model, "PositionGraph");
+        GeneratedClassModel second = graphClass(model, "HolderGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        ConfiguredGraphDiscoveryQuery.Result result = resultFor("Position");
+
+        panel.edit(first);
+        panel.graphResults(result, "PositionGraph");
+        panel.edit(second);
+        assertNull(panel.lastGraphResult(),
+                "selecting a graph with no result must not expose another graph's result");
+        panel.graphResults(result, "HolderGraph");
+
+        assertEquals(2, panel.graphResults().size(),
+                "the project save boundary sees every completed graph result");
+        assertEquals("HolderGraph", panel.lastGraphResult().type());
+        panel.edit(first);
+        assertEquals("PositionGraph", panel.lastGraphResult().type(),
+                "Show instances follows the selected graph class");
+    }
+
+    /**
+     * A renamed graph class does not carry its old run forward, and the save dialog
+     * names the file the save writes.
+     *
+     * <p>The declaration id keeps the annotation set owned by its class through a
+     * rename — but ownership is not currency. The annotations are STAMPED with the name
+     * the class had when they were produced, and the file is keyed by that name, so
+     * re-filing them under the new one would write instances typed PositionGraph into a
+     * set called PositionRelevance. It was worse than that before: the save dialog built
+     * its path from the live names while the write took the artifact's recorded ones, so
+     * a rename made the dialog promise data/wikidata/offices/positionrelevance… while
+     * the save produced data/wikidata/historicalpositions/positiongraph… — the annotation
+     * set written under one name and looked for under another, which is the whole failure
+     * a graph class exists to prevent.
+     */
+    @Test void aRenamedGraphClassDoesNotCarryItsOldRunForward() {
+        GeneratedProjectModel model = model();
+        model.name("Historical Positions");
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graphClass);
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+
+        GraphDiscoveryResultStore.Artifact ran = panel.lastGraphResult();
+        assertEquals("data/wikidata/historicalpositions/positiongraph.graph.snapshot.json",
+                GraphDiscoveryResultStore.destinationOf(ran).getPath(),
+                "the one expression the save dialog and the write both take");
+
+        model.renameClass("PositionGraph", "PositionRelevance");
+
+        assertNull(panel.lastGraphResult(),
+                "a run of PositionGraph is not PositionRelevance's result; running "
+                        + "again replays the adjacency from the local store");
+        assertTrue(panel.graphResults().isEmpty(),
+                "and the save boundary is offered nothing it cannot file truthfully");
+    }
+
+    /** Renaming the project moves the annotation set the same way, for the same reason. */
+    @Test void aRenamedProjectDoesNotCarryItsGraphRunsForward() {
+        GeneratedProjectModel model = model();
+        model.name("Historical Positions");
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graphClass);
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+        assertNotNull(panel.lastGraphResult());
+
+        model.name("Offices");
+
+        assertNull(panel.lastGraphResult(),
+                "the annotation set lives under the project directory, so the project's "
+                        + "name is half of where it goes");
+    }
+
     @Test void loadedClassInstancesAreShownButApplyingIsExplicit() {
         GeneratedProjectModel model = model();
         GraphConstraintsPanel panel = graphPanel(model);
@@ -898,6 +974,22 @@ class GraphConstraintsPanelTest {
                 GraphTraversalDirection.OUTGOING,
                 datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                 populationClass, null);
+    }
+
+    private static ConfiguredGraphDiscoveryQuery.Result resultFor(String outputClass) {
+        EntityRef start = EntityRef.wikidata("Q1");
+        EntityRef accepted = EntityRef.wikidata("Q2");
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, outputNode(outputClass), new datasource.graph.GraphTraversalStep(
+                        "step", "Start", outputClass, "Graph",
+                        new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphExpansionPolicy.CURATED),
+                List.of(accepted), List.of(accepted), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of());
+        return new ConfiguredGraphDiscoveryQuery.Result(
+                new GraphDiscoveryExecutor.Result(List.of(start), List.of(node)),
+                java.util.Map.of("Q1", "Root", "Q2", "Kept"), 2);
     }
 
     /** The editor opens on a GRAPH class, the way every other kind editor does. */

@@ -127,8 +127,10 @@ final class GraphConstraintsPanel extends JPanel {
     private java.util.function.Supplier<Map<String, wikidata.explore.WikidataProperty>>
             propertyCache = Map::of;
     private Consumer<GraphDiscoveryResultStore.Artifact> graphResultConsumer = ignored -> {};
-    private GraphDiscoveryResultStore.Artifact lastGraphResult;
-    private ConfiguredGraphDiscoveryQuery.Result lastQueryResult;
+    /** Completed annotations belong to the graph class that produced them. The stable
+     * declaration id keeps that ownership intact while the class is renamed. */
+    private final Map<String, GraphDiscoveryResultStore.Artifact> graphResults =
+            new LinkedHashMap<>();
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
@@ -177,11 +179,51 @@ final class GraphConstraintsPanel extends JPanel {
         graphResultConsumer = value == null ? ignored -> {} : value;
     }
 
-    GraphDiscoveryResultStore.Artifact lastGraphResult() { return lastGraphResult; }
+    GraphDiscoveryResultStore.Artifact lastGraphResult() {
+        return clazz == null ? null : resultOf(clazz);
+    }
+
+    /**
+     * Every completed annotation set still owned by the class it was run for.
+     *
+     * <p>Read by the save boundary, which writes each one. A set whose class has since
+     * been renamed is dropped here rather than offered: its instances are stamped with
+     * the name the class had, so there is no file it could go to that would not be
+     * named one thing and typed another.
+     */
+    List<GraphDiscoveryResultStore.Artifact> graphResults() {
+        return model.graphClasses().stream()
+                .map(this::resultOf)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * The annotation set held for one graph class, or null once it stops describing it.
+     *
+     * <p>The map is keyed by declarationId, which is what keeps ownership through a
+     * rename — but ownership is not currency. The names the artifact recorded are what
+     * its instances are stamped with and what its file is keyed by, so when they stop
+     * matching the class, the run is of a class that no longer exists and is forgotten
+     * here. Running again replays the adjacency from the local store.
+     */
+    private GraphDiscoveryResultStore.Artifact resultOf(GeneratedClassModel graphClass) {
+        if (graphClass == null) return null;
+        String key = resultKey(graphClass);
+        GraphDiscoveryResultStore.Artifact held = graphResults.get(key);
+        if (held == null) return null;
+        if (GraphDiscoveryResultStore.describes(
+                held, model.name(), graphClass.className())) {
+            return held;
+        }
+        graphResults.remove(key);
+        return null;
+    }
 
     boolean showLastGraphResult() {
-        if (runner == null || lastGraphResult == null) return false;
-        GraphDiscoveryResultStore.Artifact shown = lastGraphResult;
+        GraphDiscoveryResultStore.Artifact current = lastGraphResult();
+        if (runner == null || current == null) return false;
+        GraphDiscoveryResultStore.Artifact shown = current;
         ProcessWorkflowAction<GraphDiscoveryResultStore.Artifact,
                 GraphDiscoveryResultStore.Artifact> action = new ProcessWorkflowAction<>() {
             @Override public String id() { return "show-graph-result"; }
@@ -203,8 +245,8 @@ final class GraphConstraintsPanel extends JPanel {
                 return graphResults(outcome.result());
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions) {
-                lastGraphResult = decisions.getFirst();
-                graphResultConsumer.accept(lastGraphResult);
+                remember(decisions.getFirst());
+                graphResultConsumer.accept(decisions.getFirst());
             }
         };
         SwingProcessWorkflow.start(this, runner, action);
@@ -307,8 +349,8 @@ final class GraphConstraintsPanel extends JPanel {
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
                     throws Exception {
-                lastGraphResult = decisions.getFirst();
-                graphResultConsumer.accept(lastGraphResult);
+                remember(decisions.getFirst());
+                graphResultConsumer.accept(decisions.getFirst());
             }
         };
     }
@@ -347,7 +389,11 @@ final class GraphConstraintsPanel extends JPanel {
         try {
             refreshClasses();
             GraphDiscoveryConfiguration saved = configurationOf(clazz);
+            clearDraftControls();
             refreshStartInputs();
+            if (saved == null && startInputBox.getItemCount() > 0) {
+                startInputBox.setSelectedIndex(0);
+            }
             if (saved != null) {
                 selectStart(saved.startNode());
                 startUseBox.setSelectedItem(saved.startNode().use());
@@ -367,8 +413,24 @@ final class GraphConstraintsPanel extends JPanel {
         } finally { loading = false; }
     }
 
+    /** An editor instance serves every graph class. Each selection starts from that
+     * class's saved source, never from the controls left by the previously selected one. */
+    private void clearDraftControls() {
+        edgePidField.setText("");
+        directionBox.setSelectedItem(DirectionChoice.OUT);
+        evidenceModel.clear();
+        testsModel.clear();
+        evidencePidField.setText("");
+        testPidField.setText("");
+        testQidField.setText("");
+        testViaField.setText("");
+        reviewBox.setSelectedItem(
+                GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT);
+        if (targetClassBox.getItemCount() > 0) targetClassBox.setSelectedIndex(0);
+    }
+
     private void loadSavedGraphResult(GraphDiscoveryConfiguration saved) {
-        if (lastGraphResult != null || saved == null) return;
+        if (saved == null || lastGraphResult() != null) return;
         // An unnamed constraint has no annotation set to load; saying so beats looking
         // for a file whose name we would have had to invent.
         if (saved.name().isBlank()) return;
@@ -379,10 +441,11 @@ final class GraphConstraintsPanel extends JPanel {
                 .findFirst().orElse("");
         if (outputClass.isBlank()) return;
         try {
-            lastGraphResult = GraphDiscoveryResultStore.load(
+            GraphDiscoveryResultStore.Artifact loaded = GraphDiscoveryResultStore.load(
                     model.name(), saved.name(), outputClass);
-            if (lastGraphResult != null) {
-                status("Loaded " + lastGraphResult.instances().size()
+            if (loaded != null) {
+                remember(loaded);
+                status("Loaded " + loaded.instances().size()
                         + " saved graph annotations from "
                         + GraphDiscoveryResultStore.destination(
                                 model.name(), saved.name()).getPath() + ".", false);
@@ -427,6 +490,7 @@ final class GraphConstraintsPanel extends JPanel {
      *  flushed into the new one. */
     void abandon() {
         populated = false;
+        graphResults.clear();
     }
 
     void applyEdits() {
@@ -977,9 +1041,8 @@ final class GraphConstraintsPanel extends JPanel {
             String projectName, String graphName) {
         GraphDiscoveryResultStore.Artifact artifact =
                 GraphDiscoveryResultStore.artifact(projectName, graphName, result);
-        preserveManualDecisions(lastGraphResult, artifact);
-        lastQueryResult = result;
-        lastGraphResult = artifact;
+        preserveManualDecisions(lastGraphResult(), artifact);
+        remember(graphName, artifact);
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -1010,11 +1073,27 @@ final class GraphConstraintsPanel extends JPanel {
                 + artifact.projectName() + "\" with " + artifact.instances().size()
                 + " instance" + (artifact.instances().size() == 1 ? "" : "s")
                 + " and their field model to "
-                + GraphDiscoveryResultStore.destination(
-                        artifact.projectName(), artifact.type()).getPath() + ".";
+                + GraphDiscoveryResultStore.destinationOf(artifact).getPath() + ".";
     }
 
-    private void clearCompletedPopulation() { lastGraphResult = null; }
+    private void clearCompletedPopulation() {
+        if (clazz != null) graphResults.remove(resultKey(clazz));
+    }
+
+    private void remember(GraphDiscoveryResultStore.Artifact artifact) {
+        if (artifact != null) remember(artifact.type(), artifact);
+    }
+
+    private void remember(String graphName, GraphDiscoveryResultStore.Artifact artifact) {
+        GeneratedClassModel owner = model.findClass(graphName);
+        if (owner == null) owner = clazz;
+        if (owner != null && artifact != null) graphResults.put(resultKey(owner), artifact);
+    }
+
+    private static String resultKey(GeneratedClassModel graphClass) {
+        String id = graphClass.declarationId();
+        return id.isBlank() ? graphClass.className() : id;
+    }
 
     static ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> artifactTab(
             String title, GraphDiscoveryResultStore.Artifact artifact, String decision) {

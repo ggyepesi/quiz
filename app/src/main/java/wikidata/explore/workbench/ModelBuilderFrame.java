@@ -3177,11 +3177,15 @@ public class ModelBuilderFrame extends JFrame {
                 + "Instances: " + (haveInstances
                 ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
                 : "(none generated yet — will be skipped)");
-        GraphDiscoveryResultStore.Artifact graphResult = sourceWorkbench.lastGraphResult();
-        if (graphResult != null) {
-            plan += "\nGraph annotations: " + graphResult.instances().size() + " -> "
-                    + GraphDiscoveryResultStore.destination(modelToSave.name(),
-                            graphResult.type()).getPath();
+        java.util.List<GraphDiscoveryResultStore.Artifact> graphResults =
+                sourceWorkbench.graphResults();
+        for (GraphDiscoveryResultStore.Artifact graphResult : graphResults) {
+            // The same expression the write takes. Built from the live names here and
+            // from the artifact's recorded ones there, the dialog promised one file
+            // while the save produced another as soon as anything was renamed.
+            plan += "\nGraph annotations \"" + graphResult.type() + "\": "
+                    + graphResult.instances().size() + " -> "
+                    + GraphDiscoveryResultStore.destinationOf(graphResult).getPath();
         }
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
@@ -3244,7 +3248,7 @@ public class ModelBuilderFrame extends JFrame {
                                       + "saved together)\n");
             }
 
-            if (graphResult != null) {
+            for (GraphDiscoveryResultStore.Artifact graphResult : graphResults) {
                 report.append(GraphDiscoveryResultStore.save(graphResult)).append('\n');
             }
 

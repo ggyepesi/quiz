@@ -88,6 +88,34 @@ final class GraphDiscoveryResultStore {
                 built.candidates(), new SnapshotDomain(records, model));
     }
 
+    /**
+     * Where an artifact's annotations go — the one expression, so the file a save dialog
+     * NAMES and the file a save WRITES cannot be two answers.
+     *
+     * <p>They were: the plan line was built from the live project and class names while
+     * the write took the names the artifact recorded when it ran, and a rename between
+     * the run and the save made them disagree silently.
+     */
+    static File destinationOf(Artifact artifact) {
+        return destination(artifact.projectName(), artifact.type());
+    }
+
+    /**
+     * Whether an artifact is still the result of the class it is held for.
+     *
+     * <p>Its annotations are STAMPED with the name the class had when the run produced
+     * them, and the file is keyed by that name, so a renamed class's old run is not that
+     * class's result under a new name — it is a run of a class that no longer exists.
+     * Re-filing it would write instances typed one way into a set named another, which
+     * is the drift this construct exists to prevent. Adjacency outlives the run that
+     * fetched it, so running again replays from the local store.
+     */
+    static boolean describes(Artifact artifact, String projectName, String graphName) {
+        return artifact != null
+                && artifact.type().equals(graphName)
+                && artifact.projectName().equals(projectName);
+    }
+
     static String save(Artifact artifact) throws Exception {
         return save(artifact, DomainStorage.inDefaultLocation(),
                 DatasetRegistry.defaultFile());

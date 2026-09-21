@@ -25,11 +25,29 @@ import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class ModelSourceWorkbenchPanelTest {
+
+    @Test void choosingGraphKindCreatesAGraphClassAndOpensItsEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel positionGraph = new GeneratedClassModel("PositionGraph");
+        model.addClass(positionGraph);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(positionGraph);
+
+        classKindBox(panel).setSelectedItem(wikidata.explore.model.ClassKind.GRAPH);
+
+        assertEquals(wikidata.explore.model.ClassKind.GRAPH, positionGraph.classKind());
+        assertNull(positionGraph.graphSource(),
+                "choosing the kind must not invent a start node before Apply graph");
+        assertSame(positionGraph,
+                component(panel, GraphConstraintsPanel.class).editing());
+        assertTrue(component(panel, GraphConstraintsPanel.class).isVisible());
+    }
 
     @Test void enablingTheWorkbenchDoesNotReopenAnImportedClassOrItsFields() {
         GeneratedProjectModel model = new GeneratedProjectModel();
@@ -412,6 +430,21 @@ class ModelSourceWorkbenchPanelTest {
             }
         }
         throw new AssertionError("No " + type.getSimpleName());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static JComboBox<wikidata.explore.model.ClassKind> classKindBox(Container root) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JComboBox<?> box && box.getItemCount() > 0
+                    && box.getItemAt(0) instanceof wikidata.explore.model.ClassKind) {
+                return (JComboBox<wikidata.explore.model.ClassKind>) box;
+            }
+            if (child instanceof Container nested) {
+                try { return classKindBox(nested); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No class-kind selector");
     }
 
     @Test void aFieldSampleUsesItsDeclaringClassRatherThanTheProjectRoot() {
