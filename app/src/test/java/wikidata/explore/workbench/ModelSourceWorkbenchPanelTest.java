@@ -49,6 +49,57 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(component(panel, GraphConstraintsPanel.class).isVisible());
     }
 
+    /**
+     * Abandoning the Graph kind leaves the class, and the selector, as they were.
+     *
+     * <p>Becoming a graph class costs a class its own population — {@code
+     * classKind(GRAPH)} clears the statement source, the population query, the seeds and
+     * the membership rule, because a graph class is populated by its traversal. Owned
+     * asks before doing that; Graph did it on the gesture. So choosing Graph on Position
+     * to see what it was made Position a graph class: the combo read "Graph class" over
+     * a class whose P31 membership had gone, with nothing to undo it.
+     */
+    @Test void abandoningTheGraphKindLeavesTheClassAndTheSelectorAlone() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", java.util.List.of("Q114962596"), false));
+        model.addClass(position);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.graphKindConfirmation(question -> {
+            assertTrue(question.contains("its membership rule"),
+                    "the question names what the class gives up: " + question);
+            return false;
+        });
+        panel.edit(position);
+
+        classKindBox(panel).setSelectedItem(wikidata.explore.model.ClassKind.GRAPH);
+
+        assertEquals(wikidata.explore.model.ClassKind.SOURCE, position.classKind(),
+                "a cancelled kind change is not a kind change");
+        assertTrue(position.membership().bounded(),
+                "and the population it would have cost is still there");
+        assertEquals(wikidata.explore.model.ClassKind.SOURCE,
+                classKindBox(panel).getSelectedItem(),
+                "the selector goes back to the kind the class actually is");
+    }
+
+    /** Confirmed, it proceeds — and a class with nothing to lose is not asked at all. */
+    @Test void aClassWithNoPopulationOfItsOwnBecomesAGraphClassWithoutAQuestion() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel fresh = new GeneratedClassModel("PositionRelevance");
+        model.addClass(fresh);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.graphKindConfirmation(question -> {
+            throw new AssertionError("nothing is lost, so nothing is asked: " + question);
+        });
+        panel.edit(fresh);
+
+        classKindBox(panel).setSelectedItem(wikidata.explore.model.ClassKind.GRAPH);
+
+        assertEquals(wikidata.explore.model.ClassKind.GRAPH, fresh.classKind());
+    }
+
     @Test void enablingTheWorkbenchDoesNotReopenAnImportedClassOrItsFields() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel local = new GeneratedClassModel("Nominee");

@@ -574,6 +574,10 @@ final class GraphConstraintsPanel extends JPanel {
         testQidField.setName("graph.testQid");
         testViaField.setName("graph.testVia");
         reviewBox.setName("graph.reviewDisposition");
+        // Named so the checked-in layout and the draft-clearing test can see them:
+        // what is IN these lists is the draft, and nothing could read it before.
+        evidenceList.setName("graph.evidenceList");
+        testsList.setName("graph.testsList");
         status.setName("graph.status");
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         targetUseBox.setEnabled(false);

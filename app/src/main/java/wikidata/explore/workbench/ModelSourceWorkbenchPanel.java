@@ -646,6 +646,49 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
      * edits were dropped without a word, and they DID disagree: until the kind became
      * stored, it snapped back to Source while the statement card was still showing.
      */
+    /**
+     * Asks before a class gives up its own population to become a graph class.
+     *
+     * <p>A graph class is populated by its traversal, so {@code classKind(GRAPH)} clears
+     * the statement source, the population query, the seeds and the membership rule.
+     * Owned asks before doing that; Graph did it on the gesture, so choosing Graph on
+     * Position to see what it was left Position a graph class — the combo reading Graph
+     * over a class whose P31 membership had gone, and no way back but undoing it by
+     * hand. Asked only when something would actually be lost: a question about nothing
+     * is noise, and a fresh class has nothing to give up.
+     */
+    private boolean confirmBecomingAGraphClass(GeneratedClassModel clazz) {
+        String lost = describeIndependentPopulation(clazz);
+        if (lost.isEmpty()) return true;
+        return graphKindConfirmation.test(
+                "Make " + clazz.className() + " a Graph class?\n\n"
+                        + "Its instances will be discovered by traversing a relation and "
+                        + "classified by evidence tests. It will lose " + lost + ".");
+    }
+
+    /** What {@code classKind(GRAPH)} will clear, so the question names the loss. */
+    private static String describeIndependentPopulation(GeneratedClassModel clazz) {
+        java.util.List<String> lost = new java.util.ArrayList<>();
+        if (clazz.statementSource() != null) lost.add("its statement source");
+        if (clazz.populationSource() != null) lost.add("its population query");
+        if (clazz.membership().bounded()) lost.add("its membership rule");
+        if (!clazz.seedQids().isEmpty()) {
+            lost.add(clazz.seedQids().size() + " seed QID"
+                    + (clazz.seedQids().size() == 1 ? "" : "s"));
+        }
+        return String.join(", ", lost);
+    }
+
+    /** The question, asked as a dialog by default and answered directly by tests. */
+    private java.util.function.Predicate<String> graphKindConfirmation =
+            question -> JOptionPane.showConfirmDialog(this, question, "Graph class",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)
+                    == JOptionPane.OK_OPTION;
+
+    void graphKindConfirmation(java.util.function.Predicate<String> value) {
+        graphKindConfirmation = value == null ? question -> true : value;
+    }
+
     public void applyEdits() {
         if (selected instanceof GeneratedClassModel clazz) {
             switch (clazz.classKind()) {
@@ -1155,6 +1198,19 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 kind != wikidata.explore.model.ClassKind.AGGREGATE);
 
         if (kind == wikidata.explore.model.ClassKind.GRAPH) {
+            // Becoming a graph class costs the class its own population: classKind
+            // clears the statement source, the query and the seeds, because a graph
+            // class is populated by its traversal. That is exactly what Owned asks
+            // before doing, and this did it on the gesture — so choosing Graph on
+            // Position to see what it was made Position a graph class with no way
+            // back, the combo showing Graph over a class whose seeds had gone.
+            if (clazz.classKind() != wikidata.explore.model.ClassKind.GRAPH
+                    && !confirmBecomingAGraphClass(clazz)) {
+                updatingKind = true;
+                kindBox.setSelectedItem(clazz.classKind());
+                updatingKind = false;
+                return;
+            }
             switch (clazz.classKind()) {
                 case STATEMENT -> statementSourcePanel.applyEdits();
                 case OWNED -> ownedClassPanel.applyEdits();

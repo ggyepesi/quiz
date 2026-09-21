@@ -161,6 +161,46 @@ class GraphConstraintsPanelTest {
                         + "name is half of where it goes");
     }
 
+    /**
+     * One editor serves every graph class, so selecting the next one must not show the
+     * previous one's draft.
+     *
+     * <p>The controls are fields of the panel, not of the class, and nothing rebuilt
+     * them on selection: the edge property, the evidence relations and the tests left
+     * behind by the graph you were just looking at stayed on screen over the next one's
+     * name — and Apply would have written them onto it. Nothing in the suite could see
+     * this; the result isolation test next door covers what was RUN, not what is typed.
+     */
+    @Test void selectingAnotherGraphClassStartsFromItsOwnSavedGraph() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel first = graphClass(model, "PositionGraph");
+        GeneratedClassModel second = graphClass(model, "HolderGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+
+        panel.edit(first);
+        text(panel, "graph.edgeProperty").setText("P279");
+        text(panel, "graph.evidenceProperty").setText("P1001");
+        button(panel, "Add evidence relation").doClick();
+        text(panel, "graph.testProperty").setText("P576");
+        button(panel, "Add evidence test").doClick();
+        assertEquals(1, named(panel, "graph.evidenceList", JList.class)
+                .getModel().getSize());
+
+        panel.edit(second);
+
+        assertEquals("", text(panel, "graph.edgeProperty").getText(),
+                "the next graph class starts from its own saved graph, not from the "
+                        + "controls the previous one left");
+        assertEquals(0, named(panel, "graph.evidenceList", JList.class)
+                .getModel().getSize(),
+                "evidence relations belong to the graph that declared them");
+        assertEquals(0, named(panel, "graph.testsList", JList.class)
+                .getModel().getSize(),
+                "and so do its tests");
+        assertNull(second.graphSource(),
+                "leaving a draft behind must not write it onto the class selected next");
+    }
+
     @Test void loadedClassInstancesAreShownButApplyingIsExplicit() {
         GeneratedProjectModel model = model();
         GraphConstraintsPanel panel = graphPanel(model);
