@@ -35,6 +35,11 @@ public interface RunSteps {
      */
     void completed(String phaseId, String summary);
 
+    /** The step produced usable but incomplete output. */
+    default void partial(String phaseId, String summary) {
+        completed(phaseId, summary);
+    }
+
     /** Reports into a pipeline, skipping phases it does not declare — an operation whose
      *  plan has fewer steps simply hears less, rather than growing steps it never ran. */
     static RunSteps of(ProcessWorkflowPipeline pipeline) {
@@ -53,6 +58,10 @@ public interface RunSteps {
 
             @Override public void completed(String phaseId, String summary) {
                 if (declared(phaseId)) pipeline.complete(phaseId, summary);
+            }
+
+            @Override public void partial(String phaseId, String summary) {
+                if (declared(phaseId)) pipeline.partial(phaseId, summary);
             }
         };
     }

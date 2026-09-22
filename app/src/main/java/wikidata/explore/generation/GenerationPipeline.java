@@ -631,8 +631,15 @@ public class GenerationPipeline {
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.
-        steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                external.summary());
+        if (external.complete()) {
+            steps.completed(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                    external.summary());
+        } else {
+            external.failures().forEach(failure -> quality.failed(
+                    "external-evidence", failure));
+            steps.partial(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                    String.join("; ", external.failures()));
+        }
         steps.started(GenerateDomainPipeline.CONSTRUCT,
                 "Replay the transforms that an already-reified pool can re-run");
         List<WikidataDynamicObject> projectedRecords = new ArrayList<>();

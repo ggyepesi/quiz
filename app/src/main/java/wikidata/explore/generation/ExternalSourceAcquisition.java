@@ -58,6 +58,7 @@ public final class ExternalSourceAcquisition {
                 model, pool == null ? List.of() : pool, plan,
                 services == null ? SourceRuntimeServices.empty() : services, sink, token);
         List<ExternalSourceFamily.Outcome> outcomes = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
 
         for (ExternalSourceFamily family : registry.families()) {
             if (!selected.contains(family.id())) continue;
@@ -66,10 +67,20 @@ public final class ExternalSourceAcquisition {
                 outcomes.add(empty);
                 continue;
             }
-            outcomes.add(run(family.displayName(), failurePolicy, sink, empty,
-                    () -> family.acquire(context)));
+            try {
+                outcomes.add(family.acquire(context));
+            } catch (CancellationException | InterruptedException cancelled) {
+                throw cancelled;
+            } catch (Exception failure) {
+                if (failurePolicy != FailurePolicy.CONTINUE_OPTIONAL) throw failure;
+                String message = family.displayName() + " acquisition failed: "
+                        + failure.getMessage();
+                sink.message(message + "\n");
+                failures.add(message);
+                outcomes.add(empty);
+            }
         }
-        return new Result(outcomes);
+        return new Result(outcomes, failures);
     }
 
     static <T> T run(String family, FailurePolicy policy, GenerationLog log,
@@ -89,9 +100,15 @@ public final class ExternalSourceAcquisition {
     public static final class Result {
         private final List<ExternalSourceFamily.Outcome> outcomes;
         private final Map<String, ExternalSourceFamily.Outcome> byFamily;
+        private final List<String> failures;
 
         Result(List<ExternalSourceFamily.Outcome> outcomes) {
+            this(outcomes, List.of());
+        }
+
+        Result(List<ExternalSourceFamily.Outcome> outcomes, List<String> failures) {
             this.outcomes = List.copyOf(outcomes == null ? List.of() : outcomes);
+            this.failures = List.copyOf(failures == null ? List.of() : failures);
             LinkedHashMap<String, ExternalSourceFamily.Outcome> index = new LinkedHashMap<>();
             for (ExternalSourceFamily.Outcome outcome : this.outcomes) {
                 if (index.putIfAbsent(outcome.familyId(), outcome) != null) {
@@ -103,6 +120,8 @@ public final class ExternalSourceAcquisition {
         }
 
         public List<ExternalSourceFamily.Outcome> outcomes() { return outcomes; }
+        public List<String> failures() { return failures; }
+        public boolean complete() { return failures.isEmpty(); }
         public ExternalSourceFamily.Outcome outcome(String familyId) {
             return byFamily.get(familyId);
         }

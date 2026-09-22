@@ -92,6 +92,33 @@ class ExternalSourceAcquisitionTest {
                         }));
     }
 
+    @Test void continuedFamilyFailureRemainsVisibleToRunCompleteness() throws Exception {
+        ExternalSourceFamily broken = new ExternalSourceFamily() {
+            @Override public String id() { return "broken"; }
+            @Override public String displayName() { return "Broken source"; }
+            @Override public boolean configured(SourceExecutionPlan plan) { return true; }
+            @Override public Outcome empty() {
+                return new Outcome(id(), 0, "0 broken values", 1);
+            }
+            @Override public Outcome acquire(Context context) throws Exception {
+                throw new java.io.IOException("endpoint unavailable");
+            }
+        };
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(), Datasources.standard());
+
+        ExternalSourceAcquisition.Result result = ExternalSourceAcquisition.apply(
+                new GeneratedProjectModel(), List.of(), plan,
+                datasource.api.SourceRuntimeServices.empty(), GenerationLog.NOOP,
+                new work.CancellationToken(),
+                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
+                new ExternalSourceFamilyRegistry(List.of(broken)), Set.of("broken"));
+
+        assertTrue(!result.complete());
+        assertEquals(List.of("Broken source acquisition failed: endpoint unavailable"),
+                result.failures());
+    }
+
     private static GenerationLog log(java.util.List<String> messages) {
         return new GenerationLog() {
             @Override public void message(String text) { messages.add(text); }
