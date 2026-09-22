@@ -23,10 +23,15 @@ public class GeneratedViewableMapper {
     private final datasource.api.DatasourceRegistry datasourceRegistry;
     private final Map<WikidataDynamicObject, Object> generatedByDynamic =
             new IdentityHashMap<>();
-    // Real entities (Q\d+) are identified by QID: the same entity arriving as
-    // several WDO copies (a root + inline-field references) maps to ONE typed
-    // instance (see mapObject). Statement atoms (Q\d+-<guid>) keep per-atom identity.
-    private final Map<String, Object> generatedByQid = new java.util.HashMap<>();
+    // Real entities (Q\d+) are identified by modeled type + QID: copies of one
+    // Position map to ONE Position, while the same QID deliberately represented as a
+    // PositionDiscoveryStart remains a separate typed instance. A bare-QID cache handed
+    // the latter object to the Position mapper and reflection then read Position fields
+    // from a PositionDiscoveryStart Java object.
+    private final Map<ModeledEntityKey, Object> generatedByQid =
+            new java.util.HashMap<>();
+
+    private record ModeledEntityKey(String type, String qid) { }
     /** Source candidates are partitioned by the same neutral engine as statements and
      * owned components before Java objects are materialized. Indexed per modeled class,
      * because one source object may be represented through more than one class role. */
@@ -197,8 +202,9 @@ public class GeneratedViewableMapper {
         String entityQid = source.qid();
         boolean realEntity = entityQid != null && WikidataIds.isQid(entityQid)
                 && !ownedComponentTypes.contains(type);
+        ModeledEntityKey entityKey = new ModeledEntityKey(type, entityQid);
         if (realEntity) {
-            Object byQid = generatedByQid.get(entityQid);
+            Object byQid = generatedByQid.get(entityKey);
             if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {
                 generatedByDynamic.put(source, byQid);
                 applyFields(cr, byQid, source, true);   // fill any missing fields
@@ -211,7 +217,7 @@ public class GeneratedViewableMapper {
         generatedByDynamic.put(source, target);
         if (source != originalSource) generatedByDynamic.put(originalSource, target);
         if (realEntity) {
-            generatedByQid.put(entityQid, target);
+            generatedByQid.put(entityKey, target);
         }
 
         // Stable identity + display come from the source object at creation. Hidden

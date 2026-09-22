@@ -1,0 +1,49 @@
+package wikidata.explore.codegen;
+
+import datasource.schema.FieldType;
+import org.junit.jupiter.api.Test;
+import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+
+/** One Wikidata entity may intentionally play two modeled roles with different schemas. */
+class SameQidDifferentModeledTypesMappingTest {
+
+    @Test void sameQidInDifferentClassesProducesTwoCorrectlyTypedInstances() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.addField("superClasses", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Position");
+        GeneratedClassModel start = new GeneratedClassModel("PositionDiscoveryStart");
+        project.rootClass(position);
+        project.addClass(start);
+
+        WikidataDynamicObject startObject = object("Q114962596", "PositionDiscoveryStart");
+        WikidataDynamicObject positionObject = object("Q114962596", "Position");
+        positionObject.put("superClasses", List.of());
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(startObject, positionObject));
+
+            assertEquals(2, mapped.size());
+            assertEquals("PositionDiscoveryStart", mapped.get(0).getClass().getSimpleName());
+            assertEquals("Position", mapped.get(1).getClass().getSimpleName());
+            assertNotSame(mapped.get(0), mapped.get(1));
+        }
+    }
+
+    private static WikidataDynamicObject object(String qid, String type) {
+        WikidataDynamicObject value = new WikidataDynamicObject(qid, qid);
+        value.type(type);
+        value.typeKey(type);
+        return value;
+    }
+}
