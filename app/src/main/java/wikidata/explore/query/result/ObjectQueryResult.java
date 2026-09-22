@@ -88,7 +88,14 @@ public record ObjectQueryResult(
     public Map<String, List<Viewable>> byType() {
         Map<String, List<Viewable>> byType = new LinkedHashMap<>();
         Set<Viewable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<Viewable> queue = new ArrayDeque<>(objects == null ? List.of() : objects);
+        List<Viewable> roots = objects == null ? List.of() : objects.stream()
+                .filter(java.util.Objects::nonNull).toList();
+        Set<Viewable> rootSet = Collections.newSetFromMap(new IdentityHashMap<>());
+        rootSet.addAll(roots);
+        Set<String> rootedTypes = roots.stream().map(Viewable::typeName)
+                .filter(type -> type != null && !type.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        Deque<Viewable> queue = new ArrayDeque<>(roots);
         while (!queue.isEmpty()) {
             Viewable value = queue.poll();
             if (value == null || !seen.add(value)) continue;
@@ -96,7 +103,9 @@ public record ObjectQueryResult(
             // materialized; it is never something the reader counts or sees.
             if ("WikidataDynamicObject".equals(value.getClass().getSimpleName())) continue;
             String type = value.typeName();
-            if (type != null && !type.isBlank() && !"WikidataDynamicObject".equals(type)) {
+            boolean sectionMember = rootSet.contains(value) || !rootedTypes.contains(type);
+            if (sectionMember && type != null && !type.isBlank()
+                    && !"WikidataDynamicObject".equals(type)) {
                 byType.computeIfAbsent(type, key -> new ArrayList<>()).add(value);
             }
             objectview.field.FieldSet fields = objectview.field.FieldSet.of(value);

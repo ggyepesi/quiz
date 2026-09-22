@@ -324,7 +324,8 @@ public class GenerationPipeline {
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);
 
-        ExternalSourceAcquisition.apply(snapshot, dynamicObjects, sourcePlan,
+        ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
+                snapshot, dynamicObjects, sourcePlan,
                 StandardExternalSourceFamilies.services(client, dbpedia, entityApi), log, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
                 java.util.Set.of(
@@ -366,7 +367,19 @@ public class GenerationPipeline {
                 materialize(runtime, dynamicObjects);
 
         return new GenerationRun(
-                snapshot, depth, plan, dynamicObjects, runtime, instances);
+                snapshot, depth, plan, dynamicObjects, runtime, instances,
+                null, List.of(), previewQuality(external), List.of(),
+                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.OwnedCompositionAudit.notRun(),
+                GenerationRun.KindClassificationAudit.notRun(),
+                GenerationRun.ProjectionAudit.notRun());
+    }
+
+    static GenerationRun.Quality previewQuality(ExternalSourceAcquisition.Result external) {
+        if (external == null || external.complete()) {
+            return GenerationRun.Quality.completeQuality();
+        }
+        return GenerationRun.Quality.partial(external.failures(), List.of());
     }
 
     public GenerationRun remap(

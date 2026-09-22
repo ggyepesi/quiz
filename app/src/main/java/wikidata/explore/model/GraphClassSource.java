@@ -71,4 +71,14 @@ public final class GraphClassSource {
     public GraphClassSource copy() {
         return new GraphClassSource(startNode, nextNodes);
     }
+
+    @Override public boolean equals(Object other) {
+        return other instanceof GraphClassSource source
+                && java.util.Objects.equals(startNode, source.startNode)
+                && java.util.Objects.equals(nextNodes, source.nextNodes);
+    }
+
+    @Override public int hashCode() {
+        return java.util.Objects.hash(startNode, nextNodes);
+    }
 }

@@ -117,6 +117,10 @@ class ExternalSourceAcquisitionTest {
         assertTrue(!result.complete());
         assertEquals(List.of("Broken source acquisition failed: endpoint unavailable"),
                 result.failures());
+        var quality = GenerationPipeline.previewQuality(result);
+        assertTrue(!quality.complete(),
+                "a class preview reports the same continued acquisition failure as Enrich");
+        assertEquals(result.failures(), quality.warnings());
     }
 
     private static GenerationLog log(java.util.List<String> messages) {

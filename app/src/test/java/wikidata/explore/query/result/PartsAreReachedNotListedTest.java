@@ -87,6 +87,26 @@ class PartsAreReachedNotListedTest {
         assertEquals(result.byType().keySet(), result.byTypeWithoutParts().keySet());
     }
 
+    @Test void aSameTypedReferenceIsNotAnotherPopulationMember() {
+        class RefPerson implements Viewable {
+            final String id; public Viewable related;
+            RefPerson(String id) { this.id = id; }
+            @Override public String getIdentifier() { return id; }
+            @Override public String getDisplayName() { return id; }
+            @Override public String typeName() { return "Position"; }
+            @Override public FieldSet fields() { return FieldSet.of(this); }
+        }
+        RefPerson root = new RefPerson("Q1");
+        RefPerson reference = new RefPerson("Q2");
+        root.related = reference;
+
+        ObjectQueryResult result = new ObjectQueryResult(List.of(root), RefPerson.class, "");
+
+        assertEquals(List.of(root), result.byType().get("Position"),
+                "a class section lists its roots; a same-typed referenced object remains "
+                        + "a reference, not a second instance");
+    }
+
     /** Which classes are parts is asked once, of the model that knows. */
     @Test void theModelSaysWhichClassesArePartsOfAnother() throws Exception {
         GeneratedProjectModel person = new GeneratedProjectModelStore().load(

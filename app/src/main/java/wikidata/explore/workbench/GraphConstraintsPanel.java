@@ -475,7 +475,7 @@ final class GraphConstraintsPanel extends JPanel {
                                 start.population() ? "" : start.className(),
                                 start.populationName(), use(startUseBox)),
                         List.of());
-                boolean changed = !sameSource(clazz.graphSource(), replacement);
+                boolean changed = !java.util.Objects.equals(clazz.graphSource(), replacement);
                 clazz.graphSource(replacement);
                 if (changed) clearCompletedPopulation();
                 status("Start node saved: " + start
@@ -510,7 +510,7 @@ final class GraphConstraintsPanel extends JPanel {
                             start.population() ? "" : start.className(),
                             start.populationName(), use(startUseBox)),
                     List.of(target));
-            boolean changed = !sameSource(clazz.graphSource(), replacement);
+            boolean changed = !java.util.Objects.equals(clazz.graphSource(), replacement);
             clazz.graphSource(replacement);
             if (changed) clearCompletedPopulation();
             status("Applied discovery graph." + RUN_ONLY, false);
@@ -1044,13 +1044,6 @@ final class GraphConstraintsPanel extends JPanel {
 
     private void clearCompletedPopulation() {
         if (clazz != null) graphResults.remove(resultKey(clazz));
-    }
-
-    private static boolean sameSource(GraphClassSource left, GraphClassSource right) {
-        if (left == right) return true;
-        if (left == null || right == null) return false;
-        return java.util.Objects.equals(left.startNode(), right.startNode())
-                && java.util.Objects.equals(left.nextNodes(), right.nextNodes());
     }
 
     private void remember(GraphDiscoveryResultStore.Artifact artifact) {

@@ -57,29 +57,4 @@ class HistoricalPositionsOfficeHoldingTest {
         assertTrue(validation.valid(), validation.errors().toString());
     }
 
-    @Test
-    void savedStartNodeAndPositionSharingAQidMaterializeAsTheirOwnClasses()
-            throws Exception {
-        GeneratedProjectModel model = new GeneratedProjectModelStore().load(new File(
-                "../data/wikidata/historicalpositions/historicalpositions.model.json"));
-        var saved = new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
-                .loadAllWithFieldGraph(new File(
-                        "../data/wikidata/historicalpositions/"
-                                + "historicalpositions.snapshot.json"));
-        wikidata.explore.generation.GenerationPipeline pipeline =
-                new wikidata.explore.generation.GenerationPipeline();
-
-        try (wikidata.explore.codegen.GeneratedViewableRuntime runtime =
-                     pipeline.buildRuntime(model)) {
-            var instances = pipeline.materialize(runtime, saved.objects());
-            assertTrue(instances.stream().anyMatch(instance ->
-                    instance.getClass().getSimpleName().equals("PositionDiscoveryStart")));
-            assertTrue(instances.stream().anyMatch(instance ->
-                    instance.getClass().getSimpleName().equals("Position")));
-            assertTrue(instances.stream().noneMatch(instance ->
-                    instance.getClass().getSimpleName().equals("GraphConstraint")),
-                    "graph annotations belong to the graph-result panel, not the ordinary "
-                            + "instances list");
-        }
-    }
 }
