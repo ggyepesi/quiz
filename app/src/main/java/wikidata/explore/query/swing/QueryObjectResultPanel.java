@@ -5,6 +5,9 @@ import wikidata.ui.WikidataLinks;
 import objectview.demo.MultiView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
+import objectview.search.MultiSearchBar;
+import objectview.search.SearchPanel;
+import objectview.view.SearchableView;
 import work.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -38,6 +41,7 @@ public class QueryObjectResultPanel
             new JPanel(new BorderLayout());
 
     private RenderContext activeContext;
+    private Map<String, GroupedSection> supplementalSections = Map.of();
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
 
@@ -69,17 +73,70 @@ public class QueryObjectResultPanel
 
     @Override
     public void accept(ObjectQueryResult result) {
+        acceptGrouped(result, supplementalSections);
+    }
+
+    /**
+     * Shows result-owned types together with explicit peer sections.  The peers are
+     * roots in their own right: unlike references reached while walking a generated
+     * instance, they must not pull their private object graph into another class's
+     * section.  Graph-constraint annotations use this path.
+     */
+    public void accept(ObjectQueryResult result,
+                       Map<String, ? extends List<? extends Viewable>> sections) {
+        Map<String, GroupedSection> grouped = new LinkedHashMap<>();
+        if (sections != null) sections.forEach((name, values) -> grouped.put(name,
+                GroupedSection.of(values, Map.of())));
+        acceptGrouped(result, grouped);
+    }
+
+    public record GroupedSection(
+            List<Viewable> all, Map<String, List<Viewable>> partitions) {
+        public GroupedSection {
+            all = all == null ? List.of() : List.copyOf(all);
+            Map<String, List<Viewable>> copied = new LinkedHashMap<>();
+            if (partitions != null) partitions.forEach((name, values) ->
+                    copied.put(name, values == null ? List.of() : List.copyOf(values)));
+            partitions = Collections.unmodifiableMap(copied);
+        }
+
+        public static GroupedSection of(
+                List<? extends Viewable> all,
+                Map<String, ? extends List<? extends Viewable>> partitions) {
+            return new GroupedSection(all == null ? List.of() : List.copyOf(all),
+                    copyPartitions(partitions));
+        }
+
+        private static Map<String, List<Viewable>> copyPartitions(
+                Map<String, ? extends List<? extends Viewable>> values) {
+            Map<String, List<Viewable>> copied = new LinkedHashMap<>();
+            if (values != null) values.forEach((name, members) -> copied.put(name,
+                    members == null ? List.of() : List.copyOf(members)));
+            return copied;
+        }
+    }
+
+    public void acceptGrouped(ObjectQueryResult result,
+                              Map<String, GroupedSection> sections) {
+        Map<String, GroupedSection> copied = new LinkedHashMap<>();
+        if (sections != null) {
+            sections.forEach((name, values) -> copied.put(name,
+                    values == null ? new GroupedSection(List.of(), Map.of()) : values));
+        }
+        supplementalSections = Collections.unmodifiableMap(copied);
+        Map<String, GroupedSection> shownSections = supplementalSections;
         SwingUtilities.invokeLater(() -> {
             holder.setVisible(false);
             holder.removeAll();
             activeContext = null;
 
-            if (result == null
-                    || result.objects() == null
-                    || result.objects().isEmpty()) {
+            if ((result == null || result.objects() == null || result.objects().isEmpty())
+                    && shownSections.isEmpty()) {
                 holder.add(new JLabel("No objects."), BorderLayout.CENTER);
             } else {
-                holder.add(buildView(result), BorderLayout.CENTER);
+                ObjectQueryResult shown = result == null
+                        ? new ObjectQueryResult(List.of(), null, "") : result;
+                holder.add(buildView(shown, shownSections), BorderLayout.CENTER);
             }
 
             holder.setVisible(true);
@@ -90,7 +147,8 @@ public class QueryObjectResultPanel
         });
     }
 
-    private JComponent buildView(ObjectQueryResult result) {
+    private JComponent buildView(ObjectQueryResult result,
+                                 Map<String, GroupedSection> peerSections) {
         // The result answers what it holds, by type. The panel used to walk the object
         // graph itself, so the headings it drew and the count the sample reported were
         // two rules for one question and disagreed the moment a result carried more
@@ -99,47 +157,108 @@ public class QueryObjectResultPanel
         // its owner and rendered inside it, so a heading of its own puts it beside the
         // classes it belongs to as though it were one of them. On Nobel that listed 989
         // structured names next to the prizes and the people they name.
+        Map<String, List<Viewable>> byType = sections(result, peerSections.entrySet().stream()
+                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
+                        entry -> entry.getValue().all(), (left, right) -> left,
+                        LinkedHashMap::new)));
+
+        if (peerSections.isEmpty() && byType.size() <= 1) {
+            return searchPanelView(result);
+        }
+        if (peerSections.isEmpty()) return multiView(byType);
+
+        RenderContext context = new RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setCardDecorator(cardDecorator);
+        context.setValueLinker(WikidataLinks.valueLinker());
+        byType.values().forEach(values -> values.forEach(context::addTopLevel));
+
+        JTabbedPane types = new JTabbedPane();
+        for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
+            String name = entry.getKey();
+            List<Viewable> all = entry.getValue();
+            GroupedSection grouped = peerSections.get(name);
+            JComponent body = grouped == null
+                    ? browser(all, context, false)
+                    : groupedBrowser(grouped, context, types);
+            int index = types.getTabCount();
+            types.addTab(sectionTitle(name, all.size()), body);
+            if (grouped == null) all.forEach(value -> context.registerTopLevelRevealer(
+                    value, () -> types.setSelectedIndex(index)));
+        }
+        activeContext = context;
+        return types;
+    }
+
+    /** Existing ordinary multi-class results stay simultaneously visible. */
+    private JComponent multiView(Map<String, List<Viewable>> byType) {
+        MultiView multi = new MultiView();
+        multi.context().setCardDecorator(cardDecorator);
+        multi.context().setValueLinker(WikidataLinks.valueLinker());
+        for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
+            List<Viewable> values = entry.getValue();
+            if (!values.isEmpty()) multi.addSection(
+                    sectionTitle(entry.getKey(), values.size()),
+                    values.getFirst().getClass(), capped(values));
+        }
+        multi.build(1);
+        activeContext = multi.context();
+        return multi;
+    }
+
+    private JComponent groupedBrowser(
+            GroupedSection group, RenderContext context, JTabbedPane owner) {
+        JTabbedPane decisions = new JTabbedPane();
+        List<SearchPanel> searches = new ArrayList<>();
+        List<Map.Entry<String, List<Viewable>>> views = new ArrayList<>();
+        views.add(Map.entry("All", group.all()));
+        views.addAll(group.partitions().entrySet());
+        for (Map.Entry<String, List<Viewable>> entry : views) {
+            SearchableView view = browser(entry.getValue(), context, true);
+            if (view.search() != null) searches.add(view.search());
+            decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
+        }
+        JPanel panel = new JPanel(new BorderLayout(0, 4));
+        if (!searches.isEmpty()) panel.add(new MultiSearchBar(searches), BorderLayout.NORTH);
+        panel.add(decisions, BorderLayout.CENTER);
+        // "All" is the canonical card owner for navigation. The decision subtabs are
+        // filtered views of those same records, not distinct instances.
+        group.all().forEach(value -> context.registerTopLevelRevealer(value, () -> {
+            owner.setSelectedComponent(panel);
+            decisions.setSelectedIndex(0);
+        }));
+        return panel;
+    }
+
+    private SearchableView browser(
+            List<Viewable> values, RenderContext context, boolean coordinated) {
+        List<Viewable> shown = capped(values);
+        Viewable sample = shown.isEmpty() ? null : shown.getFirst();
+        return SearchableView.builder(shown)
+                .sample(sample)
+                .renderContext(context)
+                .coordinated(coordinated)
+                .columns(1)
+                .emptyMessage("(none)")
+                .build();
+    }
+
+    static Map<String, List<Viewable>> sections(
+            ObjectQueryResult result, Map<String, List<Viewable>> peerSections) {
         Map<String, List<Viewable>> byType =
                 ordered(result.byTypeWithoutParts(), result.typeOrder());
 
-        if (byType.size() <= 1) {
-            return searchPanelView(result);
-        }
-
-        // Side by side, sharing ONE render context — which is the point of this layout
-        // rather than a detail of it. Highlighting a reference in one section lights it
-        // up in the other, and that works only while both render through the same
-        // context. Tabs were tried here and gave each type its own SearchableView, so
-        // every cross-panel highlight went dead: two panels showing related objects with
-        // no way left to say they were related.
-        MultiView multi =
-                new MultiView();
-
-        // MultiView supplies its own shared RenderContext rather than going through
-        // SearchableView.Builder.cardDecorator(). Configure that context BEFORE build:
-        // cards read their header decoration while they are constructed. Without this,
-        // a one-type result could carry graph-coverage decoration while a multi-type
-        // result silently lost it.
-        multi.context().setCardDecorator(cardDecorator);
-        multi.context().setValueLinker(WikidataLinks.valueLinker());
-
-        for (Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
-            List<Viewable> full = e.getValue();
-
-            if (full.isEmpty()) {
-                continue;
+        // A named graph constraint is a class of annotations beside the classes it
+        // annotates.  Keep its records as an explicit section rather than walking the
+        // candidate shells referenced by each annotation and mistaking those shells
+        // for another copy of the generated output population.
+        (peerSections == null ? Map.<String, List<Viewable>>of() : peerSections)
+                .forEach((name, values) -> {
+            if (name != null && !name.isBlank() && values != null && !values.isEmpty()) {
+                byType.put(name, values);
             }
-
-            multi.addSection(
-                    sectionTitle(e.getKey(), full.size()),
-                    full.getFirst().getClass(),
-                    capped(full));
-        }
-
-        multi.build(1);
-        activeContext = multi.context();
-
-        return multi;
+        });
+        return byType;
     }
 
     /**

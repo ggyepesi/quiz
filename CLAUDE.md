@@ -206,7 +206,13 @@ construct per thing produced:
    class to the accepted population, keeping the project's own instances whole — it never
    replaces them with candidate shells. Population selections are created from class
    instances, not from the graph editor. The annotation snapshot lives beneath the owning
-   project and is written only by Save model/domain. A class graph input means all currently
+   project and is written only by Save model/domain. **Show instances has one window and one
+   ObjectView for ordinary classes and every named graph-annotation class; selecting a graph
+   class does not switch to the run-results workflow. Each graph constraint is one class tab
+   with `All`, `Accepted`, `Review`, and `Rejected` ObjectView subtabs; those partitions read
+   the original graph decision, while manual overrides remain marks.** Saving unchanged graph configuration
+   retains its completed result; only changing that graph's configuration invalidates it. A
+   class graph input means all currently
    loaded instances of that class, while a saved population is one alternative input that
    already names its class.
 

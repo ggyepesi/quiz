@@ -526,12 +526,14 @@ final class GraphConstraintsPanel extends JPanel {
             // in the list. An edgeless graph traverses nothing, so Run stays disabled
             // and the status says what the graph still needs.
             if (pid.isEmpty() && evidenceModel.isEmpty() && testsModel.isEmpty()) {
-                clazz.graphSource(new GraphClassSource(
+                GraphClassSource replacement = new GraphClassSource(
                         new GraphDiscoveryConfiguration.StartNode(
                                 start.population() ? "" : start.className(),
                                 start.populationName(), use(startUseBox)),
-                        List.of()));
-                clearCompletedPopulation();
+                        List.of());
+                boolean changed = !sameSource(clazz.graphSource(), replacement);
+                clazz.graphSource(replacement);
+                if (changed) clearCompletedPopulation();
                 status("Start node saved: " + start
                         + ". Add the property connecting the two nodes to complete"
                         + " the graph.", false);
@@ -559,12 +561,14 @@ final class GraphConstraintsPanel extends JPanel {
                     GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                     targetClass.className(),
                     evidence);
-            clazz.graphSource(new GraphClassSource(
+            GraphClassSource replacement = new GraphClassSource(
                     new GraphDiscoveryConfiguration.StartNode(
                             start.population() ? "" : start.className(),
                             start.populationName(), use(startUseBox)),
-                    List.of(target)));
-            clearCompletedPopulation();
+                    List.of(target));
+            boolean changed = !sameSource(clazz.graphSource(), replacement);
+            clazz.graphSource(replacement);
+            if (changed) clearCompletedPopulation();
             status("Applied discovery graph." + RUN_ONLY, false);
             updateRunEnabled();
             afterChange.accept(null);
@@ -1098,6 +1102,13 @@ final class GraphConstraintsPanel extends JPanel {
         if (clazz != null) graphResults.remove(resultKey(clazz));
     }
 
+    private static boolean sameSource(GraphClassSource left, GraphClassSource right) {
+        if (left == right) return true;
+        if (left == null || right == null) return false;
+        return java.util.Objects.equals(left.startNode(), right.startNode())
+                && java.util.Objects.equals(left.nextNodes(), right.nextNodes());
+    }
+
     private void remember(GraphDiscoveryResultStore.Artifact artifact) {
         if (artifact != null) remember(artifact.type(), artifact);
     }
@@ -1165,9 +1176,7 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private static List<String> decisionValue(WikidataDynamicObject value) {
-        Object decision = value.get(GraphDiscoveryResultStore.GRAPH_DECISION);
-        if (decision instanceof List<?> values) return values.stream().map(String::valueOf).toList();
-        return decision == null ? List.of() : List.of(String.valueOf(decision));
+        return GraphDiscoveryResultStore.originalDecisions(value);
     }
 
     static ProcessWorkflowResults.Tab<Void> resultTab(

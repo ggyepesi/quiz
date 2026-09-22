@@ -373,6 +373,15 @@ final class GraphDiscoveryResultStore {
         return "Include".equals(disposition);
     }
 
+    /** The graph's immutable classification; manual curation is deliberately separate. */
+    static List<String> originalDecisions(WikidataDynamicObject annotation) {
+        Object decision = annotation == null ? null : annotation.get(GRAPH_DECISION);
+        if (decision instanceof List<?> values) {
+            return values.stream().map(String::valueOf).toList();
+        }
+        return decision == null ? List.of() : List.of(String.valueOf(decision));
+    }
+
     private static String nativeIdentifier(EntityRef entity) {
         return "wikidata".equalsIgnoreCase(entity.namespace())
                 ? entity.id() : entity.namespace() + ":" + entity.id();

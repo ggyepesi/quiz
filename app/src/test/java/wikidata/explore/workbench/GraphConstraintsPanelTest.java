@@ -107,6 +107,24 @@ class GraphConstraintsPanelTest {
                 "Show instances follows the selected graph class");
     }
 
+    @Test void savingUnchangedGraphConfigurationKeepsItsCompletedResult() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        graph.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode(
+                        "Position", "",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(outputNode("Position"))));
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graph);
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+
+        panel.applyPendingEdits();
+
+        assertNotNull(panel.lastGraphResult(),
+                "Save flushes unchanged controls; it must not invalidate the run");
+    }
+
     @Test void loadedProjectPoolRestoresTheSavedGraphResultWithoutRerunning() {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");

@@ -463,6 +463,7 @@ public class ModelBuilderFrame extends JFrame {
 
     // Lazily-created window hosting the generated-instances result panel.
     private void showInstancesWindow() {
+        refreshInstancesPanel();
         if (instancesWindow == null) {
             instancesWindow = new JFrame("Generated instances");
             instancesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
@@ -496,6 +497,29 @@ public class ModelBuilderFrame extends JFrame {
         // there's no on-screen indication of which class you're looking at.
         refreshInstancesWindowTitle();
         showAndFocus(instancesWindow);
+    }
+
+    /** One window owns the complete generated result: ordinary class instances and
+     * every named graph constraint's annotation instances. */
+    private void refreshInstancesPanel() {
+        if (lastRun == null) return;
+        java.util.Map<String,
+                wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection> annotations =
+                new java.util.LinkedHashMap<>();
+        for (GraphDiscoveryResultStore.Artifact result : sourceWorkbench.graphResults()) {
+            java.util.Map<String, java.util.List<Viewable>> decisions =
+                    new java.util.LinkedHashMap<>();
+            for (String decision : java.util.List.of("Accepted", "Review", "Rejected")) {
+                decisions.put(decision, result.instances().stream()
+                        .filter(value -> GraphDiscoveryResultStore.originalDecisions(value)
+                                .contains(decision))
+                        .map(Viewable.class::cast).toList());
+            }
+            annotations.put(result.type(),
+                    wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection.of(
+                            result.instances(), decisions));
+        }
+        instancesPanel.acceptGrouped(lastRun.objectResult(), annotations);
     }
 
     private void createPopulationSelectionFromActiveClass() {
@@ -549,7 +573,12 @@ public class ModelBuilderFrame extends JFrame {
      * window first. */
     private void refreshInstancesWindowTitle() {
         if (instancesWindow != null) {
-            instancesWindow.setTitle(instancesTitle());
+            String title = instancesTitle();
+            String annotations = sourceWorkbench.graphResults().stream()
+                    .map(result -> result.type() + " " + result.instances().size())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            instancesWindow.setTitle(annotations.isBlank()
+                    ? title : title + " · graph annotations: " + annotations);
         }
     }
 
@@ -1111,19 +1140,7 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
 
-        showInstancesButton.addActionListener(e -> {
-            if (classModelPanel.selectedUserObject()
-                    instanceof wikidata.explore.model.GeneratedClassModel selectedClass
-                    && selectedClass.classKind()
-                            == wikidata.explore.model.ClassKind.GRAPH) {
-                if (!sourceWorkbench.showLastGraphResult()) {
-                    JOptionPane.showMessageDialog(this,
-                            "No graph result is loaded. Run the graph first.");
-                }
-                return;
-            }
-            showInstancesWindow();
-        });
+        showInstancesButton.addActionListener(e -> showInstancesWindow());
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
