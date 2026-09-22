@@ -2779,6 +2779,23 @@ public class ModelBuilderFrame extends JFrame {
         return fs == null || fs.length == 0 ? null : fs[0];
     }
 
+    /**
+     * The instance snapshot paired with one exact model file.
+     *
+     * <p>A project directory can also contain {@code *.graph.snapshot.json} files.
+     * Looking for an arbitrary file ending in {@code .snapshot.json} therefore loads a
+     * graph constraint's annotation records instead of the project's instances whenever
+     * directory iteration happens to return that file first.
+     */
+    static File snapshotBesideModel(File model) {
+        if (model == null || model.getParentFile() == null) return null;
+        String name = model.getName();
+        String suffix = ".model.json";
+        if (!name.endsWith(suffix)) return null;
+        return new File(model.getParentFile(),
+                name.substring(0, name.length() - suffix.length()) + ".snapshot.json");
+    }
+
     // The registry entry whose snapshot is this file (for the model-drift check).
     private static quiz.DatasetRegistry.Dataset datasetForSnapshot(File file) {
         try {
@@ -2833,9 +2850,8 @@ public class ModelBuilderFrame extends JFrame {
     /** The graph ledger is generated data owned by the snapshot beside the model. */
     private static datasource.graph.GraphDiscoveryState graphDiscoveryBeside(File model)
             throws java.io.IOException {
-        File snapshot = model == null ? null
-                : findInDir(model.getParentFile(), ".snapshot.json");
-        return snapshot == null
+        File snapshot = snapshotBesideModel(model);
+        return snapshot == null || !snapshot.isFile()
                 ? datasource.graph.GraphDiscoveryState.EMPTY
                 : new WikidataDynamicObjectJsonStore().loadGraphDiscovery(snapshot);
     }
@@ -2845,8 +2861,11 @@ public class ModelBuilderFrame extends JFrame {
         // the reader answer a question the application had already answered, and let
         // them answer it with somebody else's domain.
         File dir = openDomainDir();
-        File file = dir == null ? null : findInDir(dir, ".snapshot.json");
-        if (file == null) {
+        File file = snapshotBesideModel(openModelFile);
+        if (file == null && dir != null) {
+            file = new File(dir, projectKey() + ".snapshot.json");
+        }
+        if (file == null || !file.isFile()) {
             JOptionPane.showMessageDialog(this,
                                           dir == null
                                                   ? "\"" + projectModel.name() + "\" has not been "
