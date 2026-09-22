@@ -91,21 +91,43 @@ public class QueryObjectResultPanel
      * reached while walking a generated instance, they must not pull their private
      * object graph into another class's section. Graph-constraint annotations use this.
      */
+    public record GroupAction(String label, Runnable apply) {
+        public GroupAction {
+            label = label == null || label.isBlank() ? "Apply" : label;
+            java.util.Objects.requireNonNull(apply, "apply");
+        }
+    }
+
     public record GroupedSection(
-            List<Viewable> all, Map<String, List<Viewable>> partitions) {
+            List<Viewable> all, Map<String, List<Viewable>> partitions,
+            List<GroupAction> actions) {
         public GroupedSection {
             all = all == null ? List.of() : List.copyOf(all);
             Map<String, List<Viewable>> copied = new LinkedHashMap<>();
             if (partitions != null) partitions.forEach((name, values) ->
                     copied.put(name, values == null ? List.of() : List.copyOf(values)));
             partitions = Collections.unmodifiableMap(copied);
+            actions = actions == null ? List.of() : List.copyOf(actions);
+        }
+
+        public GroupedSection(
+                List<Viewable> all, Map<String, List<Viewable>> partitions) {
+            this(all, partitions, List.of());
         }
 
         public static GroupedSection of(
                 List<? extends Viewable> all,
                 Map<String, ? extends List<? extends Viewable>> partitions) {
             return new GroupedSection(all == null ? List.of() : List.copyOf(all),
-                    copyPartitions(partitions));
+                    copyPartitions(partitions), List.of());
+        }
+
+        public static GroupedSection of(
+                List<? extends Viewable> all,
+                Map<String, ? extends List<? extends Viewable>> partitions,
+                List<GroupAction> actions) {
+            return new GroupedSection(all == null ? List.of() : List.copyOf(all),
+                    copyPartitions(partitions), actions);
         }
 
         private static Map<String, List<Viewable>> copyPartitions(
@@ -223,7 +245,19 @@ public class QueryObjectResultPanel
             decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
         }
         JPanel panel = new JPanel(new BorderLayout(0, 4));
-        if (!searches.isEmpty()) panel.add(new MultiSearchBar(searches), BorderLayout.NORTH);
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        if (!group.actions().isEmpty()) {
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+            for (GroupAction action : group.actions()) {
+                JButton button = new JButton(action.label());
+                button.addActionListener(ignored -> action.apply().run());
+                actions.add(button);
+            }
+            header.add(actions);
+        }
+        if (!searches.isEmpty()) header.add(new MultiSearchBar(searches));
+        if (header.getComponentCount() > 0) panel.add(header, BorderLayout.NORTH);
         panel.add(decisions, BorderLayout.CENTER);
         // "All" is the canonical card owner for navigation. The decision subtabs are
         // filtered views of those same records, not distinct instances.

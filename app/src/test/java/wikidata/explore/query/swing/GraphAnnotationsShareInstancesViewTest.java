@@ -15,6 +15,7 @@ import java.util.ArrayList;
 
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.JButton;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -110,6 +111,25 @@ class GraphAnnotationsShareInstancesViewTest {
         context.focusTopLevel(value);
 
         assertTrue(revealed[0]);
+    }
+
+    @Test void aGraphTabCanApplyItsCompletedResult() throws Exception {
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+        int[] applied = { 0 };
+        WikidataDynamicObject accepted = annotation("Q1", "Accepted");
+        panel.acceptGrouped(new ObjectQueryResult(List.of(), null, ""), Map.of(
+                "PositionValidity", QueryObjectResultPanel.GroupedSection.of(
+                        List.of(accepted), Map.of("Accepted", List.of(accepted)),
+                        List.of(new QueryObjectResultPanel.GroupAction(
+                                "Apply accepted instances", () -> applied[0]++)))));
+        SwingUtilities.invokeAndWait(() -> { });
+
+        JButton apply = descendants(panel, JButton.class).stream()
+                .filter(button -> button.getText().equals("Apply accepted instances"))
+                .findFirst().orElseThrow();
+        apply.doClick();
+
+        assertEquals(1, applied[0]);
     }
 
     private static WikidataDynamicObject object(String qid, String type) {

@@ -517,9 +517,29 @@ public class ModelBuilderFrame extends JFrame {
             }
             annotations.put(result.type(),
                     wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection.of(
-                            result.instances(), decisions));
+                            result.instances(), decisions, java.util.List.of(
+                                    new wikidata.explore.query.swing.QueryObjectResultPanel
+                                            .GroupAction("Apply accepted instances",
+                                            () -> applyGraphResultFromInstances(result)))));
         }
         instancesPanel.acceptGrouped(lastRun.objectResult(), annotations);
+    }
+
+    private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {
+        String action = "Apply accepted instances";
+        File destination = snapshotBesideModel(openModelFile);
+        String description = "Apply graph annotations \"" + result.type() + "\" to \""
+                + result.projectName() + "\".\n\nThis will narrow " + result.outputClass()
+                + " to " + result.acceptedIdentities().size()
+                + " accepted generated instance(s).\n\nSave "
+                + (projectModel.isModel() ? "model" : "domain")
+                + (destination == null
+                        ? " will write them after the project is first saved."
+                        : " will write the changed instances to\n"
+                                + destination.getPath() + ".");
+        if (quiz.ui.Dialogs.confirmPersistence(this, action, description)) {
+            acceptGraphResult(result);
+        }
     }
 
     private void createPopulationSelectionFromActiveClass() {
@@ -1517,7 +1537,10 @@ public class ModelBuilderFrame extends JFrame {
                         graphDiscoveryState(),
                         wikidata.explore.generation.WikidataGraphExpansionPlan
                                 .compile(run.modelSnapshot()).edges()));
-                instancesPanel.accept(run.objectResult());
+                // The instances window has one projection: the accepted run plus every
+                // graph result still owned by its named graph class. Sending the run on
+                // its own removes valid annotation tabs after Generate, Load or Enrich.
+                refreshInstancesPanel();
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
                 // that copy and is otherwise lost. Fold the built values back into the
