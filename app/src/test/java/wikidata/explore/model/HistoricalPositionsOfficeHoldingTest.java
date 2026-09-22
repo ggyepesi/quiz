@@ -38,6 +38,21 @@ class HistoricalPositionsOfficeHoldingTest {
                 .allMatch(field -> field.entityClassName().equals(holder.className())),
                 "people outside Position stay Wikidata-backed PositionHolder references");
 
+        GeneratedFieldModel sitelinks = position.fields().stream()
+                .filter(field -> field.name().equals("sitelinkCount")).findFirst().orElseThrow();
+        GeneratedFieldModel holders = position.fields().stream()
+                .filter(field -> field.name().equals("holderCount")).findFirst().orElseThrow();
+        assertEquals(datasource.schema.FieldType.NUMBER, sitelinks.type());
+        assertEquals(datasource.schema.FieldType.NUMBER, holders.type());
+        assertEquals(FieldSourceType.WIKIDATA_SITELINK_COUNT,
+                sitelinks.mapping().sourceType());
+        assertEquals(FieldSourceType.WIKIDATA_INCOMING_COUNT,
+                holders.mapping().sourceType());
+        var sources = ModelSourceExecutionPlan.synchronizeAndCompile(
+                model, datasource.Datasources.standard());
+        assertEquals(2, sources.familyCount(
+                datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD));
+
         var validation = GeneratedProjectModelValidator.validate(model);
         assertTrue(validation.valid(), validation.errors().toString());
     }

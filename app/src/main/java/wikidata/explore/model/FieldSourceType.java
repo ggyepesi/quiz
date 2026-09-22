@@ -4,6 +4,8 @@ public enum FieldSourceType {
     SPARQL,
     DBPEDIA,
     WIKIPEDIA_INFOBOX,
+    WIKIDATA_SITELINK_COUNT,
+    WIKIDATA_INCOMING_COUNT,
     WIKIDATA_API,
     BACKLINKS,
     WIKIPEDIA_CATEGORY,
@@ -12,7 +14,8 @@ public enum FieldSourceType {
     MANUAL;
 
     public boolean implementedNow() {
-        return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX;
+        return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX
+                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT;
     }
 
     /**
@@ -26,7 +29,8 @@ public enum FieldSourceType {
      * an infobox parameter reached a routine that only understands Pxx.
      */
     public boolean filledAfterExtraction() {
-        return this == DBPEDIA || this == WIKIPEDIA_INFOBOX;
+        return this == DBPEDIA || this == WIKIPEDIA_INFOBOX
+                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT;
     }
 
     @Override
@@ -35,6 +39,8 @@ public enum FieldSourceType {
             case SPARQL -> "SPARQL (Wikidata)";
             case DBPEDIA -> "DBpedia (Wikipedia infobox)";
             case WIKIPEDIA_INFOBOX -> "Wikipedia infobox parameter";
+            case WIKIDATA_SITELINK_COUNT -> "Wikidata sitelink count";
+            case WIKIDATA_INCOMING_COUNT -> "Wikidata incoming relation count";
             case WIKIDATA_API -> "Wikidata API";
             case BACKLINKS -> "Backlinks";
             case WIKIPEDIA_CATEGORY -> "Wikipedia category";

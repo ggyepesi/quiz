@@ -112,7 +112,10 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                             genLog, context.cancellation(), steps, sourcePlan,
                             wikidata.explore.query.core.WikidataAccess.sparql(
                                     context,
-                                    wikidata.explore.query.core.Datasource.DBPEDIA));
+                                    wikidata.explore.query.core.Datasource.DBPEDIA),
+                            wikidata.explore.query.core.WikidataAccess.sparql(
+                                    context,
+                                    wikidata.explore.query.core.Datasource.WIKIDATA));
                     }
                 });
     }

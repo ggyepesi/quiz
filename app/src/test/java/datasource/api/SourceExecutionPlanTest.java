@@ -74,4 +74,25 @@ class SourceExecutionPlanTest {
         assertEquals(PreparedSourceOperation.Execution.ACQUIRE,
                 step.prepared().execution());
     }
+
+    @Test void wikidataComputedCountsAreExecutableNumberFields() {
+        SourceBinding sitelinks = new SourceBinding(
+                SourceBindingTarget.fieldValue(
+                        "Position", "sitelinkCount", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "sitelink-count", Map.of()));
+        SourceBinding holders = new SourceBinding(
+                SourceBindingTarget.fieldValue(
+                        "Position", "holderCount", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "incoming-relation-count",
+                        Map.of("property", "P39")));
+
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(sitelinks, holders), Datasources.standard());
+
+        assertEquals(2, plan.selfAcquiring());
+        assertTrue(plan.acquires(
+                datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD));
+        assertEquals(datasource.schema.FieldType.NUMBER,
+                plan.steps().getFirst().operation().outputSchema().kind().fieldType());
+    }
 }

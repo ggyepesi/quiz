@@ -311,9 +311,10 @@ public class GenerationPipeline {
                 extract(client, plan, depth, log);
 
         ExternalSourceAcquisition.apply(snapshot, dynamicObjects, sourcePlan,
-                StandardExternalSourceFamilies.services(dbpedia, entityApi), log, cancellation,
+                StandardExternalSourceFamilies.services(client, dbpedia, entityApi), log, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
                 java.util.Set.of(
+                        datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD,
                         datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
                         datasource.wikipedia.WikipediaDatasourceProvider
                                 .FAMILY_INFOBOX_FIELD));
@@ -558,7 +559,7 @@ public class GenerationPipeline {
         CompiledPipelineRun run = CompiledPipelineRun.compile(PipelineRequest.enrich(
                 snapshot, previous.checkpoint(observed)));
         return enrich(previous, run, entityApi, log, cancellation, steps,
-                announcedPlan, dbpediaClient);
+                announcedPlan, dbpediaClient, null);
     }
 
     public GenerationRun enrich(
@@ -569,7 +570,8 @@ public class GenerationPipeline {
             work.CancellationToken cancellation,
             RunSteps steps,
             datasource.api.SourceExecutionPlan announcedPlan,
-            WikidataSparqlClient dbpediaClient) throws Exception {
+            WikidataSparqlClient dbpediaClient,
+            WikidataSparqlClient wikidataSparql) throws Exception {
         steps = steps == null ? RunSteps.SILENT : steps;
         if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
         if (run.blocked()) throw new IllegalStateException(run.explain());
@@ -618,10 +620,12 @@ public class GenerationPipeline {
                         + convergence.classifiedKinds() + " kind(s), "
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                "Acquire DBpedia fields, Wikipedia categories and native infobox values");
+                "Acquire Wikidata computed fields, DBpedia fields, Wikipedia categories "
+                        + "and native infobox values");
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
                 snapshot, pool, sourcePlan,
-                StandardExternalSourceFamilies.services(dbpediaClient, entityApi),
+                StandardExternalSourceFamilies.services(
+                        wikidataSparql, dbpediaClient, entityApi),
                 sink, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL);
 

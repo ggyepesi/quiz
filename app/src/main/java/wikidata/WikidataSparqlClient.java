@@ -28,6 +28,7 @@ public class WikidataSparqlClient implements AutoCloseable {
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
     private final ExecutorService executor;
+    private final int maxParallelRequests;
 
     // Caps in-flight requests regardless of how many threads call query() — so
     // fanning qualifier-load batches out concurrently can't outrun WDQS. A permit
@@ -76,17 +77,23 @@ public class WikidataSparqlClient implements AutoCloseable {
                         ? "QuizBot/1.0"
                         : userAgent;
 
+        this.maxParallelRequests = Math.max(1, maxParallelRequests);
         this.executor =
-                Executors.newFixedThreadPool(Math.max(1, maxParallelRequests));
+                Executors.newFixedThreadPool(this.maxParallelRequests);
 
         this.rateLimiter =
-                new Semaphore(Math.max(1, maxParallelRequests), true);
+                new Semaphore(this.maxParallelRequests, true);
 
         HttpClient.Builder httpBuilder = HttpClient.newBuilder()
                 .executor(executor)
                 .connectTimeout(Duration.ofSeconds(30));
         if (httpVersion != null) httpBuilder.version(httpVersion);
         this.http = httpBuilder.build();
+    }
+
+    /** The concurrency ceiling enforced by this client's request gate. */
+    public int maxParallelRequests() {
+        return maxParallelRequests;
     }
 
     public void log(Consumer<String> log) {

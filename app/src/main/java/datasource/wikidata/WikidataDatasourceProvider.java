@@ -9,6 +9,7 @@ import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.SourceReferenceSchema;
 import datasource.api.SourceRecipe;
+import datasource.api.PreparedSourceOperation;
 import datasource.api.acquisition.ClassPopulationOperation;
 import datasource.api.acquisition.PopulationRequest;
 import datasource.EntityRef;
@@ -46,6 +47,9 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String DESCRIPTION = "description";
     /** A statement property read as the configured value of one model field. */
     public static final String PROPERTY_VALUE = "property-value";
+    public static final String SITELINK_COUNT = "sitelink-count";
+    public static final String INCOMING_RELATION_COUNT = "incoming-relation-count";
+    public static final String FAMILY_COMPUTED_FIELD = "wikidata-computed-field";
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
     public static final String SOURCE_FIELD = "wikidataSource";
@@ -117,6 +121,13 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                                     ParameterDescriptor.Kind.TEXT, false, "", List.of(),
                                     "Optional language code for values constrained by "
                                             + "a P407 qualifier. Blank preserves all."))),
+            new ComputedFieldOffering(SITELINK_COUNT, "Sitelink count", List.of()),
+            new ComputedFieldOffering(INCOMING_RELATION_COUNT,
+                    "Incoming relation count", List.of(
+                    ParameterDescriptor.reference("property", "Property", true, "",
+                            "Count distinct entities whose statement points to this entity.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
             new StatementMembershipOffering(
                     BindingScope.CLASS_POPULATION,
                     SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
@@ -174,6 +185,38 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
 
         EntityOffering {
             parameters = List.copyOf(parameters == null ? List.of() : parameters);
+        }
+    }
+
+    public record ComputedFieldSpec(Kind kind, String propertyPid) {
+        public enum Kind { SITELINKS, INCOMING_RELATION }
+    }
+
+    private record ComputedFieldOffering(
+            String id, String displayName, List<ParameterDescriptor> parameters)
+            implements DatasourceOperation {
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public SourceValueSchema outputSchema() {
+            return new SourceValueSchema(SourceValueKind.QUANTITY, false, "");
+        }
+        @Override public PreparedSourceOperation prepare(datasource.api.SourceBinding binding) {
+            String property = binding.recipe().parameter("property").trim().toUpperCase();
+            if (INCOMING_RELATION_COUNT.equals(id) && !WikidataIds.isPid(property)) {
+                throw new IllegalArgumentException("Invalid incoming relation property: "
+                        + property);
+            }
+            ComputedFieldSpec spec = new ComputedFieldSpec(
+                    SITELINK_COUNT.equals(id) ? ComputedFieldSpec.Kind.SITELINKS
+                            : ComputedFieldSpec.Kind.INCOMING_RELATION,
+                    property);
+            String operation = spec.kind() == ComputedFieldSpec.Kind.SITELINKS
+                    ? "Read wikibase:sitelinks"
+                    : "Count distinct incoming " + property + " entities";
+            return new PreparedSourceOperation(FAMILY_COMPUTED_FIELD,
+                    "Wikidata computed field", PreparedSourceOperation.Execution.ACQUIRE,
+                    displayName, java.util.Map.of("operation", operation,
+                            "output", binding.target().className() + "."
+                                    + binding.target().fieldPath()), spec);
         }
     }
 

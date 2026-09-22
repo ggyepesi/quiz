@@ -10,7 +10,16 @@ public final class StandardExternalSourceFamilies {
     public static datasource.api.SourceRuntimeServices services(
             wikidata.WikidataSparqlClient dbpedia,
             wikidata.api.WikidataApiClient wikidata) {
+        return services(null, dbpedia, wikidata);
+    }
+
+    public static datasource.api.SourceRuntimeServices services(
+            wikidata.WikidataSparqlClient wikidataSparql,
+            wikidata.WikidataSparqlClient dbpedia,
+            wikidata.api.WikidataApiClient wikidata) {
         return datasource.api.SourceRuntimeServices.builder()
+                .put(datasource.wikidata.WikidataDatasourceProvider.ID,
+                        wikidata.WikidataSparqlClient.class, wikidataSparql)
                 .put(datasource.dbpedia.DbpediaDatasourceProvider.ID,
                         wikidata.WikidataSparqlClient.class, dbpedia)
                 .put(datasource.wikidata.WikidataDatasourceProvider.ID,
@@ -20,7 +29,36 @@ public final class StandardExternalSourceFamilies {
 
     public static ExternalSourceFamilyRegistry create() {
         return new ExternalSourceFamilyRegistry(List.of(
-                new Dbpedia(), new Categories(), new Infobox()));
+                new WikidataComputed(), new Dbpedia(), new Categories(), new Infobox()));
+    }
+
+    private record WikidataComputed() implements ExternalSourceFamily {
+        @Override public String id() {
+            return datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD;
+        }
+        @Override public String displayName() { return "Wikidata computed fields"; }
+        @Override public int summaryOrder() { return 5; }
+        @Override public boolean configured(datasource.api.SourceExecutionPlan plan) {
+            return plan != null && plan.acquires(id());
+        }
+        @Override public Outcome empty() {
+            return new Outcome(id(), 0, "0 Wikidata computed value(s)", summaryOrder());
+        }
+        @Override public Outcome acquire(Context context) throws Exception {
+            wikidata.WikidataSparqlClient client = context.services().find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.WikidataSparqlClient.class).orElse(null);
+            if (client == null) {
+                context.log().message("Wikidata computed-field acquisition skipped: no "
+                        + "process-bound Wikidata SPARQL client.\n");
+                return empty();
+            }
+            WikidataComputedFieldAcquisition.Result result =
+                    WikidataComputedFieldAcquisition.apply(context.model(), context.pool(),
+                            context.plan(), client, context.log(), context.cancellation());
+            return new Outcome(id(), result.values(),
+                    result.values() + " Wikidata computed value(s)", summaryOrder());
+        }
     }
 
     private record Dbpedia() implements ExternalSourceFamily {

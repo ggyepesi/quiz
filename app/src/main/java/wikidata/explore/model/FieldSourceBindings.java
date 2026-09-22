@@ -104,7 +104,20 @@ public final class FieldSourceBindings {
 
     private static SourceBinding primary(
             String owner, String path, FieldSourceMapping mapping) {
-        if (mapping == null || clean(mapping.propertyPid()).isBlank()) return null;
+        if (mapping == null) return null;
+        if (mapping.sourceType() == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
+            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+                    WikidataDatasourceProvider.ID, WikidataDatasourceProvider.SITELINK_COUNT,
+                    Map.of());
+        }
+        if (mapping.sourceType() == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
+            if (clean(mapping.propertyPid()).isBlank()) return null;
+            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+                    WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INCOMING_RELATION_COUNT,
+                    Map.of(PROPERTY, clean(mapping.propertyPid())));
+        }
+        if (clean(mapping.propertyPid()).isBlank()) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null) return null;
         return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
@@ -144,13 +157,15 @@ public final class FieldSourceBindings {
 
     private static void replace(
             GeneratedFieldModel field, SourceBindingSlot slot, SourceBinding replacement) {
-        field.sourceBindings().removeIf(binding -> binding.target().slot() == slot);
+        field.sourceBindings().removeIf(binding -> binding.target().slot() == slot
+                && (replacement != null || legacyProjected(binding.recipe())));
         if (replacement != null) field.sourceBindings().add(replacement);
     }
 
     private static void projectLegacy(GeneratedFieldModel field, SourceBinding binding) {
         SourceBindingSlot slot = binding.target().slot();
         SourceRecipe recipe = binding.recipe();
+        if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
             WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
             rule.pattern(recipe.parameter(PATTERN));
@@ -175,6 +190,15 @@ public final class FieldSourceBindings {
         }
     }
 
+    private static boolean legacyProjected(SourceRecipe recipe) {
+        if (recipe == null) return false;
+        if (WikidataDatasourceProvider.ID.equals(recipe.providerId())) {
+            return WikidataDatasourceProvider.PROPERTY_VALUE.equals(recipe.operationId());
+        }
+        return DbpediaDatasourceProvider.ID.equals(recipe.providerId())
+                || WikipediaDatasourceProvider.ID.equals(recipe.providerId());
+    }
+
     private static FieldSourceType sourceType(SourceRecipe recipe) {
         if (WikidataDatasourceProvider.ID.equals(recipe.providerId())) {
             try { return FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE)); }
@@ -197,6 +221,14 @@ public final class FieldSourceBindings {
         if (type == FieldSourceType.WIKIPEDIA_INFOBOX) {
             return new ProviderOperation(WikipediaDatasourceProvider.ID,
                     WikipediaDatasourceProvider.INFOBOX_PARAMETER);
+        }
+        if (type == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
+            return new ProviderOperation(WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.SITELINK_COUNT);
+        }
+        if (type == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
+            return new ProviderOperation(WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INCOMING_RELATION_COUNT);
         }
         if (type == FieldSourceType.SPARQL || type == FieldSourceType.WIKIDATA_API
                 || type == null) {

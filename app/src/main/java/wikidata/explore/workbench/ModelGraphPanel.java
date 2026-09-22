@@ -335,6 +335,8 @@ public class ModelGraphPanel extends JPanel {
             case SPARQL -> "WD";
             case DBPEDIA -> "DB";
             case WIKIPEDIA_INFOBOX -> "infobox";
+            case WIKIDATA_SITELINK_COUNT -> "WD:sitelinks";
+            case WIKIDATA_INCOMING_COUNT -> "WD:incoming-count";
             case WIKIDATA_API -> "WD-API";
             case BACKLINKS -> "backlinks";
             case WIKIPEDIA_CATEGORY -> "category";

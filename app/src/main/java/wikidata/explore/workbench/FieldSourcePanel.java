@@ -1515,6 +1515,20 @@ refreshOwnedComponentControls();
             return;
         }
 
+        if (sourceType == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
+            recommendationLabel.setText(
+                    "Wikidata sitelink count: total Wikimedia sitelinks for each entity. "
+                            + "The Property field is not used.");
+            return;
+        }
+
+        if (sourceType == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
+            recommendationLabel.setText(
+                    "Wikidata incoming relation count: distinct entities whose selected "
+                            + "Pxx property points to this entity.");
+            return;
+        }
+
         wikidata.explore.model.FieldDefinition definition =
                 fieldDefinitionPanel.definition();
         GeneratedClassModel target = definition == null || projectModel == null
