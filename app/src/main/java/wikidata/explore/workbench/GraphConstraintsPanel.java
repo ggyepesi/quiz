@@ -234,62 +234,6 @@ final class GraphConstraintsPanel extends JPanel {
         return null;
     }
 
-    boolean showLastGraphResult() {
-        GraphDiscoveryResultStore.Artifact current = lastGraphResult();
-        if (runner == null || current == null) return false;
-        GraphDiscoveryResultStore.Artifact shown = current;
-        ProcessWorkflowAction<GraphDiscoveryResultStore.Artifact,
-                GraphDiscoveryResultStore.Artifact> action = new ProcessWorkflowAction<>() {
-            @Override public String id() { return "show-graph-result"; }
-            @Override public ProcessWorkflowPlan plan() {
-                return new ProcessWorkflowPlan("Graph result", "Already completed", List.of());
-            }
-            @Override public ProcessOutcome<GraphDiscoveryResultStore.Artifact> preparedOutcome() {
-                return ProcessOutcome.succeeded(shown, "Last graph run");
-            }
-            @Override public process.Process<GraphDiscoveryResultStore.Artifact> process() {
-                throw new UnsupportedOperationException("Prepared graph result");
-            }
-            @Override public boolean multipleResultSelection() { return true; }
-            @Override public java.util.function.Function<Object, String> valueLinker() {
-                return WikidataLinks.valueLinker();
-            }
-            @Override public ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> results(
-                    ProcessOutcome<GraphDiscoveryResultStore.Artifact> outcome) {
-                return graphResults(outcome.result());
-            }
-            @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions) {
-                remember(decisions.getFirst());
-                graphResultConsumer.accept(decisions.getFirst());
-            }
-        };
-        SwingProcessWorkflow.start(this, runner, action);
-        return true;
-    }
-
-    private ProcessWorkflowResults<GraphDiscoveryResultStore.Artifact> graphResults(
-            GraphDiscoveryResultStore.Artifact artifact) {
-        long accepted = artifact.instances().stream()
-                .filter(value -> decisionValue(value).contains("Accepted")).count();
-        long review = artifact.instances().stream()
-                .filter(value -> decisionValue(value).contains("Review")).count();
-        long rejected = artifact.instances().stream()
-                .filter(value -> decisionValue(value).contains("Rejected")).count();
-        String summary = artifact.instances().size() + " reached: " + accepted
-                + " accepted, " + review + " review, " + rejected + " rejected. "
-                + "Apply result will narrow " + artifact.outputClass() + " in "
-                + artifact.projectName() + " to the "
-                + artifact.acceptedIdentities().size()
-                + " accepted entity(ies), keeping the instances already generated for "
-                + "them and dropping the rest.";
-        return new ProcessWorkflowResults<>("Run graph — results", summary, "Apply result",
-                List.of(artifactTab("All", artifact, null),
-                        artifactTab("Accepted", artifact, "Accepted"),
-                        artifactTab("Review", artifact, "Review"),
-                        artifactTab("Rejected", artifact, "Rejected")),
-                () -> artifact, "Close without applying result");
-    }
-
     private void runGraph() {
         if (runner == null || runner.isRunning()) return;
         try {

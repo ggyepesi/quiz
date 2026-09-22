@@ -208,10 +208,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         graphConstraintsPanel.restoreGraphResults(objects);
     }
 
-    public boolean showLastGraphResult() {
-        return graphConstraintsPanel.showLastGraphResult();
-    }
-
     public void afterChange(
             Consumer<Void> afterChange) {
 
