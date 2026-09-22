@@ -138,6 +138,35 @@ final class GraphDiscoveryResultStore {
     }
 
     /**
+     * Restores a graph result already carried by the project's saved instance pool.
+     * Applied graph annotations remain reachable from their annotated instances, so
+     * Load instances has everything Show instances needs even when an older sidecar was
+     * saved under a former graph name.
+     */
+    static Artifact restore(String projectName, String graphConstraintName,
+            String outputClass, java.util.Collection<WikidataDynamicObject> pool) {
+        String type = domainName(graphConstraintName);
+        List<WikidataDynamicObject> annotations = pool == null ? List.of() : pool.stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(value -> type.equals(value.typeName())
+                        || value.directClassNames().contains(type))
+                .toList();
+        if (annotations.isEmpty()) return null;
+        List<WikidataDynamicObject> candidates = annotations.stream()
+                .map(value -> value.get(ANNOTATED_INSTANCE))
+                .filter(WikidataDynamicObject.class::isInstance)
+                .map(WikidataDynamicObject.class::cast).distinct().toList();
+        wikidata.explore.extract.SnapshotFieldGraph fieldGraph =
+                wikidata.explore.extract.SnapshotFieldGraph.derive(annotations);
+        fieldGraph.declareExhaustiveValues(type, GRAPH_DECISION,
+                List.of("Accepted", "Review", "Rejected"));
+        fieldGraph.declareExhaustiveValues(type, MANUAL_DECISION,
+                List.of("Accepted", "Rejected"));
+        return new Artifact(projectName, type, outputClass, annotations, candidates,
+                new SnapshotDomain(annotations, fieldGraph));
+    }
+
+    /**
      * The write itself, with its two destinations as parameters so the path production
      * takes is the path a test takes. Tested through a writer stand-in instead, the file
      * and the registry entry — the two things this method exists to produce — were the

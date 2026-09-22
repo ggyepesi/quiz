@@ -198,6 +198,20 @@ final class GraphConstraintsPanel extends JPanel {
                 .toList();
     }
 
+    /** Restore every named graph's annotations from the project's loaded pool. */
+    void restoreGraphResults(
+            java.util.Collection<WikidataDynamicObject> loadedObjects) {
+        for (GeneratedClassModel graphClass : model.graphClasses()) {
+            if (resultOf(graphClass) != null || graphClass.graphSource() == null) continue;
+            GraphDiscoveryResultStore.Artifact restored = GraphDiscoveryResultStore.restore(
+                    model.name(), graphClass.className(),
+                    graphClass.graphSource().outputClassName(), loadedObjects);
+            if (restored != null) {
+                graphResults.put(resultKey(graphClass), restored);
+            }
+        }
+    }
+
     /**
      * The annotation set held for one graph class, or null once it stops describing it.
      *

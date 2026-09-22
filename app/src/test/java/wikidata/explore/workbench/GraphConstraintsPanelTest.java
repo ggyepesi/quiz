@@ -107,6 +107,26 @@ class GraphConstraintsPanelTest {
                 "Show instances follows the selected graph class");
     }
 
+    @Test void loadedProjectPoolRestoresTheSavedGraphResultWithoutRerunning() {
+        GeneratedProjectModel model = model();
+        model.name("Historical Positions");
+        GeneratedClassModel graphClass = graphClass(model, "GraphConstraint");
+        graphClass.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode(
+                        "Position", "", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(outputNode("Position"))));
+        GraphDiscoveryResultStore.Artifact saved = GraphDiscoveryResultStore.artifact(
+                model.name(), graphClass.className(), resultFor("Position"));
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+
+        panel.restoreGraphResults(saved.instances());
+        panel.edit(graphClass);
+
+        assertNotNull(panel.lastGraphResult());
+        assertEquals("GraphConstraint", panel.lastGraphResult().type());
+        assertEquals(saved.instances().size(), panel.lastGraphResult().instances().size());
+    }
+
     /**
      * A renamed graph class does not carry its old run forward, and the save dialog
      * names the file the save writes.

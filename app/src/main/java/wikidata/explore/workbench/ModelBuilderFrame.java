@@ -2902,6 +2902,7 @@ public class ModelBuilderFrame extends JFrame {
                     new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
             graphDiscoveryLedger = saved.graphDiscovery();
             List<WikidataDynamicObject> objects = saved.objects();
+            sourceWorkbench.restoreGraphResults(objects);
 
             // Apply the current model's canonicalization to the loaded pool, so a
             // display-name spec set/edited after this snapshot was saved takes

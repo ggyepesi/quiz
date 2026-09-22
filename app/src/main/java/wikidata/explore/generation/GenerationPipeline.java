@@ -135,9 +135,23 @@ public class GenerationPipeline {
     public List<Viewable> materialize(
             GeneratedViewableRuntime runtime,
             List<WikidataDynamicObject> dynamicObjects) throws Exception {
-
+        // Graph classes are annotation records, shown through their graph-result panel.
+        // They may remain reachable in a saved pool after Apply, but exposing them as
+        // ordinary generated instances produces a tab of labels with none of the
+        // annotation schema and duplicates the result UI.
+        java.util.Set<String> annotationTypes = runtime.project() == null
+                ? java.util.Set.of()
+                : runtime.project().graphClasses().stream()
+                        .map(GeneratedClassModel::className)
+                        .collect(java.util.stream.Collectors.toSet());
+        List<WikidataDynamicObject> visible = annotationTypes.isEmpty()
+                ? dynamicObjects
+                : dynamicObjects.stream()
+                        .filter(value -> value == null
+                                || !annotationTypes.contains(value.typeName()))
+                        .toList();
         return new GeneratedViewableMapper(runtime)
-                .mapRoots(dynamicObjects);
+                .mapRoots(visible);
     }
 
     /**

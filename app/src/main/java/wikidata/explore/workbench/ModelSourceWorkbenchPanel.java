@@ -203,6 +203,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return graphConstraintsPanel.graphResults();
     }
 
+    void restoreGraphResults(
+            java.util.Collection<wikidata.explore.extract.WikidataDynamicObject> objects) {
+        graphConstraintsPanel.restoreGraphResults(objects);
+    }
+
     public boolean showLastGraphResult() {
         return graphConstraintsPanel.showLastGraphResult();
     }
