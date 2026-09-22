@@ -65,6 +65,42 @@ class GraphAnnotationsShareInstancesViewTest {
                 titles(tabs.get(1)));
     }
 
+    @Test void aLaterResultDoesNotInheritTheLastRunsAnnotationTabs() throws Exception {
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+        panel.acceptGrouped(result(), Map.of("PositionValidity",
+                QueryObjectResultPanel.GroupedSection.of(
+                        List.of(annotation("Q1", "Accepted")), Map.of())));
+        SwingUtilities.invokeAndWait(() -> { });
+
+        panel.accept(result());
+        SwingUtilities.invokeAndWait(() -> { });
+
+        assertTrue(descendants(panel, JTabbedPane.class).isEmpty(),
+                "a result arriving on its own carries no graph annotations, so the "
+                        + "ordinary classes keep their side-by-side layout");
+    }
+
+    @Test void aGraphThatAnnotatedNothingCostsNoLayout() throws Exception {
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+
+        panel.acceptGrouped(result(), Map.of("PositionValidity",
+                QueryObjectResultPanel.GroupedSection.of(List.of(), Map.of())));
+        SwingUtilities.invokeAndWait(() -> { });
+
+        assertTrue(descendants(panel, JTabbedPane.class).isEmpty(),
+                "an empty peer draws no tab, so it must not move the ordinary classes "
+                        + "out of the side-by-side layout to make room for one");
+    }
+
+    /** Two ordinary classes: side by side when nothing else is shown beside them. */
+    private static ObjectQueryResult result() {
+        DynamicViewable position = new DynamicViewable("Q1", "Q1");
+        position.type("Position");
+        DynamicViewable holder = new DynamicViewable("Q9", "Q9");
+        holder.type("PositionHolder");
+        return new ObjectQueryResult(List.of(position, holder), null, "");
+    }
+
     @Test void navigationRevealsAHiddenOwningTabBeforeLookingForItsCard() {
         objectview.render.RenderContext context = new objectview.render.RenderContext();
         DynamicViewable value = new DynamicViewable("Q1", "Position");

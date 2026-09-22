@@ -41,7 +41,6 @@ public class QueryObjectResultPanel
             new JPanel(new BorderLayout());
 
     private RenderContext activeContext;
-    private Map<String, GroupedSection> supplementalSections = Map.of();
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
 
@@ -71,25 +70,27 @@ public class QueryObjectResultPanel
         holder.repaint();
     }
 
+    /**
+     * A result on its own, with no peer sections beside it.
+     *
+     * <p>The peers are NOT remembered from the last call. They belong to the caller that
+     * knows what is currently true — for graph annotations, the window that reads the
+     * panel's results at the moment it opens. Held here instead, a run accepted after a
+     * graph result was shown redrew the new instances beside the previous run's
+     * annotation tabs, and a result discarded by a configuration change came back the
+     * next time anything arrived.
+     */
     @Override
     public void accept(ObjectQueryResult result) {
-        acceptGrouped(result, supplementalSections);
+        acceptGrouped(result, Map.of());
     }
 
     /**
-     * Shows result-owned types together with explicit peer sections.  The peers are
-     * roots in their own right: unlike references reached while walking a generated
-     * instance, they must not pull their private object graph into another class's
-     * section.  Graph-constraint annotations use this path.
+     * One peer section: a class shown beside the result's own types, optionally
+     * partitioned into subtabs. Peers are roots in their own right — unlike references
+     * reached while walking a generated instance, they must not pull their private
+     * object graph into another class's section. Graph-constraint annotations use this.
      */
-    public void accept(ObjectQueryResult result,
-                       Map<String, ? extends List<? extends Viewable>> sections) {
-        Map<String, GroupedSection> grouped = new LinkedHashMap<>();
-        if (sections != null) sections.forEach((name, values) -> grouped.put(name,
-                GroupedSection.of(values, Map.of())));
-        acceptGrouped(result, grouped);
-    }
-
     public record GroupedSection(
             List<Viewable> all, Map<String, List<Viewable>> partitions) {
         public GroupedSection {
@@ -118,13 +119,16 @@ public class QueryObjectResultPanel
 
     public void acceptGrouped(ObjectQueryResult result,
                               Map<String, GroupedSection> sections) {
+        // A peer holding nothing is not a peer: it draws no tab, so counting it as one
+        // would move the ordinary classes out of their side-by-side layout and into
+        // tabs to make room for a section that is never added.
         Map<String, GroupedSection> copied = new LinkedHashMap<>();
         if (sections != null) {
-            sections.forEach((name, values) -> copied.put(name,
-                    values == null ? new GroupedSection(List.of(), Map.of()) : values));
+            sections.forEach((name, values) -> {
+                if (values != null && !values.all().isEmpty()) copied.put(name, values);
+            });
         }
-        supplementalSections = Collections.unmodifiableMap(copied);
-        Map<String, GroupedSection> shownSections = supplementalSections;
+        Map<String, GroupedSection> shownSections = Collections.unmodifiableMap(copied);
         SwingUtilities.invokeLater(() -> {
             holder.setVisible(false);
             holder.removeAll();
