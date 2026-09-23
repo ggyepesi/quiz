@@ -106,6 +106,33 @@ public class GeneratedSource implements ViewableSource {
 
     // The dataset's saved model, or null (legacy/untyped snapshot). Loaded once per
     // registerAll and shared across the per-type sources.
+    /**
+     * Whether the model says this class is never quiz content.
+     *
+     * <p>A graph constraint's instances are annotations: one record per candidate saying
+     * what a classification run decided about it. They are in the project's own snapshot
+     * because that is where they belong — the graph tab reads them back from there — and
+     * a snapshot's member bit was decided before a graph constraint was a kind of class,
+     * so it marks them like any other root. Serving them offers the reader 1,307 rows of
+     * "Accepted/Review/Rejected" beside the offices they are about.
+     *
+     * <p>The rule is already stated everywhere else it applies: the annotation set's own
+     * dataset row is written {@code served(false)} ("Loadable in TransformApp, never
+     * served: these rows describe a run"), and materialization keeps graph classes out of
+     * the ordinary instances list. This is the last place that had not been told.
+     *
+     * <p>Only the kind decides. A class that a graph merely STARTS from is an ordinary
+     * class — a model may well traverse from the class it serves — so being named as a
+     * start node says nothing about whether the class is quiz content.
+     */
+    private static boolean neverServed(
+            wikidata.explore.model.GeneratedProjectModel model, String type) {
+        if (model == null || type == null) return false;
+        wikidata.explore.model.GeneratedClassModel clazz = model.findClass(type);
+        return clazz != null
+                && clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH;
+    }
+
     private static wikidata.explore.model.GeneratedProjectModel loadModel(File modelFile) {
         if (modelFile == null || !modelFile.isFile()) {
             return null;
@@ -213,6 +240,7 @@ public class GeneratedSource implements ViewableSource {
         }
         if (types.isEmpty()) types.add(defaultType);
         wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);
+        types.removeIf(type -> neverServed(model, type));
         java.util.List<String> conflicts = new java.util.ArrayList<>();
         for (String t : types) {
             try {
