@@ -6,8 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DialogsTest {
+    @Test void explanatoryDialogTextWrapsAtOneSharedReadableWidth() {
+        javax.swing.JTextArea area = (javax.swing.JTextArea) Dialogs.wrapped(
+                "Save model and instances to /a/very/long/path/that/would/otherwise/"
+                        + "make/the/dialog/span/the/whole/screen/model.snapshot.json");
+
+        assertTrue(area.getLineWrap());
+        assertTrue(area.getWrapStyleWord());
+        assertEquals(64, area.getColumns());
+        assertTrue(area.getRows() >= 2);
+    }
+
     @Test void visibleModelessChildOwnsAModalPromptStartedFromItsMainFrame() {
         Node main = new Node(null);
         Node workflow = main.child();

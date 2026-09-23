@@ -3,6 +3,8 @@ package quiz.ui;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import javax.swing.JTextArea;
+import javax.swing.JComponent;
 import java.awt.Component;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
@@ -30,10 +32,28 @@ public final class Dialogs {
     public static boolean confirmPersistence(
             Component parent, String verb, String description) {
         String action = verb == null || verb.isBlank() ? "Continue" : verb;
-        int answer = JOptionPane.showOptionDialog(owner(parent), description, action,
+        int answer = JOptionPane.showOptionDialog(owner(parent), wrapped(description), action,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, new Object[]{action, "Cancel"}, "Cancel");
         return answer == 0;
+    }
+
+    /** Consistent readable body for dialogs containing explanations or exact file paths. */
+    public static JComponent wrapped(String text) {
+        JTextArea area = new JTextArea(text == null ? "" : text);
+        area.setEditable(false);
+        area.setOpaque(false);
+        area.setFocusable(true); // paths remain selectable/copyable
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setColumns(64);
+        area.setBorder(null);
+        int visualLines = 0;
+        for (String line : area.getText().split("\\R", -1)) {
+            visualLines += Math.max(1, (line.length() + 63) / 64);
+        }
+        area.setRows(Math.min(18, Math.max(2, visualLines)));
+        return area;
     }
 
     /** The best owner for a new dialog, including a visible modeless child of the
