@@ -181,13 +181,26 @@ construct per thing produced:
 
    Save and Load are concepts, not local button implementations. Every save/load entry
    point uses the shared persistence confirmation UI and names the domain, instances,
-   model/types and exact files that the specific operation will read or write.
+   model/types and exact files that the specific operation will read or write. TransformApp
+   shows the owning project's Domain/Model kind; saving a model-backed working domain keeps
+   that kind and writes its semantic subclasses to the owning model and ordinary snapshot,
+   never to a detached same-name transform dataset.
 
 18. **A reusable instance population is a `PopulationSelection`.** It stores one class
    name and the stable datasource identities of explicitly chosen instances, never copies
    of their mutable objects. Sampling and highlighting only edit the draft; saving is an
    explicit action that names the selection, count and model file. Graphs consume this same
-   saved construct rather than owning another QID list.
+   saved construct rather than owning another QID list. Statement subject/object bounds also
+   consume it through the same named-selection reference used by vocabularies; they do not
+   require the same QIDs to be copied into a second `VocabularySelection`.
+
+   A **transformed class is not a population selection and not an ordinary subclass**.
+   Its saved transformation is its population producer and its typed instances are a
+   materialized output owned by the model's companion snapshot. A base class contributes
+   schema but never fallback membership. TransformApp edits/previews the shared headless
+   transformation configuration; ModelBuilder may invoke the same executor through a
+   datasource adapter, but neither application owns a second execution path or automates
+   the other. See `docs/transformation-models-as-datasources.md`.
 
 19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
    identity, its name, rename propagation, its place in the classes list, its editor and its
@@ -231,6 +244,13 @@ construct per thing produced:
    configuration and selections only — never another project's snapshot, graph annotations
    or other run results. An imported selection stays owned by its model and is read-only in
    the importer, just like an imported class; edit it in the model that owns it.
+
+21. **Persist an expensive graph before fallible local materialization.** Once generation
+   has finalized its shared object graph, write that exact graph to the named recovery file
+   before mapping generated Java instances. Remove it only after mapping succeeds. A later
+   Generate action explicitly offers to load that file and resume materialization without
+   repeating remote acquisition, and rejects it when the model fingerprint differs.
+   *(Trigger: a local mapping/rendering defect would otherwise require another Wikidata run.)*
 
 ## Working agreements
 

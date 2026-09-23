@@ -354,9 +354,15 @@ instances, selections and the named graph annotation result beneath the project 
 
 A reusable Model may generate and save a local snapshot when its acquisition configuration
 is complete. This is how a model such as Historical Positions obtains the Position instances
-from which a `PopulationSelection` is curated. Importing `Position` brings its configuration
-and class-bound population selections; it never imports that local snapshot or any named graph
-annotation result.
+from which a `PopulationSelection` is curated. Importing an ordinary generated class such as
+`Position` brings its configuration and class-bound population selections; it does not make
+the model's local generated instances or named graph annotations part of the importer.
+
+A materialized transformed class is the deliberate exception to that population rule. Its
+saved transformation is its population producer, so an importer resolves the compatible,
+read-only transformed object graph from the owning model's companion snapshot. It neither
+copies those instances into the importing model nor substitutes the base class's population.
+See [Transformation Models as Datasources](transformation-models-as-datasources.md).
 
 A Selection is the right home for an explicitly saved set; a **bare identity-holder
 class** is the right home for an open population discovered from data. Sampling and
