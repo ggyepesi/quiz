@@ -119,6 +119,8 @@ public class ClassSourcePanel extends JPanel {
     private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
     private final javax.swing.JLabel canonicalSourcesLabel = new javax.swing.JLabel();
     private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
+    private boolean shownAliases;
+    private boolean configurationDirty;
     // Mode, field and template, asked the way every kind now asks them.
     private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
     // The same editor every other construct uses. This was a space-separated text
@@ -133,6 +135,20 @@ public class ClassSourcePanel extends JPanel {
     public ClassSourcePanel() {
         super(new BorderLayout(4, 4));
         buildUi();
+        watchConfiguration(header);
+        watchConfiguration(triple);
+        watchConfiguration(representations);
+        watchConfiguration(excludeTypesField);
+        watchConfiguration(limitSpinner);
+        watchConfiguration(requireLabelBox);
+        watchConfiguration(notableOnlyBox);
+        watchConfiguration(langField);
+        watchConfiguration(seedQidsArea);
+        watchConfiguration(rankByBox);
+        watchConfiguration(rankDescBox);
+        watchConfiguration(aliasesBox);
+        watchConfiguration(displayNameEditor);
+        watchConfiguration(identityEditor);
     }
 
     public void log(Consumer<String> log) {
@@ -200,6 +216,7 @@ public class ClassSourcePanel extends JPanel {
 
         updateSummary();
         updateSearchButtonState();
+        configurationDirty = false;
     }
 
     // Fill the extends combo with the other classes (excluding self), selecting
@@ -277,7 +294,35 @@ public class ClassSourcePanel extends JPanel {
     /** Instances to try the identity configuration against, before applying it. */
 
     public void applyEdits() {
+        if (!configurationDirty) return;
         apply();
+        configurationDirty = false;
+    }
+
+    /** Navigation must not rewrite a declaration merely because its editor was shown. */
+    private void watchConfiguration(Component component) {
+        if (component instanceof javax.swing.text.JTextComponent text) {
+            text.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                @Override public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                    configurationDirty = true;
+                }
+                @Override public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                    configurationDirty = true;
+                }
+                @Override public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                    configurationDirty = true;
+                }
+            });
+        } else if (component instanceof javax.swing.JToggleButton toggle) {
+            toggle.addItemListener(e -> configurationDirty = true);
+        } else if (component instanceof javax.swing.JComboBox<?> combo) {
+            combo.addItemListener(e -> configurationDirty = true);
+        } else if (component instanceof javax.swing.JSpinner spinner) {
+            spinner.addChangeListener(e -> configurationDirty = true);
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) watchConfiguration(child);
+        }
     }
 
     private void buildUi() {
@@ -794,9 +839,9 @@ public class ClassSourcePanel extends JPanel {
 
     /** Loads the class's canonical spec into the section. */
     private void loadCanonical() {
-        if (clazz != null) ClassSourceBindings.declareRequiredNameSources(clazz);
-        aliasesBox.setSelected(clazz != null && ClassSourceBindings.binding(clazz,
-                SourceBindingSlot.CLASS_ALIASES) != null);
+        shownAliases = clazz != null && ClassSourceBindings.binding(clazz,
+                SourceBindingSlot.CLASS_ALIASES) != null;
+        aliasesBox.setSelected(shownAliases);
         displayNameEditor.show(clazz);
         identityEditor.show(clazz);
 
@@ -825,16 +870,14 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private String describeClassSources() {
-        if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return "—";
         datasource.api.DatasourceRegistry registry = datasource.Datasources.standard();
         java.util.List<String> labels = new java.util.ArrayList<>();
-        for (SourceBindingSlot slot : java.util.List.of(SourceBindingSlot.CLASS_IDENTITY,
-                SourceBindingSlot.CLASS_LABEL, SourceBindingSlot.CLASS_ALIASES)) {
-            datasource.api.SourceBinding binding = ClassSourceBindings.binding(clazz, slot);
-            if (binding == null) continue;
-            datasource.api.DatasourceOperation operation = binding.resolve(registry);
-            labels.add(operation.displayName());
+        for (datasource.api.SourceBinding binding
+                : ClassSourceBindings.effectiveNameBindings(clazz)) {
+            labels.add(binding.resolve(registry).displayName());
         }
+        // Only a kind that has no name sources at all says so; a Source class always
+        // has them, whether or not it has stored them yet.
         return labels.isEmpty() ? "—" : String.join(" · ", labels);
     }
 
@@ -850,7 +893,15 @@ public class ClassSourcePanel extends JPanel {
         if (displayNameEditor.mode() == CanonicalSpec.DisplayNameMode.LABEL) {
             clazz.canonical().labelLanguage(langField.getText());
         }
-        ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());
+        // Merely opening and leaving an editor is navigation, not a configuration
+        // change. Materialize explicit name bindings only when the user actually
+        // changes the optional alias choice; otherwise legacy/default semantics stay
+        // represented without rewriting the model behind the inspection.
+        if (aliasesBox.isSelected() != shownAliases) {
+            ClassSourceBindings.declareRequiredNameSources(clazz);
+            ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());
+            shownAliases = aliasesBox.isSelected();
+        }
 
         String warning = displayNameEditor.warning();
         if (!warning.isBlank()) {

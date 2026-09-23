@@ -6,6 +6,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.ClassSourceBindings;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.generation.DomainSave;
 import datasource.api.SourceBindingSlot;
 
 import javax.swing.JCheckBox;
@@ -31,7 +32,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 // Statement editor is the single editor of those declarations.
 class ClassSourcePanelTest {
 
-    @Test void aliasesAreAnExplicitEditableClassSourceChoice() {
+    @Test void inspectingASubclassDoesNotInvalidateSavedInstances() {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        withHolders.clearIndependentPopulation();
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(position);
+        project.addClass(withHolders);
+        String before = DomainSave.signature(project);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(withHolders);
+        panel.applyEdits();
+
+        assertEquals(before, DomainSave.signature(project),
+                "selecting a class and then Vocabularies is navigation, not a model edit");
+    }
+
+    @Test void inspectingAliasesDoesNotOptIntoTheOptionalField() {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         ClassSourcePanel panel = panelFor(person);
         panel.edit(person);
@@ -42,10 +62,19 @@ class ClassSourcePanelTest {
                 "a new class must not silently opt into an optional field");
         panel.applyEdits();
 
-        ClassSourceBindings.synchronize(person);
-
         assertNull(ClassSourceBindings.binding(
                 person, SourceBindingSlot.CLASS_ALIASES));
+    }
+
+    @Test void selectingAliasesExplicitlyAddsTheOptionalField() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        ClassSourcePanel panel = panelFor(person);
+        panel.edit(person);
+
+        checkBox(panel, "Add aliases (Also known as)").setSelected(true);
+        panel.applyEdits();
+
+        assertNotNull(ClassSourceBindings.binding(person, SourceBindingSlot.CLASS_ALIASES));
     }
 
     @Test void applyingAPopulationNeverDeclaresInstanceFields() {

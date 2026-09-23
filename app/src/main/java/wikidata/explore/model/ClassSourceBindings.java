@@ -26,15 +26,54 @@ public final class ClassSourceBindings {
     }
 
     /**
+     * The name slots every Source class has, and the operation each falls back to.
+     * Enumerated once: declaring the defaults and describing them are the same fact,
+     * and a describer with its own copy of this list goes stale the moment one changes.
+     */
+    private static final Map<SourceBindingSlot, String> REQUIRED_NAME_SOURCES =
+            requiredNameSources();
+
+    private static Map<SourceBindingSlot, String> requiredNameSources() {
+        // Identity first, then the label: the order the editor reads them out, so a
+        // LinkedHashMap rather than Map.of, whose iteration order is not the one written.
+        Map<SourceBindingSlot, String> sources = new java.util.LinkedHashMap<>();
+        sources.put(SourceBindingSlot.CLASS_IDENTITY,
+                WikidataDatasourceProvider.IDENTIFIER);
+        sources.put(SourceBindingSlot.CLASS_LABEL, WikidataDatasourceProvider.LABEL);
+        return java.util.Collections.unmodifiableMap(sources);
+    }
+
+    /**
      * Declares the required identity and label sources for a newly edited Source
      * class without silently opting it into optional alias acquisition.
      */
     public static void declareRequiredNameSources(GeneratedClassModel clazz) {
         if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return;
-        putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_IDENTITY,
-                WikidataDatasourceProvider.IDENTIFIER));
-        putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_LABEL,
-                WikidataDatasourceProvider.LABEL));
+        REQUIRED_NAME_SOURCES.forEach((slot, operation) ->
+                putDefault(clazz, classBinding(clazz, slot, operation)));
+    }
+
+    /**
+     * The name sources a class uses: the bindings it stores, and for a required slot it
+     * has not stored, the default it would be given.
+     *
+     * <p>Read-only, because an editor describes a class by opening it. Reading the
+     * stored bindings alone answered "—" for a class whose names come from the
+     * defaults — blank where the control's own vocabulary means "nothing configured",
+     * so a class behaving exactly as declared read as unconfigured. Materializing the
+     * defaults to have something to describe is the other wrong answer: it writes to the
+     * model on the way past.
+     */
+    public static List<SourceBinding> effectiveNameBindings(GeneratedClassModel clazz) {
+        if (clazz == null || clazz.classKind() != ClassKind.SOURCE) return List.of();
+        List<SourceBinding> effective = new ArrayList<>();
+        REQUIRED_NAME_SOURCES.forEach((slot, operation) -> {
+            SourceBinding stored = binding(clazz, slot);
+            effective.add(stored != null ? stored : classBinding(clazz, slot, operation));
+        });
+        SourceBinding aliases = binding(clazz, SourceBindingSlot.CLASS_ALIASES);
+        if (aliases != null) effective.add(aliases);
+        return List.copyOf(effective);
     }
 
     private static void synchronize(
@@ -58,10 +97,7 @@ public final class ClassSourceBindings {
             boolean legacy = binding(clazz, SourceBindingSlot.CLASS_IDENTITY) == null
                     && binding(clazz, SourceBindingSlot.CLASS_LABEL) == null
                     && binding(clazz, SourceBindingSlot.CLASS_ALIASES) == null;
-            putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_IDENTITY,
-                    WikidataDatasourceProvider.IDENTIFIER));
-            putDefault(clazz, classBinding(clazz, SourceBindingSlot.CLASS_LABEL,
-                    WikidataDatasourceProvider.LABEL));
+            declareRequiredNameSources(clazz);
             if (legacy) putDefault(clazz, classBinding(clazz,
                     SourceBindingSlot.CLASS_ALIASES,
                     WikidataDatasourceProvider.ALIASES));
