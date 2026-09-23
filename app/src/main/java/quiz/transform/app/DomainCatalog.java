@@ -26,17 +26,42 @@ public final class DomainCatalog {
 
     public static List<DomainEntry> all() {
         List<DomainEntry> out = new ArrayList<>();
+        List<DatasetRegistry.Dataset> saved = DatasetRegistry.load().datasets();
+        java.util.Set<DatasetRegistry.Dataset> consumed =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
-        for (DatasetRegistry.Dataset d : DatasetRegistry.load().datasets()) {
-            File snap = new File(d.snapshotPath());
+        for (DatasetRegistry.Dataset d : saved) {
+            if (consumed.contains(d)) continue;
+            DatasetRegistry.Dataset snapshotOwner = d;
+            DatasetRegistry.Dataset modelOwner = d.isModelBacked() ? d : null;
+            if (modelOwner != null) {
+                // Repair the old Save-as-domain split at read time: one same-named,
+                // detached transform snapshot is the latest working result of this
+                // project, not a second project. Saving it with the corrected writer
+                // consolidates the registry permanently.
+                DatasetRegistry.Dataset transformed = saved.stream()
+                        .filter(candidate -> candidate != d && !candidate.isModelBacked())
+                        .filter(candidate -> java.util.Objects.equals(
+                                d.name(), candidate.name()))
+                        .max(java.util.Comparator.comparing(
+                                DatasetRegistry.Dataset::savedAt)).orElse(null);
+                if (transformed != null) {
+                    snapshotOwner = transformed;
+                    consumed.add(transformed);
+                }
+            }
+            File snap = new File(snapshotOwner.snapshotPath());
             if (snap.isFile()) {
-                File model = new File(d.modelPath());
+                File model = new File(modelOwner == null ? "" : modelOwner.modelPath());
+                File selectedSnapshot = snap;
+                File selectedModel = model;
                 out.add(new DomainEntry(d.name(), "generated",
                         "Load domain \"" + d.name() + "\", its instances and saved model from "
                                 + snap.getPath() + (model.isFile()
                                 ? " and " + model.getPath() : "") + ".",
-                        () -> open(snap, model)));
+                        () -> open(selectedSnapshot, selectedModel)));
             }
+            consumed.add(d);
         }
 
         // Re-wired: list the hand-written domains as LIVE ReflectionDomains again, so each can
@@ -102,6 +127,11 @@ public final class DomainCatalog {
         if (model != null && model.isFile()) {
             var project = new wikidata.explore.model.GeneratedProjectModelStore()
                     .load(model);
+            // A pre-fix TransformApp snapshot can already carry semantic subclasses
+            // that its model save lost. Make them visible in this working session; the
+            // corrected Save model action persists them into the owner.
+            DomainSaver.addSubclasses(project,
+                    new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), roleSelections));
             return wikidata.explore.transform.ProductCompiler.compile(
                     project, pool, roleSelections);
         }

@@ -55,6 +55,25 @@ class DatasetRegistryModelBackedTest {
         assertTrue(d.isModelBacked());
     }
 
+    @Test void modelBackedSaveRemovesOnlyDetachedSameNameExports() {
+        DatasetRegistry registry = new DatasetRegistry();
+        DatasetRegistry.Dataset modeled = new DatasetRegistry.Dataset();
+        modeled.name("Historical Positions");
+        modeled.key("historicalpositions");
+        modeled.modelPath("positions.model.json");
+        registry.upsert(modeled);
+        DatasetRegistry.Dataset detached = new DatasetRegistry.Dataset();
+        detached.name("Historical Positions");
+        detached.key("historical-positions");
+        detached.snapshotPath("transform/positions.snapshot.json");
+        registry.upsert(detached);
+
+        registry.removeUnbackedNamedExcept("Historical Positions", "historicalpositions");
+
+        assertEquals(1, registry.datasets().size());
+        assertEquals("historicalpositions", registry.datasets().getFirst().key());
+    }
+
     @Test void aTransformAppSaveIsNot() {
         // Exactly what DomainSaver writes: a snapshot and its types, no model.
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();

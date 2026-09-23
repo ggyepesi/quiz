@@ -23,7 +23,8 @@ import domain.DomainSchemas;
  * SchemaView} when the base has one).
  */
 final class CuratableDomain extends DelegatingDomainModel implements Curatable,
-        quiz.curation.FieldRulePromoter, quiz.transform.ui.PopulationSelectionStore {
+        quiz.curation.FieldRulePromoter, quiz.transform.ui.PopulationSelectionStore,
+        quiz.transform.ui.ProjectBacking {
 
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
@@ -57,6 +58,11 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     }
 
     @Override public ManualCuration curation() { return curation; }
+
+    @Override public <T extends domain.DomainCapability> T capability(Class<T> type) {
+        if (type == quiz.transform.ui.ProjectBacking.class && modelFile == null) return null;
+        return super.capability(type);
+    }
 
 
     @Override public List<String> types() { return base.types(); }
@@ -121,6 +127,26 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     }
 
     @Override public java.io.File modelFile() { return modelFile; }
+
+    @Override public String projectName() {
+        wikidata.explore.model.GeneratedProjectModel model = loadModel();
+        return model == null ? "" : model.name();
+    }
+
+    @Override public wikidata.explore.model.GeneratedProjectModel.ProjectKind projectKind() {
+        wikidata.explore.model.GeneratedProjectModel model = loadModel();
+        return model == null
+                ? wikidata.explore.model.GeneratedProjectModel.ProjectKind.DOMAIN
+                : model.projectKind();
+    }
+
+    @Override public java.io.File snapshotFile() {
+        if (modelFile == null) return null;
+        String name = modelFile.getName();
+        String baseName = name.endsWith(".model.json")
+                ? name.substring(0, name.length() - ".model.json".length()) : name;
+        return new java.io.File(modelFile.getParentFile(), baseName + ".snapshot.json");
+    }
 
     @Override public void savePopulationSelection(
             String name, String className, java.util.List<String> qids) throws Exception {

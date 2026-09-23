@@ -117,6 +117,13 @@ public final class DatasetRegistry {
         upsert(snapshot);
     }
 
+    /** Remove detached transform exports superseded by the owning model-backed entry. */
+    public void removeUnbackedNamedExcept(String name, String keepKey) {
+        datasets.removeIf(value -> java.util.Objects.equals(name, value.name())
+                && !java.util.Objects.equals(keepKey, value.key())
+                && !value.isModelBacked());
+    }
+
     // ------------------------------------------------------------------
     // Store
     // ------------------------------------------------------------------

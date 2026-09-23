@@ -157,11 +157,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (controller.domain().capability(SchemaView.class) != null) {
             top.add(button("Schema…", this::showSchema));
         }
+        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
+        if (project != null) {
+            JLabel kind = new JLabel(project.projectKind() + ": " + project.projectName());
+            kind.setName("project.kind");
+            top.add(kind);
+        }
         // "New field…" now sits next to the Class selector (it acts on that class), and
         // "Create subclass from group…" is a group-tree control (it acts on a group) — so the
         // toolbar stays narrow enough that Query logs stays visible on a laptop screen.
         if (controller.canSave()) {
-            top.add(button("Save as domain…", this::saveAsDomain));
+            String saveLabel = project == null ? "Save as domain…"
+                    : "Save " + project.projectKind().toString().toLowerCase() + "…";
+            top.add(button(saveLabel, this::saveAsDomain));
         }
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
@@ -1220,7 +1228,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (!quiz.ui.Dialogs.confirmPersistence(this, "Save selection", description)) return;
         try {
             store.savePopulationSelection(name, className, qids);
-            JOptionPane.showMessageDialog(this, description,
+            JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(description),
                     "Population selection saved", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
@@ -1613,15 +1621,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         String suggested = domainName != null && !domainName.isBlank()
                 ? domainName
                 : type;
+        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
+        String kind = project == null ? "domain"
+                : project.projectKind().toString().toLowerCase();
         String name = JOptionPane.showInputDialog(this,
-                "Save the current result as a domain named:", suggested);
+                "Save the current result as a " + kind + " named:", suggested);
         if (name == null || name.isBlank()) {
             return;
         }
         if (!quiz.ui.Dialogs.confirmPersistence(
-                this, "Save domain", controller.describeSaveAsDomain(name))) return;
+                this, "Save " + kind, controller.describeSaveAsDomain(name))) return;
         try {
-            JOptionPane.showMessageDialog(this, controller.saveAsDomain(name));
+            JOptionPane.showMessageDialog(this,
+                    quiz.ui.Dialogs.wrapped(controller.saveAsDomain(name)));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);
