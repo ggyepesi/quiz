@@ -117,8 +117,7 @@ final class GraphDiscoveryResultStore {
     }
 
     static String save(Artifact artifact) throws Exception {
-        return save(artifact, DomainStorage.inDefaultLocation(),
-                DatasetRegistry.defaultFile());
+        return save(artifact, DomainStorage.inDefaultLocation());
     }
 
     static Artifact load(String projectName, String graphConstraintName,
@@ -167,12 +166,19 @@ final class GraphDiscoveryResultStore {
     }
 
     /**
-     * The write itself, with its two destinations as parameters so the path production
-     * takes is the path a test takes. Tested through a writer stand-in instead, the file
-     * and the registry entry — the two things this method exists to produce — were the
-     * parts nothing looked at.
+     * The write itself, with its destination as a parameter so the path production takes
+     * is the path a test takes. Tested through a writer stand-in instead, the file this
+     * method exists to produce was the part nothing looked at.
+     *
+     * <p>It used to register a dataset row too, so that TransformApp could open the
+     * annotations. That was true when a graph result was only a sidecar; it stopped being
+     * true when applying a graph started writing the annotations into the project's own
+     * instances and the result panel began restoring them from there. The row then listed
+     * a second copy of data the project already carries, under a second name, in every
+     * navigator — and a row is how a thing becomes something the reader must account for.
+     * Opening the project reaches them.
      */
-    static String save(Artifact artifact, DomainStorage storage, File registryFile)
+    static String save(Artifact artifact, DomainStorage storage)
             throws Exception {
         if (artifact.projectName().isBlank()) {
             throw new IllegalArgumentException("The graph result has no owning project");
@@ -180,24 +186,11 @@ final class GraphDiscoveryResultStore {
         File file = destination(storage, artifact.projectName(), artifact.type());
         new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
                 artifact.instances(), file, artifact.model());
-
-        DatasetRegistry.Dataset dataset = new DatasetRegistry.Dataset();
-        dataset.name(artifact.projectName() + " — " + artifact.type());
-        dataset.key(DomainStorage.key(artifact.projectName()) + "--"
-                + DomainStorage.key(artifact.type()));
-        dataset.snapshotPath(file.getPath());
-        dataset.types().add(artifact.type());
-        dataset.rootClass(artifact.type());
-        dataset.savedAt(java.time.LocalDateTime.now().toString());
-        // Loadable in TransformApp, never served: these rows describe a run.
-        dataset.served(false);
-        DatasetRegistry registry = DatasetRegistry.load(registryFile);
-        registry.upsert(dataset);
-        registry.save(registryFile);
         return "Saved graph annotations \"" + artifact.type() + "\" for \""
                 + artifact.projectName() + "\": " + artifact.instances().size()
                 + " instances to " + file.getPath()
-                + ". Loadable in TransformApp; not served.";
+                + ". They are part of \"" + artifact.projectName()
+                + "\"; opening that project reaches them.";
     }
 
     static String save(

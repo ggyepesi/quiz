@@ -999,7 +999,7 @@ class GraphConstraintsPanelTest {
                 "and the instances carry that same name");
     }
 
-    @Test void theRealSaveWritesBesideTheProjectAndIsLoadableButNotServed(
+    @Test void theRealSaveWritesBesideTheProjectAndRegistersNothing(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
         // The write and the registry entry are what this method exists to produce, and a
         // writer stand-in exercised neither. The annotations must land beside the project
@@ -1024,8 +1024,7 @@ class GraphConstraintsPanelTest {
                 "Historical Positions", "PositionValidity", result);
         java.io.File registryFile = root.resolve("datasets.json").toFile();
 
-        GraphDiscoveryResultStore.save(artifact,
-                dataset.DomainStorage.in(root.toFile()), registryFile);
+        GraphDiscoveryResultStore.save(artifact, dataset.DomainStorage.in(root.toFile()));
 
         java.io.File written = root.resolve("historicalpositions")
                 .resolve("positionvalidity.graph.snapshot.json").toFile();
@@ -1035,12 +1034,10 @@ class GraphConstraintsPanelTest {
                 .contains("PositionValidity"),
                 "and the instances carry the graph constraint's name");
 
-        quiz.DatasetRegistry reloaded = quiz.DatasetRegistry.load(registryFile);
-        assertEquals(1, reloaded.datasets().size());
-        quiz.DatasetRegistry.Dataset entry = reloaded.datasets().getFirst();
-        assertEquals("PositionValidity", entry.rootClass());
-        assertFalse(entry.served(),
-                "listed so TransformApp can load it, never served to the quiz");
+        assertFalse(registryFile.isFile(),
+                "the annotations are part of the project that produced them, not a "
+                        + "dataset of their own: a row would list a second copy of what "
+                        + "the project's instances already carry, under a second name");
     }
 
     /** A node that says it produces a class population, which is what makes it the
