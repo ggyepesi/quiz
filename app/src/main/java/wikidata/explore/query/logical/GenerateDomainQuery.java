@@ -38,17 +38,26 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
     private final process.ProcessWorkflowPipeline pipelineProgress;
     private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
+    private final wikidata.explore.generation.GenerationRecoveryStore recovery;
 
     public GenerateDomainQuery(GeneratedProjectModel project) {
         this(wikidata.explore.generation.CompiledPipelineRun.compile(
                         wikidata.explore.generation.PipelineRequest.generateDomain(project)),
-                null, new wikidata.explore.generation.GenerationExecutionSettings());
+                null, new wikidata.explore.generation.GenerationExecutionSettings(), null);
     }
 
     public GenerateDomainQuery(
             wikidata.explore.generation.CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipelineProgress,
             wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
+        this(compiledRun, pipelineProgress, executionSettings, null);
+    }
+
+    public GenerateDomainQuery(
+            wikidata.explore.generation.CompiledPipelineRun compiledRun,
+            process.ProcessWorkflowPipeline pipelineProgress,
+            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
+            wikidata.explore.generation.GenerationRecoveryStore recovery) {
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.compiledRun = compiledRun;
         this.project = compiledRun.request().model();
@@ -56,6 +65,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         this.executionSettings = executionSettings == null
                 ? new wikidata.explore.generation.GenerationExecutionSettings()
                 : executionSettings;
+        this.recovery = recovery;
     }
 
     @Override public String purpose() { return "Generate domain"; }
@@ -101,7 +111,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // Every endpoint this run can reach reports its requests, and their
                     // timings, into THIS run's log.
                     try (WikidataAccess.RequestLogs requestLogs =
-                            WikidataAccess.logRequests(context, genLog::message)) {
+                            WikidataAccess.logRequests(context, genLog)) {
                     genLog.message(executionSettings.resolvedDescription());
                     phase(wikidata.explore.generation.GenerateDomainPipeline.PLAN,
                             project.classes().size() + " configured classes");
@@ -118,7 +128,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // WikidataAccess, so logRequests(...) cannot discover it. Without
                     // this explicit attachment the HTTP/2 version/header/body metrics
                     // are printed nowhere and the saved log can only show batch time.
-                    entityApi.log(genLog::message);
+                    entityApi.log(WikidataAccess.structuredRequestLog(
+                            Datasource.WIKIDATA, genLog));
 
                     // ONE runtime for the whole domain — every class compiled
                     // together in one package/loader, so typed cross-references
@@ -464,7 +475,32 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                                     + " owned part(s) renamed")
                                     + (finalization.ownerlessParts() == 0 ? ""
                                             : ", " + finalization.ownerlessParts()
-                                                    + " owned part(s) dropped as ownerless"));
+                                            + " owned part(s) dropped as ownerless"));
+
+                    // Acquisition and semantic processing are complete. Persist this
+                    // exact final graph before generated-code mapping, so a local
+                    // materialization defect never forces the remote work to run again.
+                    if (recovery != null) {
+                        GenerationRun.Quality recoveryQuality = qualityTracker.quality();
+                        datasource.graph.GraphDiscoveryState recoveryDiscovery =
+                                wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
+                                        project, pool);
+                        wikidata.explore.transform.SelfReferenceLedger recoverySelfReferences =
+                                wikidata.explore.transform.SelfReferenceLedger.ran(
+                                        transformed.selfReferenceFindings(),
+                                        finalization.suspectedSelfReferences());
+                        wikidata.explore.generation.GraphCheckpoint recoveryCheckpoint =
+                                wikidata.explore.generation.GraphCheckpoint.finalGraph(
+                                        pool,
+                                        java.util.List.copyOf(
+                                                completedReferentLoads.values()),
+                                        recoveryDiscovery, recoveryQuality,
+                                        wikidata.explore.generation.DomainSave.signature(project));
+                        genLog.message("Saving finalized recovery graph: "
+                                + pool.size() + " objects -> "
+                                + recovery.snapshotFile().getPath() + "\n");
+                        recovery.save(project, recoveryCheckpoint, recoverySelfReferences);
+                    }
                     phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
                             pool.size() + " object(s)");
 
@@ -481,6 +517,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     List<Viewable> allInstances = runState.instances();
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
                             allInstances.size() + " instances materialized");
+                    if (recovery != null) {
+                        recovery.clear();
+                        genLog.message("Removed finalized recovery graph after successful "
+                                + "materialization: " + recovery.snapshotFile().getPath()
+                                + "\n");
+                    }
 
                     // Parent summary = a copy-pasteable per-class breakdown of the
                     // SERVED pool, counted by DISTINCT qid (what the save keeps), so

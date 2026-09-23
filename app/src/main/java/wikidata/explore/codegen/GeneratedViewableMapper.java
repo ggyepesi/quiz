@@ -14,6 +14,8 @@ import wikidata.explore.model.GeneratedFieldModel;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,19 @@ public class GeneratedViewableMapper {
     // from a PositionDiscoveryStart Java object.
     private final Map<ModeledEntityKey, Object> generatedByQid =
             new java.util.HashMap<>();
+    /**
+     * Field population is deliberately iterative. A valid domain graph can contain a
+     * reference chain far deeper than the JVM stack (History reached this with 75,408
+     * objects). Object allocation therefore schedules population instead of recursively
+     * populating every referenced object on the caller's stack.
+     */
+    private final Deque<Population> pendingPopulation = new ArrayDeque<>();
+
+    private record Population(
+            GeneratedViewableRuntime.ClassRuntime runtime,
+            Object target,
+            WikidataDynamicObject source,
+            boolean merge) { }
 
     private record ModeledEntityKey(String type, String qid) { }
     /** Source candidates are partitioned by the same neutral engine as statements and
@@ -77,7 +92,56 @@ public class GeneratedViewableMapper {
                 out.add(q);
             }
         }
+        // Population and naming are two passes, in opposite orders, because they need
+        // opposite orders. Populating a parent is what discovers its children, so the
+        // queue fills parents-first. A composed name QUOTES the names of the objects a
+        // class references — Canonicalizer reads a referenced Viewable through
+        // getDisplayName — so a parent must be named AFTER them, or it quotes the label
+        // the child arrived with instead of the name the child ends up with. The old
+        // recursion got this for free by unwinding child-first; an iterative pass has to
+        // say so.
+        List<Population> naming = new ArrayList<>();
+        while (!pendingPopulation.isEmpty()) {
+            Population population = pendingPopulation.removeFirst();
+            populate(population);
+            if (!population.merge()) naming.add(population);
+        }
+        for (int i = naming.size() - 1; i >= 0; i--) {
+            canonicalName(naming.get(i));
+        }
         return out;
+    }
+
+    private void populate(Population population) throws Exception {
+        applyFields(population.runtime(), population.target(), population.source(),
+                population.merge());
+        applyDatasourceFields(population.runtime(), population.target(), population.source(),
+                population.merge());
+    }
+
+    private void canonicalName(Population population) {
+        Object target = population.target();
+        WikidataDynamicObject source = population.source();
+        GeneratedViewableRuntime.ClassRuntime cr = population.runtime();
+        Canonicalizer.FieldReader reader = fieldName -> {
+            Field jf = findField(cr.generatedClass(),
+                    GeneratedViewableSourceGenerator.sanitizeFieldName(fieldName));
+            if (jf != null) {
+                try {
+                    jf.setAccessible(true);
+                    Object v = jf.get(target);
+                    if (v != null) return v;
+                } catch (IllegalAccessException ignored) {
+                    // fall back to the source value
+                }
+            }
+            return source.get(fieldName);
+        };
+        String override = canonicalDisplayNameOverride(
+                cr.model(), reader, source.getDisplayName());
+        if (override != null && target instanceof quiz.source.GeneratedEntity ge) {
+            ge.label(override);
+        }
     }
 
     private void prepareSourceCanonicalization(List<WikidataDynamicObject> roots) {
@@ -144,7 +208,11 @@ public class GeneratedViewableMapper {
                 && runtime.forType(preferredType) != null;
 
         Object existing = generatedByDynamic.get(source);
-        if (existing != null
+        GeneratedViewableRuntime.ClassRuntime preferredRuntime = typedRequested
+                ? runtime.forType(preferredType) : null;
+        boolean existingFitsRequestedType = preferredRuntime == null || existing == null
+                || preferredRuntime.generatedClass().isInstance(existing);
+        if (existing != null && existingFitsRequestedType
                 && (!typedRequested || !(existing instanceof WikidataDynamicObject))) {
             return existing;
         }
@@ -168,7 +236,8 @@ public class GeneratedViewableMapper {
                 && sourceType != null && !sourceType.isBlank()
                 && runtime.forType(sourceType) != null
                 && !sourceType.equals(preferredType)
-                && !source.directClassNames().contains(preferredType);
+                && !source.directClassNames().contains(preferredType)
+                && !logicalSubtypeOf(sourceType, preferredType);
         String type = genuineModeledKind ? sourceType
                 : typedRequested ? preferredType : sourceType;
 
@@ -207,8 +276,9 @@ public class GeneratedViewableMapper {
             Object byQid = generatedByQid.get(entityKey);
             if (byQid != null && !(byQid instanceof WikidataDynamicObject)) {
                 generatedByDynamic.put(source, byQid);
-                applyFields(cr, byQid, source, true);   // fill any missing fields
-                applyDatasourceFields(cr, byQid, source, true);
+                // Merge later on the same iterative worklist. Doing it here recursively
+                // follows arbitrarily long entity-reference chains on the JVM stack.
+                pendingPopulation.addLast(new Population(cr, byQid, source, true));
                 return byQid;
             }
         }
@@ -248,39 +318,22 @@ public class GeneratedViewableMapper {
             ge.part(source.isPart());
         }
 
-        applyFields(cr, target, source, false);
-        applyDatasourceFields(cr, target, source, false);
-
-        // Canonicalization: a composed displayName comes from its spec (a
-        // field or template), not the loaded label — so reified atoms show e.g. the
-        // nominee, never the poisoned/loaded name. Only an EXPLICIT spec applies,
-        // so legacy models are unchanged until reconfigured. Reads the mapped target
-        // value (a proper Viewable), falling back to the raw source value.
-        final Object mappedTarget = target;
-        final WikidataDynamicObject materializedSource = source;
-        Canonicalizer.FieldReader reader = fieldName -> {
-            Field jf = findField(cr.generatedClass(),
-                    GeneratedViewableSourceGenerator.sanitizeFieldName(fieldName));
-            if (jf != null) {
-                try {
-                    jf.setAccessible(true);
-                    Object v = jf.get(mappedTarget);
-                    if (v != null) {
-                        return v;
-                    }
-                } catch (IllegalAccessException ignored) {
-                    // fall back to the source value
-                }
-            }
-            return materializedSource.get(fieldName);
-        };
-        String override = canonicalDisplayNameOverride(
-                cr.model(), reader, source.getDisplayName());
-        if (override != null && target instanceof quiz.source.GeneratedEntity ge) {
-            ge.label(override);   // canonical display name, without touching identity
-        }
+        pendingPopulation.addLast(new Population(cr, target, source, false));
 
         return target;
+    }
+
+    /** Generated classes are flattened, so logical model inheritance is not Java inheritance. */
+    private boolean logicalSubtypeOf(String candidate, String base) {
+        String current = candidate == null ? "" : candidate;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        while (!current.isBlank() && seen.add(current)) {
+            if (current.equals(base)) return true;
+            GeneratedViewableRuntime.ClassRuntime cr = runtime.forType(current);
+            current = cr == null || cr.model() == null
+                    ? "" : cr.model().baseClassName();
+        }
+        return false;
     }
 
     /** Populates the conditionally generated alias field without putting it back on

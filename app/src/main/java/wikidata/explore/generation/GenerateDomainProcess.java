@@ -16,22 +16,32 @@ public final class GenerateDomainProcess implements Process<GenerationRun> {
     private final CompiledPipelineRun compiledRun;
     private final process.ProcessWorkflowPipeline pipeline;
     private final GenerationExecutionSettings settings;
+    private final GenerationRecoveryStore recovery;
 
     public GenerateDomainProcess(GeneratedProjectModel project) {
         this(CompiledPipelineRun.compile(PipelineRequest.generateDomain(project)),
-                null, new GenerationExecutionSettings());
+                null, new GenerationExecutionSettings(), null);
     }
 
     public GenerateDomainProcess(
             CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipeline,
             GenerationExecutionSettings settings) {
+        this(compiledRun, pipeline, settings, null);
+    }
+
+    public GenerateDomainProcess(
+            CompiledPipelineRun compiledRun,
+            process.ProcessWorkflowPipeline pipeline,
+            GenerationExecutionSettings settings,
+            GenerationRecoveryStore recovery) {
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.compiledRun = compiledRun;
         this.project = compiledRun.request().model();
         this.settings = settings == null ? new GenerationExecutionSettings() : settings;
         this.pipeline = pipeline == null
                 ? GenerateDomainPipeline.configured(compiledRun) : pipeline;
+        this.recovery = recovery;
     }
 
     @Override public ProcessPlan plan() {
@@ -53,7 +63,7 @@ public final class GenerateDomainProcess implements Process<GenerationRun> {
     @Override public ProcessOutcome<GenerationRun> execute(ProcessContext context) {
         ProcessOutcome<GenerationRun> outcome =
                 context.run(new QuerySubprocess<>(new GenerateDomainQuery(
-                        compiledRun, pipeline, settings)));
+                        compiledRun, pipeline, settings, recovery)));
         outcome = RunCompleteness.decide(outcome, settings.requireComplete());
         if (outcome.result() != null) {
             RunPhaseSummaries.record(pipeline, RuleEffects.fromRun(

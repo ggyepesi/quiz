@@ -11,9 +11,38 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /** One Wikidata entity may intentionally play two modeled roles with different schemas. */
 class SameQidDifferentModeledTypesMappingTest {
+
+    @Test void aSubclassObjectRemainsVisibleThroughABaseClassReference() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("position", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Position");
+        project.rootClass(position);
+        project.addClass(withHolders);
+        project.addClass(holding);
+
+        WikidataDynamicObject office = object("Q1$holding", "OfficeHolding");
+        WikidataDynamicObject reachedPosition = object("Q2", "PositionWithHolders");
+        office.put("position", reachedPosition);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(reachedPosition, office)).get(1);
+            java.lang.reflect.Field field = mapped.getClass().getDeclaredField("position");
+
+            assertNotNull(field.get(mapped));
+            assertEquals("Position", field.get(mapped).getClass().getSimpleName(),
+                    "the flattened base field must receive its declared Java type");
+        }
+    }
 
     @Test void sameQidInDifferentClassesProducesTwoCorrectlyTypedInstances() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();

@@ -992,13 +992,59 @@ public class ModelBuilderFrame extends JFrame {
                         wikidata.explore.generation.CompiledPipelineRun.compile(
                                 wikidata.explore.generation.PipelineRequest
                                         .generateDomain(snapshot));
+                wikidata.explore.generation.GenerationRecoveryStore recovery =
+                        wikidata.explore.generation.GenerationRecoveryStore.in(
+                                storage, snapshot.name());
+                if (recovery.canResume(snapshot)) {
+                    Object[] choices = {"Resume materialization", "Run full generation",
+                            "Cancel"};
+                    int choice = JOptionPane.showOptionDialog(
+                            this,
+                            quiz.ui.Dialogs.wrapped(
+                            "A finalized graph from the interrupted run is saved at:\n"
+                                    + recovery.snapshotFile().getPath()
+                                    + "\n\nResume materialization loads that file and maps its "
+                                    + "objects. It makes no Wikidata or DBpedia requests.\n"
+                                    + "Run full generation repeats discovery, requests, "
+                                    + "construction, finalization and materialization."),
+                            "Resume generation", JOptionPane.DEFAULT_OPTION,
+                            JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+                    if (choice == 0) {
+                        process.ProcessWorkflowPipeline resumePipeline =
+                                new process.ProcessWorkflowPipeline(java.util.List.of(
+                                        new process.ProcessWorkflowPipeline.Phase(
+                                                wikidata.explore.generation
+                                                        .GenerateDomainPipeline.MATERIALIZE,
+                                                "Resume materialization",
+                                                "Load the finalized recovery graph from "
+                                                        + recovery.snapshotFile().getPath()
+                                                        + " and map it into instances.",
+                                                java.util.List.of(
+                                                        recovery.snapshotFile().getPath()))));
+                        startGenerationOperation(
+                                "Resume materialization",
+                                "Load " + recovery.snapshotFile().getPath()
+                                        + " and materialize its finalized objects without "
+                                        + "repeating remote generation.",
+                                wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
+                                new wikidata.explore.query.logical.RecoverFinalGraphQuery(
+                                        compiledRun, recovery),
+                                resumePipeline, snapshot,
+                                new wikidata.explore.generation.GenerationExecutionSettings(),
+                                false, false,
+                                scope -> scope.put("Recovery file",
+                                        recovery.snapshotFile().getPath()));
+                        return;
+                    }
+                    if (choice != 1) return;
+                }
                 process.ProcessWorkflowPipeline generationPipeline =
                         wikidata.explore.generation.GenerateDomainPipeline.configured(compiledRun);
                 var executionSettings =
                         new wikidata.explore.generation.GenerationExecutionSettings();
                 GenerateDomainProcess generation =
                         new GenerateDomainProcess(
-                                compiledRun, generationPipeline, executionSettings);
+                                compiledRun, generationPipeline, executionSettings, recovery);
                 java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
                         .map(model -> {
                             quiz.transform.DynamicViewable card =
@@ -2080,6 +2126,7 @@ public class ModelBuilderFrame extends JFrame {
         try {
             sourceWorkbench.applyEdits();
             ClassImportPlan plan = ClassImportPlan.of(source, projectModel, className);
+            java.util.Set<String> conflicts = plan.conflicts(ownership);
             DefaultListModel<String> dependencyModel = new DefaultListModel<>();
             plan.dependencyClassNames().forEach(dependencyModel::addElement);
             JList<String> dependencies = new JList<>(dependencyModel);
@@ -2116,12 +2163,12 @@ public class ModelBuilderFrame extends JFrame {
             // First, and outside the preview. Inside it the warning sat below a screenful
             // of description in a scrolling area, so the one question that loses work was
             // the one thing a reader had to go looking for.
-            if (!plan.conflicts().isEmpty()) {
+            if (!conflicts.isEmpty()) {
                 JLabel warning = new JLabel("<html><b>"
                         + (importing
                                 ? "Already here, so this import is refused: "
                                 : "Already here and REPLACED, losing what is here now: ")
-                        + String.join(", ", plan.conflicts())
+                        + String.join(", ", conflicts)
                         + "</b><br>"
                         + (importing
                                 ? "Rename or remove them first."
@@ -2148,7 +2195,7 @@ public class ModelBuilderFrame extends JFrame {
             int accepted = JOptionPane.showConfirmDialog(this, choices,
                     importing ? "Import class" : "Paste class",
                     JOptionPane.OK_CANCEL_OPTION,
-                    plan.conflicts().isEmpty()
+                    conflicts.isEmpty()
                             ? JOptionPane.PLAIN_MESSAGE : JOptionPane.WARNING_MESSAGE);
             if (accepted != JOptionPane.OK_OPTION) return;
 
@@ -3249,7 +3296,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
-                    dialogOwner, plan, "Save " + projectKind,
+                    dialogOwner, quiz.ui.Dialogs.wrapped(plan), "Save " + projectKind,
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (choice != JOptionPane.OK_OPTION) {
                 return false;
