@@ -255,6 +255,20 @@ class ClassImportPlanTest {
         assertTrue(model.entityKindRules().getFirst().isImported());
     }
 
+    @Test void refreshingAnImportDoesNotReportItsOwnDeclarationsAsCollisions() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel importer = emptyModel();
+        ClassImportPlan.of(source, importer, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.Ownership.IMPORT);
+
+        ClassImportPlan refresh = ClassImportPlan.of(source, importer, "Person");
+
+        assertTrue(refresh.conflicts(ClassImportPlan.Ownership.IMPORT).isEmpty(),
+                "classes and selections already imported from Oscars are refreshed");
+        assertFalse(refresh.conflicts().isEmpty(),
+                "copy still reports that those names are already present");
+    }
+
     /** A class this project wrote is owned by nobody else. */
     @Test void aClassAuthoredHereIsNotImported() {
         assertEquals("", oscarPeople().findClass("Person").importedFrom());

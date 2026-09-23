@@ -112,6 +112,34 @@ public final class ClassImportPlan {
     public List<EntityKindRule> kindRules() { return kindRules; }
     public Set<String> conflicts() { return conflicts; }
 
+    /**
+     * Conflicts for the requested operation. Re-importing a declaration already owned
+     * by the same model is a refresh, not a collision; copy still replaces by name.
+     */
+    public Set<String> conflicts(Ownership ownership) {
+        if (ownership != Ownership.IMPORT) return conflicts;
+        LinkedHashSet<String> refused = new LinkedHashSet<>();
+        for (GeneratedClassModel sourceClass : classes) {
+            GeneratedClassModel existing = target.findClass(sourceClass.className());
+            String owner = sourceClass.isImported()
+                    ? sourceClass.importedFrom() : source.name();
+            if (existing != null && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                refused.add(sourceClass.className());
+            }
+        }
+        for (Selection selection : selections) {
+            Selection existing = target.findSelection(selection.name());
+            String owner = selection.isImported()
+                    ? selection.importedFrom() : source.name();
+            if (existing != null && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                refused.add(selection.name());
+            }
+        }
+        return Set.copyOf(refused);
+    }
+
     public Set<String> dependencyClassNames() {
         LinkedHashSet<String> names = new LinkedHashSet<>();
         classes.stream().map(GeneratedClassModel::className)
