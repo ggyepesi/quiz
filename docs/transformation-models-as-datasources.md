@@ -50,9 +50,24 @@ PositionWithHolders extends Position
 no independent population source
 ```
 
-and reasonably—but incorrectly—uses all inherited `Position` members. Historical Positions
-still shows 357 `PositionWithHolders` instances because its snapshot retained the transformed
-objects. History imports only the declaration and consequently generates 1,317.
+and reasonably—but incorrectly—uses all inherited `Position` members. History imports only the
+declaration and consequently generates 1,317.
+
+Measured on 2026-09-23, every copy of this class's membership that exists, and the one place it
+ought to exist:
+
+```text
+historicalpositions.model.json          PositionWithHoldersPopulation — 357 bare QIDs
+data/wikidata/transform/
+  historical-positions.snapshot.json    PositionWithHolders — 357 typed objects, detached (#272)
+history.snapshot.json                   PositionWithHolders — 1,317, the whole base population
+historicalpositions.snapshot.json       does not exist (#273)
+```
+
+The owning project has no instance snapshot at all, so there is currently nothing for a
+materialized class to be materialized *by*. That is not a separate accident: a class whose
+population is an output nobody stored is exactly the state this design has to make fail
+loudly, and today it fails by quietly becoming 1,317 instead.
 
 The lost fact is not “these 357 QIDs form a selection.” The lost fact is:
 
@@ -62,6 +77,30 @@ The lost fact is not “these 357 QIDs form a selection.” The lost fact is:
 A population selection remains useful as an exact reusable identity set for graph starts and
 statement bounds. It does not replace a transformed class carrying schema, fields, references,
 lineage, and complete typed instances.
+
+### Which of the two a bound names
+
+Both constructs will then describe the same 357 offices, and they answer to different things:
+the selection is a frozen identity set, the transformed class is the output of a transformation
+that can be re-run. Today `History.OfficeHolding` bounds its object end by
+`PositionWithHoldersPopulation`. Once `PositionWithHolders` is a materialized class, re-running
+the transformation moves the class and leaves the selection where it was saved, and nothing
+notices the disagreement — two routes to one fact, which is a latent bug while they still agree.
+
+This has to be decided rather than left to whichever the editor offers first. The two
+candidates:
+
+- **A bound may name a transformed class**, and naming its class is what a bound over that
+  population means. The selection stays for populations that are authored directly, not derived.
+  Renaming or re-running the transformation reaches the bound, because the bound references the
+  class declaration.
+- **A bound always names a selection**, and a transformed class publishes one as an output.
+  Uniform for every bound, but the published selection is a second representation that must be
+  rewritten on every run, and a bound can still be pointed at a stale hand-made copy.
+
+The first keeps one discovery path for a derived population and is the recommendation. Either
+way, a selection whose members were produced by a transformation should say so, so that editing
+it by hand is visibly editing a copy.
 
 ## Class instance handling
 
@@ -262,6 +301,14 @@ Writes are atomic at the project-result level. A new class declaration cannot be
 without the snapshot containing its instances, and a failed transformation cannot replace the
 last complete output.
 
+Atomicity is per write, and says nothing about two writers. Both applications already write
+`model.json` (#244), this design adds `*.transformations.json` to the files they share, and a
+save loads the owning model, edits it and writes it back — so a session holding unsaved edits
+in the other application loses them silently, with the last writer winning. Every write to a
+file another application also owns states the signature it read and refuses when that signature
+has moved, the way a recovery graph refuses a model whose fingerprint has changed. A refusal
+that names the file and what changed is the minimum; merging is a later question.
+
 ## Import and ownership
 
 An imported materialized class remains owned by its transformation model:
@@ -345,7 +392,13 @@ failure inside a request list.
 3. **Persist one transformation model.** Support filter-to-subclass first, including named
    selections and deterministic output schema.
 4. **Add materialized class population mode.** Stop transformed subclasses inheriting base
-   membership; fail directly when their output is unavailable.
+   membership; fail directly when their output is unavailable. This step carries a data
+   migration and cannot land without it: the moment inheritance stops being the fallback,
+   the shipped History model is unrunnable, because `PositionWithHolders` has no materialized
+   output and Historical Positions has no snapshot to produce one from (#273).
+   `EveryShippedModelValidatesTest` holds that line and will fail until the shipped models and
+   their snapshots are updated in the same change — which is the regenerate-or-migrate decision
+   being made explicitly rather than discovered afterwards.
 5. **Add the datasource adapter.** Extend the population result to carry a typed object graph
    and merge it through the normal generation pool.
 6. **Resolve imported outputs.** Load a same-owner materialized class from its project snapshot;
@@ -370,6 +423,10 @@ failure inside a request list.
 - A used filter field, operation parameter, selection, or upstream population change does.
 - A failed/cancelled transformation leaves the previous complete output intact.
 - History discovers P39 subjects from exactly the 357 transformed positions.
+- Saving a working domain opened from a saved project writes that project's own files and
+  leaves no same-name export under `data/wikidata/transform/` (#272).
+- A write to a file the other application also owns refuses when the signature it read has
+  moved, naming the file and what changed, rather than overwriting (#244).
 
 ## Non-goals
 
