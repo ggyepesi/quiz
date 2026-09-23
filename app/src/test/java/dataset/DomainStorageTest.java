@@ -55,6 +55,10 @@ class DomainStorageTest {
         assertEquals("greekmyth.model.json", storage.modelFile("Greek Myth").getName());
         assertEquals("greekmyth.ruletree.json", storage.ruleTreeFile("Greek Myth").getName());
         assertEquals("greekmyth.snapshot.json", storage.snapshotFile("Greek Myth").getName());
+        assertEquals("greekmyth.generation-recovery.snapshot.json",
+                storage.generationRecoveryFile("Greek Myth").getName());
+        assertEquals("greekmyth.generation-recovery.json",
+                storage.generationRecoveryMetadataFile("Greek Myth").getName());
     }
 
     @Test void renamingMovesTheFolderAndReKeysTheFilesInsideIt(@TempDir Path root) throws Exception {
@@ -263,6 +267,25 @@ class DomainStorageTest {
         write(odd, "{\"name\":\"Hungarian Rulers\"}");
 
         assertEquals(odd, storage.modelFileOf("Hungarian Rulers"));
+    }
+
+    @Test void aWorkspaceRelativeRegistryPathDoesNotDependOnProcessCwd(
+            @TempDir Path workspace) throws Exception {
+        File root = workspace.resolve("data/wikidata").toFile();
+        DomainStorage storage = DomainStorage.in(root);
+        File model = workspace.resolve(
+                "data/wikidata/people/people.model.json").toFile();
+        write(model, "{\"name\":\"People\",\"projectKind\":\"MODEL\"}");
+        DatasetRegistry registry = DatasetRegistry.load(storage.registryFile());
+        DatasetRegistry.Dataset people = new DatasetRegistry.Dataset();
+        people.name("People");
+        people.key("people");
+        people.modelPath("data/wikidata/people/people.model.json");
+        registry.datasets().add(people);
+        registry.save(storage.registryFile());
+
+        assertEquals(model.getAbsoluteFile(), storage.modelFileOf("People"),
+                "the configured storage root locates a workspace-relative registry path");
     }
 
     private static void writeProject(DomainStorage storage, String name, String kind)

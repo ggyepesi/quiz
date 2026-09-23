@@ -68,6 +68,16 @@ public final class DomainStorage {
         return file(name, ".snapshot.json");
     }
 
+    /** Finalized graph kept only while generation still has to materialize it. */
+    public File generationRecoveryFile(String name) {
+        return file(name, ".generation-recovery.snapshot.json");
+    }
+
+    /** Model fingerprint and completeness carried beside the recovery graph. */
+    public File generationRecoveryMetadataFile(String name) {
+        return file(name, ".generation-recovery.json");
+    }
+
     public File registryFile() {
         return new File(root, "datasets.json");
     }
@@ -114,7 +124,7 @@ public final class DomainStorage {
     public File modelFileOf(String name) {
         DatasetRegistry.Dataset dataset = find(name);
         if (dataset != null && !dataset.modelPath().isBlank()) {
-            return new File(dataset.modelPath());
+            return registeredFile(dataset.modelPath());
         }
         // A draft has no registry entry. Locate it by the name stored in the model
         // rather than assuming the display name and folder key have never diverged.
@@ -136,6 +146,23 @@ public final class DomainStorage {
             if (candidate.equals(conventional)) return candidate;
         }
         return conventional;
+    }
+
+    /**
+     * A registry path is authored relative to the workspace, not to whichever module or
+     * launcher happens to be the process working directory. Locate that workspace anchor
+     * from this storage root so opening an import and running the same validation test ask
+     * for the same file.
+     */
+    private File registeredFile(String path) {
+        File recorded = new File(path);
+        if (recorded.isAbsolute() || recorded.isFile()) return recorded;
+        for (File anchor = root.getAbsoluteFile(); anchor != null;
+                anchor = anchor.getParentFile()) {
+            File candidate = new File(anchor, path);
+            if (candidate.isFile()) return candidate;
+        }
+        return recorded;
     }
 
     /**
