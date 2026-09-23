@@ -2,7 +2,6 @@ package wikidata.explore.model;
 
 import datasource.graph.GraphDiscoveryConfiguration;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,8 +21,18 @@ import java.util.List;
  * executor takes, so the run's name and the class's name cannot be two facts.
  */
 public final class GraphClassSource {
-    private GraphDiscoveryConfiguration.StartNode startNode;
-    private final List<GraphDiscoveryConfiguration.NextNode> nextNodes = new ArrayList<>();
+    /** The complete value, enumerated once so copy/equality cannot drift apart. */
+    private record Value(
+            GraphDiscoveryConfiguration.StartNode startNode,
+            List<GraphDiscoveryConfiguration.NextNode> nextNodes) {
+        private Value {
+            nextNodes = nextNodes == null ? List.of() : nextNodes.stream()
+                    .filter(java.util.Objects::nonNull).toList();
+        }
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Value value = new Value(null, List.of());
 
     public GraphClassSource() {}
 
@@ -33,14 +42,24 @@ public final class GraphClassSource {
         nextNodes(nextNodes);
     }
 
-    public GraphDiscoveryConfiguration.StartNode startNode() { return startNode; }
-    public void startNode(GraphDiscoveryConfiguration.StartNode value) { startNode = value; }
+    private GraphClassSource(Value value) {
+        this.value = value;
+    }
 
-    public List<GraphDiscoveryConfiguration.NextNode> nextNodes() { return nextNodes; }
-    public void nextNodes(List<GraphDiscoveryConfiguration.NextNode> value) {
-        nextNodes.clear();
-        if (value != null) value.stream().filter(java.util.Objects::nonNull)
-                .forEach(nextNodes::add);
+    @com.fasterxml.jackson.annotation.JsonProperty("startNode")
+    public GraphDiscoveryConfiguration.StartNode startNode() { return value.startNode(); }
+    @com.fasterxml.jackson.annotation.JsonProperty("startNode")
+    public void startNode(GraphDiscoveryConfiguration.StartNode startNode) {
+        value = new Value(startNode, value.nextNodes());
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("nextNodes")
+    public List<GraphDiscoveryConfiguration.NextNode> nextNodes() {
+        return value.nextNodes();
+    }
+    @com.fasterxml.jackson.annotation.JsonProperty("nextNodes")
+    public void nextNodes(List<GraphDiscoveryConfiguration.NextNode> nextNodes) {
+        value = new Value(value.startNode(), nextNodes);
     }
 
     /**
@@ -51,7 +70,7 @@ public final class GraphClassSource {
      * with it is a second discovery path.
      */
     public String outputClassName() {
-        return nextNodes.stream()
+        return nextNodes().stream()
                 .filter(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
                 .map(GraphDiscoveryConfiguration.NextNode::populationClass)
                 .reduce((first, second) -> second)
@@ -60,25 +79,23 @@ public final class GraphClassSource {
 
     /** Whether this source has everything a run needs. */
     public boolean configured() {
-        return startNode != null && !nextNodes.isEmpty() && !outputClassName().isBlank();
+        return startNode() != null && !nextNodes().isEmpty() && !outputClassName().isBlank();
     }
 
     /** The record the executor takes, named by the class that declares it. */
     public GraphDiscoveryConfiguration configurationFor(String className) {
-        return new GraphDiscoveryConfiguration(className, startNode, List.copyOf(nextNodes));
+        return new GraphDiscoveryConfiguration(className, startNode(), nextNodes());
     }
 
     public GraphClassSource copy() {
-        return new GraphClassSource(startNode, nextNodes);
+        return new GraphClassSource(value);
     }
 
     @Override public boolean equals(Object other) {
-        return other instanceof GraphClassSource source
-                && java.util.Objects.equals(startNode, source.startNode)
-                && java.util.Objects.equals(nextNodes, source.nextNodes);
+        return other instanceof GraphClassSource source && value.equals(source.value);
     }
 
     @Override public int hashCode() {
-        return java.util.Objects.hash(startNode, nextNodes);
+        return value.hashCode();
     }
 }
