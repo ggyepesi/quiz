@@ -273,16 +273,23 @@ public final class ModelStatementReifications {
         return reductions;
     }
 
-    /** An authored bound as something executable: a vocabulary becomes what it names. */
+    /** An authored bound as something executable: a selection becomes what it names. */
     private static EntityBound resolve(EntityBound bound, CompiledProjectModel project) {
         if (bound == null || bound.kind() != EntityBound.Kind.VOCABULARY) {
             return bound == null ? EntityBound.unbounded() : bound;
         }
         wikidata.explore.model.Selection selection = project == null ? null
                 : project.findSelection(bound.selectionName()).orElse(null);
-        return selection instanceof wikidata.explore.model.VocabularySelection vocabulary
-                ? bound.resolved(vocabulary.valueQids(), vocabulary.valueTypeQid())
-                : bound.resolved(List.of(), "");
+        if (selection instanceof wikidata.explore.model.VocabularySelection vocabulary) {
+            return bound.resolved(vocabulary.valueQids(), vocabulary.valueTypeQid());
+        }
+        if (selection instanceof wikidata.explore.model.PopulationSelection population) {
+            return bound.resolved(population.instanceQids(), "");
+        }
+        // Nothing answers to that name. The bound stays the reference the author wrote,
+        // so the loaders refuse it by name; resolving it to "no bound at all" would run
+        // the widest query the model can express on the strength of a typo.
+        return bound;
     }
 
     private static List<ReifyConstruct.Role> fallbackRoles(

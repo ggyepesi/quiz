@@ -11,6 +11,7 @@ import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.Selection;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
@@ -173,9 +174,9 @@ final class TripleEditor extends JPanel {
             clear();
             return;
         }
-        List<String> vocabularies = vocabularies(project);
-        subject.vocabularies(() -> vocabularies);
-        object.vocabularies(() -> vocabularies);
+        List<String> selections = selections(project);
+        subject.selections(() -> selections);
+        object.selections(() -> selections);
         object.descendantOptionForExplicitQids(false);
         subject.consequence(null);
         object.consequence(null);
@@ -515,11 +516,12 @@ final class TripleEditor extends JPanel {
         return names;
     }
 
-    private static List<String> vocabularies(GeneratedProjectModel project) {
+    private static List<String> selections(GeneratedProjectModel project) {
         List<String> names = new ArrayList<>();
         if (project == null) return names;
         for (Selection selection : project.selections()) {
-            if (selection instanceof VocabularySelection) names.add(selection.name());
+            if (selection instanceof VocabularySelection
+                    || selection instanceof PopulationSelection) names.add(selection.name());
         }
         return names;
     }

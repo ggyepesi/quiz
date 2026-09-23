@@ -130,9 +130,11 @@ class EntityBoundTest {
         assertEquals(EntityBound.instancesOf("Q9"),
                 EntityBound.vocabulary("Categories").resolved(List.of(), "Q9"),
                 "a vocabulary with only a type still bounds by that type");
-        assertEquals(EntityBound.unbounded(),
-                EntityBound.vocabulary("Missing").resolved(List.of(), ""),
-                "a vocabulary naming nothing bounds nothing — and says so");
+        EntityBound namesNothing = EntityBound.vocabulary("Missing");
+        assertEquals(namesNothing, namesNothing.resolved(List.of(), ""),
+                "a selection that supplies nothing leaves the bound the reference it "
+                        + "was: widening it to UNBOUNDED would answer a request for a "
+                        + "named set with a scan of everything");
     }
 
     /**

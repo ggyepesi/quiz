@@ -12,10 +12,13 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.model.PopulationSelection;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Slice 3 (production → Selection): a reify that names a VOCABULARY Selection
@@ -74,5 +77,68 @@ class SelectionValueDomainTest {
                 ModelStatementReifications.deriveOne(nom, compiled);
         assertEquals(List.of("Q900", "Q901"), r.load().objectBound().qids(),
                 "compiled path matches the editable path");
+    }
+
+    @Test void aPopulationSelectionIsTheStatementValueDomain() {
+        GeneratedProjectModel project = project();
+        PopulationSelection positions = new PopulationSelection("PositionPopulation");
+        positions.className("Position");
+        positions.instanceQids(List.of("Q11696", "Q12548"));
+        project.addSelection(positions);
+        GeneratedClassModel nomination = project.findClass("Nomination");
+        nomination.statementSource().objectBound(
+                EntityBound.vocabulary("PositionPopulation"));
+
+        assertEquals(List.of("Q11696", "Q12548"),
+                ModelStatementReifications.deriveOne(nomination, project)
+                        .load().objectBound().qids(),
+                "the authored population supplies the exact allowed statement objects");
+
+        CompiledProjectModel compiledProject = ProjectModelCompiler.compile(project);
+        CompiledClass compiled = compiledProject.findClass("Nomination").orElseThrow();
+        assertEquals(List.of("Q11696", "Q12548"),
+                ModelStatementReifications.deriveOne(
+                        compiled, compiledProject)
+                        .load().objectBound().qids(),
+                "the compiled acquisition path resolves the same population");
+    }
+
+    /**
+     * The widening this construct must never do. An end bounded by a selection asks for
+     * exactly the entities that selection names; if it names none, or nothing answers to
+     * the name at all, the request cannot be honoured — and honouring it as "no bound"
+     * would run the widest query the model can express, against all of Wikidata. The
+     * model is refused, by a message naming the selection that let it down.
+     */
+    @Test void aSelectionSupplyingNothingIsRefusedRatherThanWidened() {
+        for (String scenario : List.of("empty", "missing")) {
+            GeneratedProjectModel project = project();
+            if (scenario.equals("empty")) {
+                PopulationSelection empty = new PopulationSelection("PositionPopulation");
+                empty.className("OscarNominations");
+                empty.instanceQids(List.of());
+                project.addSelection(empty);
+            }
+            GeneratedClassModel nomination = project.classes().stream()
+                    .filter(c -> c.className().equals("Nomination")).findFirst().orElseThrow();
+            nomination.statementSource().objectBound(
+                    EntityBound.vocabulary("PositionPopulation"));
+
+            var problems = wikidata.explore.model.GeneratedProjectModelValidator
+                    .validate(project);
+
+            assertFalse(problems.valid(), scenario + ": the model cannot be generated");
+            assertTrue(problems.errors().stream().anyMatch(
+                            problem -> problem.message().contains("PositionPopulation")),
+                    scenario + ": the refusal names the selection — " + problems.errors());
+        }
+    }
+
+    /** The backstop under the validator: resolution never turns a reference into ANY. */
+    @Test void anUnresolvableSelectionStaysAReferenceInsteadOfBecomingUnbounded() {
+        EntityBound bound = EntityBound.vocabulary("PositionPopulation");
+
+        assertEquals(bound, bound.resolved(List.of(), ""),
+                "a selection supplying nothing leaves the bound the reference it was");
     }
 }

@@ -300,7 +300,7 @@ public final class PopulationSubjectLoader {
             }
             case UNBOUNDED -> { }
             case VOCABULARY -> throw new IllegalStateException(
-                    "Subject vocabulary bound '" + bound.selectionName()
+                    "Subject selection bound '" + bound.selectionName()
                             + "' reached the loader unresolved");
         }
     }
@@ -393,7 +393,7 @@ public final class PopulationSubjectLoader {
             }
             case EXPLICIT, UNBOUNDED -> { }
             case VOCABULARY -> throw new IllegalStateException(
-                    "Object vocabulary bound '" + objectBound.selectionName()
+                    "Object selection bound '" + objectBound.selectionName()
                             + "' reached the loader unresolved");
         }
         appendSubjectBound(q, subjects);

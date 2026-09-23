@@ -42,7 +42,7 @@ final class EntityEndEditor extends JPanel {
      * could then disagree about whether an object is a date.
      */
     private static final String THESE_ENTITIES = "These QIDs";
-    private static final String A_VOCABULARY = "A vocabulary";
+    private static final String A_SELECTION = "A saved selection";
     // Not "Instances of": the bound carries ANY property, so P279 (subclass of) is as
     // expressible as P31, and the old wording named one of them as though it were the
     // construct. It also took the FIRST typed QID and dropped P279 closure — three
@@ -52,7 +52,7 @@ final class EntityEndEditor extends JPanel {
 
     private final String end;
     private final JComboBox<String> mode = new JComboBox<>(
-            new String[] {ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO});
+            new String[] {ANY, THESE_ENTITIES, A_SELECTION, PROPERTY_INTO});
     private final JTextField qids = new JTextField(16);
     private final JTextField relationPid = new JTextField(6);
     private final JCheckBox includeDescendants =
@@ -199,7 +199,7 @@ final class EntityEndEditor extends JPanel {
 
     /** Every way an end can be bounded, for a kind that may use them all. */
     static List<String> allModes() {
-        return List.of(ANY, THESE_ENTITIES, A_VOCABULARY, PROPERTY_INTO);
+        return List.of(ANY, THESE_ENTITIES, A_SELECTION, PROPERTY_INTO);
     }
 
     /** Only an explicit set: what a membership triple's object end may be. */
@@ -207,12 +207,20 @@ final class EntityEndEditor extends JPanel {
         return List.of(THESE_ENTITIES);
     }
 
-    /** Offers the vocabularies this project has, keeping any current choice. */
-    void vocabularies(Supplier<List<String>> names) {
+    /** Offers the saved vocabularies and populations this project has. */
+    void selections(Supplier<List<String>> names) {
         String selected = selected(vocabulary);
         vocabulary.removeAllItems();
         for (String name : names.get()) vocabulary.addItem(name);
         if (!selected.isBlank()) select(vocabulary, selected);
+    }
+
+    List<String> offeredSelections() {
+        List<String> names = new ArrayList<>();
+        for (int i = 0; i < vocabulary.getItemCount(); i++) {
+            names.add(vocabulary.getItemAt(i));
+        }
+        return List.copyOf(names);
     }
 
     /**
@@ -238,7 +246,7 @@ final class EntityEndEditor extends JPanel {
         EntityBound shown = bound == null ? EntityBound.unbounded() : bound;
         mode.setSelectedItem(switch (shown.kind()) {
             case EXPLICIT -> THESE_ENTITIES;
-            case VOCABULARY -> A_VOCABULARY;
+            case VOCABULARY -> A_SELECTION;
             case RELATION -> PROPERTY_INTO;
             case UNBOUNDED -> ANY;
         });
@@ -255,7 +263,7 @@ final class EntityEndEditor extends JPanel {
     EntityBound bound() {
         String chosen = selected(mode);
         if (THESE_ENTITIES.equals(chosen)) return EntityBound.explicit(typedQids());
-        if (A_VOCABULARY.equals(chosen)) {
+        if (A_SELECTION.equals(chosen)) {
             return EntityBound.vocabulary(selected(vocabulary));
         }
         if (PROPERTY_INTO.equals(chosen)) {
@@ -282,7 +290,7 @@ final class EntityEndEditor extends JPanel {
     private void showValueForMode() {
         String chosen = selected(mode);
         String card = THESE_ENTITIES.equals(chosen) || PROPERTY_INTO.equals(chosen) ? "qids"
-                : A_VOCABULARY.equals(chosen) ? "vocabulary" : "none";
+                : A_SELECTION.equals(chosen) ? "vocabulary" : "none";
         ((CardLayout) value.getLayout()).show(value, card);
         boolean viaProperty = PROPERTY_INTO.equals(chosen);
         relationPid.setVisible(viaProperty);

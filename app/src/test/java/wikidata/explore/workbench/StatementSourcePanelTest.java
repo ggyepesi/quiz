@@ -26,6 +26,12 @@ class StatementSourcePanelTest {
         StatementClassSource source = new StatementClassSource("P39");
         source.valueSelectionName("Positions");
         holding.statementSource(source);
+        // The bound names a selection, so the project has to declare one: a reference
+        // to a selection nothing answers to is refused rather than silently widened.
+        wikidata.explore.model.VocabularySelection positions =
+                new wikidata.explore.model.VocabularySelection("Positions");
+        positions.valueQids(java.util.List.of("Q11696"));
+        project.addSelection(positions);
         var subject = holding.addField("source", FieldType.ENTITY,
                 wikidata.explore.model.FieldCardinality.SINGLE);
         subject.entityClassName("Person");
@@ -318,6 +324,31 @@ class StatementSourcePanelTest {
 
         assertEquals("OscarCategories",
                 nom.statementSource().objectBound().selectionName());
+    }
+
+    @Test void aPopulationSelectionIsOfferedAsAStatementBound() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        project.addClass(position);
+        wikidata.explore.model.PopulationSelection population =
+                new wikidata.explore.model.PopulationSelection("PositionPopulation");
+        population.className("Position");
+        population.instanceQids(java.util.List.of("Q11696", "Q12548"));
+        project.addSelection(population);
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.classKind(wikidata.explore.model.ClassKind.STATEMENT);
+        holding.statementSource(new StatementClassSource("P39"));
+        project.addClass(holding);
+
+        StatementSourcePanel panel = new StatementSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(holding);
+        java.util.List<EntityEndEditor> ends = new java.util.ArrayList<>();
+        collect(panel, EntityEndEditor.class, ends);
+
+        assertTrue(ends.stream().allMatch(end ->
+                        end.offeredSelections().contains("PositionPopulation")),
+                "the saved Position population is available on either statement end");
     }
 
     private static <T> void collect(

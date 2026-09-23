@@ -38,10 +38,11 @@ public record EntityBound(
         /** The entities carrying {@code relationPid} into {@link #qids()}. */
         RELATION,
         /**
-         * The members of a named VOCABULARY Selection.
+         * The members of a named Selection.
          *
-         * <p>A reference, not a copy. Resolving a vocabulary to its QIDs here would
-         * freeze them: editing the vocabulary would stop reaching the models bounded by
+         * <p>A reference, not a copy. The persisted name is retained for compatibility;
+         * it may resolve to either a VocabularySelection or a PopulationSelection.
+         * Resolving a selection to its QIDs here would freeze them: editing it would stop reaching the models bounded by
          * it, which is the same reason an import is a live reference rather than a copy.
          */
         VOCABULARY
@@ -130,7 +131,7 @@ public record EntityBound(
     }
 
     /**
-     * This bound with any vocabulary reference replaced by what it names.
+     * This bound with any selection reference replaced by what it names.
      *
      * <p>The one crossing from authored to executable, for BOTH ends. A vocabulary is a
      * reference the project resolves; everything downstream then sees a bound it can
@@ -138,7 +139,14 @@ public record EntityBound(
      * unchanged — a resolution must not quietly reshape a bound that needed none, which
      * is how a non-P31 relation and includeDescendants were being lost.
      *
-     * @param values the vocabulary's members, empty if it has none
+     * <p>A selection that supplies NOTHING — no members and no type — leaves the bound
+     * as the reference it was. It must not become {@link Kind#UNBOUNDED}: the author
+     * asked for exactly the entities a selection names, and widening that to every
+     * entity there is turns a narrow request into a scan of all of Wikidata. An
+     * unresolved reference reaching a loader is refused there by name, which is the
+     * answer this construct already had for a reference that never got resolved.
+     *
+     * @param values the selection's members, empty if it has none
      * @param valueTypeQid the vocabulary's own type, blank if it has none
      */
     public EntityBound resolved(List<String> values, String valueTypeQid) {
@@ -146,7 +154,7 @@ public record EntityBound(
         List<String> members = onlyQids(values);
         if (!members.isEmpty()) return explicit(members);
         String type = valueTypeQid == null ? "" : valueTypeQid.trim();
-        return type.isEmpty() ? unbounded() : instancesOf(type);
+        return type.isEmpty() ? this : instancesOf(type);
     }
 
     /** The same bound, rebound to a selection that has been renamed. */

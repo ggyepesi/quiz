@@ -684,6 +684,42 @@ public final class GeneratedProjectModelValidator {
     }
 
 
+    /**
+     * An end bounded by a named selection is bounded only while that selection names
+     * entities. The validator has to ask the project, because the bound itself carries a
+     * reference and cannot know what answers to it — and asking a weaker question here
+     * than execution asks is how "at least one end must be bounded" was satisfied by a
+     * bound that supplied nothing at all.
+     */
+    private static void validateSelectionBound(
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            String end,
+            EntityBound bound,
+            List<Problem> problems) {
+        if (bound == null || bound.kind() != EntityBound.Kind.VOCABULARY) return;
+        Selection selection = project.findSelection(bound.selectionName());
+        if (selection == null) {
+            problems.add(Problem.error(clazz.className(),
+                    "The " + end + " is bounded by selection '" + bound.selectionName()
+                            + "', which this project does not declare. Choose a saved "
+                            + "selection, or bound the " + end + " another way."));
+            return;
+        }
+        if (!project.acquiresInstances()) return;
+        boolean supplies = selection instanceof VocabularySelection vocabulary
+                ? !vocabulary.valueQids().isEmpty()
+                        || !clean(vocabulary.valueTypeQid()).isBlank()
+                : !(selection instanceof PopulationSelection population)
+                        || !population.instanceQids().isEmpty();
+        if (!supplies) {
+            problems.add(Problem.error(clazz.className(),
+                    "The " + end + " is bounded by selection '" + selection.name()
+                            + "', which names no entities, so it bounds nothing. Add "
+                            + "members to it before generating."));
+        }
+    }
+
     private static void validateStatementClass(
             GeneratedProjectModel project,
             GeneratedClassModel clazz,
@@ -698,6 +734,9 @@ public final class GeneratedProjectModelValidator {
                     "Statement property must be a valid PID."));
             return;
         }
+
+        validateSelectionBound(project, clazz, "subject", source.subjectBound(), problems);
+        validateSelectionBound(project, clazz, "object", source.objectBound(), problems);
 
         // The source class is OPTIONAL: blank means the reify DISCOVERS its subjects
         // (the entities carrying the property into the value domain). That needs a
