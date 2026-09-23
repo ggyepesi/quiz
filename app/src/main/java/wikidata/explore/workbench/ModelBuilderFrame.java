@@ -3329,7 +3329,9 @@ public class ModelBuilderFrame extends JFrame {
                 // Declare it into the persisted field graph so null fields and empty typed
                 // collections survive without shape placeholders. Do not use projectModel:
                 // the user may have explicitly accepted saving a stale run after editing it.
-                new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                WikidataDynamicObjectJsonStore instanceStore =
+                        new WikidataDynamicObjectJsonStore();
+                instanceStore.saveWithFieldGraph(
                         lastRun.dynamicObjects(), snapshotFile(),
                         lastRun.modelSnapshot(),
                         lastRun.loadedDeclarations(), graphDiscoveryLedger,
@@ -3346,7 +3348,7 @@ public class ModelBuilderFrame extends JFrame {
                 }
 
                 File counts = countsFile();
-                appendCountsRecord(counts, lastRun.dynamicObjects());
+                appendCountsRecord(counts, instanceStore.persistedMembers());
                 report.append("Counts:    ").append(counts.getPath()).append('\n');
             } else {
                 report.append("Instances: (none generated yet — run "
@@ -3392,9 +3394,10 @@ public class ModelBuilderFrame extends JFrame {
     // the stable "perfect" counts vs a drift. What it counts lives in DomainCounts; the
     // earlier rows in an existing file answered a different question, so the format note
     // is written once where the meaning changes rather than silently reinterpreting them.
-    private void appendCountsRecord(File file, List<WikidataDynamicObject> roots) {
+    private void appendCountsRecord(File file,
+            List<WikidataDynamicObjectJsonStore.PersistedMember> persisted) {
         String row = java.time.LocalDateTime.now().withNano(0)
-                + "\t" + DomainCounts.row(roots) + "\n";
+                + "\t" + DomainCounts.row(persisted) + "\n";
         try {
             boolean fresh = !file.isFile();
             boolean noted = !fresh && java.nio.file.Files

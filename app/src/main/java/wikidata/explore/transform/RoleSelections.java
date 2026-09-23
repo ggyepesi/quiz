@@ -63,10 +63,22 @@ public final class RoleSelections {
         return java.util.Collections.unmodifiableMap(result);
     }
 
-    /** Legacy class names that represented statement-field roles before ROLE selections. */
-    public static java.util.Set<String> legacyRoleClassNames(GeneratedProjectModel model) {
+    /**
+     * Class names used as contextual roles rather than final representations.
+     *
+     * <p>The statement-field inference predates explicit ROLE selections, but a role
+     * explicitly named by an entity-representation rule is a role regardless of its
+     * population declaration. Requiring it to look REFERENCED made an UNBOUNDED role
+     * such as History's PositionHolder get stamped back onto a Person after kind
+     * classification had deliberately retracted it.</p>
+     */
+    public static java.util.Set<String> roleClassNames(GeneratedProjectModel model) {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
         if (model == null) return names;
+        for (wikidata.explore.model.EntityRepresentationRule rule
+                : model.entityRepresentationRules()) {
+            if (rule != null && rule.isConfigured()) names.add(rule.roleClassName());
+        }
         for (GeneratedClassModel owner : model.classes()) {
             if (owner == null || !owner.reifiesStatements()) continue;
             for (GeneratedFieldModel field : owner.fields()) {

@@ -119,6 +119,34 @@ class ReferentClassStampTest {
                 "a later pass must not reintroduce the legacy role");
     }
 
+    @Test void doesNotPutAnExplicitRepresentationRoleBackWhateverItsPopulationMode() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new wikidata.explore.model.StatementClassSource(
+                "Position", "P39"));
+        entityField(holding, "source", "PositionHolder");
+        model.rootClass(holding);
+        GeneratedClassModel holder = new GeneratedClassModel("PositionHolder");
+        // UNBOUNDED is the saved History shape that exposed the bug: the contextual
+        // declaration, not a population heuristic, is what makes this a role.
+        model.addClass(holder);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+        model.representationClasses(holder, List.of("Person"));
+
+        WikidataDynamicObject charles =
+                new WikidataDynamicObject("Q71231", "Charles the Bald");
+        charles.type("Person");
+        WikidataDynamicObject office =
+                new WikidataDynamicObject("Q71231$office", "Charles the Bald");
+        office.type("OfficeHolding");
+        office.put("source", charles);
+
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(office, charles)));
+        assertEquals(java.util.Set.of("Person"), charles.directClassNames());
+    }
+
     @Test void sameEntityCanBelongToBothStatementFieldRoles() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nominationClass = new GeneratedClassModel("Nomination");

@@ -306,21 +306,24 @@ public final class ViewableJson {
     }
 
     private static Object rawFieldValue(Viewable owner, String name) {
-        // The ONE FieldSet bridge (#87): a dynamic property map or declared Java
-        // fields behind one interface — no `instanceof DynamicFields` fork.
-        return objectview.field.FieldSet.of(owner).read(name);
+        // The ONE shared access path, including contract fields that are declared but
+        // not stored. In particular @view:display reads getDisplayName(); reading the
+        // backing FieldSet directly returned null even though /api/fields offered the
+        // field, so a quiz using “Display label” produced zero questions.
+        return objectview.field.FieldAccess.getPathValues(
+                owner, objectview.field.FieldPath.parse(name));
     }
 
     /** Render-model for a single named field of {@code owner}, or null. */
     private static ViewableView.Field fieldOfSingle(Viewable owner, String fieldName) {
-        // One field through the ONE FieldSet bridge (#87) + the shared builder — no
-        // `instanceof DynamicFields` fork, no separate dynamic/declared builders.
+        // Resolve metadata from the FieldSet and the value through the shared path
+        // reader, then use the common builder. No dynamic/declared fork.
         objectview.field.FieldSet fs = objectview.field.FieldSet.of(owner);
         objectview.field.FieldRef fr = fs.field(fieldName);
         if (fr == null) {
             return null;
         }
-        Object value = fs.read(fieldName);
+        Object value = rawFieldValue(owner, fieldName);
         if (!ViewableAdapter.isValidQuizValue(value)) {
             return null;
         }
@@ -334,9 +337,9 @@ public final class ViewableJson {
      * value's string. Null if empty.
      */
     private static String stringValueSingle(Viewable owner, String fieldName) {
-        // Both backings resolve the same way — read through the ONE FieldSet bridge
-        // (#87), then stringify. No `instanceof DynamicFields` fork.
-        String s = asString(objectview.field.FieldSet.of(owner).read(fieldName));
+        // Both backings and synthetic contract fields resolve through the same path
+        // reader, then stringify. No dynamic/declared fork.
+        String s = asString(rawFieldValue(owner, fieldName));
         return s == null || s.isBlank() ? null : s;
     }
 

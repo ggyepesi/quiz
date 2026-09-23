@@ -227,6 +227,32 @@ class GeneratedViewableSourceTypeTest {
         }
     }
 
+    @Test void repeatedProjectionsRetainOneWikidataSourcePerQid() throws Exception {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+
+        var root = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        root.type("Person");
+        var firstReference = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        firstReference.type("Person");
+        var secondReference = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        secondReference.type("Person");
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(person)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(root, firstReference, secondReference));
+
+            assertEquals(1, mapped.size());
+            Object sources = objectview.field.FieldSet.of(mapped.getFirst())
+                    .read("wikidataSource");
+            assertEquals(java.util.List.of(new quiz.source.WikidataSource("Q71231")),
+                    sources);
+        }
+    }
+
     @Test void anExplicitAliasOptOutRemovesTheFieldAndDoesNotCopyCachedAliases()
             throws Exception {
         GeneratedClassModel country = new GeneratedClassModel("Country");

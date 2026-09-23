@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getTypes, getFields, getGroups, getPairing, assetUrl } from '$lib/api.js';
+  import { getDomains, getFields, getGroups, getPairing, assetUrl, typeLabel } from '$lib/api.js';
   import GroupTree from '$lib/GroupTree.svelte';
   import FieldPicker from '$lib/FieldPicker.svelte';
   import ImageCarousel from '$lib/ImageCarousel.svelte';
@@ -10,7 +10,7 @@
   const COLORS = ['#34a853', '#1a73e8', '#d93025', '#9334e6', '#e8710a', '#0891b2', '#b8860b'];
 
   // config
-  let types = $state([]);
+  let domains = $state([]);
   let type = $state('');
   let fields = $state([]);
   let groupTree = $state(null);
@@ -55,8 +55,9 @@
 
   onMount(async () => {
     try {
-      types = (await getTypes()) ?? [];
-      if (types.length) await selectType(types[0]);
+      domains = (await getDomains()) ?? [];
+      const first = domains.find((d) => d.types?.length);
+      if (first) await selectType(first.types[0]);
     } catch (e) {
       error = 'Cannot reach the API. Is ViewableServerMain running?';
     }
@@ -187,7 +188,11 @@
         <label>
           Dataset
           <select value={type} onchange={(e) => selectType(e.currentTarget.value)}>
-            {#each types as t}<option value={t}>{t}</option>{/each}
+            {#each domains as d}
+              <optgroup label={d.name}>
+                {#each d.types as t}<option value={t}>{typeLabel(t)}</option>{/each}
+              </optgroup>
+            {/each}
           </select>
         </label>
         {#if loadingFields}

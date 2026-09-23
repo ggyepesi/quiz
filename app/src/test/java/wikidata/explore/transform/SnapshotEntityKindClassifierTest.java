@@ -100,6 +100,28 @@ class SnapshotEntityKindClassifierTest {
                 "a settled kind must not trigger remote reclassification");
     }
 
+    @Test void remapRetractsAStaleRoleFromAnAlreadyRepresentedCarrier() {
+        GeneratedProjectModel model = model();
+        WikidataDynamicObject charles = entity("Q71231", "Person");
+        charles.assignClass("Nominee");
+        WikidataDynamicObject nomination = entity("N2", "Nomination");
+        nomination.put("nominee", charles);
+
+        SnapshotEntityKindClassifier.Result result =
+                SnapshotEntityKindClassifier.apply(model,
+                        List.of(nomination, charles), List.of(charles), null);
+
+        assertEquals(1, result.classified(), "cleaning saved role pollution is real work");
+        assertEquals(java.util.Set.of("Person"), charles.directClassNames());
+        assertEquals("Person", charles.typeName());
+        assertEquals(0, result.withoutStoredEvidence(),
+                "an existing representation does not need its evidence downloaded again");
+
+        assertEquals(0, SnapshotEntityKindClassifier.apply(model,
+                List.of(nomination, charles), List.of(charles), null).classified(),
+                "the repaired snapshot is a fixed point");
+    }
+
     @Test void evidenceProducerScopesKindCandidatesToItsRole() {
         GeneratedProjectModel model = model();
         GeneratedFieldModel forWork = model.rootClass().addField(

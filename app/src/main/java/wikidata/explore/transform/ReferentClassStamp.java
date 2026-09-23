@@ -83,7 +83,7 @@ public final class ReferentClassStamp {
         }
 
         int stamped = 0;
-        java.util.Set<String> legacyRoles = RoleSelections.legacyRoleClassNames(model);
+        java.util.Set<String> roleClasses = RoleSelections.roleClassNames(model);
         Map<WikidataDynamicObject, Boolean> originallyTyped = new IdentityHashMap<>();
         for (WikidataDynamicObject o : instances) {
             if (o == null || o.typeName() == null) {
@@ -94,7 +94,7 @@ public final class ReferentClassStamp {
                 continue;
             }
             for (Map.Entry<String, String> e : byField.entrySet()) {
-                stamped += stamp(o.get(e.getKey()), e.getValue(), legacyRoles,
+                stamped += stamp(o.get(e.getKey()), e.getValue(), roleClasses,
                         originallyTyped);
             }
         }
@@ -142,7 +142,7 @@ public final class ReferentClassStamp {
     }
 
     private static int stamp(Object value, String className,
-                             java.util.Set<String> legacyRoles,
+                             java.util.Set<String> roleClasses,
                              Map<WikidataDynamicObject, Boolean> originallyTyped) {
         if (value instanceof WikidataDynamicObject w) {
             if (w.qid() != null && WikidataIds.isQid(w.qid())) {
@@ -153,8 +153,8 @@ public final class ReferentClassStamp {
             // allow one entity to occupy several roles. After classification, putting a
             // role class back would let persistence choose it as the carrier again
             // (Person -> Nominee), undoing the classifier's conclusion.
-            if (w.hasTypeStamp() && legacyRoles.contains(className)
-                    && w.directClassNames().stream().anyMatch(c -> !legacyRoles.contains(c))) {
+            if (w.hasTypeStamp() && roleClasses.contains(className)
+                    && w.directClassNames().stream().anyMatch(c -> !roleClasses.contains(c))) {
                 return 0;
             }
             if (w.qid() != null && WikidataIds.isQid(w.qid())
@@ -167,7 +167,7 @@ public final class ReferentClassStamp {
         if (value instanceof List<?> list) {
             int n = 0;
             for (Object item : list) {
-                n += stamp(item, className, legacyRoles, originallyTyped);
+                n += stamp(item, className, roleClasses, originallyTyped);
             }
             return n;
         }

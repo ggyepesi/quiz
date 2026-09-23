@@ -8,6 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ViewableJsonSourceTest {
 
+    @Test void syntheticDisplayFieldIsReadableWhereTheFieldApiOffersIt() {
+        var person = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+
+        ViewableView.Field display = ViewableJson.fieldOf(
+                person, objectview.field.ViewableContractFieldSet.DISPLAY_KEY);
+
+        assertEquals("Charles the Bald", display.value());
+        assertEquals("Charles the Bald", ViewableJson.stringValue(
+                person, objectview.field.ViewableContractFieldSet.DISPLAY_KEY));
+    }
+
     @Test void statementTripleIsAnExpandableSourceField() {
         var nomination = new wikidata.explore.extract.WikidataDynamicObject(
                 "modeled-key", "Nomination");

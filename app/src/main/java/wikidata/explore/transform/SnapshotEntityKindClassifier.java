@@ -102,6 +102,14 @@ public final class SnapshotEntityKindClassifier {
         for (WikidataDynamicObject candidate : candidates.values()) {
             List<WikidataDynamicObject> copies =
                     copiesByQid.getOrDefault(candidate.qid(), List.of());
+            Set<String> settledRepresentations = admissions.stream()
+                    .filter(admission -> candidatePlan.eligible(candidate.qid(), admission))
+                    .map(EntityRepresentations.Admission::className)
+                    .filter(className -> copies.stream().anyMatch(copy ->
+                            copy.directClassNames().contains(className)))
+                    .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            boolean reconciled = reconcileRepresentedRoles(
+                    model, copies, settledRepresentations);
             boolean hasUnsettledKind = admissions.stream()
                     .filter(admission -> candidatePlan.eligible(candidate.qid(), admission))
                     .anyMatch(admission -> copies.stream().noneMatch(copy ->
@@ -110,12 +118,16 @@ public final class SnapshotEntityKindClassifier {
             // to prove it again can rewrite a production-site typeKey on every pass,
             // making an otherwise fixed graph look productive forever.
             if (!hasUnsettledKind) {
+                if (reconciled) {
+                    classified++;
+                    newlyClassified.addAll(copies);
+                }
                 continue;
             }
             Map<String, Set<String>> byPid = evidence.get(candidate.qid());
             boolean hasEvidence = false;
             Set<String> matchedClasses = new LinkedHashSet<>();
-            boolean changed = false;
+            boolean changed = reconciled;
             for (EntityRepresentations.Admission admission : admissions) {
                 if (!candidatePlan.eligible(candidate.qid(), admission)) continue;
                 var rule = admission.evidence();
@@ -173,6 +185,35 @@ public final class SnapshotEntityKindClassifier {
         }
         return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids,
                 List.copyOf(newlyClassified));
+    }
+
+    /**
+     * Repair a saved carrier that already has its final representation but also
+     * retained the contextual role it replaced. This must happen without asking for
+     * evidence again: Remap is specifically expected to clean an existing snapshot.
+     */
+    private static boolean reconcileRepresentedRoles(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> copies,
+            Set<String> representedClasses) {
+        if (representedClasses.isEmpty()) return false;
+        boolean changed = false;
+        Set<String> roles = EntityRepresentations.replacedRoleClasses(
+                model, representedClasses);
+        String carrier = EntityRepresentations.preferredClass(model, representedClasses);
+        for (WikidataDynamicObject copy : copies) {
+            for (String role : roles) {
+                if (copy.directClassNames().contains(role)) changed = true;
+                copy.removeClass(role);
+            }
+            if (carrier != null && (!carrier.equals(copy.typeName())
+                    || !carrier.equals(copy.typeKey()))) {
+                copy.type(carrier);
+                copy.typeKey(carrier);
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     private static Map<String, List<Producer>> producers(GeneratedProjectModel model) {

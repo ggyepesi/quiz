@@ -210,6 +210,24 @@ public class WikidataDynamicObjectJsonStore {
             datasource.graph.GraphDiscoveryState.EMPTY;
     private wikidata.explore.transform.SelfReferenceLedger pendingSelfReferences =
             wikidata.explore.transform.SelfReferenceLedger.EMPTY;
+    private List<PersistedMember> persistedMembers = List.of();
+
+    /**
+     * One entry per entity the last save actually wrote: its stored identity and the
+     * classes it claims once copies of the same ⟨type, qid⟩ have been absorbed.
+     *
+     * <p>A census taken by walking the pool instead describes objects that do not
+     * survive the write. Absorbing a copy drops a base class in favour of the concrete
+     * subtype it found, so History's counts row named Position 357 times beside a
+     * snapshot whose every office claimed only PositionWithHolders — a drift log
+     * reporting a class the file it accompanies does not contain.
+     */
+    public List<PersistedMember> persistedMembers() {
+        return persistedMembers;
+    }
+
+    /** A written entity's identity and claimed classes, for counting what was saved. */
+    public record PersistedMember(String typeKey, String id, List<String> classNames) { }
 
     public SnapshotFieldGraph saveWithGroupRootBindings(
             List<WikidataDynamicObject> memberRoots,
@@ -312,6 +330,12 @@ public class WikidataDynamicObjectJsonStore {
         for (List<WikidataDynamicObject> instances : byQid.values()) {
             snapshot.entities.addAll(toEntities(instances, snapshot.fieldGraph));
         }
+        List<PersistedMember> members = new ArrayList<>();
+        for (Entity entity : snapshot.entities) {
+            members.add(new PersistedMember(entity.typeKey, entity.id,
+                    List.copyOf(entity.classes)));
+        }
+        persistedMembers = List.copyOf(members);
 
         mapper.writeValue(file, snapshot);
         return snapshot.fieldGraph;

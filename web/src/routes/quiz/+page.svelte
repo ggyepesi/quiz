@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDomains, getFields, getGroups, getDimensions, getQuiz, assetUrl } from '$lib/api.js';
+  import { getDomains, getFields, getGroups, getDimensions, getQuiz, assetUrl, typeLabel } from '$lib/api.js';
   import GroupTree from '$lib/GroupTree.svelte';
   import FieldPicker from '$lib/FieldPicker.svelte';
   import ImageCarousel from '$lib/ImageCarousel.svelte';
@@ -175,7 +175,7 @@
           <select value={type} onchange={(e) => selectType(e.currentTarget.value)}>
             {#each domains as d}
               <optgroup label={d.name}>
-                {#each d.types as t}<option value={t}>{t}</option>{/each}
+                {#each d.types as t}<option value={t}>{typeLabel(t)}</option>{/each}
               </optgroup>
             {/each}
           </select>

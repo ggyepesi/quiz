@@ -26,11 +26,13 @@ public final class QuizGenerator {
 
     public static Quiz generate(
             ViewableStore store,
-            String type,
+            ViewableStore.Address address,
             String group,
             List<String> promptFields,
             List<String> answerFields,
             int n) throws Exception {
+
+        String type = address.toString();
 
         // A bare collection/ref path (e.g. "stars") defaults to showing its
         // members' names; once a child path under it is also selected (e.g.
@@ -41,7 +43,7 @@ public final class QuizGenerator {
         promptFields = withoutCoveredParents(promptFields);
         answerFields = withoutCoveredParents(answerFields);
 
-        Collection<Viewable> all = store.members(type, group);
+        Collection<Viewable> all = store.members(address, group);
         if (all == null || promptFields.isEmpty() || answerFields.isEmpty()) {
             return new Quiz(type, join(promptFields), join(answerFields), List.of());
         }

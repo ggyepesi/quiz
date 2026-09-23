@@ -2,9 +2,14 @@
 
 ## Status
 
-Design decision, not yet implemented. This document defines how a class produced in
-TransformApp becomes a reproducible, model-owned input to ModelBuilder without automating
-one desktop application from the other.
+Design decision, not yet implemented. This document defines how ModelBuilder generation,
+graph constraints, transformations, curation decisions, populations, and persistence become
+one reproducible project build without automating one desktop application from the other.
+
+The deliverable is not merely a transformed class that another editor can open. A complete
+saved project configuration must be executable headlessly, with no desktop UI present, and
+must produce the final servable domain output. ModelBuilder and TransformApp are editors and
+inspectors for that configuration; neither is the execution boundary.
 
 The worked case is:
 
@@ -12,8 +17,10 @@ The worked case is:
 Historical Positions.Position              1,317 generated instances
         ↓ saved TransformApp configuration
 Historical Positions.PositionWithHolders     357 materialized instances
-        ↓ imported into History
-History.OfficeHolding                      P39 statements into those 357 positions
+        ↓ saved graph expansion through P1366 (replaced by)
+Historical Positions.PositionWithHolders     357 seeds + accepted predecessors
+        ↓ consumed by History
+History.OfficeHolding                      P39 statements into the expanded positions
 ```
 
 It complements [Models and Domains](models-and-domains.md),
@@ -36,8 +43,10 @@ headless transformation executor runs it. ModelBuilder sees a named transformati
 through a datasource adapter and may therefore request the class through the same compiled
 source-plan boundary as any other population producer.
 
-The transformation configuration remains the single source of truth. The datasource recipe
-contains only a stable reference to one of its outputs.
+The transformation configuration remains the single source of truth for the transformation.
+The project build configuration is the single source of truth for when that transformation,
+generation, graph constraint, population publication, and final save run. A datasource recipe
+contains only a stable reference to one output; it does not duplicate either configuration.
 
 ## Why the current subclass representation is insufficient
 
@@ -234,7 +243,8 @@ construction, canonical-reference, quality, rendering, and snapshot paths remain
 
 ## Dependency execution
 
-Transformation models form a directed dependency graph with generation models:
+Transformation models form a directed dependency graph with generation models, graph
+constraints, curated decisions, populations, and saved outputs:
 
 ```text
 generation output → transformation input → transformation output → generation input
@@ -246,12 +256,17 @@ For the worked case:
 Historical Positions generation
   produces Position
 
-Historical Positions transformations
+Historical Positions transformation
   consumes Position
-  produces PositionWithHolders
+  produces the initial PositionWithHolders instances
+
+Historical Positions predecessor graph
+  consumes the initial materialized PositionWithHolders class instances
+  follows incoming P1366
+  produces reviewed additions to PositionWithHolders
 
 History generation
-  consumes PositionWithHolders
+  consumes the expanded PositionWithHolders
   produces OfficeHolding and related classes
 ```
 
@@ -267,8 +282,157 @@ For each node it may:
 5. continue downstream.
 
 An initial implementation may require an already saved upstream snapshot and stop when it is
-missing. Automatic upstream generation is a later orchestration step, not a reason to blur the
-transformation contract.
+missing. The target architecture, however, includes automatic upstream generation: a delivered
+configuration is complete only when the coordinator can build its final servable output from
+the declared external inputs and persisted curation data without opening ModelBuilder or
+TransformApp.
+
+## Project build as a domain-specific Makefile
+
+The saved build is a Makefile-style artifact dependency graph. Its common presentation may be
+an ordered operation list, but the stored meaning includes named inputs, outputs, prerequisites,
+and signatures so one output may feed several consumers and several inputs may converge on one
+output.
+
+Model declarations are not operations. A class configuration, graph constraint, transformation,
+or population declaration says *what*. An operation says *run, apply, publish, or save it*.
+Conceptually:
+
+```text
+BuildOperation
+  declarationId
+  kind
+  configurationReference
+  inputs[]
+  outputs[]
+  executionSettings
+  prerequisiteOperations[]
+```
+
+The first operation vocabulary should be small and explicit:
+
+```text
+GENERATE_PROJECT          configured class and statement generation
+RUN_GRAPH_CONSTRAINT     read-only graph acquisition and classification
+APPLY_GRAPH_DECISIONS    apply saved/default decisions to a named class population
+RUN_TRANSFORMATION       execute one compiled transformation output
+PUBLISH_POPULATION       publish an exact identity set from named class instances
+SAVE_PROJECT_RESULT      atomically persist model, instances, annotations, and lineage
+BUILD_DEPENDENCY         consume another owning project's compatible named output
+```
+
+Every elementary operation:
+
+1. accepts immutable compiled configuration and explicit typed inputs;
+2. runs without Swing, ModelBuilder, or TransformApp;
+3. returns typed outputs plus counts, lineage, warnings, failures, and completeness;
+4. reports through the shared process/progress/cancellation mechanism;
+5. identifies every file it reads or writes through `DomainStorage`;
+6. is deterministic apart from declared external datasource state; and
+7. can be tested and invoked independently of the coordinator.
+
+The coordinator is intentionally thin. It validates the graph, compares input/configuration
+signatures with saved output signatures, topologically executes missing or stale operations,
+reuses current outputs, and atomically publishes the requested target. It does not contain
+generation, graph, transformation, or curation semantics.
+
+### Build states
+
+Each output has one visible state:
+
+```text
+MISSING
+CURRENT
+STALE
+RUNNING
+AWAITING_DECISION
+FAILED
+INCOMPLETE
+```
+
+Staleness is explained as a dependency path, not as a generic dirty flag. For example:
+
+```text
+History servable output is stale
+  because PositionWithHoldersPopulation is stale
+  because PositionsWithHolders used holderCount from Position snapshot abc…
+  and the current Position snapshot is def…
+```
+
+### Curation without a UI dependency
+
+Review is data, not a UI operation. `RUN_GRAPH_CONSTRAINT` produces immutable candidate
+annotations. `APPLY_GRAPH_DECISIONS` consumes:
+
+- saved per-candidate decisions;
+- a configured default for newly accepted, rejected, and review candidates; and
+- an explicit policy for unresolved decisions.
+
+A fully unattended delivered build must choose a non-interactive policy or contain decisions
+for every candidate. A configuration that requires manual review remains valid, but a headless
+run stops in `AWAITING_DECISION`, writes no replacement final output, and names the exact graph
+result requiring decisions. A desktop application may edit those decisions and resume the same
+build; it does not perform a different kind of apply.
+
+This preserves explicit curation without making a window part of execution. It also makes a
+project's automation claim precise: “headlessly executable” means no operation can reach
+`AWAITING_DECISION` under its saved policies and inputs.
+
+### Historical Positions build
+
+The worked build is:
+
+```text
+generate-position
+  GENERATE_PROJECT
+  output: Position instances
+
+discover-position
+  RUN_GRAPH_CONSTRAINT PositionDiscoveryConstraint
+  requires: generate-position
+  output: Position candidate annotations
+
+apply-position
+  APPLY_GRAPH_DECISIONS
+  requires: discover-position
+  output: curated Position instances
+
+positions-with-holders
+  RUN_TRANSFORMATION PositionsWithHolders
+  requires: apply-position
+  output: initial PositionWithHolders instances
+
+discover-position-predecessors
+  RUN_GRAPH_CONSTRAINT PositionPredecessorConstraint
+  start: loaded class PositionWithHolders
+  edge: incoming P1366 (replaced by)
+  requires: positions-with-holders
+  output: predecessor candidate annotations
+
+apply-position-predecessors
+  APPLY_GRAPH_DECISIONS
+  requires: discover-position-predecessors
+  output: expanded PositionWithHolders instances
+
+publish-position-population
+  PUBLISH_POPULATION PositionWithHoldersPopulation
+  requires: apply-position-predecessors
+  output: final exact population
+
+save-historical-positions
+  SAVE_PROJECT_RESULT
+  requires: publish-position-population
+  output: compatible Historical Positions model, snapshot, annotations, and build manifest
+
+generate-history
+  BUILD_DEPENDENCY save-historical-positions
+  then GENERATE_PROJECT History
+  output: final servable History domain
+```
+
+The ordered form is convenient for editing; the named requirements are authoritative. They
+prevent the current manual ModelBuilder → TransformApp → ModelBuilder sequence from becoming
+hidden application state.
 
 ## Persistence and compatibility
 
@@ -291,6 +455,15 @@ Each materialized output records:
 - referenced selection/decision signatures;
 - output class declaration ID and schema signature;
 - execution time, counts, and completeness status.
+
+The project result additionally contains a build manifest recording:
+
+- build-configuration signature and requested target;
+- every executed or reused operation and its input/output signatures;
+- external datasource/cache identity where available;
+- saved curation policy and decision-set signatures;
+- exact produced filenames; and
+- whether the requested output is complete and servable.
 
 Compatibility is based on classified dependencies, not a single undifferentiated dirty bit.
 Changing an unrelated vocabulary does not stale the output. Changing an input field used by a
@@ -333,6 +506,7 @@ actions separately: **Import class** and **Import selection** are not substitute
 - saves named transformation configuration and explicit curation data;
 - runs and materializes an output when asked;
 - never owns a private execution path.
+- edits the same saved operation/configuration references used by headless builds.
 
 ### ModelBuilder
 
@@ -341,12 +515,23 @@ actions separately: **Import class** and **Import selection** are not substitute
 - invokes the shared build/execution services;
 - imports owner-controlled transformed classes read-only;
 - presents the same materialized instances through the normal multi-instance/ObjectView path.
+- edits and explains project build operations, but does not own their executor.
 
 Neither application launches or automates the other.
 
+### Build coordinator
+
+- loads and validates the saved project build graph;
+- compiles every referenced declaration before starting expensive work;
+- explains what will run, what will be reused, and every filename read or written;
+- executes operations headlessly in dependency order;
+- stops safely at an unresolved curation gate;
+- resumes from compatible completed outputs; and
+- publishes the final servable result only when all required outputs are complete.
+
 ## User-visible workflow
 
-For Historical Positions:
+For authoring Historical Positions:
 
 1. Generate and enrich `Position` in ModelBuilder.
 2. Open the project in TransformApp.
@@ -355,13 +540,18 @@ For Historical Positions:
 4. Save `HistoricalPositionsTransformations`.
 5. Run it: the confirmation names the input snapshot, transformation file, output class,
    output snapshot, and expected replacement behavior.
-6. Save Historical Positions.
-7. In History, import `PositionWithHolders` or reference it as a transformation datasource.
-8. Generate History. The run reports that 357 materialized positions were loaded from the
-   owning model before P39 subject discovery begins.
+6. Configure `PositionPredecessorConstraint` from the loaded `PositionWithHolders` class through
+   incoming `P1366`, save its application policy/decisions, and publish the expanded class as
+   `PositionWithHoldersPopulation`.
+7. Save the project build with final target `Historical Positions servable result`.
+8. In History, reference the owner-controlled transformed class and declare the Historical
+   Positions result as a build dependency.
+9. Request `History servable result`. The coordinator builds or reuses Historical Positions,
+   loads the expanded materialized position population, and then performs P39 discovery.
 
-A later **Build dependencies and generate** action may perform steps 1, 5, and 8 in dependency
-order. It is orchestration over the same operations, not a new pipeline.
+After authoring, a command-line entry point, service process, or **Build final result** action
+performs the complete build with no UI interaction. These are adapters over the same build
+coordinator, not separate pipelines.
 
 ## Failures must be direct
 
@@ -385,13 +575,16 @@ failure inside a request list.
 
 ## Implementation order
 
-1. **Describe the existing transform state.** Inventory every TransformApp operation and
-   identify which already has a serializable owner. Do not design a second filter/group model.
-2. **Extract compilation and execution.** Put a headless facade over the existing transform
-   engine and force preview/full runs through it.
-3. **Persist one transformation model.** Support filter-to-subclass first, including named
+1. **Define artifact and elementary-operation contracts.** Inventory existing generation,
+   graph, transform, population, apply, and save entry points. Reuse their current owners;
+   do not design parallel execution or filter/group models.
+2. **Extract transformation compilation and execution.** Put a headless facade over the
+   existing transform engine and force preview/full runs through it.
+3. **Extract graph application and curation data.** Keep graph acquisition read-only; make
+   decisions and population application a separate headless operation shared with the UI.
+4. **Persist one transformation model.** Support filter-to-subclass first, including named
    selections and deterministic output schema.
-4. **Add materialized class population mode.** Stop transformed subclasses inheriting base
+5. **Add materialized class population mode.** Stop transformed subclasses inheriting base
    membership; fail directly when their output is unavailable. This step carries a data
    migration and cannot land without it: the moment inheritance stops being the fallback,
    the shipped History model is unrunnable, because `PositionWithHolders` has no materialized
@@ -399,20 +592,26 @@ failure inside a request list.
    `EveryShippedModelValidatesTest` holds that line and will fail until the shipped models and
    their snapshots are updated in the same change — which is the regenerate-or-migrate decision
    being made explicitly rather than discovered afterwards.
-5. **Add the datasource adapter.** Extend the population result to carry a typed object graph
+6. **Make population publication and project save operations.** They accept named typed inputs,
+   use `DomainStorage`, report exact files, and write an atomic result plus build manifest.
+7. **Add the datasource adapter.** Extend the population result to carry a typed object graph
    and merge it through the normal generation pool.
-6. **Resolve imported outputs.** Load a same-owner materialized class from its project snapshot;
+8. **Resolve imported outputs.** Load a same-owner materialized class from its project snapshot;
    do not copy or locally regenerate it.
-7. **Add dependency orchestration.** Reuse compatible artifacts, then build stale/missing nodes
-   in topological order.
-8. **Apply classified change consequences.** Explain precisely which upstream generation,
+9. **Add the Make-style build configuration and coordinator.** First force the complete
+   Historical Positions → History build, then generalize the operation editor.
+10. **Apply classified change consequences.** Explain precisely which upstream generation,
    transformation, graph result, or downstream snapshot is affected.
+11. **Add headless delivery entry points.** A CLI/service invocation requests a named final
+   target and produces the same files as the desktop action without loading UI classes.
 
 ## Forcing tests
 
 - A transformed subclass with 357 saved members never expands to its base's 1,317 members.
 - Its base fields remain available on every transformed instance.
 - The saved transformation reruns headlessly with no Swing or TransformApp classes loaded.
+- Every elementary build operation runs with no Swing, ModelBuilder, or TransformApp classes
+  loaded and accepts only compiled configuration plus explicit inputs.
 - Preview and full execution compile the same plan; only scope differs.
 - A materialized output preserves transformed fields and references, not only QIDs.
 - Importing a materialized class loads the owner's instances and leaves it read-only.
@@ -422,7 +621,16 @@ failure inside a request list.
 - An unrelated model-only edit does not stale the transformation output.
 - A used filter field, operation parameter, selection, or upstream population change does.
 - A failed/cancelled transformation leaves the previous complete output intact.
-- History discovers P39 subjects from exactly the 357 transformed positions.
+- A failed/cancelled build leaves the previous complete servable project result intact.
+- A graph requiring unresolved decisions stops as `AWAITING_DECISION`; a graph with complete
+  saved decisions or a non-interactive policy applies identically with and without a UI.
+- A current operation is reused, while changing one used input reruns it and only its downstream
+  dependants.
+- A complete Historical Positions → History configuration builds the final servable History
+  output from a headless entry point without loading desktop application classes.
+- The build manifest names every operation executed/reused and every file produced.
+- History discovers P39 subjects from exactly the final published transformed-plus-predecessor
+  population, never from all 1,317 inherited `Position` members or only the 357 unexpanded seeds.
 - Saving a working domain opened from a saved project writes that project's own files and
   leaves no same-name export under `data/wikidata/transform/` (#272).
 - A write to a file the other application also owns refuses when the signature it read has
@@ -437,10 +645,16 @@ failure inside a request list.
 - Allowing the importer to mutate an owner model's transformation or instances.
 - Automatically inferring and saving a transformation from the current visual grouping without
   an explicit Save transformation action.
+- Making the coordinator reproduce business logic already owned by generation, graph, transform,
+  population, or persistence components.
+- Silently resolving a manual-review gate merely to make an unattended build finish.
 
 ## Done when
 
-`PositionWithHolders` has one definition, one executable transformation, and one 357-instance
-materialized result owned by Historical Positions. TransformApp previews and edits it;
-ModelBuilder can invoke it through the datasource plan; History consumes those same instances;
-and no context can reinterpret the class as all 1,317 inherited `Position` members.
+`PositionWithHolders` has one definition, one executable transformation producing its initial
+members, and an explicit predecessor-graph stage producing reviewed additions, all owned by
+Historical Positions. TransformApp and ModelBuilder edit and preview the same saved declarations;
+neither owns a private execution path. A headless build request produces the complete compatible
+Historical Positions result and then the final servable History output, recording exact lineage
+and files, without user interaction when its saved curation policies are complete. No context can
+reinterpret the class as all inherited `Position` members or silently bypass a review gate.

@@ -464,7 +464,8 @@ public class ViewableHttpServer {
         }
 
         try {
-            Quiz quiz = QuizGenerator.generate(store, type, group, csv(prompt), csv(ask), n);
+            Quiz quiz = QuizGenerator.generate(
+                    store, addressed(ex, type), group, csv(prompt), csv(ask), n);
             for (Quiz.Question q : quiz.questions()) {
                 for (ViewableView.Field f : q.prompts()) {
                     prewarm(f);
@@ -605,7 +606,8 @@ public class ViewableHttpServer {
         }
 
         try {
-            Pairing pairing = PairingGenerator.generate(store, type, group, csv(prompt), csv(ask), n);
+            Pairing pairing = PairingGenerator.generate(
+                    store, addressed(ex, type), group, csv(prompt), csv(ask), n);
             for (Pairing.Pair p : pairing.pairs()) {
                 for (ViewableView.Field f : p.prompts()) {
                     prewarm(f);

@@ -64,4 +64,16 @@ public final class WikidataSource extends ViewableAdapter implements Source {
     @Override public String getDisplayName() {
         return name == null || name.isBlank() ? qid : name;
     }
+
+    /**
+     * A source denotes the Wikidata entity, not the particular label with which that
+     * entity happened to arrive.  Generation may merge several projections of one
+     * entity; value equality lets collection merging retain one provenance link for
+     * that QID instead of one freshly constructed link per projection.
+     */
+    @Override public boolean equals(Object value) {
+        return value instanceof WikidataSource other && qid.equals(other.qid);
+    }
+
+    @Override public int hashCode() { return qid.hashCode(); }
 }

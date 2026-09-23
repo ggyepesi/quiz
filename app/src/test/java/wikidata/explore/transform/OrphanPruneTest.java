@@ -36,4 +36,22 @@ class OrphanPruneTest {
         assertFalse(orphans.contains(nominee));      // typed
         assertFalse(orphans.contains(refdUntyped));  // untyped but referenced
     }
+
+    @Test void aTypedCarrierDoesNotProtectAnUntypedShellWithTheSameQid() {
+        WikidataDynamicObject person =
+                new WikidataDynamicObject("Q71231", "Charles the Bald");
+        person.type("Person");
+        WikidataDynamicObject shell =
+                new WikidataDynamicObject("Q71231", "Charles the Bald");
+        WikidataDynamicObject holding =
+                new WikidataDynamicObject("Q71231$office", "Charles the Bald");
+        holding.type("OfficeHolding");
+        holding.put("source", person);
+
+        Set<WikidataDynamicObject> orphans = OrphanPrune.apply(
+                List.of(person, shell, holding), null);
+
+        assertEquals(Set.of(shell), orphans);
+        assertFalse(orphans.contains(person));
+    }
 }

@@ -252,6 +252,19 @@ construct per thing produced:
    repeating remote acquisition, and rejects it when the model fingerprint differs.
    *(Trigger: a local mapping/rendering defect would otherwise require another Wikidata run.)*
 
+22. **A delivered project is a headlessly executable artifact build.** ModelBuilder and
+   TransformApp edit and inspect declarations; neither application is the execution boundary.
+   Generation, graph run, graph-decision application, transformation, population publication
+   and project save are elementary operations accepting compiled configuration and explicit
+   typed inputs. A thin Make-style coordinator orders them by named artifact dependencies,
+   reuses compatible outputs, explains staleness, and publishes the final servable result
+   without loading UI classes. Review remains explicit persisted data: an unattended build
+   either has complete decisions/a declared non-interactive policy or stops at
+   `AWAITING_DECISION` without replacing the last complete output. See
+   `docs/transformation-models-as-datasources.md`.
+   *(Trigger: a complete domain can only be reproduced by manually switching applications or
+   by replaying UI actions.)*
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until

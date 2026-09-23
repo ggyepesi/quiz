@@ -7,7 +7,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
@@ -40,8 +39,11 @@ public final class OrphanPrune {
             return orphans;
         }
 
-        // Every QID referenced as a field value anywhere in the pool.
-        Set<String> referenced = new HashSet<>();
+        // The exact objects referenced as field values anywhere in the pool. A QID is
+        // not enough: Person/Q71231 and an obsolete untyped Q71231 shell are different
+        // carriers. A reference to the former must not keep the latter alive.
+        Set<WikidataDynamicObject> referenced =
+                Collections.newSetFromMap(new IdentityHashMap<>());
         for (WikidataDynamicObject o : pool) {
             if (o != null) {
                 for (Object v : o.dynamicFields().values()) {
@@ -53,7 +55,7 @@ public final class OrphanPrune {
         for (WikidataDynamicObject o : pool) {
             if (o != null && !o.hasTypeStamp()
                     && o.qid() != null && WikidataIds.isQid(o.qid())
-                    && !referenced.contains(o.qid())) {
+                    && !referenced.contains(o)) {
                 orphans.add(o);
             }
         }
@@ -66,9 +68,9 @@ public final class OrphanPrune {
         return orphans;
     }
 
-    private static void collectRefs(Object value, Set<String> into) {
-        if (value instanceof WikidataDynamicObject w && w.qid() != null) {
-            into.add(w.qid());
+    private static void collectRefs(Object value, Set<WikidataDynamicObject> into) {
+        if (value instanceof WikidataDynamicObject w) {
+            into.add(w);
         } else if (value instanceof Collection<?> col) {
             for (Object x : col) {
                 collectRefs(x, into);

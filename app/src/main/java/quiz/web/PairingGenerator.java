@@ -23,18 +23,20 @@ public final class PairingGenerator {
 
     public static Pairing generate(
             ViewableStore store,
-            String type,
+            ViewableStore.Address address,
             String group,
             List<String> promptFields,
             List<String> answerFields,
             int n) throws Exception {
+
+        String type = address.toString();
 
         // Drop a bare parent path when a child path under it is also selected
         // (e.g. "stars" + "stars.name" would render the names twice).
         promptFields = QuizGenerator.withoutCoveredParents(promptFields);
         answerFields = QuizGenerator.withoutCoveredParents(answerFields);
 
-        Collection<Viewable> all = store.members(type, group);
+        Collection<Viewable> all = store.members(address, group);
         if (all == null || promptFields.isEmpty() || answerFields.isEmpty()) {
             return new Pairing(type, join(promptFields), join(answerFields), List.of());
         }
