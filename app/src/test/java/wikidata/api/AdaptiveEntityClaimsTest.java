@@ -15,6 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AdaptiveEntityClaimsTest {
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    @Test void plannedEntityBatchCountUsesTheActualRequestLimit() {
+        assertEquals(0, WikidataApiClient.entityBatchCount(0));
+        assertEquals(1, WikidataApiClient.entityBatchCount(1));
+        assertEquals(1, WikidataApiClient.entityBatchCount(
+                WikidataApiClient.ENTITY_BATCH_SIZE));
+        assertEquals(2, WikidataApiClient.entityBatchCount(
+                WikidataApiClient.ENTITY_BATCH_SIZE + 1));
+        assertEquals(27, WikidataApiClient.entityBatchCount(1317));
+    }
+
     private static final class SplittingClient extends WikidataApiClient {
         private final List<Integer> attemptedSizes =
                 java.util.Collections.synchronizedList(new ArrayList<>());

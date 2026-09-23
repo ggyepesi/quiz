@@ -485,8 +485,11 @@ public final class ReferentFieldLoad {
 
         Map<String, WikidataApiClient.ApiEntity> details;
         Set<String> unavailable;
+        int plannedBatches = WikidataApiClient.entityBatchCount(qids.size());
         try (GenerationLog.Group group = log.group("Load " + declaredPidCount
                 + " referent field(s) on " + className + " for " + qids.size()
+                + " entities in " + plannedBatches + " batch request(s) of up to "
+                + WikidataApiClient.ENTITY_BATCH_SIZE
                 + " entities; retain " + pids.size() + " planned property slice(s) ("
                 + String.join(", ", pids) + ")")) {
             // Partial, not all-or-nothing: what the reachable batches answered is real

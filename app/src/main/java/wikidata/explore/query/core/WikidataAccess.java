@@ -115,6 +115,68 @@ public final class WikidataAccess implements CancellableWork {
         return new RequestLogs(scopes);
     }
 
+    /** Routes transport requests into collapsible generation-log entries. */
+    public static RequestLogs logRequests(
+            QueryContext context, wikidata.explore.extract.GenerationLog log) {
+        return logRequests(context, structuredRequestLog(null, log));
+    }
+
+    /** A transport-log sink that keeps raw SPARQL/URLs inside the request entry. */
+    public static java.util.function.Consumer<String> structuredRequestLog(
+            Datasource datasource, wikidata.explore.extract.GenerationLog log) {
+        return new StructuredRequestLog(datasource, log);
+    }
+
+    private static final class StructuredRequestLog
+            implements java.util.function.Consumer<String> {
+        private static final java.util.regex.Pattern EVENT = java.util.regex.Pattern.compile(
+                "^(?:\\[([^]]+)])?\\s*\\[(SPARQL|API)\\s+(\\d+)]\\s+"
+                        + "(START|GET|OK|ERROR|CANCELLED)(?:\\s*\\n|\\s+)?(.*)$",
+                java.util.regex.Pattern.DOTALL);
+        private final Datasource fallback;
+        private final wikidata.explore.extract.GenerationLog log;
+        private final java.util.Map<String, wikidata.explore.extract.GenerationLog.Running>
+                running = new java.util.concurrent.ConcurrentHashMap<>();
+
+        private StructuredRequestLog(
+                Datasource fallback, wikidata.explore.extract.GenerationLog log) {
+            this.fallback = fallback;
+            this.log = log == null ? wikidata.explore.extract.GenerationLog.NOOP : log;
+        }
+
+        @Override public void accept(String text) {
+            String body = text == null ? "" : text.strip();
+            if (body.isEmpty()) return;
+            java.util.regex.Matcher event = EVENT.matcher(body);
+            if (!event.matches()) {
+                log.message(body + "\n");
+                return;
+            }
+            String source = event.group(1);
+            if ((source == null || source.isBlank()) && fallback != null) {
+                source = fallback.name();
+            }
+            String key = (source == null ? "" : source) + ":" + event.group(2)
+                    + ":" + event.group(3);
+            String title = (source == null || source.isBlank() ? "" : "[" + source + "] ")
+                    + event.group(2) + " " + event.group(3);
+            String status = event.group(4);
+            String detail = event.group(5) == null ? "" : event.group(5).strip();
+            if ("START".equals(status) || "GET".equals(status)) {
+                running.put(key, log.subqueryStarted(title, detail));
+                return;
+            }
+            wikidata.explore.extract.GenerationLog.Running request = running.remove(key);
+            if (request == null) {
+                log.subquery(title, "", status + (detail.isBlank() ? "" : " " + detail));
+            } else if ("OK".equals(status)) {
+                request.done(detail.isBlank() ? "OK" : detail);
+            } else {
+                request.failed(status + (detail.isBlank() ? "" : " " + detail));
+            }
+        }
+    }
+
     /**
      * Puts the endpoint's name on the line that carries the event.
      *

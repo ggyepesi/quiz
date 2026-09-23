@@ -44,6 +44,13 @@ public final class ProcessRunner {
                     ? ProcessOutcome.cancelled(null, "Cancelled")
                     : ProcessOutcome.failed(error);
         }
+        // The UI keeps the concise explanation. stderr keeps the complete diagnostic
+        // once at the root boundary, including causes and stack frames; a child process
+        // may turn an exception into an outcome, so relying only on the catch above loses
+        // exactly the late failures that are hardest to reproduce.
+        if (outcome.error() != null) {
+            outcome.error().printStackTrace(System.err);
+        }
         recorder.finishProcess(ProcessContext.logStatus(outcome.status()),
                 outcome.summary(), outcome.error());
         return outcome;

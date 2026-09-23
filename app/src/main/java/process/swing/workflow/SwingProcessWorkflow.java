@@ -39,8 +39,18 @@ public final class SwingProcessWorkflow {
     static String failureMessage(Throwable failure) {
         if (failure == null) return "Process failed";
         String message = failure.getMessage();
-        return message == null || message.isBlank()
-                ? failure.getClass().getSimpleName() : message;
+        String type = failure.getClass().getSimpleName();
+        if (message == null || message.isBlank()) return type;
+        // A linkage failure's message is commonly only a JVM class path. Showing that
+        // path under a default OK button made a failed generation look successful and
+        // hid the one fact that explains why no result exists.
+        return failure instanceof LinkageError ? type + ": " + message : message;
+    }
+
+    static String failedOutcomeMessage(ProcessOutcome<?> outcome) {
+        String detail = outcome != null && outcome.error() != null
+                ? failureMessage(outcome.error()) : "No result was produced.";
+        return "Process failed. No result was produced.\n\n" + detail;
     }
 
     /** Index after framework-owned tabs have been inserted before action tabs. */
@@ -175,9 +185,13 @@ public final class SwingProcessWorkflow {
 
         private void presentResults(ProcessOutcome<R> outcome) {
             if (outcome == null || outcome.result() == null) {
-                String message = outcome != null && outcome.error() != null
-                        ? failureMessage(outcome.error()) : "No result was produced.";
-                JOptionPane.showMessageDialog(owner, message);
+                boolean failed = outcome == null || outcome.status() == ProcessStatus.FAILED;
+                String message = failed ? failedOutcomeMessage(outcome)
+                        : outcome.error() != null ? failureMessage(outcome.error())
+                        : "No result was produced.";
+                JOptionPane.showMessageDialog(dialog, message,
+                        failed ? "Process failed" : "No result",
+                        failed ? JOptionPane.ERROR_MESSAGE : JOptionPane.WARNING_MESSAGE);
                 dialog.dispose();
                 return;
             }

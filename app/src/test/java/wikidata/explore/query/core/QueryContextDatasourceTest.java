@@ -87,6 +87,54 @@ class QueryContextDatasourceTest {
         }
     }
 
+    @Test void generationLogsKeepRawRequestsInsideCollapsedRequestEntries() {
+        List<String> events = new ArrayList<>();
+        wikidata.explore.extract.GenerationLog log =
+                new wikidata.explore.extract.GenerationLog() {
+                    @Override public void message(String text) {
+                        events.add("MESSAGE " + text);
+                    }
+                    @Override public void subquery(String title, String request,
+                            String summary) {
+                        events.add(title + " REQUEST=" + request + " RESULT=" + summary);
+                    }
+                };
+        java.util.function.Consumer<String> sink = WikidataAccess.structuredRequestLog(
+                Datasource.WIKIDATA, log);
+
+        sink.accept("[SPARQL 4] START\nSELECT ?s WHERE { }");
+        sink.accept("[SPARQL 4] OK rows=2 timeMs=7");
+
+        assertEquals(List.of(
+                "[WIKIDATA] SPARQL 4 REQUEST=SELECT ?s WHERE { } "
+                        + "RESULT=rows=2 timeMs=7"), events,
+                "the request remains inspectable without becoming raw top-level text");
+    }
+
+    @Test void actionApiUrlsBecomeStructuredRequestsRatherThanMessages() {
+        List<String> events = new ArrayList<>();
+        wikidata.explore.extract.GenerationLog log =
+                new wikidata.explore.extract.GenerationLog() {
+                    @Override public void message(String text) {
+                        events.add("MESSAGE " + text);
+                    }
+                    @Override public void subquery(String title, String request,
+                            String summary) {
+                        events.add(title + " REQUEST=" + request + " RESULT=" + summary);
+                    }
+                };
+        java.util.function.Consumer<String> sink = WikidataAccess.structuredRequestLog(
+                Datasource.WIKIDATA, log);
+
+        sink.accept("[API 3] GET https://www.wikidata.org/w/api.php?ids=Q1%7CQ2");
+        sink.accept("[API 3] OK headersMs=40 bodyMs=12 status=200");
+
+        assertEquals(List.of(
+                "[WIKIDATA] API 3 REQUEST=https://www.wikidata.org/w/api.php?ids=Q1%7CQ2 "
+                        + "RESULT=headersMs=40 bodyMs=12 status=200"), events,
+                "the URL is the request field, where the log renders a real link");
+    }
+
     /** Records the sink it is given; {@code log} is how a run addresses a client. */
     private static final class RecordingClient extends WikidataSparqlClient {
         private java.util.function.Consumer<String> sink;

@@ -113,7 +113,7 @@ public class GenerateInstancesQuery
                     // Every endpoint this run can reach reports its requests, and their
                     // timings, into THIS run's log.
                     try (WikidataAccess.RequestLogs requestLogs =
-                            WikidataAccess.logRequests(context, genLog::message)) {
+                            WikidataAccess.logRequests(context, genLog)) {
 
                     genLog.message(executionSettings.resolvedDescription());
                     wikidata.api.WikidataApiClient entityApi =
@@ -122,7 +122,8 @@ public class GenerateInstancesQuery
                                     .facts(executionSettings.newFactStore())
                                     .entityConcurrency(executionSettings.concurrency())
                                     .cancellation(context.cancellation());
-                    entityApi.log(genLog::message);
+                    entityApi.log(WikidataAccess.structuredRequestLog(
+                            Datasource.WIKIDATA, genLog));
 
                     GenerationRun run =
                             pipeline.fullRun(

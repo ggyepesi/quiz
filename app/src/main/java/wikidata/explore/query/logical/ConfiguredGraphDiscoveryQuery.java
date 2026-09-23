@@ -119,7 +119,7 @@ public final class ConfiguredGraphDiscoveryQuery
             api.cancellation(context.cancellation());
             var log = StepGenerationLog.of(context, step);
             try (WikidataAccess.RequestLogs ignored =
-                         WikidataAccess.logRequests(context, log::message)) {
+                         WikidataAccess.logRequests(context, log)) {
                 var acquisition = new WikidataGraphAdjacencyAcquisition(api,
                         access.sparql(Datasource.WIKIDATA), log, context.cancellation());
                 GraphStoreProvider provider = context.optional(GraphStoreProvider.class);

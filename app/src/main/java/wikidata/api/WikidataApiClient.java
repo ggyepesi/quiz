@@ -40,6 +40,15 @@ import java.util.stream.Collectors;
  */
 public class WikidataApiClient {
 
+    /** Maximum entity ids carried by one wbgetentities request. */
+    public static final int ENTITY_BATCH_SIZE = 50;
+
+    /** Number of wbgetentities requests planned for {@code entityCount} ids. */
+    public static int entityBatchCount(int entityCount) {
+        if (entityCount <= 0) return 0;
+        return (entityCount + ENTITY_BATCH_SIZE - 1) / ENTITY_BATCH_SIZE;
+    }
+
     /**
      * What an entity request asks for beyond claims, for the call in progress.
      *
@@ -748,9 +757,9 @@ public class WikidataApiClient {
         List<String> clean = qids.stream()
                 .filter(q -> q != null && WikidataIds.isQid(q)).distinct().toList();
         List<WorkUnit<Map<String, ApiEntity>>> roots = new ArrayList<>();
-        for (int i = 0; i < clean.size(); i += 50) {
+        for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(entityUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + 50, clean.size()))), pids, metadata));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids, metadata));
         }
         return roots;
     }
@@ -796,9 +805,9 @@ public class WikidataApiClient {
             }
         }
         List<WorkUnit<Map<String, List<String>>>> roots = new ArrayList<>();
-        for (int i = 0; i < missing.size(); i += 50) {
+        for (int i = 0; i < missing.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(aliasUnit(List.copyOf(missing.subList(
-                    i, Math.min(i + 50, missing.size())))));
+                    i, Math.min(i + ENTITY_BATCH_SIZE, missing.size())))));
         }
         new BatchExecutor<Map<String, List<String>>>(
                 BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
@@ -901,9 +910,9 @@ public class WikidataApiClient {
         List<String> clean = entityQids.stream()
                 .filter(q -> q != null && WikidataIds.isQid(q)).distinct().toList();
         List<WorkUnit<Map<String, List<ApiStatement>>>> roots = new ArrayList<>();
-        for (int i = 0; i < clean.size(); i += 50) {
+        for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + 50, clean.size()))), statementPid, quals));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), statementPid, quals));
         }
         BatchExecutor<Map<String, List<ApiStatement>>> executor = new BatchExecutor<>(
                 BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
@@ -934,9 +943,9 @@ public class WikidataApiClient {
                 .filter(WikidataIds::isQid).distinct().toList();
         List<WorkUnit<Map<String, Map<String, List<ApiStatement>>>>> roots =
                 new ArrayList<>();
-        for (int i = 0; i < clean.size(); i += 50) {
+        for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + 50, clean.size()))), pids));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids));
         }
         BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
@@ -1007,9 +1016,9 @@ public class WikidataApiClient {
                 .filter(WikidataIds::isQid).distinct().toList();
         List<WorkUnit<Map<String, Map<String, List<ApiStatement>>>>> roots =
                 new ArrayList<>();
-        for (int i = 0; i < clean.size(); i += 50) {
+        for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + 50, clean.size()))), pids));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids));
         }
         BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),

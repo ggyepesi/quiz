@@ -92,7 +92,7 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                             StepGenerationLog.of(context, step, "enrich");
                     try (wikidata.explore.query.core.WikidataAccess.RequestLogs requestLogs =
                             wikidata.explore.query.core.WikidataAccess.logRequests(
-                                    context, genLog::message)) {
+                                    context, genLog)) {
                     genLog.message(executionSettings.resolvedDescription());
                     wikidata.api.WikidataApiClient entityApi =
                             new wikidata.api.WikidataApiClient(
@@ -102,7 +102,9 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                                     .cancellation(context.cancellation());
                     // The run owns this action-API client, so it is not among the
                     // process-bound SPARQL clients logRequests(...) can attach.
-                    entityApi.log(genLog::message);
+                    entityApi.log(wikidata.explore.query.core.WikidataAccess
+                            .structuredRequestLog(
+                                    wikidata.explore.query.core.Datasource.WIKIDATA, genLog));
 
                     // Also teed to stdout: a fetch over thousands of entities is
                     // I/O-bound — near-zero CPU for minutes — so the process itself
