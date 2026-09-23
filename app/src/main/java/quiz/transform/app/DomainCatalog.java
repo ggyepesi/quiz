@@ -64,6 +64,11 @@ public final class DomainCatalog {
             consumed.add(d);
         }
 
+        out.addAll(unregisteredProjects(dataset.DomainStorage.inDefaultLocation(),
+                out.stream().map(DomainEntry::name)
+                        .collect(java.util.stream.Collectors.toSet()),
+                DomainSaver::destination));
+
         // Re-wired: list the hand-written domains as LIVE ReflectionDomains again, so each can
         // be opened on the current code and re-exported via "Save as domain" — producing fresh
         // snapshots that match the live field model (no stale-schema translation).
@@ -136,5 +141,39 @@ public final class DomainCatalog {
                     project, pool, roleSelections);
         }
         return new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), roleSelections);
+    }
+
+    /**
+     * The saved projects the registry does not list.
+     *
+     * <p>A project is model-backed because its files say so, not because a registry row
+     * was written. {@link dataset.DomainStorage#modelBackedNames()} already answers that
+     * from the registry AND the models on disk; this catalog was asking the registry
+     * alone. Historical Positions was therefore invisible here while sitting in
+     * {@code data/wikidata/historicalpositions/}, so the only way to open it was through
+     * a detached snapshot — and a working set opened that way has no owning project, so
+     * saving it wrote another detached export instead of the project's own files.
+     *
+     * <p>A project whose own instances were discarded is still listed, opened on the
+     * latest same-named transform export, so an explicit Save can consolidate it back
+     * into the project it belongs to.
+     */
+    static List<DomainEntry> unregisteredProjects(
+            dataset.DomainStorage storage, java.util.Set<String> already,
+            java.util.function.Function<String, File> exportFor) {
+        List<DomainEntry> out = new ArrayList<>();
+        for (String name : storage.modelBackedNames()) {
+            if (already.contains(name)) continue;
+            File model = storage.modelFileOf(name);
+            if (model == null || !model.isFile()) continue;
+            File own = storage.snapshotFile(name);
+            File snapshot = own.isFile() ? own : exportFor.apply(name);
+            if (!snapshot.isFile()) continue;
+            out.add(new DomainEntry(name, "generated",
+                    "Load domain \"" + name + "\", its instances and saved model from "
+                            + snapshot.getPath() + " and " + model.getPath() + ".",
+                    () -> open(snapshot, model)));
+        }
+        return out;
     }
 }
