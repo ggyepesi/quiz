@@ -5,6 +5,11 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.util.List;
 
+import wikidata.explore.model.ClassKind;
+import wikidata.explore.model.EntityBound;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,6 +42,54 @@ class SnapshotInvalidationGuardTest {
         // a field.
         assertFalse(state(false, "historicalpositions.snapshot.json").needsAttention(),
                 "the model has not moved, so the instances still describe it");
+    }
+
+    @Test void aNewSourceClassCanBecomeGraphWithoutDiscardingExistingInstances() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+        GeneratedClassModel replacementExpansion =
+                new GeneratedClassModel("PositionReplacementExpansion");
+        edited.addClass(replacementExpansion);
+
+        replacementExpansion.classKind(ClassKind.GRAPH);
+
+        assertFalse(SnapshotInvalidationGuard.generationDiffers(baseline, edited),
+                "the new graph class owns no object in the existing snapshot");
+        assertTrue(edited.classes().contains(replacementExpansion),
+                "settling the kind must not make the declaration vanish");
+    }
+
+    @Test void addingAClassWhileAGraphClassIsSelectedDoesNotDiscardInstances() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+        GeneratedClassModel graph = new GeneratedClassModel("PositionRelevance");
+        graph.classKind(ClassKind.GRAPH);
+        edited.addClass(graph);
+        // This is the state after the graph row was selected and Add class was used.
+        GeneratedClassModel added = new GeneratedClassModel("PositionReplacementExpansion");
+        edited.addClass(added);
+
+        assertFalse(SnapshotInvalidationGuard.generationDiffers(baseline, edited));
+        assertTrue(edited.classes().containsAll(List.of(graph, added)));
+    }
+
+    @Test void changingAnExistingClassStillRequiresRegeneration() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+
+        edited.rootClass().membership(EntityBound.relation(
+                "P31", List.of("Q189290"), true));
+
+        assertTrue(SnapshotInvalidationGuard.generationDiffers(baseline, edited));
+    }
+
+    private static GeneratedProjectModel modelWithGeneratedPosition() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(EntityBound.relation(
+                "P31", List.of("Q4164871"), true));
+        model.rootClass(position);
+        return model;
     }
 
     @Test void aProjectThatHasNeverGeneratedIsNotWarnedAboutLosingNothing() {

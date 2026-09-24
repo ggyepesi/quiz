@@ -4,6 +4,12 @@ import javax.swing.JOptionPane;
 import java.awt.Component;
 import java.io.File;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import wikidata.explore.generation.DomainSave;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 
 /**
  * The one decision for a configuration change that the saved instances cannot survive.
@@ -62,6 +68,39 @@ final class SnapshotInvalidationGuard {
     }
 
     private SnapshotInvalidationGuard() { }
+
+    /**
+     * Whether an edit changed declarations that the existing snapshot was generated from.
+     *
+     * <p>A newly declared class has no instances in that snapshot. Declaring it, choosing
+     * its kind, and configuring how it will eventually be produced therefore cannot make
+     * any already-generated object stale. The old whole-model signature treated that
+     * additive work as a rewrite of the snapshot: the next Apply offered to delete every
+     * instance, and abandoning the warning restored the old whole model, making the new
+     * class vanish.
+     *
+     * <p>Project the current model back onto the class declarations that existed at the
+     * snapshot baseline, then use the same complete generation signature as save. Changes
+     * to any existing declaration still invalidate the snapshot; additions remain authored
+     * configuration whose instances can be generated later.
+     */
+    static boolean generationDiffers(
+            GeneratedProjectModel baseline, GeneratedProjectModel current) {
+        if (baseline == null || current == null) return false;
+        Set<String> baselineClassIds = baseline.classes().stream()
+                .map(GeneratedClassModel::declarationId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        GeneratedProjectModel existingDeclarations = current.copy();
+        for (GeneratedClassModel clazz : List.copyOf(existingDeclarations.classes())) {
+            if (!baselineClassIds.contains(clazz.declarationId())) {
+                existingDeclarations.removeClass(clazz);
+            }
+        }
+        return DomainSave.signaturesDisagree(
+                DomainSave.signature(baseline),
+                DomainSave.signature(existingDeclarations));
+    }
 
     static Decision ask(Component owner, State state) {
         if (state == null || !state.needsAttention()) return Decision.DISCARD_SNAPSHOTS;
