@@ -44,6 +44,30 @@ class SameQidDifferentModeledTypesMappingTest {
         }
     }
 
+    @Test void aSubclassInstanceReceivesItsBaseClassFields() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        project.rootClass(position);
+        project.addClass(withHolders);
+
+        WikidataDynamicObject source = object("Q18811", "PositionWithHolders");
+        source.put("holderCount", 66L);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(source)).getFirst();
+            java.lang.reflect.Field inherited = mapped.getClass()
+                    .getDeclaredField("holderCount");
+
+            assertEquals("66", String.valueOf(inherited.get(mapped)),
+                    "a field shown by the effective schema must also be populated");
+        }
+    }
+
     @Test void sameQidInDifferentClassesProducesTwoCorrectlyTypedInstances() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");

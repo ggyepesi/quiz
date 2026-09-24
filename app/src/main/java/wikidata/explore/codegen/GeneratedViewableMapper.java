@@ -362,7 +362,15 @@ public class GeneratedViewableMapper {
     private void applyFields(GeneratedViewableRuntime.ClassRuntime cr, Object target,
                              WikidataDynamicObject source, boolean onlyIfNull)
             throws Exception {
-        for (GeneratedFieldModel fieldModel : cr.model().fields()) {
+        // Generated subclasses are flattened: their Java class declares the base
+        // fields too. Populate that same effective field set. Iterating only the
+        // subclass's own declarations left those compiled inherited fields at their
+        // empty defaults even though search/sort/view configuration correctly listed
+        // them from the effective schema.
+        java.util.List<GeneratedFieldModel> fields = runtime.project() == null
+                ? cr.model().fields()
+                : cr.model().effectiveFields(runtime.project());
+        for (GeneratedFieldModel fieldModel : fields) {
             if (fieldModel == null || fieldModel.isNameField()) continue;
 
             String targetFieldName =
