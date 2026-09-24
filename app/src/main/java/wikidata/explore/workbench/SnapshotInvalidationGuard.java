@@ -72,34 +72,46 @@ final class SnapshotInvalidationGuard {
     /**
      * Whether an edit changed declarations that the existing snapshot was generated from.
      *
-     * <p>A newly declared class has no instances in that snapshot. Declaring it, choosing
-     * its kind, and configuring how it will eventually be produced therefore cannot make
-     * any already-generated object stale. The old whole-model signature treated that
-     * additive work as a rewrite of the snapshot: the next Apply offered to delete every
-     * instance, and abandoning the warning restored the old whole model, making the new
-     * class vanish.
+     * <p>A declaration made after generation owns no object in that snapshot. Declaring
+     * it and configuring how it will eventually be produced therefore cannot make any
+     * already-generated object stale. The old whole-model signature treated that additive
+     * work as a rewrite: the next Apply offered to delete every instance, and abandoning
+     * the warning restored the old whole model, making the new declaration vanish.
      *
-     * <p>Project the current model back onto the class declarations that existed at the
-     * snapshot baseline, then use the same complete generation signature as save. Changes
-     * to any existing declaration still invalidate the snapshot; additions remain authored
-     * configuration whose instances can be generated later.
+     * <p>Project the current model back onto the classes and selections that existed at
+     * the snapshot baseline, then use the same complete generation signature as save.
+     * Nothing is needed for a kind rule: it is persisted against the class it rules, so
+     * one belonging to a class this projection drops does not reach the signature either,
+     * while one added to a class that DID exist is not additive at all — it changes what
+     * the members already in the snapshot were classified as.
      */
     static boolean generationDiffers(
             GeneratedProjectModel baseline, GeneratedProjectModel current) {
         if (baseline == null || current == null) return false;
-        Set<String> baselineClassIds = baseline.classes().stream()
-                .map(GeneratedClassModel::declarationId)
-                .filter(id -> id != null && !id.isBlank())
-                .collect(Collectors.toSet());
+        Set<String> baselineClassIds = declarationIds(
+                baseline.classes().stream().map(GeneratedClassModel::declarationId));
+        Set<String> baselineSelectionIds = declarationIds(
+                baseline.selections().stream()
+                        .map(wikidata.explore.model.Selection::declarationId));
         GeneratedProjectModel existingDeclarations = current.copy();
         for (GeneratedClassModel clazz : List.copyOf(existingDeclarations.classes())) {
             if (!baselineClassIds.contains(clazz.declarationId())) {
                 existingDeclarations.removeClass(clazz);
             }
         }
+        for (wikidata.explore.model.Selection selection
+                : List.copyOf(existingDeclarations.selections())) {
+            if (!baselineSelectionIds.contains(selection.declarationId())) {
+                existingDeclarations.removeSelection(selection.name());
+            }
+        }
         return DomainSave.signaturesDisagree(
                 DomainSave.signature(baseline),
                 DomainSave.signature(existingDeclarations));
+    }
+
+    private static Set<String> declarationIds(java.util.stream.Stream<String> ids) {
+        return ids.filter(id -> id != null && !id.isBlank()).collect(Collectors.toSet());
     }
 
     static Decision ask(Component owner, State state) {

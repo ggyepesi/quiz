@@ -273,6 +273,19 @@ construct per thing produced:
    *(Trigger: a complete domain can only be reproduced by manually switching applications or
    by replaying UI actions.)*
 
+23. **An additive declaration does not invalidate an existing snapshot.** A class or a
+   selection declared after generation owns no object in that snapshot, so adding it,
+   choosing its kind and configuring its future production must preserve both the
+   declaration and all existing instances — and a population selection saved FROM the
+   instances that exist describes them, so it cannot make them stale. Snapshot
+   invalidation compares the declarations that existed when the snapshot was produced;
+   changing or removing one of those still requires the explicit discard-or-abandon
+   decision. A rule follows the declaration it is attached to rather than being weighed
+   separately: a kind rule for a class that did not exist goes with that class, while one
+   added to a class that did changes what the members already in the snapshot were
+   classified as. *(Trigger: Add class, or Save selection, is followed by a warning that
+   Apply deletes already generated instances.)*
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until

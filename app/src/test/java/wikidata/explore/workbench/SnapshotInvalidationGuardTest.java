@@ -12,6 +12,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -81,6 +82,74 @@ class SnapshotInvalidationGuardTest {
                 "P31", List.of("Q189290"), true));
 
         assertTrue(SnapshotInvalidationGuard.generationDiffers(baseline, edited));
+    }
+
+    @Test void savingANewPopulationSelectionDoesNotDiscardInstances() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+        wikidata.explore.model.PopulationSelection population =
+                new wikidata.explore.model.PopulationSelection("PositionWithHoldersPopulation");
+        population.className("Position");
+        population.instanceQids(List.of("Q1", "Q2"));
+
+        edited.addSelection(population);
+
+        assertFalse(SnapshotInvalidationGuard.generationDiffers(baseline, edited),
+                "a selection saved from the instances that exist describes them; it does "
+                        + "not make them stale");
+        assertNotNull(edited.findSelection("PositionWithHoldersPopulation"));
+    }
+
+    @Test void changingAnExistingSelectionStillRequiresRegeneration() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        wikidata.explore.model.VocabularySelection vocabulary =
+                new wikidata.explore.model.VocabularySelection("Types");
+        vocabulary.valueQids(List.of("Q1"));
+        baseline.addSelection(vocabulary);
+        GeneratedProjectModel edited = baseline.copy();
+
+        ((wikidata.explore.model.VocabularySelection) edited.findSelection("Types"))
+                .valueQids(List.of("Q1", "Q2"));
+
+        assertTrue(SnapshotInvalidationGuard.generationDiffers(baseline, edited),
+                "what the existing instances were generated against moved");
+    }
+
+    /**
+     * A kind rule belongs to the class it rules. One for a class that is itself new is
+     * additive; one for a class already in the snapshot changes what its existing members
+     * were classified as, and is not.
+     */
+    @Test void aKindRuleForANewClassDoesNotDiscardInstances() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+        GeneratedClassModel added = new GeneratedClassModel("PositionHolder");
+        edited.addClass(added);
+        wikidata.explore.model.EntityKindRule rule =
+                new wikidata.explore.model.EntityKindRule();
+        rule.className(added.className());
+        rule.classId(added.declarationId());
+        rule.evidenceQids(List.of("Q5"));
+        edited.addEntityKindRule(rule);
+
+        assertFalse(SnapshotInvalidationGuard.generationDiffers(baseline, edited),
+                "the rule describes a class that owns nothing in the snapshot");
+        assertTrue(edited.classes().contains(added));
+    }
+
+    @Test void aKindRuleForAnExistingClassStillRequiresRegeneration() {
+        GeneratedProjectModel baseline = modelWithGeneratedPosition();
+        GeneratedProjectModel edited = baseline.copy();
+        wikidata.explore.model.EntityKindRule rule =
+                new wikidata.explore.model.EntityKindRule();
+        rule.className(edited.rootClass().className());
+        rule.classId(edited.rootClass().declarationId());
+        rule.evidenceQids(List.of("Q5"));
+
+        edited.addEntityKindRule(rule);
+
+        assertTrue(SnapshotInvalidationGuard.generationDiffers(baseline, edited),
+                "it changes what the members already in the snapshot are classified as");
     }
 
     private static GeneratedProjectModel modelWithGeneratedPosition() {
