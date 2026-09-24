@@ -348,11 +348,21 @@
     text: []
     label: Direction from previous node:
     combo: 2 item(s)
+    label: Equivalent alternative edges (optional; each is followed too)
+    label: Property:
+    text: []
+    combo: 2 item(s)
+    button: Add alternative edge
+    list
+    button: Remove selected alternative edge
   box: Next node
     label: Graph output:
     label: Instances of one configured class
     label: Output class:
     combo: 1 item(s)
+    label: Apply result:
+    combo: 2 item(s)
+    check: Repeat until no new instances are found
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
     text: []

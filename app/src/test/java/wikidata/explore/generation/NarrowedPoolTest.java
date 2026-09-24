@@ -28,9 +28,43 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NarrowedPoolTest {
 
+    @Test void additiveGraphMembershipKeepsExistingMembersAndAddsGeneratedPositions() {
+        WikidataDynamicObject existing = position("Q1", "Rome");
+        existing.type("PositionWithHolders");
+        WikidataDynamicObject predecessor = position("Q2", "Francia");
+
+        GenerationRuns.NarrowedPool expanded = GenerationRuns.addedTo(
+                List.of(existing, predecessor), "PositionWithHolders", "Position",
+                Set.of("Q2"));
+
+        assertEquals(List.of(existing, predecessor), expanded.pool());
+        assertTrue(existing.directClassNames().contains("PositionWithHolders"));
+        assertTrue(predecessor.directClassNames().contains("PositionWithHolders"));
+        assertEquals("Francia", predecessor.get("jurisdiction"));
+    }
+
+    @Test void additiveGraphMembershipNeverStampsAnAnnotationSharingTheQid() {
+        WikidataDynamicObject position = position("Q1", "Catalonia");
+        WikidataDynamicObject annotation = new WikidataDynamicObject("Q1", "Accepted");
+        annotation.type("GraphConstraint");
+        annotation.typeKey("GraphConstraint");
+        // Reproduce the contaminated membership saved by the former identity-only apply.
+        annotation.type("PositionWithHolders");
+
+        GenerationRuns.NarrowedPool expanded = GenerationRuns.addedTo(
+                List.of(position, annotation), "PositionWithHolders", "Position",
+                Set.of("Q1"));
+
+        assertTrue(position.directClassNames().contains("PositionWithHolders"));
+        assertTrue(!annotation.directClassNames().contains("PositionWithHolders"),
+                "the same QID does not make a graph annotation a position");
+        assertEquals(Set.of("Q1"), expanded.kept());
+    }
+
     private static WikidataDynamicObject position(String qid, String jurisdiction) {
         WikidataDynamicObject value = new WikidataDynamicObject(qid, "office " + qid);
         value.type("Position");
+        value.typeKey("Position");
         value.put("jurisdiction", jurisdiction);
         return value;
     }

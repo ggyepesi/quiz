@@ -69,11 +69,36 @@ public final class GraphDiscoveryExecutor {
         for (GraphDiscoveryConfiguration.NextNode node : configuration.nextNodes()) {
             index++;
             GraphTraversalStep step = step(configuration, node, index);
-            GraphWaveResult wave = GraphWave.evaluate(store, step, frontier);
-            if (wave.requiresAcquisition()) {
-                acquirer.acquire(store, wave.missingDemand());
-                wave = GraphWave.evaluate(store, step, frontier);
-            }
+            List<EntityRef> reachedAll = new ArrayList<>();
+            // Distinct: one wave asks every alternative edge, and a repeat asks them
+            // again from the new frontier, so the same edge, the same unfetched
+            // adjacency and the same unavailable entity are all reported more than
+            // once. A count of what could not be answered must not grow with the
+            // number of ways the graph asked.
+            LinkedHashSet<GraphEdge> edgesAll = new LinkedHashSet<>();
+            LinkedHashSet<EntityRef> incompleteAll = new LinkedHashSet<>();
+            LinkedHashSet<EntityRef> unavailableAll = new LinkedHashSet<>();
+            LinkedHashSet<EntityRef> seen = new LinkedHashSet<>(frontier);
+            List<EntityRef> waveFrontier = frontier;
+            do {
+                LinkedHashSet<EntityRef> reachedWave = new LinkedHashSet<>();
+                for (GraphDiscoveryConfiguration.Edge edge : node.edges()) {
+                    GraphDiscoveryConfiguration.NextNode branch =
+                            new GraphDiscoveryConfiguration.NextNode(edge.property(), edge.direction(),
+                                    node.use(), node.populationClass(), node.evidenceCondition());
+                    GraphTraversalStep branchStep = step(configuration, branch, index);
+                    GraphWaveResult wave = GraphWave.evaluate(store, branchStep, waveFrontier);
+                    if (wave.requiresAcquisition()) {
+                        acquirer.acquire(store, wave.missingDemand());
+                        wave = GraphWave.evaluate(store, branchStep, waveFrontier);
+                    }
+                    reachedWave.addAll(wave.reached()); edgesAll.addAll(wave.edges());
+                    incompleteAll.addAll(wave.incomplete()); unavailableAll.addAll(wave.unavailable());
+                }
+                reachedWave.removeAll(seen);
+                reachedAll.addAll(reachedWave); seen.addAll(reachedWave);
+                waveFrontier = List.copyOf(reachedWave);
+            } while (node.repeatUntilStable() && !waveFrontier.isEmpty());
 
             List<EntityRef> accepted = new ArrayList<>();
             List<EntityRef> rejected = new ArrayList<>();
@@ -81,10 +106,10 @@ public final class GraphDiscoveryExecutor {
             List<GraphEvidenceConditionResult> classifications = new ArrayList<>();
             GraphEvidenceCondition condition = node.evidenceCondition();
             if (condition == null) {
-                accepted.addAll(wave.reached());
+                accepted.addAll(reachedAll);
             } else {
-                acquireEvidence(store, acquirer, wave.reached(), condition);
-                for (EntityRef reached : wave.reached()) {
+                acquireEvidence(store, acquirer, reachedAll, condition);
+                for (EntityRef reached : reachedAll) {
                     GraphEvidenceConditionResult classified =
                             GraphEvidenceConditions.evaluate(store, condition, reached);
                     classifications.add(classified);
@@ -95,9 +120,9 @@ public final class GraphDiscoveryExecutor {
                     }
                 }
             }
-            results.add(new NodeResult(index, node, step, wave.reached(), accepted,
-                    rejected, review, classifications, wave.edges(), wave.incomplete(),
-                    wave.unavailable()));
+            results.add(new NodeResult(index, node, step, reachedAll, accepted,
+                    rejected, review, classifications, List.copyOf(edgesAll),
+                    List.copyOf(incompleteAll), List.copyOf(unavailableAll)));
             frontier = condition == null ? List.copyOf(accepted)
                     : classifications.stream()
                             .filter(GraphEvidenceConditionResult::includedInPopulation)
@@ -113,6 +138,7 @@ public final class GraphDiscoveryExecutor {
         LinkedHashSet<datasource.graph.GraphRelation> relations = new LinkedHashSet<>();
         for (GraphDiscoveryConfiguration.NextNode node : configuration.nextNodes()) {
             relations.add(node.property());
+            node.alternativeEdges().forEach(edge -> relations.add(edge.property()));
             GraphEvidenceCondition condition = node.evidenceCondition();
             if (condition == null) continue;
             condition.evidencePaths().forEach(path -> relations.add(path.relation()));

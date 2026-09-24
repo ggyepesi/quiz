@@ -529,7 +529,9 @@ public class ModelBuilderFrame extends JFrame {
         String action = "Apply accepted instances";
         File destination = snapshotBesideModel(openModelFile);
         String description = "Apply graph annotations \"" + result.type() + "\" to \""
-                + result.projectName() + "\".\n\nThis will narrow " + result.outputClass()
+                + result.projectName() + "\".\n\nThis will "
+                + (result.populationOperation() == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
+                        ? "add accepted instances to " : "narrow ") + result.outputClass()
                 + " to " + result.acceptedIdentities().size()
                 + " accepted generated instance(s).\n\nSave "
                 + (projectModel.isModel() ? "model" : "domain")
@@ -1524,9 +1526,23 @@ public class ModelBuilderFrame extends JFrame {
         if (artifact == null || artifact.outputClass().isBlank()) return;
         try {
             GeneratedProjectModel snapshot = projectModel.copy();
+            java.util.List<WikidataDynamicObject> previousPool =
+                    lastRun == null ? List.of() : lastRun.dynamicObjects();
+            java.util.Set<String> previousMembers = previousPool.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .filter(value -> value.directClassNames().contains(artifact.outputClass()))
+                    .map(WikidataDynamicObject::getIdentifier)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toCollection(
+                            java.util.LinkedHashSet::new));
             wikidata.explore.generation.GenerationRuns.NarrowedPool narrowed =
-                    wikidata.explore.generation.GenerationRuns.narrowedTo(
-                            lastRun == null ? List.of() : lastRun.dynamicObjects(),
+                    artifact.populationOperation() == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
+                    ? wikidata.explore.generation.GenerationRuns.addedTo(
+                            previousPool,
+                            artifact.outputClass(), graphOutputCarrier(artifact.outputClass()),
+                            artifact.acceptedIdentities())
+                    : wikidata.explore.generation.GenerationRuns.narrowedTo(
+                            previousPool,
                             artifact.outputClass(), artifact.acceptedIdentities());
             java.util.List<WikidataDynamicObject> pool =
                     new java.util.ArrayList<>(narrowed.pool());
@@ -1544,17 +1560,44 @@ public class ModelBuilderFrame extends JFrame {
                     GenerationRun.ProjectionAudit.notRun());
             acceptGenerationRun(run);
             int missing = narrowed.ungenerated().size();
-            logWindow.info("Applied graph result \"" + artifact.type() + "\": "
-                    + artifact.outputClass() + " is now the " + narrowed.kept().size()
-                    + " accepted instance(s) the project has generated"
-                    + (missing == 0 ? "" : ", and " + missing + " accepted id(s) have no "
-                            + "generated instance yet — generate to acquire them")
-                    + ". Use \"Save " + (projectModel.isModel() ? "model" : "domain")
-                    + "\" to persist them.");
+            java.util.Set<String> added = new java.util.LinkedHashSet<>(narrowed.kept());
+            added.removeAll(previousMembers);
+            long resultingMembers = pool.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .filter(value -> value.directClassNames().contains(artifact.outputClass()))
+                    .count();
+            logWindow.info(graphApplyMessage(artifact.type(), artifact.outputClass(),
+                    artifact.populationOperation(), previousMembers.size(), added.size(),
+                    resultingMembers, missing, projectModel.isModel()));
             showInstancesWindow();
         } catch (Exception error) {
             reportGenerationError(error);
         }
+    }
+
+    /** The stable carrier whose entities an additive graph may classify. */
+    private String graphOutputCarrier(String outputClass) {
+        GeneratedClassModel output = projectModel.findClass(outputClass);
+        if (output == null || output.baseClassName().isBlank()) return outputClass;
+        return output.baseClassName();
+    }
+
+    static String graphApplyMessage(String graphName, String outputClass,
+            datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation,
+            long previousMembers, long addedMembers, long resultingMembers,
+            long missing, boolean model) {
+        String effect = operation
+                == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
+                ? "added " + addedMembers + " generated instance(s) to " + previousMembers
+                        + " existing " + outputClass + " instance(s); " + resultingMembers
+                        + " instance(s) now belong to " + outputClass
+                : "kept " + resultingMembers + " accepted " + outputClass
+                        + " instance(s) from " + previousMembers + " existing instance(s)";
+        return "Applied graph result \"" + graphName + "\": " + effect
+                + (missing == 0 ? "" : ", and " + missing + " accepted id(s) have no "
+                        + "generated instance yet — generate to acquire them")
+                + ". Use \"Save " + (model ? "model" : "domain")
+                + "\" to persist them.";
     }
 
     private void acceptGenerationRun(GenerationRun run, boolean alreadySaved) {
@@ -2251,6 +2294,12 @@ public class ModelBuilderFrame extends JFrame {
         if (snapshotBaseline == null || openModelFile == null) return;
         String now = modelSignature(projectModel);
         if (now.isBlank() || now.equals(snapshotBaselineSignature)) return;
+
+        // A class added after this snapshot has no objects in it yet. Its declaration,
+        // kind and source configuration cannot invalidate objects produced by the older
+        // declarations, so it stays in the model without threatening the snapshot.
+        if (!SnapshotInvalidationGuard.generationDiffers(
+                snapshotBaseline, projectModel)) return;
 
         String project = projectModel.name();
         dataset.DomainStorage storage = dataset.DomainStorage.inDefaultLocation();

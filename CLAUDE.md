@@ -230,6 +230,14 @@ construct per thing produced:
    loaded instances of that class, while a saved population is one alternative input that
    already names its class.
 
+   A graph population result states whether it **narrows** its output class or **adds**
+   memberships to it. Additive expansion preserves every existing member and stamps the
+   reached generated instances with the output class; it never substitutes candidate
+   shells. A replacement-chain expansion may declare equivalent directed edge alternatives
+   (for example outgoing `replaces` and incoming `replaced by`) and repeat them until no new
+   identities are reached. This is a separate named graph rule, not another meaning hidden
+   inside the original population-discovery constraint.
+
    *(This supersedes the earlier rule that a graph constraint carries its own authored name.
    That name was at once the identity of its annotation set and a free-text field an editor
    rewrote, which is how a run saved as PositionFilter came to sit beside a model calling

@@ -96,9 +96,21 @@ final class GraphConstraintsPanel extends JPanel {
     private final JLabel startQids = new JLabel();
     private final JTextField edgePidField = new JTextField(8);
     private final JComboBox<DirectionChoice> directionBox = new JComboBox<>(DirectionChoice.values());
+    private final JTextField alternativePidField = new JTextField(8);
+    private final JComboBox<DirectionChoice> alternativeDirectionBox = new JComboBox<>(DirectionChoice.values());
+    // The property and direction compose ONE alternative; the list holds the ones
+    // composed so far. A single field could only ever say the first of them, and
+    // applying then rewrote the rest away without saying so.
+    private final DefaultListModel<GraphDiscoveryConfiguration.Edge> alternativeModel =
+            new DefaultListModel<>();
+    private final JList<GraphDiscoveryConfiguration.Edge> alternativeList =
+            new JList<>(alternativeModel);
     private final JLabel arrowLabel = new JLabel("── property out ──▶", SwingConstants.CENTER);
     private final JComboBox<GraphDiscoveryConfiguration.NodeUse> targetUseBox = useBox();
     private final JComboBox<GeneratedClassModel> targetClassBox = new JComboBox<>();
+    private final JComboBox<GraphDiscoveryConfiguration.PopulationOperation> populationOperationBox =
+            new JComboBox<>(GraphDiscoveryConfiguration.PopulationOperation.values());
+    private final JCheckBox repeatUntilStable = new JCheckBox("Repeat until no new instances are found");
     private final JTextField evidencePidField = new JTextField(8);
     private final JComboBox<DirectionChoice> evidenceDirectionBox =
             new JComboBox<>(DirectionChoice.values());
@@ -135,6 +147,16 @@ final class GraphConstraintsPanel extends JPanel {
     GraphConstraintsPanel(GeneratedProjectModel model) {
         super(new BorderLayout(8, 8));
         this.model = java.util.Objects.requireNonNull(model, "model");
+        populationOperationBox.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                setText(value == GraphDiscoveryConfiguration.PopulationOperation.ADD
+                        ? "Add accepted instances to output class"
+                        : "Keep only accepted instances in output class");
+                return this;
+            }
+        });
         this.header = new ClassHeaderEditor(() -> this.model);
         errorDialog = (title, message) -> JOptionPane.showMessageDialog(
                 this, message, title, JOptionPane.ERROR_MESSAGE);
@@ -376,6 +398,12 @@ final class GraphConstraintsPanel extends JPanel {
     private void clearDraftControls() {
         edgePidField.setText("");
         directionBox.setSelectedItem(DirectionChoice.OUT);
+        alternativePidField.setText("");
+        alternativeDirectionBox.setSelectedItem(DirectionChoice.OUT);
+        alternativeModel.clear();
+        populationOperationBox.setSelectedItem(
+                GraphDiscoveryConfiguration.PopulationOperation.NARROW);
+        repeatUntilStable.setSelected(false);
         evidenceModel.clear();
         testsModel.clear();
         evidencePidField.setText("");
@@ -400,7 +428,8 @@ final class GraphConstraintsPanel extends JPanel {
         if (outputClass.isBlank()) return;
         try {
             GraphDiscoveryResultStore.Artifact loaded = GraphDiscoveryResultStore.load(
-                    model.name(), saved.name(), outputClass);
+                    model.name(), saved.name(), outputClass,
+                    saved.nextNodes().getFirst().populationOperation());
             if (loaded != null) {
                 remember(loaded);
                 status("Loaded " + loaded.instances().size()
@@ -504,7 +533,9 @@ final class GraphConstraintsPanel extends JPanel {
                     new GraphRelation(PROVIDER, pid), direction().direction,
                     GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                     targetClass.className(),
-                    evidence);
+                    evidence, alternativeEdges(),
+                    (GraphDiscoveryConfiguration.PopulationOperation) populationOperationBox.getSelectedItem(),
+                    repeatUntilStable.isSelected());
             GraphClassSource replacement = new GraphClassSource(
                     new GraphDiscoveryConfiguration.StartNode(
                             start.population() ? "" : start.className(),
@@ -524,6 +555,9 @@ final class GraphConstraintsPanel extends JPanel {
         startUseBox.setName("graph.startUse");
         startQids.setName("graph.startQids");
         edgePidField.setName("graph.edgeProperty");
+        alternativePidField.setName("graph.alternativeProperty");
+        alternativeDirectionBox.setName("graph.alternativeDirection");
+        alternativeList.setName("graph.alternativeList");
         directionBox.setName("graph.edgeDirection");
         arrowLabel.setName("graph.edgeLabel");
         targetUseBox.setName("graph.targetUse");
@@ -615,6 +649,20 @@ final class GraphConstraintsPanel extends JPanel {
         panel.add(arrowLabel);
         addLine(panel, "Property:", edgePidField);
         addLine(panel, "Direction from previous node:", directionBox);
+        panel.add(new JLabel("Equivalent alternative edges (optional; each is followed too)"));
+        JPanel alternativeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
+        alternativeRow.add(new JLabel("Property:")); alternativeRow.add(alternativePidField);
+        alternativeRow.add(alternativeDirectionBox);
+        JButton addAlternative = new JButton("Add alternative edge");
+        addAlternative.addActionListener(e -> addAlternativeEdge());
+        alternativeRow.add(addAlternative); panel.add(alternativeRow);
+        alternativeList.setVisibleRowCount(2);
+        alternativeList.setCellRenderer(edgeRenderer());
+        panel.add(new JScrollPane(alternativeList));
+        JButton removeAlternative = new JButton("Remove selected alternative edge");
+        removeAlternative.addActionListener(
+                e -> removeSelected(alternativeList, alternativeModel));
+        panel.add(removeAlternative);
         return panel;
     }
 
@@ -622,6 +670,8 @@ final class GraphConstraintsPanel extends JPanel {
         JPanel panel = nodePanel("Next node");
         addLine(panel, "Graph output:", new JLabel("Instances of one configured class"));
         addLine(panel, "Output class:", targetClassBox);
+        addLine(panel, "Apply result:", populationOperationBox);
+        panel.add(repeatUntilStable);
         panel.add(new JLabel("Evidence relations from this node (one or more may reach evidence)"));
         JPanel evidenceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         evidenceRow.add(new JLabel("Property:")); evidenceRow.add(evidencePidField);
@@ -863,6 +913,11 @@ final class GraphConstraintsPanel extends JPanel {
         edgePidField.setText(node.property().relationId());
         directionBox.setSelectedItem(node.directionFromPrevious() == GraphTraversalDirection.INCOMING
                 ? DirectionChoice.IN : DirectionChoice.OUT);
+        alternativePidField.setText("");
+        alternativeDirectionBox.setSelectedItem(DirectionChoice.OUT);
+        replace(alternativeModel, node.alternativeEdges());
+        populationOperationBox.setSelectedItem(node.populationOperation());
+        repeatUntilStable.setSelected(node.repeatUntilStable());
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         selectClass(targetClassBox, node.populationClass());
         GraphEvidenceCondition evidence = node.evidenceCondition();
@@ -895,6 +950,21 @@ final class GraphConstraintsPanel extends JPanel {
                 if (value instanceof GraphRelationExists c) setText(labelledPid(c.relation().relationId()) + " has a value");
                 else if (value instanceof GraphRelationAbsent c) setText(labelledPid(c.relation().relationId()) + " has no value");
                 else if (value instanceof GraphRelationReaches c) setText(labelledPid(c.relation().relationId()) + " reaches " + labelledQid(c.entity().id()));
+                return this;
+            }
+        };
+    }
+
+    private ListCellRenderer<Object> edgeRenderer() {
+        return new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof GraphDiscoveryConfiguration.Edge edge) {
+                    setText(labelledPid(edge.property().relationId()) + " "
+                            + (edge.direction() == GraphTraversalDirection.INCOMING
+                                    ? "incoming" : "outgoing"));
+                }
                 return this;
             }
         };
@@ -959,6 +1029,27 @@ final class GraphConstraintsPanel extends JPanel {
 
     private DirectionChoice direction() {
         return directionBox.getSelectedItem() instanceof DirectionChoice value ? value : DirectionChoice.OUT;
+    }
+    private List<GraphDiscoveryConfiguration.Edge> alternativeEdges() {
+        return elements(alternativeModel);
+    }
+
+    /** Composes the typed property and direction into one more equivalent edge. */
+    private void addAlternativeEdge() {
+        String pid = cleanPid(alternativePidField.getText());
+        if (!WikidataIds.isPid(pid)) {
+            status("Enter a valid alternative property, such as P1366.", true);
+            return;
+        }
+        GraphDiscoveryConfiguration.Edge edge = new GraphDiscoveryConfiguration.Edge(
+                new GraphRelation(PROVIDER, pid),
+                selectedDirection(alternativeDirectionBox).direction);
+        if (elements(alternativeModel).contains(edge)) {
+            status("That alternative edge is already listed.", true);
+            return;
+        }
+        alternativeModel.addElement(edge);
+        alternativePidField.setText("");
     }
     private static DirectionChoice selectedDirection(JComboBox<DirectionChoice> box) {
         return box.getSelectedItem() instanceof DirectionChoice value

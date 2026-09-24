@@ -30,6 +30,8 @@ public enum MembershipPattern {
     OWNED_COMPONENT("Owned class"),
     /** Members are grouped offline from another modeled class. */
     AGGREGATED("Aggregate class"),
+    GRAPH("Graph constraint"),
+    POPULATION("Saved population"),
     /** A referenced-only ("identity holder") class: it has no membership rule of its
      *  own — its members are DERIVED as the range of a field that targets it (an
      *  entity at the value-end of that field's property). Complete the moment a field
@@ -123,6 +125,7 @@ public enum MembershipPattern {
         if (clazz != null && clazz.classKind() == ClassKind.AGGREGATE) {
             return AGGREGATED;
         }
+        if (clazz != null && clazz.classKind() == ClassKind.GRAPH) return GRAPH;
         MembershipPattern base = of(clazz);
         if (base != UNCONFIGURED) {
             return base;
@@ -134,6 +137,11 @@ public enum MembershipPattern {
         // inference, referent field loads), which an evidence rule does not.
         if (derivedFrom(clazz, project) != null) {
             return REFERENCED;
+        }
+        if (clazz != null && project != null && project.selections().stream()
+                .anyMatch(selection -> selection instanceof PopulationSelection population
+                        && population.className().equalsIgnoreCase(clazz.className()))) {
+            return POPULATION;
         }
         return kindRule(clazz, project) == null ? base : EVIDENCE_KIND;
     }
@@ -367,6 +375,7 @@ public enum MembershipPattern {
         if (clazz.classKind() == ClassKind.AGGREGATE) {
             return AGGREGATED;
         }
+        if (clazz.classKind() == ClassKind.GRAPH) return GRAPH;
         EntityBound membership = clazz.membership();
         String pid = clean(membership.relationPid());
         boolean seeded = !clazz.seedQids().isEmpty();
@@ -456,6 +465,15 @@ public enum MembershipPattern {
                 yield a == null ? p.label : p.label + " (" + a.sourceClassName()
                         + " → " + a.membersField() + ")";
             }
+            case GRAPH -> {
+                GraphClassSource graph = clazz.graphSource();
+                if (graph == null || !graph.configured()) yield "Graph constraint (incomplete)";
+                String start = graph.startNode().populationSelection().isBlank()
+                        ? graph.startNode().qidSourceClass()
+                        : graph.startNode().populationSelection();
+                yield "Graph constraint (" + start + " → " + graph.outputClassName() + ")";
+            }
+            case POPULATION -> p.label;
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.

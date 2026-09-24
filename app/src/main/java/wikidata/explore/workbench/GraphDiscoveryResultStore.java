@@ -84,7 +84,13 @@ final class GraphDiscoveryResultStore {
             var reverse = candidateShape.fields.get(GRAPH_ANNOTATION);
             if (reverse != null) reverse.structural = true;
         }
-        return new Artifact(projectName, type, built.outputClass(), records,
+        datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation =
+                result.graph().nodes().stream()
+                        .filter(node -> node.configuration().use()
+                                == datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
+                        .findFirst().map(node -> node.configuration().populationOperation())
+                        .orElse(datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW);
+        return new Artifact(projectName, type, built.outputClass(), operation, records,
                 built.candidates(), new SnapshotDomain(records, model));
     }
 
@@ -122,6 +128,14 @@ final class GraphDiscoveryResultStore {
 
     static Artifact load(String projectName, String graphConstraintName,
                          String outputClass) throws Exception {
+        return load(projectName, graphConstraintName, outputClass,
+                datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW);
+    }
+
+    static Artifact load(String projectName, String graphConstraintName,
+                         String outputClass,
+                         datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation)
+            throws Exception {
         File file = destination(projectName, graphConstraintName);
         if (!file.isFile()) return null;
         WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
@@ -131,7 +145,7 @@ final class GraphDiscoveryResultStore {
                 .map(value -> value.get(ANNOTATED_INSTANCE))
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast).distinct().toList();
-        return new Artifact(projectName, domainName(graphConstraintName), outputClass,
+        return new Artifact(projectName, domainName(graphConstraintName), outputClass, operation,
                 annotations, candidates,
                 new SnapshotDomain(annotations, loaded.fieldGraph()));
     }
@@ -210,11 +224,22 @@ final class GraphDiscoveryResultStore {
     }
 
     record Artifact(String projectName, String type, String outputClass,
+                    datasource.graph.GraphDiscoveryConfiguration.PopulationOperation populationOperation,
                     List<WikidataDynamicObject> instances,
                     List<WikidataDynamicObject> candidates, SnapshotDomain model) {
+        Artifact(String projectName, String type, String outputClass,
+                List<WikidataDynamicObject> instances,
+                List<WikidataDynamicObject> candidates, SnapshotDomain model) {
+            this(projectName, type, outputClass,
+                    datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW,
+                    instances, candidates, model);
+        }
         Artifact {
             projectName = projectName == null ? "" : projectName.trim();
             outputClass = outputClass == null ? "" : outputClass.trim();
+            populationOperation = populationOperation == null
+                    ? datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW
+                    : populationOperation;
             instances = List.copyOf(instances);
             candidates = List.copyOf(candidates);
             java.util.Objects.requireNonNull(model, "model");

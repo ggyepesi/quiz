@@ -457,7 +457,8 @@ public class GeneratedProjectModel {
                             && node.populationClass().equalsIgnoreCase(from)
                             ? new GraphDiscoveryConfiguration.NextNode(node.property(),
                                     node.directionFromPrevious(), node.use(), to,
-                                    node.evidenceCondition())
+                                    node.evidenceCondition(), node.alternativeEdges(),
+                                    node.populationOperation(), node.repeatUntilStable())
                             : node)
                     .toList());
         }

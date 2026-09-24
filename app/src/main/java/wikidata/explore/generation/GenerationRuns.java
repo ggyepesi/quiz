@@ -80,4 +80,39 @@ public final class GenerationRuns {
         return new NarrowedPool(List.copyOf(narrowed), Set.copyOf(kept),
                 Set.copyOf(ungenerated));
     }
+
+    /**
+     * Adds accepted identities to a class without removing its existing members.
+     *
+     * <p>The identity alone is not enough: a graph annotation and the entity it annotates
+     * intentionally share the QID. Only the carrier class can receive the membership.
+     * Retracting it from other carriers also repairs snapshots written by the former
+     * identity-only implementation.
+     */
+    public static NarrowedPool addedTo(
+            List<WikidataDynamicObject> pool, String outputClass, String carrierClass,
+            Set<String> accepted) {
+        List<WikidataDynamicObject> expanded = new java.util.ArrayList<>();
+        Set<String> kept = new LinkedHashSet<>();
+        Set<String> population = accepted == null ? Set.of() : accepted;
+        for (WikidataDynamicObject value : pool == null ? List.<WikidataDynamicObject>of() : pool) {
+            if (value == null) continue;
+            boolean eligible = carrierClass != null && !carrierClass.isBlank()
+                    && carrierClass.equals(value.typeKey());
+            if (!eligible) {
+                value.removeClass(outputClass);
+                expanded.add(value);
+                continue;
+            }
+            String id = value.getIdentifier();
+            if (id != null && population.contains(id)) {
+                value.type(outputClass);
+                kept.add(id);
+            }
+            expanded.add(value);
+        }
+        Set<String> ungenerated = new LinkedHashSet<>(population);
+        ungenerated.removeAll(kept);
+        return new NarrowedPool(List.copyOf(expanded), Set.copyOf(kept), Set.copyOf(ungenerated));
+    }
 }

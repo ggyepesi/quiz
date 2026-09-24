@@ -146,6 +146,44 @@ class GraphConstraintsPanelTest {
     }
 
     /**
+     * The editor must be able to say everything the declaration holds. It showed the
+     * first alternative edge in one property field, and applying rebuilt the list from
+     * that field — so opening a replacement expansion that follows both `replaces` and
+     * `replaced by`, then applying any unrelated change, silently dropped the second.
+     */
+    @Test void everyAlternativeEdgeSurvivesBeingEditedAndAppliedAgain() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel graph = graphClass(model, "PositionReplacementExpansion");
+        java.util.List<GraphDiscoveryConfiguration.Edge> alternatives = java.util.List.of(
+                new GraphDiscoveryConfiguration.Edge(
+                        new datasource.graph.GraphRelation("wikidata", "P1366"),
+                        datasource.graph.GraphTraversalDirection.INCOMING),
+                new GraphDiscoveryConfiguration.Edge(
+                        new datasource.graph.GraphRelation("wikidata", "P156"),
+                        datasource.graph.GraphTraversalDirection.OUTGOING));
+        graph.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position", "",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                java.util.List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new datasource.graph.GraphRelation("wikidata", "P1365"),
+                        datasource.graph.GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, alternatives,
+                        GraphDiscoveryConfiguration.PopulationOperation.ADD, true))));
+        GraphConstraintsPanel panel = graphPanel(model);
+        panel.edit(graph);
+
+        assertEquals(2, named(panel, "graph.alternativeList", JList.class)
+                .getModel().getSize(), "the editor shows every alternative it holds");
+
+        button(panel, "Apply graph").doClick();
+
+        assertEquals(alternatives,
+                graph.graphSource().nextNodes().getFirst().alternativeEdges(),
+                "and applying keeps them all");
+    }
+
+    /**
      * A renamed graph class does not carry its old run forward, and the save dialog
      * names the file the save writes.
      *

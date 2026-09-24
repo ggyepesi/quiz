@@ -31,6 +31,53 @@ class GraphDiscoveryExecutorTest {
     private static final GraphRelation SUCCESSOR = relation("P155");
     private static final GraphRelation INSTANCE_OF = relation("P31");
 
+    @Test void inverseAlternativesRepeatReplacementExpansionToClosure() throws Exception {
+        EntityRef current = entity("Q1"), previous = entity("Q2"), oldest = entity("Q3");
+        GraphRelation replaces = relation("P1365"), replacedBy = relation("P1366");
+        var node = new GraphDiscoveryConfiguration.NextNode(replaces,
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "PositionWithHolders", null,
+                List.of(new GraphDiscoveryConfiguration.Edge(replacedBy,
+                        GraphTraversalDirection.INCOMING)),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, true);
+
+        var result = GraphDiscoveryExecutor.execute(new InMemoryGraphStore(), graph(List.of(node)),
+                List.of(current), (store, demand) -> {
+                    if (demand.relation().equals(replaces))
+                        store.addEdges(List.of(new GraphEdge(current, replaces, previous, "r1")));
+                    if (demand.relation().equals(replacedBy))
+                        store.addEdges(List.of(new GraphEdge(oldest, replacedBy, previous, "r2")));
+                    store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+                });
+
+        assertEquals(List.of(previous, oldest), result.nodes().getFirst().accepted());
+    }
+
+    /**
+     * What could not be answered is a SET of entities, not a tally of how many ways the
+     * graph asked. A replacement expansion asks every equivalent edge over one frontier
+     * and then asks them again from the next, so one entity whose adjacency is unfetched
+     * is met once per edge per wave — and the accumulating lists reported it that many
+     * times, so a two-edge closure over one incomplete entity claimed two.
+     */
+    @Test void anUnansweredEntityIsReportedOnceHoweverOftenItIsMet() throws Exception {
+        EntityRef current = entity("Q1");
+        GraphRelation replaces = relation("P1365"), replacedBy = relation("P1366");
+        var node = new GraphDiscoveryConfiguration.NextNode(replaces,
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "PositionWithHolders", null,
+                List.of(new GraphDiscoveryConfiguration.Edge(replacedBy,
+                        GraphTraversalDirection.INCOMING)),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, true);
+
+        var result = GraphDiscoveryExecutor.execute(new InMemoryGraphStore(), graph(List.of(node)),
+                List.of(current), (store, demand) ->
+                        store.markCoverage(demand, GraphAdjacencyCoverage.INCOMPLETE));
+
+        assertEquals(List.of(current), result.nodes().getFirst().incomplete(),
+                "both edges meet the same unfetched entity, which is still one entity");
+    }
+
     @Test void aReachedNodeIsClassifiedThroughItsEvidenceEntity() throws Exception {
         EntityRef position = entity("Q4164871");
         EntityRef king = entity("Q123");

@@ -14,6 +14,13 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
         INTERMEDIATE_ONLY,
         CLASS_POPULATION
     }
+    public enum PopulationOperation { NARROW, ADD }
+    public record Edge(GraphRelation property, GraphTraversalDirection direction) {
+        public Edge {
+            if (property == null || direction == null)
+                throw new IllegalArgumentException("Edge property and direction are required");
+        }
+    }
 
     /**
      * A class start reads QIDs from its currently loaded instances. A population start
@@ -40,7 +47,15 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
             GraphTraversalDirection directionFromPrevious,
             NodeUse use,
             String populationClass,
-            GraphEvidenceCondition evidenceCondition) {
+            GraphEvidenceCondition evidenceCondition,
+            List<Edge> alternativeEdges,
+            PopulationOperation populationOperation,
+            boolean repeatUntilStable) {
+        public NextNode(GraphRelation property, GraphTraversalDirection directionFromPrevious,
+                NodeUse use, String populationClass, GraphEvidenceCondition evidenceCondition) {
+            this(property, directionFromPrevious, use, populationClass, evidenceCondition,
+                    List.of(), PopulationOperation.NARROW, false);
+        }
         public NextNode {
             if (property == null) throw new IllegalArgumentException("Edge property is required");
             if (directionFromPrevious == null) {
@@ -53,6 +68,16 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
                         "Choose the class whose population receives the reached entities");
             }
             if (use == NodeUse.INTERMEDIATE_ONLY) populationClass = "";
+            alternativeEdges = alternativeEdges == null ? List.of()
+                    : alternativeEdges.stream().filter(java.util.Objects::nonNull).toList();
+            populationOperation = populationOperation == null
+                    ? PopulationOperation.NARROW : populationOperation;
+        }
+        public List<Edge> edges() {
+            java.util.ArrayList<Edge> result = new java.util.ArrayList<>();
+            result.add(new Edge(property, directionFromPrevious));
+            result.addAll(alternativeEdges);
+            return List.copyOf(result);
         }
     }
 
