@@ -34,7 +34,7 @@ class RelationProfileTest {
 
         assertEquals(2, profile.edges());
         assertEquals(2, profile.statedBothWays());
-        assertEquals(0, profile.statedOneWayOnly());
+        assertEquals(List.of(), profile.statedOneWay());
         assertEquals(0, profile.reflexive());
         assertEquals(0, profile.mutualPairs());
         assertEquals(List.of(), profile.mutuallyReachable());
@@ -62,8 +62,13 @@ class RelationProfileTest {
 
         assertEquals(1, profile.edges());
         assertEquals(0, profile.statedBothWays());
-        assertEquals(1, profile.statedOneWayOnly(),
+        assertEquals(1, profile.statedOneWay().size(),
                 "Wikidata routinely records one direction; the gap is the curation item");
+        RelationProfile.OneSided gap = profile.statedOneWay().getFirst();
+        assertEquals("Later office", gap.from().getDisplayName());
+        assertEquals("Earlier office", gap.to().getDisplayName());
+        assertTrue(gap.forwardOnly(),
+                "replaces says it and replacedBy does not, which is the edit to make");
         assertEquals(1, profile.components().size());
         assertEquals(2, profile.components().getFirst().size(),
                 "one stated direction still connects the pair");
@@ -84,6 +89,8 @@ class RelationProfileTest {
         assertEquals(2, profile.mutualPairs(), "every stated edge is reciprocated");
         assertEquals(0, profile.statedBothWays(),
                 "a single property has no second side to agree with");
+        assertEquals(List.of(), profile.statedOneWay(),
+                "and nothing to be one-sided about either");
         assertEquals(2, profile.transitivityGaps(),
                 "a<->b<->c leaves a<->c unstated, so the sibship is not closed");
         assertEquals(1, profile.components().size());
@@ -123,6 +130,8 @@ class RelationProfileTest {
 
         assertEquals(0, profile.edges(), "an edge needs two loaded ends");
         assertEquals(1, profile.danglingEdges());
+        assertEquals(List.of(inside), profile.leavingPopulation(),
+                "the member whose chain leaves is the one to expand the population from");
         assertTrue(profile.components().getFirst().touchesBoundary(),
                 "a component may continue outside the population, and a group built "
                         + "from it would be a fragment that looks whole");

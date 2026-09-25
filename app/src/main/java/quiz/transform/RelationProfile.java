@@ -45,13 +45,14 @@ public record RelationProfile(
         int members,
         int edges,
         int statedBothWays,
-        int statedOneWayOnly,
+        List<OneSided> statedOneWay,
         int reflexive,
         int mutualPairs,
         int transitivityGaps,
         int maxOutDegree,
         int maxInDegree,
         int danglingEdges,
+        List<Viewable> leavingPopulation,
         List<Component> components,
         List<List<Viewable>> mutuallyReachable) {
 
@@ -77,6 +78,15 @@ public record RelationProfile(
 
         public int size() { return members.size(); }
     }
+
+    /**
+     * An edge only one of the two fields states.
+     *
+     * <p>Carried as the entities rather than counted, because this is a worklist: each
+     * one is a statement Wikidata has in one direction and not the other, and somebody
+     * decides whether to add the other or leave it. A count cannot be acted on.
+     */
+    public record OneSided(Viewable from, Viewable to, boolean forwardOnly) { }
 
     private record Edge(int from, int to) { }
 
@@ -112,6 +122,7 @@ public record RelationProfile(
         // [statedForward, statedInverse] per normalized directed edge.
         Map<Edge, boolean[]> stated = new LinkedHashMap<>();
         Set<Integer> boundaryNodes = new LinkedHashSet<>();
+        List<Viewable> leaving = new ArrayList<>();
         int dangling = 0;
         FieldPath forwardPath = forward.isBlank() ? null : FieldPath.parse(forward);
         FieldPath inversePath = inverse.isBlank() ? null : FieldPath.parse(inverse);
@@ -119,20 +130,28 @@ public record RelationProfile(
             Viewable node = nodes.get(from);
             for (Viewable target : ReferenceField.values(node, forwardPath)) {
                 Integer to = index.get(NodeKey.of(target));
-                if (to == null) { dangling++; boundaryNodes.add(from); continue; }
+                if (to == null) {
+                    dangling++;
+                    if (boundaryNodes.add(from)) leaving.add(node);
+                    continue;
+                }
                 stated.computeIfAbsent(new Edge(from, to), ignored -> new boolean[2])[0] = true;
             }
             // The inverse field states the same relation backwards, so it contributes
             // the reversed edge rather than a second relation.
             for (Viewable target : ReferenceField.values(node, inversePath)) {
                 Integer to = index.get(NodeKey.of(target));
-                if (to == null) { dangling++; boundaryNodes.add(from); continue; }
+                if (to == null) {
+                    dangling++;
+                    if (boundaryNodes.add(from)) leaving.add(node);
+                    continue;
+                }
                 stated.computeIfAbsent(new Edge(to, from), ignored -> new boolean[2])[1] = true;
             }
         }
 
         int bothWays = 0;
-        int oneWayOnly = 0;
+        List<OneSided> oneWay = new ArrayList<>();
         int reflexive = 0;
         int[] outDegree = new int[nodes.size()];
         int[] inDegree = new int[nodes.size()];
@@ -144,7 +163,12 @@ public record RelationProfile(
             Edge edge = entry.getKey();
             boolean[] sides = entry.getValue();
             if (!inverse.isBlank() && !forward.isBlank()) {
-                if (sides[0] && sides[1]) bothWays++; else oneWayOnly++;
+                if (sides[0] && sides[1]) {
+                    bothWays++;
+                } else {
+                    oneWay.add(new OneSided(
+                            nodes.get(edge.from()), nodes.get(edge.to()), sides[0]));
+                }
             }
             if (edge.from() == edge.to()) reflexive++;
             outDegree[edge.from()]++;
@@ -189,10 +213,11 @@ public record RelationProfile(
         components.sort((left, right) -> Integer.compare(right.size(), left.size()));
 
         return new RelationProfile(forward, inverse, nodes.size(), stated.size(),
-                bothWays, oneWayOnly, reflexive, mutualPairs, transitivityGaps,
+                bothWays, List.copyOf(oneWay), reflexive, mutualPairs, transitivityGaps,
                 Arrays.stream(outDegree).max().orElse(0),
                 Arrays.stream(inDegree).max().orElse(0),
-                dangling, List.copyOf(components), stronglyConnected(nodes, out));
+                dangling, List.copyOf(leaving), List.copyOf(components),
+                stronglyConnected(nodes, out));
     }
 
     /**
