@@ -77,6 +77,28 @@ class RoleSelectionsTest {
                 RoleSelections.definitions(model).stream().map(RoleSelection::key).toList());
     }
 
+    @Test void aFinalRepresentationIsNotInferredAsAnotherContextualRole() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("P39"));
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("PositionHolder");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        model.rootClass(holding);
+        model.addClass(new GeneratedClassModel("PositionHolder"));
+        model.addClass(new GeneratedClassModel("Person"));
+        model.representationClasses(model.findClass("PositionHolder"), List.of("Person"));
+
+        assertEquals(java.util.Set.of("PositionHolder"),
+                RoleSelections.roleClassNames(model),
+                "Person is the settled representation even when another statement "
+                        + "field points directly at Person");
+        assertEquals(List.of("PositionHolder"),
+                RoleSelections.definitions(model).stream()
+                        .map(RoleSelection::name).toList());
+    }
+
     @Test void roleMembershipRoundTripsWithCanonicalReferences(@TempDir Path dir)
             throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();

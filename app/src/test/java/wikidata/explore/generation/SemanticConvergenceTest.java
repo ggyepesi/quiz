@@ -73,6 +73,47 @@ class SemanticConvergenceTest {
         assertEquals("Person", classified.typeName());
     }
 
+    @Test void aRepresentationAlsoUsedDirectlyByAStatementFieldSettles() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new wikidata.explore.model.StatementClassSource("P39"));
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("PositionHolder");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        model.rootClass(holding);
+        model.addClass(new GeneratedClassModel("PositionHolder"));
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .mapping().propertyPid("P31");
+        model.addClass(person);
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+        model.representationClasses(model.findClass("PositionHolder"), List.of("Person"));
+
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "a holder");
+        human.put("type", List.of(new WikidataDynamicObject("Q5", "human")));
+        WikidataDynamicObject record = new WikidataDynamicObject("Q1$stmt", "a holding");
+        record.type("OfficeHolding");
+        record.put("source", human);
+        record.put("predecessor", human);
+        java.util.ArrayList<WikidataDynamicObject> pool =
+                new java.util.ArrayList<>(List.of(record, human));
+
+        assertTrue(wikidata.explore.transform.ReferentClassStamp.apply(model, pool) > 0);
+        assertEquals(1, wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                model, pool, pool, null).classified());
+
+        assertEquals(java.util.Set.of("Person"), human.directClassNames(),
+                "the final Person kind stays settled instead of alternating with "
+                        + "PositionHolder on every pass");
+        assertEquals(0, wikidata.explore.transform.ReferentClassStamp.apply(model, pool),
+                "the next convergence pass must not restore PositionHolder");
+        assertEquals(0, wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                model, pool, pool, null).classified(),
+                "the next convergence pass must find no kind work left");
+    }
+
     @Test void anEarlierFieldFetchPlansTheP31ConsumedByFinalization() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");

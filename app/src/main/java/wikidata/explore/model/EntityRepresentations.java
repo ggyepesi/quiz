@@ -58,6 +58,25 @@ public final class EntityRepresentations {
         return java.util.List.copyOf(found.values());
     }
 
+    /**
+     * Classes explicitly configured as final representations.
+     *
+     * <p>A statement field may also point directly at one of these classes (History's
+     * predecessor and successor point at Person). That use does not turn the final
+     * representation back into a contextual role.
+     */
+    public static Set<String> representationClassNames(GeneratedProjectModel model) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (model == null) return names;
+        for (EntityRepresentationRule rule : model.entityRepresentationRules()) {
+            if (rule == null || !rule.isConfigured()) continue;
+            GeneratedClassModel target = model.resolveClass(
+                    rule.representationClassId(), rule.representationClassName());
+            if (target != null) names.add(target.className());
+        }
+        return java.util.Collections.unmodifiableSet(names);
+    }
+
     /** The first explicitly configured representation whose admission matched. */
     public static String preferredClass(GeneratedProjectModel model,
                                         Set<String> matchedClasses) {

@@ -25,6 +25,9 @@ public final class RoleSelections {
     public static List<RoleSelection> definitions(GeneratedProjectModel model) {
         LinkedHashMap<String, RoleSelection> out = new LinkedHashMap<>();
         if (model == null) return List.of();
+        java.util.Set<String> representations =
+                wikidata.explore.model.EntityRepresentations
+                        .representationClassNames(model);
         for (Selection selection : model.selections()) {
             if (selection instanceof RoleSelection role && role.isConfigured()) {
                 out.put(role.key().toLowerCase(java.util.Locale.ROOT), role.copy());
@@ -36,7 +39,8 @@ public final class RoleSelections {
                 if (field == null || field.type() != FieldType.ENTITY) continue;
                 GeneratedClassModel target = model.findClass(field.entityClassName());
                 if (target == null || MembershipPattern.of(target, model)
-                        != MembershipPattern.REFERENCED) continue;
+                        != MembershipPattern.REFERENCED
+                        || representations.contains(target.className())) continue;
                 String key = (target.className() + " [" + owner.className() + "."
                         + field.name() + "]").toLowerCase(java.util.Locale.ROOT);
                 out.putIfAbsent(key, new RoleSelection(
@@ -75,6 +79,9 @@ public final class RoleSelections {
     public static java.util.Set<String> roleClassNames(GeneratedProjectModel model) {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
         if (model == null) return names;
+        java.util.Set<String> representations =
+                wikidata.explore.model.EntityRepresentations
+                        .representationClassNames(model);
         for (wikidata.explore.model.EntityRepresentationRule rule
                 : model.entityRepresentationRules()) {
             if (rule != null && rule.isConfigured()) names.add(rule.roleClassName());
@@ -85,7 +92,10 @@ public final class RoleSelections {
                 if (field == null || field.type() != FieldType.ENTITY) continue;
                 GeneratedClassModel target = model.findClass(field.entityClassName());
                 if (target != null && MembershipPattern.of(target, model)
-                        == MembershipPattern.REFERENCED) names.add(target.className());
+                        == MembershipPattern.REFERENCED
+                        && !representations.contains(target.className())) {
+                    names.add(target.className());
+                }
             }
         }
         return java.util.Collections.unmodifiableSet(names);
