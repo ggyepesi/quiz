@@ -147,6 +147,33 @@ class ReferentClassStampTest {
         assertEquals(java.util.Set.of("Person"), charles.directClassNames());
     }
 
+    @Test void aFieldCannotRetypeAnAlreadyConfiguredUnrelatedEntity() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        entityField(holding, "predecessor", "Person");
+        model.addClass(holding);
+        model.addClass(new GeneratedClassModel("Person"));
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        model.addClass(position);
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        model.addClass(withHolders);
+        model.rootClass(holding);
+
+        WikidataDynamicObject predecessor =
+                new WikidataDynamicObject("Q641589", "Governor-General of India");
+        predecessor.type("PositionWithHolders");
+        WikidataDynamicObject office =
+                new WikidataDynamicObject("Q1$holding", "an office holding");
+        office.type("OfficeHolding");
+        office.put("predecessor", predecessor);
+
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(office, predecessor)));
+        assertEquals(java.util.Set.of("PositionWithHolders"),
+                predecessor.directClassNames(),
+                "occurring in a Person field must not make a position a Person");
+    }
+
     @Test void sameEntityCanBelongToBothStatementFieldRoles() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nominationClass = new GeneratedClassModel("Nomination");

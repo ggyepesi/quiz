@@ -1,6 +1,7 @@
 package wikidata.explore.generation;
 
-import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract
+        .WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.VocabularySelection;

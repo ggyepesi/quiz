@@ -135,6 +135,19 @@ public class GenerationPipeline {
     public List<Viewable> materialize(
             GeneratedViewableRuntime runtime,
             List<WikidataDynamicObject> dynamicObjects) throws Exception {
+        return materialize(runtime, dynamicObjects, message -> { });
+    }
+
+    /**
+     * Materializes, and reports what it refused to store. A reference whose entity is
+     * carried as a class the field cannot hold is dropped rather than crashing the run,
+     * so the count is the only thing that distinguishes two of them from a mis-stamping
+     * that emptied a field across the domain.
+     */
+    public List<Viewable> materialize(
+            GeneratedViewableRuntime runtime,
+            List<WikidataDynamicObject> dynamicObjects,
+            java.util.function.Consumer<String> report) throws Exception {
         // Graph classes are annotation records, shown through their graph-result panel.
         // They may remain reachable in a saved pool after Apply, but exposing them as
         // ordinary generated instances produces a tab of labels with none of the
@@ -150,8 +163,11 @@ public class GenerationPipeline {
                         .filter(value -> value == null
                                 || !annotationTypes.contains(value.typeName()))
                         .toList();
-        return new GeneratedViewableMapper(runtime)
-                .mapRoots(visible);
+        GeneratedViewableMapper mapper = new GeneratedViewableMapper(runtime);
+        List<Viewable> instances = mapper.mapRoots(visible);
+        mapper.refusedReferences().forEach((what, count) -> report.accept(
+                count + " reference(s) not stored — " + what));
+        return instances;
     }
 
     /**

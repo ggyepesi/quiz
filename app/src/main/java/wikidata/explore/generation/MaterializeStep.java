@@ -37,8 +37,11 @@ public final class MaterializeStep implements PipelineStep {
         // rather than a second one that would have.
         GeneratedViewableRuntime runtime = state.runtime() != null ? state.runtime()
                 : pipeline.buildRuntime(context.run().request().model());
-        List<Viewable> instances = pipeline.materialize(runtime, state.pool());
+        java.util.List<String> refused = new java.util.ArrayList<>();
+        List<Viewable> instances =
+                pipeline.materialize(runtime, state.pool(), refused::add);
         state.materialized(runtime, instances);
-        return instances.size() + " instance(s) materialized";
+        return instances.size() + " instance(s) materialized"
+                + (refused.isEmpty() ? "" : "; " + String.join("; ", refused));
     }
 }

@@ -26,6 +26,31 @@ public final class EntityRepresentations {
                                 rule.representationClassName()) == target);
     }
 
+    /**
+     * Whether an entity whose configured carrier is {@code actualClassName} may be
+     * stored in a field declared as {@code expectedClassName}.
+     *
+     * <p>QID equality is deliberately absent: source identity can unify copies only
+     * inside a compatible configured type. Compatibility is either ordinary model
+     * inheritance or an explicit contextual representation rule.</p>
+     */
+    public static boolean fieldAccepts(GeneratedProjectModel model,
+                                       String expectedClassName,
+                                       String actualClassName) {
+        if (model == null || expectedClassName == null || actualClassName == null) {
+            return false;
+        }
+        if (model.isSameOrSubclass(actualClassName, expectedClassName)) return true;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (GeneratedClassModel actual = model.findClass(actualClassName);
+                actual != null && seen.add(actual.className());
+                actual = actual.hasBase() ? model.findClass(actual.baseClassName()) : null) {
+            if (mayRepresent(model, expectedClassName, actual.className())) return true;
+            if (!actual.hasBase()) break;
+        }
+        return false;
+    }
+
     /** Ordered role classes whose matching instances may be represented as {@code target}. */
     public static java.util.List<String> rolesRepresentedAs(
             GeneratedProjectModel model, GeneratedClassModel target) {

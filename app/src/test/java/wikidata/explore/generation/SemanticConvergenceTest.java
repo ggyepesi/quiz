@@ -68,9 +68,11 @@ class SemanticConvergenceTest {
                 new FakeWikidataApiClient(), null,
                 List.of(), new GenerationQualityTracker());
 
-        assertEquals(1, result.iterations(),
-                "stamping must not re-role a classified kind, or nothing ever converges");
+        assertEquals(0, result.iterations(),
+                "an already typed incompatible referent is no semantic work at all");
         assertEquals("Person", classified.typeName());
+        assertEquals(java.util.Set.of("Person"), classified.directClassNames(),
+                "the field declaration must not add an unrelated class membership");
     }
 
     @Test void aRepresentationAlsoUsedDirectlyByAStatementFieldSettles() {

@@ -3015,7 +3015,7 @@ public class ModelBuilderFrame extends JFrame {
             RuleNode plan = pipeline.plan(snapshot);
             GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
             List<Viewable> instances =
-                    pipeline.materialize(runtime, objects);
+                    pipeline.materialize(runtime, objects, logWindow::info);
 
             acceptGenerationRun(new GenerationRun(
                     snapshot, 0, plan, objects, runtime, instances,

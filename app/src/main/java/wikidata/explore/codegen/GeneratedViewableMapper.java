@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +56,22 @@ public class GeneratedViewableMapper {
             boolean merge) { }
 
     private record ModeledEntityKey(String type, String qid) { }
+    /**
+     * References dropped because the field's class cannot hold the entity's carrier,
+     * counted per field and pair of classes.
+     *
+     * <p>Dropping is right — a Person-valued qualifier holding a position would put an
+     * office where the reader expects a person — but it is a well-formed object being
+     * discarded, not a malformed value. Silently, nothing distinguishes two of them from
+     * ten thousand caused by a mis-stamping, and a domain missing its references looks
+     * exactly like one that never had any.
+     */
+    private final Map<String, Integer> refusedReferences = new LinkedHashMap<>();
+
+    /** What {@link #mapRoots} refused to store, for the run that asked for it to report. */
+    public Map<String, Integer> refusedReferences() {
+        return Map.copyOf(refusedReferences);
+    }
     private record ModeledFieldBinding(GeneratedFieldModel model, Field field) { }
     private record DatasourceFieldBinding(
             datasource.api.DatasourceInstanceField declaration, Field field) { }
@@ -553,6 +570,17 @@ public class GeneratedViewableMapper {
             // P61 "unknown value"/genid that arrived as text) can't go into a
             // objectview.Viewable field — drop it rather than crash the run.
             if (raw instanceof WikidataDynamicObject dyn) {
+                String expected = fieldModel.entityClassName();
+                if (dyn.hasTypeStamp() && expected != null && !expected.isBlank()
+                        && runtime.project() != null
+                        && runtime.project().findClass(expected) != null
+                        && !wikidata.explore.model.EntityRepresentations.fieldAccepts(
+                                runtime.project(), expected, dyn.typeName())) {
+                    refusedReferences.merge(
+                            fieldModel.name() + ": " + expected + " cannot hold "
+                                    + dyn.typeName(), 1, Integer::sum);
+                    return null;
+                }
                 return mapObject(dyn, fieldModel.entityClassName());
             }
             return raw instanceof Viewable ? raw : null;

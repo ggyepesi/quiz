@@ -94,7 +94,7 @@ public final class ReferentClassStamp {
                 continue;
             }
             for (Map.Entry<String, String> e : byField.entrySet()) {
-                stamped += stamp(o.get(e.getKey()), e.getValue(), roleClasses,
+                stamped += stamp(o.get(e.getKey()), e.getValue(), model, roleClasses,
                         originallyTyped);
             }
         }
@@ -142,11 +142,23 @@ public final class ReferentClassStamp {
     }
 
     private static int stamp(Object value, String className,
+                             GeneratedProjectModel model,
                              java.util.Set<String> roleClasses,
                              Map<WikidataDynamicObject, Boolean> originallyTyped) {
         if (value instanceof WikidataDynamicObject w) {
             if (w.qid() != null && WikidataIds.isQid(w.qid())) {
                 originallyTyped.putIfAbsent(w, w.hasTypeStamp());
+            }
+            // A field declaration constrains its value; it does not reclassify an
+            // entity already configured as an unrelated class. In particular, a
+            // PositionWithHolders QID encountered in a Person-valued qualifier stays
+            // a position. Compatibility is the same question the mapper asks before
+            // storing a value in that field — inheritance, or an explicit
+            // role -> representation rule — so both ask it the same way.
+            if (originallyTyped.getOrDefault(w, false)
+                    && !wikidata.explore.model.EntityRepresentations.fieldAccepts(
+                            model, className, w.typeName())) {
+                return 0;
             }
             // Roles are materialized from their owning field by RoleSelections. Before
             // kind classification, their legacy classes keep bare referents stamped and
@@ -167,7 +179,7 @@ public final class ReferentClassStamp {
         if (value instanceof List<?> list) {
             int n = 0;
             for (Object item : list) {
-                n += stamp(item, className, roleClasses, originallyTyped);
+                n += stamp(item, className, model, roleClasses, originallyTyped);
             }
             return n;
         }

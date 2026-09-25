@@ -284,9 +284,11 @@ class GeneratedViewableSourceTypeTest {
                 "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
         nomineeField.entityClassName("Nominee");
         nomineeField.mapping().qualifierPid("P2453");
-        project.addClass(new GeneratedClassModel("Nominee"));
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        project.addClass(nominee);
         project.addClass(new GeneratedClassModel("Person"));
         project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        project.representationClasses(nominee, java.util.List.of("Person"));
 
         wikidata.explore.extract.WikidataDynamicObject person =
                 new wikidata.explore.extract.WikidataDynamicObject("Q1", "Person One");

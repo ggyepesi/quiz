@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** One Wikidata entity may intentionally play two modeled roles with different schemas. */
 class SameQidDifferentModeledTypesMappingTest {
@@ -101,6 +103,66 @@ class SameQidDifferentModeledTypesMappingTest {
             assertEquals("Position", mapped.get(1).getClass().getSimpleName());
             assertNotSame(mapped.get(0), mapped.get(1));
         }
+    }
+
+    @Test void anUnrelatedTypedEntityCannotPopulateAFieldMerelyBecauseItsQidExists()
+            throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        project.rootClass(holding);
+        project.addClass(person);
+        project.addClass(position);
+        project.addClass(withHolders);
+
+        WikidataDynamicObject predecessor = object("Q641589", "PositionWithHolders");
+        WikidataDynamicObject office = object("Q1$holding", "OfficeHolding");
+        office.put("predecessor", predecessor);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(office, predecessor)).getFirst();
+            assertNull(mapped.getClass().getDeclaredField("predecessor").get(mapped),
+                    "QID identity must remain constrained by the field's configured type");
+        }
+    }
+
+    /**
+     * Dropping the value is right; dropping it silently is not. A well-formed object is
+     * being discarded, so nothing would distinguish the two predecessors History really
+     * has from a mis-stamping that emptied the field across the domain.
+     */
+    @Test void aRefusedReferenceIsCountedAndReported() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        project.rootClass(holding);
+        project.addClass(new GeneratedClassModel("Person"));
+        project.addClass(new GeneratedClassModel("PositionWithHolders"));
+
+        WikidataDynamicObject predecessor = object("Q641589", "PositionWithHolders");
+        WikidataDynamicObject office = object("Q1$holding", "OfficeHolding");
+        office.put("predecessor", predecessor);
+
+        java.util.List<String> reported = new java.util.ArrayList<>();
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            new wikidata.explore.generation.GenerationPipeline().materialize(
+                    runtime, List.of(office, predecessor), reported::add);
+        }
+
+        assertEquals(1, reported.size(), "the run hears about it: " + reported);
+        assertTrue(reported.getFirst().contains("predecessor")
+                        && reported.getFirst().contains("Person")
+                        && reported.getFirst().contains("PositionWithHolders"),
+                "and hears which field and which two classes: " + reported.getFirst());
     }
 
     private static WikidataDynamicObject object(String qid, String type) {
