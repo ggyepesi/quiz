@@ -80,21 +80,21 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
         }
         replaceMembers(members);
 
-        Map<Identity, Viewable> anchorsByIdentity = new LinkedHashMap<>();
+        Map<NodeKey.Identity, Viewable> anchorsByIdentity = new LinkedHashMap<>();
         for (Viewable anchor : anchors) {
-            Identity identity = Identity.of(anchor);
+            NodeKey.Identity identity = NodeKey.Identity.of(anchor);
             if (identity != null) anchorsByIdentity.putIfAbsent(identity, anchor);
         }
-        Map<Identity, String> labels = uniqueAnchorLabels(anchorsByIdentity);
-        Map<Identity, List<Viewable>> assigned = new LinkedHashMap<>();
+        Map<NodeKey.Identity, String> labels = uniqueAnchorLabels(anchorsByIdentity);
+        Map<NodeKey.Identity, List<Viewable>> assigned = new LinkedHashMap<>();
         anchorsByIdentity.keySet().forEach(key -> assigned.put(key, new ArrayList<>()));
         List<Viewable> review = new ArrayList<>();
         List<Viewable> unclassified = new ArrayList<>();
 
-        Map<NodeKey, Set<Identity>> nearestByNode = nearestAnchors(
+        Map<NodeKey, Set<NodeKey.Identity>> nearestByNode = nearestAnchors(
                 members, anchorsByIdentity.keySet());
         for (Viewable member : members) {
-            Set<Identity> nearest = nearestByNode.getOrDefault(
+            Set<NodeKey.Identity> nearest = nearestByNode.getOrDefault(
                     NodeKey.of(member), Set.of());
             if (nearest.isEmpty()) {
                 unclassified.add(member);
@@ -122,8 +122,8 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
 
     /** Index the upward graph once, then search it in reverse from all anchors at
      * once. Every node is therefore classified without repeating its ancestry walk. */
-    private Map<NodeKey, Set<Identity>> nearestAnchors(
-            List<Viewable> members, Set<Identity> anchorIds) {
+    private Map<NodeKey, Set<NodeKey.Identity>> nearestAnchors(
+            List<Viewable> members, Set<NodeKey.Identity> anchorIds) {
         Map<NodeKey, Viewable> nodes = new LinkedHashMap<>();
         Map<NodeKey, Set<NodeKey>> descendants = new LinkedHashMap<>();
         ArrayDeque<Viewable> pending = new ArrayDeque<>(members);
@@ -133,7 +133,7 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
             NodeKey nodeKey = NodeKey.of(node);
             if (nodes.putIfAbsent(nodeKey, node) != null) continue;
             List<Viewable> parents = new ArrayList<>();
-            addViewables(FieldAccess.getPathValues(node, path), parents);
+            parents.addAll(ReferenceField.values(node, path));
             for (Viewable parent : parents) {
                 NodeKey parentKey = NodeKey.of(parent);
                 descendants.computeIfAbsent(parentKey, ignored -> new LinkedHashSet<>())
@@ -142,21 +142,21 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
             }
         }
 
-        record Reach(NodeKey node, Identity anchor, int distance) { }
+        record Reach(NodeKey node, NodeKey.Identity anchor, int distance) { }
         ArrayDeque<Reach> reached = new ArrayDeque<>();
-        for (Identity anchor : anchorIds) {
+        for (NodeKey.Identity anchor : anchorIds) {
             NodeKey key = NodeKey.stable(anchor);
             if (nodes.containsKey(key)) reached.addLast(new Reach(key, anchor, 0));
         }
         Map<NodeKey, Integer> bestDistance = new LinkedHashMap<>();
-        Map<NodeKey, Set<Identity>> nearest = new LinkedHashMap<>();
+        Map<NodeKey, Set<NodeKey.Identity>> nearest = new LinkedHashMap<>();
         while (!reached.isEmpty()) {
             Reach current = reached.removeFirst();
             Integer best = bestDistance.get(current.node());
             boolean propagate;
             if (best == null || current.distance() < best) {
                 bestDistance.put(current.node(), current.distance());
-                Set<Identity> one = new LinkedHashSet<>();
+                Set<NodeKey.Identity> one = new LinkedHashSet<>();
                 one.add(current.anchor());
                 nearest.put(current.node(), one);
                 propagate = true;
@@ -173,26 +173,11 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
         return nearest;
     }
 
-    private static void addViewables(Object value, List<Viewable> out) {
-        if (value instanceof Viewable viewable) {
-            out.add(viewable);
-        } else if (value instanceof Collection<?> values) {
-            values.stream().filter(Viewable.class::isInstance)
-                    .map(Viewable.class::cast).forEach(out::add);
-        } else if (value != null && value.getClass().isArray()) {
-            int length = java.lang.reflect.Array.getLength(value);
-            for (int i = 0; i < length; i++) {
-                Object element = java.lang.reflect.Array.get(value, i);
-                if (element instanceof Viewable viewable) out.add(viewable);
-            }
-        }
-    }
-
-    private static Map<Identity, String> uniqueAnchorLabels(
-            Map<Identity, Viewable> anchors) {
+    private static Map<NodeKey.Identity, String> uniqueAnchorLabels(
+            Map<NodeKey.Identity, Viewable> anchors) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         anchors.values().forEach(anchor -> counts.merge(label(anchor), 1, Integer::sum));
-        Map<Identity, String> labels = new LinkedHashMap<>();
+        Map<NodeKey.Identity, String> labels = new LinkedHashMap<>();
         anchors.forEach((identity, anchor) -> {
             String label = label(anchor);
             if (counts.getOrDefault(label, 0) > 1
@@ -207,48 +192,5 @@ public final class NearestAncestorGroup extends EditableGroup implements Produce
     private static String label(Viewable value) {
         String label = value.getReferenceLabel();
         return label == null || label.isBlank() ? value.getIdentifier() : label;
-    }
-
-    private record Identity(String type, String id) {
-        static Identity of(Viewable value) {
-            if (value == null || value.getIdentifier() == null
-                    || value.getIdentifier().isBlank()) return null;
-            String type = value.identityTypeName();
-            return new Identity(type == null ? "" : type, value.getIdentifier());
-        }
-    }
-
-    /** Stable identity where available; otherwise reference identity for an inline
-     * anonymous graph node. */
-    private static final class NodeKey {
-        private final Identity stable;
-        private final Viewable reference;
-
-        private NodeKey(Identity stable, Viewable reference) {
-            this.stable = stable;
-            this.reference = reference;
-        }
-
-        static NodeKey of(Viewable value) {
-            Identity identity = Identity.of(value);
-            return identity == null
-                    ? new NodeKey(null, value) : stable(identity);
-        }
-
-        static NodeKey stable(Identity identity) {
-            return new NodeKey(identity, null);
-        }
-
-        @Override public boolean equals(Object other) {
-            if (!(other instanceof NodeKey key)) return false;
-            return stable != null || key.stable != null
-                    ? java.util.Objects.equals(stable, key.stable)
-                    : reference == key.reference;
-        }
-
-        @Override public int hashCode() {
-            return stable != null ? stable.hashCode()
-                    : System.identityHashCode(reference);
-        }
     }
 }
