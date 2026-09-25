@@ -1,6 +1,5 @@
 package wikidata.explore.query.logical;
 
-import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 
 import objectview.Viewable;
@@ -156,20 +155,28 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     FactDemandPlan factDemandPlan =
                             wikidata.explore.generation.GenerationFactDemandPlan.compile(
                                     project, sourcePlan);
-
                     for (GeneratedClassModel cls : project.classes()) {
                         datasource.api.SourceExecutionPlan.Step population = sourcePlan.step(
                                 datasource.api.SourceBindingTarget.classPopulation(
                                         cls.className()));
-                        if (!generatable(cls, population)) {
+                        wikidata.explore.generation.PopulationSourceExecution.Resolution
+                                populationInput =
+                                wikidata.explore.generation.PopulationSourceExecution.resolve(
+                                        project, cls, population);
+                        if (cls.reifiesStatements() || !populationInput.available()) {
                             genLog.message("Skip class \"" + cls.className()
-                                    + "\" — " + populationReason(population) + ".\n");
+                                    + "\" — " + populationInput.reason() + ".\n");
                             continue;
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
                         RuleNode plan = pipeline.plan(rooted);
-                        wikidata.explore.generation.PopulationSourceExecution.apply(
-                                plan, population);
+                        populationInput.apply(plan, population);
+                        if (populationInput.importedPopulation()) {
+                            genLog.message("Load imported population "
+                                    + String.join(", ", populationInput.selectionNames())
+                                    + ": " + populationInput.qids().size()
+                                    + " " + cls.className() + " QIDs.\n");
+                        }
                         genLog.message("=== Class \"" + cls.className()
                                 + "\" (depth " + cls.generationDepth() + ") ===\n");
 
@@ -634,27 +641,6 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     transformed.projectionChangedInstances()));
                     }
                 });
-    }
-
-    // A running sub-query node under {@code step}, finished via the handle.
-    // Generatable = has something to query: a membership type, extra types, or
-    // an explicit seed-QID set. (A bare reference-only class is skipped.)
-    private boolean generatable(
-            GeneratedClassModel cls,
-            datasource.api.SourceExecutionPlan.Step population) {
-        // STATEMENT-reification classes aren't fetched by a normal root query —
-        // they're produced by ModelStatementReifications (qualifier-load + reify).
-        if (cls.reifiesStatements()) {
-            return false;
-        }
-        return population != null && population.prepared().configuration(
-                PopulationRequest.class) != null;
-    }
-
-    private String populationReason(datasource.api.SourceExecutionPlan.Step population) {
-        if (population == null) return "no population source is configured";
-        String description = population.prepared().description();
-        return description.isBlank() ? "the population source is incomplete" : description;
     }
 
     private GeneratedProjectModel rootedAt(String className) {

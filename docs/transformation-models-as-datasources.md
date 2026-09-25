@@ -484,17 +484,26 @@ that names the file and what changed is the minimum; merging is a later question
 
 ## Import and ownership
 
-An imported materialized class remains owned by its transformation model:
+Class configuration and instance publication cross different boundaries:
 
-- its declaration is read-only in the importer;
-- its instances are resolved from the owner's compatible materialized output;
-- the importer neither regenerates them nor edits them;
-- its base relation supplies schema, never fallback membership;
-- missing owner output is an explicit blocking error.
+- an imported class declaration is read-only schema in the importer;
+- the owner's class snapshot stays in the owning model and is never imported;
+- the importer never reruns the imported class's original population producer;
+- a referenced `PopulationSelection` is the explicit publication boundary and contributes
+  exactly its saved identities, typed by the population's class;
+- the class declaration follows transitively as the schema needed to type those members;
+- unreferenced populations and imported classes contribute no instances; and
+- several referenced populations of one class contribute their identity union.
 
-Importing only a `PopulationSelection` remains a different valid operation. It imports an exact
-identity set, not the class's schema or complete transformed objects. The UI must name these
-actions separately: **Import class** and **Import selection** are not substitutes.
+This is already the bounded bridge used by ordinary generation: a referenced population's QIDs
+enter the shared acquisition and materialization pipeline, so its members receive the imported
+class schema without importing the owner's intermediate objects. The later transformation
+datasource extends the same boundary with a `MaterializedPopulation` result when transformed
+fields themselves—not only stable identities—must be published. It does not reintroduce class
+snapshot import as a second path.
+
+The UI action is therefore one concept: import/use a population. Showing the class configuration
+that follows it is explanation of its type, not a separate instance-import operation.
 
 ## Application responsibilities
 
@@ -510,10 +519,10 @@ actions separately: **Import class** and **Import selection** are not substitute
 
 ### ModelBuilder
 
-- declares a class population recipe pointing to a transformation output;
+- references a published population whose class configuration follows as read-only schema;
 - explains the upstream files, classes, transformations, and counts that will be used;
 - invokes the shared build/execution services;
-- imports owner-controlled transformed classes read-only;
+- never imports or regenerates the owner model's intermediate class snapshot;
 - presents the same materialized instances through the normal multi-instance/ObjectView path.
 - edits and explains project build operations, but does not own their executor.
 

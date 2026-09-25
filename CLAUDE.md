@@ -207,6 +207,14 @@ construct per thing produced:
    datasource adapter, but neither application owns a second execution path or automates
    the other. See `docs/transformation-models-as-datasources.md`.
 
+   **Imports cross the instance boundary only through a referenced population.** An
+   imported class contributes its configuration and may be used as a field type, but its
+   owner's class snapshot is not imported and its original population rule is not rerun
+   by the consuming project. When one of the consuming project's own constructs names an
+   imported `PopulationSelection`, generation materializes exactly those saved QIDs as
+   instances of the population's class. Unreferenced populations remain declarations,
+   and several referenced populations of the same class contribute their union.
+
 19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
    identity, its name, rename propagation, its place in the classes list, its editor and its
    persistence all come from the class construct, and its instances are its annotation set.

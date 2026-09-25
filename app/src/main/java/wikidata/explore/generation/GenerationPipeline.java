@@ -1,6 +1,5 @@
 package wikidata.explore.generation;
 
-import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 
 import wikidata.explore.codegen.GeneratedViewableRuntimeBuilder;
@@ -328,14 +327,22 @@ public class GenerationPipeline {
         datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
                 : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
                         snapshot.rootClass().className()));
-        if (population != null && population.prepared().configuration(
-                PopulationRequest.class) == null) {
+        PopulationSourceExecution.Resolution populationInput =
+                PopulationSourceExecution.resolve(
+                        snapshot, snapshot.rootClass(), population);
+        if (!populationInput.available()) {
             if (log != null) log.message("Preview skipped: "
-                    + population.prepared().description() + ".\n");
+                    + populationInput.reason() + ".\n");
             GeneratedViewableRuntime runtime = buildRuntime(snapshot);
             return new GenerationRun(snapshot, depth, plan, List.of(), runtime, List.of());
         }
-        if (population != null) PopulationSourceExecution.apply(plan, population);
+        populationInput.apply(plan, population);
+        if (populationInput.importedPopulation() && log != null) {
+            log.message("Load imported population "
+                    + String.join(", ", populationInput.selectionNames()) + ": "
+                    + populationInput.qids().size() + " "
+                    + snapshot.rootClass().className() + " QIDs.\n");
+        }
 
         List<WikidataDynamicObject> dynamicObjects =
                 extract(client, plan, depth, log);

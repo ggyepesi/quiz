@@ -2033,6 +2033,16 @@ public class ModelBuilderFrame extends JFrame {
         if (c == null) {
             return "No class selected.";
         }
+        if (c.isImported()) {
+            var input = wikidata.explore.generation.PopulationSourceExecution.resolve(
+                    projectModel, c, null);
+            if (input.available()) return null;
+            return "Class \"" + c.className() + "\" is imported from model \""
+                    + c.importedFrom() + "\" and contributes configuration only. "
+                    + "Generate it in that model; Generate domain here materializes "
+                    + "only the exact members of a saved population referenced by "
+                    + "this project.";
+        }
         // A statement class is populated by reification (its subjects come from a
         // source class or are discovered), not by a membership query — so it needs
         // no membership target. GenerateDomainQuery reifies it regardless.
