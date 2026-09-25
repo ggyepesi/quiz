@@ -1,0 +1,49 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+    "name" : "Person",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335",
+    "name" : "Name",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
+    "name" : "PositionHolder",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:78d1f433-938c-30c7-a83b-79d0ea736908",
+    "name" : "OfficeHolding",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
+    "name" : "Position",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e",
+    "name" : "PositionWithHolders",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:4d117d65-fa68-34cc-a770-1c79bb5ed27b",
+    "name" : "Type",
+    "kind" : "SELECTION",
+    "artifact" : "history.model.json"
+  }, {
+    "declarationId" : "decl:8824e88b-d6a7-49e1-b649-5352c8c43115",
+    "name" : "PositionPopulation",
+    "kind" : "POPULATION",
+    "artifact" : "history.model.json"
+  }, {
+    "declarationId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393",
+    "name" : "PositionWithHoldersPopulation",
+    "kind" : "POPULATION",
+    "artifact" : "history.model.json"
+  } ]
+}

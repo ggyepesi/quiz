@@ -1,0 +1,54 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
+    "name" : "Position",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:8beb3249-4d0e-4972-b4b9-d3d68edfe91d",
+    "name" : "PositionType",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:6a66fe0b-9740-416b-b477-e576b64bb9ba",
+    "name" : "PositionDiscoveryStart",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
+    "name" : "PositionHolder",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:78d1f433-938c-30c7-a83b-79d0ea736908",
+    "name" : "OfficeHolding",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:69c7443c-920f-418c-8d3d-a008ed58d6a0",
+    "name" : "GraphConstraint",
+    "kind" : "GRAPH",
+    "artifact" : "graphconstraint.graph.snapshot.json"
+  }, {
+    "declarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e",
+    "name" : "PositionWithHolders",
+    "kind" : "CLASS",
+    "artifact" : "historicalpositions.snapshot.json"
+  }, {
+    "declarationId" : "decl:26d00df3-f413-4e0f-9da6-fa090721984c",
+    "name" : "PositionReplacementExpansion",
+    "kind" : "GRAPH",
+    "artifact" : "positionreplacementexpansion.graph.snapshot.json"
+  }, {
+    "declarationId" : "decl:8824e88b-d6a7-49e1-b649-5352c8c43115",
+    "name" : "PositionPopulation",
+    "kind" : "POPULATION",
+    "artifact" : "historicalpositions.model.json"
+  }, {
+    "declarationId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393",
+    "name" : "PositionWithHoldersPopulation",
+    "kind" : "POPULATION",
+    "artifact" : "historicalpositions.model.json"
+  } ]
+}
