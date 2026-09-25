@@ -145,6 +145,34 @@ class GraphConstraintsPanelTest {
         assertEquals(saved.instances().size(), panel.lastGraphResult().instances().size());
     }
 
+    @Test void loadingInstancesRestoresEveryNamedGraphIncludingSidecarOnlyResults() {
+        GeneratedProjectModel model = model();
+        model.name("Historical Positions");
+        GeneratedClassModel embeddedClass = graphClass(model, "GraphConstraint");
+        embeddedClass.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode(
+                        "Position", "", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(outputNode("Position"))));
+        GeneratedClassModel sidecarClass = graphClass(model, "PositionReplacementExpansion");
+        sidecarClass.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode(
+                        "Position", "", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(outputNode("Position"))));
+        GraphDiscoveryResultStore.Artifact embedded = GraphDiscoveryResultStore.artifact(
+                model.name(), embeddedClass.className(), resultFor("Position"));
+        GraphDiscoveryResultStore.Artifact sidecar = GraphDiscoveryResultStore.artifact(
+                model.name(), sidecarClass.className(), resultFor("Position"));
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+
+        panel.restoreGraphResults(embedded.instances(), graphClass ->
+                graphClass == sidecarClass ? sidecar : null);
+
+        assertEquals(List.of("GraphConstraint", "PositionReplacementExpansion"),
+                panel.graphResults().stream()
+                        .map(GraphDiscoveryResultStore.Artifact::type).toList(),
+                "one Instances window must restore every named annotation set");
+    }
+
     /**
      * The editor must be able to say everything the declaration holds. It showed the
      * first alternative edge in one property field, and applying rebuilt the list from

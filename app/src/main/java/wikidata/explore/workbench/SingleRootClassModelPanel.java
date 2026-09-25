@@ -34,6 +34,7 @@ public class SingleRootClassModelPanel extends JPanel {
      * not a user navigation, and must never make an editor apply stale values. */
     private boolean refreshing;
     private boolean editingEnabled = true;
+    private Runnable modelChanged = () -> { };
 
     private final JButton renameClassButton = new JButton("Rename class");
     private final JButton addClassButton = new JButton("Add class");
@@ -79,6 +80,11 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public void addTreeSelectionListener(TreeSelectionListener listener) {
         if (listener != null) selectionListeners.add(listener);
+    }
+
+    /** The owner receives every completed structural command exactly once. */
+    public void onModelChanged(Runnable action) {
+        modelChanged = action == null ? () -> { } : action;
     }
 
     /** Keeps the model tree navigable while preventing structural edits. */
@@ -294,11 +300,14 @@ public class SingleRootClassModelPanel extends JPanel {
         boolean classContext = selected instanceof GeneratedClassModel
                 || selected instanceof GeneratedFieldModel;
         boolean vocabulary = selected instanceof VocabularySelection;
+        boolean population = selected instanceof PopulationSelection;
+        boolean selectionContext = selected instanceof Selection;
         boolean vocabularyContext = vocabulary
                 || selected == ConfigurationSection.VOCABULARIES;
 
         renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
         addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
+        removeButton.setText(population ? "Remove population" : "Remove");
 
         // An imported class is owned by the model it comes from and is not edited
         // here. Removing it is still this project's decision: dropping an import ends
@@ -320,7 +329,7 @@ public class SingleRootClassModelPanel extends JPanel {
         pasteClassButton.setEnabled(editingEnabled && pasteAvailable.getAsBoolean());
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !imported);
-        removeButton.setEnabled(editingEnabled && (classContext || vocabulary)
+        removeButton.setEnabled(editingEnabled && (classContext || selectionContext)
                 && !(imported && (selected instanceof GeneratedFieldModel
                         || selected instanceof wikidata.explore.model.Selection)));
     }
@@ -395,6 +404,7 @@ public class SingleRootClassModelPanel extends JPanel {
         }
         refresh();
         selectSelection(vocabulary);
+        modelChanged.run();
     }
 
     private void addVocabulary() {
@@ -414,6 +424,7 @@ public class SingleRootClassModelPanel extends JPanel {
         projectModel.addSelection(created);
         refresh();
         selectSelection(created);
+        modelChanged.run();
     }
 
     private DefaultMutableTreeNode buildTree() {
@@ -504,6 +515,7 @@ public class SingleRootClassModelPanel extends JPanel {
         if (!projectModel.renameClass(cls.className(), requested)) return false;
         refresh();
         selectClass(cls);
+        modelChanged.run();
         return true;
     }
 
@@ -525,6 +537,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
         refresh();
         selectClass(cls);
+        modelChanged.run();
     }
 
     private void addField() {
@@ -551,31 +564,33 @@ public class SingleRootClassModelPanel extends JPanel {
 
         refresh();
         selectField(f);
+        modelChanged.run();
     }
 
     private void removeSelected() {
         Object selected = selectedUserObject();
 
-        if (selected instanceof VocabularySelection vocabulary) {
+        if (selected instanceof Selection selection) {
+            String kind = selection instanceof PopulationSelection
+                    ? "population" : "vocabulary";
             int answer = JOptionPane.showConfirmDialog(this,
-                    "Delete vocabulary " + vocabulary.name() + "?",
-                    "Delete vocabulary", JOptionPane.OK_CANCEL_OPTION,
+                    "Delete " + kind + " " + selection.name() + "?",
+                    "Delete " + kind, JOptionPane.OK_CANCEL_OPTION,
                     JOptionPane.WARNING_MESSAGE);
             if (answer != JOptionPane.OK_OPTION) return;
             try {
-                if (!projectModel.removeSelection(vocabulary.name())) {
+                if (!removeSelection(selection)) {
                     JOptionPane.showMessageDialog(this,
-                            "Cannot delete " + vocabulary.name()
+                            "Cannot delete " + selection.name()
                                     + ": the model still references it.",
-                            "Cannot delete vocabulary", JOptionPane.WARNING_MESSAGE);
+                            "Cannot delete " + kind, JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             } catch (IllegalStateException imported) {
                 JOptionPane.showMessageDialog(this, imported.getMessage(),
-                        "Cannot delete vocabulary", JOptionPane.WARNING_MESSAGE);
+                        "Cannot delete " + kind, JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            refresh();
             return;
         }
 
@@ -589,6 +604,7 @@ public class SingleRootClassModelPanel extends JPanel {
             }
 
             refresh();
+            modelChanged.run();
             return;
         }
 
@@ -605,8 +621,17 @@ public class SingleRootClassModelPanel extends JPanel {
             }
             projectModel.removeClass(c);
             refresh();
+            modelChanged.run();
             return;
         }
+    }
+
+    /** The mutation behind the confirmed Remove command; exposed for its lifecycle test. */
+    boolean removeSelection(Selection selection) {
+        if (selection == null || !projectModel.removeSelection(selection.name())) return false;
+        refresh();
+        modelChanged.run();
+        return true;
     }
 
     private GeneratedClassModel owningClassOf(GeneratedFieldModel f) {

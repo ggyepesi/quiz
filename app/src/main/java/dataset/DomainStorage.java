@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import wikidata.explore.model.ConstructInventory;
 
 /**
  * Where a named domain's files live, and how the registry records them.
@@ -66,6 +68,10 @@ public final class DomainStorage {
 
     public File snapshotFile(String name) {
         return file(name, ".snapshot.json");
+    }
+
+    public File constructManifestFile(String name) {
+        return file(name, ".constructs.json");
     }
 
     /** Finalized graph kept only while generation still has to materialize it. */
@@ -296,7 +302,8 @@ public final class DomainStorage {
         try {
             if (!newKey.equals(oldKey) && oldDirectory.isDirectory()) {
                 Files.move(oldDirectory.toPath(), newDirectory.toPath());
-                for (String extension : List.of(".model.json", ".ruletree.json", ".snapshot.json")) {
+                for (String extension : List.of(".model.json", ".ruletree.json",
+                        ".snapshot.json", ".constructs.json")) {
                     File was = new File(newDirectory, oldKey + extension);
                     if (was.isFile()) {
                         Files.move(was.toPath(), new File(newDirectory, newKey + extension).toPath());
@@ -350,32 +357,116 @@ public final class DomainStorage {
         return List.copyOf(files);
     }
 
+    /** One saved inventory entry, regardless of how that construct is materialized. */
+    public static final class SavedConstruct {
+        public String declarationId = "";
+        public String name = "";
+        public ConstructInventory.Kind kind = ConstructInventory.Kind.CLASS;
+        public String artifact = "";
+
+        public SavedConstruct() { }
+
+        SavedConstruct(ConstructInventory.Entry entry, String artifact) {
+            declarationId = entry.declarationId();
+            name = entry.name();
+            kind = entry.kind();
+            this.artifact = artifact == null ? "" : artifact;
+        }
+    }
+
+    /** The exact construct list committed by the last successful Save domain/model. */
+    public static final class ConstructManifest {
+        public int version = 1;
+        public List<SavedConstruct> constructs = new ArrayList<>();
+    }
+
+    public ConstructManifest constructManifest(String name) {
+        File file = constructManifestFile(name);
+        if (!file.isFile()) return new ConstructManifest();
+        try {
+            ConstructManifest loaded = JSON.readValue(file, ConstructManifest.class);
+            return loaded == null ? new ConstructManifest() : loaded;
+        } catch (Exception unreadable) {
+            return new ConstructManifest();
+        }
+    }
+
     /**
-     * Deletes every snapshot of a project and the registry entries that serve them,
-     * leaving the configuration untouched. Returns what it removed.
-     *
-     * <p>This is the whole answer to a configuration change outliving the instances it
-     * produced. A snapshot records what one model version generated — its entities are
-     * stamped with class NAMES, its fields keyed by field names, its population decided
-     * by the evidence tests in force at the time — so a model that has moved on does not
-     * describe it any more, and there is no general way to tell which parts still hold.
-     * Rather than a migration for each kind of edit, or a staleness warning nobody can
-     * act on, the instances go and are regenerated from the model that now exists.
+     * Makes the durable construct inventory exactly the current one and removes only
+     * snapshot artifacts no current construct owns. The manifest is written last: it
+     * never advertises a reconciliation that did not finish.
      */
-    public List<File> deleteSnapshots(String name) throws IOException {
-        List<File> removed = snapshotFiles(name);
-        if (removed.isEmpty()) return removed;
-        java.util.Set<String> paths = new LinkedHashSet<>();
-        for (File file : removed) paths.add(file.getAbsolutePath());
-        DatasetRegistry registry = registry();
-        registry.datasets().removeIf(dataset -> {
-            String path = dataset.snapshotPath();
-            return path != null && !path.isBlank()
-                    && paths.contains(new File(path).getAbsolutePath());
-        });
-        registry.save(registryFile());
-        for (File file : removed) Files.deleteIfExists(file.toPath());
-        return removed;
+    public List<File> reconcileConstructs(
+            String projectName, ConstructInventory current) throws IOException {
+        Objects.requireNonNull(current, "A save needs the current construct inventory");
+        ConstructManifest next = new ConstructManifest();
+        String mainSnapshot = snapshotFile(projectName).isFile()
+                ? snapshotFile(projectName).getName() : "";
+        String model = modelFile(projectName).getName();
+        for (ConstructInventory.Entry entry : current.entries()) {
+            String artifact = switch (entry.kind()) {
+                case CLASS -> mainSnapshot;
+                case GRAPH -> {
+                    File graph = new File(directory(projectName),
+                            key(entry.name()) + ".graph.snapshot.json");
+                    yield graph.isFile() ? graph.getName() : "";
+                }
+                case POPULATION, SELECTION -> model;
+            };
+            SavedConstruct saved = new SavedConstruct(entry, artifact);
+            next.constructs.add(saved);
+        }
+
+        List<File> obsolete = obsoleteConstructSnapshots(projectName, current);
+        List<File> removed = new ArrayList<>();
+        for (File file : obsolete) {
+            if (Files.deleteIfExists(file.toPath())) removed.add(file);
+        }
+        File manifest = constructManifestFile(projectName);
+        if (manifest.getParentFile() != null) manifest.getParentFile().mkdirs();
+        JSON.writerWithDefaultPrettyPrinter().writeValue(manifest, next);
+        return List.copyOf(removed);
+    }
+
+    /** Exact files Save will remove when the current inventory is committed. */
+    public List<File> obsoleteConstructSnapshots(
+            String projectName, ConstructInventory current) {
+        Objects.requireNonNull(current, "A save needs the current construct inventory");
+        ConstructManifest previous = constructManifest(projectName);
+        java.util.Map<String, ConstructInventory.Entry> currentById = current.entries().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ConstructInventory.Entry::declarationId,
+                        java.util.function.Function.identity()));
+        LinkedHashSet<File> obsolete = new LinkedHashSet<>();
+        for (SavedConstruct was : previous.constructs) {
+            ConstructInventory.Entry now = currentById.get(was.declarationId);
+            String currentArtifact = now != null && now.kind() == ConstructInventory.Kind.GRAPH
+                    ? key(now.name()) + ".graph.snapshot.json" : "";
+            if (isOwnedSidecar(was.artifact)
+                    && (now == null || !was.artifact.equals(currentArtifact))) {
+                obsolete.add(new File(directory(projectName), was.artifact));
+            }
+        }
+        // Legacy projects predate the manifest. The current graph declarations still
+        // give the complete set of valid sidecar names, so old or renamed files can be
+        // reconciled safely without treating every snapshot as disposable.
+        Set<String> currentGraphFiles = current.entries().stream()
+                .filter(entry -> entry.kind() == ConstructInventory.Kind.GRAPH)
+                .map(entry -> key(entry.name()) + ".graph.snapshot.json")
+                .collect(java.util.stream.Collectors.toSet());
+        File[] sidecars = directory(projectName).listFiles((dir, filename) ->
+                filename.endsWith(".graph.snapshot.json"));
+        if (sidecars != null) {
+            for (File sidecar : sidecars) {
+                if (!currentGraphFiles.contains(sidecar.getName())) obsolete.add(sidecar);
+            }
+        }
+        return List.copyOf(obsolete);
+    }
+
+    private static boolean isOwnedSidecar(String artifact) {
+        return artifact != null && artifact.endsWith(".graph.snapshot.json")
+                && !artifact.contains("/") && !artifact.contains("\\");
     }
 
     /** Removes the registry entry and the domain's folder. */

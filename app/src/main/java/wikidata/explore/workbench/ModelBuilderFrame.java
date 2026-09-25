@@ -207,17 +207,6 @@ public class ModelBuilderFrame extends JFrame {
     private String savedSignature = "";
 
     /**
-     * The configuration the generated instances correspond to, and its generation
-     * signature. Settled whenever the model and the instances are known to agree — a
-     * project loaded, saved, generated, or whose snapshots were just discarded.
-     *
-     * <p>The copy is kept, not only the signature, because abandoning a change means
-     * putting the model back exactly as it was; a signature can only say that it moved.
-     */
-    private GeneratedProjectModel snapshotBaseline;
-    private String snapshotBaselineSignature = "";
-
-    /**
      * Where this project lives: the model file it was last loaded from or saved to.
      *
      * <p>Blank for a draft that has never been saved, which is the one state that has no
@@ -270,6 +259,7 @@ public class ModelBuilderFrame extends JFrame {
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(
                 queryContext, logWindow, new SwingProcessInputHandler(this));
+        this.classModelPanel.onModelChanged(this::modelChanged);
         this.selectionsPanel = new SelectionViewerPanel(projectModel, apiClient, client);
         this.selectionsPanel.selections(sourceWorkbench.selections());
         this.selectionsPanel.afterChange(selection -> {
@@ -503,6 +493,8 @@ public class ModelBuilderFrame extends JFrame {
      * every named graph constraint's annotation instances. */
     private void refreshInstancesPanel() {
         if (lastRun == null) return;
+        wikidata.explore.model.ConstructInventory inventory =
+                wikidata.explore.model.ConstructInventory.of(projectModel);
         java.util.Map<String,
                 wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection> annotations =
                 new java.util.LinkedHashMap<>();
@@ -522,7 +514,10 @@ public class ModelBuilderFrame extends JFrame {
                                             .GroupAction("Apply accepted instances",
                                             () -> applyGraphResultFromInstances(result)))));
         }
-        instancesPanel.acceptGrouped(lastRun.objectResult(), annotations);
+        wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
+        instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
+                inventory.visibleInstances(result.objects()), result.primaryClass(),
+                result.generatedSource(), result.typeOrder(), result.partTypes()), annotations);
     }
 
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {
@@ -1641,7 +1636,6 @@ public class ModelBuilderFrame extends JFrame {
                 // These instances were just produced FROM this configuration, so the two
                 // agree by construction — including the vocabularies the run folded back
                 // into the model, which are derived from the very data being installed.
-                markSnapshotBaseline();
                 String saveAction = projectModel.isModel() ? "Save model" : "Save domain";
                 if (filledVocabs > 0) {
                     modelChanged();
@@ -2268,76 +2262,10 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
-    /** The model and the generated instances agree as of now. */
-    private void markSnapshotBaseline() {
-        snapshotBaseline = projectModel.copy();
-        snapshotBaselineSignature = modelSignature(projectModel);
-    }
-
-    /**
-     * A configuration change and the instances it invalidates are settled together,
-     * before the change is allowed to stand.
-     *
-     * <p>The question is whether the model MOVED, never whether an editor called Apply:
-     * the class editors call their apply paths on every Apply with unchanged values, so
-     * asking about the gesture would offer to delete every snapshot each time a reader
-     * clicked out of a field. {@code modelSignature} answers the real question — it is
-     * the signature of the rule tree generation compiles to, so an identical signature
-     * means identical instances — and it is the same fact the unsaved-changes check and
-     * the stale-instances warning already read, so the three cannot drift apart.
-     *
-     * <p>Abandoning restores the model from the baseline rather than trying to undo the
-     * individual edit: the editors write through to the model as they go, and there is no
-     * one edit to reverse by the time this runs.
-     */
-    private void guardSnapshotsAgainstEdit() {
-        if (snapshotBaseline == null || openModelFile == null) return;
-        String now = modelSignature(projectModel);
-        if (now.isBlank() || now.equals(snapshotBaselineSignature)) return;
-
-        // A class added after this snapshot has no objects in it yet. Its declaration,
-        // kind and source configuration cannot invalidate objects produced by the older
-        // declarations, so it stays in the model without threatening the snapshot.
-        if (!SnapshotInvalidationGuard.generationDiffers(
-                snapshotBaseline, projectModel)) return;
-
-        String project = projectModel.name();
-        dataset.DomainStorage storage = dataset.DomainStorage.inDefaultLocation();
-        SnapshotInvalidationGuard.State state = new SnapshotInvalidationGuard.State(
-                project, storage.snapshotFiles(project), true);
-        if (!state.needsAttention()) {
-            markSnapshotBaseline();
-            return;
-        }
-        if (SnapshotInvalidationGuard.ask(this, state)
-                == SnapshotInvalidationGuard.Decision.ABANDON_CHANGE) {
-            projectModel.copyContentsFrom(snapshotBaseline);
-            snapshotBaselineSignature = modelSignature(projectModel);
-            logWindow.info("Configuration change abandoned; the generated instances of \""
-                    + project + "\" are untouched.");
-            return;
-        }
-        try {
-            List<File> removed = storage.deleteSnapshots(project);
-            replaceGenerationRun(null);
-            instancesPanel.clear();
-            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
-            sourceWorkbench.graphInstances(List::of);
-            for (File file : removed) {
-                logWindow.info("Discarded generated instances: " + file.getPath());
-            }
-            logWindow.info("The configuration changed, so \"" + project
-                    + "\" has no generated instances until it is generated again.");
-        } catch (Exception failed) {
-            reportGenerationError(failed);
-        }
-        markSnapshotBaseline();
-    }
-
     private void modelChanged() {
-        guardSnapshotsAgainstEdit();
         classModelPanel.refresh();
         sourceWorkbench.refreshDomainOverview();
+        refreshInstancesPanel();
         if (graphWindow != null && graphWindow.isVisible()) {
             graphPanel.setModel(projectModel);
         }
@@ -2615,7 +2543,6 @@ public class ModelBuilderFrame extends JFrame {
     private void markSaved(File file) {
         openModelFile = file;
         savedSignature = file == null ? "" : modelSignature(projectModel);
-        markSnapshotBaseline();
     }
 
     /** The folder this project lives in, or null for a draft that has no home yet. */
@@ -2675,9 +2602,6 @@ public class ModelBuilderFrame extends JFrame {
             // newly loaded domain.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
-            // Replacing the model wholesale is not editing it: the instances that go with
-            // it are settled by this same step, so there is nothing to invalidate.
-            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
@@ -2742,9 +2666,6 @@ public class ModelBuilderFrame extends JFrame {
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
-        // Replacing the model wholesale is not editing it: the instances that go with
-        // it are settled by this same step, so there is nothing to invalidate.
-        markSnapshotBaseline();
         replaceGenerationRun(null);
         graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
         instancesPanel.clear();
@@ -2823,9 +2744,6 @@ public class ModelBuilderFrame extends JFrame {
         boolean switched = nextFile != null && nextFile.isFile() && doLoadDomain(nextFile);
         if (!switched) {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
-            // Replacing the model wholesale is not editing it: the instances that go with
-            // it are settled by this same step, so there is nothing to invalidate.
-            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
@@ -2859,9 +2777,6 @@ public class ModelBuilderFrame extends JFrame {
             // must not be flushed into the domain being loaded.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
-            // Replacing the model wholesale is not editing it: the instances that go with
-            // it are settled by this same step, so there is nothing to invalidate.
-            markSnapshotBaseline();
             graphDiscoveryLedger = ledger;
             modelChanged();
             syncDepthSpinnerToActiveClass();
@@ -2965,9 +2880,6 @@ public class ModelBuilderFrame extends JFrame {
             datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
             projectModel.copyContentsFrom(loaded);
-            // Replacing the model wholesale is not editing it: the instances that go with
-            // it are settled by this same step, so there is nothing to invalidate.
-            markSnapshotBaseline();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
@@ -3037,7 +2949,10 @@ public class ModelBuilderFrame extends JFrame {
             WikidataDynamicObjectJsonStore.LoadedSnapshot saved =
                     new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
             graphDiscoveryLedger = saved.graphDiscovery();
-            List<WikidataDynamicObject> objects = saved.objects();
+            wikidata.explore.model.ConstructInventory inventory =
+                    wikidata.explore.model.ConstructInventory.of(projectModel);
+            List<WikidataDynamicObject> objects =
+                    inventory.retractRemovedClaims(saved.objects());
             sourceWorkbench.restoreGraphResults(objects);
 
             // Apply the current model's canonicalization to the loaded pool, so a
@@ -3244,6 +3159,40 @@ public class ModelBuilderFrame extends JFrame {
         saveEverything(false);
     }
 
+    private record SnapshotWrite(
+            List<WikidataDynamicObject> roots,
+            List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
+            datasource.graph.GraphDiscoveryState graphDiscovery,
+            wikidata.explore.transform.SelfReferenceLedger selfReferences) { }
+
+    /**
+     * The instance artifact for the current construct inventory. Loaded and freshly
+     * generated data take the same path; only their source differs.
+     */
+    private SnapshotWrite snapshotForSave(GeneratedProjectModel model) throws Exception {
+        wikidata.explore.model.ConstructInventory inventory =
+                wikidata.explore.model.ConstructInventory.of(model);
+        if (lastRun != null && lastRun.dynamicObjects() != null
+                && !lastRun.dynamicObjects().isEmpty()) {
+            // Saving commits the current inventory, so a class removed since the run
+            // stops being claimed by the objects it produced.
+            return new SnapshotWrite(inventory.memberRoots(
+                    inventory.retractRemovedClaims(lastRun.dynamicObjects())),
+                    lastRun.loadedDeclarations(), graphDiscoveryLedger,
+                    lastRun.selfReferenceAudit().ledger());
+        }
+        File existing = snapshotFile();
+        if (!existing.isFile()) {
+            return new SnapshotWrite(List.of(), List.of(), graphDiscoveryLedger,
+                    wikidata.explore.transform.SelfReferenceLedger.EMPTY);
+        }
+        WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
+                new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(existing);
+        return new SnapshotWrite(inventory.memberRoots(
+                inventory.retractRemovedClaims(loaded.objects())),
+                loaded.loadedDeclarations(), loaded.graphDiscovery(), loaded.selfReferences());
+    }
+
     /** @return true only when every requested durable write completed. */
     private boolean saveEverything(boolean closingAfterSave) {
         Window dialogOwner = quiz.ui.Dialogs.owner(this);
@@ -3280,17 +3229,23 @@ public class ModelBuilderFrame extends JFrame {
             recoverCompletedRun = true;
         }
 
+        SnapshotWrite snapshotToSave;
+        try {
+            snapshotToSave = snapshotForSave(modelToSave);
+        } catch (Exception unreadableSnapshot) {
+            reportGenerationError(unreadableSnapshot);
+            return false;
+        }
+
         // Confirm BEFORE writing — show the exact paths and what each will get,
         // so Escape actually cancels (the old dialog appeared after the files
         // were already written).
-        boolean haveInstances = lastRun != null
-                && lastRun.dynamicObjects() != null
-                && !lastRun.dynamicObjects().isEmpty();
+        boolean haveInstances = !snapshotToSave.roots().isEmpty();
 
         // Drift guard: the snapshot we'd write came from lastRun's model; if the
         // current model has changed since, the saved instances will be stale.
         String runSig = generatedInstancesSignature();
-        if (!recoverCompletedRun && haveInstances
+        if (!recoverCompletedRun && lastRun != null && haveInstances
                 && wikidata.explore.generation.DomainSave.instancesWouldBeStale(runSig, modelToSave)) {
             int d = JOptionPane.showConfirmDialog(dialogOwner,
                                                   "The model has changed since these instances were generated.\n"
@@ -3307,7 +3262,7 @@ public class ModelBuilderFrame extends JFrame {
         // Overwrite guard: a single-class run ("Generate class") must not
         // silently replace a multi-class snapshot (e.g. Episode, Labour). Warn
         // about types on disk that this run would drop. (Use "Generate domain".)
-        if (haveInstances && snapshotFile().isFile()) {
+        if (lastRun != null && haveInstances && snapshotFile().isFile()) {
             java.util.Set<String> runTypes = wikidata.explore.generation.DomainSave.stampedTypes(lastRun.dynamicObjects());
             java.util.List<String> dropped = wikidata.explore.generation.DomainSave.typesDropped(
                     lastRun.dynamicObjects(), snapshotObjectsOnDisk());
@@ -3331,7 +3286,7 @@ public class ModelBuilderFrame extends JFrame {
                 + "Config:    " + modelFile().getPath() + "\n"
                 + "Rule tree: " + ruleTreeFile().getPath() + "\n"
                 + "Instances: " + (haveInstances
-                ? lastRun.dynamicObjects().size() + " -> " + snapshotFile().getPath()
+                ? snapshotToSave.roots().size() + " -> " + snapshotFile().getPath()
                 : "(none generated yet — will be skipped)");
         java.util.List<GraphDiscoveryResultStore.Artifact> graphResults =
                 sourceWorkbench.graphResults();
@@ -3342,6 +3297,14 @@ public class ModelBuilderFrame extends JFrame {
             plan += "\nGraph annotations \"" + graphResult.type() + "\": "
                     + graphResult.instances().size() + " -> "
                     + GraphDiscoveryResultStore.destinationOf(graphResult).getPath();
+        }
+        wikidata.explore.model.ConstructInventory constructInventory =
+                wikidata.explore.model.ConstructInventory.of(modelToSave);
+        plan += "\nConstruct inventory: "
+                + storage.constructManifestFile(modelToSave.name()).getPath();
+        for (File obsolete : storage.obsoleteConstructSnapshots(
+                modelToSave.name(), constructInventory)) {
+            plan += "\nRemove obsolete snapshot: " + obsolete.getPath();
         }
         if (!closingAfterSave) {
             int choice = JOptionPane.showConfirmDialog(
@@ -3372,20 +3335,14 @@ public class ModelBuilderFrame extends JFrame {
             report.append("Rule tree: ").append(ruleTreeFile().getPath()).append('\n');
 
             int n = -1;
-            if (lastRun != null && lastRun.dynamicObjects() != null
-                    && !lastRun.dynamicObjects().isEmpty()) {
-                // The run retains the EXACT model snapshot that produced these objects.
-                // Declare it into the persisted field graph so null fields and empty typed
-                // collections survive without shape placeholders. Do not use projectModel:
-                // the user may have explicitly accepted saving a stale run after editing it.
+            if (haveInstances) {
                 WikidataDynamicObjectJsonStore instanceStore =
                         new WikidataDynamicObjectJsonStore();
                 instanceStore.saveWithFieldGraph(
-                        lastRun.dynamicObjects(), snapshotFile(),
-                        lastRun.modelSnapshot(),
-                        lastRun.loadedDeclarations(), graphDiscoveryLedger,
-                        lastRun.selfReferenceAudit().ledger());
-                n = lastRun.dynamicObjects().size();
+                        snapshotToSave.roots(), snapshotFile(), modelToSave,
+                        snapshotToSave.loadedDeclarations(),
+                        snapshotToSave.graphDiscovery(), snapshotToSave.selfReferences());
+                n = snapshotToSave.roots().size();
                 report.append("Instances: ").append(n)
                       .append(" -> ").append(snapshotFile().getPath()).append('\n');
                 // Domains are served. A model's snapshot is local working data for
@@ -3409,6 +3366,16 @@ public class ModelBuilderFrame extends JFrame {
             for (GraphDiscoveryResultStore.Artifact graphResult : graphResults) {
                 report.append(GraphDiscoveryResultStore.save(graphResult)).append('\n');
             }
+
+            List<File> removedArtifacts = storage.reconcileConstructs(
+                    modelToSave.name(), constructInventory);
+            for (File removed : removedArtifacts) {
+                report.append("Removed obsolete snapshot: ")
+                        .append(removed.getPath()).append('\n');
+            }
+            report.append("Construct inventory: ")
+                    .append(storage.constructManifestFile(modelToSave.name()).getPath())
+                    .append('\n');
 
             sourceWorkbench.refreshDomainOverview();
             // What is on disk is now what is open, so switching away asks nothing.

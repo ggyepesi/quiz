@@ -352,6 +352,13 @@ with the class instances and records the QIDs of those loaded instances. **Save 
 **Save domain** is the only persistence action: it writes configuration, generated class
 instances, selections and the named graph annotation result beneath the project directory.
 
+Class, graph, population and vocabulary selection share one persistence lifecycle despite
+their different data shapes. The working project's construct inventory is the authority for
+Load instances, Show instances and Save model/domain. Removing one changes memory only; Save
+projects the object pool through the current inventory, removes only artifact files owned by
+constructs no longer present, and writes the new inventory manifest last. Closing without
+saving leaves the prior model, manifest and snapshots untouched.
+
 A reusable Model may generate and save a local snapshot when its acquisition configuration
 is complete. This is how a model such as Historical Positions obtains the Position instances
 from which a `PopulationSelection` is curated. Importing an ordinary generated class such as

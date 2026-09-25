@@ -220,18 +220,59 @@ final class GraphConstraintsPanel extends JPanel {
                 .toList();
     }
 
-    /** Restore every named graph's annotations from the project's loaded pool. */
+    /** Restore every named graph's annotations when the project instances are loaded. */
     void restoreGraphResults(
             java.util.Collection<WikidataDynamicObject> loadedObjects) {
+        restoreGraphResults(loadedObjects, this::loadSavedGraphResultArtifact);
+    }
+
+    @FunctionalInterface
+    interface SavedGraphResultLoader {
+        GraphDiscoveryResultStore.Artifact load(GeneratedClassModel graphClass)
+                throws Exception;
+    }
+
+    /** Testable seam for the project's named graph-result files. */
+    void restoreGraphResults(
+            java.util.Collection<WikidataDynamicObject> loadedObjects,
+            SavedGraphResultLoader savedResultLoader) {
         for (GeneratedClassModel graphClass : model.graphClasses()) {
             if (resultOf(graphClass) != null || graphClass.graphSource() == null) continue;
             GraphDiscoveryResultStore.Artifact restored = GraphDiscoveryResultStore.restore(
                     model.name(), graphClass.className(),
                     graphClass.graphSource().outputClassName(), loadedObjects);
+            // Older applied graph annotations may be reachable from the main pool.
+            // New named graph results live in their own files beneath the project.
+            // Opening the project must reach BOTH without requiring the reader to open
+            // each graph editor once merely to trigger its private load path.
+            if (restored == null && savedResultLoader != null) {
+                try {
+                    restored = savedResultLoader.load(graphClass);
+                } catch (Exception error) {
+                    status("Could not load saved graph annotations from "
+                            + GraphDiscoveryResultStore.destination(
+                                    model.name(), graphClass.className()).getPath()
+                            + ": " + message(error), true);
+                }
+            }
             if (restored != null) {
                 graphResults.put(resultKey(graphClass), restored);
             }
         }
+    }
+
+    private GraphDiscoveryResultStore.Artifact loadSavedGraphResultArtifact(
+            GeneratedClassModel graphClass) throws Exception {
+        wikidata.explore.model.GraphClassSource source = graphClass.graphSource();
+        if (source == null || source.outputClassName().isBlank()) return null;
+        GraphDiscoveryConfiguration.PopulationOperation operation = source.nextNodes().stream()
+                .filter(node -> node.use()
+                        == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
+                .map(GraphDiscoveryConfiguration.NextNode::populationOperation)
+                .reduce((first, second) -> second)
+                .orElse(GraphDiscoveryConfiguration.PopulationOperation.NARROW);
+        return GraphDiscoveryResultStore.load(model.name(), graphClass.className(),
+                source.outputClassName(), operation);
     }
 
     /**
@@ -427,9 +468,7 @@ final class GraphConstraintsPanel extends JPanel {
                 .findFirst().orElse("");
         if (outputClass.isBlank()) return;
         try {
-            GraphDiscoveryResultStore.Artifact loaded = GraphDiscoveryResultStore.load(
-                    model.name(), saved.name(), outputClass,
-                    saved.nextNodes().getFirst().populationOperation());
+            GraphDiscoveryResultStore.Artifact loaded = loadSavedGraphResultArtifact(clazz);
             if (loaded != null) {
                 remember(loaded);
                 status("Loaded " + loaded.instances().size()

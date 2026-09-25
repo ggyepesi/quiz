@@ -7,11 +7,13 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.StatementClassSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -111,6 +113,45 @@ class SingleRootClassModelPanelTest {
 
         assertFalse(button(panel, "Rename vocabulary").isEnabled());
         assertFalse(button(panel, "Remove").isEnabled());
+    }
+
+    @Test void anOwnedPopulationCanBeRemovedAndAnImportedOneCannot() {
+        GeneratedProjectModel project = modelWithEdition();
+        PopulationSelection owned = new PopulationSelection(
+                "PositionWithHoldersPopulation");
+        owned.className("PositionWithHolders");
+        owned.instanceQids(List.of("Q1", "Q2"));
+        project.addSelection(owned);
+        PopulationSelection imported = new PopulationSelection("SharedPositions");
+        imported.className("Position");
+        imported.importedFrom("Historical Positions");
+        project.addSelection(imported);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(owned);
+        assertTrue(button(panel, "Remove population").isEnabled(),
+                "a population owned here can be deleted and recreated explicitly");
+
+        panel.selectSelection(imported);
+        assertFalse(button(panel, "Remove population").isEnabled(),
+                "an imported population remains owned by its source model");
+    }
+
+    @Test void aConfirmedPopulationRemovalIsImmediatelyPartOfTheWorkingInventory() {
+        GeneratedProjectModel project = modelWithEdition();
+        PopulationSelection population = new PopulationSelection("OldPopulation");
+        population.className("Nomination");
+        population.instanceQids(List.of("Q1"));
+        project.addSelection(population);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        AtomicInteger changes = new AtomicInteger();
+        panel.onModelChanged(changes::incrementAndGet);
+
+        assertTrue(panel.removeSelection(population));
+
+        assertNull(project.findSelection("OldPopulation"));
+        assertEquals(1, changes.get(),
+                "a later cancelled command must not be the first observer of the removal");
     }
 
     private static GeneratedProjectModel modelWithEdition() {

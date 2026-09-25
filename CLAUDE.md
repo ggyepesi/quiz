@@ -273,18 +273,17 @@ construct per thing produced:
    *(Trigger: a complete domain can only be reproduced by manually switching applications or
    by replaying UI actions.)*
 
-23. **An additive declaration does not invalidate an existing snapshot.** A class or a
-   selection declared after generation owns no object in that snapshot, so adding it,
-   choosing its kind and configuring its future production must preserve both the
-   declaration and all existing instances — and a population selection saved FROM the
-   instances that exist describes them, so it cannot make them stale. Snapshot
-   invalidation compares the declarations that existed when the snapshot was produced;
-   changing or removing one of those still requires the explicit discard-or-abandon
-   decision. A rule follows the declaration it is attached to rather than being weighed
-   separately: a kind rule for a class that did not exist goes with that class, while one
-   added to a class that did changes what the members already in the snapshot were
-   classified as. *(Trigger: Add class, or Save selection, is followed by a warning that
-   Apply deletes already generated instances.)*
+23. **The current construct inventory owns every instance artifact.** Class, graph,
+   population and vocabulary selection are one lifecycle concept: a construct with a
+   stable declaration id. Load instances, Show instances and Save domain/model all use
+   the same current in-memory inventory to project the object pool; no editor maintains a
+   private list or deletes a snapshot. A confirmed edit changes memory only. Save makes
+   the on-disk manifest exactly the current inventory, writes the projected instances and
+   removes only files owned by declarations no longer present. Cancelling a later action
+   cannot restore a previously removed construct, and closing without saving leaves disk
+   unchanged. The manifest is written last so it never claims a partial save completed.
+   *(Trigger: a class/graph/selection/population has its own load, show, removal or save
+   rule, or a configuration edit deletes instance files before Save domain/model.)*
 
 ## Working agreements
 
