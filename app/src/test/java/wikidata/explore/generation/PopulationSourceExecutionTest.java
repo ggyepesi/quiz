@@ -155,12 +155,10 @@ class PopulationSourceExecutionTest {
 
         PopulationSourceExecution.Resolution resolved =
                 PopulationSourceExecution.resolve(project, imported,
-                        step(new SourceRecipe("wikidata", "statement-membership",
+                        plan("Position", new SourceRecipe("wikidata", "statement-membership",
                                 Map.of("property", "P31", "values", "Q4164871"))));
         RuleNode node = new RuleNode("Position", "position");
-        resolved.apply(node, step(new SourceRecipe(
-                "wikidata", "statement-membership",
-                Map.of("property", "P31", "values", "Q4164871"))));
+        resolved.apply(node);
 
         assertTrue(resolved.importedPopulation());
         assertEquals(List.of("Q1", "Q2"), resolved.qids());
@@ -226,6 +224,51 @@ class PopulationSourceExecutionTest {
                 new SourceBinding(SourceBindingTarget.classPopulation("Movie"),
                         new SourceRecipe("wikidata", "seed-list", Map.of("ids", "Q42"))),
                 operation, SourceExecutionPlan.Mode.DECLARATION);
+    }
+
+    /**
+     * A plan with no step for this class and no plan at all are different answers.
+     * Read as one, a domain run asked Wikidata for Person, Name and PositionHolder —
+     * three classes that have no population at all — and the run log claimed four root
+     * class queries where one was real.
+     */
+    @Test void aClassThePlanHasNoPopulationForIsNotAskedFor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(person);
+
+        PopulationSourceExecution.Resolution missing = PopulationSourceExecution.resolve(
+                project, person, plan("Movie", new SourceRecipe(
+                        "wikidata", "statement-membership",
+                        Map.of("property", "P31", "values", "Q11424"))));
+
+        assertTrue(!missing.available());
+        assertEquals("no population source is configured", missing.reason());
+        assertTrue(PopulationSourceExecution.resolve(project, person, null).available(),
+                "while an offline caller without a plan runs the rule it already compiled");
+    }
+
+    /** A skip states its cause; the run log showed \"Skip class OfficeHolding — .\" */
+    @Test void aStatementClassSaysItIsProducedByReification() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(
+                new wikidata.explore.model.StatementClassSource("Backbone", "P39"));
+        project.rootClass(holding);
+
+        PopulationSourceExecution.Resolution resolved =
+                PopulationSourceExecution.resolve(project, holding, null);
+
+        assertTrue(!resolved.available());
+        assertTrue(resolved.reason().contains("reification"),
+                "and names reification rather than a missing source: " + resolved.reason());
+    }
+
+    private static SourceExecutionPlan plan(String className, SourceRecipe recipe) {
+        return SourceExecutionPlan.compile(
+                List.of(new SourceBinding(
+                        SourceBindingTarget.classPopulation(className), recipe)),
+                Datasources.standard());
     }
 
     private static SourceExecutionPlan.Step step(SourceRecipe recipe) {

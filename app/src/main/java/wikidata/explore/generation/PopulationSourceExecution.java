@@ -19,7 +19,8 @@ public final class PopulationSourceExecution {
 
     /** One answer to how a class receives its root instances in every run scope. */
     public record Resolution(
-            Kind kind, List<String> qids, List<String> selectionNames, String reason) {
+            Kind kind, List<String> qids, List<String> selectionNames,
+            SourceExecutionPlan.Step step, String reason) {
         public enum Kind { LOCAL_SOURCE, IMPORTED_POPULATION, NONE }
 
         public Resolution {
@@ -32,10 +33,10 @@ public final class PopulationSourceExecution {
         public boolean available() { return kind != Kind.NONE; }
         public boolean importedPopulation() { return kind == Kind.IMPORTED_POPULATION; }
 
-        public RuleNode apply(RuleNode root, SourceExecutionPlan.Step step) {
+        public RuleNode apply(RuleNode root) {
             return switch (kind) {
-                // Compatibility/offline callers can supply an already compiled rule
-                // without a datasource plan; in that case there is nothing to adapt.
+                // An offline caller resolved without a plan and carries no step; its
+                // rule is already compiled, so there is nothing to adapt.
                 case LOCAL_SOURCE -> step == null
                         ? root : PopulationSourceExecution.apply(root, step);
                 case IMPORTED_POPULATION -> PopulationSourceExecution.applyExact(root, qids);
@@ -48,11 +49,18 @@ public final class PopulationSourceExecution {
     /**
      * Resolves the population boundary before either a domain run or a class preview.
      * Imported classes never fall through to their owner's source recipe.
+     *
+     * <p>A plan that has no step for this class and no plan at all are different
+     * answers. The first says the class has no population source, which is why a
+     * reference-only class is skipped rather than asked for; the second is an offline
+     * caller running an already compiled rule, where there is nothing to adapt. Reading
+     * both off a null step made a domain run ask Wikidata for three classes that have
+     * no population, each answering with the empty set.
      */
     public static Resolution resolve(GeneratedProjectModel project,
-            GeneratedClassModel clazz, SourceExecutionPlan.Step localStep) {
+            GeneratedClassModel clazz, SourceExecutionPlan plan) {
         if (clazz == null) {
-            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(),
+            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                     "No class selected");
         }
         if (clazz.isImported()) {
@@ -60,20 +68,32 @@ public final class PopulationSourceExecution {
             List<String> qids = inputs.qidsFor(clazz.className());
             List<String> names = inputs.selectionNamesFor(clazz.className());
             return qids.isEmpty()
-                    ? new Resolution(Resolution.Kind.NONE, List.of(), names,
+                    ? new Resolution(Resolution.Kind.NONE, List.of(), names, null,
                             "Imported class contributes configuration only; no local "
                                     + "construct uses one of its saved populations")
-                    : new Resolution(Resolution.Kind.IMPORTED_POPULATION, qids, names, "");
+                    : new Resolution(
+                            Resolution.Kind.IMPORTED_POPULATION, qids, names, null, "");
         }
-        if (localStep == null) {
+        if (clazz.reifiesStatements()) {
+            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
+                    "it is produced by statement reification, not by a population query");
+        }
+        if (plan == null) {
             return new Resolution(Resolution.Kind.LOCAL_SOURCE,
-                    List.of(), List.of(), "");
+                    List.of(), List.of(), null, "");
+        }
+        SourceExecutionPlan.Step localStep = plan.step(
+                datasource.api.SourceBindingTarget.classPopulation(clazz.className()));
+        if (localStep == null) {
+            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
+                    "no population source is configured");
         }
         PopulationRequest request = localStep.prepared().configuration(PopulationRequest.class);
         return request == null
-                ? new Resolution(Resolution.Kind.NONE, List.of(), List.of(),
+                ? new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                         localStep.prepared().description())
-                : new Resolution(Resolution.Kind.LOCAL_SOURCE, List.of(), List.of(), "");
+                : new Resolution(
+                        Resolution.Kind.LOCAL_SOURCE, List.of(), List.of(), localStep, "");
     }
 
     public static RuleNode apply(RuleNode root, SourceExecutionPlan.Step step) {

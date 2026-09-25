@@ -324,19 +324,16 @@ public class GenerationPipeline {
         // from a model nothing had refused, and the run looked like it worked.
         wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
-        datasource.api.SourceExecutionPlan.Step population = sourcePlan == null ? null
-                : sourcePlan.step(datasource.api.SourceBindingTarget.classPopulation(
-                        snapshot.rootClass().className()));
         PopulationSourceExecution.Resolution populationInput =
                 PopulationSourceExecution.resolve(
-                        snapshot, snapshot.rootClass(), population);
+                        snapshot, snapshot.rootClass(), sourcePlan);
         if (!populationInput.available()) {
             if (log != null) log.message("Preview skipped: "
                     + populationInput.reason() + ".\n");
             GeneratedViewableRuntime runtime = buildRuntime(snapshot);
             return new GenerationRun(snapshot, depth, plan, List.of(), runtime, List.of());
         }
-        populationInput.apply(plan, population);
+        populationInput.apply(plan);
         if (populationInput.importedPopulation() && log != null) {
             log.message("Load imported population "
                     + String.join(", ", populationInput.selectionNames()) + ": "

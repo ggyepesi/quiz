@@ -156,21 +156,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             wikidata.explore.generation.GenerationFactDemandPlan.compile(
                                     project, sourcePlan);
                     for (GeneratedClassModel cls : project.classes()) {
-                        datasource.api.SourceExecutionPlan.Step population = sourcePlan.step(
-                                datasource.api.SourceBindingTarget.classPopulation(
-                                        cls.className()));
                         wikidata.explore.generation.PopulationSourceExecution.Resolution
                                 populationInput =
                                 wikidata.explore.generation.PopulationSourceExecution.resolve(
-                                        project, cls, population);
-                        if (cls.reifiesStatements() || !populationInput.available()) {
+                                        project, cls, sourcePlan);
+                        if (!populationInput.available()) {
                             genLog.message("Skip class \"" + cls.className()
                                     + "\" — " + populationInput.reason() + ".\n");
                             continue;
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
                         RuleNode plan = pipeline.plan(rooted);
-                        populationInput.apply(plan, population);
+                        populationInput.apply(plan);
                         if (populationInput.importedPopulation()) {
                             genLog.message("Load imported population "
                                     + String.join(", ", populationInput.selectionNames())
