@@ -64,6 +64,40 @@ class PopulationSourceExecutionTest {
         assertEquals(List.of("Q42", "Q1"), List.copyOf(node.includedQids()));
     }
 
+    /**
+     * A limit is a cap on an open population. Over an enumerated one it can only
+     * subtract from what the modeller listed, and it cannot be repaired by setting it
+     * to their number: the query projects ?valueLabel through the en,mul label service,
+     * so one entity with both labels occupies two rows. The same arithmetic displaced
+     * the last two unlabelled positions from History's 410-QID population.
+     */
+    @Test void anExplicitPopulationIsNotCutByTheClassConfiguredLimit() {
+        RuleNode node = new RuleNode("Movie", "movie");
+        node.limit(200);
+        node.addExcludedQid("Q99");
+        String ids = java.util.stream.IntStream.rangeClosed(1, 300)
+                .mapToObj(n -> "Q" + n)
+                .collect(java.util.stream.Collectors.joining(","));
+
+        PopulationSourceExecution.apply(node, step(new SourceRecipe(
+                "wikidata", "seed-list", Map.of("ids", ids))));
+
+        assertEquals(300, node.includedQids().size());
+        assertTrue(node.limit() > 300,
+                "a row limit must not cut a population the modeller enumerated");
+        assertEquals(List.of("Q99"), List.copyOf(node.excludedQids()),
+                "while a restriction authored over those seeds is deliberate and stays");
+
+        RuleNode open = new RuleNode("Movie", "movie");
+        open.limit(200);
+        PopulationSourceExecution.apply(open, step(new SourceRecipe(
+                "wikidata", "statement-membership",
+                Map.of("property", "P31", "values", "Q11424"))));
+
+        assertEquals(200, open.limit(),
+                "and an open population keeps the cap that is the only thing bounding it");
+    }
+
     @Test void importedPopulationIsTheExactRootSetNotAFilterOverTheOldRule() {
         RuleNode node = new RuleNode("Position", "position");
         node.sourceQid("Q4164871");

@@ -114,6 +114,16 @@ public final class PopulationSourceExecution {
             root.includedQids().clear();
             selection.values().stream().map(datasource.EntityRef::id)
                     .forEach(root::addIncludedQid);
+            // The listed entities ARE the population, so the class's configured limit
+            // (200 by default) could only subtract from what the modeller enumerated.
+            // It cannot even be set to their number: the query projects ?valueLabel
+            // through the en,mul label service, so an entity carrying both labels
+            // occupies two rows and the cut starts before the last QID is reached.
+            // What the modeller authored AROUND the seeds — exclusions, value filters,
+            // label and sitelink requirements — deliberately restricts them and stays.
+            // That is what separates this from applyExact, where nothing of an
+            // imported producer's rule survives.
+            root.limit(Integer.MAX_VALUE);
         }
         return root;
     }
