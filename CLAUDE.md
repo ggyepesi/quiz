@@ -93,6 +93,11 @@ construct per thing produced:
    a mess on the way. *(Trigger: "quick hack now, clean it up later.")*
 8. **Survey what already exists BEFORE adding anything.** The structure is usually already
    there — go find it. Proactively, not as an after-the-fact check.
+9. **Source identity is constrained by configured type.** A shared datasource identifier
+   unifies copies only when the consuming field accepts the entity's configured class: the
+   same class, a subclass, or an explicit contextual representation. Merely occurring in a
+   field must never retype an incompatible entity; incompatible values are absent from both
+   the saved dynamic pool and its rendered materialization. *(Trigger: "the QID is the same".)*
    *(Trigger: about to write a new class or mechanism.)*
 9. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
    inspection state only; it must not silently configure another tool, mutate the model, or

@@ -56,6 +56,12 @@ public final class DomainFinalization {
                 new java.util.ArrayList<>();
         List<WikidataDynamicObject> suspectedSelfReferences = new java.util.ArrayList<>();
         List<GenerationStage> stages = List.of(
+                // Classification has settled before finalization. Apply the field's
+                // configured type to the saved dynamic pool too; materialization must
+                // not be the first place an unrelated QID is rejected.
+                stage("field-types", "Enforce entity-field types",
+                        () -> wikidata.explore.transform.EntityFieldTypeConstraints.apply(
+                                model, pool, log)),
                 stage("canonicalize", "Canonicalize final names",
                         () -> wikidata.explore.transform.Canonicalization.apply(
                                 compiled, pool, log)),
