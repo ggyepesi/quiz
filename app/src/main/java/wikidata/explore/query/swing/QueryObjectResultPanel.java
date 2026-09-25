@@ -41,6 +41,9 @@ public class QueryObjectResultPanel
             new JPanel(new BorderLayout());
 
     private RenderContext activeContext;
+    /** The sections this panel currently shows, not a selection owned by its caller. */
+    private Map<String, List<Viewable>> displayedObjectsByType = Map.of();
+    private Runnable displayedObjectsListener = () -> { };
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
 
@@ -51,6 +54,21 @@ public class QueryObjectResultPanel
 
     public RenderContext activeRenderContext() {
         return activeContext;
+    }
+
+    /**
+     * The exact class sections and roots currently displayed in this panel.
+     *
+     * <p>Actions placed beside this view must use this rather than an unrelated
+     * configuration-tree selection. The lists are the section roots, not objects
+     * rediscovered by walking their references.
+     */
+    public Map<String, List<Viewable>> displayedObjectsByType() {
+        return displayedObjectsByType;
+    }
+
+    public void onDisplayedObjectsChanged(Runnable listener) {
+        displayedObjectsListener = listener == null ? () -> { } : listener;
     }
 
     /** Optional presentation-only title decoration. Datasource provenance is a field. */
@@ -66,8 +84,10 @@ public class QueryObjectResultPanel
 
     public void clear() {
         activeContext = null;
+        displayedObjectsByType = Map.of();
         holder.removeAll();
         holder.repaint();
+        displayedObjectsListener.run();
     }
 
     /**
@@ -158,6 +178,7 @@ public class QueryObjectResultPanel
 
             if ((result == null || result.objects() == null || result.objects().isEmpty())
                     && shownSections.isEmpty()) {
+                displayedObjectsByType = Map.of();
                 holder.add(new JLabel("No objects."), BorderLayout.CENTER);
             } else {
                 ObjectQueryResult shown = result == null
@@ -170,6 +191,7 @@ public class QueryObjectResultPanel
             // One layout pass after the full replacement.
             holder.validate();
             holder.repaint();
+            displayedObjectsListener.run();
         });
     }
 
@@ -187,6 +209,9 @@ public class QueryObjectResultPanel
                 .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
                         entry -> entry.getValue().all(), (left, right) -> left,
                         LinkedHashMap::new)));
+        Map<String, List<Viewable>> displayed = new LinkedHashMap<>();
+        byType.forEach((name, values) -> displayed.put(name, List.copyOf(values)));
+        displayedObjectsByType = Collections.unmodifiableMap(displayed);
 
         if (peerSections.isEmpty() && byType.size() <= 1) {
             return searchPanelView(result);

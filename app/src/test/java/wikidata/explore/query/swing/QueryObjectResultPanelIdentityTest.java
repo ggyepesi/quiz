@@ -37,6 +37,10 @@ class QueryObjectResultPanelIdentityTest {
             assertEquals(List.of("Person", "Work"),
                     new java.util.ArrayList<>(result.byType().keySet()),
                     "provenance is inspectable without becoming a result type");
+            assertEquals(List.of("Person", "Work"),
+                    new java.util.ArrayList<>(panel.displayedObjectsByType().keySet()),
+                    "actions beside the instances view see its displayed class sections");
+            assertSame(person, panel.displayedObjectsByType().get("Person").getFirst());
             Object value = objectview.field.FieldSet.of(person)
                     .read("wikidataSource");
             assertEquals("Q1", ((quiz.source.WikidataSource)

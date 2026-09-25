@@ -472,10 +472,13 @@ public class ModelBuilderFrame extends JFrame {
             graphFrontierButton.addActionListener(e -> showGraphFrontier());
             toolbar.add(graphFrontierButton);
             createPopulationSelectionButton.setToolTipText(
-                    "Create a reusable population from the selected class's loaded instances");
+                    "Create a reusable population from a class shown in this instances window");
             createPopulationSelectionButton.addActionListener(
-                    ignored -> createPopulationSelectionFromActiveClass());
+                    ignored -> createPopulationSelectionFromInstancesPanel());
             toolbar.add(createPopulationSelectionButton);
+            instancesPanel.onDisplayedObjectsChanged(
+                    this::updateCreatePopulationSelectionButton);
+            updateCreatePopulationSelectionButton();
 
             instancesWindow.add(toolbar, BorderLayout.NORTH);
             instancesWindow.add(instancesPanel, BorderLayout.CENTER);
@@ -539,20 +542,44 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
-    private void createPopulationSelectionFromActiveClass() {
-        GeneratedClassModel clazz = activeClass();
-        if (clazz == null || lastRun == null) return;
-        List<String> qids = lastRun.instances().stream()
-                .filter(value -> value.directClassNames().contains(clazz.className()))
+    private void updateCreatePopulationSelectionButton() {
+        java.util.Map<String, java.util.List<Viewable>> choices =
+                populationSourcesShownIn(instancesPanel.displayedObjectsByType(), projectModel);
+        createPopulationSelectionButton.setEnabled(!choices.isEmpty());
+        createPopulationSelectionButton.setToolTipText(choices.isEmpty()
+                ? "No class with instances is currently shown"
+                : "Create a reusable population from "
+                        + (choices.size() == 1
+                                ? choices.keySet().iterator().next()
+                                : "one of the classes shown in this instances window"));
+    }
+
+    private void createPopulationSelectionFromInstancesPanel() {
+        java.util.Map<String, java.util.List<Viewable>> choices =
+                populationSourcesShownIn(instancesPanel.displayedObjectsByType(), projectModel);
+        if (choices.isEmpty()) return;
+        String className;
+        if (choices.size() == 1) {
+            className = choices.keySet().iterator().next();
+        } else {
+            Object chosen = JOptionPane.showInputDialog(this,
+                    "Create the population selection from which shown class?",
+                    "Choose shown class", JOptionPane.QUESTION_MESSAGE, null,
+                    choices.keySet().toArray(String[]::new),
+                    choices.keySet().iterator().next());
+            if (chosen == null) return;
+            className = chosen.toString();
+        }
+        List<String> qids = choices.get(className).stream()
                 .map(quiz.source.SourceIdentities::wikidataQid)
                 .filter(java.util.Objects::nonNull).distinct().toList();
         if (qids.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "No loaded " + clazz.className() + " instances have Wikidata QIDs.");
+                    "No shown " + className + " instances have Wikidata QIDs.");
             return;
         }
         String entered = JOptionPane.showInputDialog(this, "Population selection name:",
-                clazz.className() + "Population");
+                className + "Population");
         if (entered == null) return;
         String name = entered.trim();
         if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
@@ -568,20 +595,37 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         String description = "Create population selection \"" + name + "\" from all "
-                + qids.size() + " loaded " + clazz.className() + " instances.\n\n"
+                + qids.size() + " shown " + className + " instances.\n\n"
                 + "Save " + (projectModel.isModel() ? "model" : "domain")
                 + " will write it to\n" + modelFile().getPath() + ".";
         if (!quiz.ui.Dialogs.confirmPersistence(
                 this, "Create population selection", description)) return;
         PopulationSelection population = new PopulationSelection(name);
-        population.className(clazz.className());
+        population.className(className);
         population.instanceQids(qids);
         projectModel.replaceSelection(population);
         modelChanged();
         classModelPanel.refresh();
         logWindow.info("Created population selection " + name + " with " + qids.size()
-                + " " + clazz.className() + " QIDs. Use \"Save "
+                + " " + className + " QIDs. Use \"Save "
                 + (projectModel.isModel() ? "model" : "domain") + "\" to persist it.");
+    }
+
+    static java.util.Map<String, java.util.List<Viewable>> populationSourcesShownIn(
+            java.util.Map<String, java.util.List<Viewable>> shown,
+            GeneratedProjectModel project) {
+        java.util.Map<String, java.util.List<Viewable>> choices =
+                new java.util.LinkedHashMap<>();
+        if (shown == null || project == null) return choices;
+        shown.forEach((name, values) -> {
+            GeneratedClassModel clazz = project.findClass(name);
+            if (clazz != null
+                    && clazz.classKind() != wikidata.explore.model.ClassKind.GRAPH
+                    && values != null && !values.isEmpty()) {
+                choices.put(name, values);
+            }
+        });
+        return java.util.Collections.unmodifiableMap(choices);
     }
 
     /** A run may arrive after the window has already opened (notably Load instances,
