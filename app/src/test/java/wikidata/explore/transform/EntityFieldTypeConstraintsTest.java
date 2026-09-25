@@ -72,6 +72,43 @@ class EntityFieldTypeConstraintsTest {
         assertSame(represented, record.get("nominee"));
     }
 
+    /**
+     * An entity occupies as many roles as the fields that reached it, and one of them
+     * becomes the carrier by a tie-break. Reading the carrier alone emptied the nominee
+     * of 1180 Oscars nominations: 728 works that are their own nominee (declared
+     * [ForWork, Nominee]) and 452 people a technical award names as the work (declared
+     * [ForWork, Person], covered by Nominee -> Person). Both sort after ForWork.
+     */
+    @Test void aRoleTheEntityHoldsBesideItsCarrierIsStillAnAcceptedValue() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(nomination);
+        project.addClass(nominee);
+        project.addClass(new GeneratedClassModel("ForWork"));
+        project.addClass(person);
+        project.representationClasses(nominee, List.of("Person"));
+
+        WikidataDynamicObject workThatIsItsOwnNominee = object("Q184843", "ForWork");
+        workThatIsItsOwnNominee.assignClass("Nominee");
+        WikidataDynamicObject personNamedAsTheWork = object("Q104266", "ForWork");
+        personNamedAsTheWork.assignClass("Person");
+        WikidataDynamicObject work = object("Q1$nomination", "Nomination");
+        work.put("nominee", workThatIsItsOwnNominee);
+        WikidataDynamicObject honorary = object("Q2$nomination", "Nomination");
+        honorary.put("nominee", personNamedAsTheWork);
+
+        assertEquals(0, EntityFieldTypeConstraints.apply(project, List.of(
+                work, honorary, workThatIsItsOwnNominee, personNamedAsTheWork), null));
+        assertSame(workThatIsItsOwnNominee, work.get("nominee"),
+                "the role is declared on the entity; only the carrier sorts elsewhere");
+        assertSame(personNamedAsTheWork, honorary.get("nominee"),
+                "and a representation rule answers for the role the entity does declare");
+    }
+
     private static WikidataDynamicObject object(String id, String type) {
         WikidataDynamicObject value = new WikidataDynamicObject(id, id);
         value.type(type);

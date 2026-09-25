@@ -1,5 +1,6 @@
 package wikidata.explore.model;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -27,8 +28,15 @@ public final class EntityRepresentations {
     }
 
     /**
-     * Whether an entity whose configured carrier is {@code actualClassName} may be
-     * stored in a field declared as {@code expectedClassName}.
+     * Whether an entity configured as {@code configuredClassNames} may be stored in a
+     * field declared as {@code expectedClassName}.
+     *
+     * <p>Every class the entity is configured as is asked, not a single carrier. An
+     * entity occupies as many roles as the fields that reach it — the film that is also
+     * the nominee, the person a technical award names as the work — and which of those
+     * roles became the carrier is a tie-break, not a fact about the entity. Asking only
+     * the carrier refused 1180 Oscars nominees that were configured as {@code Nominee}
+     * or {@code Person} and merely sorted after {@code ForWork}.</p>
      *
      * <p>QID equality is deliberately absent: source identity can unify copies only
      * inside a compatible configured type. Compatibility is either ordinary model
@@ -36,10 +44,20 @@ public final class EntityRepresentations {
      */
     public static boolean fieldAccepts(GeneratedProjectModel model,
                                        String expectedClassName,
-                                       String actualClassName) {
-        if (model == null || expectedClassName == null || actualClassName == null) {
+                                       Collection<String> configuredClassNames) {
+        if (model == null || expectedClassName == null || configuredClassNames == null) {
             return false;
         }
+        for (String configured : configuredClassNames) {
+            if (accepts(model, expectedClassName, configured)) return true;
+        }
+        return false;
+    }
+
+    private static boolean accepts(GeneratedProjectModel model,
+                                   String expectedClassName,
+                                   String actualClassName) {
+        if (actualClassName == null) return false;
         if (model.isSameOrSubclass(actualClassName, expectedClassName)) return true;
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (GeneratedClassModel actual = model.findClass(actualClassName);

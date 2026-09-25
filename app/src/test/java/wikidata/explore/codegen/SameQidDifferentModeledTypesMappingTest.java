@@ -165,6 +165,38 @@ class SameQidDifferentModeledTypesMappingTest {
                 "and hears which field and which two classes: " + reported.getFirst());
     }
 
+    /**
+     * The same distinction the saved pool makes, in the materialized objects: a value is
+     * refused for the classes the entity does NOT have, never for the one it holds beside
+     * its carrier.
+     */
+    @Test void aReferenceIsStoredForARoleTheEntityHoldsBesideItsCarrier() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        project.rootClass(nomination);
+        project.addClass(nominee);
+        project.addClass(new GeneratedClassModel("ForWork"));
+
+        WikidataDynamicObject shared = object("Q184843", "ForWork");
+        shared.assignClass("Nominee");
+        WikidataDynamicObject record = object("Q1$nomination", "Nomination");
+        record.put("nominee", shared);
+
+        java.util.List<String> reported = new java.util.ArrayList<>();
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            Object mapped = new wikidata.explore.generation.GenerationPipeline().materialize(
+                    runtime, List.of(record, shared), reported::add).getFirst();
+
+            assertNotNull(mapped.getClass().getDeclaredField("nominee").get(mapped),
+                    "the entity is configured as Nominee, whatever carries it");
+        }
+        assertTrue(reported.isEmpty(), "and nothing was refused: " + reported);
+    }
+
     private static WikidataDynamicObject object(String qid, String type) {
         WikidataDynamicObject value = new WikidataDynamicObject(qid, qid);
         value.type(type);

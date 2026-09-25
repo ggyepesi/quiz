@@ -68,6 +68,6 @@ public final class EntityFieldTypeConstraints {
         if (!(value instanceof WikidataDynamicObject entity)
                 || !entity.hasTypeStamp()) return true;
         return EntityRepresentations.fieldAccepts(
-                project, expected, entity.typeName());
+                project, expected, entity.directClassNames());
     }
 }

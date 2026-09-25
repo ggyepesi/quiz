@@ -57,8 +57,8 @@ public class GeneratedViewableMapper {
 
     private record ModeledEntityKey(String type, String qid) { }
     /**
-     * References dropped because the field's class cannot hold the entity's carrier,
-     * counted per field and pair of classes.
+     * References dropped because the field's class cannot hold any class the entity is
+     * configured as, counted per field and set of classes.
      *
      * <p>Dropping is right — a Person-valued qualifier holding a position would put an
      * office where the reader expects a person — but it is a well-formed object being
@@ -575,10 +575,10 @@ public class GeneratedViewableMapper {
                         && runtime.project() != null
                         && runtime.project().findClass(expected) != null
                         && !wikidata.explore.model.EntityRepresentations.fieldAccepts(
-                                runtime.project(), expected, dyn.typeName())) {
+                                runtime.project(), expected, dyn.directClassNames())) {
                     refusedReferences.merge(
                             fieldModel.name() + ": " + expected + " cannot hold "
-                                    + dyn.typeName(), 1, Integer::sum);
+                                    + dyn.directClassNames(), 1, Integer::sum);
                     return null;
                 }
                 return mapObject(dyn, fieldModel.entityClassName());

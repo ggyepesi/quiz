@@ -157,7 +157,7 @@ public final class ReferentClassStamp {
             // role -> representation rule — so both ask it the same way.
             if (originallyTyped.getOrDefault(w, false)
                     && !wikidata.explore.model.EntityRepresentations.fieldAccepts(
-                            model, className, w.typeName())) {
+                            model, className, w.directClassNames())) {
                 return 0;
             }
             // Roles are materialized from their owning field by RoleSelections. Before
