@@ -10,15 +10,18 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /** One Wikidata entity may intentionally play two modeled roles with different schemas. */
 class SameQidDifferentModeledTypesMappingTest {
 
-    @Test void aSubclassObjectRemainsVisibleThroughABaseClassReference() throws Exception {
+    @Test void aBaseClassReferenceUsesTheDisplayedSubclassInstance() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.addField("successor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Position");
         GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
         withHolders.baseClassName("Position");
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
@@ -30,17 +33,24 @@ class SameQidDifferentModeledTypesMappingTest {
 
         WikidataDynamicObject office = object("Q1$holding", "OfficeHolding");
         WikidataDynamicObject reachedPosition = object("Q2", "PositionWithHolders");
+        reachedPosition.put("successor", reachedPosition);
         office.put("position", reachedPosition);
 
         try (GeneratedViewableRuntime runtime =
                      new GeneratedViewableRuntimeBuilder().build(project)) {
-            Object mapped = new GeneratedViewableMapper(runtime)
-                    .mapRoots(List.of(reachedPosition, office)).get(1);
-            java.lang.reflect.Field field = mapped.getClass().getDeclaredField("position");
+            List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(reachedPosition, office));
+            Object mappedOffice = mapped.get(1);
+            java.lang.reflect.Field field = mappedOffice.getClass()
+                    .getDeclaredField("position");
 
-            assertNotNull(field.get(mapped));
-            assertEquals("Position", field.get(mapped).getClass().getSimpleName(),
-                    "the flattened base field must receive its declared Java type");
+            assertNotNull(field.get(mappedOffice));
+            assertEquals(objectview.Viewable.class, field.getType(),
+                    "a base reference with modeled subclasses must accept the final carrier");
+            assertEquals("PositionWithHolders",
+                    field.get(mappedOffice).getClass().getSimpleName());
+            assertSame(mapped.getFirst(), field.get(mappedOffice),
+                    "the field and subclass panel must share one navigable instance");
         }
     }
 

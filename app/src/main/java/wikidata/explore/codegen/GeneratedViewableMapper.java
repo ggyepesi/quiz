@@ -32,6 +32,14 @@ public class GeneratedViewableMapper {
     // from a PositionDiscoveryStart Java object.
     private final Map<ModeledEntityKey, Object> generatedByQid =
             new java.util.HashMap<>();
+    // A generated class's model/schema and Java fields do not change while this
+    // runtime is alive. Resolve that bridge once per class, not once per instance:
+    // History otherwise repeated field-name regex work, effective-field traversal,
+    // datasource discovery and reflection for tens of thousands of records on load.
+    private final Map<String, List<ModeledFieldBinding>> modeledFieldBindings =
+            new java.util.HashMap<>();
+    private final Map<String, List<DatasourceFieldBinding>> datasourceFieldBindings =
+            new java.util.HashMap<>();
     /**
      * Field population is deliberately iterative. A valid domain graph can contain a
      * reference chain far deeper than the JVM stack (History reached this with 75,408
@@ -47,6 +55,9 @@ public class GeneratedViewableMapper {
             boolean merge) { }
 
     private record ModeledEntityKey(String type, String qid) { }
+    private record ModeledFieldBinding(GeneratedFieldModel model, Field field) { }
+    private record DatasourceFieldBinding(
+            datasource.api.DatasourceInstanceField declaration, Field field) { }
     /** Source candidates are partitioned by the same neutral engine as statements and
      * owned components before Java objects are materialized. Indexed per modeled class,
      * because one source object may be represented through more than one class role. */
@@ -207,11 +218,25 @@ public class GeneratedViewableMapper {
         boolean typedRequested = preferredType != null && !preferredType.isBlank()
                 && runtime.forType(preferredType) != null;
 
+        // Resolve the final carrier BEFORE consulting the instance cache. A field can
+        // declare a base class while the object has a modeled subclass. Testing the
+        // cached subclass against the base's independent (flattened) Java class misses
+        // the cache on every reference and queues the same merge again; History grew
+        // more than 25 million pending populations that way. The cache must answer for
+        // the carrier we will actually use.
+        String sourceType = source.typeName();
+        boolean finalModeledType = typedRequested
+                && sourceType != null && !sourceType.isBlank()
+                && runtime.forType(sourceType) != null
+                && !sourceType.equals(preferredType)
+                && !source.directClassNames().contains(preferredType);
+        String type = finalModeledType ? sourceType
+                : typedRequested ? preferredType : sourceType;
+        GeneratedViewableRuntime.ClassRuntime selectedRuntime = runtime.forType(type);
+
         Object existing = generatedByDynamic.get(source);
-        GeneratedViewableRuntime.ClassRuntime preferredRuntime = typedRequested
-                ? runtime.forType(preferredType) : null;
-        boolean existingFitsRequestedType = preferredRuntime == null || existing == null
-                || preferredRuntime.generatedClass().isInstance(existing);
+        boolean existingFitsRequestedType = selectedRuntime == null || existing == null
+                || selectedRuntime.generatedClass().isInstance(existing);
         if (existing != null && existingFitsRequestedType
                 && (!typedRequested || !(existing instanceof WikidataDynamicObject))) {
             return existing;
@@ -231,16 +256,6 @@ public class GeneratedViewableMapper {
         // A declared field target such as Nominee can be a ROLE carrier. Once
         // evidence classification has assigned a genuine modeled kind (Person),
         // use that kind; retain the declared role only for unknown entities.
-        String sourceType = source.typeName();
-        boolean genuineModeledKind = typedRequested
-                && sourceType != null && !sourceType.isBlank()
-                && runtime.forType(sourceType) != null
-                && !sourceType.equals(preferredType)
-                && !source.directClassNames().contains(preferredType)
-                && !logicalSubtypeOf(sourceType, preferredType);
-        String type = genuineModeledKind ? sourceType
-                : typedRequested ? preferredType : sourceType;
-
         // The normalized source object is only a candidate. Canonicalization may map
         // several projections to one carrier; follow that decision before consulting
         // mapper caches, so QID-based materialization cannot become a second reducer.
@@ -258,7 +273,7 @@ public class GeneratedViewableMapper {
         // Map each object to its generated class (e.g. a constellation's child
         // stars -> Star). An object whose type has no generated class (a true
         // bare leaf reference) is kept as-is (renders as a link).
-        GeneratedViewableRuntime.ClassRuntime cr = runtime.forType(type);
+        GeneratedViewableRuntime.ClassRuntime cr = selectedRuntime;
         if (cr == null) {
             generatedByDynamic.put(source, source);
             return source;
@@ -323,19 +338,6 @@ public class GeneratedViewableMapper {
         return target;
     }
 
-    /** Generated classes are flattened, so logical model inheritance is not Java inheritance. */
-    private boolean logicalSubtypeOf(String candidate, String base) {
-        String current = candidate == null ? "" : candidate;
-        java.util.Set<String> seen = new java.util.HashSet<>();
-        while (!current.isBlank() && seen.add(current)) {
-            if (current.equals(base)) return true;
-            GeneratedViewableRuntime.ClassRuntime cr = runtime.forType(current);
-            current = cr == null || cr.model() == null
-                    ? "" : cr.model().baseClassName();
-        }
-        return false;
-    }
-
     /** Populates the conditionally generated alias field without putting it back on
      *  the universal carrier, where it would become part of every class's schema. */
     private static void assignAliases(Object target, java.util.Collection<String> values)
@@ -367,17 +369,9 @@ public class GeneratedViewableMapper {
         // subclass's own declarations left those compiled inherited fields at their
         // empty defaults even though search/sort/view configuration correctly listed
         // them from the effective schema.
-        java.util.List<GeneratedFieldModel> fields = runtime.project() == null
-                ? cr.model().fields()
-                : cr.model().effectiveFields(runtime.project());
-        for (GeneratedFieldModel fieldModel : fields) {
-            if (fieldModel == null || fieldModel.isNameField()) continue;
-
-            String targetFieldName =
-                    GeneratedViewableSourceGenerator.sanitizeFieldName(fieldModel.name());
-            Field javaField = findField(cr.generatedClass(), targetFieldName);
-            if (javaField == null) continue;
-            javaField.setAccessible(true);
+        for (ModeledFieldBinding binding : modeledFields(cr)) {
+            GeneratedFieldModel fieldModel = binding.model();
+            Field javaField = binding.field();
 
             boolean collection =
                     fieldModel.cardinality() == FieldCardinality.COLLECTION;
@@ -421,15 +415,9 @@ public class GeneratedViewableMapper {
             Object target,
             WikidataDynamicObject source,
             boolean merge) throws IllegalAccessException {
-        for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
-                : wikidata.explore.model.ConfiguredInstanceFields.of(
-                        cr.model(), runtime.project(), datasourceRegistry)) {
-            datasource.api.DatasourceInstanceField declaration = configured.declaration();
-            Field javaField = findField(target.getClass(),
-                    GeneratedViewableSourceGenerator.sanitizeFieldName(
-                            declaration.name()));
-            if (javaField == null) continue;
-            javaField.setAccessible(true);
+        for (DatasourceFieldBinding binding : datasourceFields(cr)) {
+            datasource.api.DatasourceInstanceField declaration = binding.declaration();
+            Field javaField = binding.field();
             Object value = declaration.value(source);
             if (value == null) continue;
             // Provider declarations are allowed to return immutable collection
@@ -454,6 +442,43 @@ public class GeneratedViewableMapper {
                 javaField.set(target, value);
             }
         }
+    }
+
+    private List<ModeledFieldBinding> modeledFields(
+            GeneratedViewableRuntime.ClassRuntime cr) {
+        return modeledFieldBindings.computeIfAbsent(cr.model().className(), ignored -> {
+            List<GeneratedFieldModel> models = runtime.project() == null
+                    ? cr.model().fields()
+                    : cr.model().effectiveFields(runtime.project());
+            List<ModeledFieldBinding> bindings = new ArrayList<>();
+            for (GeneratedFieldModel model : models) {
+                if (model == null || model.isNameField()) continue;
+                Field field = findField(cr.generatedClass(),
+                        GeneratedViewableSourceGenerator.sanitizeFieldName(model.name()));
+                if (field != null) bindings.add(new ModeledFieldBinding(model, field));
+            }
+            return List.copyOf(bindings);
+        });
+    }
+
+    private List<DatasourceFieldBinding> datasourceFields(
+            GeneratedViewableRuntime.ClassRuntime cr) {
+        return datasourceFieldBindings.computeIfAbsent(cr.model().className(), ignored -> {
+            List<DatasourceFieldBinding> bindings = new ArrayList<>();
+            for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
+                    : wikidata.explore.model.ConfiguredInstanceFields.of(
+                            cr.model(), runtime.project(), datasourceRegistry)) {
+                datasource.api.DatasourceInstanceField declaration =
+                        configured.declaration();
+                Field field = findField(cr.generatedClass(),
+                        GeneratedViewableSourceGenerator.sanitizeFieldName(
+                                declaration.name()));
+                if (field != null) {
+                    bindings.add(new DatasourceFieldBinding(declaration, field));
+                }
+            }
+            return List.copyOf(bindings);
+        });
     }
 
 
@@ -597,19 +622,21 @@ public class GeneratedViewableMapper {
         }
     }
 
-    private static void setIfExists(Object target, String fieldName, Object value) throws Exception {
-        Field f = findField(target.getClass(), fieldName);
-        if (f == null) return;
-        f.setAccessible(true);
-        f.set(target, value);
-    }
+    private static final ClassValue<Map<String, Field>> FIELDS = new ClassValue<>() {
+        @Override protected Map<String, Field> computeValue(Class<?> type) {
+            Map<String, Field> fields = new java.util.HashMap<>();
+            for (Class<?> current = type; current != null;
+                    current = current.getSuperclass()) {
+                for (Field field : current.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    fields.putIfAbsent(field.getName(), field);
+                }
+            }
+            return Map.copyOf(fields);
+        }
+    };
 
     private static Field findField(Class<?> cls, String name) {
-        Class<?> c = cls;
-        while (c != null) {
-            try { return c.getDeclaredField(name); }
-            catch (NoSuchFieldException ignored) { c = c.getSuperclass(); }
-        }
-        return null;
+        return cls == null || name == null ? null : FIELDS.get(cls).get(name);
     }
 }

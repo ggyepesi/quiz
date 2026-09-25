@@ -248,6 +248,18 @@ public class GeneratedViewableSourceGenerator {
         String ownerClass = sanitizeClassName(owner.className());
         String type = field.entityClassName();
 
+        // A model subclass is flattened into an independent generated Java class. A
+        // field declared against its base must therefore accept the final subclass
+        // carrier, just as a referenced role accepts its classified representation.
+        // Freezing the field to the base Java class made the mapper manufacture a
+        // second base instance for the same entity (OfficeHolding.position was a
+        // Position beside the displayed PositionWithHolders card), so navigation had
+        // no shared object to follow.
+        if (project != null && type != null && !type.isBlank()
+                && hasModeledSubclass(project, type)) {
+            return "objectview.Viewable";
+        }
+
         // Self-reference (e.g. "neighbours" -> the same class): the owner type
         // is generated, so we can name it directly.
         if (type != null && !type.isBlank()
@@ -289,6 +301,24 @@ public class GeneratedViewableSourceGenerator {
         // type it as Viewable so it compiles and still renders as a linked
         // reference (and maps to a raw object, a navigation target).
         return "objectview.Viewable";
+    }
+
+    private static boolean hasModeledSubclass(
+            GeneratedProjectModel project, String baseClassName) {
+        if (project == null || baseClassName == null || baseClassName.isBlank()) {
+            return false;
+        }
+        for (GeneratedClassModel candidate : project.classes()) {
+            if (candidate == null || candidate.className().equals(baseClassName)) continue;
+            String current = candidate.baseClassName();
+            Set<String> seen = new HashSet<>();
+            while (current != null && !current.isBlank() && seen.add(current)) {
+                if (baseClassName.equals(current)) return true;
+                GeneratedClassModel parent = project.findClass(current);
+                current = parent == null ? "" : parent.baseClassName();
+            }
+        }
+        return false;
     }
 
     public static String sanitizeClassName(String s) {
