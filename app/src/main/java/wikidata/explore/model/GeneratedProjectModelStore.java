@@ -99,7 +99,17 @@ public final class GeneratedProjectModelStore {
             parent.mkdirs();
         }
 
-        mapper.writeValue(file, model.withoutResolvedImports());
+        // A terminating newline, because these files are checked in: without one git
+        // prints "\ No newline at end of file" against any change that touches the last
+        // line, and POSIX tools treat the final line as truncated. "\n" rather than the
+        // platform separator, so a model saved on Windows is byte-identical to the same
+        // model saved here.
+        //
+        // The newline belongs to the FILE and not to toJson, which feeds
+        // DomainSave.signature: changing that string would change the SHA-256 of every
+        // model and make every saved domain read as stale.
+        java.nio.file.Files.writeString(file.toPath(),
+                mapper.writeValueAsString(model.withoutResolvedImports()) + "\n");
     }
 
     public String toJson(
