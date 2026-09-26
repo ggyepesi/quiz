@@ -137,8 +137,10 @@ class EnrichRunTest {
                         + loaded.fieldGraph().memberTypes());
         WikidataDynamicObject reloaded = loaded.objects().stream()
                 .filter(o -> "BirthName".equals(o.typeName())).findFirst().orElseThrow();
-        assertEquals("Douglas Adams — Birth Name", reloaded.getDisplayName(),
-                "reloaded, it still says whose view it is and which");
+        assertEquals("Douglas Adams", reloaded.getDisplayName(),
+                "a part takes its owner's display name unless its class declares a "
+                        + "canonical name; which component it is, its class and "
+                        + "production site already say");
         assertEquals("Q42", reloaded.getIdentifier(), "its identity is unchanged");
     }
 

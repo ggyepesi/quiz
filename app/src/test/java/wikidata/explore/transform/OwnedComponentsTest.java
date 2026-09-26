@@ -18,12 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 class OwnedComponentsTest {
 
-    /** A part takes the owner's IDENTITY, and a name saying WHOSE view it is and WHICH
-     *  view. The owner's label alone would claim the part IS the owner — a claim its own
-     *  fields can contradict, as a person known as Elia Kazan whose name parts are Elias
-     *  Kazantzoglou — and a card whose only field holds a same-named child drops its own
-     *  title, which is how the owner lost its heading. */
-    @Test void aPartIsNamedByItsOwnerAndItsSite() {
+    /** A part takes the owner's identity and display name. Its class and production
+     *  site already identify the component; a humanized field label is UI context, not
+     *  part of an instance name. */
+    @Test void aPartDefaultsToItsOwnersDisplayName() {
         GeneratedProjectModel project = project();
         WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
 
@@ -31,10 +29,7 @@ class OwnedComponentsTest {
 
         WikidataDynamicObject name = (WikidataDynamicObject) person.get("structuredName");
         assertEquals("Q42", name.getIdentifier(), "the owner's identity");
-        assertEquals("Douglas Adams — Structured Name", name.getDisplayName());
-        org.junit.jupiter.api.Assertions.assertNotEquals(
-                person.getDisplayName(), name.getDisplayName(),
-                "distinct from the owner's own name, or the owner's title is suppressed");
+        assertEquals("Douglas Adams", name.getDisplayName());
         org.junit.jupiter.api.Assertions.assertTrue(name.isPart(),
                 "and it is a part: never served as a dataset of its own");
     }
@@ -146,7 +141,7 @@ class OwnedComponentsTest {
         OwnedComponents.apply(project, List.of(person), null, null);
         WikidataDynamicObject part =
                 (WikidataDynamicObject) person.get("structuredName");
-        assertEquals("Duglas Adams — Structured Name", part.getDisplayName());
+        assertEquals("Duglas Adams", part.getDisplayName());
 
         person.name("Douglas Adams");   // the label is corrected
         OwnedComponents.Result again = OwnedComponents.apply(
@@ -154,14 +149,14 @@ class OwnedComponentsTest {
 
         assertEquals(0, again.created(), "the same component, not a second one");
         assertSame(part, person.get("structuredName"));
-        assertEquals("Douglas Adams — Structured Name", part.getDisplayName());
+        assertEquals("Douglas Adams", part.getDisplayName());
     }
 
     /**
      * #115. The reuse branch above only settles a repaired label because composition
      * RAN AGAIN. It does not run again after final label hydration, which is two phases
      * later — so on the Oscars domain ten parts kept names like
-     * {@code "Q312674 — Structured Name"} while their owner read "Giorgio Moroder".
+     * {@code "Q312674"} while their owner read "Giorgio Moroder".
      * Settling the names is what closes that window, and it must not need a whole
      * composition pass to do it.
      */
@@ -171,17 +166,17 @@ class OwnedComponentsTest {
         OwnedComponents.apply(project, List.of(person), null, null);
         WikidataDynamicObject part =
                 (WikidataDynamicObject) person.get("structuredName");
-        assertEquals("Q312674 — Structured Name", part.getDisplayName());
+        assertEquals("Q312674", part.getDisplayName());
 
         person.name("Giorgio Moroder");   // hydrated in a LATER phase
 
         assertEquals(1, OwnedComponents.recomposeNames(project, List.of(person)));
-        assertEquals("Giorgio Moroder — Structured Name", part.getDisplayName());
+        assertEquals("Giorgio Moroder", part.getDisplayName());
         assertSame(part, person.get("structuredName"), "settled, not replaced");
     }
 
     /**
-     * Owner-and-site is the DEFAULT name, not a rule outranking the model.
+     * The owner label is the DEFAULT name, not a rule outranking the model.
      *
      * <p>{@code DomainFinalization} canonicalizes and then settles part names.
      * Canonicalization skips only LABEL mode, not owned classes — so a part class named

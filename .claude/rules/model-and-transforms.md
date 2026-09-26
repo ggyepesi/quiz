@@ -82,8 +82,9 @@ The pipeline's order encodes real dependencies. Changing it means checking these
 
 An owned class is produced per owning instance on the OWNER's QID; being owned is a property of
 the CLASS, where it is produced is a property of the FIELD (the production site is part of the
-type key). A part is never a served type, and its name is composed as owner + site — never the
-owner's own label, which its own fields can contradict.
+type key). A part is never a served type. Unless its class has an explicit canonical naming rule,
+its display name follows its owner. The class/field context says which component it is; that
+implementation distinction is not appended to the instance name.
 
 Remap re-runs the pure transforms offline in the same order. Enrich is additive and works in
 place, checkpointed by exact covered QIDs.

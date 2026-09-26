@@ -119,12 +119,9 @@ public final class OwnedComponents {
                         String identity = key(typeKey, owner.getIdentifier());
                         WikidataDynamicObject component = current.get(identity);
                         if (component == null) {
-                            // The owner's IDENTIFIER, and a name that says WHOSE view
-                            // this is and WHICH view: "Elia Kazan — birth name". The
-                            // owner's label alone would claim the component IS the
-                            // owner — a claim its own fields can contradict, since his
-                            // name parts are Elias Kazantzoglou — and a card whose only
-                            // field holds a same-named child drops its own title.
+                            // The owner's identifier and, by default, its display name.
+                            // The target class and production site already identify what
+                            // kind of component this is; neither belongs in instance text.
                             component = new WikidataDynamicObject(
                                     owner.getIdentifier(),
                                     partName(owner, field));
@@ -139,8 +136,8 @@ public final class OwnedComponents {
                         } else {
                             // A reused component was named from the owner's label as it
                             // stood when the component was MADE. Labels get repaired, so
-                            // recompose it: the name is derived from the owner and the
-                            // site, and a derived value that never refreshes is stale
+                            // recompose it: the name is derived from the owner, and a
+                            // derived value that never refreshes is stale
                             // data wearing the appearance of current data.
                             component.name(partName(owner, field));
                         }
@@ -221,10 +218,9 @@ public final class OwnedComponents {
                 != wikidata.explore.model.CanonicalSpec.DisplayNameMode.LABEL;
     }
 
-    /** "Elia Kazan — birth name": whose view, and which view. Readable wherever the
-     *  part turns up — a curation list, a search hit — which a bare owner label is not,
-     *  and distinct from the owner's own name, which a title-suppressing renderer needs
-     *  it to be. */
+    /** The owner's display name is the neutral default. The component's class and its
+     *  production site are structural facts carried by {@code type} and {@code typeKey};
+     *  repeating the humanized field name here leaks them into domain data. */
     private static String partName(
             WikidataDynamicObject owner, GeneratedFieldModel field) {
         String ownerName = owner.getDisplayName();
@@ -232,7 +228,7 @@ public final class OwnedComponents {
         if (ownerName == null || ownerName.isBlank()) {
             return site;
         }
-        return site == null || site.isBlank() ? ownerName : ownerName + " — " + site;
+        return ownerName;
     }
 
     /**
@@ -243,7 +239,7 @@ public final class OwnedComponents {
      * reason. But it runs in the semantic worklist, and an owner's label can still be
      * resolved two phases later, in final label hydration — after which nothing composes
      * again and the part keeps the QID it was named for. Ten Oscars parts carried names
-     * like {@code "Q312674 — Structured Name"} while their owner read "Giorgio Moroder"
+     * like {@code "Q312674"} while their owner read "Giorgio Moroder"
      * (#115).
      *
      * <p>This is the same derivation, not a second rule about what a part is called:
@@ -264,12 +260,11 @@ public final class OwnedComponents {
                     if (!isSite(field, project)) continue;
                     if (!(owner.get(field.name())
                             instanceof WikidataDynamicObject component)) continue;
-                    // Owner-and-site is the DEFAULT name, not a rule outranking the
+                    // The owner label is the DEFAULT name, not a rule outranking the
                     // model. A part is an instance of its class like any other and takes
                     // nothing from its owner; ownership says only how it is produced. It
                     // needs a default because it is produced on the owner's QID and so
-                    // has no label of its own to take — the default is what keeps it
-                    // distinct from the owner it would otherwise read as. A class that
+                    // has no label of its own to take. A class that
                     // names itself by a field or a template had that name applied by
                     // canonicalization and overwritten here, two lines later in the same
                     // finalization: authorable and silently discarded, the two rules

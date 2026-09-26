@@ -28,6 +28,29 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class MultiTypeResultSharesOneContextTest {
 
+    static final class OwnedName implements Viewable {
+        private final String id;
+        OwnedName(String id) { this.id = id; }
+        @Override public String getIdentifier() { return id; }
+        @Override public String getDisplayName() { return id + " — Structured Name"; }
+        @Override public String typeName() { return "Name"; }
+        @Override public objectview.field.FieldSet fields() {
+            return objectview.field.FieldSet.of(this);
+        }
+    }
+
+    static final class OwnerPerson implements Viewable {
+        private final String id;
+        public OwnedName structuredName;
+        OwnerPerson(String id) { this.id = id; }
+        @Override public String getIdentifier() { return id; }
+        @Override public String getDisplayName() { return id; }
+        @Override public String typeName() { return "Person"; }
+        @Override public objectview.field.FieldSet fields() {
+            return objectview.field.FieldSet.of(this);
+        }
+    }
+
     record Prize(String id, String name) implements Viewable {
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return name; }
@@ -81,6 +104,21 @@ class MultiTypeResultSharesOneContextTest {
 
         assertTrue(titlesWithCounts(panel).contains("LaureatesWithMotivation  (2)"),
                 titlesWithCounts(panel).toString());
+    }
+
+    @Test void anOwnedClassIsAVisibleSectionUsingTheSharedInstanceView() throws Exception {
+        OwnerPerson person = new OwnerPerson("Q1");
+        person.structuredName = new OwnedName("Q1");
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+
+        panel.accept(new ObjectQueryResult(List.of(person), OwnerPerson.class, "test",
+                List.of("Person", "Name"), List.of("Name")));
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
+
+        assertEquals(List.of("Person", "Name"), sectionTitles(panel),
+                "partTypes describes ownership; it does not hide Name instances");
+        assertNotNull(find(panel, MultiView.class),
+                "the owner and its part share the normal cross-reference context");
     }
 
     private static QueryObjectResultPanel panelShowing(List<String> typeOrder)

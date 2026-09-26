@@ -200,8 +200,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     /** A PART of another object — an owned component, carrying its owner's identity.
      *  It is in the pool because it is reachable, not because it is a root, so it is
-     *  never served as a dataset of its own. It DOES carry a name (owner + site), so it
-     *  can be read wherever it turns up. */
+     *  never served as a dataset of its own. It carries its owner's display name unless
+     *  its class declares a canonical name of its own. */
     @Override public boolean isPart() { return part; }
 
     public void part(boolean value) { this.part = value; }

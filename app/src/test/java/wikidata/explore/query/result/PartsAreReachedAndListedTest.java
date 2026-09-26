@@ -13,21 +13,21 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * A part is reached through its owner, not listed beside it.
+ * A part is reached through its owner and remains visible as an instance of its class.
  *
  * <p>An owned class has no independent existence — one instance is made per owning
- * instance, carrying that owner's identifier — and the web already knows this and does
- * not serve them. The views that show instances did not: on Nobel, 989 structured names
- * appeared as a section of their own, next to the prizes and the people they name, as
- * though a Name were a thing you could have on its own.
+ * instance, carrying that owner's identifier. Ownership governs production and identity;
+ * it must not make the produced instances disappear from ModelBuilder while TransformApp
+ * shows the same class and snapshot.
  */
-class PartsAreReachedNotListedTest {
+class PartsAreReachedAndListedTest {
 
     static final class Name implements Viewable {
         private final String id;
         Name(String id) { this.id = id; }
         @Override public String getIdentifier() { return id; }
-        @Override public String getDisplayName() { return id + " — Structured Name"; }
+        // The same name as its owner, which is what a part is called now.
+        @Override public String getDisplayName() { return id; }
         @Override public String typeName() { return "Name"; }
         @Override public FieldSet fields() { return FieldSet.of(this); }
     }
@@ -49,12 +49,12 @@ class PartsAreReachedNotListedTest {
                 List.of(), parts);
     }
 
-    @Test void aPartGetsNoSectionOfItsOwn() {
-        assertEquals(List.of("Person"),
-                List.copyOf(resultWithParts(List.of("Name")).byTypeWithoutParts().keySet()));
+    @Test void aPartGetsAClassSectionOfItsOwn() {
+        assertEquals(List.of("Person", "Name"),
+                List.copyOf(resultWithParts(List.of("Name")).byType().keySet()));
     }
 
-    /** Reached and counted all the same — it is hidden from the headings, not the walk. */
+    /** Reached and counted by the same grouping that supplies the headings. */
     @Test void thePartIsStillReachedAndStillCounted() {
         ObjectQueryResult result = resultWithParts(List.of("Name"));
 
@@ -66,8 +66,8 @@ class PartsAreReachedNotListedTest {
     /**
      * Whatever a part reaches is still found.
      *
-     * <p>Which is why the part is dropped from the sections rather than from the walk:
-     * skipping it would lose everything on its far side.
+     * <p>The instance view walks through the part, so everything on its far side remains
+     * reachable too.
      */
     @Test void whatAPartReachesIsNotLostWithIt() {
         Person owner = new Person("Q1");
@@ -76,15 +76,8 @@ class PartsAreReachedNotListedTest {
                 "test", List.of(), List.of("Name"));
 
         assertTrue(result.byType().containsKey("Name"));
-        assertFalse(result.byTypeWithoutParts().containsKey("Name"));
-        assertEquals(1, result.byTypeWithoutParts().get("Person").size());
-    }
-
-    /** A result that declares no parts is unchanged — this is opt-in per producer. */
-    @Test void declaringNoPartsChangesNothing() {
-        ObjectQueryResult result = resultWithParts(List.of());
-
-        assertEquals(result.byType().keySet(), result.byTypeWithoutParts().keySet());
+        assertEquals(1, result.byType().get("Name").size());
+        assertEquals(1, result.byType().get("Person").size());
     }
 
     @Test void aSameTypedReferenceIsNotAnotherPopulationMember() {

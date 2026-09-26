@@ -1,0 +1,34 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:2684d85b-8579-321d-9833-5906349bcbee",
+    "name" : "NobelPrize",
+    "kind" : "CLASS",
+    "artifact" : "nobelprizes.snapshot.json"
+  }, {
+    "declarationId" : "decl:6d0cc45d-0aa8-378b-a452-0811f476361f",
+    "name" : "LaureatesWithMotivation",
+    "kind" : "CLASS",
+    "artifact" : "nobelprizes.snapshot.json"
+  }, {
+    "declarationId" : "decl:92b356ef-7f07-3962-91c9-2bdeaba13fcc",
+    "name" : "Laureate",
+    "kind" : "CLASS",
+    "artifact" : "nobelprizes.snapshot.json"
+  }, {
+    "declarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613",
+    "name" : "Person",
+    "kind" : "CLASS",
+    "artifact" : "nobelprizes.snapshot.json"
+  }, {
+    "declarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295",
+    "name" : "Name",
+    "kind" : "CLASS",
+    "artifact" : "nobelprizes.snapshot.json"
+  }, {
+    "declarationId" : "decl:e037965e-d9b1-3a9b-b337-0f7dab786ab6",
+    "name" : "Categories",
+    "kind" : "SELECTION",
+    "artifact" : "nobelprizes.model.json"
+  } ]
+}

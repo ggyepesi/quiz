@@ -201,10 +201,9 @@ public class QueryObjectResultPanel
         // graph itself, so the headings it drew and the count the sample reported were
         // two rules for one question and disagreed the moment a result carried more
         // than the class that was asked for.
-        // Without the parts: a class produced per owning instance is reached through
-        // its owner and rendered inside it, so a heading of its own puts it beside the
-        // classes it belongs to as though it were one of them. On Nobel that listed 989
-        // structured names next to the prizes and the people they name.
+        // Owned components are instances too. Their ownership controls production and
+        // identity, not visibility: showing Name here is the same class/instance view
+        // TransformApp uses, and lets Person.structuredName navigate to the full card.
         Map<String, List<Viewable>> byType = sections(result, peerSections.entrySet().stream()
                 .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
                         entry -> entry.getValue().all(), (left, right) -> left,
@@ -309,7 +308,7 @@ public class QueryObjectResultPanel
     static Map<String, List<Viewable>> sections(
             ObjectQueryResult result, Map<String, List<Viewable>> peerSections) {
         Map<String, List<Viewable>> byType =
-                ordered(result.byTypeWithoutParts(), result.typeOrder());
+                ordered(result.byType(), result.typeOrder());
 
         // A named graph constraint is a class of annotations beside the classes it
         // annotates.  Keep its records as an explicit section rather than walking the

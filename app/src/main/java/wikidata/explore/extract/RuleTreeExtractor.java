@@ -999,8 +999,8 @@ public class RuleTreeExtractor {
         // and this deliberately costs a request the old condition avoided. Labels
         // resolved HERE are in place before anything derives from them; left to final
         // hydration they settle two phases later, after composition has already named
-        // an owned part from a QID — which is how ten Oscars parts came to be called
-        // "Q312674 — Structured Name" (#115). Correctness does not need it, since
+        // an owned part from a QID — which is how ten Oscars Name parts kept the title
+        // "Q312674" after their Person owners had labels (#115). Correctness does not need it, since
         // hydration still covers every class whose binding declares labels; the run
         // reads better for it, and fewer derived names are built from a placeholder.
         boolean retainsMetadata = factDemands.stream()

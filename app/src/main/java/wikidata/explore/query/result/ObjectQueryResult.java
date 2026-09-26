@@ -19,11 +19,9 @@ import java.util.Set;
  *                  here: without it the sections come out in traversal order, which
  *                  reads as no order at all.
  * @param partTypes types whose instances are PARTS of another object — one made per
- *                  owning instance, carrying that owner's identifier. They are reached
- *                  through their owner and not listed beside the classes that have an
- *                  existence of their own. Named by the producer, which is what has the
- *                  model to ask; a producer that means to show a part (a sample OF one)
- *                  leaves it out of this list.
+ *                  owning instance, carrying that owner's identifier. This is semantic
+ *                  metadata about production and identity; it does not make instances
+ *                  disappear from a class/instance view.
  */
 public record ObjectQueryResult(
         List<Viewable> objects,
@@ -56,20 +54,6 @@ public record ObjectQueryResult(
     public int countOf(String typeName) {
         if (typeName == null || typeName.isBlank()) return size();
         return byType().getOrDefault(typeName, List.of()).size();
-    }
-
-    /**
-     * The types worth a section of their own — everything but the parts.
-     *
-     * <p>The grouping stays the whole truth; this is the view of it a reader is offered.
-     * A part is still reached, still counted, and still rendered inside the owner whose
-     * field holds it — what it does not get is a heading beside the classes it belongs
-     * to. Dropping it from the walk instead would lose whatever IT reaches.
-     */
-    public Map<String, List<Viewable>> byTypeWithoutParts() {
-        Map<String, List<Viewable>> byType = byType();
-        partTypes.forEach(byType::remove);
-        return byType;
     }
 
     /**

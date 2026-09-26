@@ -18,13 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A part is named for its owner and its site — "Douglas Adams — Birth Name" — which
- * reads well in a list but says nothing new under the very row that named it. Inside
- * its owner the heading is suppressed; the owner keeps its own.
+ * A part takes its owner's display name, and the owner still keeps its own heading.
+ *
+ * <p>Those two together are the case worth guarding. While a part was named "owner —
+ * site" the names could not collide; now they are the same string, so a renderer that
+ * suppressed a heading by comparing it with a child's would drop the owner's title —
+ * which is the objection the old naming convention existed to avoid. Inside its owner
+ * the part shows no heading of its own, and the owner's survives.
  */
 class PartRenderingTest {
 
-    @Test void aPartCarriesItsNameButShowsNoHeadingInsideItsOwner() throws Exception {
+    @Test void aPartTakesItsOwnersNameAndTheOwnerKeepsItsHeading() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");
         GeneratedClassModel person = new GeneratedClassModel("Person");
@@ -48,8 +52,9 @@ class PartRenderingTest {
                 (WikidataDynamicObject) source.get("birthName");
         component.put("familyName", "Adams");
 
-        assertEquals("Douglas Adams — Birth Name", component.getDisplayName(),
-                "in a list it says whose view it is and which");
+        assertEquals("Douglas Adams", component.getDisplayName(),
+                "the owner's name is the default; which component it is, its class and "
+                        + "production site already say");
         assertTrue(component.isPart());
 
         try (GeneratedViewableRuntime runtime =
@@ -68,7 +73,8 @@ class PartRenderingTest {
                     mapped, ViewConfig.all(mapped.getClass()),
                     new RenderContext(List.of(mapped)), false));
             assertEquals("Douglas Adams", card[0].getTitle(),
-                    "the owner keeps its own heading");
+                    "the owner keeps its own heading even though its part now carries "
+                            + "the same name");
 
             ViewConfig selectedAsWhole = ViewConfig.leaf();
             selectedAsWhole.setCls((Class<? extends Viewable>) mapped.getClass());

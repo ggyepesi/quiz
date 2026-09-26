@@ -24,6 +24,7 @@
         "sourceField" : "year"
       } ] ]
     },
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -232,6 +233,7 @@
         "sourceField" : "year"
       } ] ]
     },
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -447,6 +449,7 @@
       },
       "graphExpansionPolicy" : "NONE"
     },
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -526,7 +529,6 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
-      "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
@@ -686,6 +688,7 @@
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
