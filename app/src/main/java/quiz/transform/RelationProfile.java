@@ -109,24 +109,6 @@ public record RelationProfile(
         return components.stream().allMatch(component -> component.size() == 1);
     }
 
-    /**
-     * Original loaded instances that witness at least one actionable finding.
-     *
-     * <p>Symmetry and transitivity samples are deliberately absent: they are evidence
-     * for a measure, not work to do, until something states the relation was meant to
-     * have the property. Including them padded the witness sections with instances no
-     * offered finding pointed at.
-     */
-    public List<Viewable> findingWitnesses() {
-        Set<Viewable> witnesses = new LinkedHashSet<>();
-        for (OneSided finding : statedOneWay) {
-            witnesses.add(finding.from());
-            witnesses.add(finding.to());
-        }
-        witnesses.addAll(leavingPopulation);
-        return List.copyOf(witnesses);
-    }
-
     public static RelationProfile of(Collection<? extends Viewable> instances,
                                      String forwardField, String inverseField) {
         String forward = clean(forwardField);

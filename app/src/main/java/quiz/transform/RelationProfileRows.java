@@ -3,6 +3,8 @@ package quiz.transform;
 import objectview.Viewable;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -30,6 +32,18 @@ public final class RelationProfileRows {
     private RelationProfileRows() { }
 
     public static List<Viewable> of(String relation, RelationProfile profile) {
+        return of(relation, profile, false);
+    }
+
+    /**
+     * @param statedSymmetric the catalogue says the relation is symmetric — a property
+     *                        naming itself as its own inverse through P1696, which
+     *                        sibling and spouse both do. Only then is an unreciprocated
+     *                        edge a gap somebody can close; for a succession it is the
+     *                        ordinary shape of the relation.
+     */
+    public static List<Viewable> of(
+            String relation, RelationProfile profile, boolean statedSymmetric) {
         if (profile == null) return List.of();
         String name = relation == null || relation.isBlank()
                 ? profile.forwardField() : relation;
@@ -48,7 +62,11 @@ public final class RelationProfileRows {
         measure(rows, name, "reflexive", profile.reflexive(),
                 "a member related to itself");
         measure(rows, name, "symmetry breaks", profile.symmetryBreaks(),
-                "a→b is stated but b→a is not; samples are in Findings");
+                statedSymmetric
+                        ? "the catalogue states this property is its own inverse, so "
+                                + "each unreciprocated edge is a gap: see Findings"
+                        : "a→b is stated but b→a is not — the ordinary shape of a "
+                                + "relation nothing states to be symmetric");
         measure(rows, name, "transitivity breaks", profile.transitivityBreaks(),
                 "a→b→c is stated but a→c is not; samples are in Findings");
         measure(rows, name, "largest out-degree", profile.maxOutDegree(),
@@ -60,8 +78,11 @@ public final class RelationProfileRows {
         measure(rows, name, "largest component", profile.largestComponent(),
                 "one component holding everything means grouping by it says nothing");
         measure(rows, name, "mutually reachable sets", profile.mutuallyReachable().size(),
-                "the relation's own equivalence classes: its groups when it is "
-                        + "symmetric, a data error when it is an order");
+                statedSymmetric
+                        ? "this relation's equivalence classes, which for a symmetric "
+                                + "relation are its groups"
+                        : "the relation's own equivalence classes: a data error for an "
+                                + "order-like relation, where each should be one member");
         measure(rows, name, "edges leaving the population", profile.danglingEdges(),
                 "targets that were never loaded, so their components are fragments");
 
@@ -98,15 +119,30 @@ public final class RelationProfileRows {
             rows.add(row);
         }
 
-        // Broken symmetry and transitivity are measures here and NOT findings, because
-        // nothing yet says the relation was supposed to have either. Over History's
-        // replaces ⇄ replacedBy, 81 of 85 edges "break symmetry" and 30 break
-        // transitivity — and every one of those edits would be wrong: a reciprocal
-        // succession is a cycle, and a transitive one asserts a direct succession that
-        // never happened. A finding is something to act on, so these become findings
-        // only once the catalogue states the property should hold — P1696 naming a
-        // property its own inverse states symmetry, and a P2302 constraint states
-        // transitivity. The samples stay on the profile as that measure's evidence.
+        // A break is a finding only where something states the relation should hold.
+        // Over History's replaces ⇄ replacedBy, 81 of 85 edges "break symmetry" and 30
+        // break transitivity, and every one of those edits would be wrong: a reciprocal
+        // succession is a cycle, a transitive one asserts a succession that never
+        // happened. The catalogue states symmetry by naming a property its own inverse,
+        // so sibling and spouse get these findings and a succession does not.
+        // Transitivity is stated by a P2302 constraint the catalogue does not carry yet
+        // (#286), so its samples stay evidence for the measure and nothing more.
+        index = 0;
+        if (statedSymmetric) {
+            for (RelationProfile.SymmetryBreak broken : profile.symmetryBreakSamples()) {
+                DynamicViewable row = new DynamicViewable(
+                        name + "#symmetry-" + index++, "Missing reverse edge");
+                row.type(FINDING);
+                row.put("relation", name);
+                row.put("finding", "breaks stated symmetry");
+                row.put("from", broken.from());
+                row.put("to", broken.to());
+                row.put("missing", broken.to().getDisplayName() + " → "
+                        + broken.from().getDisplayName());
+                rows.add(row);
+            }
+        }
+
         index = 0;
         for (Viewable member : profile.leavingPopulation()) {
             DynamicViewable row = new DynamicViewable(
@@ -118,6 +154,26 @@ public final class RelationProfileRows {
             rows.add(row);
         }
         return List.copyOf(rows);
+    }
+
+    /**
+     * The loaded instances the offered findings point at, in the order they are offered.
+     *
+     * <p>Read back off the rows rather than recomputed, so it cannot claim a witness for
+     * a finding nobody was given. The two did disagree: a witness list assembled beside
+     * the rows kept naming the ends of symmetry samples after those stopped being
+     * findings, and every one of them opened a section for work that was never offered.
+     */
+    public static List<Viewable> witnesses(Collection<? extends Viewable> rows) {
+        LinkedHashSet<Viewable> found = new LinkedHashSet<>();
+        for (Viewable row : rows == null ? List.<Viewable>of() : rows) {
+            if (!FINDING.equals(row.typeName())
+                    || !(row instanceof DynamicViewable dynamic)) continue;
+            for (Object value : dynamic.dynamicFieldValues().values()) {
+                if (value instanceof Viewable witness) found.add(witness);
+            }
+        }
+        return List.copyOf(found);
     }
 
     /**

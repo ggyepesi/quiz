@@ -74,6 +74,34 @@ class RelationFieldsTest {
                 "the 410 loaded members are PositionWithHolders; the field is Position's");
     }
 
+    /**
+     * A property whose inverse is ITSELF is the catalogue saying the relation is
+     * symmetric — P3373 sibling and P26 spouse both state exactly that. It is not a
+     * pairing: there is no second field, one field holds both directions.
+     */
+    @Test void aPropertyThatIsItsOwnInverseIsStatedSymmetricAndNotPairedWithItself() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        entityField(person, "siblings", "Person", "P3373");
+        entityField(person, "replaces", "Person", "P1365");
+        entityField(person, "replacedBy", "Person", "P1366");
+        model.rootClass(person);
+
+        List<RelationFields.Relation> relations = RelationFields.of(person, model,
+                Map.of("P3373", Set.of("P3373"),
+                        "P1365", Set.of("P1366"), "P1366", Set.of("P1365")));
+
+        RelationFields.Relation siblings = relations.getFirst();
+        assertEquals("siblings", siblings.label(), "one field, not a pair with itself");
+        assertFalse(siblings.paired());
+        assertTrue(siblings.statedSymmetric());
+
+        RelationFields.Relation succession = relations.get(1);
+        assertTrue(succession.paired());
+        assertFalse(succession.statedSymmetric(),
+                "a converse pair states direction, which is the opposite of symmetry");
+    }
+
     private static void entityField(
             GeneratedClassModel clazz, String name, String target, String pid) {
         GeneratedFieldModel field = clazz.addField(

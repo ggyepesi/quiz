@@ -25,11 +25,21 @@ import java.util.Set;
 public final class RelationFields {
     private RelationFields() { }
 
-    /** One relation of a class, stated by one field or by a converse pair. */
+    /**
+     * One relation of a class, stated by one field or by a converse pair.
+     *
+     * <p>{@code statedSymmetric} is read from the same P1696 column: a property whose
+     * inverse is ITSELF is Wikidata saying the relation is symmetric, which sibling and
+     * spouse both do. It is the difference between an unreciprocated edge being a gap to
+     * fill and being the ordinary shape of a relation that was never symmetric — a
+     * succession has no reverse edge anywhere, and offering to add them would propose a
+     * cycle 81 times over.
+     */
     public record Relation(
             String className,
             String forwardField, String forwardPid,
-            String inverseField, String inversePid) {
+            String inverseField, String inversePid,
+            boolean statedSymmetric) {
 
         public Relation {
             forwardField = clean(forwardField);
@@ -89,12 +99,18 @@ public final class RelationFields {
                     }
                 }
             }
+            // A property that names ITSELF as its inverse is stated symmetric; it is
+            // not paired with a second field, because there is no second field — the
+            // one field holds both directions.
+            boolean symmetric = !pid.isBlank() && inverseByPid != null
+                    && inverseByPid.getOrDefault(pid, Set.of()).contains(pid);
             if (converse == null) {
-                relations.add(new Relation(clazz.className(), field.name(), pid, "", ""));
+                relations.add(new Relation(
+                        clazz.className(), field.name(), pid, "", "", symmetric));
             } else {
                 taken.add(converse.name());
                 relations.add(new Relation(clazz.className(),
-                        field.name(), pid, converse.name(), pid(converse)));
+                        field.name(), pid, converse.name(), pid(converse), symmetric));
             }
         }
         return List.copyOf(relations);

@@ -149,31 +149,6 @@ class RelationProfileTest {
         assertEquals(1, profile.largestComponent());
     }
 
-    /**
-     * Witnessed by the findings that are actually offered — a statement only one side
-     * makes, and a chain leaving the population. A member merely taking part in the
-     * relation is not a witness, or a chain with nothing wrong with it would produce a
-     * witness section for every office in it.
-     */
-    @Test void findingWitnessesAreOriginalInstancesAndExcludeUninvolvedMembers() {
-        DynamicViewable later = office("later", "Later office");
-        DynamicViewable earlier = office("earlier", "Earlier office");
-        DynamicViewable leaving = office("leaving", "Leaves the population");
-        DynamicViewable involvedButFine = office("fine", "Reciprocated both ways");
-        DynamicViewable itsPredecessor = office("pred", "Its predecessor");
-        later.put("replaces", List.of(earlier));
-        leaving.put("replaces", List.of(office("out", "Never loaded")));
-        involvedButFine.put("replaces", List.of(itsPredecessor));
-        itsPredecessor.put("replacedBy", List.of(involvedButFine));
-
-        RelationProfile profile = RelationProfile.of(
-                List.of(later, earlier, leaving, involvedButFine, itsPredecessor),
-                "replaces", "replacedBy");
-
-        assertEquals(List.of(later, earlier, leaving), profile.findingWitnesses(),
-                "the findings view shows the loaded witness objects, not every instance");
-    }
-
     private static List<String> names(List<Viewable> values) {
         return values.stream().map(Viewable::getDisplayName).toList();
     }

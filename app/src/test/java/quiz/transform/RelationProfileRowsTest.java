@@ -97,8 +97,61 @@ class RelationProfileRowsTest {
         assertTrue(rows.stream().noneMatch(
                         row -> RelationProfileRows.FINDING.equals(row.typeName())),
                 "but a chain with nothing wrong with it offers no work");
-        assertEquals(List.of(), profile.findingWitnesses(),
+        assertEquals(List.of(), RelationProfileRows.witnesses(rows),
                 "and no witness sections for findings that were not offered");
+    }
+
+    /**
+     * The same measurement, the same numbers, and work offered only where the catalogue
+     * says the relation was meant to hold. Sibling states itself as its own inverse, so
+     * an unreciprocated edge is a gap somebody closes.
+     */
+    @Test void aStatedSymmetricRelationOffersItsBreaksAsWork() {
+        DynamicViewable ann = office("a", "Ann");
+        DynamicViewable bo = office("b", "Bo");
+        ann.put("siblings", List.of(bo));
+
+        RelationProfile profile = RelationProfile.of(List.of(ann, bo), "siblings", "");
+        List<Viewable> stated = RelationProfileRows.of("siblings", profile, true);
+        List<Viewable> unstated = RelationProfileRows.of("siblings", profile, false);
+
+        Viewable finding = rowOfType(stated, RelationProfileRows.FINDING);
+        assertEquals("breaks stated symmetry", field(finding, "finding"));
+        assertEquals(ann, field(finding, "from"));
+        assertEquals(bo, field(finding, "to"));
+        assertEquals("Bo → Ann", field(finding, "missing"));
+        assertEquals(List.of(ann, bo), RelationProfileRows.witnesses(stated));
+
+        assertTrue(unstated.stream().noneMatch(
+                        row -> RelationProfileRows.FINDING.equals(row.typeName())),
+                "and nothing is offered where nothing states symmetry");
+        assertEquals(1, value(stated, "symmetry breaks"));
+        assertEquals(1, value(unstated, "symmetry breaks"),
+                "the measure is the same either way; only its reading differs");
+    }
+
+    /**
+     * Witnessed by what was offered. A witness list assembled beside the rows kept
+     * naming the ends of symmetry samples after those stopped being findings, opening a
+     * section for work nobody was given — so it is read back off the rows instead.
+     */
+    @Test void theWitnessesAreTheInstancesTheOfferedFindingsPointAt() {
+        DynamicViewable later = office("later", "Later office");
+        DynamicViewable earlier = office("earlier", "Earlier office");
+        DynamicViewable leaving = office("leaving", "Leaves the population");
+        DynamicViewable reciprocated = office("fine", "Reciprocated both ways");
+        DynamicViewable itsPredecessor = office("pred", "Its predecessor");
+        later.put("replaces", List.of(earlier));
+        leaving.put("replaces", List.of(office("out", "Never loaded")));
+        reciprocated.put("replaces", List.of(itsPredecessor));
+        itsPredecessor.put("replacedBy", List.of(reciprocated));
+
+        List<Viewable> rows = RelationProfileRows.of("succession", RelationProfile.of(
+                List.of(later, earlier, leaving, reciprocated, itsPredecessor),
+                "replaces", "replacedBy"));
+
+        assertEquals(List.of(later, earlier, leaving), RelationProfileRows.witnesses(rows),
+                "taking part in the relation is not enough to be a witness");
     }
 
     @Test void singletonsAreNotOfferedAsGroups() {

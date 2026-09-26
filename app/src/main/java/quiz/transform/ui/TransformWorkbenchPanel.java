@@ -1036,7 +1036,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void showRelationProfile(
             wikidata.explore.model.RelationFields.Relation relation,
             quiz.transform.RelationProfile profile) {
-        List<Viewable> rows = quiz.transform.RelationProfileRows.of(relation.label(), profile);
+        List<Viewable> rows = quiz.transform.RelationProfileRows.of(
+                relation.label(), profile, relation.statedSymmetric());
         java.util.Map<String, List<Viewable>> byType = new java.util.LinkedHashMap<>();
         rows.forEach(row -> byType.computeIfAbsent(row.typeName(), ignored -> new ArrayList<>())
                 .add(row));
@@ -1054,7 +1055,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 relationSample(type, values)));
         if (findings != null && !findings.isEmpty()) {
             tabs.addTab("Findings (" + findings.size() + ")",
-                    relationFindingsView(findings, profile.findingWitnesses()));
+                    relationFindingsView(findings,
+                            quiz.transform.RelationProfileRows.witnesses(findings)));
         }
         dialog.add(tabs, BorderLayout.CENTER);
         dialog.setSize(1280, 780);
