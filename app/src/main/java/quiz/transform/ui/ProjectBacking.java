@@ -11,4 +11,5 @@ public interface ProjectBacking extends DomainCapability {
     GeneratedProjectModel.ProjectKind projectKind();
     File modelFile();
     File snapshotFile();
+    GeneratedProjectModel projectModel();
 }

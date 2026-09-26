@@ -3,7 +3,12 @@ package wikidata.explore;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 public class WikidataPropertyStore {
 
@@ -11,6 +16,10 @@ public class WikidataPropertyStore {
 
     public WikidataPropertyStore() {
         this.file = new File("data/wikidata/properties.tsv");
+    }
+
+    public WikidataPropertyStore(File file) {
+        this.file = java.util.Objects.requireNonNull(file);
     }
 
     public File file() {
@@ -86,6 +95,31 @@ public class WikidataPropertyStore {
                                    + file.getAbsolutePath());
 
         return list;
+    }
+
+    /**
+     * The catalogue's declared converse relation, ready for model consumers.
+     *
+     * <p>The TSV remains the one owner of the cached fact. Callers must not each
+     * reinterpret the comma-separated P1696 column or disagree about PID case.
+     */
+    public Map<String, Set<String>> inverseProperties() throws IOException {
+        Map<String, Set<String>> result = new LinkedHashMap<>();
+        for (WikidataProperty property : read()) {
+            String pid = cleanPid(property.pid());
+            if (pid.isBlank()) continue;
+            LinkedHashSet<String> inverses = new LinkedHashSet<>();
+            for (String value : property.inversePropertyPids().split(",")) {
+                String inverse = cleanPid(value);
+                if (!inverse.isBlank()) inverses.add(inverse);
+            }
+            if (!inverses.isEmpty()) result.put(pid, Set.copyOf(inverses));
+        }
+        return Map.copyOf(result);
+    }
+
+    private static String cleanPid(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
     private static String escape(String s) {

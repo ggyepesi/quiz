@@ -36,7 +36,8 @@ class RelationProfileTest {
         assertEquals(2, profile.statedBothWays());
         assertEquals(List.of(), profile.statedOneWay());
         assertEquals(0, profile.reflexive());
-        assertEquals(0, profile.mutualPairs());
+        assertEquals(2, profile.symmetryBreaks());
+        assertEquals(2, profile.symmetryBreakSamples().size());
         assertEquals(List.of(), profile.mutuallyReachable());
         assertEquals(1, profile.maxOutDegree(), "a succession is functional");
         assertEquals(1, profile.components().size());
@@ -47,7 +48,7 @@ class RelationProfileTest {
         assertEquals(List.of("President of India"), names(chain.origins()));
         assertEquals(List.of("Viceroy of India"), names(chain.terminals()),
                 "exactly one end each way is what makes 'the last office' a usable name");
-        assertEquals(1, profile.transitivityGaps(),
+        assertEquals(1, profile.transitivityBreaks(),
                 "president -> governor -> viceroy without president -> viceroy: "
                         + "a chain is not transitive, and that is the point");
     }
@@ -86,12 +87,12 @@ class RelationProfileTest {
                 List.of(first, second, third), "sibling", "");
 
         assertEquals(4, profile.edges());
-        assertEquals(2, profile.mutualPairs(), "every stated edge is reciprocated");
+        assertEquals(0, profile.symmetryBreaks(), "every stated edge is reciprocated");
         assertEquals(0, profile.statedBothWays(),
                 "a single property has no second side to agree with");
         assertEquals(List.of(), profile.statedOneWay(),
                 "and nothing to be one-sided about either");
-        assertEquals(2, profile.transitivityGaps(),
+        assertEquals(2, profile.transitivityBreaks(),
                 "a<->b<->c leaves a<->c unstated, so the sibship is not closed");
         assertEquals(1, profile.components().size());
         assertEquals(3, profile.components().getFirst().size());
@@ -146,6 +147,31 @@ class RelationProfileTest {
 
         assertTrue(profile.partitionsNothing());
         assertEquals(1, profile.largestComponent());
+    }
+
+    /**
+     * Witnessed by the findings that are actually offered — a statement only one side
+     * makes, and a chain leaving the population. A member merely taking part in the
+     * relation is not a witness, or a chain with nothing wrong with it would produce a
+     * witness section for every office in it.
+     */
+    @Test void findingWitnessesAreOriginalInstancesAndExcludeUninvolvedMembers() {
+        DynamicViewable later = office("later", "Later office");
+        DynamicViewable earlier = office("earlier", "Earlier office");
+        DynamicViewable leaving = office("leaving", "Leaves the population");
+        DynamicViewable involvedButFine = office("fine", "Reciprocated both ways");
+        DynamicViewable itsPredecessor = office("pred", "Its predecessor");
+        later.put("replaces", List.of(earlier));
+        leaving.put("replaces", List.of(office("out", "Never loaded")));
+        involvedButFine.put("replaces", List.of(itsPredecessor));
+        itsPredecessor.put("replacedBy", List.of(involvedButFine));
+
+        RelationProfile profile = RelationProfile.of(
+                List.of(later, earlier, leaving, involvedButFine, itsPredecessor),
+                "replaces", "replacedBy");
+
+        assertEquals(List.of(later, earlier, leaving), profile.findingWitnesses(),
+                "the findings view shows the loaded witness objects, not every instance");
     }
 
     private static List<String> names(List<Viewable> values) {

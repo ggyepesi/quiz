@@ -59,6 +59,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JButton forgetIdentitiesButton = new JButton("Forget staged");
     private final JButton discoverStatementsButton =
             new JButton("Experimental: Discover Wikidata statements and qualifiers…");
+    private final JButton analyzeRelationsButton =
+            new JButton("Analyze relations…");
     private final java.util.LinkedHashMap<String, Viewable> experimentSelection =
             new java.util.LinkedHashMap<>();
     private List<Viewable> selectedInstances = List.of();
@@ -74,6 +76,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // classes share a Java implementation, so the domain type name is the right key.
     private final java.util.Map<String, objectview.search.SearchPanel.ConfigState>
             instanceConfigsByType = new java.util.HashMap<>();
+    private java.util.Map<String, java.util.Set<String>> inverseProperties;
+    private wikidata.explore.model.GeneratedProjectModel relationModel;
+    private boolean relationModelLoaded;
     // Primary datasource is WDQS (Wikidata queries + Explore); the factory owns the
     // DBpedia binding (enrichment joins), and each SPARQL operation explicitly requests
     // its datasource from the shared context. requestClient is closed by this panel.
@@ -138,7 +143,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         this.domainName = domainName;
         setLayout(new BorderLayout(8, 8));
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildLeft(), buildRight());
+        // Build the action owner first. ViewStepsPanel seeds the initial class and may
+        // synchronously render it while its controls are being constructed; building the
+        // right side afterwards would reset those already-computed button states to their
+        // disabled defaults. A later class switch happened to recompute them, which made
+        // Analyze relations appear broken only for the initially selected class.
+        JComponent right = buildRight();
+        JComponent left = buildLeft();
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         split.setResizeWeight(0.42);
         add(split, BorderLayout.CENTER);
 
@@ -351,6 +363,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         forgetIdentitiesButton.setVisible(false);
         discoverStatementsButton.setEnabled(false);
         discoverStatementsButton.addActionListener(e -> discoverWikidataStatements());
+        analyzeRelationsButton.setToolTipText(
+                "Measure self-referencing fields over the instances currently shown");
+        analyzeRelationsButton.setEnabled(false);
+        analyzeRelationsButton.addActionListener(e -> analyzeRelations());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         actions.add(curateFieldButton);
         actions.add(identitiesButton);
@@ -360,6 +376,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         scope.add(main, BorderLayout.NORTH);
         JPanel instanceActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         instanceActions.add(discoverStatementsButton);
+        instanceActions.add(analyzeRelationsButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
@@ -754,6 +771,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // to describe the render.
         scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
         identitiesButton.setEnabled(false);
+        analyzeRelationsButton.setEnabled(false);
 
         renderHolder.removeAll();
         renderHolder.add(new JLabel("  Rendering…"), BorderLayout.NORTH);
@@ -866,6 +884,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             curateFieldButton.setEnabled(false);
             identitiesButton.setEnabled(false);
             discoverStatementsButton.setEnabled(false);
+            analyzeRelationsButton.setEnabled(false);
             return;
         }
         quiz.curation.IdentitySubjects identitySubjects = quiz.curation.IdentitySubjects.of(
@@ -909,6 +928,206 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         identitiesButton.setEnabled(curation != null && hasResolvable);
         discoverStatementsButton.setEnabled(scope.visibleMembers().stream()
                 .anyMatch(value -> quiz.source.SourceIdentities.wikidataQid(value) != null));
+        analyzeRelationsButton.setEnabled(!relationsFor(scope.selectedType()).isEmpty());
+    }
+
+    /**
+     * Measure one model-declared relation over exactly the instances the user sees.
+     * This is inspection only: it performs no request and changes or saves nothing.
+     */
+    private void analyzeRelations() {
+        RenderedScope scope = renderedScope;
+        if (scope == null || scope.visibleMembers().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No instances are currently shown.");
+            return;
+        }
+        List<wikidata.explore.model.RelationFields.Relation> relations =
+                relationsFor(scope.selectedType());
+        if (relations.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "The selected class has no entity field referring to itself or its "
+                            + "class hierarchy.");
+            return;
+        }
+        JComboBox<wikidata.explore.model.RelationFields.Relation> choice =
+                new JComboBox<>();
+        choice.addItem(null);
+        relations.forEach(choice::addItem);
+        choice.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                setText(value instanceof wikidata.explore.model.RelationFields.Relation relation
+                        ? relation.label() : "Choose a relation…");
+                return this;
+            }
+        });
+        JPanel plan = new JPanel(new BorderLayout(4, 8));
+        plan.add(new JLabel("Measure over " + scope.visibleMembers().size()
+                + " currently shown " + scope.selectedType() + " instances."),
+                BorderLayout.NORTH);
+        plan.add(choice, BorderLayout.CENTER);
+        plan.add(new JLabel("Uses loaded field values only; no requests, changes, or files."),
+                BorderLayout.SOUTH);
+        if (JOptionPane.showConfirmDialog(this, plan, "Analyze relation",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        var relation = (wikidata.explore.model.RelationFields.Relation) choice.getSelectedItem();
+        if (relation == null) {
+            JOptionPane.showMessageDialog(this, "Choose a relation to analyze.");
+            return;
+        }
+
+        analyzeRelationsButton.setEnabled(false);
+        analyzeRelationsButton.setText("Analyzing " + relation.label() + "…");
+        List<Viewable> members = List.copyOf(scope.visibleMembers());
+        new SwingWorker<quiz.transform.RelationProfile, Void>() {
+            @Override protected quiz.transform.RelationProfile doInBackground() {
+                return quiz.transform.RelationProfile.of(
+                        members, relation.forwardField(), relation.inverseField());
+            }
+            @Override protected void done() {
+                analyzeRelationsButton.setText("Analyze relations…");
+                updateScopeStatus();
+                try {
+                    showRelationProfile(relation, get());
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(TransformWorkbenchPanel.this,
+                            "Could not analyze relation: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private List<wikidata.explore.model.RelationFields.Relation> relationsFor(String type) {
+        if (type == null || TransformController.ALL_ENTITIES.equals(type)) return List.of();
+        wikidata.explore.model.GeneratedProjectModel model = relationModel();
+        wikidata.explore.model.GeneratedClassModel clazz =
+                model == null ? null : model.findClass(type);
+        if (clazz == null) return List.of();
+        try {
+            return wikidata.explore.model.RelationFields.of(clazz, model,
+                    inverseProperties());
+        } catch (java.io.IOException ignored) {
+            // An absent catalogue still offers each relation field alone. The report
+            // must not invent converse pairs from field names.
+            return wikidata.explore.model.RelationFields.of(clazz, model, java.util.Map.of());
+        }
+    }
+
+    private wikidata.explore.model.GeneratedProjectModel relationModel() {
+        if (!relationModelLoaded) {
+            ProjectBacking backing = controller.domain().capability(ProjectBacking.class);
+            relationModel = backing == null ? null : backing.projectModel();
+            relationModelLoaded = true;
+        }
+        return relationModel;
+    }
+
+    private java.util.Map<String, java.util.Set<String>> inverseProperties()
+            throws java.io.IOException {
+        if (inverseProperties == null) {
+            inverseProperties = new wikidata.explore.WikidataPropertyStore()
+                    .inverseProperties();
+        }
+        return inverseProperties;
+    }
+
+    private void showRelationProfile(
+            wikidata.explore.model.RelationFields.Relation relation,
+            quiz.transform.RelationProfile profile) {
+        List<Viewable> rows = quiz.transform.RelationProfileRows.of(relation.label(), profile);
+        java.util.Map<String, List<Viewable>> byType = new java.util.LinkedHashMap<>();
+        rows.forEach(row -> byType.computeIfAbsent(row.typeName(), ignored -> new ArrayList<>())
+                .add(row));
+        List<Viewable> findings = byType.remove(quiz.transform.RelationProfileRows.FINDING);
+
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Relation analysis — " + relation.label(), Dialog.ModalityType.MODELESS);
+        JTabbedPane tabs = new JTabbedPane();
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        rows.forEach(context::addTopLevel);
+        byType.forEach((type, values) -> addRelationTab(
+                tabs, context, relationTabName(type), values,
+                relationSample(type, values)));
+        if (findings != null && !findings.isEmpty()) {
+            tabs.addTab("Findings (" + findings.size() + ")",
+                    relationFindingsView(findings, profile.findingWitnesses()));
+        }
+        dialog.add(tabs, BorderLayout.CENTER);
+        dialog.setSize(1280, 780);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    /** Findings and only the original instances that prove them, sharing one ObjectView
+     * context so every from/through/to reference opens the full loaded instance card. */
+    private JComponent relationFindingsView(
+            List<Viewable> findings, List<Viewable> witnesses) {
+        MultiView multi = new MultiView();
+        multi.context().setCollapsibleCards(true);
+        multi.context().setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        multi.context().setFieldSchemaResolver(
+                value -> controller.fieldSchema(value.typeName()));
+        multi.addSection("Findings", sampleClass(findings.getFirst()), findings,
+                relationSample(quiz.transform.RelationProfileRows.FINDING, findings),
+                java.util.Set.of(), null);
+
+        java.util.Map<String, List<Viewable>> byType = new java.util.LinkedHashMap<>();
+        for (Viewable witness : witnesses) {
+            byType.computeIfAbsent(witness.typeName(), ignored -> new ArrayList<>())
+                    .add(witness);
+        }
+        byType.forEach((type, values) -> multi.addSection(
+                type, sampleClass(values.getFirst()), values,
+                controller.configSample(type), controller.structuralFields(type),
+                controller.fieldTypes(type)));
+        multi.build(1);
+        return multi;
+    }
+
+    private static void addRelationTab(JTabbedPane tabs,
+            objectview.render.RenderContext context, String title,
+            List<Viewable> values, Viewable sample) {
+        int tab = tabs.getTabCount();
+        values.forEach(value -> context.registerTopLevelRevealer(
+                value, () -> tabs.setSelectedIndex(tab)));
+        JComponent view = objectview.view.SearchableView.builder(values)
+                .sample(sample)
+                .renderContext(context)
+                .coordinated(true)
+                .collapsible(true)
+                .build();
+        tabs.addTab(title + " (" + values.size() + ")", view);
+    }
+
+    /** One shape carrier per report kind, so Findings exposes both one-sided-edge
+     * fields and population-boundary fields instead of whichever row happened first. */
+    private static Viewable relationSample(String type, List<Viewable> values) {
+        quiz.transform.DynamicViewable sample = new quiz.transform.DynamicViewable(
+                "__relation_shape__:" + type, type);
+        sample.type(type);
+        for (Viewable value : values) {
+            objectview.field.FieldSet fields = objectview.field.FieldSet.of(value);
+            for (objectview.field.FieldRef field : fields.fields()) {
+                Object fieldValue = fields.read(field.name());
+                if (sample.get(field.name()) == null && fieldValue != null) {
+                    sample.put(field.name(), fieldValue);
+                }
+            }
+        }
+        return sample;
+    }
+
+    private static String relationTabName(String type) {
+        return switch (type) {
+            case quiz.transform.RelationProfileRows.MEASURE -> "Measures";
+            case quiz.transform.RelationProfileRows.COMPONENT -> "Components";
+            case quiz.transform.RelationProfileRows.FINDING -> "Findings";
+            default -> type == null || type.isBlank() ? "Results" : type;
+        };
     }
 
     static boolean withoutWikidataLabel(Viewable value) {

@@ -69,6 +69,38 @@ class RelationProfileRowsTest {
         assertEquals(1, value(rows, "edges leaving the population"));
     }
 
+    /**
+     * A chain breaks symmetry at every edge and transitivity at every second one, and
+     * neither is work to do: reciprocating a succession makes a cycle, and closing it
+     * transitively asserts a succession that never happened. Over History's
+     * replaces ⇄ replacedBy that was 81 of 85 edges plus 30 more, all offered as edits.
+     *
+     * <p>So they are measured and not offered. When the catalogue states the property
+     * should hold — P1696 naming a property its own inverse, a P2302 transitivity
+     * constraint — the same samples become findings; until then nothing does.
+     */
+    @Test void aBreakIsMeasuredButNotOfferedAsSomethingToDo() {
+        DynamicViewable a = office("a", "A");
+        DynamicViewable b = office("b", "B");
+        DynamicViewable c = office("c", "C");
+        a.put("next", List.of(b));
+        b.put("next", List.of(c));
+
+        RelationProfile profile = RelationProfile.of(List.of(a, b, c), "next", "");
+        List<Viewable> rows = RelationProfileRows.of("next", profile);
+
+        assertEquals(2, value(rows, "symmetry breaks"));
+        assertEquals(1, value(rows, "transitivity breaks"));
+        assertEquals(2, profile.symmetryBreakSamples().size(),
+                "the evidence for the measure is kept");
+        assertEquals(1, profile.transitivityBreakSamples().size());
+        assertTrue(rows.stream().noneMatch(
+                        row -> RelationProfileRows.FINDING.equals(row.typeName())),
+                "but a chain with nothing wrong with it offers no work");
+        assertEquals(List.of(), profile.findingWitnesses(),
+                "and no witness sections for findings that were not offered");
+    }
+
     @Test void singletonsAreNotOfferedAsGroups() {
         List<Viewable> rows = RelationProfileRows.of("succession",
                 RelationProfile.of(List.of(office("a", "A"), office("b", "B")),

@@ -47,10 +47,10 @@ public final class RelationProfileRows {
         }
         measure(rows, name, "reflexive", profile.reflexive(),
                 "a member related to itself");
-        measure(rows, name, "mutual pairs", profile.mutualPairs(),
-                "both directions between the same two members: symmetry");
-        measure(rows, name, "transitivity gaps", profile.transitivityGaps(),
-                "a→b→c with a→c unstated; a chain is expected to have many");
+        measure(rows, name, "symmetry breaks", profile.symmetryBreaks(),
+                "a→b is stated but b→a is not; samples are in Findings");
+        measure(rows, name, "transitivity breaks", profile.transitivityBreaks(),
+                "a→b→c is stated but a→c is not; samples are in Findings");
         measure(rows, name, "largest out-degree", profile.maxOutDegree(),
                 "above one the relation branches, so it is not a chain");
         measure(rows, name, "largest in-degree", profile.maxInDegree(),
@@ -98,6 +98,15 @@ public final class RelationProfileRows {
             rows.add(row);
         }
 
+        // Broken symmetry and transitivity are measures here and NOT findings, because
+        // nothing yet says the relation was supposed to have either. Over History's
+        // replaces ⇄ replacedBy, 81 of 85 edges "break symmetry" and 30 break
+        // transitivity — and every one of those edits would be wrong: a reciprocal
+        // succession is a cycle, and a transitive one asserts a direct succession that
+        // never happened. A finding is something to act on, so these become findings
+        // only once the catalogue states the property should hold — P1696 naming a
+        // property its own inverse states symmetry, and a P2302 constraint states
+        // transitivity. The samples stay on the profile as that measure's evidence.
         index = 0;
         for (Viewable member : profile.leavingPopulation()) {
             DynamicViewable row = new DynamicViewable(

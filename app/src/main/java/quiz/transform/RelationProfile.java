@@ -47,14 +47,18 @@ public record RelationProfile(
         int statedBothWays,
         List<OneSided> statedOneWay,
         int reflexive,
-        int mutualPairs,
-        int transitivityGaps,
+        int symmetryBreaks,
+        List<SymmetryBreak> symmetryBreakSamples,
+        int transitivityBreaks,
+        List<TransitivityBreak> transitivityBreakSamples,
         int maxOutDegree,
         int maxInDegree,
         int danglingEdges,
         List<Viewable> leavingPopulation,
         List<Component> components,
         List<List<Viewable>> mutuallyReachable) {
+
+    private static final int FINDING_SAMPLE_LIMIT = 50;
 
     /**
      * One weakly connected component: the candidate equivalence class.
@@ -88,6 +92,12 @@ public record RelationProfile(
      */
     public record OneSided(Viewable from, Viewable to, boolean forwardOnly) { }
 
+    /** A directed edge whose reverse edge is absent. */
+    public record SymmetryBreak(Viewable from, Viewable to) { }
+
+    /** A two-edge path whose implied direct edge is absent. */
+    public record TransitivityBreak(Viewable from, Viewable through, Viewable to) { }
+
     private record Edge(int from, int to) { }
 
     public int largestComponent() {
@@ -97,6 +107,24 @@ public record RelationProfile(
     /** True when every component is a single member: the relation partitions nothing. */
     public boolean partitionsNothing() {
         return components.stream().allMatch(component -> component.size() == 1);
+    }
+
+    /**
+     * Original loaded instances that witness at least one actionable finding.
+     *
+     * <p>Symmetry and transitivity samples are deliberately absent: they are evidence
+     * for a measure, not work to do, until something states the relation was meant to
+     * have the property. Including them padded the witness sections with instances no
+     * offered finding pointed at.
+     */
+    public List<Viewable> findingWitnesses() {
+        Set<Viewable> witnesses = new LinkedHashSet<>();
+        for (OneSided finding : statedOneWay) {
+            witnesses.add(finding.from());
+            witnesses.add(finding.to());
+        }
+        witnesses.addAll(leavingPopulation);
+        return List.copyOf(witnesses);
     }
 
     public static RelationProfile of(Collection<? extends Viewable> instances,
@@ -177,17 +205,27 @@ public record RelationProfile(
             union(parent, edge.from(), edge.to());
         }
 
-        int mutualPairs = 0;
-        int transitivityGaps = 0;
+        int symmetryBreaks = 0;
+        List<SymmetryBreak> symmetrySamples = new ArrayList<>();
+        int transitivityBreaks = 0;
+        List<TransitivityBreak> transitivitySamples = new ArrayList<>();
         for (Edge edge : stated.keySet()) {
-            if (edge.from() < edge.to() && stated.containsKey(new Edge(edge.to(), edge.from()))) {
-                mutualPairs++;
+            if (!stated.containsKey(new Edge(edge.to(), edge.from()))) {
+                symmetryBreaks++;
+                if (symmetrySamples.size() < FINDING_SAMPLE_LIMIT) {
+                    symmetrySamples.add(new SymmetryBreak(
+                            nodes.get(edge.from()), nodes.get(edge.to())));
+                }
             }
             // a -> b -> c with no a -> c. a == c is excluded: it asks for reflexivity,
             // which is counted on its own and is a convention rather than a finding.
             for (int third : out.get(edge.to())) {
                 if (third != edge.from() && !stated.containsKey(new Edge(edge.from(), third))) {
-                    transitivityGaps++;
+                    transitivityBreaks++;
+                    if (transitivitySamples.size() < FINDING_SAMPLE_LIMIT) {
+                        transitivitySamples.add(new TransitivityBreak(
+                                nodes.get(edge.from()), nodes.get(edge.to()), nodes.get(third)));
+                    }
                 }
             }
         }
@@ -213,7 +251,9 @@ public record RelationProfile(
         components.sort((left, right) -> Integer.compare(right.size(), left.size()));
 
         return new RelationProfile(forward, inverse, nodes.size(), stated.size(),
-                bothWays, List.copyOf(oneWay), reflexive, mutualPairs, transitivityGaps,
+                bothWays, List.copyOf(oneWay), reflexive,
+                symmetryBreaks, List.copyOf(symmetrySamples),
+                transitivityBreaks, List.copyOf(transitivitySamples),
                 Arrays.stream(outDegree).max().orElse(0),
                 Arrays.stream(inDegree).max().orElse(0),
                 dangling, List.copyOf(leaving), List.copyOf(components),
