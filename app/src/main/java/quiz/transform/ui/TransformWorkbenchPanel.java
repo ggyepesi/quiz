@@ -1036,8 +1036,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void showRelationProfile(
             wikidata.explore.model.RelationFields.Relation relation,
             quiz.transform.RelationProfile profile) {
-        List<Viewable> rows = quiz.transform.RelationProfileRows.of(
+        quiz.transform.RelationProfileRows.Report report =
+                quiz.transform.RelationProfileRows.report(
                 relation.label(), profile, relation.statedSymmetric());
+        List<Viewable> rows = report.rows();
         java.util.Map<String, List<Viewable>> byType = new java.util.LinkedHashMap<>();
         rows.forEach(row -> byType.computeIfAbsent(row.typeName(), ignored -> new ArrayList<>())
                 .add(row));
@@ -1054,13 +1056,140 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 tabs, context, relationTabName(type), values,
                 relationSample(type, values)));
         if (findings != null && !findings.isEmpty()) {
-            tabs.addTab("Findings (" + findings.size() + ")",
+            tabs.addTab(report.findingsTabTitle(),
                     relationFindingsView(findings,
                             quiz.transform.RelationProfileRows.witnesses(findings)));
         }
         dialog.add(tabs, BorderLayout.CENTER);
+        List<quiz.transform.StructureDiscovery.Bridge> bridges =
+                wikidata.explore.model.StructureDiscoveryBridges.of(
+                        relationModel(), relation.className());
+        if (!bridges.isEmpty()) {
+            JButton discover = new JButton("Discover shared-neighbour structure…");
+            discover.addActionListener(event -> discoverSharedStructure(
+                    relation, profile, bridges, discover));
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            actions.add(discover);
+            dialog.add(actions, BorderLayout.SOUTH);
+        }
         dialog.setSize(1280, 780);
         dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Choose the model-declared bridge explicitly, then run the local read-only
+     * component → representative → shared-neighbour pipeline.
+     */
+    private void discoverSharedStructure(
+            wikidata.explore.model.RelationFields.Relation relation,
+            quiz.transform.RelationProfile profile,
+            List<quiz.transform.StructureDiscovery.Bridge> bridges,
+            JButton sourceButton) {
+        // How many rows each bridge would actually read. A bridge whose row class has
+        // no loaded instances runs to completion and finds nothing, which looks the same
+        // as a bridge that found nothing to say — History offers six of those, because
+        // Position declares the fields that PositionWithHolders instances carry.
+        java.util.Map<String, Integer> loadedRows = new java.util.LinkedHashMap<>();
+        bridges.forEach(bridge -> loadedRows.computeIfAbsent(bridge.rowType(),
+                type -> controller.domain().instancesOf(type).size()));
+        JComboBox<quiz.transform.StructureDiscovery.Bridge> choice = new JComboBox<>();
+        choice.addItem(null);
+        bridges.forEach(choice::addItem);
+        choice.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (!(value instanceof quiz.transform.StructureDiscovery.Bridge bridge)) {
+                    setText("Choose how members share entities…");
+                    return this;
+                }
+                int rows = loadedRows.getOrDefault(bridge.rowType(), 0);
+                setText(bridge + "  ·  " + (rows == 0
+                        ? "no " + bridge.rowType() + " instances loaded"
+                        : rows + " " + bridge.rowType() + " instance"
+                                + (rows == 1 ? "" : "s")));
+                return this;
+            }
+        });
+        JPanel plan = new JPanel(new BorderLayout(4, 8));
+        plan.add(new JLabel("Build families from " + relation.label()
+                + ", choose the family member with the most distinct shared entities, "
+                + "then connect families that share one."), BorderLayout.NORTH);
+        plan.add(choice, BorderLayout.CENTER);
+        plan.add(new JLabel("Uses loaded instances only; no requests, changes, or files."),
+                BorderLayout.SOUTH);
+        if (JOptionPane.showConfirmDialog(this, plan, "Discover shared-neighbour structure",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) return;
+        quiz.transform.StructureDiscovery.Bridge bridge =
+                (quiz.transform.StructureDiscovery.Bridge) choice.getSelectedItem();
+        if (bridge == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Choose the member field and shared-entity field to use.");
+            return;
+        }
+        List<Viewable> bridgeRows = controller.domain().instancesOf(bridge.rowType());
+        sourceButton.setEnabled(false);
+        sourceButton.setText("Discovering from " + bridgeRows.size() + " "
+                + bridge.rowType() + " instances…");
+        new SwingWorker<quiz.transform.StructureDiscovery.Result, Void>() {
+            @Override protected quiz.transform.StructureDiscovery.Result doInBackground() {
+                return quiz.transform.StructureDiscovery.discover(profile, bridgeRows, bridge);
+            }
+            @Override protected void done() {
+                sourceButton.setEnabled(true);
+                sourceButton.setText("Discover shared-neighbour structure…");
+                try {
+                    showSharedStructure(relation, bridge, get());
+                } catch (Exception failure) {
+                    JOptionPane.showMessageDialog(TransformWorkbenchPanel.this,
+                            "Could not discover shared-neighbour structure: "
+                                    + failure.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void showSharedStructure(
+            wikidata.explore.model.RelationFields.Relation relation,
+            quiz.transform.StructureDiscovery.Bridge bridge,
+            quiz.transform.StructureDiscovery.Result result) {
+        List<Viewable> families = quiz.transform.StructureDiscoveryRows.families(result);
+        List<Viewable> links = quiz.transform.StructureDiscoveryRows.links(result);
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Structure discovery — " + relation.label(), Dialog.ModalityType.MODELESS);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(new JLabel("  " + result.families().size() + " families from "
+                + relation.label() + " · " + result.links().size()
+                + " shared-neighbour links · " + result.bridgeRows() + " "
+                + bridge.rowType() + " instances read"
+                + (result.unmatchedMemberReferences() == 0 ? ""
+                : " · " + result.unmatchedMemberReferences()
+                        + " member references outside the analyzed population")),
+                BorderLayout.NORTH);
+        JTabbedPane tabs = new JTabbedPane();
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        families.forEach(context::addTopLevel);
+        links.forEach(context::addTopLevel);
+        addRelationTab(tabs, context, "Families", families,
+                relationSample(quiz.transform.StructureDiscoveryRows.FAMILY, families));
+        if (!links.isEmpty()) {
+            addRelationTab(tabs, context, "Shared neighbours", links,
+                    relationSample(quiz.transform.StructureDiscoveryRows.SHARED_LINK, links));
+        }
+        graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
+        graph.model(SharedNeighbourGraphProjection.of(result));
+        tabs.addTab("Graph (" + result.links().size() + " links)", graph);
+        dialog.add(tabs, BorderLayout.CENTER);
+        dialog.setSize(1320, 820);
+        dialog.setLocationRelativeTo(this);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed(java.awt.event.WindowEvent event) { graph.close(); }
+        });
         dialog.setVisible(true);
     }
 

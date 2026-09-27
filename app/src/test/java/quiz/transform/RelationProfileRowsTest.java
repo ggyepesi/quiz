@@ -94,11 +94,42 @@ class RelationProfileRowsTest {
         assertEquals(2, profile.symmetryBreakSamples().size(),
                 "the evidence for the measure is kept");
         assertEquals(1, profile.transitivityBreakSamples().size());
+        Viewable transitivity = rows.stream()
+                .filter(row -> "transitivity breaks".equals(row.getDisplayName()))
+                .findFirst().orElseThrow();
+        assertEquals("a→b→c is stated but a→c is not; measured only — no catalogue "
+                        + "declaration currently makes these findings",
+                field(transitivity, "reading"));
         assertTrue(rows.stream().noneMatch(
                         row -> RelationProfileRows.FINDING.equals(row.typeName())),
                 "but a chain with nothing wrong with it offers no work");
         assertEquals(List.of(), RelationProfileRows.witnesses(rows),
                 "and no witness sections for findings that were not offered");
+    }
+
+    @Test void aSampledFindingCountSaysHowManyAreShownAndHowManyExist() {
+        java.util.ArrayList<Viewable> members = new java.util.ArrayList<>();
+        for (int i = 0; i < 52; i++) {
+            DynamicViewable from = office("from-" + i, "From " + i);
+            DynamicViewable to = office("to-" + i, "To " + i);
+            from.put("siblings", List.of(to));
+            members.add(from);
+            members.add(to);
+        }
+
+        RelationProfileRows.Report report = RelationProfileRows.report(
+                "siblings", RelationProfile.of(members, "siblings", ""), true);
+
+        assertEquals(50, report.shownFindings(), "the configured witness sample");
+        assertEquals(52, report.totalFindings(), "the complete actionable count");
+        assertEquals("Findings (50 of 52 shown)", report.findingsTabTitle(),
+                "the tab must not present the sample size as the total");
+        Viewable symmetry = report.rows().stream()
+                .filter(row -> "symmetry breaks".equals(row.getDisplayName()))
+                .findFirst().orElseThrow();
+        assertEquals("the catalogue states this property is its own inverse, so each "
+                        + "unreciprocated edge is a gap; Findings shows 50 samples of 52 gaps",
+                field(symmetry, "reading"));
     }
 
     /**

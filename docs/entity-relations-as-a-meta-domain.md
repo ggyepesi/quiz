@@ -16,6 +16,10 @@ begun before the release; it must not block the smaller class-graph milestone.
 3. The property catalogue is already a **hand-built domain**, and it wants to be an
    ordinary one.
 
+The first executable second-order projection is documented in
+[Structure discovery](structure-discovery.md): relation components, representative choice,
+and shared-neighbour links over loaded Viewables.
+
 ## Edges are already in the model
 
 Nothing needs inventing to express a graph. History today:

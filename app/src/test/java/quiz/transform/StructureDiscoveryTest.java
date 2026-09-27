@@ -1,0 +1,150 @@
+package quiz.transform;
+
+import objectview.Viewable;
+import org.junit.jupiter.api.Test;
+import quiz.transform.ui.SharedNeighbourGraphProjection;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/** The first structure pipeline keeps every intermediate result inspectable. */
+class StructureDiscoveryTest {
+
+    @Test void relationFamiliesChooseTheMostHeldMemberAndConnectThroughSharedHolders() {
+        DynamicViewable oldKing = value("old", "Old kingship", "Position");
+        DynamicViewable newKing = value("new", "New kingship", "Position");
+        DynamicViewable president = value("pres", "President", "Position");
+        newKing.put("replaces", List.of(oldKing));
+        oldKing.put("replacedBy", List.of(newKing));
+        RelationProfile relation = RelationProfile.of(
+                List.of(oldKing, newKing, president), "replaces", "replacedBy");
+
+        DynamicViewable alice = value("Q1", "Alice", "Person");
+        DynamicViewable bob = value("Q2", "Bob", "Person");
+        List<Viewable> holdings = List.of(
+                holding("h1", oldKing, alice),
+                holding("h2", newKing, alice),
+                holding("h3", newKing, bob),
+                holding("h4", president, alice));
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation, holdings,
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(2, result.families().size());
+        StructureDiscovery.Family monarchy = result.families().stream()
+                .filter(family -> family.members().size() == 2).findFirst().orElseThrow();
+        assertEquals(newKing, monarchy.representative(),
+                "two distinct holders choose the new kingship over the old one's one");
+        assertEquals(2, monarchy.sharedEntities().size());
+        assertEquals(1, result.links().size());
+        assertEquals(List.of(alice), result.links().getFirst().sharedEntities());
+
+        assertEquals(2, StructureDiscoveryRows.families(result).size());
+        assertEquals(1, StructureDiscoveryRows.links(result).size());
+        assertEquals(2, SharedNeighbourGraphProjection.of(result).nodes().size());
+        assertEquals("1 shared entity",
+                SharedNeighbourGraphProjection.of(result).edges().getFirst().label());
+    }
+
+    /**
+     * An isolated family stays inspectable and stays out of the graph.
+     *
+     * <p>The note says only families in a shared link are drawn. The first test cannot
+     * see that rule — both its families are linked, so it passes with the filter removed.
+     */
+    @Test void aFamilySharingNothingIsARowButNotANode() {
+        DynamicViewable connectedOne = value("c1", "Connected one", "Position");
+        DynamicViewable connectedTwo = value("c2", "Connected two", "Position");
+        DynamicViewable alone = value("alone", "Shares nobody", "Position");
+        RelationProfile relation = RelationProfile.of(
+                List.of(connectedOne, connectedTwo, alone), "replaces", "replacedBy");
+        DynamicViewable shared = value("Q1", "Held both", "Person");
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation,
+                List.of(holding("h1", connectedOne, shared),
+                        holding("h2", connectedTwo, shared),
+                        holding("h3", alone, value("Q9", "Held only this", "Person"))),
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(3, StructureDiscoveryRows.families(result).size(),
+                "every family is inspectable");
+        assertEquals(1, result.links().size());
+        assertEquals(2, SharedNeighbourGraphProjection.of(result).nodes().size(),
+                "the isolated family is not drawn");
+    }
+
+    /**
+     * One shared entity across three families is three links, and the count that names
+     * each edge is of entities shared by that PAIR, not by the group.
+     */
+    @Test void oneSharedEntityAcrossThreeFamiliesIsThreePairwiseLinks() {
+        DynamicViewable first = value("f1", "First", "Position");
+        DynamicViewable second = value("f2", "Second", "Position");
+        DynamicViewable third = value("f3", "Third", "Position");
+        RelationProfile relation = RelationProfile.of(
+                List.of(first, second, third), "replaces", "replacedBy");
+        DynamicViewable everywhere = value("Q1", "Held all three", "Person");
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation,
+                List.of(holding("h1", first, everywhere),
+                        holding("h2", second, everywhere),
+                        holding("h3", third, everywhere)),
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(3, result.links().size());
+        assertEquals(List.of(1, 1, 1),
+                result.links().stream().map(link -> link.sharedEntities().size()).toList());
+        assertEquals(3, SharedNeighbourGraphProjection.of(result).edges().size());
+    }
+
+    /** A bridge row naming a member outside the analyzed population is counted, not lost. */
+    @Test void aMemberOutsideTheAnalyzedPopulationIsReported() {
+        DynamicViewable inside = value("in", "Inside", "Position");
+        RelationProfile relation = RelationProfile.of(List.of(inside), "replaces", "replacedBy");
+        DynamicViewable outside = value("out", "Never analyzed", "Position");
+        DynamicViewable person = value("Q1", "Somebody", "Person");
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation,
+                List.of(holding("h1", inside, person), holding("h2", outside, person)),
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(2, result.bridgeRows());
+        assertEquals(1, result.unmatchedMemberReferences(),
+                "a family built from half the rows is not a family anybody should trust");
+        assertEquals(0, result.links().size(),
+                "and the unmatched member forms no family to link to");
+    }
+
+    /** Equal counts fall back to label, so the same data names the same representative. */
+    @Test void anEqualCountTieBreaksOnLabelNotOnTraversalOrder() {
+        DynamicViewable zulu = value("z", "Zulu office", "Position");
+        DynamicViewable alpha = value("a", "Alpha office", "Position");
+        zulu.put("replaces", List.of(alpha));
+        alpha.put("replacedBy", List.of(zulu));
+        RelationProfile relation = RelationProfile.of(List.of(zulu, alpha), "replaces", "replacedBy");
+        DynamicViewable one = value("Q1", "One", "Person");
+        DynamicViewable two = value("Q2", "Two", "Person");
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation,
+                List.of(holding("h1", zulu, one), holding("h2", alpha, two)),
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(alpha, result.families().getFirst().representative(),
+                "one shared entity each, so the label decides");
+    }
+
+    private static DynamicViewable holding(
+            String id, Viewable position, Viewable holder) {
+        DynamicViewable value = value(id, id, "OfficeHolding");
+        value.put("position", position);
+        value.put("holder", holder);
+        return value;
+    }
+
+    private static DynamicViewable value(String id, String name, String type) {
+        DynamicViewable value = new DynamicViewable(id, name);
+        value.type(type);
+        return value;
+    }
+}

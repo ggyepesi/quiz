@@ -31,8 +31,29 @@ public final class RelationProfileRows {
 
     private RelationProfileRows() { }
 
+    /** Rows shown by the report and the number of findings they represent. The latter
+     *  can exceed the shown rows because expensive graph-break findings are sampled. */
+    public record Report(List<Viewable> rows, int totalFindings) {
+        public Report {
+            rows = List.copyOf(rows == null ? List.of() : rows);
+            totalFindings = Math.max(0, totalFindings);
+        }
+
+        public int shownFindings() {
+            return (int) rows.stream().filter(
+                    row -> row != null && FINDING.equals(row.typeName())).count();
+        }
+
+        public String findingsTabTitle() {
+            String count = shownFindings() < totalFindings
+                    ? shownFindings() + " of " + totalFindings + " shown"
+                    : Integer.toString(totalFindings);
+            return "Findings (" + count + ")";
+        }
+    }
+
     public static List<Viewable> of(String relation, RelationProfile profile) {
-        return of(relation, profile, false);
+        return report(relation, profile, false).rows();
     }
 
     /**
@@ -44,7 +65,12 @@ public final class RelationProfileRows {
      */
     public static List<Viewable> of(
             String relation, RelationProfile profile, boolean statedSymmetric) {
-        if (profile == null) return List.of();
+        return report(relation, profile, statedSymmetric).rows();
+    }
+
+    public static Report report(
+            String relation, RelationProfile profile, boolean statedSymmetric) {
+        if (profile == null) return new Report(List.of(), 0);
         String name = relation == null || relation.isBlank()
                 ? profile.forwardField() : relation;
         List<Viewable> rows = new ArrayList<>();
@@ -64,11 +90,14 @@ public final class RelationProfileRows {
         measure(rows, name, "symmetry breaks", profile.symmetryBreaks(),
                 statedSymmetric
                         ? "the catalogue states this property is its own inverse, so "
-                                + "each unreciprocated edge is a gap: see Findings"
+                                + "each unreciprocated edge is a gap; Findings shows "
+                                + sampled(profile.symmetryBreakSamples().size(),
+                                        profile.symmetryBreaks())
                         : "a→b is stated but b→a is not — the ordinary shape of a "
                                 + "relation nothing states to be symmetric");
         measure(rows, name, "transitivity breaks", profile.transitivityBreaks(),
-                "a→b→c is stated but a→c is not; samples are in Findings");
+                "a→b→c is stated but a→c is not; measured only — no catalogue "
+                        + "declaration currently makes these findings");
         measure(rows, name, "largest out-degree", profile.maxOutDegree(),
                 "above one the relation branches, so it is not a chain");
         measure(rows, name, "largest in-degree", profile.maxInDegree(),
@@ -153,7 +182,19 @@ public final class RelationProfileRows {
             row.put("member", member);
             rows.add(row);
         }
-        return List.copyOf(rows);
+        int shownFindings = (int) rows.stream()
+                .filter(row -> FINDING.equals(row.typeName())).count();
+        int omittedSymmetryFindings = statedSymmetric
+                ? Math.max(0, profile.symmetryBreaks()
+                        - profile.symmetryBreakSamples().size())
+                : 0;
+        return new Report(rows, shownFindings + omittedSymmetryFindings);
+    }
+
+    private static String sampled(int shown, int total) {
+        return shown < total
+                ? shown + " samples of " + total + " gaps"
+                : total + (total == 1 ? " gap" : " gaps");
     }
 
     /**
