@@ -98,6 +98,49 @@ class StructureDiscoveryTest {
         assertEquals(3, SharedNeighbourGraphProjection.of(result).edges().size());
     }
 
+    /**
+     * The rows keep every link; the graph draws the ones worth reading.
+     *
+     * <p>Over History 755 of 1,610 links rest on a single shared person — one office-holder
+     * who happened to hold two unrelated offices — which buries the hundred carrying ten
+     * or more. A family left with no drawn link is not drawn either, by the same rule that
+     * already excluded a family sharing nothing.
+     */
+    @Test void aLinkTooWeakToReadIsARowButNotAnEdge() {
+        DynamicViewable strongOne = value("s1", "Strong one", "Position");
+        DynamicViewable strongTwo = value("s2", "Strong two", "Position");
+        DynamicViewable weak = value("w", "Weakly linked", "Position");
+        RelationProfile relation = RelationProfile.of(
+                List.of(strongOne, strongTwo, weak), "replaces", "replacedBy");
+        DynamicViewable both = value("Q1", "Held both strong", "Person");
+        DynamicViewable alsoBoth = value("Q2", "Held both strong too", "Person");
+        DynamicViewable coincidence = value("Q3", "Held one of each", "Person");
+
+        StructureDiscovery.Result result = StructureDiscovery.discover(relation,
+                List.of(holding("h1", strongOne, both), holding("h2", strongTwo, both),
+                        holding("h3", strongOne, alsoBoth),
+                        holding("h4", strongTwo, alsoBoth),
+                        holding("h5", strongOne, coincidence),
+                        holding("h6", weak, coincidence)),
+                new StructureDiscovery.Bridge("OfficeHolding", "position", "holder"));
+
+        assertEquals(2, result.links().size(), "both links are in the result");
+        assertEquals(2, StructureDiscoveryRows.links(result).size(),
+                "and both are inspectable as rows");
+        assertEquals(2, SharedNeighbourGraphProjection.of(result).edges().size(),
+                "projecting the result draws all of it");
+        assertEquals(1, SharedNeighbourGraphProjection.of(result,
+                        SharedNeighbourGraphProjection.DEFAULT_MINIMUM_SHARED)
+                .edges().size(),
+                "but where the reader starts, one shared person is a coincidence");
+        assertEquals(2, SharedNeighbourGraphProjection.of(result,
+                        SharedNeighbourGraphProjection.DEFAULT_MINIMUM_SHARED)
+                .nodes().size(),
+                "and the family only the weak link reached is not drawn");
+        assertEquals(0, SharedNeighbourGraphProjection.of(result, 3).edges().size(),
+                "and nothing here survives a floor of three");
+    }
+
     /** A bridge row naming a member outside the analyzed population is counted, not lost. */
     @Test void aMemberOutsideTheAnalyzedPopulationIsReported() {
         DynamicViewable inside = value("in", "Inside", "Position");

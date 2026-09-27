@@ -1151,6 +1151,41 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }.execute();
     }
 
+    /**
+     * The graph with the one control that decides whether it can be read: the weakest
+     * link worth drawing. The rows keep every link; a picture of all 1,610 of History's,
+     * 755 of them resting on one shared person, hides the hundred that carry ten or more.
+     */
+    private JComponent sharedStructureGraph(quiz.transform.StructureDiscovery.Result result,
+                                            graphview.InteractiveGraphView graph) {
+        int heaviest = result.links().stream()
+                .mapToInt(link -> link.sharedEntities().size()).max().orElse(1);
+        JSpinner minimum = new JSpinner(new SpinnerNumberModel(
+                Math.min(SharedNeighbourGraphProjection.DEFAULT_MINIMUM_SHARED,
+                        Math.max(1, heaviest)),
+                1, Math.max(1, heaviest), 1));
+        JLabel drawn = new JLabel();
+        Runnable project = () -> {
+            int floor = ((Number) minimum.getValue()).intValue();
+            graphview.GraphViewModel model =
+                    SharedNeighbourGraphProjection.of(result, floor);
+            graph.model(model);
+            drawn.setText("  " + model.edges().size() + " of " + result.links().size()
+                    + " links drawn · " + model.nodes().size() + " of "
+                    + result.families().size() + " families");
+        };
+        minimum.addChangeListener(event -> project.run());
+        project.run();
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        controls.add(new JLabel("Draw links sharing at least"));
+        controls.add(minimum);
+        controls.add(drawn);
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.add(controls, BorderLayout.NORTH);
+        panel.add(graph, BorderLayout.CENTER);
+        return panel;
+    }
+
     private void showSharedStructure(
             wikidata.explore.model.RelationFields.Relation relation,
             quiz.transform.StructureDiscovery.Bridge bridge,
@@ -1181,8 +1216,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     relationSample(quiz.transform.StructureDiscoveryRows.SHARED_LINK, links));
         }
         graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
-        graph.model(SharedNeighbourGraphProjection.of(result));
-        tabs.addTab("Graph (" + result.links().size() + " links)", graph);
+        tabs.addTab("Graph", sharedStructureGraph(result, graph));
         dialog.add(tabs, BorderLayout.CENTER);
         dialog.setSize(1320, 820);
         dialog.setLocationRelativeTo(this);
