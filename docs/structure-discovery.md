@@ -19,7 +19,7 @@ loaded members
   → ObjectView families + ObjectView links + Cytoscape graph
 ```
 
-The components are equivalence classes under the reflexive/symmetric/transitive closure of
+The connected components are candidate equivalence classes under the reflexive/symmetric/transitive closure of
 the selected relation. The input relation itself need not be symmetric or transitive. For
 History, `Position.replaces ⇄ Position.replacedBy` therefore produces succession families;
 it does not claim that replacement itself is an equivalence relation.
@@ -45,9 +45,12 @@ choose representatives and another to create edges can contradict itself.
 
 ## Results and limits
 
-Every family row retains its original members and shared entities; every shared-link row
-retains its two original representative instances and the exact entities they share. The
-graph is a rendering of that result, not a second analysis.
+Candidate equivalence classes use the same group-tree/member panel as TransformApp's main
+instance view. Every class, including a singleton, is a group; selecting it shows its original
+instances through ObjectView with the usual search, sort, field and view controls. The later
+structure result's equivalence-class rows retain their original members and shared entities;
+every shared-link row retains its two original representative instances and the exact entities
+they share. The graph is a rendering of that result, not a second analysis.
 
 Two rules decide what it draws, and the rows are complete regardless of both. A family no
 drawn link reaches is left out. So is a link carrying fewer shared entities than the reader

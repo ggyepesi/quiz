@@ -43,16 +43,22 @@ public record RelationProfile(
         String forwardField,
         String inverseField,
         int members,
+        List<Viewable> population,
         int edges,
+        List<Viewable> edgeMembers,
         int statedBothWays,
+        List<Viewable> statedBothWaysMembers,
         List<OneSided> statedOneWay,
         int reflexive,
+        List<Viewable> reflexiveMembers,
         int symmetryBreaks,
         List<SymmetryBreak> symmetryBreakSamples,
         int transitivityBreaks,
         List<TransitivityBreak> transitivityBreakSamples,
         int maxOutDegree,
+        List<Viewable> maxOutDegreeMembers,
         int maxInDegree,
+        List<Viewable> maxInDegreeMembers,
         int danglingEdges,
         List<Viewable> leavingPopulation,
         List<Component> components,
@@ -161,8 +167,11 @@ public record RelationProfile(
         }
 
         int bothWays = 0;
+        Set<Viewable> edgeMembers = new LinkedHashSet<>();
+        Set<Viewable> bothWaysMembers = new LinkedHashSet<>();
         List<OneSided> oneWay = new ArrayList<>();
         int reflexive = 0;
+        Set<Viewable> reflexiveMembers = new LinkedHashSet<>();
         int[] outDegree = new int[nodes.size()];
         int[] inDegree = new int[nodes.size()];
         List<List<Integer>> out = new ArrayList<>();
@@ -172,15 +181,22 @@ public record RelationProfile(
         for (Map.Entry<Edge, boolean[]> entry : stated.entrySet()) {
             Edge edge = entry.getKey();
             boolean[] sides = entry.getValue();
+            edgeMembers.add(nodes.get(edge.from()));
+            edgeMembers.add(nodes.get(edge.to()));
             if (!inverse.isBlank() && !forward.isBlank()) {
                 if (sides[0] && sides[1]) {
                     bothWays++;
+                    bothWaysMembers.add(nodes.get(edge.from()));
+                    bothWaysMembers.add(nodes.get(edge.to()));
                 } else {
                     oneWay.add(new OneSided(
                             nodes.get(edge.from()), nodes.get(edge.to()), sides[0]));
                 }
             }
-            if (edge.from() == edge.to()) reflexive++;
+            if (edge.from() == edge.to()) {
+                reflexive++;
+                reflexiveMembers.add(nodes.get(edge.from()));
+            }
             outDegree[edge.from()]++;
             inDegree[edge.to()]++;
             out.get(edge.from()).add(edge.to());
@@ -232,14 +248,33 @@ public record RelationProfile(
         }
         components.sort((left, right) -> Integer.compare(right.size(), left.size()));
 
-        return new RelationProfile(forward, inverse, nodes.size(), stated.size(),
-                bothWays, List.copyOf(oneWay), reflexive,
+        int maximumOutDegree = Arrays.stream(outDegree).max().orElse(0);
+        int maximumInDegree = Arrays.stream(inDegree).max().orElse(0);
+        List<Viewable> maximumOutDegreeMembers = degreeMembers(
+                nodes, outDegree, maximumOutDegree);
+        List<Viewable> maximumInDegreeMembers = degreeMembers(
+                nodes, inDegree, maximumInDegree);
+
+        return new RelationProfile(forward, inverse, nodes.size(), List.copyOf(nodes),
+                stated.size(), List.copyOf(edgeMembers),
+                bothWays, List.copyOf(bothWaysMembers), List.copyOf(oneWay), reflexive,
+                List.copyOf(reflexiveMembers),
                 symmetryBreaks, List.copyOf(symmetrySamples),
                 transitivityBreaks, List.copyOf(transitivitySamples),
-                Arrays.stream(outDegree).max().orElse(0),
-                Arrays.stream(inDegree).max().orElse(0),
+                maximumOutDegree, maximumOutDegreeMembers,
+                maximumInDegree, maximumInDegreeMembers,
                 dangling, List.copyOf(leaving), List.copyOf(components),
                 stronglyConnected(nodes, out));
+    }
+
+    private static List<Viewable> degreeMembers(
+            List<Viewable> nodes, int[] degrees, int maximum) {
+        if (maximum == 0) return List.of();
+        List<Viewable> result = new ArrayList<>();
+        for (int i = 0; i < degrees.length; i++) {
+            if (degrees[i] == maximum) result.add(nodes.get(i));
+        }
+        return List.copyOf(result);
     }
 
     /**

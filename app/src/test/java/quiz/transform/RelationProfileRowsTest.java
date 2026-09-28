@@ -11,11 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The report is read for three different reasons, so it has three kinds of row: the
- * numbers a decision needs, the candidate groups, and the things somebody can act on.
+ * evidence-bearing numbers and the things somebody can act on.
  *
- * <p>What it must never do is choose. Showing that a component has one unique end is
- * what tells a modeller a naming rule is available; picking that end here would make the
- * report an author of the grouping it exists to inform.
+ * <p>What it must never do is choose. The shared group panel owns candidate classes;
+ * this report supplies measurements and the original instances that explain them.
  */
 class RelationProfileRowsTest {
 
@@ -33,11 +32,15 @@ class RelationProfileRowsTest {
 
         assertEquals(2, value(rows, "largest out-degree"),
                 "one office absorbing two is not a chain, and the report says so");
-        assertEquals(1, value(rows, "components"));
-        Viewable component = rowOfType(rows, RelationProfileRows.COMPONENT);
-        assertEquals("Component of 3", component.getDisplayName());
-        assertEquals("only the origin is unique", field(component, "namingRule"));
-        assertEquals(true, field(component, "complete"));
+        assertEquals(1, value(rows, "candidate equivalence classes"));
+        Viewable largest = rows.stream()
+                .filter(row -> "largest candidate equivalence class"
+                        .equals(row.getDisplayName()))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(surviving, bavaria, saxony), field(largest, "instances"));
+        assertEquals(List.of(surviving), field(rows.stream()
+                .filter(row -> "largest out-degree".equals(row.getDisplayName()))
+                .findFirst().orElseThrow(), "instances"));
     }
 
     @Test void aOneSidedStatementBecomesARowNamingTheEditToMake() {
@@ -124,6 +127,8 @@ class RelationProfileRowsTest {
         assertEquals(52, report.totalFindings(), "the complete actionable count");
         assertEquals("Findings (50 of 52 shown)", report.findingsTabTitle(),
                 "the tab must not present the sample size as the total");
+        assertEquals("50 of 52 stated-symmetry findings shown",
+                report.findingCoverageText());
         Viewable symmetry = report.rows().stream()
                 .filter(row -> "symmetry breaks".equals(row.getDisplayName()))
                 .findFirst().orElseThrow();
@@ -190,12 +195,9 @@ class RelationProfileRowsTest {
                 RelationProfile.of(List.of(office("a", "A"), office("b", "B")),
                         "replaces", "replacedBy"));
 
-        assertTrue(rows.stream().noneMatch(
-                        row -> RelationProfileRows.COMPONENT.equals(row.typeName())),
-                "a member related to nothing is not a candidate group");
-        assertEquals(2, value(rows, "components"),
-                "while the measure still counts them, because that is the ratio that "
-                        + "says whether the relation partitions anything");
+        assertEquals(2, value(rows, "candidate equivalence classes"),
+                "singletons are equivalence classes too, so the displayed group count "
+                        + "and the measure agree");
     }
 
     private static int value(List<Viewable> rows, String measure) {

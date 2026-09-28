@@ -374,7 +374,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         actions.add(saveIdentitiesButton);
         main.add(actions, BorderLayout.EAST);
         scope.add(main, BorderLayout.NORTH);
-        JPanel instanceActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        // These labels are deliberately explicit and can exceed the initial right-pane
+        // width. Plain FlowLayout wraps but reports a one-row preferred height, clipping
+        // Analyze relations until the window is resized. WrapLayout reports the rows it
+        // actually needs, so every instance action is visible on the default layout.
+        JPanel instanceActions = new JPanel(
+                instanceActionsLayout());
         instanceActions.add(discoverStatementsButton);
         instanceActions.add(analyzeRelationsButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
@@ -1055,11 +1060,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         byType.forEach((type, values) -> addRelationTab(
                 tabs, context, relationTabName(type), values,
                 relationSample(type, values)));
-        if (findings != null && !findings.isEmpty()) {
-            tabs.addTab(report.findingsTabTitle(),
-                    relationFindingsView(findings,
-                            quiz.transform.RelationProfileRows.witnesses(findings)));
-        }
+        tabs.addTab("Candidate equivalence classes (" + profile.components().size() + ")",
+                relationEquivalenceClassesView(profile, relation.className()));
+        List<Viewable> shownFindings = findings == null ? List.of() : findings;
+        tabs.addTab(report.findingsTabTitle(), relationFindingsPanel(
+                shownFindings,
+                quiz.transform.RelationProfileRows.witnesses(shownFindings),
+                report.findingCoverageText()));
         dialog.add(tabs, BorderLayout.CENTER);
         List<quiz.transform.StructureDiscovery.Bridge> bridges =
                 wikidata.explore.model.StructureDiscoveryBridges.of(
@@ -1209,7 +1216,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
         families.forEach(context::addTopLevel);
         links.forEach(context::addTopLevel);
-        addRelationTab(tabs, context, "Families", families,
+        addRelationTab(tabs, context, "Equivalence classes", families,
                 relationSample(quiz.transform.StructureDiscoveryRows.FAMILY, families));
         if (!links.isEmpty()) {
             addRelationTab(tabs, context, "Shared neighbours", links,
@@ -1253,6 +1260,58 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return multi;
     }
 
+    private JComponent relationFindingsPanel(
+            List<Viewable> findings, List<Viewable> witnesses, String coverage) {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        JLabel explanation = new JLabel("  " + coverage);
+        explanation.setToolTipText("States whether each finding type is complete or sampled");
+        panel.add(explanation, BorderLayout.NORTH);
+        if (findings.isEmpty()) {
+            panel.add(new JLabel("  No actionable findings for this relation."),
+                    BorderLayout.CENTER);
+        } else {
+            panel.add(relationFindingsView(findings, witnesses), BorderLayout.CENTER);
+        }
+        return panel;
+    }
+
+    /** The same group-tree + ObjectView-member panel used by the main TransformApp view. */
+    private JComponent relationEquivalenceClassesView(
+            quiz.transform.RelationProfile profile, String memberType) {
+        quiz.transform.EditableGroup root = relationEquivalenceClassGroups(profile);
+        GroupMembersView grouped = new GroupMembersView(root, group -> {
+            JPanel members = new JPanel(new BorderLayout(4, 4));
+            members.setBorder(BorderFactory.createTitledBorder(
+                    group.getDisplayName() + " · " + group.getMembers().size()));
+            members.add(flatView(new ArrayList<>(group.getMembers()), memberType),
+                    BorderLayout.CENTER);
+            return members;
+        }, JSplitPane.VERTICAL_SPLIT, true, 0.7, false);
+        grouped.groups().setStatusText(
+                "Select a candidate equivalence class, then Show instances");
+        grouped.selectGroup(root, true);
+        return grouped;
+    }
+
+    static quiz.transform.EditableGroup relationEquivalenceClassGroups(
+            quiz.transform.RelationProfile profile) {
+        quiz.transform.EditableGroup root = new quiz.transform.EditableGroup(
+                "All " + profile.members() + " analyzed instances");
+        root.replaceMembers(profile.population());
+        int index = 1;
+        for (quiz.transform.RelationProfile.Component component : profile.components()) {
+            String representative = component.members().isEmpty() ? "Empty"
+                    : component.members().getFirst().getDisplayName();
+            int count = component.size();
+            quiz.transform.EditableGroup group = new quiz.transform.EditableGroup(
+                    index++ + ". " + representative + " — " + count
+                            + (count == 1 ? " member" : " members"));
+            group.replaceMembers(component.members());
+            root.addGroup(group);
+        }
+        return root;
+    }
+
     private static void addRelationTab(JTabbedPane tabs,
             objectview.render.RenderContext context, String title,
             List<Viewable> values, Viewable sample) {
@@ -1289,7 +1348,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private static String relationTabName(String type) {
         return switch (type) {
             case quiz.transform.RelationProfileRows.MEASURE -> "Measures";
-            case quiz.transform.RelationProfileRows.COMPONENT -> "Components";
             case quiz.transform.RelationProfileRows.FINDING -> "Findings";
             default -> type == null || type.isBlank() ? "Results" : type;
         };
@@ -1300,6 +1358,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (qid == null) return false;
         String name = value.getDisplayName();
         return name == null || name.isBlank() || qid.equals(name.trim());
+    }
+
+    static java.awt.LayoutManager instanceActionsLayout() {
+        return new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 4, 0);
     }
 
     /** The staging controls read the staging session directly — it is the single record of

@@ -9,14 +9,13 @@ import java.util.List;
 
 /**
  * A measured relation as rows to look at: the numbers a decision needs, the candidate
- * groups, and the two worklists.
+ * evidence-bearing measures and the actionable worklist.
  *
  * <p>Three kinds of row, because they are read for three different reasons. A MEASURE
  * answers whether a derived construct is worth building at all — component sizes decide
  * whether grouping means anything, and a maximum out-degree above one says the relation
- * is not the chain someone assumed. A COMPONENT is a candidate equivalence class, shown
- * with its ends so it is visible whether a representative rule like "the last office" is
- * even well defined for it; the report never picks one. A FINDING is a single thing
+ * is not the chain someone assumed. Candidate equivalence classes use the shared group
+ * panel directly rather than being copied into a second row representation. A FINDING is a single thing
  * somebody can act on — a statement Wikidata holds in one direction only, or a member
  * whose chain continues outside the loaded population.
  *
@@ -26,17 +25,19 @@ import java.util.List;
  */
 public final class RelationProfileRows {
     public static final String MEASURE = "RelationMeasure";
-    public static final String COMPONENT = "RelationComponent";
     public static final String FINDING = "RelationFinding";
 
     private RelationProfileRows() { }
 
     /** Rows shown by the report and the number of findings they represent. The latter
      *  can exceed the shown rows because expensive graph-break findings are sampled. */
-    public record Report(List<Viewable> rows, int totalFindings) {
+    public record Report(List<Viewable> rows, int totalFindings,
+                         List<String> findingCoverage) {
         public Report {
             rows = List.copyOf(rows == null ? List.of() : rows);
             totalFindings = Math.max(0, totalFindings);
+            findingCoverage = List.copyOf(
+                    findingCoverage == null ? List.of() : findingCoverage);
         }
 
         public int shownFindings() {
@@ -49,6 +50,12 @@ public final class RelationProfileRows {
                     ? shownFindings() + " of " + totalFindings + " shown"
                     : Integer.toString(totalFindings);
             return "Findings (" + count + ")";
+        }
+
+        public String findingCoverageText() {
+            return findingCoverage.isEmpty()
+                    ? "No actionable findings."
+                    : String.join("  ·  ", findingCoverage);
         }
     }
 
@@ -70,23 +77,25 @@ public final class RelationProfileRows {
 
     public static Report report(
             String relation, RelationProfile profile, boolean statedSymmetric) {
-        if (profile == null) return new Report(List.of(), 0);
+        if (profile == null) return new Report(List.of(), 0, List.of());
         String name = relation == null || relation.isBlank()
                 ? profile.forwardField() : relation;
         List<Viewable> rows = new ArrayList<>();
 
         measure(rows, name, "members", profile.members(),
-                "the instances the relation was measured over");
+                "the instances the relation was measured over", profile.population());
         measure(rows, name, "edges", profile.edges(),
-                "distinct directed statements between two loaded members");
+                "distinct directed statements between two loaded members",
+                profile.edgeMembers());
         if (!profile.inverseField().isBlank()) {
             measure(rows, name, "stated by both sides", profile.statedBothWays(),
-                    "both fields assert the same edge");
+                    "both fields assert the same edge", profile.statedBothWaysMembers());
             measure(rows, name, "stated by one side only", profile.statedOneWay().size(),
-                    "reading a single field would lose these");
+                    "reading a single field would lose these",
+                    oneSidedMembers(profile.statedOneWay()));
         }
         measure(rows, name, "reflexive", profile.reflexive(),
-                "a member related to itself");
+                "a member related to itself", profile.reflexiveMembers());
         measure(rows, name, "symmetry breaks", profile.symmetryBreaks(),
                 statedSymmetric
                         ? "the catalogue states this property is its own inverse, so "
@@ -94,44 +103,39 @@ public final class RelationProfileRows {
                                 + sampled(profile.symmetryBreakSamples().size(),
                                         profile.symmetryBreaks())
                         : "a→b is stated but b→a is not — the ordinary shape of a "
-                                + "relation nothing states to be symmetric");
+                                + "relation nothing states to be symmetric",
+                symmetryMembers(profile.symmetryBreakSamples()));
         measure(rows, name, "transitivity breaks", profile.transitivityBreaks(),
                 "a→b→c is stated but a→c is not; measured only — no catalogue "
-                        + "declaration currently makes these findings");
+                        + "declaration currently makes these findings",
+                transitivityMembers(profile.transitivityBreakSamples()));
         measure(rows, name, "largest out-degree", profile.maxOutDegree(),
-                "above one the relation branches, so it is not a chain");
+                "above one the relation branches, so it is not a chain",
+                profile.maxOutDegreeMembers());
         measure(rows, name, "largest in-degree", profile.maxInDegree(),
-                "above one the relation merges");
-        measure(rows, name, "components", profile.components().size(),
-                "candidate groups, if grouping by this relation means anything");
-        measure(rows, name, "largest component", profile.largestComponent(),
-                "one component holding everything means grouping by it says nothing");
+                "above one the relation merges", profile.maxInDegreeMembers());
+        measure(rows, name, "candidate equivalence classes", profile.components().size(),
+                "groups formed by following the relation in either direction",
+                componentRepresentatives(profile.components()));
+        RelationProfile.Component largest = profile.components().stream()
+                .max(java.util.Comparator.comparingInt(RelationProfile.Component::size))
+                .orElse(null);
+        measure(rows, name, "largest candidate equivalence class",
+                largest == null ? 0 : largest.size(),
+                "one class holding everything means grouping by it says nothing",
+                largest == null ? List.of() : largest.members());
         measure(rows, name, "mutually reachable sets", profile.mutuallyReachable().size(),
                 statedSymmetric
                         ? "this relation's equivalence classes, which for a symmetric "
                                 + "relation are its groups"
                         : "the relation's own equivalence classes: a data error for an "
-                                + "order-like relation, where each should be one member");
+                                + "order-like relation, where each should be one member",
+                flatten(profile.mutuallyReachable()));
         measure(rows, name, "edges leaving the population", profile.danglingEdges(),
-                "targets that were never loaded, so their components are fragments");
+                "targets that were never loaded, so their candidate classes are fragments",
+                profile.leavingPopulation());
 
         int index = 0;
-        for (RelationProfile.Component component : profile.components()) {
-            if (component.size() < 2) continue;      // a singleton is not a group
-            DynamicViewable row = new DynamicViewable(
-                    name + "#component-" + index++, "Component of " + component.size());
-            row.type(COMPONENT);
-            row.put("relation", name);
-            row.put("size", component.size());
-            row.put("members", component.members());
-            row.put("origins", component.origins());
-            row.put("terminals", component.terminals());
-            row.put("namingRule", namingRule(component));
-            row.put("complete", !component.touchesBoundary());
-            rows.add(row);
-        }
-
-        index = 0;
         for (RelationProfile.OneSided oneSided : profile.statedOneWay()) {
             String stated = oneSided.forwardOnly()
                     ? profile.forwardField() : profile.inverseField();
@@ -188,7 +192,21 @@ public final class RelationProfileRows {
                 ? Math.max(0, profile.symmetryBreaks()
                         - profile.symmetryBreakSamples().size())
                 : 0;
-        return new Report(rows, shownFindings + omittedSymmetryFindings);
+        List<String> coverage = new ArrayList<>();
+        if (!profile.statedOneWay().isEmpty()) {
+            coverage.add("All " + profile.statedOneWay().size()
+                    + " one-sided statement findings shown");
+        }
+        if (statedSymmetric && profile.symmetryBreaks() > 0) {
+            int shown = profile.symmetryBreakSamples().size();
+            coverage.add((shown < profile.symmetryBreaks() ? shown + " of " : "All ")
+                    + profile.symmetryBreaks() + " stated-symmetry findings shown");
+        }
+        if (!profile.leavingPopulation().isEmpty()) {
+            coverage.add("All " + profile.leavingPopulation().size()
+                    + " population-boundary member findings shown");
+        }
+        return new Report(rows, shownFindings + omittedSymmetryFindings, coverage);
     }
 
     private static String sampled(int shown, int total) {
@@ -217,27 +235,56 @@ public final class RelationProfileRows {
         return List.copyOf(found);
     }
 
-    /**
-     * Which end could name this component — stated as what is available, not as a choice.
-     * Exactly one origin or one terminal makes a rule usable; several make it arbitrary.
-     */
-    private static String namingRule(RelationProfile.Component component) {
-        boolean origin = component.origins().size() == 1;
-        boolean terminal = component.terminals().size() == 1;
-        if (origin && terminal) return "either end is unique";
-        if (origin) return "only the origin is unique";
-        if (terminal) return "only the terminal is unique";
-        return "neither end is unique";
-    }
-
     private static void measure(
             List<Viewable> rows, String relation, String measure, int value, String reading) {
+        measure(rows, relation, measure, value, reading, List.of());
+    }
+
+    private static void measure(List<Viewable> rows, String relation, String measure,
+                                int value, String reading,
+                                Collection<? extends Viewable> instances) {
         DynamicViewable row = new DynamicViewable(
                 relation + "#" + measure, measure);
         row.type(MEASURE);
         row.put("relation", relation);
         row.put("value", value);
         row.put("reading", reading);
+        if (instances != null && !instances.isEmpty()) {
+            row.put("instances", List.copyOf(instances));
+        }
         rows.add(row);
+    }
+
+    private static List<Viewable> oneSidedMembers(List<RelationProfile.OneSided> values) {
+        LinkedHashSet<Viewable> result = new LinkedHashSet<>();
+        values.forEach(value -> { result.add(value.from()); result.add(value.to()); });
+        return List.copyOf(result);
+    }
+
+    private static List<Viewable> symmetryMembers(List<RelationProfile.SymmetryBreak> values) {
+        LinkedHashSet<Viewable> result = new LinkedHashSet<>();
+        values.forEach(value -> { result.add(value.from()); result.add(value.to()); });
+        return List.copyOf(result);
+    }
+
+    private static List<Viewable> transitivityMembers(
+            List<RelationProfile.TransitivityBreak> values) {
+        LinkedHashSet<Viewable> result = new LinkedHashSet<>();
+        values.forEach(value -> {
+            result.add(value.from()); result.add(value.through()); result.add(value.to());
+        });
+        return List.copyOf(result);
+    }
+
+    private static List<Viewable> componentRepresentatives(
+            List<RelationProfile.Component> components) {
+        return components.stream().filter(component -> !component.members().isEmpty())
+                .map(component -> component.members().getFirst()).toList();
+    }
+
+    private static List<Viewable> flatten(List<List<Viewable>> groups) {
+        LinkedHashSet<Viewable> result = new LinkedHashSet<>();
+        groups.forEach(result::addAll);
+        return List.copyOf(result);
     }
 }

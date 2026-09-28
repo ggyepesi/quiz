@@ -40,7 +40,12 @@ class StructureDiscoveryTest {
         assertEquals(1, result.links().size());
         assertEquals(List.of(alice), result.links().getFirst().sharedEntities());
 
-        assertEquals(2, StructureDiscoveryRows.families(result).size());
+        List<Viewable> familyRows = StructureDiscoveryRows.families(result);
+        assertEquals(2, familyRows.size());
+        Viewable monarchyRow = familyRows.stream()
+                .filter(row -> field(row, "memberCount").equals(2))
+                .findFirst().orElseThrow();
+        assertEquals("New kingship — 2 members", monarchyRow.getDisplayName());
         assertEquals(1, StructureDiscoveryRows.links(result).size());
         assertEquals(2, SharedNeighbourGraphProjection.of(result).nodes().size());
         assertEquals("1 shared entity",
@@ -189,5 +194,9 @@ class StructureDiscoveryTest {
         DynamicViewable value = new DynamicViewable(id, name);
         value.type(type);
         return value;
+    }
+
+    private static Object field(Viewable value, String name) {
+        return objectview.field.FieldSet.of(value).read(name);
     }
 }

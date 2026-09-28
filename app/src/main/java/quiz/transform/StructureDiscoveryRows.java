@@ -23,13 +23,15 @@ public final class StructureDiscoveryRows {
         if (result == null) return List.of();
         List<Viewable> rows = new ArrayList<>();
         for (StructureDiscovery.Family family : result.families()) {
+            int members = family.members().size();
             DynamicViewable row = new DynamicViewable("family-" + family.index(),
-                    family.representative().getDisplayName());
+                    family.representative().getDisplayName() + " — " + members
+                            + (members == 1 ? " member" : " members"));
             row.type(FAMILY);
             row.put("representative", family.representative());
             row.put("representativeSharedCount", family.representativeSharedCount());
             row.put("familySharedCount", family.sharedEntities().size());
-            row.put("familySize", family.members().size());
+            row.put("memberCount", members);
             row.put("members", family.members());
             row.put("sharedEntities", family.sharedEntities());
             rows.add(row);

@@ -17,6 +17,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class TransformWorkbenchFilterGroupTest {
+    @Test void instanceActionsWrapWithoutClippingAnalyzeRelations() {
+        assertTrue(TransformWorkbenchPanel.instanceActionsLayout()
+                        instanceof objectview.utils.swing.WrapLayout,
+                "the default-width action row must report the height of wrapped buttons");
+    }
+
+    @Test void relationEquivalenceClassesUseTheSameGroupsAsTheMainWorkbench() {
+        quiz.transform.DynamicViewable connectedOne = value("one", "One");
+        quiz.transform.DynamicViewable connectedTwo = value("two", "Two");
+        quiz.transform.DynamicViewable singleton = value("single", "Single");
+        connectedOne.put("next", List.of(connectedTwo));
+        quiz.transform.RelationProfile profile = quiz.transform.RelationProfile.of(
+                List.of(connectedOne, connectedTwo, singleton), "next", "");
+
+        quiz.transform.EditableGroup groups =
+                TransformWorkbenchPanel.relationEquivalenceClassGroups(profile);
+
+        assertEquals(2, groups.getChildren().size(),
+                "the connected pair and the singleton are both displayed classes");
+        assertEquals(List.of(2, 1), groups.getChildren().stream()
+                .map(group -> group.getMembers().size()).toList());
+    }
+
     @Test void missingWikidataLabelMeansBlankOrStillShowingTheQid() {
         assertTrue(TransformWorkbenchPanel.withoutWikidataLabel(
                 new wikidata.explore.extract.WikidataDynamicObject("Q1", "Q1")));
@@ -58,4 +81,11 @@ class TransformWorkbenchFilterGroupTest {
                 "the result of Add filter group must be selected and shown");
         panel.close();
     }
+
+    private static quiz.transform.DynamicViewable value(String id, String label) {
+        quiz.transform.DynamicViewable value = new quiz.transform.DynamicViewable(id, label);
+        value.type("Position");
+        return value;
+    }
+
 }
