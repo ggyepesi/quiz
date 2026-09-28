@@ -23,6 +23,8 @@ class InteractiveGraphViewTest {
                 () -> assertTrue(page.contains("case'radial'")),
                 () -> assertTrue(page.contains("case'concentric'")),
                 () -> assertTrue(page.contains("case'cose'")),
+                () -> assertTrue(page.contains("function resizeGraph(){cy.resize();fitGraph()}"),
+                        "a graph loaded on a hidden tab must resize when revealed"),
                 () -> assertTrue(page.contains("function collapseSelected()")),
                 () -> assertFalse(page.contains("__CYTOSCAPE__")));
     }

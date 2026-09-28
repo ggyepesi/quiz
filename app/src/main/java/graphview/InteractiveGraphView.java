@@ -92,6 +92,19 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         tools.add(status);
         add(tools, BorderLayout.NORTH);
         add(host, BorderLayout.CENTER);
+        // A graph is often constructed on a non-selected tab. JavaFX loads the page,
+        // Cytoscape sees a zero-sized container, and the later tab selection used to
+        // leave its canvas at that size. Resize and fit whenever Swing reveals or
+        // resizes the shared component; callers should not need a graph-specific tab
+        // listener to make an ordinary hidden-tab lifecycle work.
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent event) {
+                refresh();
+            }
+            @Override public void componentResized(java.awt.event.ComponentEvent event) {
+                refresh();
+            }
+        });
     }
 
     @Override public void addNotify() {
@@ -108,6 +121,11 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     public void model(GraphViewModel value) {
         model = value == null ? new GraphViewModel(List.of(), List.of()) : value;
         runScript("setGraph(" + modelJson(model) + ")");
+    }
+
+    /** Recalculate the canvas after a hidden parent (notably a tab) becomes visible. */
+    public void refresh() {
+        runScript("resizeGraph()");
     }
 
     public void onSelectionChanged(Consumer<Set<String>> listener) {
@@ -127,16 +145,22 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
 
     private void initializeFx(JFXPanel fxHost) {
         WebView web = new WebView();
-        engine = web.getEngine();
-        engine.getLoadWorker().stateProperty().addListener((ignored, oldState, state) -> {
+        WebEngine pageEngine = web.getEngine();
+        engine = pageEngine;
+        pageEngine.getLoadWorker().stateProperty().addListener((ignored, oldState, state) -> {
             if (state == javafx.concurrent.Worker.State.SUCCEEDED) {
-                JSObject window = (JSObject) engine.executeScript("window");
+                // close() clears the shared engine before asking JavaFX to unload the
+                // page. That unload can itself finish with SUCCEEDED. A late callback
+                // belongs to the closed view and must neither dereference the cleared
+                // field nor install a new bridge into it.
+                if (engine != pageEngine) return;
+                JSObject window = (JSObject) pageEngine.executeScript("window");
                 bridge = new Bridge();
                 window.setMember("graphBridge", bridge);
-                engine.executeScript("setGraph(" + modelJson(model) + ")");
+                pageEngine.executeScript("setGraph(" + modelJson(model) + ")");
             }
         });
-        engine.loadContent(page());
+        pageEngine.loadContent(page());
         fxHost.setScene(new Scene(web));
     }
 
@@ -245,7 +269,7 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
           case'random':Object.assign(options,{name:'random'});break;
           default:Object.assign(options,{name:'breadthfirst',directed:true,spacingFactor:1.35});kind='hierarchy';
         }cy.layout(options).run();fitGraph();graphBridge.message(`Applied ${kind} layout to ${cy.nodes(':visible').length} node(s).`)}
-        function fitGraph(){cy.fit(cy.elements(':visible'),35)}function zoomGraph(f){cy.zoom({level:cy.zoom()*f,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})}
+        function fitGraph(){cy.fit(cy.elements(':visible'),35)}function resizeGraph(){cy.resize();fitGraph()}function zoomGraph(f){cy.zoom({level:cy.zoom()*f,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})}
         function setGraph(model){cy.elements().remove();cy.add(model.nodes);cy.add(model.edges.map(e=>{if(!e.data.directed)e.classes='undirected';return e}));layoutGraph('hierarchy');graphBridge.message(`${model.nodes.length} node(s), ${model.edges.length} relation(s)`)}
         function selectNode(event,id){event.stopPropagation();let node=cy.getElementById(id),extend=event.metaKey||event.ctrlKey||event.shiftKey;if(!extend)cy.nodes().unselect();if(extend&&node.selected())node.unselect();else node.select()}
         function selectedIds(){return cy.nodes(':selected').map(n=>n.id())}function descendants(root){let level=Number(root.data('level')),found=cy.collection(),pending=root.neighborhood('node'),seen=new Set([root.id()]);while(pending.length){let next=cy.collection();pending.forEach(n=>{if(seen.has(n.id()))return;seen.add(n.id());if(Number(n.data('level'))>level){found=found.union(n);next=next.union(n.neighborhood('node'))}});pending=next}return found}
@@ -253,7 +277,7 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
         function expandSelected(){let roots=cy.nodes(':selected');if(!roots.length){graphBridge.message('Select one or more nodes to expand.');return}let shown=cy.collection();roots.forEach(n=>shown=shown.union(descendants(n)));shown.show();graphBridge.message(`Expanded ${shown.length} deeper node(s).`);fitGraph()}
         function openSelected(){let ids=selectedIds();if(ids.length!==1){graphBridge.message('Select exactly one node to open its link.');return}graphBridge.open(ids[0])}
         cy.on('select unselect','node',()=>graphBridge.selection(JSON.stringify(selectedIds())));cy.on('cxttap','node',e=>{let n=e.target,hidden=descendants(n).filter(':hidden');n.select();if(hidden.length)expandSelected();else collapseSelected()});
-        window.setGraph=setGraph;window.selectNode=selectNode;window.layoutGraph=layoutGraph;window.fitGraph=fitGraph;window.zoomGraph=zoomGraph;window.collapseSelected=collapseSelected;window.expandSelected=expandSelected;window.openSelected=openSelected;
+        window.setGraph=setGraph;window.selectNode=selectNode;window.layoutGraph=layoutGraph;window.fitGraph=fitGraph;window.resizeGraph=resizeGraph;window.zoomGraph=zoomGraph;window.collapseSelected=collapseSelected;window.expandSelected=expandSelected;window.openSelected=openSelected;
         </script></body></html>
         """;
 }
