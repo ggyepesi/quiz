@@ -61,6 +61,7 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     // destination can disappear after an unrelated garbage collection.
     private volatile Bridge bridge;
     private boolean initialized;
+    private volatile boolean closed;
 
     public InteractiveGraphView() {
         super(new BorderLayout());
@@ -114,7 +115,14 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
             JFXPanel fxHost = new JFXPanel();
             host.add(fxHost, BorderLayout.CENTER);
             host.revalidate();
-            Platform.runLater(() -> initializeFx(fxHost));
+            Platform.runLater(() -> {
+                // JavaFX is a shared renderer embedded in Swing, not the owner of the
+                // application lifecycle. If its last JFXPanel disappears, implicit exit
+                // terminates QuantumRenderer; a later WebKit image disposal or a newly
+                // opened graph then submits work to that terminated pool.
+                Platform.setImplicitExit(false);
+                if (!closed) initializeFx(fxHost);
+            });
         }
     }
 
@@ -137,10 +145,12 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     }
 
     @Override public void close() {
-        WebEngine current = engine;
+        closed = true;
         engine = null;
         bridge = null;
-        if (current != null) Platform.runLater(() -> current.load(null));
+        // Do not force WebEngine.load(null) here. The enclosing disposed JFXPanel owns
+        // the WebView and releases it; forcing another page load races that disposal
+        // against JavaFX renderer shutdown.
     }
 
     private void initializeFx(JFXPanel fxHost) {
@@ -153,7 +163,7 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
                 // page. That unload can itself finish with SUCCEEDED. A late callback
                 // belongs to the closed view and must neither dereference the cleared
                 // field nor install a new bridge into it.
-                if (engine != pageEngine) return;
+                if (closed || engine != pageEngine) return;
                 JSObject window = (JSObject) pageEngine.executeScript("window");
                 bridge = new Bridge();
                 window.setMember("graphBridge", bridge);
@@ -171,8 +181,10 @@ public final class InteractiveGraphView extends JPanel implements AutoCloseable 
     }
 
     private void runScript(String script) {
+        if (closed) return;
         WebEngine current = engine;
         if (current != null) Platform.runLater(() -> {
+            if (closed || engine != current) return;
             try { current.executeScript(script); }
             catch (RuntimeException failure) { message("Graph action failed: " + failure.getMessage()); }
         });

@@ -51,4 +51,15 @@ class InteractiveGraphViewTest {
                     "missing WebJar asset — has the version in pom.xml moved? " + resource);
         }
     }
+
+    @Test void aClosedGraphIgnoresLaterModelAndRefreshRequests() {
+        InteractiveGraphView graph = new InteractiveGraphView();
+        graph.close();
+
+        assertDoesNotThrow(() -> {
+            graph.model(new GraphViewModel(List.of(), List.of()));
+            graph.refresh();
+            graph.close();
+        });
+    }
 }
