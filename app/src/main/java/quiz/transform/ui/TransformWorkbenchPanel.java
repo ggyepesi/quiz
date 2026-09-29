@@ -1179,7 +1179,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             graph.model(model);
             drawn.setText("  " + model.edges().size() + " of " + result.links().size()
                     + " links drawn · " + model.nodes().size() + " of "
-                    + result.families().size() + " families");
+                    + result.families().size() + " families"
+                    + (result.links().isEmpty()
+                    ? " · no shared entity connects two families"
+                    : ""));
         };
         minimum.addChangeListener(event -> project.run());
         project.run();
@@ -1204,7 +1207,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.setLayout(new BorderLayout());
         dialog.add(new JLabel("  " + result.families().size() + " families from "
                 + relation.label() + " · " + result.links().size()
-                + " shared-neighbour links · " + result.bridgeRows() + " "
+                + " shared-neighbour links · bridge " + bridge.rowType() + "."
+                + bridge.memberField() + " → " + bridge.rowType() + "."
+                + bridge.sharedField() + " · " + result.bridgeRows() + " "
                 + bridge.rowType() + " instances read"
                 + (result.unmatchedMemberReferences() == 0 ? ""
                 : " · " + result.unmatchedMemberReferences()

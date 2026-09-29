@@ -6,7 +6,7 @@ import quiz.transform.StructureDiscovery;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Model-declared two-field bridges available to shared-neighbour discovery. */
+/** Model-declared statement-end bridges available to shared-neighbour discovery. */
 public final class StructureDiscoveryBridges {
     private StructureDiscoveryBridges() { }
 
@@ -20,9 +20,14 @@ public final class StructureDiscoveryBridges {
                     .filter(field -> field != null && field.type() == FieldType.ENTITY)
                     .toList();
             for (GeneratedFieldModel member : fields) {
-                if (!accepts(model, member.entityClassName(), memberClass)) continue;
+                FieldProductionKind memberRole = member.mapping().productionKind();
+                if (!statementEnd(memberRole)
+                        || !accepts(model, member.entityClassName(), memberClass)) continue;
                 for (GeneratedFieldModel shared : fields) {
-                    if (shared == member || shared.entityClassName() == null
+                    if (shared == member
+                            || !oppositeStatementEnd(memberRole,
+                                    shared.mapping().productionKind())
+                            || shared.entityClassName() == null
                             || shared.entityClassName().isBlank()) continue;
                     result.add(new StructureDiscovery.Bridge(rowClass.className(),
                             member.name(), shared.name()));
@@ -30,6 +35,19 @@ public final class StructureDiscoveryBridges {
             }
         }
         return List.copyOf(result);
+    }
+
+    private static boolean statementEnd(FieldProductionKind role) {
+        return role == FieldProductionKind.STATEMENT_SUBJECT
+                || role == FieldProductionKind.STATEMENT_OBJECT;
+    }
+
+    private static boolean oppositeStatementEnd(
+            FieldProductionKind first, FieldProductionKind second) {
+        return first == FieldProductionKind.STATEMENT_SUBJECT
+                        && second == FieldProductionKind.STATEMENT_OBJECT
+                || first == FieldProductionKind.STATEMENT_OBJECT
+                        && second == FieldProductionKind.STATEMENT_SUBJECT;
     }
 
     private static boolean accepts(

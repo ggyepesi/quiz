@@ -14,8 +14,10 @@ class StructureDiscoveryBridgesTest {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         model.addClass(person);
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
-        entity(holding, "office", "Position");
-        entity(holding, "incumbent", "Person");
+        holding.classKind(ClassKind.STATEMENT);
+        entity(holding, "office", "Position", FieldProductionKind.STATEMENT_OBJECT);
+        entity(holding, "incumbent", "Person", FieldProductionKind.STATEMENT_SUBJECT);
+        entity(holding, "previousIncumbent", "Person", FieldProductionKind.AUTO);
         model.addClass(holding);
 
         var bridges = StructureDiscoveryBridges.of(model, "Position");
@@ -36,9 +38,11 @@ class StructureDiscoveryBridgesTest {
                 "the shipped model, not a History-specific branch, supplies the workflow");
     }
 
-    private static void entity(GeneratedClassModel owner, String name, String target) {
+    private static void entity(GeneratedClassModel owner, String name, String target,
+                               FieldProductionKind productionKind) {
         GeneratedFieldModel field = owner.addField(
                 name, FieldType.ENTITY, FieldCardinality.SINGLE);
         field.entityClassName(target);
+        field.mapping().productionKind(productionKind);
     }
 }
