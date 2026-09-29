@@ -193,16 +193,7 @@ public class WorkflowLogWindow implements LogListener {
         // in a log — a QID, a PID, a property in a request — is on the steps BELOW the
         // card, and the default search config is the display name alone. The card
         // itself is the whole tree, so its search config is the whole entry too.
-        SearchPanel search =
-                new SearchPanel(LogNode.class, null,
-                        new SearchPanel.ConfigState(
-                                ViewConfig.of(LogNode.class), null, null));
-
-        search.setTarget(
-                v.getCardsPanel(),
-                v.getCardsScrollPane());
-
-        v.addTargetListener(search);
+        SearchPanel search = queryLogSearch(v, ctx);
 
         JFrame f =
                 new JFrame("Query Logs");
@@ -254,6 +245,21 @@ public class WorkflowLogWindow implements LogListener {
         });
 
         f.setVisible(true);
+    }
+
+    /** The query log's search owns the same disclosure state as its cards. Without
+     *  this wiring the index could find a request under steps.steps.steps, but the
+     *  navigator could neither open that route before rendering nor highlight its
+     *  exact request row. */
+    static SearchPanel queryLogSearch(CardListView view, RenderContext context) {
+        SearchPanel search = new SearchPanel(LogNode.class, null,
+                new SearchPanel.ConfigState(
+                        ViewConfig.of(LogNode.class), null, null));
+        search.setRenderContext(context);
+        search.setFieldHighlight(true);
+        search.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
+        view.addTargetListener(search);
+        return search;
     }
 
     /** Associates a live executable pipeline with the log history saved afterwards. */
