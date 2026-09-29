@@ -30,10 +30,11 @@ import java.util.Set;
  *       {@code forWork} -&gt; {@code ForWork}) collapse to display-name strings;
  *   <li>bare references (unstamped, no substance — e.g. the {@code type} values)
  *       collapse too (via {@link BareReferenceCollapse});
- *   <li>each field's shape/label comes from the model (cardinality, target class)
- *       cross-checked against the post-collapse instance value;
- *   <li>legacy embedded {@code wikidata} links and a statement class's
- *       {@code source} reify back-ref are removed; datasource provenance is
+ *   <li>each field's shape and label come from the model declaration; instance
+ *       samples never redefine schema;
+ *   <li>legacy embedded {@code wikidata} links and an undeclared statement
+ *       {@code source} reify back-ref are removed; a declared field with that name
+ *       remains ordinary domain data; datasource provenance is
  *       supplied by the same declared instance-field mechanism as ModelBuilder.
  * </ul>
  *
@@ -75,18 +76,15 @@ public final class ProductCompiler {
         filterNoiseReferences(pool);
         // 2. References to an unmodeled class read as their display-name string.
         collapseUnmodeledReferences(model, pool);
-        // 3. References whose referent isn't a modeled MEMBER also read as a string —
-        //    the ~117k unstamped referents (a nominee person, a work) aren't member
-        //    entities, so they must not leak the raw WikidataDynamicObject. A chip is
-        //    reserved for real member targets (target → Category). This subsumes the
-        //    old bare-reference collapse (a bare referent is never a member).
+        // 3. A declared entity field keeps QID-backed references even when the
+        //    referent is outside the loaded top-level population. Other raw references
+        //    still collapse to labels.
         List<String> memberList = memberClasses(model, pool);
-        Set<String> members = new LinkedHashSet<>(memberList);
-        collapseNonMemberReferences(pool, members);
+        collapseReferencesOutsideDeclaredEntityFields(model, pool);
 
         // 4. Remove legacy extraction plumbing. Datasource provenance is exposed
         //    through ConfiguredInstanceFields below, not a second dynamic field.
-        stripSource(pool);
+        stripUndeclaredStatementSource(model, pool);
         stripLegacyWikidata(pool);
         // 5. Drop the reify forward list (`__Nomination`): the declared model never
         //    had it, so the relation stays one-directional (like Constellation/Star —
@@ -152,7 +150,7 @@ public final class ProductCompiler {
             if (f == null || !names.add(f.name())) {
                 continue;
             }
-            fields.add(compileField(model, c.className(), f, pool));
+            fields.add(compileField(model, f));
         }
         // Datasource-contributed fields are ordinary declared fields here exactly as
         // in generated ModelBuilder classes. Do not reconstruct an older synthetic
@@ -178,19 +176,13 @@ public final class ProductCompiler {
                 c.baseClassName(), c.classKind().identityFromSource(), fields);
     }
 
-    private static ProductField compileField(GeneratedProjectModel model,
-                                             String className,
-                                             GeneratedFieldModel f,
-                                             List<WikidataDynamicObject> pool) {
+    private static ProductField compileField(
+            GeneratedProjectModel model, GeneratedFieldModel f) {
         FieldType type = f.type();
         String target = f.entityClassName();
         boolean targetDeclared =
                 type == FieldType.ENTITY && model.findClass(target) != null;
-
-        Object sample = sampleValue(className, f.name(), pool);
-        // Prefer the post-collapse runtime value: a declared-but-bare target (its
-        // values collapsed to strings) is NOT a reference despite the ENTITY type.
-        boolean reference = sample != null ? isReferenceValue(sample) : targetDeclared;
+        boolean reference = targetDeclared;
 
         boolean collection = f.cardinality() ==
                 wikidata.explore.model.FieldCardinality.COLLECTION;
@@ -261,12 +253,25 @@ public final class ProductCompiler {
         }
     }
 
-    /** The reify `source` back-ref is pure plumbing — remove it from every instance
-     *  so no surface renders it (no view operation reads it either). */
-    private static void stripSource(List<WikidataDynamicObject> pool) {
+    /** The reify `source` back-ref is pure plumbing — remove it from a statement
+     *  instance so no surface renders it (no view operation reads it either). A
+     *  statement class that DECLARES a field of that name, in any role, owns it as
+     *  domain data; which role it plays does not decide whether it survives. */
+    private static void stripUndeclaredStatementSource(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
+        Set<String> legacyOwners = new LinkedHashSet<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            if (owner != null && owner.reifiesStatements()
+                    && owner.effectiveFields(model).stream().noneMatch(field ->
+                    field != null && ModelStatementReifications.SYNTHETIC_SUBJECT_FIELD
+                            .equals(field.name()))) {
+                legacyOwners.add(owner.className());
+            }
+        }
+        if (legacyOwners.isEmpty()) return;
         for (WikidataDynamicObject o : pool) {
-            if (o != null) {
-                o.remove("source");
+            if (o != null && o.directClassNames().stream().anyMatch(legacyOwners::contains)) {
+                o.remove(ModelStatementReifications.SYNTHETIC_SUBJECT_FIELD);
             }
         }
     }
@@ -349,30 +354,41 @@ public final class ProductCompiler {
         }
     }
 
-    /** Replace, in place, every reference VALUE that isn't a stamped member entity
-     *  with its display-name string — so no unmodeled referent leaks the raw
-     *  WikidataDynamicObject. Member referents (target → Category) stay chips. */
-    private static void collapseNonMemberReferences(List<WikidataDynamicObject> pool,
-                                                    Set<String> members) {
+    /** A declared modeled entity field keeps its references without making those
+     *  referents top-level members. References in every other field collapse to text. */
+    private static void collapseReferencesOutsideDeclaredEntityFields(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
+        Set<String> entityFields = new LinkedHashSet<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            if (owner == null) continue;
+            for (GeneratedFieldModel field : owner.effectiveFields(model)) {
+                if (field != null && field.type() == FieldType.ENTITY
+                        && model.findClass(field.entityClassName()) != null) {
+                    entityFields.add(owner.className() + "\0" + field.name());
+                }
+            }
+        }
         for (WikidataDynamicObject o : pool) {
             if (o == null) {
                 continue;
             }
             for (String key : new ArrayList<>(o.dynamicFields().keySet())) {
-                o.dynamicFields().put(key,
-                        collapseNonMember(o.dynamicFields().get(key), members));
+                if (!entityFields.contains(o.typeName() + "\0" + key)) {
+                    o.dynamicFields().put(key,
+                            collapseReference(o.dynamicFields().get(key)));
+                }
             }
         }
     }
 
-    private static Object collapseNonMember(Object v, Set<String> members) {
+    private static Object collapseReference(Object v) {
         if (v instanceof WikidataDynamicObject w) {
-            return w.hasTypeStamp() && members.contains(w.typeName()) ? w : w.getDisplayName();
+            return w.getDisplayName();
         }
         if (v instanceof List<?> list) {
             List<Object> out = new ArrayList<>(list.size());
             for (Object i : list) {
-                out.add(collapseNonMember(i, members));
+                out.add(collapseReference(i));
             }
             return out;
         }
@@ -418,30 +434,4 @@ public final class ProductCompiler {
         return out;
     }
 
-    private static Object sampleValue(String className, String fieldName,
-                                      List<WikidataDynamicObject> pool) {
-        for (WikidataDynamicObject o : pool) {
-            if (o != null && o.hasTypeStamp() && className.equals(o.typeName())) {
-                Object v = o.dynamicFieldValues().get(fieldName);
-                if (v != null) {
-                    return v;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static boolean isReferenceValue(Object v) {
-        if (v instanceof Viewable) {
-            return true;
-        }
-        if (v instanceof Collection<?> c) {
-            for (Object i : c) {
-                if (i instanceof Viewable) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 }

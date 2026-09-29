@@ -37,6 +37,9 @@ import java.util.Set;
  * {@link TransformEngine}; the model is the authoritative configuration.</p>
  */
 public final class ModelStatementReifications {
+    /** The internal subject slot used only when a statement class declares no subject field. */
+    public static final String SYNTHETIC_SUBJECT_FIELD = "source";
+
 
     private ModelStatementReifications() {
     }
@@ -219,7 +222,7 @@ public final class ModelStatementReifications {
                 "__" + statementClass.className(),
                 statementClass.className(),
                 statementSource.subjectField().isBlank()
-                        ? "source" : statementSource.subjectField(),
+                        ? SYNTHETIC_SUBJECT_FIELD : statementSource.subjectField(),
                 "value",
                 true,
                 roles,

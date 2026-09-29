@@ -23,7 +23,7 @@ import domain.DomainModel;
  * The compile step reads the declared model as the authority: a reference to a
  * modeled class stays a reference (labelled by class), a reference to an UNMODELED
  * class collapses to a display string, cardinality comes from the model, the reify
- * `source` and legacy embedded `wikidata` values are removed, datasource fields
+ * undeclared reify `source` and legacy embedded `wikidata` values are removed, datasource fields
  * use their shared declarations, and QID is never a field.
  */
 class ProductCompilerTest {
@@ -241,6 +241,67 @@ class ProductCompilerTest {
                 "the legacy embedded link must not survive as an undeclared extra");
     }
 
+    @Test void aDeclaredStatementSourceFieldRemainsDomainData() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        model.rootClass(person);
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new wikidata.explore.model.StatementClassSource(
+                "Person", "P39"));
+        GeneratedFieldModel source = holding.addField(
+                "source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        source.entityClassName("Person");
+        source.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        model.addClass(holding);
+
+        WikidataDynamicObject holder = substantive("Q1", "Holder");
+        holder.type("Person");
+        WikidataDynamicObject office = new WikidataDynamicObject("Q1$office", "Holding");
+        office.type("OfficeHolding");
+        office.put("source", holder);
+
+        ProductCompiler.compile(model, new java.util.ArrayList<>(List.of(holder, office)));
+
+        assertSame(holder, office.get("source"),
+                "the declared statement subject is not legacy reification plumbing");
+    }
+
+    @Test void aDeclaredSourceFieldSurvivesWhenTheSubjectHasAnotherName() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        model.rootClass(person);
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new wikidata.explore.model.StatementClassSource(
+                "Person", "P39"));
+        GeneratedFieldModel holderField = holding.addField(
+                "holder", FieldType.ENTITY, FieldCardinality.SINGLE);
+        holderField.entityClassName("Person");
+        holderField.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        holding.addField("source", FieldType.STRING, FieldCardinality.SINGLE);
+        model.addClass(holding);
+
+        WikidataDynamicObject office = new WikidataDynamicObject("Q1$office", "Holding");
+        office.type("OfficeHolding");
+        office.put("source", "appointment gazette");
+
+        ProductCompiler.compile(model, new java.util.ArrayList<>(List.of(office)));
+
+        assertEquals("appointment gazette", office.get("source"),
+                "a declared field is domain data whichever role the subject plays");
+    }
+
+    @Test void anUndeclaredStatementSourceIsRemoved() {
+        List<WikidataDynamicObject> pool = pool();
+        ProductCompiler.compile(model(), pool);
+        WikidataDynamicObject nom = pool.stream()
+                .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
+
+        assertFalse(nom.dynamicFieldValues().containsKey("source"),
+                "the reify back-ref Nomination never declared is plumbing");
+    }
+
     @Test void qidIsNeverAField() {
         ProductDomain d = ProductCompiler.compile(model(), pool());
         for (String type : d.types()) {
@@ -262,15 +323,21 @@ class ProductCompilerTest {
         assertNull(d.fieldTypes("OscarNominations").field("nomination"));
     }
 
-    @Test void nonMemberReferenceCollapsesToString() {
+    @Test void aNonMemberInADeclaredEntityFieldRemainsAQidBackedReference() {
         List<WikidataDynamicObject> pool = pool();
         ProductDomain d = ProductCompiler.compile(model(), pool);
         // presenter targets the MODELED class OscarNominations, but its referent is an
-        // unstamped person (not a member) — so it reads as a name, never a raw WDO.
-        assertFalse(field(d, "Nomination", "presenter").reference());
+        // unstamped person (not a top-level member). The declared field still models
+        // it as OscarNominations and the reference keeps its QID.
+        assertTrue(field(d, "Nomination", "presenter").reference());
+        assertEquals("OscarNominations",
+                d.fieldTypes("Nomination").field("presenter").typeLabel());
         WikidataDynamicObject nom = pool.stream()
                 .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
-        assertEquals("A Presenter", nom.dynamicFieldValues().get("presenter"));
+        WikidataDynamicObject presenter = assertInstanceOf(WikidataDynamicObject.class,
+                nom.dynamicFieldValues().get("presenter"));
+        assertEquals("Q900", presenter.getIdentifier());
+        assertEquals("A Presenter", presenter.getDisplayName());
     }
 
     @Test void referenceToAnEntityIsExpandableViaItsLink() {
