@@ -56,9 +56,14 @@ public final class WikidataComputedFieldAcquisition {
                 if (field == null || field.isNameField()) continue;
                 fields++;
                 try {
-                    int merged = load(targets, field, spec, client, sink,
-                            cancellation == null
-                                    ? new work.CancellationToken() : cancellation);
+                    int merged = spec.kind() == WikidataDatasourceProvider
+                            .ComputedFieldSpec.Kind.INHERITED_INCOMING_RELATION
+                            ? loadInherited(targets, field, spec, client, sink,
+                                    cancellation == null ? new work.CancellationToken()
+                                            : cancellation)
+                            : load(targets, field, spec, client, sink,
+                                    cancellation == null ? new work.CancellationToken()
+                                            : cancellation);
                     values += merged;
                     sink.message("  " + owner.className() + "." + field.name()
                             + ": " + merged + " computed value(s)\n");
@@ -120,6 +125,105 @@ public final class WikidataComputedFieldAcquisition {
         return merged.get();
     }
 
+    /**
+     * Counts inherited sources from a bounded descendant side. Asking WDQS to start
+     * with every possible statement and walk P279 toward fifty target ancestors
+     * repeatedly timed out even after splitting to three targets. Here each unit
+     * starts with at most fifty loaded instances, reads their direct sources, walks
+     * upward, and the client merges source QIDs into distinct sets locally. Only
+     * loaded instances are descendants here, so a subclass outside the population
+     * contributes nothing — the offering says so.
+     */
+    private static int loadInherited(Map<String, WikidataDynamicObject> targets,
+            GeneratedFieldModel field, WikidataDatasourceProvider.ComputedFieldSpec spec,
+            WikidataSparqlClient client, GenerationLog log,
+            work.CancellationToken cancellation) throws Exception {
+        List<String> qids = new ArrayList<>(targets.keySet());
+        Map<String, java.util.Set<String>> sources = new LinkedHashMap<>();
+        List<batch.WorkUnit<List<InheritedSource>>> units = new ArrayList<>();
+        for (int offset = 0; offset < qids.size(); offset += BATCH) {
+            List<String> batch = qids.subList(offset, Math.min(offset + BATCH, qids.size()));
+            units.add(inheritedUnit(List.copyOf(batch), spec, client, field.name()));
+        }
+        try (GenerationLog.Group group = log.group("Compute " + field.name() + " for "
+                + qids.size() + " instances from loaded-descendant batches of " + BATCH)) {
+            batch.BatchPolicy policy = new batch.BatchPolicy(1, 4, 0L, false, 2);
+            List<batch.WorkDescriptor> failed =
+                    new batch.BatchExecutor<List<InheritedSource>>(
+                            policy, group.batchProgress(),
+                            wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
+                            batch.BatchCheckpointStore.NONE, client.maxParallelRequests())
+                    .runBestEffort(units, (descriptor, values) -> {
+                        for (InheritedSource value : values) {
+                            if (!targets.containsKey(value.ancestorQid())) continue;
+                            sources.computeIfAbsent(value.ancestorQid(), ignored ->
+                                    new java.util.LinkedHashSet<>()).add(value.sourceQid());
+                        }
+                    });
+            if (!failed.isEmpty()) {
+                throw new java.io.IOException(field.name() + " left " + failed.size()
+                        + " loaded-descendant batch(es) unresolved after splitting: "
+                        + failed.stream().map(batch.WorkDescriptor::title)
+                                .collect(java.util.stream.Collectors.joining(", ")));
+            }
+        }
+        for (Map.Entry<String, WikidataDynamicObject> target : targets.entrySet()) {
+            target.getValue().put(field.name(),
+                    (long) sources.getOrDefault(target.getKey(), java.util.Set.of()).size());
+        }
+        return targets.size();
+    }
+
+    private static batch.WorkUnit<List<InheritedSource>> inheritedUnit(List<String> qids,
+            WikidataDatasourceProvider.ComputedFieldSpec spec,
+            WikidataSparqlClient client, String fieldName) {
+        return new batch.WorkUnit<>() {
+            @Override public batch.WorkDescriptor descriptor() {
+                String ids = String.join(",", qids);
+                return new batch.WorkDescriptor("wikidata-computed-field",
+                        fieldName + ":" + ids,
+                        fieldName + " from " + qids.size() + " loaded descendants",
+                        Map.of("field", fieldName, "ids", ids));
+            }
+
+            @Override public String request() { return inheritedQuery(qids, spec); }
+
+            @Override public List<InheritedSource> execute() throws Exception {
+                List<InheritedSource> result = new ArrayList<>();
+                for (WikidataBinding row : client.query(inheritedQuery(qids, spec))) {
+                    String ancestor = qidFromUri(row.value("entity"));
+                    String source = qidFromUri(row.value("source"));
+                    if (ancestor != null && source != null) {
+                        result.add(new InheritedSource(ancestor, source));
+                    }
+                }
+                return List.copyOf(result);
+            }
+
+            @Override public List<? extends batch.WorkUnit<List<InheritedSource>>> split() {
+                if (qids.size() < 2) return List.of();
+                int middle = qids.size() / 2;
+                return List.of(
+                        inheritedUnit(List.copyOf(qids.subList(0, middle)), spec, client,
+                                fieldName),
+                        inheritedUnit(List.copyOf(qids.subList(middle, qids.size())), spec,
+                                client, fieldName));
+            }
+        };
+    }
+
+    static String inheritedQuery(List<String> descendantQids,
+            WikidataDatasourceProvider.ComputedFieldSpec spec) {
+        String values = descendantQids.stream().filter(WikidataIds::isQid)
+                .map(qid -> "wd:" + qid).collect(java.util.stream.Collectors.joining(" "));
+        return "SELECT DISTINCT ?entity ?source WHERE { VALUES ?descendant { " + values
+                + " } ?source wdt:" + spec.propertyPid() + " ?descendant . "
+                + "?descendant wdt:P279+ ?entity . "
+                + "hint:Query hint:optimizer \"None\" . }";
+    }
+
+    private record InheritedSource(String ancestorQid, String sourceQid) { }
+
     private static batch.WorkUnit<Map<String, Long>> unit(List<String> qids,
             WikidataDatasourceProvider.ComputedFieldSpec spec,
             WikidataSparqlClient client, String fieldName) {
@@ -170,8 +274,8 @@ public final class WikidataComputedFieldAcquisition {
                     + "BIND(COALESCE(?sitelinks, 0) AS ?count) }";
         }
         return "SELECT ?entity (COUNT(DISTINCT ?source) AS ?count) WHERE { VALUES ?entity { "
-                + values + " } OPTIONAL { ?source wdt:" + spec.propertyPid()
-                + " ?entity . } } GROUP BY ?entity";
+                + values + " } OPTIONAL { ?source wdt:" + spec.propertyPid() + " "
+                + "?entity . } } GROUP BY ?entity";
     }
 
     private static Map<String, WikidataDynamicObject> targets(GeneratedProjectModel model,

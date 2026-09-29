@@ -1529,6 +1529,15 @@ refreshOwnedComponentControls();
             return;
         }
 
+        if (sourceType == FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT) {
+            recommendationLabel.setText(
+                    "Wikidata inherited incoming relation count: distinct entities whose "
+                            + "selected Pxx property points to a loaded instance that is a "
+                            + "strict P279 descendant of this entity. Descendants outside "
+                            + "the loaded population and direct values are not counted.");
+            return;
+        }
+
         wikidata.explore.model.FieldDefinition definition =
                 fieldDefinitionPanel.definition();
         GeneratedClassModel target = definition == null || projectModel == null

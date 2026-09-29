@@ -6,6 +6,7 @@ public enum FieldSourceType {
     WIKIPEDIA_INFOBOX,
     WIKIDATA_SITELINK_COUNT,
     WIKIDATA_INCOMING_COUNT,
+    WIKIDATA_INHERITED_INCOMING_COUNT,
     WIKIDATA_API,
     BACKLINKS,
     WIKIPEDIA_CATEGORY,
@@ -15,7 +16,8 @@ public enum FieldSourceType {
 
     public boolean implementedNow() {
         return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX
-                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT;
+                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
+                || this == WIKIDATA_INHERITED_INCOMING_COUNT;
     }
 
     /**
@@ -30,7 +32,8 @@ public enum FieldSourceType {
      */
     public boolean filledAfterExtraction() {
         return this == DBPEDIA || this == WIKIPEDIA_INFOBOX
-                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT;
+                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
+                || this == WIKIDATA_INHERITED_INCOMING_COUNT;
     }
 
     @Override
@@ -41,6 +44,8 @@ public enum FieldSourceType {
             case WIKIPEDIA_INFOBOX -> "Wikipedia infobox parameter";
             case WIKIDATA_SITELINK_COUNT -> "Wikidata sitelink count";
             case WIKIDATA_INCOMING_COUNT -> "Wikidata incoming relation count";
+            case WIKIDATA_INHERITED_INCOMING_COUNT ->
+                    "Wikidata inherited incoming relation count";
             case WIKIDATA_API -> "Wikidata API";
             case BACKLINKS -> "Backlinks";
             case WIKIPEDIA_CATEGORY -> "Wikipedia category";

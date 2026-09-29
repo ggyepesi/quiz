@@ -12,6 +12,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HistoricalPositionsOfficeHoldingTest {
 
     @Test
+    void positionWithHoldersExpandsUpItsSuperclassClosure() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(new File(
+                "../data/wikidata/historicalpositions/historicalpositions.model.json"));
+
+        GeneratedClassModel expansion = model.findClass("PositionSuperclassExpansion");
+        assertEquals(ClassKind.GRAPH, expansion.classKind());
+        assertEquals("PositionWithHolders", expansion.graphSource()
+                .startNode().qidSourceClass());
+        var next = expansion.graphSource().nextNodes().getFirst();
+        assertEquals("P279", next.property().relationId());
+        assertEquals(datasource.graph.GraphTraversalDirection.OUTGOING,
+                next.directionFromPrevious());
+        assertEquals("PositionWithHolders", next.populationClass());
+        assertEquals(datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                next.populationOperation());
+        assertTrue(next.repeatUntilStable());
+    }
+
+    @Test
     void historicalPositionsOwnsOfficeHoldingsBoundedByItsPositions() throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(new File(
                 "../data/wikidata/historicalpositions/historicalpositions.model.json"));
@@ -42,15 +61,20 @@ class HistoricalPositionsOfficeHoldingTest {
                 .filter(field -> field.name().equals("sitelinkCount")).findFirst().orElseThrow();
         GeneratedFieldModel holders = position.fields().stream()
                 .filter(field -> field.name().equals("holderCount")).findFirst().orElseThrow();
+        GeneratedFieldModel inheritedHolders = position.fields().stream()
+                .filter(field -> field.name().equals("inheritedHolderCount"))
+                .findFirst().orElseThrow();
         assertEquals(datasource.schema.FieldType.NUMBER, sitelinks.type());
         assertEquals(datasource.schema.FieldType.NUMBER, holders.type());
         assertEquals(FieldSourceType.WIKIDATA_SITELINK_COUNT,
                 sitelinks.mapping().sourceType());
         assertEquals(FieldSourceType.WIKIDATA_INCOMING_COUNT,
                 holders.mapping().sourceType());
+        assertEquals(FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT,
+                inheritedHolders.mapping().sourceType());
         var sources = ModelSourceExecutionPlan.synchronizeAndCompile(
                 model, datasource.Datasources.standard());
-        assertEquals(2, sources.familyCount(
+        assertEquals(3, sources.familyCount(
                 datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD));
 
         var validation = GeneratedProjectModelValidator.validate(model);

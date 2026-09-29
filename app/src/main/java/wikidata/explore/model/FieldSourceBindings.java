@@ -117,6 +117,13 @@ public final class FieldSourceBindings {
                     WikidataDatasourceProvider.INCOMING_RELATION_COUNT,
                     Map.of(PROPERTY, clean(mapping.propertyPid())));
         }
+        if (mapping.sourceType() == FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT) {
+            if (clean(mapping.propertyPid()).isBlank()) return null;
+            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+                    WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INHERITED_INCOMING_RELATION_COUNT,
+                    Map.of(PROPERTY, clean(mapping.propertyPid())));
+        }
         if (clean(mapping.propertyPid()).isBlank()) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null) return null;
@@ -229,6 +236,10 @@ public final class FieldSourceBindings {
         if (type == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
             return new ProviderOperation(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.INCOMING_RELATION_COUNT);
+        }
+        if (type == FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT) {
+            return new ProviderOperation(WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INHERITED_INCOMING_RELATION_COUNT);
         }
         if (type == FieldSourceType.SPARQL || type == FieldSourceType.WIKIDATA_API
                 || type == null) {

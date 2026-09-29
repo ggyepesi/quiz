@@ -23,6 +23,9 @@ class WikidataBatchFailureClassifierTest {
         assertEquals(BatchFailure.TOO_HEAVY,
                 classify(new HttpTimeoutException("60 seconds")).failure());
         assertEquals(BatchFailure.TOO_HEAVY,
+                classify(new java.util.concurrent.TimeoutException(
+                        "SPARQL completion watchdog")).failure());
+        assertEquals(BatchFailure.TOO_HEAVY,
                 classify(new WikidataSparqlClient.TruncatedResponseException(
                         "partial JSON", new IllegalStateException())).failure());
     }

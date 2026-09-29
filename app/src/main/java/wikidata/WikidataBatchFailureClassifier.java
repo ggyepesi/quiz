@@ -36,6 +36,7 @@ public final class WikidataBatchFailureClassifier implements FailureClassifier {
             // client's timeout and the transport-neutral boundary recorded after
             // headers. Connection/header timeouts remain IO/UNAVAILABLE instead.
             if (t instanceof HttpTimeoutException
+                    || t instanceof java.util.concurrent.TimeoutException
                     || t instanceof batch.ResponseTimeoutException) {
                 return FailureDecision.of(BatchFailure.TOO_HEAVY);
             }

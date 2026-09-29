@@ -85,11 +85,17 @@ class SourceExecutionPlanTest {
                         "Position", "holderCount", SourceBindingSlot.PRIMARY_FIELD_VALUE),
                 new SourceRecipe("wikidata", "incoming-relation-count",
                         Map.of("property", "P39")));
+        SourceBinding inheritedHolders = new SourceBinding(
+                SourceBindingTarget.fieldValue(
+                        "Position", "inheritedHolderCount",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "inherited-incoming-relation-count",
+                        Map.of("property", "P39")));
 
         SourceExecutionPlan plan = SourceExecutionPlan.compile(
-                List.of(sitelinks, holders), Datasources.standard());
+                List.of(sitelinks, holders, inheritedHolders), Datasources.standard());
 
-        assertEquals(2, plan.selfAcquiring());
+        assertEquals(3, plan.selfAcquiring());
         assertTrue(plan.acquires(
                 datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD));
         assertEquals(datasource.schema.FieldType.NUMBER,

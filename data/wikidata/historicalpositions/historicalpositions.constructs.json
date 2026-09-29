@@ -41,6 +41,11 @@
     "kind" : "GRAPH",
     "artifact" : "positionreplacementexpansion.graph.snapshot.json"
   }, {
+    "declarationId" : "decl:4aa0f60a-efef-47c8-955c-be45d7af56d7",
+    "name" : "PositionSuperclassExpansion",
+    "kind" : "GRAPH",
+    "artifact" : "positionsuperclassexpansion.graph.snapshot.json"
+  }, {
     "declarationId" : "decl:8824e88b-d6a7-49e1-b649-5352c8c43115",
     "name" : "PositionPopulation",
     "kind" : "POPULATION",

@@ -49,6 +49,8 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String PROPERTY_VALUE = "property-value";
     public static final String SITELINK_COUNT = "sitelink-count";
     public static final String INCOMING_RELATION_COUNT = "incoming-relation-count";
+    public static final String INHERITED_INCOMING_RELATION_COUNT =
+            "inherited-incoming-relation-count";
     public static final String FAMILY_COMPUTED_FIELD = "wikidata-computed-field";
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
@@ -128,6 +130,15 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                             "Count distinct entities whose statement points to this entity.",
                             new SourceReferenceSchema(ID,
                                     SourceReferenceSchema.Kind.PROPERTY, false)))),
+            new ComputedFieldOffering(INHERITED_INCOMING_RELATION_COUNT,
+                    "Inherited incoming relation count", List.of(
+                    ParameterDescriptor.reference("property", "Property", true, "",
+                            "Count distinct entities whose statement points to a loaded "
+                                    + "instance that is a strict P279 descendant of this "
+                                    + "entity. Descendants outside the loaded population "
+                                    + "are not counted.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
             new StatementMembershipOffering(
                     BindingScope.CLASS_POPULATION,
                     SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
@@ -189,7 +200,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     }
 
     public record ComputedFieldSpec(Kind kind, String propertyPid) {
-        public enum Kind { SITELINKS, INCOMING_RELATION }
+        public enum Kind { SITELINKS, INCOMING_RELATION, INHERITED_INCOMING_RELATION }
     }
 
     private record ComputedFieldOffering(
@@ -201,17 +212,26 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
         }
         @Override public PreparedSourceOperation prepare(datasource.api.SourceBinding binding) {
             String property = binding.recipe().parameter("property").trim().toUpperCase();
-            if (INCOMING_RELATION_COUNT.equals(id) && !WikidataIds.isPid(property)) {
+            if ((INCOMING_RELATION_COUNT.equals(id)
+                    || INHERITED_INCOMING_RELATION_COUNT.equals(id))
+                    && !WikidataIds.isPid(property)) {
                 throw new IllegalArgumentException("Invalid incoming relation property: "
                         + property);
             }
             ComputedFieldSpec spec = new ComputedFieldSpec(
                     SITELINK_COUNT.equals(id) ? ComputedFieldSpec.Kind.SITELINKS
-                            : ComputedFieldSpec.Kind.INCOMING_RELATION,
+                            : INHERITED_INCOMING_RELATION_COUNT.equals(id)
+                                    ? ComputedFieldSpec.Kind.INHERITED_INCOMING_RELATION
+                                    : ComputedFieldSpec.Kind.INCOMING_RELATION,
                     property);
-            String operation = spec.kind() == ComputedFieldSpec.Kind.SITELINKS
-                    ? "Read wikibase:sitelinks"
-                    : "Count distinct incoming " + property + " entities";
+            String operation = switch (spec.kind()) {
+                case SITELINKS -> "Read wikibase:sitelinks";
+                case INCOMING_RELATION ->
+                        "Count distinct incoming " + property + " entities";
+                case INHERITED_INCOMING_RELATION ->
+                        "Count distinct incoming " + property
+                                + " entities on loaded strict P279 descendants";
+            };
             return new PreparedSourceOperation(FAMILY_COMPUTED_FIELD,
                     "Wikidata computed field", PreparedSourceOperation.Execution.ACQUIRE,
                     displayName, java.util.Map.of("operation", operation,

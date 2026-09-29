@@ -33,6 +33,24 @@ class WikidataComputedFieldAcquisitionTest {
         assertTrue(query.contains("GROUP BY ?entity"), query);
     }
 
+    @Test void inheritedHolderCountCountsDistinctHoldersOfStrictSubclasses() {
+        String query = WikidataComputedFieldAcquisition.inheritedQuery(
+                List.of("Q11696"),
+                new WikidataDatasourceProvider.ComputedFieldSpec(
+                        WikidataDatasourceProvider.ComputedFieldSpec.Kind
+                                .INHERITED_INCOMING_RELATION,
+                        "P39"));
+
+        assertTrue(query.contains("VALUES ?descendant { wd:Q11696 }"), query);
+        assertTrue(query.contains("?source wdt:P39 ?descendant"), query);
+        assertTrue(query.contains("?descendant wdt:P279+ ?entity"), query);
+        assertTrue(query.contains("SELECT DISTINCT ?entity ?source"), query);
+        assertTrue(query.contains("hint:Query hint:optimizer \"None\""), query);
+        assertTrue(!query.contains("VALUES ?entity"),
+                "the endpoint must start from the bounded loaded descendants, not scan "
+                        + "all holdings toward target ancestors");
+    }
+
     @Test void aFailedComputedFieldDoesNotPreventTheNextFieldFromRunning()
             throws Exception {
         var model = new wikidata.explore.model.GeneratedProjectModel();
