@@ -571,14 +571,16 @@ public class GeneratedViewableMapper {
             // objectview.Viewable field — drop it rather than crash the run.
             if (raw instanceof WikidataDynamicObject dyn) {
                 String expected = fieldModel.entityClassName();
-                if (dyn.hasTypeStamp() && expected != null && !expected.isBlank()
+                boolean modeledEntityField = expected != null && !expected.isBlank()
                         && runtime.project() != null
-                        && runtime.project().findClass(expected) != null
-                        && !wikidata.explore.model.EntityRepresentations.fieldAccepts(
-                                runtime.project(), expected, dyn.directClassNames())) {
+                        && runtime.project().findClass(expected) != null;
+                if (modeledEntityField && (!dyn.hasTypeStamp()
+                        || !wikidata.explore.model.EntityRepresentations.fieldAccepts(
+                                runtime.project(), expected, dyn.directClassNames()))) {
                     refusedReferences.merge(
                             fieldModel.name() + ": " + expected + " cannot hold "
-                                    + dyn.directClassNames(), 1, Integer::sum);
+                                    + (dyn.hasTypeStamp() ? dyn.directClassNames() : "unstamped entity"),
+                            1, Integer::sum);
                     return null;
                 }
                 return mapObject(dyn, fieldModel.entityClassName());

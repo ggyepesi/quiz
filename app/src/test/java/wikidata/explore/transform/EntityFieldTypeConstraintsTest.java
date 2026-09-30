@@ -72,6 +72,25 @@ class EntityFieldTypeConstraintsTest {
         assertSame(represented, record.get("nominee"));
     }
 
+    @Test void anUnstampedQidAndANonEntityValueAreRemovedFromAnEntityField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.addField("presenters", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Person");
+        project.rootClass(nomination);
+        project.addClass(new GeneratedClassModel("Person"));
+
+        WikidataDynamicObject unstamped = new WikidataDynamicObject("Q900", "A Presenter");
+        WikidataDynamicObject person = object("Q42", "Person");
+        WikidataDynamicObject record = object("Q1$nomination", "Nomination");
+        record.put("presenters", new java.util.ArrayList<>(
+                List.of(unstamped, "unknown value", person)));
+
+        assertEquals(2, EntityFieldTypeConstraints.apply(
+                project, List.of(record, unstamped, person), null));
+        assertEquals(List.of(person), record.get("presenters"));
+    }
+
     /**
      * An entity occupies as many roles as the fields that reached it, and one of them
      * becomes the carrier by a tie-break. Reading the carrier alone emptied the nominee

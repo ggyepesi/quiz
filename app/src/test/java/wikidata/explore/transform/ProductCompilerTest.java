@@ -45,7 +45,7 @@ class ProductCompilerTest {
         ref(nom, "nominee", "OscarNominations", FieldCardinality.SINGLE);
         ref(nom, "forWork", "ForWork", FieldCardinality.SINGLE);      // ForWork is UNMODELED
         ref(nom, "target", "Category", FieldCardinality.COLLECTION);
-        // presenter targets a MODELED member class, but its referent won't be a member.
+        // presenter targets a MODELED member class, but its referent is unstamped.
         ref(nom, "presenter", "OscarNominations", FieldCardinality.SINGLE);
         nom.addField("won", FieldType.BOOLEAN, FieldCardinality.SINGLE);
         // A statement class states its key; nothing chooses one for it. This is what
@@ -323,21 +323,32 @@ class ProductCompilerTest {
         assertNull(d.fieldTypes("OscarNominations").field("nomination"));
     }
 
-    @Test void aNonMemberInADeclaredEntityFieldRemainsAQidBackedReference() {
+    @Test void anUnstampedReferentInADeclaredEntityFieldIsAbsent() {
         List<WikidataDynamicObject> pool = pool();
         ProductDomain d = ProductCompiler.compile(model(), pool);
-        // presenter targets the MODELED class OscarNominations, but its referent is an
-        // unstamped person (not a top-level member). The declared field still models
-        // it as OscarNominations and the reference keeps its QID.
+        // The field remains modeled as an entity reference, but the unstamped value is
+        // not permitted to become a chip with no compatible detail page.
         assertTrue(field(d, "Nomination", "presenter").reference());
         assertEquals("OscarNominations",
                 d.fieldTypes("Nomination").field("presenter").typeLabel());
         WikidataDynamicObject nom = pool.stream()
                 .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
-        WikidataDynamicObject presenter = assertInstanceOf(WikidataDynamicObject.class,
-                nom.dynamicFieldValues().get("presenter"));
-        assertEquals("Q900", presenter.getIdentifier());
-        assertEquals("A Presenter", presenter.getDisplayName());
+        assertFalse(nom.dynamicFieldValues().containsKey("presenter"));
+    }
+
+    @Test void aCompatibleStampedReferentNeedNotBeATopLevelPoolMember() {
+        List<WikidataDynamicObject> pool = pool();
+        WikidataDynamicObject nom = pool.stream()
+                .filter(o -> "Nomination".equals(o.typeName())).findFirst().orElseThrow();
+        WikidataDynamicObject presenter = new WikidataDynamicObject("Q900", "A Presenter");
+        presenter.type("OscarNominations");
+        nom.put("presenter", presenter);
+
+        ProductCompiler.compile(model(), pool);
+
+        assertSame(presenter, nom.get("presenter"));
+        assertFalse(pool.contains(presenter),
+                "type compatibility does not promote a nested referent to a top-level member");
     }
 
     @Test void referenceToAnEntityIsExpandableViaItsLink() {

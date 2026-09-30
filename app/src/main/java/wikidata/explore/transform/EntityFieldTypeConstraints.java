@@ -66,7 +66,7 @@ public final class EntityFieldTypeConstraints {
     private static boolean accepted(Object value, String expected,
                                     GeneratedProjectModel project) {
         if (!(value instanceof WikidataDynamicObject entity)
-                || !entity.hasTypeStamp()) return true;
+                || !entity.hasTypeStamp()) return false;
         return EntityRepresentations.fieldAccepts(
                 project, expected, entity.directClassNames());
     }

@@ -52,6 +52,10 @@ public final class ProductCompiler {
     public static ProductDomain compile(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool,
             Map<String, ? extends List<? extends Viewable>> persistedRoleSelections) {
+        // A modeled entity field is a typed boundary. Enforce it again at the serving
+        // boundary as well as at generation finalization: an older or externally supplied
+        // snapshot must not turn an unstamped or incompatible QID into a dead reference.
+        EntityFieldTypeConstraints.apply(model, pool, null);
         // Capture semantic field roles while references are still canonical objects;
         // convention resolution below may collapse non-member references to labels.
         Map<String, List<Viewable>> roleSelections = new LinkedHashMap<>();
@@ -76,7 +80,7 @@ public final class ProductCompiler {
         filterNoiseReferences(pool);
         // 2. References to an unmodeled class read as their display-name string.
         collapseUnmodeledReferences(model, pool);
-        // 3. A declared entity field keeps QID-backed references even when the
+        // 3. A declared entity field keeps compatible stamped references even when the
         //    referent is outside the loaded top-level population. Other raw references
         //    still collapse to labels.
         List<String> memberList = memberClasses(model, pool);
@@ -354,8 +358,9 @@ public final class ProductCompiler {
         }
     }
 
-    /** A declared modeled entity field keeps its references without making those
-     *  referents top-level members. References in every other field collapse to text. */
+    /** A declared modeled entity field keeps its already type-checked references without
+     *  making those referents top-level members. References in every other field collapse
+     *  to text. */
     private static void collapseReferencesOutsideDeclaredEntityFields(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
         Set<String> entityFields = new LinkedHashSet<>();

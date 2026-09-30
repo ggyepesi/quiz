@@ -133,6 +133,28 @@ class SameQidDifferentModeledTypesMappingTest {
         }
     }
 
+    @Test void anUnstampedEntityCannotPopulateAModeledEntityField() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("source", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("PositionHolder");
+        project.rootClass(holding);
+        project.addClass(new GeneratedClassModel("PositionHolder"));
+
+        WikidataDynamicObject unstamped =
+                new WikidataDynamicObject("Q71231", "Charles the Bald");
+        WikidataDynamicObject office = object("Q1$holding", "OfficeHolding");
+        office.put("source", unstamped);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(office, unstamped)).getFirst();
+            assertNull(mapped.getClass().getDeclaredField("source").get(mapped),
+                    "an unclassified QID must not become a reference without a detail type");
+        }
+    }
+
     /**
      * Dropping the value is right; dropping it silently is not. A well-formed object is
      * being discarded, so nothing would distinguish the two predecessors History really
