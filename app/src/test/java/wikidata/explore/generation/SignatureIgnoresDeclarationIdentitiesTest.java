@@ -50,7 +50,10 @@ class SignatureIgnoresDeclarationIdentitiesTest {
      */
     private static final List<String> PERSISTED_MODEL_PACKAGES = List.of(
             "src/main/java/wikidata/explore/model",
-            "src/main/java/datasource/api");
+            "src/main/java/datasource/api",
+            // A graph class's configuration is serialized into the model through
+            // GraphClassSource, and keeps its populations by id.
+            "src/main/java/datasource/graph");
 
     @Test void everyDeclarationIdentityIsExcludedFromTheFingerprint() throws Exception {
         Set<String> found = new LinkedHashSet<>();
@@ -102,10 +105,17 @@ class SignatureIgnoresDeclarationIdentitiesTest {
                     String className = sourceRoot.relativize(file).toString()
                             .replace(java.io.File.separatorChar, '.')
                             .replaceFirst("\\.java$", "");
-                    out.add(Class.forName(className));
+                    addWithNested(Class.forName(className), out);
                 }
             }
         }
         return out;
+    }
+
+    /** A nested record is persisted like its outer class — a graph's StartNode and
+     *  NextNode are — so reading only the top-level class would miss its identities. */
+    private static void addWithNested(Class<?> type, List<Class<?>> out) {
+        out.add(type);
+        for (Class<?> nested : type.getDeclaredClasses()) addWithNested(nested, out);
     }
 }

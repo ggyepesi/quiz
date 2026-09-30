@@ -455,11 +455,7 @@ public class GeneratedProjectModel {
             graph.nextNodes(graph.nextNodes().stream()
                     .map(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                             && node.populationClass().equalsIgnoreCase(from)
-                            ? new GraphDiscoveryConfiguration.NextNode(node.property(),
-                                    node.directionFromPrevious(), node.use(), to,
-                                    node.evidenceCondition(), node.alternativeEdges(),
-                                    node.populationOperation(), node.repeatUntilStable(),
-                                    node.admissionPopulationSelection())
+                            ? node.withPopulationClass(to)
                             : node)
                     .toList());
         }
@@ -655,21 +651,20 @@ public class GeneratedProjectModel {
             if (fieldsPointHere) renameFieldSelection(
                     clazz.fields(), previous, next, selection.declarationId());
         }
+        String id = selection.declarationId();
         for (GeneratedClassModel graphClass : graphClasses()) {
             GraphClassSource graph = graphClass.graphSource();
             if (graph == null || graph.startNode() == null) continue;
-            if (graph.startNode().populationSelection().equalsIgnoreCase(previous)) {
-                graph.startNode(new GraphDiscoveryConfiguration.StartNode(
-                        "", next, graph.startNode().use()));
+            GraphDiscoveryConfiguration.StartNode start = graph.startNode();
+            if (!start.populationSelection().isBlank() && references(id,
+                    start.populationSelectionId(), previous, start.populationSelection())) {
+                graph.startNode(start.withPopulation(id, next));
             }
             graph.nextNodes(graph.nextNodes().stream().map(node ->
-                    node.admissionPopulationSelection().equalsIgnoreCase(previous)
-                            ? new GraphDiscoveryConfiguration.NextNode(
-                                    node.property(), node.directionFromPrevious(), node.use(),
-                                    node.populationClass(), node.evidenceCondition(),
-                                    node.alternativeEdges(), node.populationOperation(),
-                                    node.repeatUntilStable(), next)
-                            : node).toList());
+                    !node.admissionPopulationSelection().isBlank() && references(id,
+                            node.admissionPopulationSelectionId(), previous,
+                            node.admissionPopulationSelection())
+                            ? node.withAdmission(id, next) : node).toList());
         }
         return true;
     }
@@ -862,6 +857,24 @@ public class GeneratedProjectModel {
             if (!(selection instanceof RoleSelection role)) continue;
             GeneratedClassModel owner = resolveClass(role.ownerClassId(), role.ownerClassName());
             if (owner != null) role.ownerReference(owner.declarationId(), owner.className());
+        }
+        for (GeneratedClassModel graphClass : graphClasses()) {
+            GraphClassSource graph = graphClass.graphSource();
+            if (graph == null || graph.startNode() == null) continue;
+            GraphDiscoveryConfiguration.StartNode start = graph.startNode();
+            if (!start.populationSelection().isBlank()) {
+                Selection population = resolveSelection(
+                        start.populationSelectionId(), start.populationSelection());
+                if (population != null) graph.startNode(start.withPopulation(
+                        population.declarationId(), population.name()));
+            }
+            graph.nextNodes(graph.nextNodes().stream().map(node -> {
+                if (node.admissionPopulationSelection().isBlank()) return node;
+                Selection population = resolveSelection(node.admissionPopulationSelectionId(),
+                        node.admissionPopulationSelection());
+                return population == null ? node
+                        : node.withAdmission(population.declarationId(), population.name());
+            }).toList());
         }
     }
 

@@ -78,7 +78,10 @@ public final class DomainSave {
             // object's bound stopped being a pair of valueSelection fields and became
             // an EntityBound, which the subject carries too. The name followed the
             // field; the guard test is what noticed it had.
-            "selectionId", "roleClassId", "representationClassId");
+            "selectionId", "roleClassId", "representationClassId",
+            // A graph keeps its start population and each node's admission population
+            // by id beside the name, for the same reason a statement bound does.
+            "populationSelectionId", "admissionPopulationSelectionId");
 
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {

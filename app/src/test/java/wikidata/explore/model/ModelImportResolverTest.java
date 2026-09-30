@@ -199,4 +199,61 @@ class ModelImportResolverTest {
                 .findClass("HistoricalPerson").effectiveFields(resolved)
                 .stream().map(GeneratedFieldModel::name).toList());
     }
+
+    /**
+     * Rename propagation runs inside the model that owns a selection; an importer is
+     * another file. What still finds the population there is its declaration id, so
+     * every importer reference to it — a statement bound, a graph's start and a graph
+     * node's admission boundary — must be kept by id and resolve after the rename.
+     */
+    @Test void aPopulationRenamedInItsModelStillAnswersEveryImporterReference() {
+        GeneratedProjectModel positions = new GeneratedProjectModel();
+        positions.name("Historical Positions");
+        positions.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        positions.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection held = new PopulationSelection("Held");
+        held.className("Position");
+        held.instanceQids(List.of("Q1"));
+        positions.addSelection(held);
+        positions.ensureDeclarationIdentities();
+        String heldId = held.declarationId();
+
+        GeneratedProjectModel history = new GeneratedProjectModel();
+        history.name("History");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        StatementClassSource statement = new StatementClassSource();
+        statement.propertyPid("P39");
+        statement.objectBound(EntityBound.vocabulary("Held", heldId));
+        holding.statementSource(statement);
+        history.rootClass(holding);
+        GeneratedClassModel graph = new GeneratedClassModel("Boundary");
+        graph.classKind(ClassKind.GRAPH);
+        graph.graphSource(new GraphClassSource(
+                new datasource.graph.GraphDiscoveryConfiguration.StartNode(
+                        "", "Held", datasource.graph.GraphDiscoveryConfiguration.NodeUse
+                                .INTERMEDIATE_ONLY, heldId),
+                List.of(new datasource.graph.GraphDiscoveryConfiguration.NextNode(
+                        new datasource.graph.GraphRelation("wikidata", "P279"),
+                        datasource.graph.GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, List.of(),
+                        datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                        false, "Held", heldId))));
+        history.addClass(graph);
+        history.addImport(new ModelImport("Historical Positions", List.of("Position")));
+
+        assertTrue(positions.renameSelection("Held", "HeldPositions"));
+        GeneratedProjectModel effective =
+                ModelImportResolver.resolve(history, repository(positions));
+
+        assertEquals("HeldPositions", effective.findClass("OfficeHolding")
+                .statementSource().valueSelectionName());
+        var boundary = effective.findClass("Boundary").graphSource();
+        assertEquals("HeldPositions", boundary.startNode().populationSelection());
+        assertEquals("HeldPositions",
+                boundary.nextNodes().getFirst().admissionPopulationSelection());
+        assertEquals(List.of(), GeneratedProjectModelValidator.validate(effective).problems()
+                .stream().map(Object::toString).filter(p -> p.contains("Held")).toList());
+        assertEquals(List.of("Q1"), ImportedPopulationInputs.of(effective).qidsFor("Position"));
+    }
 }

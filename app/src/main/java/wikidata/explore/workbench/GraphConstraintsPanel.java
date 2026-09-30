@@ -569,7 +569,8 @@ final class GraphConstraintsPanel extends JPanel {
                 GraphClassSource replacement = new GraphClassSource(
                         new GraphDiscoveryConfiguration.StartNode(
                                 start.population() ? "" : start.className(),
-                                start.populationName(), use(startUseBox)),
+                                start.populationName(), use(startUseBox),
+                                selectionId(start.populationName())),
                         List.of());
                 boolean changed = !java.util.Objects.equals(clazz.graphSource(), replacement);
                 clazz.graphSource(replacement);
@@ -596,7 +597,8 @@ final class GraphConstraintsPanel extends JPanel {
             GraphClassSource replacement = new GraphClassSource(
                     new GraphDiscoveryConfiguration.StartNode(
                             start.population() ? "" : start.className(),
-                            start.populationName(), use(startUseBox)),
+                            start.populationName(), use(startUseBox),
+                                selectionId(start.populationName())),
                     nodes);
             boolean changed = !java.util.Objects.equals(clazz.graphSource(), replacement);
             clazz.graphSource(replacement);
@@ -1053,7 +1055,8 @@ final class GraphConstraintsPanel extends JPanel {
                 evidence, alternativeEdges(),
                 (GraphDiscoveryConfiguration.PopulationOperation)
                         populationOperationBox.getSelectedItem(),
-                repeatUntilStable.isSelected(), selectedAdmissionPopulation());
+                repeatUntilStable.isSelected(), selectedAdmissionPopulation(),
+                selectionId(selectedAdmissionPopulation()));
     }
 
     private void addEditedNode() {
@@ -1101,6 +1104,13 @@ final class GraphConstraintsPanel extends JPanel {
                 return this;
             }
         };
+    }
+
+    /** The chosen population's declaration id, kept beside its name so the reference
+     *  survives a rename in the model that owns it. */
+    private String selectionId(String name) {
+        Selection selection = name == null || name.isBlank() ? null : model.findSelection(name);
+        return selection == null ? "" : selection.declarationId();
     }
 
     private String selectedAdmissionPopulation() {

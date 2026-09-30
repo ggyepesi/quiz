@@ -24,11 +24,21 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
 
     /**
      * A class start reads QIDs from its currently loaded instances. A population start
-     * reads the exact QIDs owned by that saved population selection.
+     * reads the exact QIDs owned by that saved population selection. The selection is
+     * kept by declaration id as well as by name: the name is a readable hint, and the id
+     * is what still finds an imported population after its owning model renamed it.
      */
-    public record StartNode(String qidSourceClass, String populationSelection, NodeUse use) {
+    public record StartNode(String qidSourceClass, String populationSelection, NodeUse use,
+            String populationSelectionId) {
         public StartNode(String qidSourceClass, NodeUse use) {
             this(qidSourceClass, "", use);
+        }
+        public StartNode(String qidSourceClass, String populationSelection, NodeUse use) {
+            this(qidSourceClass, populationSelection, use, "");
+        }
+        /** The same start, bound to the population's current id and name. */
+        public StartNode withPopulation(String id, String name) {
+            return new StartNode(qidSourceClass, name, use, id);
         }
         public StartNode {
             qidSourceClass = qidSourceClass == null ? "" : qidSourceClass.trim();
@@ -38,6 +48,8 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
                         "Choose exactly one graph start: a loaded class or a saved population");
             }
             use = use == null ? NodeUse.INTERMEDIATE_ONLY : use;
+            populationSelectionId = populationSelection.isBlank() || populationSelectionId == null
+                    ? "" : populationSelectionId.trim();
         }
     }
 
@@ -51,7 +63,8 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
             List<Edge> alternativeEdges,
             PopulationOperation populationOperation,
             boolean repeatUntilStable,
-            String admissionPopulationSelection) {
+            String admissionPopulationSelection,
+            String admissionPopulationSelectionId) {
         public NextNode(GraphRelation property, GraphTraversalDirection directionFromPrevious,
                 NodeUse use, String populationClass, GraphEvidenceCondition evidenceCondition) {
             this(property, directionFromPrevious, use, populationClass, evidenceCondition,
@@ -63,6 +76,27 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
                 boolean repeatUntilStable) {
             this(property, directionFromPrevious, use, populationClass, evidenceCondition,
                     alternativeEdges, populationOperation, repeatUntilStable, "");
+        }
+        public NextNode(GraphRelation property, GraphTraversalDirection directionFromPrevious,
+                NodeUse use, String populationClass, GraphEvidenceCondition evidenceCondition,
+                List<Edge> alternativeEdges, PopulationOperation populationOperation,
+                boolean repeatUntilStable, String admissionPopulationSelection) {
+            this(property, directionFromPrevious, use, populationClass, evidenceCondition,
+                    alternativeEdges, populationOperation, repeatUntilStable,
+                    admissionPopulationSelection, "");
+        }
+        /** The same node, admitting the population by its current id and name. */
+        public NextNode withAdmission(String id, String name) {
+            return new NextNode(property, directionFromPrevious, use, populationClass,
+                    evidenceCondition, alternativeEdges, populationOperation,
+                    repeatUntilStable, name, id);
+        }
+        /** The same node, producing its output into {@code className}. */
+        public NextNode withPopulationClass(String className) {
+            return new NextNode(property, directionFromPrevious, use, className,
+                    evidenceCondition, alternativeEdges, populationOperation,
+                    repeatUntilStable, admissionPopulationSelection,
+                    admissionPopulationSelectionId);
         }
         public NextNode {
             if (property == null) throw new IllegalArgumentException("Edge property is required");
@@ -82,6 +116,9 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
                     ? PopulationOperation.NARROW : populationOperation;
             admissionPopulationSelection = admissionPopulationSelection == null
                     ? "" : admissionPopulationSelection.trim();
+            admissionPopulationSelectionId = admissionPopulationSelection.isBlank()
+                    || admissionPopulationSelectionId == null
+                    ? "" : admissionPopulationSelectionId.trim();
         }
         public List<Edge> edges() {
             java.util.ArrayList<Edge> result = new java.util.ArrayList<>();
