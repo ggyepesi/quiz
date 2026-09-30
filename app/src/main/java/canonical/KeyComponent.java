@@ -29,6 +29,8 @@ public record KeyComponent(Kind kind, String fieldPath) {
          * deliberately: those can contradict each other.
          */
         OWNER_SITE_IDENTITY,
+        /** The identity of the entity classified by a graph annotation. */
+        CLASSIFIED_CANDIDATE,
         /**
          * The candidate's own occurrence at its source, so each one stands alone.
          *
@@ -65,6 +67,10 @@ public record KeyComponent(Kind kind, String fieldPath) {
 
     public static KeyComponent sourceOccurrence() {
         return new KeyComponent(Kind.SOURCE_OCCURRENCE, "");
+    }
+
+    public static KeyComponent classifiedCandidate() {
+        return new KeyComponent(Kind.CLASSIFIED_CANDIDATE, "");
     }
 
     /** Whether production supplies this component rather than the candidate's values. */

@@ -82,6 +82,9 @@ public final class WikidataCandidates {
                         .isStatementId(object.getIdentifier())
                         ? NAMESPACE + ":" + object.getIdentifier() : "";
 
+                case CLASSIFIED_CANDIDATE -> object.qid().isBlank()
+                        ? "" : NAMESPACE + ":" + object.qid();
+
                 case FIELD -> "";
             };
         }

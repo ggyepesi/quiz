@@ -70,6 +70,11 @@ class IdentityRegimeFollowsClassKindTest {
         }
     }
 
+    @Test void aGraphClassCanonicalizesByTheCandidateItClassifies() {
+        assertEquals(java.util.List.of(canonical.KeyComponent.classifiedCandidate()),
+                Canonicalizer.keyComponents(ClassKind.GRAPH, new CanonicalSpec()));
+    }
+
     @Test void ownedClassesAreNotAskedForStatementKeysByValidation() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel owned = new GeneratedClassModel("Name");

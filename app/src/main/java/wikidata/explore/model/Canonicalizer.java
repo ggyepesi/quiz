@@ -65,6 +65,10 @@ public final class Canonicalizer {
             key.add(canonical.KeyComponent.ownerSiteIdentity());
             return key;
         }
+        if (kind != null && kind.identityFromClassifiedCandidate()) {
+            key.add(canonical.KeyComponent.classifiedCandidate());
+            return key;
+        }
         if (spec == null) return key;
         for (String field : spec.keyFields()) {
             if (field != null && !field.isBlank()) {
