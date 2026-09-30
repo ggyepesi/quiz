@@ -214,6 +214,89 @@ public final class TransformController {
         return group;
     }
 
+    /** One schema-valid way to traverse a statement/relation class between the
+     * selected member type and entities represented by a named selection. */
+    public record RelationClosureOption(String bridgeType, String memberField,
+            String entityField, String admissionSelection) {
+        @Override public String toString() {
+            return bridgeType + "." + memberField + " ↔ " + bridgeType + "."
+                    + entityField + " · continue through " + admissionSelection;
+        }
+    }
+
+    public List<RelationClosureOption> relationClosureOptions(String memberType) {
+        if (memberType == null) return List.of();
+        List<RelationClosureOption> result = new ArrayList<>();
+        for (String selection : domain.selectionNames()) {
+            List<Viewable> admitted = domain.selectionMembers(selection);
+            if (admitted.isEmpty()) continue;
+            for (String bridge : domain.types()) {
+                objectview.field.FieldSchema schema = domain.fieldSchema(bridge);
+                if (schema == null) continue;
+                List<objectview.field.FieldRef> references = schema.fields().stream()
+                        .filter(objectview.field.FieldRef::reference).toList();
+                for (objectview.field.FieldRef member : references) {
+                    // Asked as the group asks it: does this field hold instances of the
+                    // member type? A role-typed field (OfficeHolding.source is declared
+                    // PositionHolder) holds Persons although neither class is a subclass
+                    // of the other, so a schema subclass test hid the relation it carries.
+                    if (!holdsInstancesOf(bridge, member.name(), memberType)) continue;
+                    for (objectview.field.FieldRef entity : references) {
+                        if (entity == member || !acceptsAny(entity.targetType(), admitted)) {
+                            continue;
+                        }
+                        result.add(new RelationClosureOption(bridge, member.name(),
+                                entity.name(), selection));
+                    }
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    public List<Viewable> relationClosureSeeds(RelationClosureOption option) {
+        if (option == null) return List.of();
+        objectview.field.FieldPath path = objectview.field.FieldPath.parse(option.entityField());
+        Map<String, Viewable> values = new LinkedHashMap<>();
+        for (Viewable row : domain.instancesOf(option.bridgeType())) {
+            for (Viewable value : quiz.transform.ReferenceField.values(row, path)) {
+                String id = value == null ? null : value.getIdentifier();
+                if (id != null && !id.isBlank()) {
+                    String type = value.identityTypeName();
+                    values.putIfAbsent((type == null ? "" : type) + "\u001f" + id, value);
+                }
+            }
+        }
+        return List.copyOf(values.values());
+    }
+
+    public quiz.transform.RelationClosureGroup addRelationClosureGroup(
+            String type, quiz.transform.EditableGroup parent, String name,
+            RelationClosureOption option, Collection<? extends Viewable> seeds) {
+        if (parent == null || option == null || seeds == null || seeds.isEmpty()) return null;
+        quiz.transform.RelationClosureGroup group = new quiz.transform.RelationClosureGroup(
+                name, type, option.bridgeType(), option.memberField(), option.entityField(),
+                option.admissionSelection(), seeds);
+        group.reproduce(parent.getMembers(), domain);
+        parent.addGroup(group);
+        return group;
+    }
+
+    private boolean acceptsAny(String targetType, Collection<? extends Viewable> values) {
+        return targetType != null && values.stream()
+                .anyMatch(value -> domain.isInstanceOf(value, targetType));
+    }
+
+    private boolean holdsInstancesOf(String bridge, String field, String memberType) {
+        objectview.field.FieldPath path = objectview.field.FieldPath.parse(field);
+        for (Viewable row : domain.instancesOf(bridge)) {
+            for (Viewable value : quiz.transform.ReferenceField.values(row, path)) {
+                if (domain.isInstanceOf(value, memberType)) return true;
+            }
+        }
+        return false;
+    }
+
     /** Whether the selected path ends in a reference back to the class that owns
      * that path. The choice is schema-driven; a currently empty field remains valid. */
     public boolean isRecursiveReference(DomainField field) {

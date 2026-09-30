@@ -66,19 +66,25 @@ public class EditableGroup extends ViewableGroupAdapter {
 
     /** Recompute rule-produced descendants against their immediate parent's members. */
     public void reproduceDescendants() {
-        reproduceDescendants(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+        reproduceDescendants(null);
+    }
+
+    public void reproduceDescendants(DomainModel domain) {
+        reproduceDescendants(domain,
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
     }
 
     // Tree-only in practice, but guarded so a back-edge (e.g. reconstructed from a bad
     // snapshot) can't recurse forever.
-    private void reproduceDescendants(java.util.Set<ViewableGroup<Viewable>> visited) {
+    private void reproduceDescendants(DomainModel domain,
+            java.util.Set<ViewableGroup<Viewable>> visited) {
         if (!visited.add(this)) return;
         for (ViewableGroup<Viewable> child : getChildren()) {
             if (child instanceof ProducedGroup produced) {
-                produced.reproduce(getMembers());
+                produced.reproduce(getMembers(), domain);
             }
             if (child instanceof EditableGroup editable) {
-                editable.reproduceDescendants(visited);
+                editable.reproduceDescendants(domain, visited);
             }
         }
     }
@@ -115,6 +121,14 @@ public class EditableGroup extends ViewableGroupAdapter {
                     text(fields.read("memberType")),
                     text(fields.read("ancestorField")),
                     viewables(fields.read("ancestorAnchors")));
+        } else if ("relationClosure".equals(producer)) {
+            copy = new RelationClosureGroup(name,
+                    text(fields.read("memberType")),
+                    text(fields.read("bridgeType")),
+                    text(fields.read("memberField")),
+                    text(fields.read("entityField")),
+                    text(fields.read("admissionSelection")),
+                    viewables(fields.read("closureSeeds")));
         } else if ("filter".equals(producer)) {
             String memberType = text(fields.read("memberType"));
             String path = text(fields.read("filterField"));

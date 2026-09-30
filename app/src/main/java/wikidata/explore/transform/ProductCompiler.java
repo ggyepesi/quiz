@@ -74,6 +74,10 @@ public final class ProductCompiler {
         } else {
             roleSelections.putAll(derivedRoleSelections);
         }
+        // A saved population is a selection too. Materialized here, while the pool
+        // still holds every loaded instance, so a loaded domain offers it by name
+        // beside the roles; a role keeps its name if the two ever collide.
+        PopulationSelections.materialize(model, pool).forEach(roleSelections::putIfAbsent);
         // 1. Drop Wikimedia-meta noise (e.g. "Wikimedia list article", a Wikinews
         //    article) from references before collapse — an entity's P31 `type` picks
         //    up such non-domain values, and they'd otherwise become bogus strings.

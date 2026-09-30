@@ -1497,18 +1497,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }, JSplitPane.VERTICAL_SPLIT, true, 0.7, false);
         GroupTreeView groups = grouped.groups();
         activeShow = grouped::showGroup;
-        JButton filterDetails = groups.addControl(
-                "Show filter details", this::showSelectedFilterDetails);
-        filterDetails.setEnabled(false);
+        JButton ruleDetails = groups.addControl(
+                "Show group rule", this::showSelectedGroupRule);
+        ruleDetails.setEnabled(false);
         grouped.setSelectionHandler(group -> {
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             selectedGroup = group instanceof quiz.transform.EditableGroup editable
                     ? editable : null;
             groups.setStatusText(selectedGroupStatus(group));
-            filterDetails.setEnabled(group instanceof quiz.transform.OperationGroup);
+            ruleDetails.setEnabled(group instanceof quiz.transform.ProducedGroup);
         });
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
+        groups.addControl("Add relation closure group…",
+                () -> addRelationClosureGroup(selectedType, root));
         groups.addControl("Add type-spec group", () -> addTypeSpecGroup(selectedType, root));
         groups.addControl("Show type spec", this::showSelectedTypeSpec);
         // "Add filter group" is NOT here: its condition is composed on the field panel's
@@ -1532,19 +1534,26 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         String name = group instanceof quiz.transform.EditableGroup editable
                 ? editable.name() : group.getDisplayName();
         String status = "Selected group: " + name;
+        if (group instanceof quiz.transform.ProducedGroup produced
+                && !produced.problem().isBlank()) {
+            status += " — " + produced.problem();
+        }
         return status;
     }
 
-    private void showSelectedFilterDetails() {
-        if (!(selectedGroup instanceof quiz.transform.OperationGroup filter)) return;
+    private void showSelectedGroupRule() {
+        if (!(selectedGroup instanceof quiz.transform.ProducedGroup produced)) return;
         JTextArea details = new JTextArea(
-                "Group: " + filter.name() + "\nCondition: " + filter.condition()
-                        + "\nInstances: " + filter.getMembers().size(), 5, 48);
+                "Group: " + selectedGroup.name() + "\nRule: "
+                        + produced.ruleDescription() + "\nInstances: "
+                        + selectedGroup.getMembers().size()
+                        + (produced.problem().isBlank() ? ""
+                                : "\nProblem: " + produced.problem()), 5, 48);
         details.setEditable(false);
         details.setLineWrap(true);
         details.setWrapStyleWord(true);
         JOptionPane.showMessageDialog(this, new JScrollPane(details),
-                "Filter details", JOptionPane.INFORMATION_MESSAGE);
+                "Group rule", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static boolean belongsTo(objectview.group.ViewableGroup<?> root,
@@ -1819,6 +1828,84 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) return;
         controller.addManualGroup(selectedOrRoot(root), name.trim());
         render();
+    }
+
+    private void addRelationClosureGroup(
+            String type, objectview.group.ViewableGroup<?> root) {
+        quiz.transform.EditableGroup parent = selectedOrRoot(root);
+        if (parent == null || type == null) return;
+        List<TransformController.RelationClosureOption> options =
+                controller.relationClosureOptions(type);
+        if (options.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No loaded relation class connects " + type
+                            + " to a loaded population selection.",
+                    "Relation closure group", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        TransformController.RelationClosureOption option =
+                (TransformController.RelationClosureOption) JOptionPane.showInputDialog(
+                        this, "Relation and population boundary:",
+                        "Relation closure group", JOptionPane.PLAIN_MESSAGE,
+                        null, options.toArray(), options.getFirst());
+        if (option == null) return;
+        List<Viewable> candidates = controller.relationClosureSeeds(option);
+        if (candidates.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No seed entities occur in " + option.bridgeType() + "."
+                            + option.entityField() + ".",
+                    "Relation closure group", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        List<Viewable> seeds = chooseRelationClosureSeeds(option, candidates);
+        if (seeds.isEmpty()) return;
+        String suggested = seeds.size() == 1
+                ? seeds.getFirst().getDisplayName() : "Relation closure";
+        String name = JOptionPane.showInputDialog(this,
+                "Group name:", suggested);
+        if (name == null || name.isBlank()) return;
+        quiz.transform.RelationClosureGroup created = controller.addRelationClosureGroup(
+                type, parent, name.trim(), option, seeds);
+        if (created != null) {
+            selectedGroup = created;
+            activeGroup = created;
+            render();
+            if (!created.problem().isBlank()) {
+                JOptionPane.showMessageDialog(this, created.problem(),
+                        "Relation closure group", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    private List<Viewable> chooseRelationClosureSeeds(
+            TransformController.RelationClosureOption option,
+            List<Viewable> candidates) {
+        java.util.concurrent.atomic.AtomicReference<List<Viewable>> selected =
+                new java.util.concurrent.atomic.AtomicReference<>(List.of());
+        JComponent view = objectview.view.SearchableView.builder(candidates)
+                .sample(candidates.getFirst())
+                .fieldSchemas(value -> controller.renderedFieldSchema(
+                        value, value.typeName()))
+                .selectionSetListener(values -> selected.set(values.stream()
+                        .filter(Viewable.class::isInstance)
+                        .map(Viewable.class::cast).toList()))
+                .collapsible(true)
+                .build();
+        view.setPreferredSize(new Dimension(760, 500));
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.add(new JLabel("Select the starting " + option.entityField()
+                + " instance or instances:"), BorderLayout.NORTH);
+        panel.add(view, BorderLayout.CENTER);
+        int answer = JOptionPane.showConfirmDialog(this, panel,
+                "Select relation-closure seed", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) return List.of();
+        if (selected.get().isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Select at least one starting instance.");
+            return List.of();
+        }
+        return selected.get();
     }
 
     private void addTypeSpecGroup(String type, objectview.group.ViewableGroup<?> root) {

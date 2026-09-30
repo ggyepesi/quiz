@@ -191,7 +191,7 @@ public final class WorkingDomain extends DelegatingDomainModel
             // rule-produced descendant against the fresh scope, so the workbench never
             // renders/validates/resolves against a stale membership snapshot.
             root.replaceMembers(live);
-            root.reproduceDescendants();
+            root.reproduceDescendants(this);
             groupRootSignatures.put(type, signature);
         }
         return root;

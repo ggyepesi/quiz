@@ -9,10 +9,10 @@ import java.util.Collection;
 import java.util.List;
 
 /** The entities a stored reference field holds, whatever shape carries them. */
-final class ReferenceField {
+public final class ReferenceField {
     private ReferenceField() { }
 
-    static List<Viewable> values(Viewable node, FieldPath path) {
+    public static List<Viewable> values(Viewable node, FieldPath path) {
         List<Viewable> out = new ArrayList<>();
         if (node != null && path != null) {
             collect(FieldAccess.getPathValues(node, path), out);

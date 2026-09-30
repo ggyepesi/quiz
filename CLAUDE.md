@@ -215,6 +215,13 @@ construct per thing produced:
    instances of the population's class. Unreferenced populations remain declarations,
    and several referenced populations of the same class contribute their union.
 
+   A TransformApp relation-closure group is a saved produced-group rule over the loaded
+   object graph. It names a bridge class, the bridge fields leading to group members and
+   traversal entities, an admission `PopulationSelection`, and explicit seed entities.
+   Seeds reach members even when outside the admission population; only admitted traversal
+   entities may continue the walk. The group contains the reached members, renders through
+   the ordinary ObjectView group panel, and performs no datasource requests.
+
 19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
    identity, its name, rename propagation, its place in the classes list, its editor and its
    persistence all come from the class construct, and its instances are its annotation set.
