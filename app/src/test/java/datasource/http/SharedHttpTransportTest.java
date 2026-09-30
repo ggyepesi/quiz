@@ -36,9 +36,9 @@ class SharedHttpTransportTest {
         assertSame(json, SharedHttpTransport.decode(json, null));
     }
 
-    @Test void standardTransportIsSharedAndPrefersHttp2() {
+    @Test void standardTransportIsSharedAndUsesHttp11Connections() {
         assertSame(SharedHttpTransport.standard(), SharedHttpTransport.standard());
-        assertEquals(HttpClient.Version.HTTP_2,
+        assertEquals(HttpClient.Version.HTTP_1_1,
                 SharedHttpTransport.standard().preferredVersion());
     }
 }

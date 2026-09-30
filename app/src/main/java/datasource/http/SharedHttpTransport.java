@@ -20,17 +20,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 
 /**
- * Shared HTTP/2 transport for datasource clients.
+ * Shared HTTP/1.1 transport for datasource clients.
  *
- * <p>One process-wide {@link HttpClient} owns connection pooling and negotiates HTTP/2,
- * so concurrent requests to one origin can be multiplexed instead of each datasource
- * creating an opaque URL connection. Source-specific clients still own status policy,
- * JSON parsing and polite request headers.
+ * <p>One process-wide {@link HttpClient} owns connection pooling. HTTP/1.1 is
+ * deliberate: concurrent requests use separate pooled connections instead of sharing
+ * one long-lived HTTP/2 connection, so a degraded connection cannot stall every batch
+ * for an origin. Source-specific clients still own status policy, JSON parsing and
+ * polite request headers.
  */
 public final class SharedHttpTransport {
     private static final SharedHttpTransport STANDARD = new SharedHttpTransport(
             HttpClient.newBuilder()
-                    .version(HttpClient.Version.HTTP_2)
+                    .version(HttpClient.Version.HTTP_1_1)
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .connectTimeout(Duration.ofSeconds(10))
                     .build());

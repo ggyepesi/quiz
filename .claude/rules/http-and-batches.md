@@ -30,6 +30,11 @@ for WDQS concurrency and async, `WikidataApiClient` for the action API,
 They duplicate UA/retry/throttle; the end state is that they build on a shared transport. Do
 not add a fourth.
 
+The shared JDK transport requests HTTP/1.1. Concurrent requests must use separate pooled
+connections rather than multiplexing every batch through one long-lived HTTP/2 origin
+connection: a degraded HTTP/2 connection was observed stalling all Wikidata batches while
+the same URLs completed promptly over fresh connections.
+
 # Batch failures
 
 A batched load classifies each failure into what the executor should do next, and the
