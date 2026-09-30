@@ -5,11 +5,14 @@ import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
+import datasource.graph.GraphTraversalStep;
+import datasource.graph.GraphExpansionPolicy;
 import datasource.graph.constraint.GraphEvidenceCondition;
 import datasource.graph.constraint.GraphEvidenceConditionResult;
 import datasource.graph.constraint.GraphPath;
 import datasource.graph.constraint.GraphRelationExists;
 import datasource.graph.execution.GraphDiscoveryExecutor;
+import datasource.graph.store.GraphEdge;
 import graphview.GraphViewModel;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
@@ -338,6 +341,81 @@ class GraphConstraintsPanelTest {
                 evidence.reviewDisposition());
     }
 
+    @Test void aNextNodeCanAdmitAndExpandOnlyMembersOfASavedPopulation() {
+        GeneratedProjectModel model = model();
+        PopulationSelection positions = new PopulationSelection("PositionsForHistory");
+        positions.className("Position");
+        positions.instanceQids(List.of("Q1", "Q2"));
+        model.addSelection(positions);
+        GraphConstraintsPanel panel = graphPanel(model);
+
+        text(panel, "graph.edgeProperty").setText("P39");
+        named(panel, "graph.admissionPopulation", JComboBox.class)
+                .setSelectedItem("PositionsForHistory");
+        button(panel, "Apply graph").doClick();
+
+        assertEquals("PositionsForHistory", graph(model).nextNodes().getFirst()
+                .admissionPopulationSelection());
+        panel.edit(model.findClass("PositionGraph"));
+        assertEquals("PositionsForHistory",
+                named(panel, "graph.admissionPopulation", JComboBox.class)
+                        .getSelectedItem());
+    }
+
+    @Test void theEditorAuthorsPositionHolderPositionHolderAsTwoGraphSteps() {
+        GeneratedProjectModel model = model();
+        model.addClass(new GeneratedClassModel("Person"));
+        PopulationSelection positions = new PopulationSelection("PositionsForHistory");
+        positions.className("Position");
+        positions.instanceQids(List.of("Q1", "Q2"));
+        model.addSelection(positions);
+        GraphConstraintsPanel panel = graphPanel(model);
+
+        text(panel, "graph.edgeProperty").setText("P39");
+        named(panel, "graph.edgeDirection", JComboBox.class).setSelectedIndex(1);
+        named(panel, "graph.targetUse", JComboBox.class).setSelectedItem(
+                GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY);
+        button(panel, "Add node to path").doClick();
+
+        text(panel, "graph.edgeProperty").setText("P39");
+        named(panel, "graph.edgeDirection", JComboBox.class).setSelectedIndex(0);
+        named(panel, "graph.targetUse", JComboBox.class).setSelectedItem(
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
+        named(panel, "graph.admissionPopulation", JComboBox.class)
+                .setSelectedItem("PositionsForHistory");
+        button(panel, "Apply graph").doClick();
+
+        assertEquals(2, graph(model).nextNodes().size());
+        assertEquals(GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
+                graph(model).nextNodes().getFirst().use());
+        assertEquals(GraphTraversalDirection.INCOMING,
+                graph(model).nextNodes().getFirst().directionFromPrevious());
+        assertEquals(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                graph(model).nextNodes().getLast().use());
+        assertEquals(GraphTraversalDirection.OUTGOING,
+                graph(model).nextNodes().getLast().directionFromPrevious());
+        assertEquals("PositionsForHistory", graph(model).nextNodes().getLast()
+                .admissionPopulationSelection());
+        assertEquals(3, named(panel, "graph.evidenceList", JList.class).getVisibleRowCount());
+        assertEquals(3, named(panel, "graph.testsList", JList.class).getVisibleRowCount());
+    }
+
+    /** Apply writes the drafted node into the path; the draft then IS that node. A second
+     *  Apply — or the flush every Save performs — must rewrite it, not append a copy. */
+    @Test void applyingTheSameDraftTwiceKeepsOneNode() {
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = graphPanel(model);
+
+        text(panel, "graph.edgeProperty").setText("P39");
+        button(panel, "Apply graph").doClick();
+        button(panel, "Apply graph").doClick();
+        panel.applyPendingEdits();
+
+        assertEquals(1, graph(model).nextNodes().size());
+        assertEquals(1, named(panel, "graph.nodes", JList.class).getModel().getSize(),
+                "the draft path must not collect a copy that makes every later Apply fail");
+    }
+
     @Test void graphPropertiesUseTheAlreadyLoadedCatalogueLabels() {
         GraphConstraintsPanel panel = graphPanel(model());
         panel.propertyCache(() -> java.util.Map.of("P279",
@@ -480,6 +558,44 @@ class GraphConstraintsPanelTest {
                         "Review — 0 total", "Rejected — 1 total"),
                 shown.tabs().stream().map(ProcessWorkflowResults.Tab::title).toList());
         assertTrue(shown.tabs().stream().allMatch(tab -> tab.selectionActions().size() == 3));
+    }
+
+    @Test void aRejectedBoundaryAnnotationNamesItsPopulationAndTraversalWitness() {
+        EntityRef root = EntityRef.wikidata("Q1");
+        EntityRef boundary = EntityRef.wikidata("Q2");
+        GraphRelation relation = new GraphRelation("wikidata", "P39");
+        GraphDiscoveryConfiguration.NextNode output = new GraphDiscoveryConfiguration.NextNode(
+                relation, GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                "Position", null, List.of(),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                "PositionsForHistory");
+        GraphEvidenceConditionResult classification = new GraphEvidenceConditionResult(
+                GraphEvidenceConditionResult.Decision.REJECTED, boundary,
+                "Population PositionsForHistory",
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT,
+                List.of(), List.of(), List.of(), List.of(),
+                "Not in PositionsForHistory");
+        GraphTraversalStep traversal = new GraphTraversalStep("step-1", "Position",
+                "Position", "Position.P39", relation,
+                GraphTraversalDirection.OUTGOING, GraphExpansionPolicy.NONE);
+        GraphDiscoveryExecutor.NodeResult node = new GraphDiscoveryExecutor.NodeResult(
+                1, output, traversal, List.of(boundary), List.of(), List.of(boundary),
+                List.of(), List.of(classification),
+                List.of(new GraphEdge(root, relation, boundary, "Q1$P39")),
+                List.of(), List.of());
+        ConfiguredGraphDiscoveryQuery.Result result = new ConfiguredGraphDiscoveryQuery.Result(
+                new GraphDiscoveryExecutor.Result(List.of(root), List.of(node)),
+                java.util.Map.of("Q1", "Starting position", "Q2", "Boundary position"), 2);
+
+        var annotation = GraphDiscoveryResultStore
+                .artifact("History", "PositionExpansion", result).instances().getFirst();
+
+        assertEquals("Rejected", annotation.get(GraphDiscoveryResultStore.GRAPH_DECISION));
+        assertEquals("Population PositionsForHistory", annotation.get("Condition"));
+        assertEquals("Not in PositionsForHistory", annotation.get("Reason"));
+        assertEquals(List.of("Starting position (Q1) —P39→ Boundary position (Q2)"),
+                annotation.get("Traversal witnesses"));
     }
 
     @Test void modelKindDoesNotDisableAReadyGraphConstraint() {
@@ -884,17 +1000,16 @@ class GraphConstraintsPanelTest {
     }
 
     @Test void anEmptiedDraftIsIncompleteRatherThanADeletion() {
-        // The other side of the same branch. A blank edge cannot distinguish "delete
-        // this" from "not filled in yet", so it no longer tries to: applying it keeps
-        // the start node and drops only the edge, and the graph itself is removed only
-        // by the button that says so.
+        // The path list makes removal an explicit node action. Applying the resulting
+        // empty path keeps the chosen start; removing the graph class remains the only
+        // way to remove the graph construct itself.
         GeneratedProjectModel model = model();
         model.rootClass().seedQids().add("Q4164871");
         graphClass(model, "PositionGraph").graphSource(source("P279"));
         GraphConstraintsPanel panel = graphPanel(model);
         panel.refresh();
 
-        text(panel, "graph.edgeProperty").setText("");
+        button(panel, "Remove selected node").doClick();
         button(panel, "Apply graph").doClick();
 
         assertNotNull(graph(model),

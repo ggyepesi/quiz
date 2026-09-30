@@ -1,6 +1,11 @@
 package wikidata.explore.model;
 
+import datasource.graph.GraphDiscoveryConfiguration;
+import datasource.graph.GraphRelation;
+import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -72,5 +77,32 @@ class SelectionNamespaceTest {
         assertTrue(project.renameSelection("Prize", "PrizeKind"));
         assertEquals("PrizeKind", award.fields().getFirst().entityClassName(),
                 "the reference follows the rename");
+    }
+
+    @Test void aGraphAdmissionPopulationIsReferencedAndFollowsItsRename() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection population = new PopulationSelection("PositionsForHistory");
+        population.className("Position");
+        project.addSelection(population);
+        GeneratedClassModel graph = new GeneratedClassModel("PositionExpansion");
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P39"),
+                        GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, List.of(),
+                        GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                        "PositionsForHistory"))));
+        project.addClass(graph);
+
+        assertTrue(project.selectionReferenced("PositionsForHistory"));
+        assertFalse(project.removeSelection("PositionsForHistory"),
+                "the graph cannot lose the population that bounds its expansion");
+        assertTrue(project.renameSelection("PositionsForHistory", "CuratedPositions"));
+        assertEquals("CuratedPositions", graph.graphSource().nextNodes().getFirst()
+                .admissionPopulationSelection());
     }
 }

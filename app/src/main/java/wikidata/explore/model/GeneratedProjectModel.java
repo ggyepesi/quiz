@@ -458,7 +458,8 @@ public class GeneratedProjectModel {
                             ? new GraphDiscoveryConfiguration.NextNode(node.property(),
                                     node.directionFromPrevious(), node.use(), to,
                                     node.evidenceCondition(), node.alternativeEdges(),
-                                    node.populationOperation(), node.repeatUntilStable())
+                                    node.populationOperation(), node.repeatUntilStable(),
+                                    node.admissionPopulationSelection())
                             : node)
                     .toList());
         }
@@ -661,6 +662,14 @@ public class GeneratedProjectModel {
                 graph.startNode(new GraphDiscoveryConfiguration.StartNode(
                         "", next, graph.startNode().use()));
             }
+            graph.nextNodes(graph.nextNodes().stream().map(node ->
+                    node.admissionPopulationSelection().equalsIgnoreCase(previous)
+                            ? new GraphDiscoveryConfiguration.NextNode(
+                                    node.property(), node.directionFromPrevious(), node.use(),
+                                    node.populationClass(), node.evidenceCondition(),
+                                    node.alternativeEdges(), node.populationOperation(),
+                                    node.repeatUntilStable(), next)
+                            : node).toList());
         }
         return true;
     }
@@ -680,6 +689,8 @@ public class GeneratedProjectModel {
             if (graph != null && graph.startNode() != null
                     && graph.startNode().populationSelection()
                             .equalsIgnoreCase(name)) return true;
+            if (graph != null && graph.nextNodes().stream().anyMatch(node ->
+                    node.admissionPopulationSelection().equalsIgnoreCase(name))) return true;
         }
         boolean fieldsPointHere = fieldTargetsResolveToSelection(name);
         for (GeneratedClassModel clazz : classes) {

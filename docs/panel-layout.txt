@@ -355,14 +355,84 @@
     button: Add alternative edge
     list
     button: Remove selected alternative edge
-  box: Next node
-    label: Graph output:
-    label: Instances of one configured class
+  box: Next nodes
+    label: Path after the start node
+    list
+    button: Add node to path
+    button: New node
+    button: Remove selected node
+    label: Use reached entities as:
+    combo: 2 item(s)
     label: Output class:
+    combo: 1 item(s)
+    label: Admit and expand:
     combo: 1 item(s)
     label: Apply result:
     combo: 2 item(s)
     check: Repeat until no new instances are found
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 1 item(s)  (disabled)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: Every field is part of the key, so nothing is combined.
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 1 item(s)
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph class evidence - GraphConstraintsPanel ==
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
+  box: Start node
+    label: Start with:
+    combo: 1 item(s)
+    label: Usable Wikidata QIDs:
+    label: 0 QIDs
+    label: Use these entities as:
+    combo: 2 item(s)
+    label: A saved population selection is an exact reusable QID set.
+  box: Incoming edge of next node
+    label: ── property out ──▶
+    label: Property:
+    text: []
+    label: Direction from previous node:
+    combo: 2 item(s)
+    label: Equivalent alternative edges (optional; each is followed too)
+    label: Property:
+    text: []
+    combo: 2 item(s)
+    button: Add alternative edge
+    list
+    button: Remove selected alternative edge
+  box: Next nodes
+    label: Path after the start node
+    list
+    button: Add node to path
+    button: New node
+    button: Remove selected node
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
     text: []
@@ -383,7 +453,7 @@
     list
     button: Edit selected evidence test
     button: Remove selected evidence test
-    label: Review candidates in output class:
+    label: When evidence is incomplete:
     combo: 2 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.

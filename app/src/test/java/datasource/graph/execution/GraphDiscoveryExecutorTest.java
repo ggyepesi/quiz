@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -217,6 +219,100 @@ class GraphDiscoveryExecutorTest {
                 acquiredWith(GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT));
         assertEquals(List.of(SUBCLASS, JURISDICTION, DISSOLVED),
                 acquiredWith(GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT));
+    }
+
+    @Test void nodesOutsideAnAdmissionPopulationAreReportedButNeverExpanded()
+            throws Exception {
+        EntityRef root = entity("Q1");
+        EntityRef admitted = entity("Q2");
+        EntityRef boundary = entity("Q3");
+        EntityRef reachedThroughAdmitted = entity("Q4");
+        EntityRef wouldHaveLeakedThroughBoundary = entity("Q5");
+        GraphRelation firstRelation = relation("P39");
+        var bounded = new GraphDiscoveryConfiguration.NextNode(firstRelation,
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                "Position", null, List.of(),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, true,
+                "PositionWithHoldersPopulation");
+
+        var result = GraphDiscoveryExecutor.execute(new InMemoryGraphStore(),
+                graph(List.of(bounded)), List.of(root), (store, demand) -> {
+                    if (demand.relation().equals(firstRelation)) {
+                        store.addEdges(List.of(
+                                new GraphEdge(root, firstRelation, admitted, "admitted"),
+                                new GraphEdge(root, firstRelation, boundary, "boundary"),
+                                new GraphEdge(admitted, firstRelation,
+                                        reachedThroughAdmitted, "continued"),
+                                new GraphEdge(boundary, firstRelation,
+                                        wouldHaveLeakedThroughBoundary, "leak")));
+                    }
+                    store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+                }, Map.of(1, Set.of(admitted, reachedThroughAdmitted)));
+
+        GraphDiscoveryExecutor.NodeResult first = result.nodes().getFirst();
+        assertEquals(List.of(admitted, reachedThroughAdmitted), first.accepted());
+        assertEquals(List.of(boundary), first.rejected());
+        assertEquals("Population PositionWithHoldersPopulation",
+                first.classifications().getFirst().conditionName());
+        assertEquals("Not in PositionWithHoldersPopulation",
+                first.classifications().getFirst().reason());
+        assertEquals(List.of(admitted, boundary, reachedThroughAdmitted), first.reached(),
+                "the rejected boundary remains visible but its outgoing edge is never followed");
+    }
+
+    @Test void aConfiguredAdmissionPopulationMustBeResolvedBeforeExecution() {
+        var bounded = new GraphDiscoveryConfiguration.NextNode(SUBCLASS,
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                "Position", null, List.of(),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                "PositionWithHoldersPopulation");
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> GraphDiscoveryExecutor.execute(new InMemoryGraphStore(),
+                        graph(List.of(bounded)), List.of(entity("Q1")),
+                        (store, demand) -> store.markCoverage(
+                                demand, GraphAdjacencyCoverage.COMPLETE)));
+
+        assertEquals("Admission population \"PositionWithHoldersPopulation\" "
+                + "was not resolved for graph node 1", failure.getMessage());
+    }
+
+    @Test void theFirstPositionOutsideThePopulationIsKeptAsTheBoundaryPosition()
+            throws Exception {
+        EntityRef startingPosition = entity("Q1");
+        EntityRef holder = entity("Q2");
+        EntityRef admittedPosition = entity("Q3");
+        EntityRef boundaryPosition = entity("Q4");
+        GraphRelation officeHeld = relation("P39");
+        var holders = new GraphDiscoveryConfiguration.NextNode(officeHeld,
+                GraphTraversalDirection.INCOMING,
+                GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY, "", null);
+        var positions = new GraphDiscoveryConfiguration.NextNode(officeHeld,
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                "Position", null, List.of(),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                "PositionWithHoldersPopulation");
+
+        var result = GraphDiscoveryExecutor.execute(new InMemoryGraphStore(),
+                graph(List.of(holders, positions)), List.of(startingPosition),
+                (store, demand) -> {
+                    store.addEdges(List.of(
+                            new GraphEdge(holder, officeHeld, startingPosition, "held-start"),
+                            new GraphEdge(holder, officeHeld, admittedPosition, "held-admitted"),
+                            new GraphEdge(holder, officeHeld, boundaryPosition, "held-boundary")));
+                    store.markCoverage(demand, GraphAdjacencyCoverage.COMPLETE);
+                }, Map.of(2, Set.of(admittedPosition)));
+
+        assertEquals(List.of(holder), result.nodes().getFirst().accepted());
+        assertEquals(List.of(admittedPosition), result.nodes().getLast().accepted());
+        assertEquals(List.of(startingPosition, boundaryPosition),
+                result.nodes().getLast().rejected(),
+                "every reached position outside the population remains a boundary result");
+        assertEquals("Not in PositionWithHoldersPopulation",
+                result.nodes().getLast().classifications().getFirst().reason());
     }
 
     private static List<GraphRelation> acquiredWith(

@@ -1,5 +1,8 @@
 package wikidata.explore.model;
 
+import datasource.graph.GraphDiscoveryConfiguration;
+import datasource.graph.GraphRelation;
+import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -76,6 +79,33 @@ class ImportedPopulationInputsTest {
         history.addSelection(second);
 
         assertEquals(List.of("Q1", "Q2", "Q3"),
+                ImportedPopulationInputs.of(history).qidsFor("Position"));
+    }
+
+    @Test void aPopulationBoundingAGraphExpansionCrossesTheImportBoundary() {
+        GeneratedProjectModel history = new GeneratedProjectModel();
+        history.rootClass(new GeneratedClassModel("Person"));
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.importedFrom("Historical Positions");
+        history.addClass(position);
+        PopulationSelection population = population(
+                "PositionsWithHolders", "Position", "Q2", "Q4");
+        population.importedFrom("Historical Positions");
+        history.addSelection(population);
+        GeneratedClassModel graph = new GeneratedClassModel("PositionExpansion");
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P39"),
+                        GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, List.of(),
+                        GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                        "PositionsWithHolders"))));
+        history.addClass(graph);
+
+        assertEquals(List.of("Q2", "Q4"),
                 ImportedPopulationInputs.of(history).qidsFor("Position"));
     }
 

@@ -16,6 +16,8 @@ import datasource.graph.store.LocalGraphStore;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Runs an authored linear graph by scheduling the existing local graph waves. */
 public final class GraphDiscoveryExecutor {
@@ -57,6 +59,17 @@ public final class GraphDiscoveryExecutor {
             GraphDiscoveryConfiguration configuration,
             List<EntityRef> start,
             GraphAdjacencyAcquirer acquirer) throws Exception {
+        return execute(store, configuration, start, acquirer, Map.of());
+    }
+
+    /** Runs the graph with exact per-node admission populations. Reached nodes outside
+     *  one are retained as rejected boundary results but never become the next frontier. */
+    public static Result execute(
+            LocalGraphStore store,
+            GraphDiscoveryConfiguration configuration,
+            List<EntityRef> start,
+            GraphAdjacencyAcquirer acquirer,
+            Map<Integer, Set<EntityRef>> admissionPopulations) throws Exception {
         if (store == null || configuration == null || acquirer == null) {
             throw new IllegalArgumentException(
                     "Store, graph configuration and adjacency acquirer are required");
@@ -68,6 +81,13 @@ public final class GraphDiscoveryExecutor {
         int index = 0;
         for (GraphDiscoveryConfiguration.NextNode node : configuration.nextNodes()) {
             index++;
+            Set<EntityRef> admitted = admissionPopulations == null ? null
+                    : admissionPopulations.get(index);
+            String admissionName = node.admissionPopulationSelection();
+            if (!admissionName.isBlank() && admitted == null) {
+                throw new IllegalArgumentException("Admission population \""
+                        + admissionName + "\" was not resolved for graph node " + index);
+            }
             GraphTraversalStep step = step(configuration, node, index);
             List<EntityRef> reachedAll = new ArrayList<>();
             // Distinct: one wave asks every alternative edge, and a repeat asks them
@@ -97,7 +117,8 @@ public final class GraphDiscoveryExecutor {
                 }
                 reachedWave.removeAll(seen);
                 reachedAll.addAll(reachedWave); seen.addAll(reachedWave);
-                waveFrontier = List.copyOf(reachedWave);
+                waveFrontier = admitted == null ? List.copyOf(reachedWave)
+                        : reachedWave.stream().filter(admitted::contains).toList();
             } while (node.repeatUntilStable() && !waveFrontier.isEmpty());
 
             List<EntityRef> accepted = new ArrayList<>();
@@ -105,11 +126,30 @@ public final class GraphDiscoveryExecutor {
             List<EntityRef> review = new ArrayList<>();
             List<GraphEvidenceConditionResult> classifications = new ArrayList<>();
             GraphEvidenceCondition condition = node.evidenceCondition();
-            if (condition == null) {
-                accepted.addAll(reachedAll);
-            } else {
-                acquireEvidence(store, acquirer, reachedAll, condition);
+            List<EntityRef> eligible = new ArrayList<>(reachedAll);
+            if (admitted != null) {
+                eligible.clear();
                 for (EntityRef reached : reachedAll) {
+                    if (admitted.contains(reached)) {
+                        eligible.add(reached);
+                    } else {
+                        rejected.add(reached);
+                        classifications.add(populationClassification(reached, admissionName,
+                                GraphEvidenceConditionResult.Decision.REJECTED));
+                    }
+                }
+            }
+            if (condition == null && admitted == null) {
+                accepted.addAll(reachedAll);
+            } else if (condition == null) {
+                for (EntityRef reached : eligible) {
+                    accepted.add(reached);
+                    classifications.add(populationClassification(reached, admissionName,
+                            GraphEvidenceConditionResult.Decision.ACCEPTED));
+                }
+            } else {
+                acquireEvidence(store, acquirer, eligible, condition);
+                for (EntityRef reached : eligible) {
                     GraphEvidenceConditionResult classified =
                             GraphEvidenceConditions.evaluate(store, condition, reached);
                     classifications.add(classified);
@@ -129,6 +169,18 @@ public final class GraphDiscoveryExecutor {
                             .map(GraphEvidenceConditionResult::node).distinct().toList();
         }
         return new Result(initial, results);
+    }
+
+    private static GraphEvidenceConditionResult populationClassification(
+            EntityRef node, String population,
+            GraphEvidenceConditionResult.Decision decision) {
+        String name = population == null ? "" : population.trim();
+        return new GraphEvidenceConditionResult(decision, node,
+                "Population " + name,
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT,
+                List.of(), List.of(), List.of(), List.of(),
+                decision == GraphEvidenceConditionResult.Decision.REJECTED
+                        ? "Not in " + name : "");
     }
 
     /** Every relation this run could ask for: each edge, and each node's evidence

@@ -50,11 +50,19 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
             GraphEvidenceCondition evidenceCondition,
             List<Edge> alternativeEdges,
             PopulationOperation populationOperation,
-            boolean repeatUntilStable) {
+            boolean repeatUntilStable,
+            String admissionPopulationSelection) {
         public NextNode(GraphRelation property, GraphTraversalDirection directionFromPrevious,
                 NodeUse use, String populationClass, GraphEvidenceCondition evidenceCondition) {
             this(property, directionFromPrevious, use, populationClass, evidenceCondition,
-                    List.of(), PopulationOperation.NARROW, false);
+                    List.of(), PopulationOperation.NARROW, false, "");
+        }
+        public NextNode(GraphRelation property, GraphTraversalDirection directionFromPrevious,
+                NodeUse use, String populationClass, GraphEvidenceCondition evidenceCondition,
+                List<Edge> alternativeEdges, PopulationOperation populationOperation,
+                boolean repeatUntilStable) {
+            this(property, directionFromPrevious, use, populationClass, evidenceCondition,
+                    alternativeEdges, populationOperation, repeatUntilStable, "");
         }
         public NextNode {
             if (property == null) throw new IllegalArgumentException("Edge property is required");
@@ -72,6 +80,8 @@ public record GraphDiscoveryConfiguration(String name, StartNode startNode, List
                     : alternativeEdges.stream().filter(java.util.Objects::nonNull).toList();
             populationOperation = populationOperation == null
                     ? PopulationOperation.NARROW : populationOperation;
+            admissionPopulationSelection = admissionPopulationSelection == null
+                    ? "" : admissionPopulationSelection.trim();
         }
         public List<Edge> edges() {
             java.util.ArrayList<Edge> result = new java.util.ArrayList<>();

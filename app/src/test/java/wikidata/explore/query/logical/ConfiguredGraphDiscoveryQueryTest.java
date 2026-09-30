@@ -144,6 +144,61 @@ class ConfiguredGraphDiscoveryQueryTest {
         assertEquals("PositionsForHistory", query.parameters().get("populationSelection"));
     }
 
+    @Test void aSavedPopulationBoundsWhichReachedNodesMayAdvance() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection selected = new PopulationSelection("PositionsForHistory");
+        selected.className("Position");
+        selected.instanceQids(List.of("Q2"));
+        model.addSelection(selected);
+        var bounded = new GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation("wikidata", "P39"),
+                GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                "Position", null, List.of(),
+                GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                "PositionsForHistory");
+        GeneratedClassModel graphClass = graphClass(model, "PositionGraph",
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(bounded));
+        WikidataApiClient api = new WikidataApiClient("test") {
+            @Override public PartialStatements getStatementsByPropertyPartial(
+                    List<String> qids, List<String> pids, BatchLog log,
+                    StatementBatchCommitter committer) throws Exception {
+                Map<String, Map<String, List<ApiStatement>>> statements = Map.of(
+                        "P39", Map.of("Q1", List.of(
+                                new ApiStatement("Q1$P39-1", "Q2", Map.of()),
+                                new ApiStatement("Q1$P39-2", "Q3", Map.of()))));
+                committer.commit(qids, statements);
+                return new PartialStatements(statements, 0, List.of());
+            }
+            @Override public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> pids,
+                    java.util.Collection<wikidata.api.FactDemand.EntityMetadata> metadata,
+                    BatchLog log) {
+                return new PartialEntities(Map.of(), 0, List.of());
+            }
+            @Override public Map<String, ApiEntity> getEntities(
+                    List<String> qids, List<String> pids,
+                    java.util.Collection<wikidata.api.FactDemand.EntityMetadata> metadata,
+                    BatchLog log) {
+                return Map.of();
+            }
+        };
+
+        var result = new ConfiguredGraphDiscoveryQuery(model, graphClass,
+                List.of(instance("Q1", "Position"))).execute(
+                WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind());
+
+        assertEquals(List.of("Q2"), result.graph().nodes().getFirst().accepted()
+                .stream().map(datasource.EntityRef::id).toList());
+        assertEquals(List.of("Q3"), result.graph().nodes().getFirst().rejected()
+                .stream().map(datasource.EntityRef::id).toList());
+        assertEquals("Not in PositionsForHistory",
+                result.graph().nodes().getFirst().classifications().getFirst().reason());
+    }
+
     /** A graph is declared by a class of kind GRAPH; the project no longer holds one. */
     private static GeneratedClassModel graphClass(GeneratedProjectModel model, String name,
             GraphDiscoveryConfiguration.StartNode start,

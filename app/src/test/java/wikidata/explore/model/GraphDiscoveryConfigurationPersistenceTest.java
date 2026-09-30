@@ -97,6 +97,36 @@ class GraphDiscoveryConfigurationPersistenceTest {
         assertEquals(GraphRelationReachesUnder.DEFAULT_MAXIMUM_DEPTH, under.maximumDepth());
     }
 
+    @Test void aNodeAdmissionPopulationSurvivesBeingSavedAndReloaded() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("History");
+        project.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection population = new PopulationSelection("PositionsForHistory");
+        population.className("Position");
+        population.instanceQids(List.of("Q1"));
+        project.addSelection(population);
+        GeneratedClassModel graph = new GeneratedClassModel("PositionExpansion");
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P39"),
+                        GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, List.of(),
+                        GraphDiscoveryConfiguration.PopulationOperation.ADD, false,
+                        "PositionsForHistory"))));
+        project.addClass(graph);
+
+        Path file = temp.resolve("bounded.model.json");
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        store.save(project, file.toFile());
+        GeneratedProjectModel loaded = store.load(file.toFile());
+
+        assertEquals("PositionsForHistory", loaded.findClass("PositionExpansion")
+                .graphSource().nextNodes().getFirst().admissionPopulationSelection());
+    }
+
     @Test void projectCopyCarriesTheAuthoredGraph() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.addClass(graphClass(project, "PositionValidity"));

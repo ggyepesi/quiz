@@ -47,6 +47,13 @@ public final class ImportedPopulationInputs {
                     && !graph.startNode().populationSelection().isBlank()) {
                 referencedSelections.add(graph.startNode().populationSelection());
             }
+            if (graph != null) {
+                graph.nextNodes().stream()
+                        .map(datasource.graph.GraphDiscoveryConfiguration.NextNode
+                                ::admissionPopulationSelection)
+                        .filter(name -> !name.isBlank())
+                        .forEach(referencedSelections::add);
+            }
         }
 
         Map<String, LinkedHashSet<String>> qids = new LinkedHashMap<>();

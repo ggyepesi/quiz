@@ -16,6 +16,7 @@ import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.TitledBorder;
@@ -91,6 +92,9 @@ class PanelLayoutIsCheckedInTest {
         GraphConstraintsPanel graph = new GraphConstraintsPanel(graphProject);
         graph.edit(relevance);
         describe(actual, "Graph class - GraphConstraintsPanel", graph);
+        JTabbedPane graphDetails = find(graph, JTabbedPane.class);
+        graphDetails.setSelectedIndex(1);
+        describe(actual, "Graph class evidence - GraphConstraintsPanel", graph);
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
@@ -173,6 +177,17 @@ class PanelLayoutIsCheckedInTest {
         if (widget.getBorder() instanceof TitledBorder titled) {
             String title = plain(titled.getTitle());
             return title.isBlank() ? null : title;
+        }
+        return null;
+    }
+
+    private static <T extends Component> T find(Container root, Class<T> type) {
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) return type.cast(child);
+            if (child instanceof Container nested) {
+                T found = find(nested, type);
+                if (found != null) return found;
+            }
         }
         return null;
     }

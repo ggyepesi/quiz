@@ -352,6 +352,14 @@ final class GraphDiscoveryResultStore {
             record.merge("Reached as", node.traversal().targetNodeClass());
             if (node.incomplete().contains(entity)) record.merge("Adjacency", "Incomplete");
             if (node.unavailable().contains(entity)) record.merge("Adjacency", "Unavailable");
+            List<String> traversalWitnesses = node.edges().stream()
+                    .filter(edge -> entity.equals(edge.source())
+                            || edge.target() instanceof EntityRef target && entity.equals(target))
+                    .map(edge -> traversalWitness(result, edge))
+                    .distinct().toList();
+            if (!traversalWitnesses.isEmpty()) {
+                record.put("Traversal witnesses", traversalWitnesses);
+            }
         }
         if (classification != null) {
             record.put("Review disposition",
@@ -369,6 +377,16 @@ final class GraphDiscoveryResultStore {
             record.put("Witnesses", classification.witnesses().size());
             record.put("Evidence observations", classification.coverage().size());
         }
+    }
+
+    private static String traversalWitness(
+            ConfiguredGraphDiscoveryQuery.Result result,
+            datasource.graph.store.GraphEdge edge) {
+        String source = result.label(edge.source()) + " (" + edge.source().id() + ")";
+        String target = edge.target() instanceof EntityRef entity
+                ? result.label(entity) + " (" + entity.id() + ")"
+                : String.valueOf(edge.target());
+        return source + " —" + edge.relation().relationId() + "→ " + target;
     }
 
     static void manualDecision(WikidataDynamicObject annotation, String decision) {

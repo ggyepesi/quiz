@@ -152,6 +152,26 @@ public final class GeneratedProjectModelValidator {
             problems.add(Problem.error(graphClass.className(),
                     "Graph output class '" + output + "' does not exist."));
         }
+        long outputNodes = graph.nextNodes().stream()
+                .filter(node -> node.use()
+                        == datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
+                .count();
+        if (!graph.nextNodes().isEmpty()
+                && (outputNodes != 1 || graph.nextNodes().getLast().use()
+                        != datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)) {
+            problems.add(Problem.error(graphClass.className(),
+                    "Graph requires one output class on its last node; earlier nodes "
+                            + "must be Intermediate only."));
+        }
+        for (int index = 0; index < graph.nextNodes().size(); index++) {
+            String population = graph.nextNodes().get(index).admissionPopulationSelection();
+            if (!population.isBlank()
+                    && !(project.findSelection(population) instanceof PopulationSelection)) {
+                problems.add(Problem.error(graphClass.className(),
+                        "Graph node " + (index + 1) + " admission population selection '"
+                                + population + "' does not exist."));
+            }
+        }
     }
 
     private static void validateAggregateClass(GeneratedProjectModel project,

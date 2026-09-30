@@ -224,7 +224,8 @@ construct per thing produced:
    annotation file and the name shown in the editor are one fact, and `declarationId`
    underneath it is what a rename does not move. **A project may declare several**, because a
    domain needs more than one discovery rule — one narrowing the offices worth asking about,
-   another reaching their holders. Its terminal node produces instances of exactly one
+   another reaching their holders. Its ordered next-node path is authored and shown whole;
+   earlier nodes are intermediate and its terminal node produces instances of exactly one
    configured class, which is never itself or another graph class. The annotation instances
    reference those candidates and the candidates carry a hidden reverse reference, so
    ObjectView/MultiInstance renders one connected object graph. Result tabs keep the graph's
@@ -248,8 +249,12 @@ construct per thing produced:
    reached generated instances with the output class; it never substitutes candidate
    shells. A replacement-chain expansion may declare equivalent directed edge alternatives
    (for example outgoing `replaces` and incoming `replaced by`) and repeat them until no new
-   identities are reached. This is a separate named graph rule, not another meaning hidden
-   inside the original population-discovery constraint.
+   identities are reached. A next node may name a `PopulationSelection` as its admission
+   boundary: reached identities outside it remain Rejected annotations with the population
+   failure and traversal witness, but are never expanded, including during a repeated closure.
+   The selection is an ordinary referenced/importable population, not a graph-owned QID list.
+   This is a separate named graph rule, not another meaning hidden inside the original
+   population-discovery constraint.
 
    *(This supersedes the earlier rule that a graph constraint carries its own authored name.
    That name was at once the identity of its annotation set and a free-text field an editor

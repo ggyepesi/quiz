@@ -107,7 +107,12 @@ final class GraphConstraintsPanel extends JPanel {
             new JList<>(alternativeModel);
     private final JLabel arrowLabel = new JLabel("── property out ──▶", SwingConstants.CENTER);
     private final JComboBox<GraphDiscoveryConfiguration.NodeUse> targetUseBox = useBox();
+    private final DefaultListModel<GraphDiscoveryConfiguration.NextNode> nodesModel =
+            new DefaultListModel<>();
+    private final JList<GraphDiscoveryConfiguration.NextNode> nodesList =
+            new JList<>(nodesModel);
     private final JComboBox<GeneratedClassModel> targetClassBox = new JComboBox<>();
+    private final JComboBox<String> admissionPopulationBox = new JComboBox<>();
     private final JComboBox<GraphDiscoveryConfiguration.PopulationOperation> populationOperationBox =
             new JComboBox<>(GraphDiscoveryConfiguration.PopulationOperation.values());
     private final JCheckBox repeatUntilStable = new JCheckBox("Repeat until no new instances are found");
@@ -154,6 +159,15 @@ final class GraphConstraintsPanel extends JPanel {
                 setText(value == GraphDiscoveryConfiguration.PopulationOperation.ADD
                         ? "Add accepted instances to output class"
                         : "Keep only accepted instances in output class");
+                return this;
+            }
+        });
+        admissionPopulationBox.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                setText(value == null || String.valueOf(value).isBlank()
+                        ? "Any reached entity" : "Members of " + value);
                 return this;
             }
         });
@@ -418,7 +432,11 @@ final class GraphConstraintsPanel extends JPanel {
             if (saved != null) {
                 selectStart(saved.startNode());
                 startUseBox.setSelectedItem(saved.startNode().use());
-                if (!saved.nextNodes().isEmpty()) load(saved.nextNodes().getFirst());
+                replace(nodesModel, saved.nextNodes());
+                if (!saved.nextNodes().isEmpty()) {
+                    nodesList.setSelectedIndex(0);
+                    load(saved.nextNodes().getFirst());
+                }
             }
             refreshTargetState();
             refreshArrow();
@@ -437,6 +455,12 @@ final class GraphConstraintsPanel extends JPanel {
     /** An editor instance serves every graph class. Each selection starts from that
      * class's saved source, never from the controls left by the previously selected one. */
     private void clearDraftControls() {
+        nodesModel.clear();
+        clearNodeControls();
+    }
+
+    private void clearNodeControls() {
+        nodesList.clearSelection();
         edgePidField.setText("");
         directionBox.setSelectedItem(DirectionChoice.OUT);
         alternativePidField.setText("");
@@ -444,6 +468,7 @@ final class GraphConstraintsPanel extends JPanel {
         alternativeModel.clear();
         populationOperationBox.setSelectedItem(
                 GraphDiscoveryConfiguration.PopulationOperation.NARROW);
+        admissionPopulationBox.setSelectedItem("");
         repeatUntilStable.setSelected(false);
         evidenceModel.clear();
         testsModel.clear();
@@ -453,6 +478,7 @@ final class GraphConstraintsPanel extends JPanel {
         testViaField.setText("");
         reviewBox.setSelectedItem(
                 GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT);
+        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         if (targetClassBox.getItemCount() > 0) targetClassBox.setSelectedIndex(0);
     }
 
@@ -504,6 +530,7 @@ final class GraphConstraintsPanel extends JPanel {
         // exists, a flush keeps it up to date like any other editor.
         if (clazz == null) return;
         if (clazz.graphSource() == null
+                && nodesModel.isEmpty()
                 && !WikidataIds.isPid(cleanPid(edgePidField.getText()))) {
             return;
         }
@@ -537,7 +564,8 @@ final class GraphConstraintsPanel extends JPanel {
             // start class, pressing Apply and saving still came back as the first class
             // in the list. An edgeless graph traverses nothing, so Run stays disabled
             // and the status says what the graph still needs.
-            if (pid.isEmpty() && evidenceModel.isEmpty() && testsModel.isEmpty()) {
+            if (pid.isEmpty() && nodesModel.isEmpty()
+                    && evidenceModel.isEmpty() && testsModel.isEmpty()) {
                 GraphClassSource replacement = new GraphClassSource(
                         new GraphDiscoveryConfiguration.StartNode(
                                 start.population() ? "" : start.className(),
@@ -553,33 +581,23 @@ final class GraphConstraintsPanel extends JPanel {
                 afterChange.accept(null);
                 return;
             }
-            if (!WikidataIds.isPid(pid)) {
-                throw new IllegalArgumentException("Choose the property connecting the two nodes");
+            if (!pid.isEmpty()) upsertEditedNode(buildEditedNode());
+            if (nodesModel.isEmpty()) {
+                throw new IllegalArgumentException("Add at least one next node to the path");
             }
-            if (evidenceModel.isEmpty() != testsModel.isEmpty()) {
+            List<GraphDiscoveryConfiguration.NextNode> nodes = elements(nodesModel);
+            long outputs = nodes.stream().filter(node -> node.use()
+                    == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION).count();
+            if (outputs != 1 || nodes.getLast().use()
+                    != GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION) {
                 throw new IllegalArgumentException(
-                        "Add both an evidence relation and an evidence test, or leave both empty");
+                        "The last node must be the graph's single output class; earlier nodes are Intermediate only");
             }
-            GraphEvidenceCondition evidence = evidenceModel.isEmpty() ? null
-                    : new GraphEvidenceCondition("Node evidence", elements(evidenceModel),
-                            elements(testsModel), reviewDisposition());
-            GeneratedClassModel targetClass = selectedClass(targetClassBox);
-            if (targetClass == null) {
-                throw new IllegalArgumentException(
-                        "Choose the single output class produced by this graph constraint");
-            }
-            var target = new GraphDiscoveryConfiguration.NextNode(
-                    new GraphRelation(PROVIDER, pid), direction().direction,
-                    GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
-                    targetClass.className(),
-                    evidence, alternativeEdges(),
-                    (GraphDiscoveryConfiguration.PopulationOperation) populationOperationBox.getSelectedItem(),
-                    repeatUntilStable.isSelected());
             GraphClassSource replacement = new GraphClassSource(
                     new GraphDiscoveryConfiguration.StartNode(
                             start.population() ? "" : start.className(),
                             start.populationName(), use(startUseBox)),
-                    List.of(target));
+                    nodes);
             boolean changed = !java.util.Objects.equals(clazz.graphSource(), replacement);
             clazz.graphSource(replacement);
             if (changed) clearCompletedPopulation();
@@ -593,6 +611,7 @@ final class GraphConstraintsPanel extends JPanel {
         startInputBox.setName("graph.startInput");
         startUseBox.setName("graph.startUse");
         startQids.setName("graph.startQids");
+        nodesList.setName("graph.nodes");
         edgePidField.setName("graph.edgeProperty");
         alternativePidField.setName("graph.alternativeProperty");
         alternativeDirectionBox.setName("graph.alternativeDirection");
@@ -601,6 +620,7 @@ final class GraphConstraintsPanel extends JPanel {
         arrowLabel.setName("graph.edgeLabel");
         targetUseBox.setName("graph.targetUse");
         targetClassBox.setName("graph.targetClass");
+        admissionPopulationBox.setName("graph.admissionPopulation");
         evidencePidField.setName("graph.evidenceProperty");
         evidenceDirectionBox.setName("graph.evidenceDirection");
         testPidField.setName("graph.testProperty");
@@ -615,7 +635,6 @@ final class GraphConstraintsPanel extends JPanel {
         testsList.setName("graph.testsList");
         status.setName("graph.status");
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
-        targetUseBox.setEnabled(false);
 
         JPanel chain = new JPanel();
         chain.setLayout(new BoxLayout(chain, BoxLayout.X_AXIS));
@@ -662,9 +681,7 @@ final class GraphConstraintsPanel extends JPanel {
         testKindBox.addActionListener(e -> refreshTestQidState());
         apply.addActionListener(e -> applyEdits());
         clear.addActionListener(e -> {
-            evidenceModel.clear();
-            testsModel.clear();
-            edgePidField.setText("");
+            clearDraftControls();
             // Clearing the DRAFT says nothing about the saved graph. It used to point at
             // Apply as the way to remove one, which is how a blank draft came to mean
             // "delete" — the act now has its own button and its own name.
@@ -706,44 +723,74 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private JPanel nextNodePanel() {
-        JPanel panel = nodePanel("Next node");
-        addLine(panel, "Graph output:", new JLabel("Instances of one configured class"));
-        addLine(panel, "Output class:", targetClassBox);
-        addLine(panel, "Apply result:", populationOperationBox);
-        panel.add(repeatUntilStable);
-        panel.add(new JLabel("Evidence relations from this node (one or more may reach evidence)"));
+        JPanel panel = nodePanel("Next nodes");
+        nodesList.setVisibleRowCount(3);
+        nodesList.setCellRenderer(nodeRenderer());
+        nodesList.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting() && nodesList.getSelectedValue() != null) {
+                load(nodesList.getSelectedValue());
+            }
+        });
+        panel.add(new JLabel("Path after the start node"));
+        panel.add(new JScrollPane(nodesList));
+        JPanel nodeActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
+        JButton addNode = new JButton("Add node to path");
+        addNode.addActionListener(event -> addEditedNode());
+        JButton newNode = new JButton("New node");
+        newNode.addActionListener(event -> clearNodeControls());
+        JButton removeNode = new JButton("Remove selected node");
+        removeNode.addActionListener(event -> removeSelectedNode());
+        nodeActions.add(addNode); nodeActions.add(newNode); nodeActions.add(removeNode);
+        panel.add(nodeActions);
+
+        JTabbedPane details = new JTabbedPane();
+        JPanel nodePanel = new JPanel();
+        nodePanel.setLayout(new BoxLayout(nodePanel, BoxLayout.Y_AXIS));
+        addLine(nodePanel, "Use reached entities as:", targetUseBox);
+        addLine(nodePanel, "Output class:", targetClassBox);
+        addLine(nodePanel, "Admit and expand:", admissionPopulationBox);
+        addLine(nodePanel, "Apply result:", populationOperationBox);
+        nodePanel.add(repeatUntilStable);
+        details.addTab("Node", nodePanel);
+
+        JPanel evidencePanel = new JPanel();
+        evidencePanel.setLayout(new BoxLayout(evidencePanel, BoxLayout.Y_AXIS));
+        evidencePanel.add(new JLabel(
+                "Evidence relations from this node (one or more may reach evidence)"));
         JPanel evidenceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         evidenceRow.add(new JLabel("Property:")); evidenceRow.add(evidencePidField);
         evidenceRow.add(evidenceDirectionBox);
         JButton addEvidence = new JButton("Add evidence relation");
-        evidenceRow.add(addEvidence); panel.add(evidenceRow);
-        evidenceList.setVisibleRowCount(2);
+        evidenceRow.add(addEvidence); evidencePanel.add(evidenceRow);
+        evidenceList.setVisibleRowCount(3);
         evidenceList.setCellRenderer(pathRenderer());
-        panel.add(new JScrollPane(evidenceList));
+        evidencePanel.add(new JScrollPane(evidenceList));
         JButton removeEvidence = new JButton("Remove selected evidence relation");
         removeEvidence.addActionListener(e -> removeSelected(evidenceList, evidenceModel));
         JButton editEvidence = new JButton("Edit selected evidence relation");
         editEvidence.addActionListener(e -> editSelectedEvidence());
-        panel.add(editEvidence);
-        panel.add(removeEvidence);
+        evidencePanel.add(editEvidence);
+        evidencePanel.add(removeEvidence);
 
-        panel.add(new JLabel("Tests on reached evidence entities (one or more may match)"));
+        evidencePanel.add(new JLabel("Tests on reached evidence entities (one or more may match)"));
         JPanel testRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         testRow.add(new JLabel("Property:")); testRow.add(testPidField);
         testRow.add(testDirectionBox); testRow.add(testKindBox); testRow.add(testQidField);
         testRow.add(new JLabel("via")); testRow.add(testViaField);
         JButton addTest = new JButton("Add evidence test"); testRow.add(addTest);
-        panel.add(testRow);
-        testsList.setVisibleRowCount(2);
+        evidencePanel.add(testRow);
+        testsList.setVisibleRowCount(3);
         testsList.setCellRenderer(conditionRenderer());
-        panel.add(new JScrollPane(testsList));
+        evidencePanel.add(new JScrollPane(testsList));
         JButton removeTest = new JButton("Remove selected evidence test");
         removeTest.addActionListener(e -> removeSelected(testsList, testsModel));
         JButton editTest = new JButton("Edit selected evidence test");
         editTest.addActionListener(e -> editSelectedTest());
-        panel.add(editTest);
-        panel.add(removeTest);
-        addLine(panel, "Review candidates in output class:", reviewBox);
+        evidencePanel.add(editTest);
+        evidencePanel.add(removeTest);
+        addLine(evidencePanel, "When evidence is incomplete:", reviewBox);
+        details.addTab("Evidence", evidencePanel);
+        panel.add(details);
         addEvidence.addActionListener(e -> addEvidencePath());
         addTest.addActionListener(e -> addTest());
         return panel;
@@ -776,6 +823,15 @@ final class GraphConstraintsPanel extends JPanel {
             if (candidate.classKind() == ClassKind.GRAPH) continue;
             targetClassBox.addItem(candidate);
         }
+        String keep = selectedAdmissionPopulation();
+        admissionPopulationBox.removeAllItems();
+        admissionPopulationBox.addItem("");
+        for (Selection selection : model.selections()) {
+            if (selection instanceof PopulationSelection) {
+                admissionPopulationBox.addItem(selection.name());
+            }
+        }
+        admissionPopulationBox.setSelectedItem(keep);
     }
 
     private void refreshStartInputs() {
@@ -843,7 +899,10 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void refreshTargetState() {
-        targetClassBox.setEnabled(true);
+        boolean output = targetUseBox.getSelectedItem()
+                == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION;
+        targetClassBox.setEnabled(output);
+        populationOperationBox.setEnabled(output);
     }
 
     private void refreshArrow() {
@@ -957,7 +1016,8 @@ final class GraphConstraintsPanel extends JPanel {
         replace(alternativeModel, node.alternativeEdges());
         populationOperationBox.setSelectedItem(node.populationOperation());
         repeatUntilStable.setSelected(node.repeatUntilStable());
-        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
+        admissionPopulationBox.setSelectedItem(node.admissionPopulationSelection());
+        targetUseBox.setSelectedItem(node.use());
         selectClass(targetClassBox, node.populationClass());
         GraphEvidenceCondition evidence = node.evidenceCondition();
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
@@ -965,6 +1025,87 @@ final class GraphConstraintsPanel extends JPanel {
         reviewBox.setSelectedItem(evidence == null
                 ? GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT
                 : evidence.reviewDisposition());
+    }
+
+    private GraphDiscoveryConfiguration.NextNode buildEditedNode() {
+        String pid = cleanPid(edgePidField.getText());
+        if (!WikidataIds.isPid(pid)) {
+            throw new IllegalArgumentException(
+                    "Choose the property connecting this node to the previous node");
+        }
+        if (evidenceModel.isEmpty() != testsModel.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Add both an evidence relation and an evidence test, or leave both empty");
+        }
+        GraphEvidenceCondition evidence = evidenceModel.isEmpty() ? null
+                : new GraphEvidenceCondition("Node evidence", elements(evidenceModel),
+                        elements(testsModel), reviewDisposition());
+        GraphDiscoveryConfiguration.NodeUse use = use(targetUseBox);
+        GeneratedClassModel targetClass = selectedClass(targetClassBox);
+        if (use == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                && targetClass == null) {
+            throw new IllegalArgumentException("Choose the output class for this node");
+        }
+        return new GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation(PROVIDER, pid), direction().direction, use,
+                use == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                        ? targetClass.className() : "",
+                evidence, alternativeEdges(),
+                (GraphDiscoveryConfiguration.PopulationOperation)
+                        populationOperationBox.getSelectedItem(),
+                repeatUntilStable.isSelected(), selectedAdmissionPopulation());
+    }
+
+    private void addEditedNode() {
+        try {
+            nodesModel.addElement(buildEditedNode());
+            clearNodeControls();
+            status("Node added to the draft path; Apply graph to save it.", false);
+        } catch (IllegalArgumentException error) {
+            status(error.getMessage(), true);
+        }
+    }
+
+    private void upsertEditedNode(GraphDiscoveryConfiguration.NextNode node) {
+        int selected = nodesList.getSelectedIndex();
+        if (selected >= 0) {
+            nodesModel.set(selected, node);
+            return;
+        }
+        // The draft now IS this node: select it, so the next Apply — or the flush every
+        // Save performs — rewrites it instead of appending a copy.
+        nodesModel.addElement(node);
+        nodesList.setSelectedIndex(nodesModel.size() - 1);
+    }
+
+    private void removeSelectedNode() {
+        int selected = nodesList.getSelectedIndex();
+        if (selected < 0) return;
+        nodesModel.remove(selected);
+        clearNodeControls();
+        status("Node removed from the draft path; Apply graph to save it.", false);
+    }
+
+    private ListCellRenderer<Object> nodeRenderer() {
+        return new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof GraphDiscoveryConfiguration.NextNode node) {
+                    String reached = node.use()
+                            == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                            ? node.populationClass() + " output" : "intermediate";
+                    setText((index + 1) + ". " + node.property().relationId() + " "
+                            + directionLabel(node.directionFromPrevious()) + " → " + reached);
+                }
+                return this;
+            }
+        };
+    }
+
+    private String selectedAdmissionPopulation() {
+        Object selected = admissionPopulationBox.getSelectedItem();
+        return selected == null ? "" : String.valueOf(selected).trim();
     }
 
     private static JComboBox<GraphDiscoveryConfiguration.NodeUse> useBox() {
@@ -1346,17 +1487,26 @@ final class GraphConstraintsPanel extends JPanel {
                 ? "All loaded " + graph.startNode().qidSourceClass() + " instances"
                 : "Saved population " + graph.startNode().populationSelection());
         summary.put("Start QIDs", startQidCount(snapshot, graph.startNode(), instances));
-        if (!graph.nextNodes().isEmpty()) {
-            GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
-            summary.put("Edge", next.property().relationId() + " "
+        for (int index = 0; index < graph.nextNodes().size(); index++) {
+            GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().get(index);
+            String prefix = graph.nextNodes().size() == 1 ? "" : "Node " + (index + 1) + " ";
+            summary.put(prefix + "Edge", next.property().relationId() + " "
                     + directionLabel(next.directionFromPrevious()));
-            summary.put("Reached entities", next.use()
+            summary.put(prefix + "Reached entities", next.use()
                     == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                     ? "Members of " + next.populationClass() : "Intermediate only");
+            summary.put(prefix + "Admit and expand", next.admissionPopulationSelection().isBlank()
+                    ? "Any reached entity"
+                    : "Members of " + next.admissionPopulationSelection());
+            if (!next.admissionPopulationSelection().isBlank()) {
+                summary.put(prefix + "Outside population",
+                        "Rejected boundary entities, retained with the traversal witness, and not expanded");
+            }
             GraphEvidenceCondition evidence = next.evidenceCondition();
-            summary.put("Evidence relations",
+            summary.put(prefix + "Evidence relations",
                     evidence == null ? 0 : evidence.evidencePaths().size());
-            summary.put("Evidence tests", evidence == null ? 0 : evidence.tests().size());
+            summary.put(prefix + "Evidence tests",
+                    evidence == null ? 0 : evidence.tests().size());
         }
         return summary;
     }
@@ -1405,9 +1555,13 @@ final class GraphConstraintsPanel extends JPanel {
             String nextId = "next-" + index;
             String nextLabel = next.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                     ? next.populationClass() : "Intermediate node";
+            java.util.Map<String, String> metadata = new java.util.LinkedHashMap<>();
+            metadata.put("Use", nodeUse(next.use(), next.populationClass()));
+            metadata.put("Admit and expand", next.admissionPopulationSelection().isBlank()
+                    ? "Any reached entity"
+                    : "Members of " + next.admissionPopulationSelection());
             nodes.add(new GraphViewModel.Node(nextId, nextLabel, null, nextLevel,
-                    GraphViewModel.State.DEFAULT,
-                    java.util.Map.of("Use", nodeUse(next.use(), next.populationClass())), next));
+                    GraphViewModel.State.DEFAULT, metadata, next));
             edges.add(new GraphViewModel.Edge("traversal-" + index, previous, nextId,
                     edgeLabel(next.property(), next.directionFromPrevious()), true));
 
@@ -1500,12 +1654,14 @@ final class GraphConstraintsPanel extends JPanel {
             GeneratedProjectModel snapshot, GeneratedClassModel graphClass) {
         GraphDiscoveryConfiguration graph = configurationOf(graphClass);
         if (graph == null || graph.nextNodes().isEmpty()) return List.of();
-        GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().getFirst();
-        return List.of(startInputLabel(snapshot, graph.startNode()) + " → "
-                + next.property().relationId() + " "
-                + directionLabel(next.directionFromPrevious()) + " → "
-                + (next.populationClass().isBlank() ? "intermediate node"
-                : next.populationClass()));
+        StringBuilder path = new StringBuilder(startInputLabel(snapshot, graph.startNode()));
+        for (GraphDiscoveryConfiguration.NextNode next : graph.nextNodes()) {
+            path.append(" → ").append(next.property().relationId()).append(' ')
+                    .append(directionLabel(next.directionFromPrevious())).append(" → ")
+                    .append(next.populationClass().isBlank()
+                            ? "intermediate node" : next.populationClass());
+        }
+        return List.of(path.toString());
     }
 
     private static int startQidCount(GeneratedProjectModel model,

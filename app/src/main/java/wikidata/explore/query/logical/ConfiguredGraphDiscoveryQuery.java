@@ -23,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Collection;
+import java.util.Set;
 
 /** Explicit, read-only execution of the graph saved in ModelBuilder configuration. */
 public final class ConfiguredGraphDiscoveryQuery
@@ -44,6 +45,7 @@ public final class ConfiguredGraphDiscoveryQuery
     private final GraphDiscoveryConfiguration configuration;
     private final List<EntityRef> start;
     private final String startClass;
+    private final Map<Integer, Set<EntityRef>> admissionPopulations;
 
     /**
      * Runs the graph one class declares.
@@ -93,6 +95,21 @@ public final class ConfiguredGraphDiscoveryQuery
                                     + " instance has a Wikidata source QID"
                             : "Population selection '" + selectionName + "' has no instance QIDs");
         }
+        Map<Integer, Set<EntityRef>> admissions = new LinkedHashMap<>();
+        for (int index = 0; index < configuration.nextNodes().size(); index++) {
+            String name = configuration.nextNodes().get(index).admissionPopulationSelection();
+            if (name.isBlank()) continue;
+            var selected = model.findSelection(name);
+            if (!(selected instanceof PopulationSelection population)) {
+                throw new IllegalArgumentException("Graph node " + (index + 1)
+                        + " admits only population selection '" + name
+                        + "', which this model no longer has");
+            }
+            admissions.put(index + 1, population.instanceQids().stream()
+                    .filter(WikidataIds::isQid).map(EntityRef::wikidata)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet()));
+        }
+        admissionPopulations = Map.copyOf(admissions);
     }
 
     @Override public String purpose() { return "Run configured graph discovery"; }
@@ -104,10 +121,21 @@ public final class ConfiguredGraphDiscoveryQuery
         return "Runs the saved graph without changing class populations or generation.";
     }
     @Override public Map<String, String> parameters() {
-        return Map.of("startClass", startClass,
-                "populationSelection", configuration.startNode().populationSelection(),
-                "startQids", String.valueOf(start.size()),
-                "nodes", String.valueOf(configuration.nextNodes().size()));
+        Map<String, String> parameters = new LinkedHashMap<>();
+        parameters.put("startClass", startClass);
+        parameters.put("populationSelection", configuration.startNode().populationSelection());
+        parameters.put("startQids", String.valueOf(start.size()));
+        parameters.put("nodes", String.valueOf(configuration.nextNodes().size()));
+        for (int index = 0; index < configuration.nextNodes().size(); index++) {
+            var node = configuration.nextNodes().get(index);
+            if (!node.admissionPopulationSelection().isBlank()) {
+                Set<EntityRef> admitted = admissionPopulations.get(index + 1);
+                parameters.put("node" + (index + 1) + "AdmitAndExpand",
+                        node.admissionPopulationSelection()
+                        + " (" + (admitted == null ? 0 : admitted.size()) + " QIDs)");
+            }
+        }
+        return Map.copyOf(parameters);
     }
 
     @Override public Result execute(QueryContext context) throws Exception {
@@ -126,7 +154,7 @@ public final class ConfiguredGraphDiscoveryQuery
                 try (LocalGraphStore store = provider == null
                         ? new InMemoryGraphStore() : provider.open()) {
                     GraphDiscoveryExecutor.Result graph = GraphDiscoveryExecutor.execute(
-                            store, configuration, start, acquisition);
+                            store, configuration, start, acquisition, admissionPopulations);
                     if (store instanceof PersistentGraphStore persistent) {
                         PersistentGraphStore.Statistics cache = persistent.statistics();
                         log.message("Downloaded graph facts: reused "
