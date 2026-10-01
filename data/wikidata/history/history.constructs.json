@@ -21,6 +21,16 @@
     "kind" : "CLASS",
     "artifact" : "history.snapshot.json"
   }, {
+    "declarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
+    "name" : "ReachablePosition",
+    "kind" : "CLASS",
+    "artifact" : "history.snapshot.json"
+  }, {
+    "declarationId" : "decl:361a057c-bfed-44d8-a7b3-7aaf75527427",
+    "name" : "PersonPositionBoundaryDiscovery",
+    "kind" : "GRAPH",
+    "artifact" : "personpositionboundarydiscovery.graph.snapshot.json"
+  }, {
     "declarationId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
     "name" : "Position",
     "kind" : "CLASS",
