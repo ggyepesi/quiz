@@ -818,7 +818,10 @@ final class GraphConstraintsPanel extends JPanel {
     private void refreshClasses() {
         targetClassBox.removeAllItems();
         for (GeneratedClassModel candidate : model.classes()) {
-            if (candidate == null || candidate.isImported()) continue;
+            // An imported class is a valid output: the project materializes its own
+            // instances of it (History adds to the Position it imports). Leaving it out
+            // made a saved imported output unshowable, and the flush then wrote over it.
+            if (candidate == null) continue;
             // A graph produces entities, and the annotations about them are what a
             // graph class holds — so no graph class is another graph's output, this
             // one least of all.
@@ -1020,7 +1023,13 @@ final class GraphConstraintsPanel extends JPanel {
         repeatUntilStable.setSelected(node.repeatUntilStable());
         admissionPopulationBox.setSelectedItem(node.admissionPopulationSelection());
         targetUseBox.setSelectedItem(node.use());
-        selectClass(targetClassBox, node.populationClass());
+        if (!selectClass(targetClassBox, node.populationClass())
+                && node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION) {
+            // Show that the saved output cannot be shown; never let the box keep
+            // whichever class it held, which the next flush would write over it.
+            targetClassBox.setSelectedIndex(-1);
+            status(missingOutputClass(node.populationClass()), true);
+        }
         GraphEvidenceCondition evidence = node.evidenceCondition();
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
         replace(testsModel, evidence == null ? List.of() : evidence.tests());
@@ -1046,7 +1055,11 @@ final class GraphConstraintsPanel extends JPanel {
         GeneratedClassModel targetClass = selectedClass(targetClassBox);
         if (use == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                 && targetClass == null) {
-            throw new IllegalArgumentException("Choose the output class for this node");
+            GraphDiscoveryConfiguration.NextNode saved = nodesList.getSelectedValue();
+            throw new IllegalArgumentException(saved != null
+                    && !saved.populationClass().isBlank()
+                    ? missingOutputClass(saved.populationClass())
+                    : "Choose the output class for this node");
         }
         return new GraphDiscoveryConfiguration.NextNode(
                 new GraphRelation(PROVIDER, pid), direction().direction, use,
@@ -1256,12 +1269,19 @@ final class GraphConstraintsPanel extends JPanel {
     private static GeneratedClassModel selectedClass(JComboBox<GeneratedClassModel> box) {
         return box.getSelectedItem() instanceof GeneratedClassModel clazz ? clazz : null;
     }
-    private static void selectClass(JComboBox<GeneratedClassModel> box, String name) {
-        if (name == null) return;
+    private static String missingOutputClass(String name) {
+        return "Saved output class '" + name
+                + "' is not in this project. Choose an output class before applying.";
+    }
+
+    /** @return whether {@code name} is one of the box's classes and is now selected. */
+    private static boolean selectClass(JComboBox<GeneratedClassModel> box, String name) {
+        if (name == null) return false;
         for (int i = 0; i < box.getItemCount(); i++) {
             GeneratedClassModel clazz = box.getItemAt(i);
-            if (clazz.className().equalsIgnoreCase(name)) { box.setSelectedIndex(i); return; }
+            if (clazz.className().equalsIgnoreCase(name)) { box.setSelectedIndex(i); return true; }
         }
+        return false;
     }
     private void status(String text, boolean error) {
         status.setText(text == null || text.isBlank() ? " " : text);

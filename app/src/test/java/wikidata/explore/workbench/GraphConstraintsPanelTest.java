@@ -416,6 +416,55 @@ class GraphConstraintsPanelTest {
                 "the draft path must not collect a copy that makes every later Apply fail");
     }
 
+    /** History's boundary graph outputs Position, which History imports. The output list
+     *  left imported classes out, so loading fell back to the first class (Person) and the
+     *  flush every Save performs wrote Person over the authored Position. */
+    @Test void aSavedImportedOutputClassSurvivesASaveFlush() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Person"));
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.importedFrom("Historical Positions");
+        model.addClass(position);
+        GeneratedClassModel graphClass = savedGraph(model, "Position");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graphClass);
+
+        panel.applyPendingEdits();
+
+        assertEquals("Position",
+                graphClass.graphSource().nextNodes().getFirst().populationClass());
+    }
+
+    /** A saved output the editor cannot show is shown as missing and never replaced by
+     *  whichever class happens to be first: the flush refuses rather than rewriting it. */
+    @Test void aSavedOutputClassTheEditorCannotShowIsNeverReplaced() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Person"));
+        GeneratedClassModel graphClass = savedGraph(model, "Vanished");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graphClass);
+
+        panel.applyPendingEdits();
+
+        assertEquals("Vanished",
+                graphClass.graphSource().nextNodes().getFirst().populationClass());
+        assertTrue(named(panel, "graph.status", JLabel.class).getText()
+                .contains("Vanished"), named(panel, "graph.status", JLabel.class).getText());
+    }
+
+    private static GeneratedClassModel savedGraph(GeneratedProjectModel model, String output) {
+        GeneratedClassModel graphClass = new GeneratedClassModel("Boundary");
+        graphClass.classKind(wikidata.explore.model.ClassKind.GRAPH);
+        graphClass.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Person",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P39"), GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, output, null))));
+        model.addClass(graphClass);
+        return graphClass;
+    }
+
     @Test void graphPropertiesUseTheAlreadyLoadedCatalogueLabels() {
         GraphConstraintsPanel panel = graphPanel(model());
         panel.propertyCache(() -> java.util.Map.of("P279",
