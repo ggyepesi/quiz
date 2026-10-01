@@ -420,41 +420,18 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         if (selected instanceof GeneratedClassModel clazz) {
             effectiveClassPanel.showClass(projectModel, clazz);
             updatingKind = true;
-            MembershipPattern pattern = MembershipPattern.of(clazz, projectModel);
             // The stored kind, not what the configuration has reached. Asking
             // reifiesStatements() asked whether a property had been filled in, so a
             // class just switched to Statement — which has none yet — answered "Source"
             // and the combo snapped back, leaving no way to reach the editor that picks
-            // the property.
-            // A class that does not DECLARE itself owned can still be one in fact: a
-            // field elsewhere produces it as a part. MembershipPattern is what knows
-            // that, and it is a different question from the stored kind.
-            kindBox.setSelectedItem(
-                    clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
-                            && pattern == MembershipPattern.OWNED_COMPONENT
-                            ? wikidata.explore.model.ClassKind.OWNED
-                            : clazz.classKind());
+            // the property. The same stored kind picks the editor (showEditor).
+            kindBox.setSelectedItem(clazz.classKind());
             kindBox.setEnabled(editingEnabled);
             updatingKind = false;
 
             kindHeader.setVisible(true);
 
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
-                graphConstraintsPanel.edit(clazz);
-                layout.show(cardPanel, "graph-constraints");
-            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
-                aggregateClassPanel.edit(clazz);
-                layout.show(cardPanel, "aggregate");
-            } else if (clazz.reifiesStatements()) {
-                statementSourcePanel.edit(clazz);
-                layout.show(cardPanel, "statement");
-            } else if (pattern == MembershipPattern.OWNED_COMPONENT) {
-                ownedClassPanel.edit(clazz);
-                layout.show(cardPanel, "owned");
-            } else {
-                classSourcePanel.edit(clazz);
-                layout.show(cardPanel, "class");
-            }
+            showEditor(clazz);
             // An imported class is not edited here at all — name, membership, identity
             // and everything else belong to the model that owns it. Locking the card
             // rather than each control means a new control cannot be added to these
@@ -574,6 +551,37 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
      * flush stale controls into the new domain. In particular, an old class name can
      * then collide with a vocabulary in the domain being loaded.</p>
      */
+    /**
+     * Shows the editor for a class's stored kind. Which editor shows a class used to be
+     * decided three ways — here by whether a statement's property was filled in and by
+     * membership pattern, in {@link #applyEdits()} by the stored kind, and in the kind
+     * switcher by a third chain — so a statement class with no property yet was shown in
+     * one editor and flushed through another. This and {@link #flushEditor} are now the
+     * only places that map a kind to its editor.
+     */
+    private void showEditor(GeneratedClassModel clazz) {
+        CardLayout layout = (CardLayout) cardPanel.getLayout();
+        switch (clazz.classKind()) {
+            case STATEMENT -> { statementSourcePanel.edit(clazz); layout.show(cardPanel, "statement"); }
+            case OWNED -> { ownedClassPanel.edit(clazz); layout.show(cardPanel, "owned"); }
+            case AGGREGATE -> { aggregateClassPanel.edit(clazz); layout.show(cardPanel, "aggregate"); }
+            case GRAPH -> { graphConstraintsPanel.edit(clazz); layout.show(cardPanel, "graph-constraints"); }
+            case SOURCE -> { classSourcePanel.edit(clazz); layout.show(cardPanel, "class"); }
+        }
+    }
+
+    /** Writes the editor that {@link #showEditor} shows for this class. A graph is
+     *  flushed by its pending-edits rule, which never creates a graph out of defaults. */
+    private void flushEditor(GeneratedClassModel clazz) {
+        switch (clazz.classKind()) {
+            case STATEMENT -> statementSourcePanel.applyEdits();
+            case OWNED -> ownedClassPanel.applyEdits();
+            case AGGREGATE -> aggregateClassPanel.applyEdits();
+            case GRAPH -> graphConstraintsPanel.applyPendingEdits();
+            case SOURCE -> classSourcePanel.applyEdits();
+        }
+    }
+
     void abandonEdits() {
         selected = null;
         classSourcePanel.edit(null);
@@ -691,15 +699,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public void applyEdits() {
-        if (selected instanceof GeneratedClassModel clazz) {
-            switch (clazz.classKind()) {
-                case STATEMENT -> statementSourcePanel.applyEdits();
-                case OWNED -> ownedClassPanel.applyEdits();
-                case AGGREGATE -> aggregateClassPanel.applyEdits();
-                case GRAPH -> graphConstraintsPanel.applyEdits();
-                case SOURCE -> classSourcePanel.applyEdits();
-            }
-        }
+        if (selected instanceof GeneratedClassModel clazz) flushEditor(clazz);
 
         // A field editor keeps pending Swing values even after another tree node
         // is selected. Always flush it before save, generation or preview.
@@ -1194,6 +1194,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         wikidata.explore.model.ClassKind kind =
                 (wikidata.explore.model.ClassKind) kindBox.getSelectedItem();
         if (kind == null) return;
+        // What was typed into the editor showing the class belongs to it before its
+        // kind changes — flushed once, by the same rule that chose that editor.
+        flushEditor(clazz);
         boolean toStatement = kind == wikidata.explore.model.ClassKind.STATEMENT;
         reusableSelectionsPanel.setVisible(
                 kind != wikidata.explore.model.ClassKind.AGGREGATE);
@@ -1212,48 +1215,28 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 updatingKind = false;
                 return;
             }
-            switch (clazz.classKind()) {
-                case STATEMENT -> statementSourcePanel.applyEdits();
-                case OWNED -> ownedClassPanel.applyEdits();
-                case AGGREGATE -> aggregateClassPanel.applyEdits();
-                case SOURCE -> classSourcePanel.applyEdits();
-                case GRAPH -> { }
-            }
             // Kind is a declaration in its own right. The graph source remains absent
             // until Apply records a start node; an incomplete default must not invent
             // whichever class happens to be first in the chooser.
             clazz.classKind(wikidata.explore.model.ClassKind.GRAPH);
-            graphConstraintsPanel.edit(clazz);
-            layout.show(cardPanel, "graph-constraints");
+            showEditor(clazz);
             afterChange.accept(null);
             return;
         }
 
         if (kind == wikidata.explore.model.ClassKind.AGGREGATE) {
-            if (clazz.reifiesStatements()) statementSourcePanel.applyEdits();
-            else if (clazz.ownedClass()) ownedClassPanel.applyEdits();
-            else if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
-                graphConstraintsPanel.applyPendingEdits();
-            }
-            else if (clazz.classKind() != wikidata.explore.model.ClassKind.AGGREGATE) {
-                classSourcePanel.applyEdits();
-            }
             clazz.statementSource(null);
             clazz.classKind(wikidata.explore.model.ClassKind.AGGREGATE);
             if (clazz.aggregateSource() == null) {
                 clazz.aggregateSource(new wikidata.explore.model.AggregateClassSource());
             }
-            aggregateClassPanel.edit(clazz);
-            layout.show(cardPanel, "aggregate");
+            showEditor(clazz);
             afterChange.accept(null);
             return;
         }
 
         if (kind == wikidata.explore.model.ClassKind.OWNED) {
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
-                graphConstraintsPanel.applyPendingEdits();
-            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
-                aggregateClassPanel.applyEdits();
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 clazz.aggregateSource(null);
             }
             if (!clazz.ownedClass()) {
@@ -1270,22 +1253,15 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     updatingKind = false;
                     return;
                 }
-                if (clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE) {
-                    classSourcePanel.applyEdits();
-                }
                 clazz.ownedClass(true);
             }
-            ownedClassPanel.edit(clazz);
-            layout.show(cardPanel, "owned");
+            showEditor(clazz);
             afterChange.accept(null);
             return;
         }
 
         if (toStatement) {
-            if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
-                graphConstraintsPanel.applyPendingEdits();
-            } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
-                aggregateClassPanel.applyEdits();
+            if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
                 clazz.aggregateSource(null);
                 clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
             }
@@ -1293,9 +1269,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 clazz.ownedClass(false);
             }
             if (!clazz.reifiesStatements()) {
-                if (clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE) {
-                    classSourcePanel.applyEdits();
-                }
 
                 // Nothing is invented here. This used to take findFirst() over the
                 // project's classes — so switching a class to a statement class in
@@ -1319,16 +1292,17 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 clazz.statementSource(
                         new StatementClassSource(sourceClass, ""));
 
+            } else if (clazz.classKind() != wikidata.explore.model.ClassKind.STATEMENT) {
+                // A source it already had is kept; setting it again stores the kind, so
+                // the editor shown below is chosen by the stored Statement kind.
+                clazz.statementSource(clazz.statementSource());
             }
 
-            statementSourcePanel.edit(clazz);
-            layout.show(cardPanel, "statement");
+            showEditor(clazz);
         } else {
             if (clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH) {
-                graphConstraintsPanel.applyPendingEdits();
                 clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
             } else if (clazz.classKind() == wikidata.explore.model.ClassKind.AGGREGATE) {
-                aggregateClassPanel.applyEdits();
                 clazz.aggregateSource(null);
                 clazz.classKind(wikidata.explore.model.ClassKind.SOURCE);
             }
@@ -1336,13 +1310,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 clazz.ownedClass(false);
             }
             if (clazz.reifiesStatements()) {
-                statementSourcePanel.applyEdits();
                 clazz.statementSource(null);
                 clazz.canonical(null);
             }
 
-            classSourcePanel.edit(clazz);
-            layout.show(cardPanel, "class");
+            showEditor(clazz);
         }
 
         afterChange.accept(null);

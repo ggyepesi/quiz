@@ -472,6 +472,79 @@ class ModelSourceWorkbenchPanelTest {
         return titles;
     }
 
+    /**
+     * Which editor shows a class is decided once, and the same decision says which
+     * editor a flush writes. It was decided three ways: showing asked whether a
+     * statement's property was filled in, flushing switched on the stored kind, and
+     * the kind switcher hand-wrote a third chain. A statement class with no property
+     * yet was shown in the Source editor and flushed through the Statement one.
+     */
+    @Test void aStatementClassWithoutItsPropertyIsShownInTheStatementEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("", ""));
+        nomination.classKind(wikidata.explore.model.ClassKind.STATEMENT);
+        model.rootClass(nomination);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+
+        panel.edit(nomination);
+
+        assertTrue(component(panel, StatementSourcePanel.class).isVisible(),
+                "the stored kind decides the editor, not whether a property is filled in");
+        assertFalse(component(panel, ClassSourcePanel.class).isVisible());
+    }
+
+    /** Switching kind flushes the editor that is showing the class first. The switcher
+     *  chose it by its own chain — a statement's filled-in property, then ownership —
+     *  so a statement class with no property yet flushed the Source editor, and what
+     *  was typed into the Statement editor was lost when the kind changed. */
+    @Test void switchingKindKeepsWhatWasTypedIntoTheShowingEditor() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("", ""));
+        nomination.classKind(wikidata.explore.model.ClassKind.STATEMENT);
+        model.rootClass(nomination);
+        ModelSourceWorkbenchPanel panel = new ModelSourceWorkbenchPanel(model);
+        panel.edit(nomination);
+
+        aliasField(component(component(panel, StatementSourcePanel.class),
+                ClassHeaderEditor.class)).setText("Nominations");
+        kindBox(panel).setSelectedItem(wikidata.explore.model.ClassKind.AGGREGATE);
+
+        assertSame(wikidata.explore.model.ClassKind.AGGREGATE, nomination.classKind());
+        assertEquals("Nominations", nomination.alias());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static JComboBox<wikidata.explore.model.ClassKind> kindBox(Container root) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JComboBox<?> box && box.getItemCount() > 0
+                    && box.getItemAt(0) instanceof wikidata.explore.model.ClassKind) {
+                return (JComboBox<wikidata.explore.model.ClassKind>) box;
+            }
+            if (child instanceof Container container) {
+                JComboBox<wikidata.explore.model.ClassKind> found = kindBox(container);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** The header's second text field is the alias; the first, the class name, is
+     *  shown read-only. */
+    private static JTextField aliasField(Container header) {
+        List<JTextField> fields = new java.util.ArrayList<>();
+        collectTextFields(header, fields);
+        return fields.get(1);
+    }
+
+    private static void collectTextFields(Container root, List<JTextField> out) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JTextField field) out.add(field);
+            else if (child instanceof Container container) collectTextFields(container, out);
+        }
+    }
+
     private static <T extends Component> T component(Container root, Class<T> type) {
         for (Component child : root.getComponents()) {
             if (type.isInstance(child)) return type.cast(child);
