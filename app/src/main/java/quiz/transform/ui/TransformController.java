@@ -226,22 +226,36 @@ public final class TransformController {
 
     public List<RelationClosureOption> relationClosureOptions(String memberType) {
         if (memberType == null) return List.of();
+        // Which bridge fields hold the member type does not depend on the boundary, and
+        // answering it scans the bridge's rows — so it is asked once per bridge, not once
+        // per selection (which made listing take seconds on History).
+        Map<String, List<objectview.field.FieldRef>> referencesByBridge = new LinkedHashMap<>();
+        Map<String, List<objectview.field.FieldRef>> membersByBridge = new LinkedHashMap<>();
+        for (String bridge : domain.types()) {
+            objectview.field.FieldSchema schema = domain.fieldSchema(bridge);
+            if (schema == null) continue;
+            List<objectview.field.FieldRef> references = schema.fields().stream()
+                    .filter(objectview.field.FieldRef::reference).toList();
+            // Asked as the group asks it: does this field hold instances of the member
+            // type? A role-typed field (OfficeHolding.source is declared PositionHolder)
+            // holds Persons although neither class is a subclass of the other, so a
+            // schema subclass test hid the relation it carries.
+            Map<String, List<Viewable>> held = heldValueRepresentatives(bridge, references);
+            List<objectview.field.FieldRef> members = references.stream()
+                    .filter(field -> held.getOrDefault(field.name(), List.of()).stream()
+                            .anyMatch(value -> domain.isInstanceOf(value, memberType)))
+                    .toList();
+            if (members.isEmpty()) continue;
+            referencesByBridge.put(bridge, references);
+            membersByBridge.put(bridge, members);
+        }
         List<RelationClosureOption> result = new ArrayList<>();
         for (String selection : domain.selectionNames()) {
-            List<Viewable> admitted = domain.selectionMembers(selection);
+            List<Viewable> admitted = classRepresentatives(domain.selectionMembers(selection));
             if (admitted.isEmpty()) continue;
-            for (String bridge : domain.types()) {
-                objectview.field.FieldSchema schema = domain.fieldSchema(bridge);
-                if (schema == null) continue;
-                List<objectview.field.FieldRef> references = schema.fields().stream()
-                        .filter(objectview.field.FieldRef::reference).toList();
-                for (objectview.field.FieldRef member : references) {
-                    // Asked as the group asks it: does this field hold instances of the
-                    // member type? A role-typed field (OfficeHolding.source is declared
-                    // PositionHolder) holds Persons although neither class is a subclass
-                    // of the other, so a schema subclass test hid the relation it carries.
-                    if (!holdsInstancesOf(bridge, member.name(), memberType)) continue;
-                    for (objectview.field.FieldRef entity : references) {
+            membersByBridge.forEach((bridge, members) -> {
+                for (objectview.field.FieldRef member : members) {
+                    for (objectview.field.FieldRef entity : referencesByBridge.get(bridge)) {
                         if (entity == member || !acceptsAny(entity.targetType(), admitted)) {
                             continue;
                         }
@@ -249,7 +263,7 @@ public final class TransformController {
                                 entity.name(), selection));
                     }
                 }
-            }
+            });
         }
         return List.copyOf(result);
     }
@@ -287,14 +301,36 @@ public final class TransformController {
                 .anyMatch(value -> domain.isInstanceOf(value, targetType));
     }
 
-    private boolean holdsInstancesOf(String bridge, String field, String memberType) {
-        objectview.field.FieldPath path = objectview.field.FieldPath.parse(field);
-        for (Viewable row : domain.instancesOf(bridge)) {
-            for (Viewable value : quiz.transform.ReferenceField.values(row, path)) {
-                if (domain.isInstanceOf(value, memberType)) return true;
-            }
+    /** One member per distinct set of classes: whether a value is an instance of a type
+     *  depends on its classes only, so asking every one of 21k members asked the same
+     *  question 21k times. */
+    private static List<Viewable> classRepresentatives(Collection<? extends Viewable> values) {
+        Map<Object, Viewable> byClasses = new LinkedHashMap<>();
+        for (Viewable value : values) {
+            if (value == null) continue;
+            byClasses.putIfAbsent(List.of(String.valueOf(value.identityTypeName()),
+                    value.directClassNames()), value);
         }
-        return false;
+        return List.copyOf(byClasses.values());
+    }
+
+    /** For each reference field, one value per distinct class set it holds — read in a
+     *  single pass over the bridge's rows. */
+    private Map<String, List<Viewable>> heldValueRepresentatives(
+            String bridge, List<objectview.field.FieldRef> references) {
+        Map<String, objectview.field.FieldPath> paths = new LinkedHashMap<>();
+        for (objectview.field.FieldRef field : references) {
+            paths.put(field.name(), objectview.field.FieldPath.parse(field.name()));
+        }
+        Map<String, List<Viewable>> values = new LinkedHashMap<>();
+        for (Viewable row : domain.instancesOf(bridge)) {
+            paths.forEach((name, path) -> values.computeIfAbsent(name,
+                    ignored -> new ArrayList<>())
+                    .addAll(quiz.transform.ReferenceField.values(row, path)));
+        }
+        Map<String, List<Viewable>> representatives = new LinkedHashMap<>();
+        values.forEach((name, held) -> representatives.put(name, classRepresentatives(held)));
+        return representatives;
     }
 
     /** Whether the selected path ends in a reference back to the class that owns

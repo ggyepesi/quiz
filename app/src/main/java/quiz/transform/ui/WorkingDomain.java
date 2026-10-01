@@ -42,14 +42,66 @@ public final class WorkingDomain extends DelegatingDomainModel
     // the live instance set actually changed (identity-resolve, merge, "forget", derive) —
     // leaving a stable tree, and the user's hand-nested groups, untouched otherwise.
     private final Map<String, List<String>> groupRootSignatures = new HashMap<>();
+    /** Types whose group tree is being refreshed right now. A produced group may ask for
+     *  selections while it is reproduced, and selections include groups; a tree asked for
+     *  again mid-refresh is read as it stands instead of being refreshed again. */
+    private final java.util.Set<String> refreshingGroupRoots = new java.util.HashSet<>();
 
     public WorkingDomain(DomainModel base) {
         super(base);
     }
 
-    @Override public List<String> selectionNames() { return base.selectionNames(); }
+    /**
+     * The base domain's selections, then every group edited here as a selection of its
+     * current members — named by its place in the tree, {@code Type ▸ group ▸ subgroup}.
+     * A group is a scope device over instances, and anything that takes a selection (a
+     * relation-closure boundary, a join, an experiment) can now be given one. Roots are
+     * not listed: "All X" is the class itself. A name the base declares keeps it.
+     *
+     * <p>Groups stay where they are saved (the snapshot); this only makes them
+     * selectable here. Freezing one into the model is Create population selection.
+     */
+    @Override public List<String> selectionNames() {
+        java.util.LinkedHashSet<String> names =
+                new java.util.LinkedHashSet<>(base.selectionNames());
+        names.addAll(groupSelections().keySet());
+        return List.copyOf(names);
+    }
     @Override public List<Viewable> selectionMembers(String name) {
-        return base.selectionMembers(name);
+        if (base.selectionNames().contains(name)) return base.selectionMembers(name);
+        return groupSelections().getOrDefault(name, List.of());
+    }
+
+    public static final String GROUP_PATH_SEPARATOR = " ▸ ";
+
+    private Map<String, List<Viewable>> groupSelections() {
+        Map<String, List<Viewable>> out = new java.util.LinkedHashMap<>();
+        // Only trees that can hold a group: one opened here, or one saved with the domain.
+        // A tree already built is read as it stands — the workbench refreshes it whenever
+        // its type is shown — because re-checking every type's membership on each call
+        // scanned every instance and made listing selections take seconds.
+        java.util.LinkedHashSet<String> rooted = new java.util.LinkedHashSet<>(groupRoots.keySet());
+        for (String type : types()) {
+            if (base.groupRoot(type) != null) rooted.add(type);
+        }
+        for (String type : rooted) {
+            quiz.transform.EditableGroup root = groupRootSignatures.containsKey(type)
+                    ? groupRoots.get(type) : editableGroupRoot(type);
+            if (root != null) addGroupSelections(type, root, out);
+        }
+        return out;
+    }
+
+    private static void addGroupSelections(String path,
+            objectview.group.ViewableGroup<?> parent, Map<String, List<Viewable>> out) {
+        for (objectview.group.ViewableGroup<?> child : parent.getChildren()) {
+            String name = child instanceof quiz.transform.EditableGroup editable
+                    ? editable.name() : child.getDisplayName();
+            String childPath = path + GROUP_PATH_SEPARATOR + name;
+            out.putIfAbsent(childPath, child.getMembers().stream()
+                    .filter(Viewable.class::isInstance).map(Viewable.class::cast).toList());
+            addGroupSelections(childPath, child, out);
+        }
     }
     @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
 
@@ -181,6 +233,7 @@ public final class WorkingDomain extends DelegatingDomainModel
         if (type == null) return null;
         quiz.transform.EditableGroup root =
                 groupRoots.computeIfAbsent(type, this::createGroupRoot);
+        if (refreshingGroupRoots.contains(type)) return root;
         List<? extends Viewable> live = instances().stream()
                 .filter(value -> isInstanceOf(value, type))
                 .toList();
@@ -190,8 +243,13 @@ public final class WorkingDomain extends DelegatingDomainModel
             // The scope changed: re-derive the root's members and recompute every
             // rule-produced descendant against the fresh scope, so the workbench never
             // renders/validates/resolves against a stale membership snapshot.
-            root.replaceMembers(live);
-            root.reproduceDescendants(this);
+            refreshingGroupRoots.add(type);
+            try {
+                root.replaceMembers(live);
+                root.reproduceDescendants(this);
+            } finally {
+                refreshingGroupRoots.remove(type);
+            }
             groupRootSignatures.put(type, signature);
         }
         return root;
