@@ -1474,7 +1474,7 @@ public final class ValidationPanel extends JPanel {
         String message = "<html><div style='width: 480px'><b>Promote category source to "
                 + preview.targetType() + "." + preview.field() + "?</b><br><br>Pattern: "
                 + recipe.parameter(quiz.curation.FieldSourceRecipe.PATTERN)
-                + "<br>Model: " + preview.modelPath()
+                + "<br>Model: " + preview.modelPath() + " (Save writes it; nothing is written now)"
                 + "<br><br>The override stays until you Clear it, and keeps shadowing the "
                 + "model; future generation and enrichment will use this rule.</div></html>";
         if (JOptionPane.showConfirmDialog(this, new JLabel(message), "Promote to ModelBuilder",
@@ -1483,7 +1483,8 @@ public final class ValidationPanel extends JPanel {
         try {
             promoter.promote(recipe);
             updateWikipediaCategoryButtons();
-            JOptionPane.showMessageDialog(this, "Category source promoted to ModelBuilder.");
+            JOptionPane.showMessageDialog(this, "Category source promoted into the working"
+                    + " model. Save to write it to " + preview.modelPath() + ".");
         } catch (Exception failure) {
             JOptionPane.showMessageDialog(this, "Promotion failed: " + failure.getMessage(),
                     "Promotion failed", JOptionPane.ERROR_MESSAGE);

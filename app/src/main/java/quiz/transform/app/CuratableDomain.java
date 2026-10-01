@@ -30,6 +30,12 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     private final Collection<? extends Viewable> memberRoots;
     private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
     private final java.io.File modelFile;
+    /** The project model as read when this domain opened, edited in memory since.
+     *  Null when there is no model file, or it could not be read. */
+    private final wikidata.explore.model.GeneratedProjectModel workingModel;
+    /** SHA-256 of the model file as last read or written, to notice another writer. */
+    private String modelFileDigest = "";
+    private final List<String> unsavedModelChanges = new java.util.ArrayList<>();
 
     CuratableDomain(DomainModel base, ManualCuration curation) {
         this(base, curation, base.memberRoots(), base.groupRootBindings(), null);
@@ -55,6 +61,16 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         this.groupRootBindings = groupRootBindings == null
                 ? List.of() : List.copyOf(groupRootBindings);
         this.modelFile = modelFile;
+        wikidata.explore.model.GeneratedProjectModel read = null;
+        if (modelFile != null && modelFile.isFile()) {
+            try {
+                modelFileDigest = digest(modelFile);
+                read = new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile);
+            } catch (Exception unreadable) {
+                read = null;   // an unreadable model contributes nothing, as before
+            }
+        }
+        this.workingModel = read;
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -120,25 +136,20 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
                 + correction.field();
     }
 
-    private wikidata.explore.model.GeneratedProjectModel loadModel() {
-        if (modelFile == null || !modelFile.isFile()) return null;
-        try { return new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile); }
-        catch (Exception ignored) { return null; }
-    }
 
     @Override public java.io.File modelFile() { return modelFile; }
 
     @Override public wikidata.explore.model.GeneratedProjectModel projectModel() {
-        return loadModel();
+        return workingModel;
     }
 
     @Override public String projectName() {
-        wikidata.explore.model.GeneratedProjectModel model = loadModel();
+        wikidata.explore.model.GeneratedProjectModel model = workingModel;
         return model == null ? "" : model.name();
     }
 
     @Override public wikidata.explore.model.GeneratedProjectModel.ProjectKind projectKind() {
-        wikidata.explore.model.GeneratedProjectModel model = loadModel();
+        wikidata.explore.model.GeneratedProjectModel model = workingModel;
         return model == null
                 ? wikidata.explore.model.GeneratedProjectModel.ProjectKind.DOMAIN
                 : model.projectKind();
@@ -152,14 +163,12 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         return new java.io.File(modelFile.getParentFile(), baseName + ".snapshot.json");
     }
 
-    @Override public void savePopulationSelection(
-            String name, String className, java.util.List<String> qids) throws Exception {
-        if (modelFile == null || !modelFile.isFile()) {
+    @Override public void createPopulationSelection(
+            String name, String className, java.util.List<String> qids) {
+        if (workingModel == null) {
             throw new IllegalStateException("This domain has no saved model file");
         }
-        wikidata.explore.model.GeneratedProjectModel model =
-                new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile);
-        if (model.findClass(className) == null) {
+        if (workingModel.findClass(className) == null) {
             throw new IllegalArgumentException("The model has no class named " + className);
         }
         wikidata.explore.model.PopulationSelection selection =
@@ -170,9 +179,54 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             throw new IllegalArgumentException(
                     "A population selection needs a name, a class and at least one QID");
         }
-        model.replaceSelection(selection);
-        new wikidata.explore.model.GeneratedProjectModelStore().save(model, modelFile);
+        workingModel.replaceSelection(selection);
+        unsavedModelChanges.add("Population selection \"" + name + "\": "
+                + selection.instanceQids().size() + " " + className + " instance QIDs");
     }
+
+    @Override public List<String> unsavedModelChanges() {
+        return List.copyOf(unsavedModelChanges);
+    }
+
+    @Override public String modelWriteConflict() {
+        if (workingModel == null || modelFile == null) {
+            return "This domain has no readable model file.";
+        }
+        if (!modelFile.isFile()) return "";
+        try {
+            if (!java.nio.file.Files.isWritable(modelFile.toPath())) {
+                return "The model file is not writable: " + modelFile.getPath();
+            }
+            if (!digest(modelFile).equals(modelFileDigest)) {
+                return modelFile.getPath() + " changed on disk after this domain was opened"
+                        + " (another application, usually ModelBuilder, saved it). Writing"
+                        + " would discard that save; reopen the domain to work on the"
+                        + " current model.";
+            }
+            return "";
+        } catch (java.io.IOException unreadable) {
+            return "The model file cannot be read: " + unreadable.getMessage();
+        }
+    }
+
+    @Override public void writeProjectModel() throws Exception {
+        String conflict = modelWriteConflict();
+        if (!conflict.isEmpty()) throw new IllegalStateException(conflict);
+        new wikidata.explore.model.GeneratedProjectModelStore().save(workingModel, modelFile);
+        modelFileDigest = digest(modelFile);
+        unsavedModelChanges.clear();
+    }
+
+    private static String digest(java.io.File file) throws java.io.IOException {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(java.nio.file.Files.readAllBytes(file.toPath()));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+
     @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
         return base.entityOrigin(type, path);
@@ -193,7 +247,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     @Override public wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
             String type, String field) {
         try {
-            wikidata.explore.model.GeneratedProjectModel model = loadModel();
+            wikidata.explore.model.GeneratedProjectModel model = workingModel;
             if (model == null) return null;
             wikidata.explore.model.GeneratedClassModel owner = model.findClass(type);
             if (owner == null) return null;
@@ -209,28 +263,40 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
 
     @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
             quiz.curation.Correction correction) {
-        return new ModelFieldRulePromoter(modelFile, this).preview(correction);
+        return promoter().preview(correction);
     }
 
     @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
             quiz.curation.Correction correction) throws Exception {
-        return new ModelFieldRulePromoter(modelFile, this).promote(correction);
+        quiz.curation.FieldRulePromoter.PromotionPreview promoted =
+                promoter().promote(correction);
+        unsavedModelChanges.add("Promoted " + promoted.targetType() + "."
+                + promoted.field() + " ← " + promoted.sourceProperty());
+        return promoted;
     }
 
     @Override public quiz.curation.FieldRulePromoter.PromotionPreview previewPromotion(
             quiz.curation.FieldSourceRecipe recipe) {
-        return new ModelFieldRulePromoter(modelFile, this).preview(recipe);
+        return promoter().preview(recipe);
     }
 
     @Override public quiz.curation.FieldRulePromoter.PromotionPreview promote(
             quiz.curation.FieldSourceRecipe recipe) throws Exception {
-        return new ModelFieldRulePromoter(modelFile, this).promote(recipe);
+        quiz.curation.FieldRulePromoter.PromotionPreview promoted =
+                promoter().promote(recipe);
+        unsavedModelChanges.add("Promoted category source " + promoted.targetType() + "."
+                + promoted.field() + " ← " + promoted.sourceProperty());
+        return promoted;
+    }
+
+    private ModelFieldRulePromoter promoter() {
+        return new ModelFieldRulePromoter(modelFile, workingModel, this);
     }
 
     @Override public wikidata.explore.model.EntityKindRule entityKindRule(String className) {
         if (className == null || className.isBlank()) return null;
         try {
-            wikidata.explore.model.GeneratedProjectModel model = loadModel();
+            wikidata.explore.model.GeneratedProjectModel model = workingModel;
             if (model == null) return null;
             wikidata.explore.model.EntityKindRule rule =
                     wikidata.explore.model.MembershipPattern.kindRule(
@@ -243,16 +309,16 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
 
     @Override public wikidata.explore.model.FieldSourceMapping declaredSource(
             String type, String field) {
-        return new ModelFieldRulePromoter(modelFile, this).declaredSource(type, field);
+        return promoter().declaredSource(type, field);
     }
 
     @Override public wikidata.explore.model.FieldSourceMapping declaredFallbackSource(
             String type, String field) {
-        return new ModelFieldRulePromoter(modelFile, this).declaredFallbackSource(type, field);
+        return promoter().declaredFallbackSource(type, field);
     }
 
     @Override public datasource.api.SourceBinding declaredBinding(
             String type, String field, datasource.api.SourceBindingSlot slot) {
-        return new ModelFieldRulePromoter(modelFile, this).declaredBinding(type, field, slot);
+        return promoter().declaredBinding(type, field, slot);
     }
 }

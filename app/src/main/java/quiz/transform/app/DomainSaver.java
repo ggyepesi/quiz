@@ -31,10 +31,14 @@ public final class DomainSaver implements DomainWriter {
         String files = backing == null
                 ? destination(name).getPath()
                 : backing.modelFile().getPath() + " and " + backing.snapshotFile().getPath();
+        List<String> changes = backing == null ? List.of() : backing.unsavedModelChanges();
         return "Save " + kind + " \"" + name + "\" with " + count + " instance"
                 + (count == 1 ? "" : "s") + ", types "
                 + (schema == null ? List.of() : schema.servedTypes())
-                + ", and their model to " + files + ".";
+                + ", and their model to " + files + "."
+                + (changes.isEmpty() ? ""
+                        : "\nUnsaved model changes written by this save:\n  - "
+                                + String.join("\n  - ", changes));
     }
 
     @Override
@@ -45,10 +49,16 @@ public final class DomainSaver implements DomainWriter {
             throw new IllegalArgumentException("A domain schema is required");
         }
         ProjectBacking backing = backingFor(name, schema);
-        wikidata.explore.model.GeneratedProjectModel owner = backing == null ? null
-                : new wikidata.explore.model.GeneratedProjectModelStore()
-                        .load(backing.modelFile());
-        if (owner != null) addSubclasses(owner, schema);
+        // The working model, with this session's edits — not a fresh read of the file,
+        // which would drop them. Refused before anything is written, so a save that
+        // would overwrite another application's model save writes nothing at all.
+        wikidata.explore.model.GeneratedProjectModel owner =
+                backing == null ? null : backing.projectModel();
+        if (owner != null) {
+            String conflict = backing.modelWriteConflict();
+            if (!conflict.isEmpty()) throw new IllegalStateException(conflict);
+            addSubclasses(owner, schema);
+        }
         var converted = ViewableToWdo.convertDomain(
                 schema.memberRoots(), schema.groupRootBindings(), schema);
 
@@ -69,8 +79,7 @@ public final class DomainSaver implements DomainWriter {
         d.types().addAll(types);
         d.rootClass(types.isEmpty() ? "" : types.iterator().next());
         if (owner != null) {
-            new wikidata.explore.model.GeneratedProjectModelStore().save(owner,
-                    backing.modelFile());
+            backing.writeProjectModel();
             d.modelPath(backing.modelFile().getPath());
             File ruleTree = new File(backing.modelFile().getParentFile(),
                     backing.modelFile().getName().replace(".model.json", ".ruletree.json"));

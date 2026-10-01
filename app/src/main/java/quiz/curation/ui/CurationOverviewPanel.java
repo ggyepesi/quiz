@@ -347,7 +347,8 @@ public final class CurationOverviewPanel extends JPanel {
                         : " (currently " + preview.previousProperty() + ")");
         JTextArea explanation = new JTextArea(
                 action + "\n\n"
-                        + "Model: " + preview.modelPath() + "\n"
+                        + "Model: " + preview.modelPath()
+                        + " (Save writes it; nothing is written now)\n"
                         + "Target: " + preview.targetType() + "." + preview.field() + "\n"
                         + "Field type: " + preview.fieldType() + "\n"
                         + "Source: " + preview.sourceKind() + " "
@@ -370,8 +371,9 @@ public final class CurationOverviewPanel extends JPanel {
             promoter.promote(correction);
             JOptionPane.showMessageDialog(this,
                     "Promoted " + preview.targetType() + "." + preview.field()
-                            + " ← " + preview.sourceProperty()
-                            + ".\nRegenerate the dataset in ModelBuilder to apply it broadly.");
+                            + " ← " + preview.sourceProperty() + " into the working model."
+                            + "\nSave to write it to " + preview.modelPath()
+                            + ", then regenerate in ModelBuilder to apply it broadly.");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     "Promotion failed: " + ex.getMessage(),

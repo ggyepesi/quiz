@@ -51,10 +51,23 @@ class DeclaredSourceSeedTest {
         return file;
     }
 
+    /** The promoter reads the working model the domain read once when it opened. */
+    private static ModelFieldRulePromoter promoter(File modelFile) {
+        GeneratedProjectModel working = null;
+        if (modelFile != null && modelFile.isFile()) {
+            try {
+                working = new GeneratedProjectModelStore().load(modelFile);
+            } catch (Exception unreadable) {
+                working = null;
+            }
+        }
+        return new ModelFieldRulePromoter(modelFile, working, new TestDomain());
+    }
+
     @Test void aDeclaredPropertyIsReadBackAsTheFieldsSource() throws Exception {
         File model = modelWith("Movies", "locations", "P840", "narrative location");
 
-        FieldSourceMapping declared = new ModelFieldRulePromoter(model, new TestDomain())
+        FieldSourceMapping declared = promoter(model)
                 .declaredSource("Movies", "locations");
 
         assertNotNull(declared, "the model declares this field — curation must not re-ask");
@@ -68,13 +81,13 @@ class DeclaredSourceSeedTest {
     @Test void aFieldWithNoPropertyDeclaredYieldsNothing() throws Exception {
         File model = modelWith("Movies", "locations", null, null);
 
-        assertNull(new ModelFieldRulePromoter(model, new TestDomain())
+        assertNull(promoter(model)
                            .declaredSource("Movies", "locations"));
     }
 
     @Test void anUnknownFieldOrClassYieldsNothing() throws Exception {
         File model = modelWith("Movies", "locations", "P840", "narrative location");
-        ModelFieldRulePromoter promoter = new ModelFieldRulePromoter(model, new TestDomain());
+        ModelFieldRulePromoter promoter = promoter(model);
 
         assertNull(promoter.declaredSource("Movies", "composer"));
         assertNull(promoter.declaredSource("Person", "locations"));
@@ -83,10 +96,10 @@ class DeclaredSourceSeedTest {
     /** A domain with no model at all must degrade to asking, not to an error — the
      *  seed is an improvement on the old flow, never a new way for it to break. */
     @Test void aDomainWithNoModelSimplyContributesNoSeed() {
-        assertNull(new ModelFieldRulePromoter(null, new TestDomain())
+        assertNull(promoter(null)
                            .declaredSource("Movies", "locations"));
-        assertNull(new ModelFieldRulePromoter(
-                new File("/nonexistent/none.model.json"), new TestDomain())
+        assertNull(promoter(
+                new File("/nonexistent/none.model.json"))
                            .declaredSource("Movies", "locations"));
     }
 

@@ -373,8 +373,10 @@ See [Transformation Models as Datasources](transformation-models-as-datasources.
 
 A Selection is the right home for an explicitly saved set; a **bare identity-holder
 class** is the right home for an open population discovered from data. Sampling and
-highlighting alone do not create a Selection: **Save population selection** names the
-selection, its class, its QID count and the model file it writes.
+highlighting alone do not create a Selection: **Create population selection** names the
+selection, its class, its QID count and the model file that Save will write it to. It is
+the same operation in ModelBuilder and TransformApp: it changes the working model, and only
+Save writes the file.
 
 ### Vocabulary as a union's type — `nominee` vs `ceremony`
 

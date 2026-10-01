@@ -53,6 +53,11 @@ class ModelFieldRulePromoterTest {
         assertTrue(preview.eligible(), preview.reason());
         assertTrue(preview.addsField());
         domain.promote(correction);
+        assertNull(new GeneratedProjectModelStore().load(modelFile).findClass("State")
+                        .fields().stream().filter(f -> "population".equals(f.name()))
+                        .findFirst().orElse(null),
+                "promotion changes the working model; only Save writes the file (#305)");
+        domain.writeProjectModel();
 
         var loaded = new GeneratedProjectModelStore().load(modelFile);
         var promoted = loaded.findClass("State").fields().stream()
@@ -108,6 +113,7 @@ class ModelFieldRulePromoterTest {
 
         assertTrue(domain.previewPromotion(recipe).eligible());
         domain.promote(recipe);
+        domain.writeProjectModel();
 
         var promoted = new GeneratedProjectModelStore().load(modelFile)
                 .findClass("Movies").fields().stream()

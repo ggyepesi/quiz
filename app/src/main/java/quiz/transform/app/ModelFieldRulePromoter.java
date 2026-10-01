@@ -13,36 +13,37 @@ import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
 import wikidata.explore.model.RuleDirection;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 
-/** Writes one explicitly reviewed TransformApp field rule into a ModelBuilder model. */
+/**
+ * Applies one explicitly reviewed TransformApp field rule to the domain's WORKING model.
+ *
+ * <p>It never touches the model file. It used to read model.json, edit it and write it
+ * back on the spot, which made a promotion a second persistence path beside Save and let
+ * it overwrite whatever ModelBuilder had saved in between. The edit now lands in the
+ * working model the opened domain holds, and Save writes it.
+ */
 final class ModelFieldRulePromoter {
 
     private final File modelFile;
+    private final GeneratedProjectModel model;
     private final DomainModel domain;
 
-    ModelFieldRulePromoter(File modelFile, DomainModel domain) {
+    ModelFieldRulePromoter(File modelFile, GeneratedProjectModel model, DomainModel domain) {
         this.modelFile = modelFile;
+        this.model = model;
         this.domain = domain;
     }
 
     FieldRulePromoter.PromotionPreview preview(Correction correction) {
-        try {
-            return inspect(correction, loadModel());
-        } catch (Exception ex) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "Model cannot be read: " + ex.getMessage());
-        }
+        if (model == null) return noModel();
+        return inspect(correction, model);
     }
 
     FieldRulePromoter.PromotionPreview promote(Correction correction) throws Exception {
-        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
-        GeneratedProjectModel model = loadModel();
+        if (model == null) throw new IllegalArgumentException(noModel().reason());
         FieldRulePromoter.PromotionPreview preview = inspect(correction, model);
         if (!preview.eligible()) {
             throw new IllegalArgumentException(preview.reason());
@@ -65,110 +66,64 @@ final class ModelFieldRulePromoter {
                 ? preview.sourceProperty() : source.propertyLabel());
         field.mapping().direction(direction(source.direction()));
         field.mapping().productionKind(FieldProductionKind.AUTO);
-
-        saveModel(store, model);
         return preview;
     }
 
     FieldRulePromoter.PromotionPreview preview(FieldSourceRecipe recipe) {
-        try {
-            return inspect(recipe, loadModel());
-        } catch (Exception ex) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "Model cannot be read: " + ex.getMessage());
-        }
+        if (model == null) return noModel();
+        return inspect(recipe, model);
     }
 
     FieldRulePromoter.PromotionPreview promote(FieldSourceRecipe recipe) throws Exception {
-        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
-        GeneratedProjectModel model = loadModel();
+        if (model == null) throw new IllegalArgumentException(noModel().reason());
         FieldRulePromoter.PromotionPreview preview = inspect(recipe, model);
         if (!preview.eligible()) throw new IllegalArgumentException(preview.reason());
         GeneratedFieldModel field = findField(
                 model.findClass(recipe.type()), recipe.field());
         wikidata.explore.model.FieldSourceBindings.put(field, recipe.binding());
-        saveModel(store, model);
         return preview;
     }
 
     /**
-     * The rule this field already has in the model, or null.
-     *
-     * <p>Read-only, so unlike {@link #loadModel} it does not require the model to be
-     * writable: seeding curation from a declaration must work for a model you can only
-     * read. A field with no property declared yields null rather than an empty rule —
-     * "declared as nothing" and "not declared" are different, and only the second should
-     * send the user to the property picker.
+     * The rule this field already has in the working model, or null. A field with no
+     * property declared yields null rather than an empty rule — "declared as nothing" and
+     * "not declared" are different, and only the second should send the user to the
+     * property picker.
      */
     FieldSourceMapping declaredSource(String type, String field) {
-        if (modelFile == null || !modelFile.isFile() || type == null || field == null) {
+        GeneratedFieldModel declared = declaredField(type, field);
+        if (declared == null || declared.mapping() == null
+                || declared.mapping().propertyPid() == null
+                || declared.mapping().propertyPid().isBlank()) {
             return null;
         }
-        try {
-            GeneratedProjectModel model =
-                    new GeneratedProjectModelStore().load(modelFile);
-            GeneratedFieldModel declared = findField(model.findClass(type), field);
-            if (declared == null || declared.mapping() == null
-                    || declared.mapping().propertyPid() == null
-                    || declared.mapping().propertyPid().isBlank()) {
-                return null;
-            }
-            return declared.mapping();
-        } catch (Exception unreadable) {
-            return null;   // a model we cannot read simply contributes no seed
-        }
+        return declared.mapping();
     }
 
     FieldSourceMapping declaredFallbackSource(String type, String field) {
-        if (modelFile == null || !modelFile.isFile() || type == null || field == null) return null;
-        try {
-            GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
-            GeneratedFieldModel declared = findField(model.findClass(type), field);
-            if (declared == null || declared.fallbackMapping() == null
-                    || declared.fallbackMapping().propertyPid().isBlank()) return null;
-            FieldSourceMapping copy = new FieldSourceMapping();
-            copy.copyFrom(declared.fallbackMapping());
-            return copy;
-        } catch (Exception unreadable) { return null; }
+        GeneratedFieldModel declared = declaredField(type, field);
+        if (declared == null || declared.fallbackMapping() == null
+                || declared.fallbackMapping().propertyPid().isBlank()) return null;
+        FieldSourceMapping copy = new FieldSourceMapping();
+        copy.copyFrom(declared.fallbackMapping());
+        return copy;
     }
 
     datasource.api.SourceBinding declaredBinding(
             String type, String field, datasource.api.SourceBindingSlot slot) {
-        if (modelFile == null || !modelFile.isFile() || type == null || field == null
-                || slot == null) return null;
-        try {
-            GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
-            GeneratedFieldModel declared = findField(model.findClass(type), field);
-            return wikidata.explore.model.FieldSourceBindings.binding(declared, slot);
-        } catch (Exception unreadable) { return null; }
+        GeneratedFieldModel declared = declaredField(type, field);
+        return declared == null || slot == null ? null
+                : wikidata.explore.model.FieldSourceBindings.binding(declared, slot);
     }
 
-    private GeneratedProjectModel loadModel() throws Exception {
-        if (modelFile == null || !modelFile.isFile()) {
-            throw new IllegalArgumentException("This dataset has no ModelBuilder model.");
-        }
-        if (!Files.isWritable(modelFile.toPath())) {
-            throw new IllegalArgumentException("Model is not writable: " + modelFile);
-        }
-        return new GeneratedProjectModelStore().load(modelFile);
+    private GeneratedFieldModel declaredField(String type, String field) {
+        if (model == null || type == null || field == null) return null;
+        return findField(model.findClass(type), field);
     }
 
-    private void saveModel(GeneratedProjectModelStore store,
-                           GeneratedProjectModel model) throws Exception {
-        File parent = modelFile.getAbsoluteFile().getParentFile();
-        File temporary = File.createTempFile(modelFile.getName() + ".promote-", ".tmp", parent);
-        try {
-            store.save(model, temporary);
-            try {
-                Files.move(temporary.toPath(), modelFile.toPath(),
-                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-                Files.move(temporary.toPath(), modelFile.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING);
-            }
-        } finally {
-            Files.deleteIfExists(temporary.toPath());
-        }
+    private static FieldRulePromoter.PromotionPreview noModel() {
+        return FieldRulePromoter.PromotionPreview.ineligible(
+                "This dataset has no ModelBuilder model.");
     }
 
     private FieldRulePromoter.PromotionPreview inspect(

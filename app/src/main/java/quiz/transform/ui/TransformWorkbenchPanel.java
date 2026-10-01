@@ -684,6 +684,27 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     /** True while identities are staged but not yet written. The staging session is the
      *  single record of what is pending, so nothing else needs to track it. */
+    /**
+     * Whether closing may go ahead although model edits made here were never saved.
+     * Keeping the window open is the default; discarding is an explicit choice that names
+     * each edit it loses.
+     */
+    boolean confirmCloseWithUnsavedModelChanges() {
+        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
+        List<String> changes = project == null ? List.of() : project.unsavedModelChanges();
+        if (changes.isEmpty()) return true;
+        String kind = project.projectKind().toString().toLowerCase();
+        Object[] options = {"Keep open", "Discard and close"};
+        int choice = JOptionPane.showOptionDialog(this,
+                "These model changes have not been saved to\n"
+                        + project.modelFile().getPath() + ":\n\n  - "
+                        + String.join("\n  - ", changes)
+                        + "\n\nUse \"Save " + kind + "\" to keep them.",
+                "Unsaved model changes", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        return choice == 1;
+    }
+
     public boolean hasUnsavedIdentities() {
         return stagedIdentityCount(curation()) > 0;
     }
@@ -1641,9 +1662,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         PopulationSelectionStore selectionStore =
                 controller.domain().capability(PopulationSelectionStore.class);
         if (selectionStore != null) {
-            JButton saveSelection = new JButton("Save population selection…");
-            saveSelection.addActionListener(e -> savePopulationSelection(selectionStore, type));
-            actions.add(saveSelection);
+            JButton createSelection = new JButton("Create population selection…");
+            createSelection.addActionListener(
+                    e -> createPopulationSelection(selectionStore, type));
+            actions.add(createSelection);
         }
         actions.add(fetch);
         selected.add(actions, BorderLayout.NORTH);
@@ -1665,7 +1687,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (experimentFetchButton != null) experimentFetchButton.setEnabled(count > 0);
     }
 
-    private void savePopulationSelection(PopulationSelectionStore store, String className) {
+    private void createPopulationSelection(PopulationSelectionStore store, String className) {
         List<String> qids = experimentSelection.keySet().stream().toList();
         if (qids.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No instances are selected for the experiment.");
@@ -1680,19 +1702,25 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JOptionPane.showMessageDialog(this, "Enter a selection name.");
             return;
         }
-        // The shared persistence confirmation, like every other point that writes:
-        // one verb, one Cancel default, one owner, and the exact file named.
-        String description = "Save population selection \"" + name + "\" with "
-                + qids.size() + " " + className + " instance QIDs to\n"
-                + store.modelFile().getPath();
-        if (!quiz.ui.Dialogs.confirmPersistence(this, "Save selection", description)) return;
+        // The same operation, words and confirmation as ModelBuilder's: it changes the
+        // working model, and Save is what writes it — named here, with its file.
+        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
+        String kind = project == null ? "domain"
+                : project.projectKind().toString().toLowerCase();
+        String description = "Create population selection \"" + name + "\" from "
+                + qids.size() + " selected " + className + " instances.\n\n"
+                + "Save " + kind + " will write it to\n" + store.modelFile().getPath() + ".";
+        if (!quiz.ui.Dialogs.confirmPersistence(
+                this, "Create population selection", description)) return;
         try {
-            store.savePopulationSelection(name, className, qids);
-            JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(description),
-                    "Population selection saved", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
-                    "Population selection not saved", JOptionPane.ERROR_MESSAGE);
+            store.createPopulationSelection(name, className, qids);
+            JOptionPane.showMessageDialog(this, "Created population selection " + name
+                            + " with " + qids.size() + " " + className + " QIDs. Use \"Save "
+                            + kind + "\" to persist it.",
+                    "Population selection created", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Population selection not created", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -2212,6 +2240,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                if (!panel.confirmCloseWithUnsavedModelChanges()) {
+                    return;   // keep the window open
+                }
                 if (panel.hasUnsavedIdentities()) {
                     int choice = JOptionPane.showConfirmDialog(f,
                             "Identities are staged but have not been saved.\n"
