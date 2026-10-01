@@ -111,22 +111,33 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
     @Override public List<String> selectionNames() {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(base.selectionNames());
-        curation.corrections().stream().filter(c -> c.source() != null
-                        && c.source().kind() != null && !c.source().kind().isBlank())
-                .map(CuratableDomain::sourceSelectionName).forEach(names::add);
+        names.addAll(curationSourceSelections().keySet());
         return List.copyOf(names);
     }
     @Override public List<Viewable> selectionMembers(String name) {
-        List<Viewable> inherited = base.selectionMembers(name);
-        if (!inherited.isEmpty() || name == null || !name.startsWith("Source / ")) {
-            return inherited;
+        // Looked up by the exact name each selection was built under. The name is a
+        // label; nothing is decided by parsing it (it used to be gated on a
+        // "Source / " prefix).
+        if (base.selectionNames().contains(name)) return base.selectionMembers(name);
+        return curationSourceSelections().getOrDefault(name, List.of());
+    }
+
+    /** One selection per value source that curation recorded for a field: the instances
+     *  holding a value from it, named after the source and the field. */
+    private java.util.Map<String, List<Viewable>> curationSourceSelections() {
+        java.util.Map<String, java.util.LinkedHashSet<String>> qids =
+                new java.util.LinkedHashMap<>();
+        for (quiz.curation.Correction correction : curation.corrections()) {
+            if (correction.source() == null || correction.source().kind() == null
+                    || correction.source().kind().isBlank()) continue;
+            qids.computeIfAbsent(sourceSelectionName(correction),
+                    ignored -> new java.util.LinkedHashSet<>()).add(correction.qid());
         }
-        java.util.Set<String> ids = curation.corrections().stream()
-                .filter(c -> name.equals(sourceSelectionName(c)))
-                .map(quiz.curation.Correction::qid)
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
-        return instances().stream().filter(value -> ids.contains(value.getIdentifier()))
-                .map(Viewable.class::cast).distinct().toList();
+        java.util.Map<String, List<Viewable>> selections = new java.util.LinkedHashMap<>();
+        qids.forEach((name, ids) -> selections.put(name, instances().stream()
+                .filter(value -> ids.contains(value.getIdentifier()))
+                .map(Viewable.class::cast).distinct().toList()));
+        return selections;
     }
 
     private static String sourceSelectionName(quiz.curation.Correction correction) {
