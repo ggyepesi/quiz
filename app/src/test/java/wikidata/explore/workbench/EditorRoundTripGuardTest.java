@@ -36,28 +36,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * node is checked against a freshly loaded model, so one editor that damages the model
  * cannot hide what the next one does.
  *
- * <p>{@link #KNOWN} is what the guard found when it was written. It may only shrink: a
- * new violation fails, and so does an entry that no longer occurs, so fixing one means
- * deleting its line here.
+ * <p>{@link #KNOWN} may only shrink: a new violation fails, and so does an entry that
+ * no longer occurs, so fixing one means deleting its line here.
  */
 class EditorRoundTripGuardTest {
 
     private static final File MODELS = new File("../data/wikidata");
 
-    /** Found 2026-10-01, all in the field editor. Key: domain | node | changed property. */
-    private static final Set<String> KNOWN = Set.of(
-            // A default is written in where nothing was stated.
-            "constellations | field Constellation.hemisphere | entityClassName",
-            "constellations | field Constellation.namedAfter | entityClassName",
-            "mythology | field Character.type | entityClassName",
-            "periodictable | field Element.discoverer | entityClassName",
-            "periodictable | field Element.namedAfter | entityClassName",
-            "periodictable | field Element.partOf | entityClassName",
-            "history | field OfficeHolding.startDate | matchValueField",
-            "history | field OfficeHolding.endDate | matchValueField",
-            "historicalpositions | field OfficeHolding.startDate | matchValueField",
-            "historicalpositions | field OfficeHolding.endDate | matchValueField",
-            "periodictable | field Element.discoveryDate | matchValueField");
+    /** Known violations, which may only shrink. The 19 found when the guard was written
+     *  (2026-10-01, #304) are all fixed. Key: domain | node | changed property. */
+    private static final Set<String> KNOWN = Set.of();
 
     @Test void selectingAndFlushingEveryShippedNodeChangesNothing() throws Exception {
         List<File> models = shippedModels();

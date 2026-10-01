@@ -310,8 +310,8 @@
   label: Subject field:
   combo: 2 item(s)
   label: Match value field:
-  combo: 1 item(s)
-    text: [structuredName]
+  combo: 2 item(s)
+    text: []
   label: Found on:
   combo: 2 item(s)
   label: Refine

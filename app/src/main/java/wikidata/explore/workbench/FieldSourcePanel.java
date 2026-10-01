@@ -596,7 +596,11 @@ public class FieldSourcePanel extends JPanel {
 
         fieldDefinitionPanel.edit(field.definition());
         sourceTypeBox.setSelectedItem(m.sourceType());
-        refreshObjectTypeBox(entityClassForDisplay());
+        // What is stored, not a guess: a blank class is an unclassed reference to
+        // generation, and showing a class derived from the field name made the flush
+        // store one nobody chose. The guess still seeds a field when its property is
+        // chosen (autoAdjustFromProperty), which is an explicit act.
+        refreshObjectTypeBox(field.entityClassName());
         requiredBox.setSelected(field.required());
         requiredBox.setEnabled(!field.isNameField());
         edgeMembershipBox.setSelectedItem(field.edgeMembership());
@@ -645,6 +649,11 @@ refreshOwnedComponentControls();
 
         // Subject may be a sibling field OR the reify "source" — offer both.
         subjectBox.addItem("source");
+        // A blank entry leads both match pickers, so "nothing chosen" is a state they
+        // can show. Without it the combo selected the first sibling, and the flush
+        // stored "source" or "symbol" on date fields that never named a match field.
+        matchValueBox.addItem("");
+        matchRoleBox.addItem("");
         GeneratedClassModel owner = ownerClass();
         if (owner != null) {
             for (GeneratedFieldModel f : owner.fields()) {
@@ -661,12 +670,8 @@ refreshOwnedComponentControls();
             FieldSourceMapping m = field.mapping();
             subjectBox.setSelectedItem(
                     m.subjectField().isEmpty() ? "source" : m.subjectField());
-            if (!m.matchValueField().isEmpty()) {
-                matchValueBox.setSelectedItem(m.matchValueField());
-            }
-            if (!m.matchRoleField().isEmpty()) {
-                matchRoleBox.setSelectedItem(m.matchRoleField());
-            }
+            matchValueBox.setSelectedItem(m.matchValueField());
+            matchRoleBox.setSelectedItem(m.matchRoleField());
         }
 
         refreshCompanionApplicability();
@@ -1605,21 +1610,6 @@ refreshOwnedComponentControls();
                 ? "Expose values reached through this field as a curated graph frontier."
                 : "Graph expansion requires a recursive typed Wikidata entity field "
                 + "with a Pxx property.");
-    }
-
-    private String entityClassForDisplay() {
-        if (field == null) {
-            return "";
-        }
-        String cls = field.entityClassName();
-        if (!cls.isBlank()) {
-            return cls;
-        }
-        if (field.type() != FieldType.ENTITY) {
-            return "";
-        }
-        String propLabel = field.mapping() == null ? "" : field.mapping().propertyLabel();
-        return suggestEntityClassName(propLabel == null ? "" : propLabel.toLowerCase());
     }
 
     private String suggestEntityClassName(String lower) {
