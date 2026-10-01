@@ -348,8 +348,6 @@ public class FieldSourcePanel extends JPanel {
         // An aggregate is assembled from records that already exist, so none of its
         // fields is acquired — the same "derived, not fetched" state owned and inverted
         // fields are already shown in.
-        boolean aggregated = owningClass != null
-                && owningClass.aggregateSource() != null;
         boolean owned = productionBox.getSelectedItem()
                 == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = productionBox.getSelectedItem()
@@ -358,7 +356,7 @@ public class FieldSourcePanel extends JPanel {
                 == FieldProductionKind.STATEMENT_SUBJECT
                 || productionBox.getSelectedItem()
                 == FieldProductionKind.STATEMENT_OBJECT;
-        boolean acquired = !owned && !inverse && !statementEnd && !aggregated;
+        boolean acquired = acquiredFromOwnProperty();
         propertyPidField.setEnabled(acquired);
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
@@ -372,7 +370,6 @@ public class FieldSourcePanel extends JPanel {
             propertyPidField.setText("");
             qualifierPidField.setText("");
             requiredBox.setSelected(false);
-            onlyRelatedOfTypeBox.setSelected(false);
         } else if (inverse) {
             qualifierPidField.setEnabled(false);
             typeBox.setSelectedItem(FieldType.ENTITY);
@@ -381,13 +378,25 @@ public class FieldSourcePanel extends JPanel {
             propertyPidField.setText("");
             qualifierPidField.setText("");
             requiredBox.setSelected(false);
-            onlyRelatedOfTypeBox.setSelected(false);
         } else if (statementEnd) {
             qualifierPidField.setEnabled(false);
             propertyPidField.setText("");
             qualifierPidField.setText("");
-            onlyRelatedOfTypeBox.setSelected(false);
         }
+    }
+
+    /** Whether this field is fetched through its own property. Only then do the
+     *  acquisition controls (property, direction, "only related of type") apply. */
+    private boolean acquiredFromOwnProperty() {
+        GeneratedClassModel owningClass = ownerClass();
+        boolean aggregated = owningClass != null
+                && owningClass.aggregateSource() != null;
+        Object production = productionBox.getSelectedItem();
+        return !aggregated
+                && production != FieldProductionKind.OWNED_COMPONENT
+                && production != FieldProductionKind.INVERT
+                && production != FieldProductionKind.STATEMENT_SUBJECT
+                && production != FieldProductionKind.STATEMENT_OBJECT;
     }
 
     public void afterChange(Consumer<Void> afterChange) {
@@ -1109,19 +1118,20 @@ refreshOwnedComponentControls();
             field.cardinality(FieldCardinality.COLLECTION);
             field.renderMode(FieldRenderMode.REFERENCE);
         }
-        // Auto display keeps the established inference; an explicit shared field
-        // definition wins in both ModelBuilder and TransformApp.
-        if (field.type() != FieldType.AUTO
-                && field.renderMode() == FieldRenderMode.AUTO) {
-            field.renderMode(field.type() == FieldType.ENTITY
-                    ? FieldRenderMode.REFERENCE : FieldRenderMode.INLINE);
-        }
+        // Auto display keeps the established inference: AUTO is a stored choice that
+        // rendering resolves, so the flush leaves it AUTO. Turning it into REFERENCE or
+        // INLINE here changed how a field rendered merely because it was selected.
         field.required(requiredBox.isSelected());
         field.expectation((wikidata.explore.model.FieldExpectation)
                                   expectationBox.getSelectedItem());
-        field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
-                                     ? wikidata.explore.model.EdgeMembershipMode.INHERIT
-                                     : wikidata.explore.model.EdgeMembershipMode.NONE);
+        // Where the control does not apply it is shown disabled with the stored value,
+        // and a flush must not turn "not applicable" into NONE: that rewrote INHERIT on
+        // every statement end merely by selecting it.
+        if (acquiredFromOwnProperty()) {
+            field.edgeMembership(onlyRelatedOfTypeBox.isSelected()
+                    ? wikidata.explore.model.EdgeMembershipMode.INHERIT
+                    : wikidata.explore.model.EdgeMembershipMode.NONE);
+        }
         boolean graphTraversable =
                 WikidataFieldGraphTraversalEligibility.canDeclare(projectModel, field);
         field.graphExpansionPolicy(graphTraversable

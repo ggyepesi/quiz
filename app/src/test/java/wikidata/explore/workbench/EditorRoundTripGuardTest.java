@@ -46,14 +46,6 @@ class EditorRoundTripGuardTest {
 
     /** Found 2026-10-01, all in the field editor. Key: domain | node | changed property. */
     private static final Set<String> KNOWN = Set.of(
-            // A stated value is lost.
-            "history | field OfficeHolding.source | edgeMembership",             // INHERIT -> NONE
-            "historicalpositions | field OfficeHolding.source | edgeMembership", // INHERIT -> NONE
-            "historicalpositions | field OfficeHolding.position | edgeMembership",
-            "nobelprizes | field LaureatesWithMotivation.category | edgeMembership",
-            "oscarnominations | field Nomination.category | edgeMembership",
-            "constellations | field Star.apparentMagnitude | renderMode",        // AUTO -> INLINE
-            "oscarnominations | field Nomination.ceremony | renderMode",         // AUTO -> REFERENCE
             // A default is written in where nothing was stated.
             "constellations | field Constellation.hemisphere | entityClassName",
             "constellations | field Constellation.namedAfter | entityClassName",
