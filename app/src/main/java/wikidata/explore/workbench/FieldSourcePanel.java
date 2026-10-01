@@ -703,9 +703,8 @@ refreshOwnedComponentControls();
                 ? null : projectModel.findClass(field.entityClassName());
         if (owner != null && forwardOwner != null) {
             for (GeneratedFieldModel candidate : forwardOwner.fields()) {
-                if (candidate != null
-                        && candidate.type() == FieldType.ENTITY
-                        && owner.className().equals(candidate.entityClassName())) {
+                if (wikidata.explore.model.InverseFieldResolution.referencesOwner(
+                        projectModel, candidate, owner.className())) {
                     inverseFieldBox.addItem(candidate.name());
                 }
             }

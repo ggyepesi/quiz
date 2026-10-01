@@ -9,7 +9,6 @@ import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.EntityRepresentations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -156,9 +155,8 @@ public final class ModelInverts {
         List<String> byProperty = new ArrayList<>();
         List<String> byClass = new ArrayList<>();
         for (GeneratedFieldModel f : src.fields()) {
-            if (f == null || (!targetClass.equals(f.entityClassName())
-                    && !EntityRepresentations.mayRepresent(project,
-                            f.entityClassName(), targetClass))) {
+            if (!wikidata.explore.model.InverseFieldResolution.referencesOwner(
+                    project, f, targetClass)) {
                 continue;
             }
             byClass.add(f.name());

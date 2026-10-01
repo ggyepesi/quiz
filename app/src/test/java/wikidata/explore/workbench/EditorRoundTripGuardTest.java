@@ -47,7 +47,6 @@ class EditorRoundTripGuardTest {
     /** Found 2026-10-01, all in the field editor. Key: domain | node | changed property. */
     private static final Set<String> KNOWN = Set.of(
             // A stated value is lost.
-            "history | field Person.offices | invalid",       // inverseField cleared
             "history | field OfficeHolding.source | edgeMembership",             // INHERIT -> NONE
             "historicalpositions | field OfficeHolding.source | edgeMembership", // INHERIT -> NONE
             "historicalpositions | field OfficeHolding.position | edgeMembership",

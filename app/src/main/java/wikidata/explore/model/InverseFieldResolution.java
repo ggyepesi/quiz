@@ -20,6 +20,26 @@ public final class InverseFieldResolution {
     private InverseFieldResolution() { }
 
     /**
+     * Whether {@code field} is a forward reference an inverse on {@code ownerClassName}
+     * may read: an ENTITY field declared as that class, or as a role that may be
+     * contextually represented as it (History's OfficeHolding.source is declared as the
+     * role PositionHolder and holds Persons).
+     *
+     * <p>The candidate list is part of the decision, so it is asked here too. The editor
+     * once listed exact class matches only; a stated inverse through a role was then not
+     * among its choices, and the flush every Save performs wrote the choice back blank.
+     */
+    public static boolean referencesOwner(GeneratedProjectModel project,
+                                          GeneratedFieldModel field,
+                                          String ownerClassName) {
+        if (field == null || ownerClassName == null
+                || field.type() != datasource.schema.FieldType.ENTITY) return false;
+        return ownerClassName.equals(field.entityClassName())
+                || EntityRepresentations.mayRepresent(project,
+                        field.entityClassName(), ownerClassName);
+    }
+
+    /**
      * @param explicitField    the author's declared inverse field, or blank
      * @param referencingOwner names of the forward fields that reference the inverse's
      *                         owning class, either directly or through a role that may be

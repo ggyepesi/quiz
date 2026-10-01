@@ -420,11 +420,8 @@ public final class GeneratedProjectModelValidator {
                     project.findClass(inverse.entityClassName());
             if (forwardOwner == null) continue; // ordinary reference validation owns it
             List<GeneratedFieldModel> candidates = forwardOwner.fields().stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(field -> field.type() == FieldType.ENTITY)
-                    .filter(field -> owner.className().equals(field.entityClassName())
-                            || EntityRepresentations.mayRepresent(project,
-                                    field.entityClassName(), owner.className()))
+                    .filter(field -> InverseFieldResolution.referencesOwner(
+                            project, field, owner.className()))
                     .toList();
             String selected = clean(inverse.mapping().inverseField());
             // Ask the question generation asks, not a stricter one: a property match
