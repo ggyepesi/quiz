@@ -145,7 +145,14 @@ final class GraphConstraintsPanel extends JPanel {
             java.util.List::of;
     private java.util.function.Supplier<Map<String, wikidata.explore.WikidataProperty>>
             propertyCache = Map::of;
-    private Consumer<GraphDiscoveryResultStore.Artifact> graphResultConsumer = ignored -> {};
+    /** Applies a result to the project, or throws saying why it cannot — which keeps the
+     *  results dialog open, so the reviewer can decide what it is waiting for. */
+    @FunctionalInterface
+    interface GraphResultApplier {
+        void apply(GraphDiscoveryResultStore.Artifact result) throws Exception;
+    }
+
+    private GraphResultApplier graphResultApplier = ignored -> { };
     private Runnable afterGraphResultApplied = () -> {};
     /** The project's graph results. The editor records a run into them and reads the
      *  edited class's from them; it does not own them. */
@@ -218,8 +225,8 @@ final class GraphConstraintsPanel extends JPanel {
         refreshArrow();
     }
 
-    void onGraphResult(Consumer<GraphDiscoveryResultStore.Artifact> value) {
-        graphResultConsumer = value == null ? ignored -> {} : value;
+    void onGraphResult(GraphResultApplier value) {
+        graphResultApplier = value == null ? ignored -> { } : value;
     }
 
     void afterGraphResultApplied(Runnable value) {
@@ -314,8 +321,8 @@ final class GraphConstraintsPanel extends JPanel {
         };
     }
 
-    void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
-        graphResultConsumer.accept(results.markApplied(owner(artifact.type()), artifact));
+    void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) throws Exception {
+        graphResultApplier.apply(artifact);
     }
 
     void revealAppliedGraphResult() {
@@ -408,7 +415,7 @@ final class GraphConstraintsPanel extends JPanel {
         testQidField.setText("");
         testViaField.setText("");
         reviewBox.setSelectedItem(
-                GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT);
+                GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION);
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         if (targetClassBox.getItemCount() > 0) targetClassBox.setSelectedIndex(0);
     }
@@ -937,7 +944,7 @@ final class GraphConstraintsPanel extends JPanel {
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
         replace(testsModel, evidence == null ? List.of() : evidence.tests());
         reviewBox.setSelectedItem(evidence == null
-                ? GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT
+                ? GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION
                 : evidence.reviewDisposition());
     }
 
@@ -1091,14 +1098,21 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private static JComboBox<GraphEvidenceCondition.ReviewDisposition> reviewBox() {
-        var box = new JComboBox<>(GraphEvidenceCondition.ReviewDisposition.values());
+        // The default leads; the other two decide for the reviewer.
+        var box = new JComboBox<>(new GraphEvidenceCondition.ReviewDisposition[] {
+                GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION,
+                GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT });
         box.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
-                setText(value == GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT
-                        ? "Exclude unless manually accepted"
-                        : "Include unless manually rejected");
+                setText(value instanceof GraphEvidenceCondition.ReviewDisposition disposition
+                        ? switch (disposition) {
+                            case AWAIT_DECISION -> "Wait for a manual decision before applying";
+                            case INCLUDE_AND_REPORT -> "Include unless manually rejected";
+                            case EXCLUDE_AND_REPORT -> "Exclude unless manually accepted";
+                        } : "");
                 return this;
             }
         });
@@ -1163,7 +1177,7 @@ final class GraphConstraintsPanel extends JPanel {
     }
     private GraphEvidenceCondition.ReviewDisposition reviewDisposition() {
         return reviewBox.getSelectedItem() instanceof GraphEvidenceCondition.ReviewDisposition value
-                ? value : GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT;
+                ? value : GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION;
     }
     private static GraphDiscoveryConfiguration.NodeUse use(JComboBox<GraphDiscoveryConfiguration.NodeUse> box) {
         return box.getSelectedItem() instanceof GraphDiscoveryConfiguration.NodeUse value
@@ -1550,10 +1564,12 @@ final class GraphConstraintsPanel extends JPanel {
         if (graph == null) return "";
         return graph.nextNodes().stream().map(GraphDiscoveryConfiguration.NextNode::evidenceCondition)
                 .filter(java.util.Objects::nonNull)
-                .map(condition -> condition.reviewDisposition()
-                        == GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT
-                        ? "Undecidable nodes continue and are reported in Review."
-                        : "Undecidable nodes stop and are reported in Review.")
+                .map(condition -> switch (condition.reviewDisposition()) {
+                    case AWAIT_DECISION -> "Undecidable nodes continue, are reported in Review,"
+                            + " and must be decided before the result is applied.";
+                    case INCLUDE_AND_REPORT -> "Undecidable nodes continue and are reported in Review.";
+                    case EXCLUDE_AND_REPORT -> "Undecidable nodes stop and are reported in Review.";
+                })
                 .distinct().collect(java.util.stream.Collectors.joining(" "));
     }
 

@@ -21,6 +21,8 @@ public final class GraphDiscoveryResultStore {
     public static final String ANNOTATED_INSTANCE = "Annotated instance";
     public static final String GRAPH_ANNOTATION = "Graph annotation";
     public static final String OUTPUT_APPLIED = "Output applied";
+    public static final String REVIEW_DISPOSITION = "Review disposition";
+    public static final String AWAIT_DECISION = "Await decision";
 
     private GraphDiscoveryResultStore() { }
 
@@ -299,6 +301,12 @@ public final class GraphDiscoveryResultStore {
             return ids;
         }
 
+        /** The entries applying this result must wait for, in result order. */
+        public List<WikidataDynamicObject> awaitingDecision() {
+            return instances.stream()
+                    .filter(GraphDiscoveryResultStore::awaitingDecision).toList();
+        }
+
         public boolean applied() {
             return instances.stream().anyMatch(value ->
                     Boolean.TRUE.equals(value.get(OUTPUT_APPLIED)));
@@ -411,10 +419,11 @@ public final class GraphDiscoveryResultStore {
             }
         }
         if (classification != null) {
-            record.put("Review disposition",
-                    classification.reviewDisposition()
-                            == datasource.graph.constraint.GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT
-                            ? "Include" : "Exclude");
+            record.put(REVIEW_DISPOSITION, switch (classification.reviewDisposition()) {
+                case INCLUDE_AND_REPORT -> "Include";
+                case EXCLUDE_AND_REPORT -> "Exclude";
+                case AWAIT_DECISION -> AWAIT_DECISION;
+            });
             if (!classification.conditionName().isBlank()) {
                 record.merge("Condition", classification.conditionName());
             }
@@ -454,8 +463,19 @@ public final class GraphDiscoveryResultStore {
         Object original = annotation.get(GRAPH_DECISION);
         if ("Accepted".equals(original)) return true;
         if (!"Review".equals(original)) return false;
-        Object disposition = annotation.get("Review disposition");
+        Object disposition = annotation.get(REVIEW_DISPOSITION);
         return "Include".equals(disposition);
+    }
+
+    /**
+     * A Review entry whose graph said to wait for the reviewer, and that has no manual
+     * decision yet. Asked the same way {@link #included} is, so an entry is always exactly
+     * one of included, excluded or awaiting.
+     */
+    public static boolean awaitingDecision(WikidataDynamicObject annotation) {
+        if (annotation == null || annotation.get(MANUAL_DECISION) != null) return false;
+        return "Review".equals(annotation.get(GRAPH_DECISION))
+                && AWAIT_DECISION.equals(annotation.get(REVIEW_DISPOSITION));
     }
 
     /** The graph's immutable classification; manual curation is deliberately separate. */

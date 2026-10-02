@@ -48,7 +48,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphConstraintsPanelTest {
 
-    @Test void applyingAGraphResultRevealsInstancesOnlyInThePostApplyContinuation() {
+    @Test void applyingAGraphResultRevealsInstancesOnlyInThePostApplyContinuation()
+            throws Exception {
         GeneratedProjectModel model = model();
         GeneratedClassModel graph = graphClass(model, "PositionGraph");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
@@ -67,8 +68,7 @@ class GraphConstraintsPanelTest {
         panel.applyGraphResult(artifact);
 
         assertTrue(installed.get(), "Apply installs the graph result immediately");
-        assertTrue(applied.get().applied(),
-                "the annotations retain that their output was explicitly applied");
+        assertSame(artifact, applied.get(), "the result is handed to the project to apply");
         assertFalse(revealed.get(),
                 "the instances window must not open while the workflow dialog is active");
         panel.revealAppliedGraphResult();

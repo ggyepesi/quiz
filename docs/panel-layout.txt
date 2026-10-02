@@ -454,7 +454,7 @@
     button: Edit selected evidence test
     button: Remove selected evidence test
     label: When evidence is incomplete:
-    combo: 2 item(s)
+    combo: 3 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList

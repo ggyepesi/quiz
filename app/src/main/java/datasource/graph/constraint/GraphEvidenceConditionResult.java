@@ -33,17 +33,21 @@ public record GraphEvidenceConditionResult(
     }
 
     /**
-     * Population disposition is explicit while the Review result remains inspectable.
+     * Whether the walk continues through this entity to the next node.
      *
-     * <p>Parenthesised deliberately: this decides whether an entity enters a domain,
-     * and an added clause in an unparenthesised mix of {@code &&} and {@code ||} would
-     * change that silently.
+     * <p>Accepted entities continue; a Review entity continues unless its disposition
+     * excludes it. One awaiting a decision continues too, so the reviewer sees everything
+     * it reaches; it is not thereby in the population — applying the result waits for its
+     * decision. It was called includedInPopulation while those two answers were the same.
+     *
+     * <p>Parenthesised deliberately: an added clause in an unparenthesised mix of
+     * {@code &&} and {@code ||} would change this silently.
      */
-    public boolean includedInPopulation() {
+    public boolean continuesTraversal() {
         return decision == Decision.ACCEPTED
                 || (decision == Decision.REVIEW
                         && reviewDisposition
-                            == GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT);
+                            != GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT);
     }
 
     private static List<GraphEdge> immutable(List<GraphEdge> values) {

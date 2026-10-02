@@ -543,8 +543,13 @@ public class ModelBuilderFrame extends JFrame {
                         : " will write the changed instances to\n"
                                 + destination.getPath() + ".");
         if (quiz.ui.Dialogs.confirmPersistence(this, action, description)) {
-            acceptGraphResult(graphResults.markApplied(
-                    projectModel.findClass(result.type()), result));
+            try {
+                applyGraphResult(result);
+            } catch (Exception refused) {
+                JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(
+                        refused.getMessage() == null ? refused.toString() : refused.getMessage()),
+                        action, JOptionPane.WARNING_MESSAGE);
+            }
         }
     }
 
@@ -910,7 +915,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.setProcessRunner(processRunner);
         sourceWorkbench.graphInstances(() -> lastRun == null
                 ? List.of() : lastRun.instances());
-        sourceWorkbench.onGraphResult(this::acceptGraphResult);
+        sourceWorkbench.onGraphResult(this::applyGraphResult);
         sourceWorkbench.afterGraphResultApplied(this::showInstancesWindow);
         sourceWorkbench.log(logWindow::info);
 
@@ -1569,97 +1574,22 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     /**
-     * Narrows the output class to the population the graph accepted. A graph decides
-     * WHICH entities belong, never what they contain: the instances are the project's
-     * own generated ones and they are kept whole, so applying a result selects among
-     * them and drops the rest.
-     *
-     * <p>It used to remove every instance of the output class and put the run's
-     * candidate objects in their place. A candidate carries a QID, a label and a
-     * reverse reference to its annotation and nothing else, so one Apply replaced 1317
-     * generated Positions — superClasses, jurisdiction, inception, the lot — with 1307
-     * shells whose only field was "Graph annotation", and dragged all 1307 annotation
-     * records into the domain snapshot with them through that reference.
-     *
-     * <p>Accepted ids the project has not generated yet are reported rather than
-     * invented: an empty instance is indistinguishable from one whose acquisition
-     * failed, and a snapshot cannot tell the two apart afterwards.
+     * Applies a graph result through the same operation a headless build runs, or refuses
+     * naming the Review entries it is waiting for. Refusing by throwing keeps the results
+     * dialog open, where those entries can be decided.
      */
-    private void acceptGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
-        if (artifact == null || artifact.outputClass().isBlank()) return;
-        try {
-            GeneratedProjectModel snapshot = projectModel.copy();
-            java.util.List<WikidataDynamicObject> previousPool =
-                    lastRun == null ? List.of() : lastRun.dynamicObjects();
-            java.util.Set<String> previousMembers = previousPool.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(value -> value.directClassNames().contains(artifact.outputClass()))
-                    .map(WikidataDynamicObject::getIdentifier)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toCollection(
-                            java.util.LinkedHashSet::new));
-            wikidata.explore.generation.GenerationRuns.NarrowedPool narrowed =
-                    artifact.populationOperation() == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
-                    ? wikidata.explore.generation.GenerationRuns.addedTo(
-                            previousPool,
-                            artifact.outputClass(), graphOutputCarrier(artifact.outputClass()),
-                            artifact.acceptedIdentities())
-                    : wikidata.explore.generation.GenerationRuns.narrowedTo(
-                            previousPool,
-                            artifact.outputClass(), artifact.acceptedIdentities());
-            java.util.List<WikidataDynamicObject> pool =
-                    new java.util.ArrayList<>(narrowed.pool());
-            GenerationPipeline pipeline = new GenerationPipeline();
-            GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
-            java.util.List<Viewable> instances = pipeline.materialize(runtime, pool);
-            RuleNode plan = RuleTreeCompiler.compileProject(snapshot);
-            GenerationRun run = new GenerationRun(
-                    snapshot, 0, plan, pool, runtime, instances, null,
-                    lastRun == null ? List.of() : lastRun.loadedDeclarations(),
-                    GenerationRun.Quality.completeQuality(), List.of(),
-                    GenerationRun.SelfReferenceAudit.notRun(),
-                    GenerationRun.OwnedCompositionAudit.notRun(),
-                    GenerationRun.KindClassificationAudit.notRun(),
-                    GenerationRun.ProjectionAudit.notRun());
-            acceptGenerationRun(run);
-            int missing = narrowed.ungenerated().size();
-            java.util.Set<String> added = new java.util.LinkedHashSet<>(narrowed.kept());
-            added.removeAll(previousMembers);
-            long resultingMembers = pool.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .filter(value -> value.directClassNames().contains(artifact.outputClass()))
-                    .count();
-            logWindow.info(graphApplyMessage(artifact.type(), artifact.outputClass(),
-                    artifact.populationOperation(), previousMembers.size(), added.size(),
-                    resultingMembers, missing, projectModel.isModel()));
-        } catch (Exception error) {
-            reportGenerationError(error);
+    private void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) throws Exception {
+        wikidata.explore.generation.GraphApplication.Outcome outcome =
+                wikidata.explore.generation.GraphApplication.apply(
+                        artifact, projectModel, lastRun);
+        if (outcome instanceof wikidata.explore.generation.GraphApplication.AwaitingDecision waiting) {
+            logWindow.info(waiting.message() + "\n");
+            throw new IllegalStateException(waiting.message());
         }
-    }
-
-    /** The stable carrier whose entities an additive graph may classify. */
-    private String graphOutputCarrier(String outputClass) {
-        GeneratedClassModel output = projectModel.findClass(outputClass);
-        if (output == null || output.baseClassName().isBlank()) return outputClass;
-        return output.baseClassName();
-    }
-
-    static String graphApplyMessage(String graphName, String outputClass,
-            datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation,
-            long previousMembers, long addedMembers, long resultingMembers,
-            long missing, boolean model) {
-        String effect = operation
-                == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
-                ? "added " + addedMembers + " generated instance(s) to " + previousMembers
-                        + " existing " + outputClass + " instance(s); " + resultingMembers
-                        + " instance(s) now belong to " + outputClass
-                : "kept " + resultingMembers + " accepted " + outputClass
-                        + " instance(s) from " + previousMembers + " existing instance(s)";
-        return "Applied graph result \"" + graphName + "\": " + effect
-                + (missing == 0 ? "" : ", and " + missing + " accepted id(s) have no "
-                        + "generated instance yet — generate to acquire them")
-                + ". Use \"Save " + (model ? "model" : "domain")
-                + "\" to persist them.";
+        var applied = (wikidata.explore.generation.GraphApplication.Applied) outcome;
+        graphResults.markApplied(projectModel.findClass(artifact.type()), applied.result());
+        acceptGenerationRun(applied.run());
+        logWindow.info(applied.message(projectModel.isModel()) + "\n");
     }
 
     private void acceptGenerationRun(GenerationRun run, boolean alreadySaved) {

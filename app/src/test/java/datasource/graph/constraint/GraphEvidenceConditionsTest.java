@@ -44,7 +44,7 @@ class GraphEvidenceConditionsTest {
                 store, condition(null), position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.ACCEPTED, result.decision());
-        assertTrue(result.includedInPopulation());
+        assertTrue(result.continuesTraversal());
         assertEquals(List.of(evidence), result.evidenceEdges());
         assertTrue(result.testEdges().contains(witness));
         assertEquals(List.of(new GraphEvidenceWitness(evidence, witness)),
@@ -80,7 +80,7 @@ class GraphEvidenceConditionsTest {
                 store, condition(null), position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.REVIEW, result.decision());
-        assertTrue(result.includedInPopulation());
+        assertTrue(result.continuesTraversal());
         assertEquals(2, result.coverage().size());
     }
 
@@ -93,7 +93,7 @@ class GraphEvidenceConditionsTest {
                 position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.REVIEW, result.decision());
-        assertFalse(result.includedInPopulation());
+        assertFalse(result.continuesTraversal());
         assertEquals(GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT,
                 result.reviewDisposition());
     }
@@ -109,7 +109,7 @@ class GraphEvidenceConditionsTest {
                 store, condition(null), position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.REJECTED, result.decision());
-        assertFalse(result.includedInPopulation());
+        assertFalse(result.continuesTraversal());
         assertEquals(List.of(evidence), result.evidenceEdges());
         assertEquals(List.of(currentKind), result.testEdges());
         assertEquals(List.of(), result.witnesses());
@@ -125,7 +125,7 @@ class GraphEvidenceConditionsTest {
                 store, condition(null), position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.REVIEW, result.decision());
-        assertTrue(result.includedInPopulation());
+        assertTrue(result.continuesTraversal());
     }
 
     @Test void aPositiveWitnessDecidesAnyDespiteAnotherUnavailableAlternative() {
@@ -187,7 +187,7 @@ class GraphEvidenceConditionsTest {
                 position);
 
         assertEquals(GraphEvidenceConditionResult.Decision.ACCEPTED, result.decision());
-        assertTrue(result.includedInPopulation());
+        assertTrue(result.continuesTraversal());
         assertEquals(List.of(), result.witnesses());
         assertEquals(List.of(evidence), result.evidenceEdges());
     }

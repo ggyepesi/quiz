@@ -199,9 +199,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         graphConstraintsPanel.loadedInstances(instances);
     }
 
-    public void onGraphResult(
-            java.util.function.Consumer<GraphDiscoveryResultStore.Artifact> consumer) {
-        graphConstraintsPanel.onGraphResult(consumer);
+    void onGraphResult(GraphConstraintsPanel.GraphResultApplier applier) {
+        graphConstraintsPanel.onGraphResult(applier);
     }
 
     public void afterGraphResultApplied(Runnable continuation) {

@@ -165,7 +165,7 @@ public final class GraphDiscoveryExecutor {
                     List.copyOf(incompleteAll), List.copyOf(unavailableAll)));
             frontier = condition == null ? List.copyOf(accepted)
                     : classifications.stream()
-                            .filter(GraphEvidenceConditionResult::includedInPopulation)
+                            .filter(GraphEvidenceConditionResult::continuesTraversal)
                             .map(GraphEvidenceConditionResult::node).distinct().toList();
         }
         return new Result(initial, results);

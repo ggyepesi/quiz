@@ -28,7 +28,7 @@ class OperationsStayHeadlessTest {
     private static final Path SOURCE = Path.of("src/main/java/wikidata/explore/generation");
     private static final List<String> OPERATIONS = List.of(
             "ProjectSave", "DomainSave", "DomainCounts", "GraphDiscoveryResultStore",
-            "GenerationRuns");
+            "GenerationRuns", "GraphApplication");
     private static final Pattern UI = Pattern.compile(
             "\\b(javax\\.swing|java\\.awt|wikidata\\.explore\\.workbench|quiz\\.transform\\.ui"
                     + "|process\\.swing)\\.(?:\\*|\\w[\\w.]*)");

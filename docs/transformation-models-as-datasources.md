@@ -378,6 +378,15 @@ This preserves explicit curation without making a window part of execution. It a
 project's automation claim precise: “headlessly executable” means no operation can reach
 `AWAITING_DECISION` under its saved policies and inputs.
 
+**Implemented (2026-10-02).** The policy is the evidence condition's `ReviewDisposition`, stored
+on the graph class: `AWAIT_DECISION` (the default), `INCLUDE_AND_REPORT` or `EXCLUDE_AND_REPORT`.
+The walk continues through an entry awaiting a decision, so the reviewer sees everything it
+reaches. `GraphApplication.apply` is the one apply operation: it returns `AwaitingDecision`
+naming every undecided Review entry, or `Applied` with the new run and the result marked as
+applied. The desktop refuses Apply with that message and keeps its results dialog open. Known
+gap: rejecting an intermediate Review entity afterwards does not remove what was reached
+through it (#312).
+
 ### Historical Positions build
 
 The worked build is:
