@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package wikidata.explore.generation;
 
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;

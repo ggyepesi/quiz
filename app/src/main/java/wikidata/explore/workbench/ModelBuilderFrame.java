@@ -3251,72 +3251,11 @@ public class ModelBuilderFrame extends JFrame {
         return wikidata.explore.generation.DomainSave.signature(model);
     }
 
-    // The signature of the model the in-memory instances (lastRun) were
-    // generated from, or "" if there are none.
-    private String generatedInstancesSignature() {
-        return lastRun != null && lastRun.modelSnapshot() != null
-                ? modelSignature(lastRun.modelSnapshot())
-                : "";
-    }
-
     // The distinct class-types stamped on a set of generated objects.
 
 
-    // The types already present in the saved snapshot (to detect a single-class
-    // run about to overwrite a multi-class one).
-    /** What the snapshot on disk holds, or nothing when there is none to read. */
-    private java.util.List<WikidataDynamicObject> snapshotObjectsOnDisk() {
-        try {
-            return new WikidataDynamicObjectJsonStore().load(snapshotFile());
-        } catch (Exception unreadable) {
-            return java.util.List.of();
-        }
-    }
-
     private void saveEverything() {
         saveEverything(false);
-    }
-
-    private record SnapshotWrite(
-            List<WikidataDynamicObject> roots,
-            List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
-            datasource.graph.GraphDiscoveryState graphDiscovery,
-            wikidata.explore.transform.SelfReferenceLedger selfReferences) { }
-
-    /**
-     * The instance artifact for the current construct inventory. Loaded and freshly
-     * generated data take the same path; only their source differs.
-     */
-    private SnapshotWrite snapshotForSave(GeneratedProjectModel model) throws Exception {
-        restampRenamedInstances();
-        wikidata.explore.model.ConstructInventory inventory =
-                wikidata.explore.model.ConstructInventory.of(model);
-        if (lastRun != null && lastRun.dynamicObjects() != null
-                && !lastRun.dynamicObjects().isEmpty()) {
-            // Saving commits the current inventory, so a class removed since the run
-            // stops being claimed by the objects it produced.
-            return new SnapshotWrite(inventory.memberRoots(
-                    inventory.retractRemovedClaims(lastRun.dynamicObjects())),
-                    lastRun.loadedDeclarations(), graphDiscoveryLedger,
-                    lastRun.selfReferenceAudit().ledger());
-        }
-        File existing = snapshotFile();
-        if (!existing.isFile()) {
-            return new SnapshotWrite(List.of(), List.of(), graphDiscoveryLedger,
-                    wikidata.explore.transform.SelfReferenceLedger.EMPTY);
-        }
-        WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
-                new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(existing);
-        // The file was stamped against the inventory its Save committed; a class renamed
-        // since then is the same class, not a removed one.
-        java.util.Map<String, String> renames =
-                inventory.renamesSince(storage.savedInventory(model.name()));
-        wikidata.explore.generation.GenerationRuns.renameClasses(loaded.objects(), renames);
-        return new SnapshotWrite(inventory.memberRoots(
-                inventory.retractRemovedClaims(loaded.objects())),
-                wikidata.explore.generation.GenerationRuns.renamedDeclarations(
-                        loaded.loadedDeclarations(), renames),
-                loaded.graphDiscovery(), loaded.selfReferences());
     }
 
     /** @return true only when every requested durable write completed. */
@@ -3354,85 +3293,49 @@ public class ModelBuilderFrame extends JFrame {
             modelToSave = lastRun.modelSnapshot();
             recoverCompletedRun = true;
         }
+        if (!recoverCompletedRun) {
+            // Depth is per-class (saved on each class via the spinner change listener);
+            // make sure the active class has the latest spinner value.
+            GeneratedClassModel active = activeClass();
+            if (active != null) {
+                active.generationDepth(((Number) depthSpinner.getValue()).intValue());
+            }
+            restampRenamedInstances();
+        }
 
-        SnapshotWrite snapshotToSave;
+        wikidata.explore.generation.ProjectSave save;
         try {
-            snapshotToSave = snapshotForSave(modelToSave);
+            save = wikidata.explore.generation.ProjectSave.plan(
+                    new wikidata.explore.generation.ProjectSave.Input(modelToSave,
+                            lastRun == null ? null : new wikidata.explore.generation.ProjectSave.Run(
+                                    lastRun.dynamicObjects(), lastRun.loadedDeclarations(),
+                                    lastRun.selfReferenceAudit().ledger(),
+                                    lastRun.modelSnapshot()),
+                            graphDiscoveryLedger, graphResults.all()),
+                    storage);
         } catch (Exception unreadableSnapshot) {
             reportGenerationError(unreadableSnapshot);
             return false;
         }
 
-        // Confirm BEFORE writing — show the exact paths and what each will get,
-        // so Escape actually cancels (the old dialog appeared after the files
-        // were already written).
-        boolean haveInstances = !snapshotToSave.roots().isEmpty();
-
-        // Drift guard: the snapshot we'd write came from lastRun's model; if the
-        // current model has changed since, the saved instances will be stale.
-        String runSig = generatedInstancesSignature();
-        if (!recoverCompletedRun && lastRun != null && haveInstances
-                && wikidata.explore.generation.DomainSave.instancesWouldBeStale(runSig, modelToSave)) {
+        for (wikidata.explore.generation.ProjectSave.Warning warning : save.warnings()) {
+            boolean stale = warning.kind()
+                    == wikidata.explore.generation.ProjectSave.Warning.Kind.STALE_INSTANCES;
             int d = JOptionPane.showConfirmDialog(dialogOwner,
-                                                  "The model has changed since these instances were generated.\n"
-                                                          + "The saved snapshot will be STALE (not match the saved model).\n\n"
-                                                          + "Regenerate (Cancel, then \"Generate class instances\") before saving,\n"
-                                                          + "or save anyway?",
-                                                  "Model changed since generation",
-                                                  JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-            if (d != JOptionPane.OK_OPTION) {
-                return false;
-            }
+                    quiz.ui.Dialogs.wrapped(warning.message() + "\n\n" + (stale
+                            ? "Regenerate (Cancel, then \"Generate class instances\") "
+                                    + "before saving, or save anyway?"
+                            : "Use \"Generate domain\" to keep every class. Save anyway?")),
+                    stale ? "Model changed since generation" : "Overwriting a multi-class snapshot",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (d != JOptionPane.OK_OPTION) return false;
         }
 
-        // Overwrite guard: a single-class run ("Generate class") must not
-        // silently replace a multi-class snapshot (e.g. Episode, Labour). Warn
-        // about types on disk that this run would drop. (Use "Generate domain".)
-        if (lastRun != null && haveInstances && snapshotFile().isFile()) {
-            java.util.Set<String> runTypes = wikidata.explore.generation.DomainSave.stampedTypes(lastRun.dynamicObjects());
-            java.util.List<String> dropped = wikidata.explore.generation.DomainSave.typesDropped(
-                    lastRun.dynamicObjects(), snapshotObjectsOnDisk());
-            if (!dropped.isEmpty()) {
-                int d = JOptionPane.showConfirmDialog(dialogOwner,
-                                                      "This run produced only: "
-                                                              + String.join(", ", runTypes) + ".\n"
-                                                              + "Saving will OVERWRITE the snapshot and DROP these "
-                                                              + "existing types: " + String.join(", ", dropped) + ".\n\n"
-                                                              + "Use \"Generate domain\" to keep every class. Save anyway?",
-                                                      "Overwriting a multi-class snapshot",
-                                                      JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-                if (d != JOptionPane.OK_OPTION) {
-                    return false;
-                }
-            }
-        }
-
-        String plan = "Save the " + projectKind + " \"" + modelToSave.name()
-                + "\" — write these files?\n\n"
-                + "Config:    " + modelFile().getPath() + "\n"
-                + "Rule tree: " + ruleTreeFile().getPath() + "\n"
-                + "Instances: " + (haveInstances
-                ? snapshotToSave.roots().size() + " -> " + snapshotFile().getPath()
-                : "(none generated yet — will be skipped)");
-        java.util.List<GraphDiscoveryResultStore.Artifact> annotationSets =
-                this.graphResults.all();
-        for (GraphDiscoveryResultStore.Artifact graphResult : annotationSets) {
-            // The same expression the write takes. Built from the live names here and
-            // from the artifact's recorded ones there, the dialog promised one file
-            // while the save produced another as soon as anything was renamed.
-            plan += "\nGraph annotations \"" + graphResult.type() + "\": "
-                    + graphResult.instances().size() + " -> "
-                    + GraphDiscoveryResultStore.destinationOf(graphResult).getPath();
-        }
-        wikidata.explore.model.ConstructInventory constructInventory =
-                wikidata.explore.model.ConstructInventory.of(modelToSave);
-        plan += "\nConstruct inventory: "
-                + storage.constructManifestFile(modelToSave.name()).getPath();
-        for (File obsolete : storage.obsoleteConstructSnapshots(
-                modelToSave.name(), constructInventory)) {
-            plan += "\nRemove obsolete snapshot: " + obsolete.getPath();
-        }
+        // Confirm BEFORE writing — show the exact paths and what each will get, so
+        // Escape actually cancels.
         if (!closingAfterSave) {
+            String plan = "Save the " + projectKind + " \"" + modelToSave.name()
+                    + "\" — write these files?\n\n" + String.join("\n", save.planLines());
             int choice = JOptionPane.showConfirmDialog(
                     dialogOwner, quiz.ui.Dialogs.wrapped(plan), "Save " + projectKind,
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
@@ -3441,68 +3344,10 @@ public class ModelBuilderFrame extends JFrame {
             }
         }
 
-        StringBuilder report = new StringBuilder();
         try {
-            modelFile().getParentFile().mkdirs();
-
-            // Depth is now per-class (saved on each class via the spinner change
-            // listener); make sure the active class has the latest spinner value.
-            GeneratedClassModel active = recoverCompletedRun ? null : activeClass();
-            if (active != null) {
-                active.generationDepth(((Number) depthSpinner.getValue()).intValue());
-            }
-            new GeneratedProjectModelStore().save(
-                    wikidata.explore.generation.DomainSave.persistedModel(modelToSave), modelFile());
+            wikidata.explore.generation.ProjectSave.Result result = save.write();
+            String report = String.join("\n", result.report()) + "\n";
             rememberCurrentDomain();
-            report.append("Config:    ").append(modelFile().getPath()).append('\n');
-
-            RuleNode root = RuleTreeCompiler.compileProject(modelToSave);
-            new RuleTreeSerializer().save(root, ruleTreeFile());
-            report.append("Rule tree: ").append(ruleTreeFile().getPath()).append('\n');
-
-            int n = -1;
-            if (haveInstances) {
-                WikidataDynamicObjectJsonStore instanceStore =
-                        new WikidataDynamicObjectJsonStore();
-                instanceStore.saveWithFieldGraph(
-                        snapshotToSave.roots(), snapshotFile(), modelToSave,
-                        snapshotToSave.loadedDeclarations(),
-                        snapshotToSave.graphDiscovery(), snapshotToSave.selfReferences());
-                n = snapshotToSave.roots().size();
-                report.append("Instances: ").append(n)
-                      .append(" -> ").append(snapshotFile().getPath()).append('\n');
-                // Domains are served. A model's snapshot is local working data for
-                // curation and graph inputs; importing the model never imports it.
-                if (!projectModel.isModel()) {
-                    registerDataset(runSig);
-                    report.append("Registry:  ")
-                          .append(quiz.DatasetRegistry.defaultFile().getPath()).append('\n');
-                }
-
-                File counts = countsFile();
-                appendCountsRecord(counts, instanceStore.persistedMembers());
-                report.append("Counts:    ").append(counts.getPath()).append('\n');
-            } else {
-                report.append("Instances: (none generated yet — run "
-                                      + "\"Generate class instances\" first; not "
-                                      + "registered until model + snapshot are "
-                                      + "saved together)\n");
-            }
-
-            for (GraphDiscoveryResultStore.Artifact graphResult : annotationSets) {
-                report.append(GraphDiscoveryResultStore.save(graphResult)).append('\n');
-            }
-
-            List<File> removedArtifacts = storage.reconcileConstructs(
-                    modelToSave.name(), constructInventory);
-            for (File removed : removedArtifacts) {
-                report.append("Removed obsolete snapshot: ")
-                        .append(removed.getPath()).append('\n');
-            }
-            report.append("Construct inventory: ")
-                    .append(storage.constructManifestFile(modelToSave.name()).getPath())
-                    .append('\n');
-
             sourceWorkbench.refreshDomainOverview();
             // What is on disk is now what is open, so switching away asks nothing.
             markSaved(modelFile());
@@ -3511,7 +3356,8 @@ public class ModelBuilderFrame extends JFrame {
                     + "\":\n" + report);
 
             if (!closingAfterSave) {
-                String hint = instanceCountHint(n);
+                String hint = instanceCountHint(result.instancesWritten() == 0
+                        ? -1 : result.instancesWritten());
                 JOptionPane.showMessageDialog(
                         dialogOwner,
                         report + (hint.isBlank() ? "" : "\n" + hint),
@@ -3522,67 +3368,6 @@ public class ModelBuilderFrame extends JFrame {
         } catch (Exception ex) {
             reportGenerationError(ex);
             return false;
-        }
-    }
-
-    // The domain's counts log, alongside its snapshot: <domain>.counts.tsv.
-    private File countsFile() {
-        File snap = snapshotFile();
-        return new File(snap.getParentFile(),
-                        snap.getName().replaceFirst("\\.snapshot\\.json$", "") + ".counts.tsv");
-    }
-
-    // Appends ONE timestamped per-class row per save, so runs can be diffed over time —
-    // the stable "perfect" counts vs a drift. What it counts lives in DomainCounts; the
-    // earlier rows in an existing file answered a different question, so the format note
-    // is written once where the meaning changes rather than silently reinterpreting them.
-    private void appendCountsRecord(File file,
-            List<WikidataDynamicObjectJsonStore.PersistedMember> persisted) {
-        String row = java.time.LocalDateTime.now().withNano(0)
-                + "\t" + DomainCounts.row(persisted) + "\n";
-        try {
-            boolean fresh = !file.isFile();
-            boolean noted = !fresh && java.nio.file.Files
-                    .readString(file.toPath()).contains(DomainCounts.FORMAT_NOTE);
-            try (java.io.FileWriter w = new java.io.FileWriter(file, true)) {
-                if (fresh) {
-                    w.write("# " + projectModel.name()
-                                    + " — per-class counts, one row per save\n");
-                }
-                if (!noted) {
-                    w.write(DomainCounts.FORMAT_NOTE + "\n");
-                }
-                w.write(row);
-            }
-        } catch (Exception ex) {
-            logWindow.info("Could not write counts file: " + ex.getMessage());
-        }
-    }
-
-    // Upserts this project's dataset (model + rule-tree + snapshot triple) into
-    // the registry the web reads, so multiple domains coexist and are served.
-    private void registerDataset(String snapshotModelSignature) {
-        try {
-            quiz.DatasetRegistry reg = quiz.DatasetRegistry.load();
-            quiz.DatasetRegistry.Dataset d = new quiz.DatasetRegistry.Dataset();
-            d.name(projectModel.name());
-            d.key(projectKey());
-            d.rootClass(projectModel.rootClass() == null
-                                ? "" : projectModel.rootClass().className());
-            d.modelPath(modelFile().getPath());
-            d.ruletreePath(ruleTreeFile().getPath());
-            d.snapshotPath(snapshotFile().getPath());
-            d.modelSignature(snapshotModelSignature == null ? "" : snapshotModelSignature);
-            d.savedAt(java.time.LocalDateTime.now().toString());
-            java.util.List<String> types = new java.util.ArrayList<>();
-            for (GeneratedClassModel c : projectModel.classes()) {
-                if (c != null && c.className() != null) types.add(c.className());
-            }
-            d.types(types);
-            reg.upsert(d);
-            reg.save();
-        } catch (Exception ex) {
-            logWindow.info("Could not update dataset registry: " + ex.getMessage());
         }
     }
 

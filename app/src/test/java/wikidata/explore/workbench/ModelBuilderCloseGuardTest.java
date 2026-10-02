@@ -41,7 +41,7 @@ class ModelBuilderCloseGuardTest {
         String source = Files.readString(Path.of(
                 "src/main/java/wikidata/explore/workbench/ModelBuilderFrame.java"));
         int save = source.indexOf("private boolean saveEverything(boolean closingAfterSave)");
-        int afterSave = source.indexOf("// The domain's counts log", save);
+        int afterSave = source.indexOf("\n    private ", save + 1);
         String saveBody = source.substring(save, afterSave);
 
         assertTrue(saveBody.contains("Window dialogOwner = quiz.ui.Dialogs.owner(this);"));

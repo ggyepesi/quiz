@@ -1,4 +1,4 @@
-package wikidata.explore.workbench;
+package wikidata.explore.generation;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

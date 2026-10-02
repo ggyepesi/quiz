@@ -70,6 +70,12 @@ public final class DomainStorage {
         return file(name, ".snapshot.json");
     }
 
+    /** One row of per-class member counts per save: the artifact that says whether the
+     *  numbers moved. */
+    public File countsFile(String name) {
+        return file(name, ".counts.tsv");
+    }
+
     public File constructManifestFile(String name) {
         return file(name, ".constructs.json");
     }

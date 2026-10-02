@@ -214,9 +214,10 @@ class ModelSourceWorkbenchPanelTest {
 
         assertFalse(source.contains("saveModelOnly"),
                 "model instances must not be bypassed by a configuration-only save path");
-        assertTrue(source.contains("if (!projectModel.isModel()) {\n"
-                        + "                    registerDataset(runSig);"),
-                "only serving registration differs; snapshot persistence is shared");
+        // That only serving registration differs is ProjectSaveTest's to show, by what
+        // a save of each kind writes; here, that both kinds save through that operation.
+        assertTrue(source.contains("wikidata.explore.generation.ProjectSave.plan("),
+                "models and domains save through the one save operation");
     }
 
     private static <T extends Component> T namedComponent(
