@@ -26,6 +26,9 @@ public final class GraphDiscoveryResultStore {
     /** The signature of the graph configuration that produced a result, on each of its
      *  annotations, so a later build can tell whether the result is still current. */
     public static final String CONFIGURATION_SIGNATURE = "Configuration signature";
+    /** The entities an entry was reached from, by identifier: its predecessors on the walk.
+     *  What lets a rejected entry take what was reached only through it out with it. */
+    public static final String REACHED_FROM = "Reached from";
 
     private GraphDiscoveryResultStore() { }
 
@@ -283,7 +286,9 @@ public final class GraphDiscoveryResultStore {
         }
 
         public List<WikidataDynamicObject> acceptedCandidates() {
+            java.util.Set<WikidataDynamicObject> reachable = reachable(instances);
             return instances.stream().filter(GraphDiscoveryResultStore::included)
+                    .filter(reachable::contains)
                     .map(value -> value.get(ANNOTATED_INSTANCE))
                     .filter(WikidataDynamicObject.class::isInstance)
                     .map(WikidataDynamicObject.class::cast).distinct().toList();
@@ -306,8 +311,10 @@ public final class GraphDiscoveryResultStore {
 
         /** The entries applying this result must wait for, in result order. */
         public List<WikidataDynamicObject> awaitingDecision() {
+            java.util.Set<WikidataDynamicObject> reachable = reachable(instances);
             return instances.stream()
-                    .filter(GraphDiscoveryResultStore::awaitingDecision).toList();
+                    .filter(GraphDiscoveryResultStore::awaitingDecision)
+                    .filter(reachable::contains).toList();
         }
 
         /** The configuration signature recorded on this result, or blank when it predates
@@ -371,6 +378,7 @@ public final class GraphDiscoveryResultStore {
                     new LinkedHashMap<>();
             node.classifications().forEach(value ->
                     classifications.put(value.node(), value));
+            Map<EntityRef, java.util.Set<String>> predecessors = predecessors(node);
             for (EntityRef entity : node.reached()) {
                 WikidataDynamicObject candidate = new WikidataDynamicObject(
                         nativeIdentifier(entity), result.label(entity));
@@ -387,10 +395,51 @@ public final class GraphDiscoveryResultStore {
                         };
                 record(type, result, records, node.index(), entity, decision,
                         node, classification, candidate);
+                java.util.Set<String> from = predecessors.getOrDefault(entity, java.util.Set.of());
+                records.get(entity.namespace() + ":" + entity.id())
+                        .put(REACHED_FROM, List.copyOf(from));
             }
         }
         return new ResultObjects(outputClass, List.copyOf(records.values()),
                 List.copyOf(candidates.values()));
+    }
+
+    /**
+     * Each entity the node reached, with the entities it was reached from. An edge is read
+     * by the direction its relation was walked in: outgoing, the source came first;
+     * incoming, the target did. A relation configured in both directions cannot say which
+     * end came first, so both ends count — more predecessors only ever prune less.
+     */
+    private static Map<EntityRef, java.util.Set<String>> predecessors(
+            GraphDiscoveryExecutor.NodeResult node) {
+        Map<datasource.graph.GraphRelation, java.util.Set<datasource.graph.GraphTraversalDirection>>
+                walked = new LinkedHashMap<>();
+        if (node.configuration() != null) {
+            node.configuration().edges().forEach(edge -> walked.computeIfAbsent(
+                    edge.property(), ignored -> new java.util.LinkedHashSet<>())
+                    .add(edge.direction()));
+        }
+        Map<EntityRef, java.util.Set<String>> from = new LinkedHashMap<>();
+        for (datasource.graph.store.GraphEdge edge : node.edges()) {
+            if (!(edge.target() instanceof EntityRef target)) continue;
+            java.util.Set<datasource.graph.GraphTraversalDirection> directions =
+                    walked.getOrDefault(edge.relation(),
+                            java.util.Set.of(datasource.graph.GraphTraversalDirection.values()));
+            if (directions.contains(datasource.graph.GraphTraversalDirection.OUTGOING)) {
+                link(from, target, edge.source());
+            }
+            if (directions.contains(datasource.graph.GraphTraversalDirection.INCOMING)) {
+                link(from, edge.source(), target);
+            }
+        }
+        return from;
+    }
+
+    private static void link(Map<EntityRef, java.util.Set<String>> from, EntityRef reached,
+                             EntityRef predecessor) {
+        if (reached.equals(predecessor)) return;
+        from.computeIfAbsent(reached, ignored -> new java.util.LinkedHashSet<>())
+                .add(nativeIdentifier(predecessor));
     }
 
     private static void record(
@@ -490,6 +539,65 @@ public final class GraphDiscoveryResultStore {
     }
 
     /** The graph's immutable classification; manual curation is deliberately separate. */
+    /**
+     * The entries a chain from the start still reaches through entries the walk continues
+     * through — not rejected by hand, not rejected by evidence, not excluded (#312).
+     *
+     * <p>The walk itself goes through every entry it may, so the reviewer sees what each
+     * leads to, and decisions come afterwards. Without this, rejecting an entry left what
+     * was reached only through it in the population, and so did an entry the evidence
+     * rejected: a member was admitted by way of a non-member. An entry is cut off only
+     * when every predecessor it records is; an entry reached from the start, or saved
+     * before predecessors were recorded, always counts.
+     */
+    public static java.util.Set<WikidataDynamicObject> reachable(
+            List<WikidataDynamicObject> annotations) {
+        Map<String, WikidataDynamicObject> byId = new LinkedHashMap<>();
+        Map<String, List<WikidataDynamicObject>> successors = new LinkedHashMap<>();
+        for (WikidataDynamicObject value : annotations) {
+            if (value.getIdentifier() != null) byId.put(value.getIdentifier(), value);
+        }
+        java.util.Set<WikidataDynamicObject> reached =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        java.util.ArrayDeque<WikidataDynamicObject> queue = new java.util.ArrayDeque<>();
+        for (WikidataDynamicObject value : annotations) {
+            List<String> from = reachedFrom(value);
+            boolean fromOutside = from == null || from.isEmpty()
+                    || from.stream().anyMatch(id -> !byId.containsKey(id));
+            if (from != null) {
+                from.forEach(id -> successors.computeIfAbsent(id, ignored -> new java.util.ArrayList<>())
+                        .add(value));
+            }
+            if (fromOutside && reached.add(value)) queue.add(value);
+        }
+        while (!queue.isEmpty()) {
+            WikidataDynamicObject next = queue.poll();
+            if (!continuesTraversal(next)) continue;
+            for (WikidataDynamicObject successor
+                    : successors.getOrDefault(next.getIdentifier(), List.of())) {
+                if (reached.add(successor)) queue.add(successor);
+            }
+        }
+        return reached;
+    }
+
+    /** Whether the walk goes on through an entry, its manual decision first. */
+    static boolean continuesTraversal(WikidataDynamicObject annotation) {
+        Object manual = annotation.get(MANUAL_DECISION);
+        if ("Accepted".equals(manual)) return true;
+        if ("Rejected".equals(manual)) return false;
+        Object original = annotation.get(GRAPH_DECISION);
+        if ("Accepted".equals(original)) return true;
+        if (!"Review".equals(original)) return false;
+        return !"Exclude".equals(annotation.get(REVIEW_DISPOSITION));
+    }
+
+    private static List<String> reachedFrom(WikidataDynamicObject annotation) {
+        Object value = annotation.get(REACHED_FROM);
+        if (!(value instanceof java.util.Collection<?> ids)) return null;
+        return ids.stream().map(String::valueOf).toList();
+    }
+
     public static List<String> originalDecisions(WikidataDynamicObject annotation) {
         Object decision = annotation == null ? null : annotation.get(GRAPH_DECISION);
         if (decision instanceof List<?> values) {

@@ -188,6 +188,27 @@ class GraphConstraintsPanelTest {
                 "the graph editor is not encoded in field configuration");
     }
 
+    /** Waiting for a decision is offered only on the output node, whose entities are the
+     *  result; an intermediate node's are never shown to be decided (#312). */
+    @Test void anIntermediateNodeChoosesToIncludeOrExcludeItsUndecidableEntities() {
+        GraphConstraintsPanel panel = graphPanel(model());
+        JComboBox<?> use = named(panel, "graph.targetUse", JComboBox.class);
+        JComboBox<?> review = named(panel, "graph.reviewDisposition", JComboBox.class);
+        assertEquals(3, review.getItemCount());
+        assertEquals(GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION,
+                review.getSelectedItem());
+
+        use.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY);
+
+        assertEquals(2, review.getItemCount());
+        assertEquals(GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                review.getSelectedItem());
+        use.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
+        assertEquals(3, review.getItemCount());
+        assertEquals(GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                review.getSelectedItem(), "a choice still on offer is kept");
+    }
+
     @Test void eachGraphClassKeepsItsOwnCompletedResult() {
         GeneratedProjectModel model = model();
         GeneratedClassModel first = graphClass(model, "PositionGraph");

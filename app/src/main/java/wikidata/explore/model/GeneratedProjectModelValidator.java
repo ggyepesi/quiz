@@ -164,7 +164,20 @@ public final class GeneratedProjectModelValidator {
                             + "must be Intermediate only."));
         }
         for (int index = 0; index < graph.nextNodes().size(); index++) {
-            String population = graph.nextNodes().get(index).admissionPopulationSelection();
+            var node = graph.nextNodes().get(index);
+            // Only the output node's entities are in a graph's result, so only they can be
+            // decided. An intermediate node told to wait would continue silently and never
+            // be asked about: it has to say what it does with undecidable entities itself.
+            if (node.use() != datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
+                    && node.evidenceCondition() != null
+                    && node.evidenceCondition().reviewDisposition()
+                    == datasource.graph.constraint.GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION) {
+                problems.add(Problem.error(graphClass.className(),
+                        "Graph node " + (index + 1) + " is intermediate: its entities are not in "
+                                + "the result, so they cannot be decided. Choose to include or "
+                                + "exclude its undecidable entities."));
+            }
+            String population = node.admissionPopulationSelection();
             if (!population.isBlank()
                     && !(project.findSelection(population) instanceof PopulationSelection)) {
                 problems.add(Problem.error(graphClass.className(),

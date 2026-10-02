@@ -265,6 +265,10 @@ construct per thing produced:
    The selection is an ordinary referenced/importable population, not a graph-owned QID list.
    This is a separate named graph rule, not another meaning hidden inside the original
    population-discovery constraint.
+   Each entry records what it was reached from; an entry counts toward the result only while a
+   chain from the start reaches it through entries that are not rejected — by hand or by
+   evidence — so rejecting one takes what was reached only through it out, without a rerun.
+   Waiting for a decision is offered only on the output node, whose entries are the result.
 
    *(This supersedes the earlier rule that a graph constraint carries its own authored name.
    That name was at once the identity of its annotation set and a free-text field an editor

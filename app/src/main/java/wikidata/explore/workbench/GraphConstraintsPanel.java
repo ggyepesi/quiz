@@ -820,6 +820,36 @@ final class GraphConstraintsPanel extends JPanel {
                 == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION;
         targetClassBox.setEnabled(output);
         populationOperationBox.setEnabled(output);
+        refreshReviewChoices(output);
+    }
+
+    /**
+     * Waiting for a decision is offered only where one can be made: the output node,
+     * whose entities are the result. An intermediate node's entities are never shown for
+     * a decision, so it chooses between including and excluding them.
+     */
+    private void refreshReviewChoices(boolean output) {
+        Object current = reviewBox.getSelectedItem();
+        GraphEvidenceCondition.ReviewDisposition[] choices = reviewDispositions(output);
+        reviewBox.setModel(new DefaultComboBoxModel<>(choices));
+        reviewBox.setSelectedItem(java.util.Arrays.asList(choices).contains(current)
+                ? current : defaultDisposition(output));
+    }
+
+    static GraphEvidenceCondition.ReviewDisposition[] reviewDispositions(boolean output) {
+        return output
+                ? new GraphEvidenceCondition.ReviewDisposition[] {
+                        GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION,
+                        GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                        GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT }
+                : new GraphEvidenceCondition.ReviewDisposition[] {
+                        GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
+                        GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT };
+    }
+
+    private static GraphEvidenceCondition.ReviewDisposition defaultDisposition(boolean output) {
+        return output ? GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION
+                : GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT;
     }
 
     private void refreshArrow() {
@@ -946,7 +976,8 @@ final class GraphConstraintsPanel extends JPanel {
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
         replace(testsModel, evidence == null ? List.of() : evidence.tests());
         reviewBox.setSelectedItem(evidence == null
-                ? GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION
+                ? defaultDisposition(node.use()
+                        == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
                 : evidence.reviewDisposition());
     }
 
@@ -1101,10 +1132,7 @@ final class GraphConstraintsPanel extends JPanel {
 
     private static JComboBox<GraphEvidenceCondition.ReviewDisposition> reviewBox() {
         // The default leads; the other two decide for the reviewer.
-        var box = new JComboBox<>(new GraphEvidenceCondition.ReviewDisposition[] {
-                GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION,
-                GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT,
-                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT });
+        var box = new JComboBox<>(reviewDispositions(true));
         box.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {

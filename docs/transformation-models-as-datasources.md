@@ -384,8 +384,10 @@ The walk continues through an entry awaiting a decision, so the reviewer sees ev
 reaches. `GraphApplication.apply` is the one apply operation: it returns `AwaitingDecision`
 naming every undecided Review entry, or `Applied` with the new run and the result marked as
 applied. The desktop refuses Apply with that message and keeps its results dialog open. Known
-gap: rejecting an intermediate Review entity afterwards does not remove what was reached
-through it (#312).
+entry counts only while a chain from the start reaches it through entries that are not rejected
+by hand or by evidence, so rejecting one takes what was reached only through it out of the result
+(#312). Waiting is offered only on the output node: an intermediate node's entities are not in
+the result, so it chooses Include or Exclude.
 
 ### Historical Positions build
 
