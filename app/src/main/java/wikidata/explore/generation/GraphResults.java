@@ -1,6 +1,5 @@
-package wikidata.explore.workbench;
+package wikidata.explore.generation;
 
-import wikidata.explore.generation.GraphDiscoveryResultStore;
 
 import datasource.graph.GraphDiscoveryConfiguration;
 import dataset.DomainStorage;
@@ -32,11 +31,11 @@ import java.util.stream.Collectors;
  * <p>Keyed by declaration id, so a result stays its class's through a rename; the names it
  * recorded are restamped to the current ones before it is handed out.
  */
-final class GraphResults {
+public final class GraphResults {
 
     /** Reads a graph class's saved annotation file; a seam so a test need not write one. */
     @FunctionalInterface
-    interface SavedResultLoader {
+    public interface SavedResultLoader {
         GraphDiscoveryResultStore.Artifact load(GeneratedClassModel graphClass) throws Exception;
     }
 
@@ -44,13 +43,13 @@ final class GraphResults {
     private final DomainStorage storage;
     private final Map<String, GraphDiscoveryResultStore.Artifact> held = new LinkedHashMap<>();
 
-    GraphResults(GeneratedProjectModel model, DomainStorage storage) {
+    public GraphResults(GeneratedProjectModel model, DomainStorage storage) {
         this.model = Objects.requireNonNull(model, "model");
         this.storage = Objects.requireNonNull(storage, "storage");
     }
 
     /** The result held for one graph class under the names it has now, or null. */
-    GraphDiscoveryResultStore.Artifact of(GeneratedClassModel graphClass) {
+    public GraphDiscoveryResultStore.Artifact of(GeneratedClassModel graphClass) {
         if (graphClass == null) return null;
         String key = key(graphClass);
         GraphDiscoveryResultStore.Artifact result = held.get(key);
@@ -64,7 +63,7 @@ final class GraphResults {
     }
 
     /** Every held result whose graph class still exists, in the project's class order. */
-    List<GraphDiscoveryResultStore.Artifact> all() {
+    public List<GraphDiscoveryResultStore.Artifact> all() {
         return model.graphClasses().stream().map(this::of).filter(Objects::nonNull).toList();
     }
 
@@ -73,14 +72,14 @@ final class GraphResults {
      * replaces are carried onto the entities both share: a decision is the modeller's, and
      * rerunning the graph is not a reason to forget it.
      */
-    void record(GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
+    public void record(GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
         if (graphClass == null || result == null) return;
         preserveManualDecisions(of(graphClass), result);
         held.put(key(graphClass), result);
     }
 
     /** Records the explicit Apply on the result and holds the applied set. */
-    GraphDiscoveryResultStore.Artifact markApplied(
+    public GraphDiscoveryResultStore.Artifact markApplied(
             GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
         GraphDiscoveryResultStore.Artifact applied = GraphDiscoveryResultStore.applied(result);
         if (graphClass != null && applied != null) held.put(key(graphClass), applied);
@@ -88,12 +87,12 @@ final class GraphResults {
     }
 
     /** Forgets a class's result because its configuration changed. Nothing else does. */
-    void invalidate(GeneratedClassModel graphClass) {
+    public void invalidate(GeneratedClassModel graphClass) {
         if (graphClass != null) held.remove(key(graphClass));
     }
 
     /** Forgets every result, for a project loaded in place of this one. */
-    void clear() {
+    public void clear() {
         held.clear();
     }
 
@@ -103,11 +102,11 @@ final class GraphResults {
      * from the class's own annotation file. The one load path — a project load passes an
      * empty pool, Load instances the loaded one. Each file read and each failure is named.
      */
-    void restore(Collection<WikidataDynamicObject> loadedObjects, Consumer<String> report) {
+    public void restore(Collection<WikidataDynamicObject> loadedObjects, Consumer<String> report) {
         restore(loadedObjects, this::loadSaved, report);
     }
 
-    void restore(Collection<WikidataDynamicObject> loadedObjects, SavedResultLoader loader,
+    public void restore(Collection<WikidataDynamicObject> loadedObjects, SavedResultLoader loader,
                  Consumer<String> report) {
         Consumer<String> say = report == null ? ignored -> { } : report;
         for (GeneratedClassModel graphClass : model.graphClasses()) {
@@ -139,12 +138,12 @@ final class GraphResults {
      * yet hold as members of the output class, by output class. The annotation set is the
      * persisted fact; the next Generate projects this into its supplemental population.
      */
-    Map<String, List<String>> pendingPopulationAdditions(
+    public Map<String, List<String>> pendingPopulationAdditions(
             Collection<WikidataDynamicObject> generated) {
         return pendingPopulationAdditions(all(), generated);
     }
 
-    static Map<String, List<String>> pendingPopulationAdditions(
+    public static Map<String, List<String>> pendingPopulationAdditions(
             Collection<GraphDiscoveryResultStore.Artifact> results,
             Collection<WikidataDynamicObject> generated) {
         Map<String, LinkedHashSet<String>> pending = new LinkedHashMap<>();
