@@ -2888,22 +2888,6 @@ public class ModelBuilderFrame extends JFrame {
                 name.substring(0, name.length() - suffix.length()) + ".snapshot.json");
     }
 
-    // The registry entry whose snapshot is this file (for the model-drift check).
-    private static quiz.DatasetRegistry.Dataset datasetForSnapshot(File file) {
-        try {
-            File want = file.getCanonicalFile();
-            for (quiz.DatasetRegistry.Dataset d
-                    : quiz.DatasetRegistry.load().datasets()) {
-                if (!d.snapshotPath().isBlank()
-                        && new File(d.snapshotPath()).getCanonicalFile().equals(want)) {
-                    return d;
-                }
-            }
-        } catch (Exception ignore) {
-        }
-        return null;
-    }
-
     private void loadProject() {
         File dir = chooseDomainDir("Load project — pick its folder under data/wikidata/");
         if (dir == null) {
@@ -2972,69 +2956,21 @@ public class ModelBuilderFrame extends JFrame {
 
         try {
             sourceWorkbench.applyEdits();
-
-            // Drift guard: warn if these instances were generated from a
-            // different model version than the one we'll map them through.
-            quiz.DatasetRegistry.Dataset ds = datasetForSnapshot(file);
-            if (ds != null && wikidata.explore.generation.DomainSave.signaturesDisagree(
-                    ds.modelSignature(), modelSignature(projectModel))) {
-                JOptionPane.showMessageDialog(this,
-                                              "These saved instances were generated from a DIFFERENT model\n"
-                                                      + "version than the current model. Fields may not match —\n"
-                                                      + "\"Generate class instances\" to refresh them.",
-                                              "Instances may be stale", JOptionPane.WARNING_MESSAGE);
-            }
-
-            GeneratedProjectModel snapshot = projectModel.copy();
-            // The snapshot also records which declarations have been FETCHED; carry them
-            // onto the run so a following Enrich asks only for what is new.
-            WikidataDynamicObjectJsonStore.LoadedSnapshot saved =
-                    new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
-            graphDiscoveryLedger = saved.graphDiscovery();
-            wikidata.explore.model.ConstructInventory inventory =
-                    wikidata.explore.model.ConstructInventory.of(projectModel);
-            // Stamped against the inventory its Save committed: a class renamed since is
-            // the same class, so it is restamped before anything is retracted.
-            java.util.Map<String, String> renames =
-                    inventory.renamesSince(storage.savedInventory(projectModel.name()));
-            wikidata.explore.generation.GenerationRuns.renameClasses(saved.objects(), renames);
-            List<WikidataDynamicObject> objects =
-                    inventory.retractRemovedClaims(saved.objects());
-            graphResults.restore(objects, this::logInfo);
-
-            // Apply the current model's canonicalization to the loaded pool, so a
-            // display-name spec set/edited after this snapshot was saved takes
-            // effect on load (e.g. a Nomination shows its nominee) — no re-download.
-            wikidata.explore.transform.Canonicalization.apply(snapshot, objects,
-                                                              wikidata.explore.extract.GenerationLog.of(logWindow::info));
-
-            // Derive the descriptive vocabularies (NomineeType, WorkGenre) from the
-            // loaded pool — they are not persisted, so load is where they come back.
-            // acceptGenerationRun then folds them into the live model for display.
-            wikidata.explore.transform.DescriptiveVocabularyBuild.apply(snapshot, objects,
-                                                                        wikidata.explore.extract.GenerationLog.of(logWindow::info));
-
-            GenerationPipeline pipeline = new GenerationPipeline();
-            RuleNode plan = pipeline.plan(snapshot);
-            GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
-            List<Viewable> instances =
-                    pipeline.materialize(runtime, objects, logWindow::info);
-
-            acceptGenerationRun(new GenerationRun(
-                    snapshot, 0, plan, objects, runtime, instances,
-                    null, wikidata.explore.generation.GenerationRuns.renamedDeclarations(
-                            saved.loadedDeclarations(), renames),
-                    GenerationRun.Quality.completeQuality(), List.of(),
-                    GenerationRun.SelfReferenceAudit.restored(saved.selfReferences()),
-                    GenerationRun.OwnedCompositionAudit.notRun(),
-                    GenerationRun.KindClassificationAudit.notRun(),
-                    GenerationRun.ProjectionAudit.notRun()), true);
+            wikidata.explore.generation.ProjectLoad.Loaded loaded =
+                    wikidata.explore.generation.ProjectLoad.load(
+                            projectModel, storage, file, logWindow::info);
+            graphDiscoveryLedger = loaded.projection().graphDiscovery();
+            graphResults.restore(loaded.projection().objects(), this::logInfo);
+            acceptGenerationRun(loaded.run(), true);
             showInstancesWindow();
-
-            logWindow.info("Loaded " + objects.size()
+            logWindow.info("Loaded " + loaded.run().dynamicObjects().size()
                                    + " saved object(s) from " + file.getName()
-                                   + "; mapped " + instances.size()
+                                   + "; mapped " + loaded.run().instances().size()
                                    + " instance(s).");
+            if (loaded.stale()) {
+                JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(loaded.staleWarning()),
+                        "Instances may be stale", JOptionPane.WARNING_MESSAGE);
+            }
         } catch (Exception ex) {
             reportGenerationError(ex);
         }

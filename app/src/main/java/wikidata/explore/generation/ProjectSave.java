@@ -119,17 +119,12 @@ public final class ProjectSave {
                     input.graphDiscovery(), SelfReferenceLedger.EMPTY, List.of());
         }
         if (run == null) {
-            // The file was stamped against the inventory its Save committed; a class
-            // renamed since then is the same class, not a removed one.
-            WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
-                    new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(snapshot);
-            Map<String, String> renames =
-                    inventory.renamesSince(storage.savedInventory(model.name()));
-            GenerationRuns.renameClasses(loaded.objects(), renames);
-            return new ProjectSave(input, storage,
-                    inventory.memberRoots(inventory.retractRemovedClaims(loaded.objects())),
-                    GenerationRuns.renamedDeclarations(loaded.loadedDeclarations(), renames),
-                    loaded.graphDiscovery(), loaded.selfReferences(), List.of());
+            // Read the way Load reads it, so a class renamed since that Save keeps its
+            // members and one removed since stops being claimed.
+            ProjectLoad.Projection saved = ProjectLoad.project(model, storage, snapshot);
+            return new ProjectSave(input, storage, inventory.memberRoots(saved.objects()),
+                    saved.loadedDeclarations(), saved.graphDiscovery(), saved.selfReferences(),
+                    List.of());
         }
         // A class renamed since the run is the same class under its new name; one removed
         // since stops being claimed by the objects it produced.
