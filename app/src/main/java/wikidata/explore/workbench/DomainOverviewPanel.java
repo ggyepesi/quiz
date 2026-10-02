@@ -1,6 +1,8 @@
 package wikidata.explore.workbench;
 
 import objectview.utils.swing.GridBagUtils;
+import wikidata.explore.model.BuildOperation;
+import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import javax.swing.*;
@@ -27,7 +29,13 @@ final class DomainOverviewPanel extends JPanel {
     private final JLabel modelFile = new JLabel();
     private final JLabel snapshot = new JLabel();
     private final JLabel generated = new JLabel();
+    /** The project's build, in order: what a build run executes, step by step. */
+    private final OrderedChoiceList<Step> build = new OrderedChoiceList<>(true);
     private boolean refreshing;
+
+    /** One row of the build: what it does and the graph it acts on. Two rows that do the
+     *  same thing to the same graph are one step, so the chooser offers each once. */
+    record Step(BuildOperation.Kind kind, String targetDeclarationId) { }
 
     DomainOverviewPanel(GeneratedProjectModel project) {
         super(new GridBagLayout());
@@ -52,6 +60,12 @@ final class DomainOverviewPanel extends JPanel {
         GridBagUtils.labeledRow(this, c, row++, "Model:", modelFile);
         GridBagUtils.labeledRow(this, c, row++, "Snapshot:", snapshot);
         GridBagUtils.labeledRow(this, c, row++, "Current generated objects:", generated);
+        build.setName("project.build");
+        build.title("Build");
+        build.describe(step -> new BuildOperation(step.kind(), step.targetDeclarationId())
+                .describe(project));
+        build.onChange(this::changeBuild);
+        GridBagUtils.wideRow(this, row++, build);
         GridBagUtils.wideRow(this, row++, new JLabel(
                 "Select a class, field, or vocabulary below the domain to configure it."));
         GridBagConstraints filler = new GridBagConstraints();
@@ -80,6 +94,41 @@ final class DomainOverviewPanel extends JPanel {
         afterChange.accept(null);
     }
 
+    /**
+     * Writes the listed steps as the project's build. A step still listed keeps the
+     * operation it was, declaration id and all; only a newly added one is new.
+     */
+    private void changeBuild() {
+        if (refreshing) return;
+        java.util.List<BuildOperation> existing = project.buildOperations();
+        java.util.List<BuildOperation> next = new java.util.ArrayList<>();
+        for (Step step : build.chosen()) {
+            next.add(existing.stream().filter(operation -> stepOf(operation).equals(step))
+                    .findFirst()
+                    .orElseGet(() -> new BuildOperation(step.kind(), step.targetDeclarationId())));
+        }
+        project.buildOperations(next);
+        afterChange.accept(null);
+    }
+
+    private static Step stepOf(BuildOperation operation) {
+        return new Step(operation.kind(),
+                operation.kind().targetsGraph() ? operation.targetDeclarationId() : "");
+    }
+
+    /** Every step the project could take: generate, run and apply each graph, save. */
+    private java.util.List<Step> possibleSteps() {
+        java.util.List<Step> steps = new java.util.ArrayList<>();
+        steps.add(new Step(BuildOperation.Kind.GENERATE_PROJECT, ""));
+        for (GeneratedClassModel graph : project.graphClasses()) {
+            if (graph == null || graph.isImported()) continue;
+            steps.add(new Step(BuildOperation.Kind.RUN_GRAPH_CONSTRAINT, graph.declarationId()));
+            steps.add(new Step(BuildOperation.Kind.APPLY_GRAPH_DECISIONS, graph.declarationId()));
+        }
+        steps.add(new Step(BuildOperation.Kind.SAVE_PROJECT_RESULT, ""));
+        return steps;
+    }
+
     void refresh() {
         refreshing = true;
         try {
@@ -97,6 +146,8 @@ final class DomainOverviewPanel extends JPanel {
             modelFile.setText(current.modelSaved() ? "saved" : "not saved yet");
             snapshot.setText(current.snapshotSaved() ? "saved" : "not generated yet");
             generated.setText(Integer.toString(current.generatedObjects()));
+            build.show(project.buildOperations().stream()
+                    .map(DomainOverviewPanel::stepOf).toList(), possibleSteps());
         } finally {
             refreshing = false;
         }

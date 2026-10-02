@@ -81,7 +81,11 @@ public final class DomainSave {
             "selectionId", "roleClassId", "representationClassId",
             // A graph keeps its start population and each node's admission population
             // by id beside the name, for the same reason a statement bound does.
-            "populationSelectionId", "admissionPopulationSelectionId");
+            "populationSelectionId", "admissionPopulationSelectionId",
+            // A build step names the graph class it acts on. Build operations are left
+            // out of the fingerprint whole (see signature); the name is listed so the
+            // guard holds the list complete.
+            "targetDeclarationId");
 
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {
@@ -90,8 +94,12 @@ public final class DomainSave {
 
     public static String signature(GeneratedProjectModel model) {
         try {
+            // How the project is built does not change what it generates: editing the
+            // build must not report the instances stale.
+            GeneratedProjectModel generating = persistedModel(model);
+            generating.buildOperations(java.util.List.of());
             String json = withoutDeclarationIdentities(
-                    new GeneratedProjectModelStore().toJson(persistedModel(model)));
+                    new GeneratedProjectModelStore().toJson(generating));
             byte[] hash = MessageDigest.getInstance("SHA-256")
                     .digest(json.getBytes(StandardCharsets.UTF_8));
             StringBuilder out = new StringBuilder();

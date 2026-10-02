@@ -18,6 +18,14 @@
   label: not generated yet
   label: Current generated objects:
   label: 0
+  piece: OrderedChoiceList  [Build]
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+    label: Available:
+    combo: 3 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
 
 == Source class - ClassSourcePanel ==

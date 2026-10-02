@@ -35,6 +35,9 @@ public class GeneratedProjectModel {
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
     private final List<EntityRepresentationRule> entityRepresentationRules = new ArrayList<>();
     private final List<ModelImport> imports = new ArrayList<>();
+    /** How the project is built, in order. Configuration of the run, never of what is
+     *  generated, so it stays out of the model signature. */
+    private final List<BuildOperation> buildOperations = new ArrayList<>();
 
     public GeneratedProjectModel() {
         rootClass = new GeneratedClassModel("Constellation");
@@ -247,6 +250,19 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(entityKindRules);
     }
 
+    public List<BuildOperation> buildOperations() {
+        return Collections.unmodifiableList(buildOperations);
+    }
+
+    /** Replaces the build with {@code operations}, in their order. */
+    public void buildOperations(List<BuildOperation> operations) {
+        buildOperations.clear();
+        if (operations != null) {
+            operations.stream().filter(java.util.Objects::nonNull)
+                    .map(BuildOperation::copy).forEach(buildOperations::add);
+        }
+    }
+
     public List<EntityRepresentationRule> entityRepresentationRules() {
         return Collections.unmodifiableList(entityRepresentationRules);
     }
@@ -341,6 +357,7 @@ public class GeneratedProjectModel {
                 .forEach(this.entityRepresentationRules::add);
         this.imports.clear();
         other.imports.stream().map(ModelImport::copy).forEach(this.imports::add);
+        this.buildOperations(other.buildOperations);
 
         // Serialization has no object identity, so the root is written both as
         // `rootClass` and inside `classes` and deserializes as two separate
@@ -997,6 +1014,7 @@ public class GeneratedProjectModel {
         for (ModelImport dependency : imports) {
             if (dependency != null) c.imports.add(dependency.copy());
         }
+        c.buildOperations(buildOperations);
 
         return c;
     }
