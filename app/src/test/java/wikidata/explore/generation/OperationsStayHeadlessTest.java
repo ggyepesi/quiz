@@ -28,7 +28,8 @@ class OperationsStayHeadlessTest {
     private static final Path SOURCE = Path.of("src/main/java/wikidata/explore/generation");
     private static final List<String> OPERATIONS = List.of(
             "ProjectSave", "DomainSave", "DomainCounts", "GraphDiscoveryResultStore",
-            "GenerationRuns", "GraphApplication", "ProjectLoad", "GraphResults");
+            "GenerationRuns", "GraphApplication", "ProjectLoad", "GraphResults",
+            "wikidata/explore/build/ProjectBuild");
     private static final Pattern UI = Pattern.compile(
             "\\b(javax\\.swing|java\\.awt|wikidata\\.explore\\.workbench|quiz\\.transform\\.ui"
                     + "|process\\.swing)\\.(?:\\*|\\w[\\w.]*)");
@@ -37,8 +38,9 @@ class OperationsStayHeadlessTest {
     @Test void saveOperationsReachNoUserInterface() throws Exception {
         Set<String> offenders = new TreeSet<>();
         for (String operation : OPERATIONS) {
-            String code = COMMENT.matcher(
-                    Files.readString(SOURCE.resolve(operation + ".java"))).replaceAll("");
+            Path file = operation.contains("/") ? Path.of("src/main/java", operation + ".java")
+                    : SOURCE.resolve(operation + ".java");
+            String code = COMMENT.matcher(Files.readString(file)).replaceAll("");
             Matcher matcher = UI.matcher(code);
             while (matcher.find()) offenders.add(operation + " uses " + matcher.group());
         }

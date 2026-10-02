@@ -48,6 +48,19 @@ class BuildOperationTest {
         assertEquals(before, DomainSave.signature(model));
     }
 
+    /** A graph decides which entities its result accepts, not what generation produces. */
+    @Test void editingAGraphDoesNotMakeGeneratedInstancesStale() {
+        GeneratedProjectModel model = withGraph();
+        String before = DomainSave.signature(model);
+        GeneratedClassModel graph = model.findClass("PositionGraph");
+
+        graph.graphSource(new GraphClassSource(graph.graphSource().startNode(), List.of()));
+
+        assertEquals(before, DomainSave.signature(model));
+        org.junit.jupiter.api.Assertions.assertFalse(before.isBlank(),
+                "a blank signature makes no claim at all, so it would pass for anything");
+    }
+
     @Test void aRenamedGraphKeepsItsBuildStep() {
         GeneratedProjectModel model = withGraph();
         model.buildOperations(List.of(new BuildOperation(

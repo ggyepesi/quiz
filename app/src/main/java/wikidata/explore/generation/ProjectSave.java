@@ -226,7 +226,7 @@ public final class ProjectSave {
             report.add(GraphDiscoveryResultStore.save(set, storage));
         }
 
-        for (File removed : storage.reconcileConstructs(name(), inventory)) {
+        for (File removed : storage.reconcileConstructs(name(), inventory, snapshotSignature())) {
             report.add("Removed obsolete snapshot: " + removed.getPath());
         }
         report.add("Construct inventory: " + storage.constructManifestFile(name()).getPath());
@@ -234,6 +234,15 @@ public final class ProjectSave {
     }
 
     private String name() { return input.model().name(); }
+
+    /** Which model produced the snapshot this save leaves on disk: the run's, when it
+     *  writes one from a run; the previous record, when it re-saves the saved snapshot;
+     *  none, when it writes no snapshot. */
+    private String snapshotSignature() {
+        if (roots.isEmpty()) return "";
+        if (input.run() == null) return storage.savedSnapshotSignature(name());
+        return input.run().modelSignature();
+    }
 
     private boolean servesDataset() { return !input.model().isModel(); }
 

@@ -384,6 +384,20 @@ public final class DomainStorage {
     public static final class ConstructManifest {
         public int version = 1;
         public List<SavedConstruct> constructs = new ArrayList<>();
+        /** The signature of the model the saved snapshot's instances were generated from;
+         *  blank when there is no snapshot or the save predates this record. */
+        public String snapshotSignature = "";
+    }
+
+    /** The signature of the model that produced the saved snapshot, as its Save recorded. */
+    public String savedSnapshotSignature(String projectName) {
+        String signature = constructManifest(projectName).snapshotSignature;
+        return signature == null ? "" : signature;
+    }
+
+    /** What the last build of a project did: each step, and every file it wrote. */
+    public File buildManifestFile(String name) {
+        return file(name, ".build.json");
     }
 
     public ConstructManifest constructManifest(String name) {
@@ -419,8 +433,16 @@ public final class DomainStorage {
      */
     public List<File> reconcileConstructs(
             String projectName, ConstructInventory current) throws IOException {
+        return reconcileConstructs(projectName, current, savedSnapshotSignature(projectName));
+    }
+
+    /** As {@link #reconcileConstructs(String, ConstructInventory)}, recording which model
+     *  produced the snapshot now on disk. */
+    public List<File> reconcileConstructs(String projectName, ConstructInventory current,
+                                          String snapshotSignature) throws IOException {
         Objects.requireNonNull(current, "A save needs the current construct inventory");
         ConstructManifest next = new ConstructManifest();
+        next.snapshotSignature = snapshotSignature == null ? "" : snapshotSignature;
         String mainSnapshot = snapshotFile(projectName).isFile()
                 ? snapshotFile(projectName).getName() : "";
         String model = modelFile(projectName).getName();

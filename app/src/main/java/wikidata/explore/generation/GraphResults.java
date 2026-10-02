@@ -75,6 +75,9 @@ public final class GraphResults {
     public void record(GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
         if (graphClass == null || result == null) return;
         preserveManualDecisions(of(graphClass), result);
+        String signature = configurationSignature(model, graphClass);
+        result.instances().forEach(value -> value.put(
+                GraphDiscoveryResultStore.CONFIGURATION_SIGNATURE, signature));
         held.put(key(graphClass), result);
     }
 
@@ -182,6 +185,38 @@ public final class GraphResults {
                 .orElse(GraphDiscoveryConfiguration.PopulationOperation.NARROW);
         return GraphDiscoveryResultStore.load(model.name(), graphClass.className(),
                 source.outputClassName(), operation, storage);
+    }
+
+    /**
+     * What a graph result depends on besides its input instances: the graph as configured,
+     * and the members of every population it names. A change to either makes a recorded
+     * result stale.
+     */
+    public static String configurationSignature(GeneratedProjectModel model,
+                                                GeneratedClassModel graphClass) {
+        wikidata.explore.model.GraphClassSource source =
+                graphClass == null ? null : graphClass.graphSource();
+        if (source == null) return "";
+        StringBuilder text = new StringBuilder()
+                .append(source.startNode()).append('\n').append(source.nextNodes());
+        java.util.Set<String> populations = new java.util.TreeSet<>();
+        if (source.startNode() != null) populations.add(source.startNode().populationSelection());
+        source.nextNodes().forEach(node -> populations.add(node.admissionPopulationSelection()));
+        for (String name : populations) {
+            if (name == null || name.isBlank()) continue;
+            if (model.findSelection(name) instanceof wikidata.explore.model.PopulationSelection p) {
+                text.append('\n').append(name).append('=').append(p.instanceQids());
+            }
+        }
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(text.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder out = new StringBuilder("graph-v1:");
+            for (byte b : hash) out.append(String.format("%02x", b));
+            return out.toString();
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     private static void preserveManualDecisions(

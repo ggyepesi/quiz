@@ -87,6 +87,17 @@ public final class DomainSave {
             // guard holds the list complete.
             "targetDeclarationId");
 
+    /**
+     * Configuration that never changes what generation produces, so editing it must not
+     * report the instances stale. A graph's configuration decides which entities its
+     * result accepts; that reaches generation only through an applied result's pending
+     * identities, which a build tracks on its own. The build says how the project is run.
+     * Before these were left out, editing a graph reported every instance stale, and a
+     * build would have regenerated the whole project from Wikidata to answer it.
+     */
+    private static final java.util.Set<String> OUTSIDE_GENERATION =
+            java.util.Set.of("graphSource", "buildOperations");
+
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {
         return DECLARATION_IDENTITY_FIELDS;
@@ -94,12 +105,8 @@ public final class DomainSave {
 
     public static String signature(GeneratedProjectModel model) {
         try {
-            // How the project is built does not change what it generates: editing the
-            // build must not report the instances stale.
-            GeneratedProjectModel generating = persistedModel(model);
-            generating.buildOperations(java.util.List.of());
             String json = withoutDeclarationIdentities(
-                    new GeneratedProjectModelStore().toJson(generating));
+                    new GeneratedProjectModelStore().toJson(persistedModel(model)));
             byte[] hash = MessageDigest.getInstance("SHA-256")
                     .digest(json.getBytes(StandardCharsets.UTF_8));
             StringBuilder out = new StringBuilder();
@@ -122,6 +129,7 @@ public final class DomainSave {
     private static void strip(com.fasterxml.jackson.databind.JsonNode node) {
         if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
             object.remove(DECLARATION_IDENTITY_FIELDS);
+            object.remove(OUTSIDE_GENERATION);
         }
         node.forEach(DomainSave::strip);
     }

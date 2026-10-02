@@ -23,6 +23,9 @@ public final class GraphDiscoveryResultStore {
     public static final String OUTPUT_APPLIED = "Output applied";
     public static final String REVIEW_DISPOSITION = "Review disposition";
     public static final String AWAIT_DECISION = "Await decision";
+    /** The signature of the graph configuration that produced a result, on each of its
+     *  annotations, so a later build can tell whether the result is still current. */
+    public static final String CONFIGURATION_SIGNATURE = "Configuration signature";
 
     private GraphDiscoveryResultStore() { }
 
@@ -305,6 +308,14 @@ public final class GraphDiscoveryResultStore {
         public List<WikidataDynamicObject> awaitingDecision() {
             return instances.stream()
                     .filter(GraphDiscoveryResultStore::awaitingDecision).toList();
+        }
+
+        /** The configuration signature recorded on this result, or blank when it predates
+         *  the record. */
+        public String configurationSignature() {
+            return instances.stream().map(value -> value.get(CONFIGURATION_SIGNATURE))
+                    .filter(String.class::isInstance).map(String.class::cast)
+                    .findFirst().orElse("");
         }
 
         public boolean applied() {

@@ -150,6 +150,21 @@ public final class GenerationRuns {
                 run.projectionAudit());
     }
 
+    /**
+     * The graph-discovery ledger after {@code run}: what it observed, reconciled with what
+     * was known before. The desktop and a build take this one rule.
+     */
+    public static datasource.graph.GraphDiscoveryState ledgerAfter(
+            datasource.graph.GraphDiscoveryState previous, GenerationRun run) {
+        datasource.graph.GraphDiscoveryState before = previous == null
+                ? datasource.graph.GraphDiscoveryState.EMPTY : previous;
+        if (run == null) return before;
+        return before.reconcile(
+                WikidataGraphDiscoveryState.compute(run.modelSnapshot(), run.dynamicObjects()),
+                WikidataGraphExpansionPlan.compile(run.modelSnapshot()).edges(),
+                run.quality().complete());
+    }
+
     /** Fetched-declaration records name their class; they follow it like instances do. */
     public static List<wikidata.explore.extract.LoadedDeclaration> renamedDeclarations(
             List<wikidata.explore.extract.LoadedDeclaration> declarations,

@@ -1606,14 +1606,8 @@ public class ModelBuilderFrame extends JFrame {
             savedGenerationRun = alreadySaved ? lastRun : null;
 
             if (run != null) {
-                datasource.graph.GraphDiscoveryState observed =
-                        wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
-                                run.modelSnapshot(), run.dynamicObjects());
-                graphDiscoveryLedger = previousGraph.reconcile(
-                        observed,
-                        wikidata.explore.generation.WikidataGraphExpansionPlan
-                                .compile(run.modelSnapshot()).edges(),
-                        run.quality().complete());
+                graphDiscoveryLedger = wikidata.explore.generation.GenerationRuns
+                        .ledgerAfter(previousGraph, run);
                 // Graph state is presentation metadata, like the QID chip: show it in
                 // card titles without inventing stored fields or affecting search/sort.
                 instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
