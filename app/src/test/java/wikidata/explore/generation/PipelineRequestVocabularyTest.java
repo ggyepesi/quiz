@@ -72,7 +72,7 @@ class PipelineRequestVocabularyTest {
         assertThrows(IllegalArgumentException.class, () -> new PipelineRequest(
                 model, PipelineInput.empty(), PipelineScope.wholeDomain(),
                 PipelineRequest.Acquisition.NONE, PipelineLimits.asConfigured(),
-                PipelineRequest.Output.PREVIEW));
+                PipelineRequest.Output.PREVIEW, java.util.Map.of()));
     }
 
     /** Only a class scope names a class; the state where two compete is unreachable. */
@@ -95,6 +95,17 @@ class PipelineRequestVocabularyTest {
 
         assertTrue(preview.limits().bounded());
         assertEquals(0, preview.limits().depth());
+    }
+
+    @Test void graphDiscoveredMembersAreSupplementalNotAuthoredClassSeeds() {
+        String className = model.rootClass().className();
+        PipelineRequest request = PipelineRequest.generateDomain(model,
+                java.util.Map.of(className, java.util.List.of("Q2", "Q1", "Q2")));
+
+        assertEquals(java.util.List.of("Q2", "Q1"),
+                request.supplementalPopulation(className));
+        assertTrue(model.rootClass().seedQids().isEmpty(),
+                "an applied graph result must not rewrite authored membership");
     }
 
     @Test void invalidNegativeLimitsAreRefusedRatherThanReinterpreted() {

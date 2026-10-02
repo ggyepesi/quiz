@@ -160,37 +160,50 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 populationInput =
                                 wikidata.explore.generation.PopulationSourceExecution.resolve(
                                         project, cls, sourcePlan);
-                        if (!populationInput.available()) {
+                        List<String> supplemental = compiledRun.request()
+                                .supplementalPopulation(cls.className());
+                        if (!populationInput.available() && supplemental.isEmpty()) {
                             genLog.message("Skip class \"" + cls.className()
                                     + "\" — " + populationInput.reason() + ".\n");
                             continue;
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
-                        RuleNode plan = pipeline.plan(rooted);
-                        populationInput.apply(plan);
+                        RuleNode configuredPlan = populationInput.available()
+                                ? pipeline.plan(rooted) : null;
+                        RuleNode supplementalPlan = supplemental.isEmpty()
+                                ? null : pipeline.plan(rooted);
+                        List<RuleNode> populationPlans = populationPlans(
+                                configuredPlan, supplementalPlan,
+                                populationInput, supplemental);
                         if (populationInput.importedPopulation()) {
                             genLog.message("Load imported population "
                                     + String.join(", ", populationInput.selectionNames())
                                     + ": " + populationInput.qids().size()
                                     + " " + cls.className() + " QIDs.\n");
                         }
+                        if (!supplemental.isEmpty()) {
+                            genLog.message("Load " + supplemental.size()
+                                    + " pending " + cls.className()
+                                    + " QIDs from applied additive graph results.\n");
+                        }
                         genLog.message("=== Class \"" + cls.className()
                                 + "\" (depth " + cls.generationDepth() + ") ===\n");
 
-                        GenerationPipeline.ExtractionResult extraction =
-                                pipeline.extractResult(
-                                WikidataAccess.sparql(context, Datasource.WIKIDATA), plan, cls.generationDepth(),
-                                genLog, shared, context.cancellation(), entityApi,
-                                factDemandPlan.forClass(cls.className()));
-                        List<WikidataDynamicObject> roots = extraction.objects();
-                        childQueryFailures += extraction.childQueryFailures();
-                        genLog.message("  -> " + roots.size() + " "
-                                + cls.className() + "\n");
-
-                        if (rootPlan == null) {
-                            rootPlan = plan;
+                        int rootsFound = 0;
+                        for (RuleNode plan : populationPlans) {
+                            GenerationPipeline.ExtractionResult extraction =
+                                    pipeline.extractResult(
+                                    WikidataAccess.sparql(context, Datasource.WIKIDATA), plan,
+                                    cls.generationDepth(), genLog, shared,
+                                    context.cancellation(), entityApi,
+                                    factDemandPlan.forClass(cls.className()));
+                            rootsFound += extraction.objects().size();
+                            childQueryFailures += extraction.childQueryFailures();
+                            if (rootPlan == null) rootPlan = plan;
+                            classesRun++;
                         }
-                        classesRun++;
+                        genLog.message("  -> " + rootsFound + " "
+                                + cls.className() + "\n");
                         progress(wikidata.explore.generation.GenerateDomainPipeline.DISCOVER,
                                 classesRun + " root class query(ies) completed");
                     }
@@ -638,6 +651,28 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     transformed.projectionChangedInstances()));
                     }
                 });
+    }
+
+    /** The configured population and graph-discovered additions are a union, not one
+     * population rule rewritten to mean the other. Both plans enter the same extraction
+     * and downstream pipeline; the shared registry performs QID deduplication. */
+    static List<RuleNode> populationPlans(
+            RuleNode configuredPlan,
+            RuleNode supplementalPlan,
+            wikidata.explore.generation.PopulationSourceExecution.Resolution configured,
+            List<String> supplementalQids) {
+        List<RuleNode> plans = new ArrayList<>();
+        if (configured != null && configured.available() && configuredPlan != null) {
+            configured.apply(configuredPlan);
+            plans.add(configuredPlan);
+        }
+        if (supplementalQids != null && !supplementalQids.isEmpty()
+                && supplementalPlan != null) {
+            wikidata.explore.generation.PopulationSourceExecution.applyExact(
+                    supplementalPlan, supplementalQids);
+            plans.add(supplementalPlan);
+        }
+        return List.copyOf(plans);
     }
 
     private GeneratedProjectModel rootedAt(String className) {

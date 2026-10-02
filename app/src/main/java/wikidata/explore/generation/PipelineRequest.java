@@ -2,6 +2,11 @@ package wikidata.explore.generation;
 
 import wikidata.explore.model.GeneratedProjectModel;
 
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+
 /**
  * What a run was asked to do — the whole of it, before anything runs.
  *
@@ -33,7 +38,8 @@ public record PipelineRequest(
         PipelineScope scope,
         Acquisition acquisition,
         PipelineLimits limits,
-        Output output) {
+        Output output,
+        Map<String, List<String>> supplementalPopulations) {
 
     /**
      * Whether external facts may be requested.
@@ -67,6 +73,19 @@ public record PipelineRequest(
         }
         limits = limits == null ? PipelineLimits.asConfigured() : limits;
         output = output == null ? Output.PREVIEW : output;
+        Map<String, List<String>> additions = new LinkedHashMap<>();
+        if (supplementalPopulations != null) {
+            supplementalPopulations.forEach((className, qids) -> {
+                String name = className == null ? "" : className.trim();
+                if (name.isBlank()) return;
+                LinkedHashSet<String> distinct = new LinkedHashSet<>();
+                if (qids != null) qids.stream().filter(java.util.Objects::nonNull)
+                        .map(String::trim).filter(value -> !value.isBlank())
+                        .forEach(distinct::add);
+                if (!distinct.isEmpty()) additions.put(name, List.copyOf(distinct));
+            });
+        }
+        supplementalPopulations = Map.copyOf(additions);
         // An empty graph and no permission to fill it can produce nothing at all. Every
         // other combination is a run that does something; this one is a request that
         // cannot be answered, and refusing it here beats explaining it later.
@@ -81,9 +100,17 @@ public record PipelineRequest(
     }
 
     public static PipelineRequest generateDomain(GeneratedProjectModel model) {
+        return generateDomain(model, Map.of());
+    }
+
+    /** Generate the configured populations plus explicit identities discovered by
+     * earlier applied operations, without turning those identities into authored
+     * class restrictions. */
+    public static PipelineRequest generateDomain(GeneratedProjectModel model,
+            Map<String, List<String>> supplementalPopulations) {
         return new PipelineRequest(model, PipelineInput.empty(), PipelineScope.wholeDomain(),
                 Acquisition.ALL_REQUIRED, PipelineLimits.asConfigured(),
-                Output.REPLACEMENT_CANDIDATE);
+                Output.REPLACEMENT_CANDIDATE, supplementalPopulations);
     }
 
     /** One class and what it takes to make it, bounded, shown and not applied. */
@@ -91,7 +118,8 @@ public record PipelineRequest(
             GeneratedProjectModel model, String className, int depth) {
         return new PipelineRequest(model, PipelineInput.empty(),
                 PipelineScope.productionChainOf(className), Acquisition.ALL_REQUIRED,
-                new PipelineLimits(PipelineLimits.AS_CONFIGURED, depth), Output.PREVIEW);
+                new PipelineLimits(PipelineLimits.AS_CONFIGURED, depth), Output.PREVIEW,
+                Map.of());
     }
 
     /** The same as a preview, bounded harder. The difference is the number. */
@@ -99,14 +127,14 @@ public record PipelineRequest(
             GeneratedProjectModel model, String className, int members) {
         return new PipelineRequest(model, PipelineInput.empty(),
                 PipelineScope.productionChainOf(className), Acquisition.ALL_REQUIRED,
-                PipelineLimits.members(members), Output.PREVIEW);
+                PipelineLimits.members(members), Output.PREVIEW, Map.of());
     }
 
     public static PipelineRequest enrich(
             GeneratedProjectModel model, GraphCheckpoint checkpoint) {
         return new PipelineRequest(model, PipelineInput.from(checkpoint),
                 PipelineScope.existingPopulation(), Acquisition.MISSING_ONLY,
-                PipelineLimits.asConfigured(), Output.REPLACEMENT_CANDIDATE);
+                PipelineLimits.asConfigured(), Output.REPLACEMENT_CANDIDATE, Map.of());
     }
 
     /** Local reconstruction from the best checkpoint there is. Reaches no network. */
@@ -115,7 +143,12 @@ public record PipelineRequest(
         return new PipelineRequest(model, PipelineInput.from(checkpoint),
                 PipelineScope.existingPopulation(), Acquisition.NONE,
                 PipelineLimits.asConfigured(),
-                Output.REPLACEMENT_CANDIDATE);
+                Output.REPLACEMENT_CANDIDATE, Map.of());
+    }
+
+    public List<String> supplementalPopulation(String className) {
+        String name = className == null ? "" : className.trim();
+        return supplementalPopulations.getOrDefault(name, List.of());
     }
 
     /** Whether any phase of this run may reach the network. */

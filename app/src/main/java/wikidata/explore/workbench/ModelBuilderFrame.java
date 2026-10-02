@@ -538,8 +538,50 @@ public class ModelBuilderFrame extends JFrame {
                         : " will write the changed instances to\n"
                                 + destination.getPath() + ".");
         if (quiz.ui.Dialogs.confirmPersistence(this, action, description)) {
-            acceptGraphResult(result);
+            sourceWorkbench.applyGraphResult(result);
         }
+    }
+
+    /** Accepted identities from an explicitly applied additive graph result that are
+     * not generated yet. The graph annotation is the persisted source of truth; the
+     * generation request merely projects it into its supplemental population input. */
+    private java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions() {
+        return pendingGraphPopulationAdditions(sourceWorkbench.graphResults(),
+                lastRun == null ? java.util.List.of() : lastRun.dynamicObjects());
+    }
+
+    static java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions(
+            java.util.Collection<GraphDiscoveryResultStore.Artifact> graphResults,
+            java.util.Collection<wikidata.explore.extract.WikidataDynamicObject> generated) {
+        java.util.Map<String, java.util.LinkedHashSet<String>> pending =
+                new java.util.LinkedHashMap<>();
+        for (GraphDiscoveryResultStore.Artifact result
+                : graphResults == null ? java.util.List.<GraphDiscoveryResultStore.Artifact>of()
+                : graphResults) {
+            if (!result.applied() || result.populationOperation()
+                    != datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
+                    || result.outputClass().isBlank()) continue;
+            pending.computeIfAbsent(result.outputClass(), ignored ->
+                    new java.util.LinkedHashSet<>()).addAll(result.acceptedIdentities());
+        }
+        if (generated != null) {
+            for (java.util.Map.Entry<String, java.util.LinkedHashSet<String>> entry
+                    : pending.entrySet()) {
+                java.util.Set<String> generatedIds = generated.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .filter(value -> value.directClassNames().contains(entry.getKey()))
+                        .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toSet());
+                entry.getValue().removeAll(generatedIds);
+            }
+        }
+        java.util.Map<String, java.util.List<String>> additions =
+                new java.util.LinkedHashMap<>();
+        pending.forEach((className, qids) -> {
+            if (!qids.isEmpty()) additions.put(className, java.util.List.copyOf(qids));
+        });
+        return java.util.Map.copyOf(additions);
     }
 
     private void updateCreatePopulationSelectionButton() {
@@ -899,6 +941,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.graphInstances(() -> lastRun == null
                 ? List.of() : lastRun.instances());
         sourceWorkbench.onGraphResult(this::acceptGraphResult);
+        sourceWorkbench.afterGraphResultApplied(this::showInstancesWindow);
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> {
@@ -1019,8 +1062,11 @@ public class ModelBuilderFrame extends JFrame {
                 }
                 // If NO class can be populated, say so instead of opening an
                 // empty instances panel.
+                java.util.Map<String, java.util.List<String>> graphAdditions =
+                        pendingGraphPopulationAdditions();
                 boolean anyGeneratable = projectModel.classes().stream()
-                                                     .anyMatch(c -> membershipProblem(c) == null);
+                                .anyMatch(c -> membershipProblem(c) == null)
+                        || !graphAdditions.isEmpty();
                 if (!anyGeneratable) {
                     warnNothingToGenerate(membershipProblem(
                             projectModel.rootClass()));
@@ -1032,11 +1078,13 @@ public class ModelBuilderFrame extends JFrame {
                 wikidata.explore.generation.CompiledPipelineRun compiledRun =
                         wikidata.explore.generation.CompiledPipelineRun.compile(
                                 wikidata.explore.generation.PipelineRequest
-                                        .generateDomain(snapshot));
+                                        .generateDomain(snapshot, graphAdditions));
                 wikidata.explore.generation.GenerationRecoveryStore recovery =
                         wikidata.explore.generation.GenerationRecoveryStore.in(
                                 storage, snapshot.name());
-                if (recovery.canResume(snapshot)) {
+                // A recovery graph predates these newly applied population inputs.
+                // Resuming it would materialize the old graph and silently omit them.
+                if (graphAdditions.isEmpty() && recovery.canResume(snapshot)) {
                     Object[] choices = {"Resume materialization", "Run full generation",
                             "Cancel"};
                     int choice = JOptionPane.showOptionDialog(
@@ -1094,6 +1142,12 @@ public class ModelBuilderFrame extends JFrame {
                             card.type("Generated class");
                             card.put("Depth", model.generationDepth());
                             card.put("Fields", model.fields().size());
+                            java.util.List<String> pending = graphAdditions.get(
+                                    model.className());
+                            if (pending != null && !pending.isEmpty()) {
+                                card.put("Pending QIDs from applied graph results",
+                                        pending.size());
+                            }
                             return (objectview.Viewable) card;
                         }).toList();
                 process.swing.workflow.ProcessWorkflowAction<
@@ -1608,7 +1662,6 @@ public class ModelBuilderFrame extends JFrame {
             logWindow.info(graphApplyMessage(artifact.type(), artifact.outputClass(),
                     artifact.populationOperation(), previousMembers.size(), added.size(),
                     resultingMembers, missing, projectModel.isModel()));
-            showInstancesWindow();
         } catch (Exception error) {
             reportGenerationError(error);
         }

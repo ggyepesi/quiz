@@ -23,6 +23,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.*;
 import javax.swing.text.JTextComponent;
@@ -33,6 +34,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,6 +45,99 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphConstraintsPanelTest {
+
+    @Test void applyingAGraphResultRevealsInstancesOnlyInThePostApplyContinuation() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        panel.edit(graph);
+        GraphDiscoveryResultStore.Artifact artifact = GraphDiscoveryResultStore.artifact(
+                model.name(), graph.className(), resultFor("Position"));
+        AtomicBoolean installed = new AtomicBoolean();
+        AtomicBoolean revealed = new AtomicBoolean();
+        AtomicReference<GraphDiscoveryResultStore.Artifact> applied = new AtomicReference<>();
+        panel.onGraphResult(value -> {
+            installed.set(true);
+            applied.set(value);
+        });
+        panel.afterGraphResultApplied(() -> revealed.set(true));
+
+        panel.applyGraphResult(artifact);
+
+        assertTrue(installed.get(), "Apply installs the graph result immediately");
+        assertTrue(applied.get().applied(),
+                "the annotations retain that their output was explicitly applied");
+        assertFalse(revealed.get(),
+                "the instances window must not open while the workflow dialog is active");
+        panel.revealAppliedGraphResult();
+        assertTrue(revealed.get(), "the workflow reveals instances after its dialog closes");
+    }
+
+    @Test void onlyAppliedAdditiveMissingIdentitiesFeedTheNextGeneration() {
+        GraphDiscoveryResultStore.Artifact raw = GraphDiscoveryResultStore.artifact(
+                "History", "HolderExpansion", resultFor("Person"));
+        GraphDiscoveryResultStore.Artifact additive = new GraphDiscoveryResultStore.Artifact(
+                raw.projectName(), raw.type(), raw.outputClass(),
+                datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                raw.instances(), raw.candidates(), raw.model());
+        WikidataDynamicObject alreadyGenerated = new WikidataDynamicObject("Q2", "Kept");
+        alreadyGenerated.type("Person");
+
+        assertTrue(ModelBuilderFrame.pendingGraphPopulationAdditions(
+                List.of(additive), List.of()).isEmpty(),
+                "closing a result without Apply must not change the next generation");
+
+        GraphDiscoveryResultStore.Artifact applied =
+                GraphDiscoveryResultStore.applied(additive);
+        assertEquals(List.of("Q2"), ModelBuilderFrame.pendingGraphPopulationAdditions(
+                List.of(applied), List.of()).get("Person"));
+        assertTrue(ModelBuilderFrame.pendingGraphPopulationAdditions(
+                List.of(applied), List.of(alreadyGenerated)).isEmpty(),
+                "an identity stops being pending once that class has been generated");
+    }
+
+    @Test void savingAndLoadingAnnotationsRetainsThatTheirOutputWasApplied(
+            @org.junit.jupiter.api.io.TempDir Path root) throws Exception {
+        GraphDiscoveryResultStore.Artifact raw = GraphDiscoveryResultStore.artifact(
+                "History", "HolderExpansion", resultFor("Person"));
+        GraphDiscoveryResultStore.Artifact additive = new GraphDiscoveryResultStore.Artifact(
+                raw.projectName(), raw.type(), raw.outputClass(),
+                datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                raw.instances(), raw.candidates(), raw.model());
+        GraphDiscoveryResultStore.Artifact applied =
+                GraphDiscoveryResultStore.applied(additive);
+
+        GraphDiscoveryResultStore.save(applied,
+                dataset.DomainStorage.in(root.toFile()));
+        GraphDiscoveryResultStore.Artifact loaded = GraphDiscoveryResultStore.load(
+                "History", "HolderExpansion", "Person",
+                datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                dataset.DomainStorage.in(root.toFile()));
+
+        assertTrue(loaded.applied());
+    }
+
+    @Test void anAppliedResultSavesTheSameFieldGraphAsTheRunThatProducedIt(
+            @org.junit.jupiter.api.io.TempDir Path root) throws Exception {
+        GraphDiscoveryResultStore.Artifact applied = GraphDiscoveryResultStore.applied(
+                GraphDiscoveryResultStore.artifact(
+                        "History", "HolderExpansion", resultFor("Person")));
+
+        GraphDiscoveryResultStore.save(applied, dataset.DomainStorage.in(root.toFile()));
+        var graph = new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
+                .loadAllWithFieldGraph(GraphDiscoveryResultStore.destination(
+                        dataset.DomainStorage.in(root.toFile()), "History",
+                        "HolderExpansion"))
+                .fieldGraph();
+
+        var annotation = graph.types.get(applied.type());
+        assertTrue(annotation.fields.get(GraphDiscoveryResultStore.GRAPH_DECISION)
+                .exhaustiveValues, "Apply keeps the decision facet");
+        assertTrue(annotation.fields.get(GraphDiscoveryResultStore.ANNOTATED_INSTANCE)
+                .reference, "Apply keeps the annotation's reference to its instance");
+        assertFalse(graph.types.get("Person").member,
+                "Apply must not turn the candidate class into a served member");
+    }
 
     @Test void graphStartIsOneChoiceBetweenALoadedClassAndASavedPopulation() {
         GeneratedProjectModel model = model();

@@ -254,7 +254,10 @@ construct per thing produced:
    A graph population result states whether it **narrows** its output class or **adds**
    memberships to it. Additive expansion preserves every existing member and stamps the
    reached generated instances with the output class; it never substitutes candidate
-   shells. A replacement-chain expansion may declare equivalent directed edge alternatives
+   shells. Accepted identities that have no generated instance remain pending on the applied
+   annotation set; the next Generate run acquires them as a supplemental population through
+   the ordinary class pipeline, unioned with rather than replacing the configured population.
+   Closing without Apply contributes nothing. A replacement-chain expansion may declare equivalent directed edge alternatives
    (for example outgoing `replaces` and incoming `replaced by`) and repeat them until no new
    identities are reached. A next node may name a `PopulationSelection` as its admission
    boundary: reached identities outside it remain Rejected annotations with the population

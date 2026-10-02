@@ -144,6 +144,7 @@ final class GraphConstraintsPanel extends JPanel {
     private java.util.function.Supplier<Map<String, wikidata.explore.WikidataProperty>>
             propertyCache = Map::of;
     private Consumer<GraphDiscoveryResultStore.Artifact> graphResultConsumer = ignored -> {};
+    private Runnable afterGraphResultApplied = () -> {};
     /** Completed annotations belong to the graph class that produced them. The stable
      * declaration id keeps that ownership intact while the class is renamed. */
     private final Map<String, GraphDiscoveryResultStore.Artifact> graphResults =
@@ -213,6 +214,10 @@ final class GraphConstraintsPanel extends JPanel {
 
     void onGraphResult(Consumer<GraphDiscoveryResultStore.Artifact> value) {
         graphResultConsumer = value == null ? ignored -> {} : value;
+    }
+
+    void afterGraphResultApplied(Runnable value) {
+        afterGraphResultApplied = value == null ? () -> {} : value;
     }
 
     GraphDiscoveryResultStore.Artifact lastGraphResult() {
@@ -384,10 +389,27 @@ final class GraphConstraintsPanel extends JPanel {
             }
             @Override public void apply(List<GraphDiscoveryResultStore.Artifact> decisions)
                     throws Exception {
-                remember(decisions.getFirst());
-                graphResultConsumer.accept(decisions.getFirst());
+                applyGraphResult(decisions.getFirst());
+            }
+            @Override public void afterApply() {
+                // Reveal the installed instances only after the workflow dialog has
+                // closed. Opening them from apply() lets that dialog reclaim focus on
+                // macOS, making a successful graph application look as though it
+                // produced no accepted/result window.
+                revealAppliedGraphResult();
             }
         };
+    }
+
+    void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
+        GraphDiscoveryResultStore.Artifact applied =
+                GraphDiscoveryResultStore.applied(artifact);
+        remember(applied);
+        graphResultConsumer.accept(applied);
+    }
+
+    void revealAppliedGraphResult() {
+        afterGraphResultApplied.run();
     }
 
     /** The graph a class declares, or null while it declares none. */

@@ -21,6 +21,7 @@ final class GraphDiscoveryResultStore {
     static final String MANUAL_DECISION = "Manual decision";
     static final String ANNOTATED_INSTANCE = "Annotated instance";
     static final String GRAPH_ANNOTATION = "Graph annotation";
+    static final String OUTPUT_APPLIED = "Output applied";
 
     private GraphDiscoveryResultStore() { }
 
@@ -68,22 +69,7 @@ final class GraphDiscoveryResultStore {
         ResultObjects built = resultObjects(type, result);
         List<WikidataDynamicObject> records = built.annotations();
         wikidata.explore.extract.SnapshotFieldGraph model =
-                wikidata.explore.extract.SnapshotFieldGraph.derive(records);
-        model.declareExhaustiveValues(type, GRAPH_DECISION,
-                List.of("Accepted", "Review", "Rejected"));
-        model.declareExhaustiveValues(type, MANUAL_DECISION,
-                List.of("Accepted", "Rejected"));
-        var annotationShape = model.types.get(type);
-        if (annotationShape != null) {
-            var reverse = annotationShape.fields.get(ANNOTATED_INSTANCE);
-            if (reverse != null) reverse.reference = true;
-        }
-        var candidateShape = model.types.get(built.outputClass());
-        if (candidateShape != null) {
-            candidateShape.member = false;
-            var reverse = candidateShape.fields.get(GRAPH_ANNOTATION);
-            if (reverse != null) reverse.structural = true;
-        }
+                fieldGraph(type, built.outputClass(), records);
         datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation =
                 result.graph().nodes().stream()
                         .filter(node -> node.configuration().use()
@@ -136,7 +122,15 @@ final class GraphDiscoveryResultStore {
                          String outputClass,
                          datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation)
             throws Exception {
-        File file = destination(projectName, graphConstraintName);
+        return load(projectName, graphConstraintName, outputClass, operation,
+                DomainStorage.inDefaultLocation());
+    }
+
+    static Artifact load(String projectName, String graphConstraintName,
+                         String outputClass,
+                         datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation,
+                         DomainStorage storage) throws Exception {
+        File file = destination(storage, projectName, graphConstraintName);
         if (!file.isFile()) return null;
         WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
                 new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
@@ -169,14 +163,36 @@ final class GraphDiscoveryResultStore {
                 .map(value -> value.get(ANNOTATED_INSTANCE))
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast).distinct().toList();
-        wikidata.explore.extract.SnapshotFieldGraph fieldGraph =
-                wikidata.explore.extract.SnapshotFieldGraph.derive(annotations);
-        fieldGraph.declareExhaustiveValues(type, GRAPH_DECISION,
-                List.of("Accepted", "Review", "Rejected"));
-        fieldGraph.declareExhaustiveValues(type, MANUAL_DECISION,
-                List.of("Accepted", "Rejected"));
         return new Artifact(projectName, type, outputClass, annotations, candidates,
-                new SnapshotDomain(annotations, fieldGraph));
+                new SnapshotDomain(annotations, fieldGraph(type, outputClass, annotations)));
+    }
+
+    /**
+     * The field graph of one annotation set — the one construction, used by a fresh run,
+     * a restore from the pool and an Apply alike. Each used to build its own: a restored
+     * set lost the annotation's reference to its instance and served the candidate class
+     * as a member, and an applied set lost the decision facets as well.
+     */
+    static wikidata.explore.extract.SnapshotFieldGraph fieldGraph(
+            String type, String outputClass, List<WikidataDynamicObject> annotations) {
+        wikidata.explore.extract.SnapshotFieldGraph model =
+                wikidata.explore.extract.SnapshotFieldGraph.derive(annotations);
+        model.declareExhaustiveValues(type, GRAPH_DECISION,
+                List.of("Accepted", "Review", "Rejected"));
+        model.declareExhaustiveValues(type, MANUAL_DECISION,
+                List.of("Accepted", "Rejected"));
+        var annotationShape = model.types.get(type);
+        if (annotationShape != null) {
+            var reverse = annotationShape.fields.get(ANNOTATED_INSTANCE);
+            if (reverse != null) reverse.reference = true;
+        }
+        var candidateShape = outputClass == null ? null : model.types.get(outputClass);
+        if (candidateShape != null) {
+            candidateShape.member = false;
+            var reverse = candidateShape.fields.get(GRAPH_ANNOTATION);
+            if (reverse != null) reverse.structural = true;
+        }
+        return model;
     }
 
     /**
@@ -266,6 +282,23 @@ final class GraphDiscoveryResultStore {
             }
             return ids;
         }
+
+        boolean applied() {
+            return instances.stream().anyMatch(value ->
+                    Boolean.TRUE.equals(value.get(OUTPUT_APPLIED)));
+        }
+    }
+
+    /** Records the explicit Apply on the annotation set itself, so Save domain and
+     * Load instances retain which graph result may contribute pending generation input. */
+    static Artifact applied(Artifact artifact) {
+        if (artifact == null || artifact.applied()) return artifact;
+        artifact.instances().forEach(value -> value.put(OUTPUT_APPLIED, true));
+        SnapshotDomain refreshed = new SnapshotDomain(artifact.instances(),
+                fieldGraph(artifact.type(), artifact.outputClass(), artifact.instances()));
+        return new Artifact(artifact.projectName(), artifact.type(), artifact.outputClass(),
+                artifact.populationOperation(), artifact.instances(), artifact.candidates(),
+                refreshed);
     }
 
     private record ResultObjects(String outputClass,
