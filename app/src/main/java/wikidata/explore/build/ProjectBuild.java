@@ -44,8 +44,10 @@ import java.util.function.Consumer;
  * ordered list, so every step after one that runs runs too, because its input changed.
  * {@link #run} carries the plan out. It stops without saving at a graph result awaiting a
  * decision, at an incomplete or failed generation, and at any warning a save raises: an
- * unattended build never replaces the last complete output on doubt. Every build writes a
- * manifest naming each step's state, what was done, and every file written.
+ * unattended build never replaces the last complete output on doubt. A graph run's
+ * annotations are saved as soon as they exist, beside the snapshot, so a stop leaves them
+ * to be decided. Every build writes a manifest naming each step's state, what was done,
+ * and every file written.
  */
 public final class ProjectBuild {
 
@@ -246,7 +248,9 @@ public final class ProjectBuild {
                                     model.copy(), additions)),
                             null, new GenerationExecutionSettings(), null)
                             .execute(new ProcessContext(context, null, null,
-                                    new CancellationToken(), null));
+                                    context.cancellation() == null
+                                            ? new CancellationToken() : context.cancellation(),
+                                    null));
                     if (generated.status() != ProcessStatus.SUCCEEDED
                             || generated.result() == null) {
                         outcome = generated.status() == ProcessStatus.PARTIAL
@@ -270,6 +274,11 @@ public final class ProjectBuild {
                     GraphDiscoveryResultStore.Artifact artifact = GraphDiscoveryResultStore
                             .artifact(model.name(), graph.className(), result);
                     results.record(graph, artifact);
+                    // A graph run's annotations are an output of their own, saved beside
+                    // the snapshot rather than in it. Saved now, a build that then stops
+                    // awaiting a decision leaves them on disk to be decided, while the
+                    // snapshot — the last complete output — is untouched.
+                    files.add(GraphDiscoveryResultStore.save(results.of(graph), storage));
                     done.add(new Done(step, Action.RAN, artifact.instances().size()
                             + " annotations, " + artifact.acceptedIdentities().size()
                             + " accepted"));

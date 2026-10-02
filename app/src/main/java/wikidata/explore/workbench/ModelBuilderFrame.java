@@ -118,6 +118,11 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton generateDomainButton =
             new JButton("Generate domain");
 
+    // Runs the project's saved build (the project overview's Build list) — the same
+    // coordinator the command line runs, reusing every current output.
+    private final JButton buildProjectButton =
+            new JButton("Build project");
+
     // One-shot explanation for a generation launched as the continuation of
     // another workflow (currently graph-frontier expansion).  The next preview
     // consumes it, so an ordinary button press keeps the ordinary caption.
@@ -386,6 +391,9 @@ public class ModelBuilderFrame extends JFrame {
         JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         runRow1.add(generateButton);
         runRow1.add(generateDomainButton);
+        buildProjectButton.setToolTipText("Run the saved build from the project overview: "
+                + "reuse every current output, run the rest, save, and say why each step ran.");
+        runRow1.add(buildProjectButton);
         runRow1.add(depthLabel);
         runRow1.add(depthSpinner);
 
@@ -1183,6 +1191,8 @@ public class ModelBuilderFrame extends JFrame {
             }
         });
 
+        buildProjectButton.addActionListener(e -> buildProject());
+
         remapButton.addActionListener(e -> {
             if (processRunner.isRunning() || queryRunner.isRunning()) return;
             try {
@@ -1537,6 +1547,165 @@ public class ModelBuilderFrame extends JFrame {
                 storage.snapshotFile(snapshot.name()).getParentFile().toPath());
         process.swing.workflow.SwingProcessWorkflow.start(
                 this, processRunner, action, this::openPipelineReference);
+    }
+
+    /**
+     * Runs the project's saved build through the same coordinator as the command line.
+     *
+     * <p>It builds the SAVED project, so a build here and one from the command line are
+     * the same build: with unsaved edits or unsaved instances it says to save first,
+     * rather than building something other than what is open. The plan names the steps
+     * and the files; each step's state and reasons are in the log and the results, because
+     * reading the snapshot to judge them takes seconds and the plan is shown at once.
+     * Applying the results loads what the build saved, by the ordinary Load instances.
+     */
+    private void buildProject() {
+        if (processRunner.isRunning() || querySession.runner().isRunning()) return;
+        sourceWorkbench.applyEdits();
+        java.util.List<String> unsaved = new java.util.ArrayList<>();
+        if (openModelFile == null) unsaved.add("the project has never been saved");
+        else if (hasUnsavedChanges()) unsaved.add("the configuration has unsaved changes");
+        if (hasUnsavedGeneratedInstances()) unsaved.add("the generated instances are not saved");
+        String kind = projectModel.isModel() ? "model" : "domain";
+        if (!unsaved.isEmpty()) {
+            JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(
+                    "Build runs the saved project, the same build as the command line, and "
+                            + String.join(" and ", unsaved) + ". Use \"Save " + kind
+                            + "\" first, then build."),
+                    "Build project", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        File modelFile = modelFile();
+        GeneratedProjectModel saved;
+        try {
+            logWindow.info("Build: reading model " + modelFile.getPath() + "\n");
+            saved = new GeneratedProjectModelStore().load(modelFile);
+        } catch (Exception unreadable) {
+            reportGenerationError(unreadable);
+            return;
+        }
+        if (saved.buildOperations().isEmpty()) {
+            JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped("\"" + saved.name()
+                            + "\" has no build. Add its steps under Build in the project "
+                            + "overview, then save the " + kind + "."),
+                    "Build project", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        java.util.List<objectview.Viewable> steps = saved.buildOperations().stream()
+                .map(operation -> {
+                    quiz.transform.DynamicViewable card = new quiz.transform.DynamicViewable(
+                            operation.declarationId(), operation.describe(saved));
+                    card.type("Build step");
+                    return (objectview.Viewable) card;
+                }).toList();
+        java.util.List<objectview.Viewable> files = java.util.stream.Stream.of(
+                        modelFile, storage.snapshotFile(saved.name()),
+                        storage.constructManifestFile(saved.name()),
+                        storage.buildManifestFile(saved.name()))
+                .map(file -> {
+                    quiz.transform.DynamicViewable card = new quiz.transform.DynamicViewable(
+                            file.getPath(), file.getName());
+                    card.type("File");
+                    card.put("Path", file.getPath());
+                    return (objectview.Viewable) card;
+                }).toList();
+        wikidata.explore.build.BuildProcess build =
+                new wikidata.explore.build.BuildProcess(saved, storage);
+        process.swing.workflow.ProcessWorkflowAction<
+                wikidata.explore.build.ProjectBuild.Report,
+                wikidata.explore.build.ProjectBuild.Report> action =
+                new process.swing.workflow.ProcessWorkflowAction<>() {
+                    @Override public String id() { return "build-project"; }
+                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                        return new process.swing.workflow.ProcessWorkflowPlan(
+                                "Build " + saved.name(),
+                                "Run the saved build in order. A step whose saved output is "
+                                        + "current is reused; the rest run, and every step "
+                                        + "after one that runs runs too. The build stops "
+                                        + "without saving at a graph result awaiting a "
+                                        + "decision, an incomplete generation or a save "
+                                        + "warning, and records what it did in "
+                                        + storage.buildManifestFile(saved.name()).getPath() + ".",
+                                java.util.List.of(
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Steps", steps),
+                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
+                                                "Files it may read or write", files)));
+                    }
+                    @Override public process.Process<wikidata.explore.build.ProjectBuild.Report>
+                            process() { return build; }
+                    @Override public boolean applyAllowed(process.ProcessStatus status) {
+                        return true;
+                    }
+                    @Override public process.swing.workflow.ProcessWorkflowResults<
+                            wikidata.explore.build.ProjectBuild.Report> results(
+                            process.ProcessOutcome<wikidata.explore.build.ProjectBuild.Report>
+                                    outcome) {
+                        return buildResults(saved, outcome);
+                    }
+                    @Override public void apply(
+                            java.util.List<wikidata.explore.build.ProjectBuild.Report> ignored) {
+                        // The build has already written its files; applying brings them
+                        // into this session, which afterApply does once the dialog is gone.
+                    }
+                    @Override public void afterApply() {
+                        loadSavedInstances();
+                    }
+                };
+        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
+    }
+
+    /** The build's report as result tabs: every step as the build left it, and every file
+     *  it wrote. */
+    static process.swing.workflow.ProcessWorkflowResults<wikidata.explore.build.ProjectBuild.Report>
+            buildResults(GeneratedProjectModel project,
+                         process.ProcessOutcome<wikidata.explore.build.ProjectBuild.Report> outcome) {
+        wikidata.explore.build.ProjectBuild.Report report = outcome.result();
+        if (report == null) {
+            return new process.swing.workflow.ProcessWorkflowResults<>(
+                    "Build " + project.name() + " — failed",
+                    outcome.error() == null ? outcome.summary() : outcome.error().getMessage(),
+                    java.util.List.of());
+        }
+        java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+                wikidata.explore.build.ProjectBuild.Report>> steps = new java.util.ArrayList<>();
+        for (wikidata.explore.build.ProjectBuild.Done done : report.steps()) {
+            quiz.transform.DynamicViewable card = new quiz.transform.DynamicViewable(
+                    done.planned().operation().declarationId(), done.planned().description());
+            card.type("Build step");
+            card.put("Done", done.action().name());
+            card.put("State before", done.planned().state().name());
+            if (!done.planned().because().isEmpty()) {
+                card.put("Because", String.join("; ", done.planned().because()));
+            }
+            if (!done.detail().isBlank()) card.put("Detail", done.detail());
+            steps.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                    card, () -> report, false));
+        }
+        java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
+                wikidata.explore.build.ProjectBuild.Report>> files = new java.util.ArrayList<>();
+        for (String line : report.files()) {
+            quiz.transform.DynamicViewable card = new quiz.transform.DynamicViewable(line, line);
+            card.type("Written");
+            files.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
+                    card, () -> report, false));
+        }
+        String summary = switch (report.outcome()) {
+            case CURRENT -> "Built: every step is current.";
+            case AWAITING_DECISION -> "Stopped: a graph result is awaiting a decision, and the "
+                    + "snapshot was not replaced. Run that graph in its editor (it reuses the "
+                    + "cached facts and keeps earlier decisions), accept or reject the Review "
+                    + "entries named in the steps, apply, save, and build again.";
+            case INCOMPLETE -> "Stopped: generation was incomplete, so nothing was saved.";
+            default -> "Stopped: a step failed, so nothing after it ran.";
+        } + " Manifest: " + report.manifest().getPath();
+        return new process.swing.workflow.ProcessWorkflowResults<>(
+                "Build " + project.name() + " — " + report.outcome(), summary,
+                "Load built instances",
+                java.util.List.of(
+                        new process.swing.workflow.ProcessWorkflowResults.Tab<>("Steps", steps),
+                        new process.swing.workflow.ProcessWorkflowResults.Tab<>("Files written", files)),
+                () -> report, "Close");
     }
 
     /** Turns the pipeline explanation into a map back to the configuration that
@@ -2329,6 +2498,7 @@ public class ModelBuilderFrame extends JFrame {
 
         generateButton.setEnabled(!locked);
         generateDomainButton.setEnabled(!locked);
+        buildProjectButton.setEnabled(!locked);
         remapButton.setEnabled(!locked && lastRun != null);
         enrichButton.setEnabled(!locked && lastRun != null);
         // Read-only, not switched off: a disabled JFrame ignores every event including
