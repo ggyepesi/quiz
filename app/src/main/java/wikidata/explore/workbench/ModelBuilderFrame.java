@@ -76,8 +76,11 @@ public class ModelBuilderFrame extends JFrame {
     private final SingleRootClassModelPanel classModelPanel =
             new SingleRootClassModelPanel(projectModel);
 
+    /** Every graph class's completed annotation set: the project's, like its instances. */
+    private final GraphResults graphResults = new GraphResults(projectModel, storage);
+
     private final ModelSourceWorkbenchPanel sourceWorkbench =
-            new ModelSourceWorkbenchPanel(projectModel);
+            new ModelSourceWorkbenchPanel(projectModel, graphResults);
 
     private final QueryObjectResultPanel instancesPanel =
             new QueryObjectResultPanel();
@@ -501,7 +504,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.Map<String,
                 wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection> annotations =
                 new java.util.LinkedHashMap<>();
-        for (GraphDiscoveryResultStore.Artifact result : sourceWorkbench.graphResults()) {
+        for (GraphDiscoveryResultStore.Artifact result : graphResults.all()) {
             java.util.Map<String, java.util.List<Viewable>> decisions =
                     new java.util.LinkedHashMap<>();
             for (String decision : java.util.List.of("Accepted", "Review", "Rejected")) {
@@ -538,50 +541,15 @@ public class ModelBuilderFrame extends JFrame {
                         : " will write the changed instances to\n"
                                 + destination.getPath() + ".");
         if (quiz.ui.Dialogs.confirmPersistence(this, action, description)) {
-            sourceWorkbench.applyGraphResult(result);
+            acceptGraphResult(graphResults.markApplied(
+                    projectModel.findClass(result.type()), result));
         }
     }
 
-    /** Accepted identities from an explicitly applied additive graph result that are
-     * not generated yet. The graph annotation is the persisted source of truth; the
-     * generation request merely projects it into its supplemental population input. */
+    /** Accepted identities of applied additive graph results not generated yet. */
     private java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions() {
-        return pendingGraphPopulationAdditions(sourceWorkbench.graphResults(),
+        return graphResults.pendingPopulationAdditions(
                 lastRun == null ? java.util.List.of() : lastRun.dynamicObjects());
-    }
-
-    static java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions(
-            java.util.Collection<GraphDiscoveryResultStore.Artifact> graphResults,
-            java.util.Collection<wikidata.explore.extract.WikidataDynamicObject> generated) {
-        java.util.Map<String, java.util.LinkedHashSet<String>> pending =
-                new java.util.LinkedHashMap<>();
-        for (GraphDiscoveryResultStore.Artifact result
-                : graphResults == null ? java.util.List.<GraphDiscoveryResultStore.Artifact>of()
-                : graphResults) {
-            if (!result.applied() || result.populationOperation()
-                    != datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD
-                    || result.outputClass().isBlank()) continue;
-            pending.computeIfAbsent(result.outputClass(), ignored ->
-                    new java.util.LinkedHashSet<>()).addAll(result.acceptedIdentities());
-        }
-        if (generated != null) {
-            for (java.util.Map.Entry<String, java.util.LinkedHashSet<String>> entry
-                    : pending.entrySet()) {
-                java.util.Set<String> generatedIds = generated.stream()
-                        .filter(java.util.Objects::nonNull)
-                        .filter(value -> value.directClassNames().contains(entry.getKey()))
-                        .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
-                        .filter(java.util.Objects::nonNull)
-                        .collect(java.util.stream.Collectors.toSet());
-                entry.getValue().removeAll(generatedIds);
-            }
-        }
-        java.util.Map<String, java.util.List<String>> additions =
-                new java.util.LinkedHashMap<>();
-        pending.forEach((className, qids) -> {
-            if (!qids.isEmpty()) additions.put(className, java.util.List.copyOf(qids));
-        });
-        return java.util.Map.copyOf(additions);
     }
 
     private void updateCreatePopulationSelectionButton() {
@@ -677,7 +645,7 @@ public class ModelBuilderFrame extends JFrame {
     private void refreshInstancesWindowTitle() {
         if (instancesWindow != null) {
             String title = instancesTitle();
-            String annotations = sourceWorkbench.graphResults().stream()
+            String annotations = graphResults.all().stream()
                     .map(result -> result.type() + " " + result.instances().size())
                     .collect(java.util.stream.Collectors.joining(", "));
             instancesWindow.setTitle(annotations.isBlank()
@@ -2400,6 +2368,17 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
+    /** A model loaded in place brings its own saved graph results and none of the
+     *  previous project's: the one restore path, before any instances are loaded. */
+    private void graphResultsFollowLoadedModel() {
+        graphResults.clear();
+        graphResults.restore(java.util.List.of(), this::logInfo);
+    }
+
+    private void logInfo(String message) {
+        if (logWindow != null) logWindow.info(message + "\n");
+    }
+
     private void updateConfigurationLock() {
         setConfigurationLocked(processRunner.isRunning() || querySession.runner().isRunning());
     }
@@ -2728,6 +2707,7 @@ public class ModelBuilderFrame extends JFrame {
             // newly loaded domain.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
+            graphResultsFollowLoadedModel();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
@@ -2792,6 +2772,7 @@ public class ModelBuilderFrame extends JFrame {
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
         projectModel.copyContentsFrom(fresh);
+        graphResultsFollowLoadedModel();
         replaceGenerationRun(null);
         graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
         instancesPanel.clear();
@@ -2870,6 +2851,7 @@ public class ModelBuilderFrame extends JFrame {
         boolean switched = nextFile != null && nextFile.isFile() && doLoadDomain(nextFile);
         if (!switched) {
             projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
+            graphResultsFollowLoadedModel();
             replaceGenerationRun(null);
             graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
             instancesPanel.clear();
@@ -2903,6 +2885,7 @@ public class ModelBuilderFrame extends JFrame {
             // must not be flushed into the domain being loaded.
             sourceWorkbench.abandonEdits();
             projectModel.copyContentsFrom(loaded);
+            graphResultsFollowLoadedModel();
             graphDiscoveryLedger = ledger;
             modelChanged();
             syncDepthSpinnerToActiveClass();
@@ -3006,6 +2989,7 @@ public class ModelBuilderFrame extends JFrame {
             datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
             projectModel.copyContentsFrom(loaded);
+            graphResultsFollowLoadedModel();
             replaceGenerationRun(null);
             graphDiscoveryLedger = ledger;
             instancesPanel.clear();
@@ -3084,7 +3068,7 @@ public class ModelBuilderFrame extends JFrame {
             wikidata.explore.generation.GenerationRuns.renameClasses(saved.objects(), renames);
             List<WikidataDynamicObject> objects =
                     inventory.retractRemovedClaims(saved.objects());
-            sourceWorkbench.restoreGraphResults(objects);
+            graphResults.restore(objects, this::logInfo);
 
             // Apply the current model's canonicalization to the loaded pool, so a
             // display-name spec set/edited after this snapshot was saved takes
@@ -3428,9 +3412,9 @@ public class ModelBuilderFrame extends JFrame {
                 + "Instances: " + (haveInstances
                 ? snapshotToSave.roots().size() + " -> " + snapshotFile().getPath()
                 : "(none generated yet — will be skipped)");
-        java.util.List<GraphDiscoveryResultStore.Artifact> graphResults =
-                sourceWorkbench.graphResults();
-        for (GraphDiscoveryResultStore.Artifact graphResult : graphResults) {
+        java.util.List<GraphDiscoveryResultStore.Artifact> annotationSets =
+                this.graphResults.all();
+        for (GraphDiscoveryResultStore.Artifact graphResult : annotationSets) {
             // The same expression the write takes. Built from the live names here and
             // from the artifact's recorded ones there, the dialog promised one file
             // while the save produced another as soon as anything was renamed.
@@ -3503,7 +3487,7 @@ public class ModelBuilderFrame extends JFrame {
                                       + "saved together)\n");
             }
 
-            for (GraphDiscoveryResultStore.Artifact graphResult : graphResults) {
+            for (GraphDiscoveryResultStore.Artifact graphResult : annotationSets) {
                 report.append(GraphDiscoveryResultStore.save(graphResult)).append('\n');
             }
 

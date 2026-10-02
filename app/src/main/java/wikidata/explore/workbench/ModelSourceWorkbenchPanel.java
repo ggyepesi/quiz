@@ -138,13 +138,20 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public ModelSourceWorkbenchPanel(
             GeneratedProjectModel projectModel) {
+        this(projectModel, new GraphResults(
+                projectModel, dataset.DomainStorage.inDefaultLocation()));
+    }
+
+    /** The graph results are the project's, held by whoever holds the project. */
+    ModelSourceWorkbenchPanel(
+            GeneratedProjectModel projectModel, GraphResults graphResults) {
 
         super(new BorderLayout(4, 4));
         this.projectModel = projectModel;
         this.domainOverview = new DomainOverviewPanel(projectModel);
         this.graphPatternPanel = new GraphPatternSamplePanel(projectModel);
         this.graphConfigurationDiagram = new GraphConfigurationDiagram(projectModel);
-        this.graphConstraintsPanel = new GraphConstraintsPanel(projectModel);
+        this.graphConstraintsPanel = new GraphConstraintsPanel(projectModel, graphResults);
         this.graphConstraintsPanel.propertyCache(propertyPanel::propertyCache);
         this.ownedClassPanel = new OwnedClassPanel(projectModel);
         this.aggregateClassPanel = new AggregateClassPanel(projectModel);
@@ -197,23 +204,6 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void afterGraphResultApplied(Runnable continuation) {
         graphConstraintsPanel.afterGraphResultApplied(continuation);
-    }
-
-    public void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
-        graphConstraintsPanel.applyGraphResult(artifact);
-    }
-
-    GraphDiscoveryResultStore.Artifact lastGraphResult() {
-        return graphConstraintsPanel.lastGraphResult();
-    }
-
-    java.util.List<GraphDiscoveryResultStore.Artifact> graphResults() {
-        return graphConstraintsPanel.graphResults();
-    }
-
-    void restoreGraphResults(
-            java.util.Collection<wikidata.explore.extract.WikidataDynamicObject> objects) {
-        graphConstraintsPanel.restoreGraphResults(objects);
     }
 
     public void afterChange(

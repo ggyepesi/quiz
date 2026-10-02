@@ -83,15 +83,15 @@ class GraphConstraintsPanelTest {
         WikidataDynamicObject alreadyGenerated = new WikidataDynamicObject("Q2", "Kept");
         alreadyGenerated.type("Person");
 
-        assertTrue(ModelBuilderFrame.pendingGraphPopulationAdditions(
+        assertTrue(GraphResults.pendingPopulationAdditions(
                 List.of(additive), List.of()).isEmpty(),
                 "closing a result without Apply must not change the next generation");
 
         GraphDiscoveryResultStore.Artifact applied =
                 GraphDiscoveryResultStore.applied(additive);
-        assertEquals(List.of("Q2"), ModelBuilderFrame.pendingGraphPopulationAdditions(
+        assertEquals(List.of("Q2"), GraphResults.pendingPopulationAdditions(
                 List.of(applied), List.of()).get("Person"));
-        assertTrue(ModelBuilderFrame.pendingGraphPopulationAdditions(
+        assertTrue(GraphResults.pendingPopulationAdditions(
                 List.of(applied), List.of(alreadyGenerated)).isEmpty(),
                 "an identity stops being pending once that class has been generated");
     }
@@ -188,7 +188,8 @@ class GraphConstraintsPanelTest {
         GeneratedProjectModel model = model();
         GeneratedClassModel first = graphClass(model, "PositionGraph");
         GeneratedClassModel second = graphClass(model, "HolderGraph");
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphResults results = results(model);
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model, results);
         ConfiguredGraphDiscoveryQuery.Result result = resultFor("Position");
 
         panel.edit(first);
@@ -198,12 +199,81 @@ class GraphConstraintsPanelTest {
                 "selecting a graph with no result must not expose another graph's result");
         panel.graphResults(result, "HolderGraph");
 
-        assertEquals(2, panel.graphResults().size(),
+        assertEquals(2, results.all().size(),
                 "the project save boundary sees every completed graph result");
         assertEquals("HolderGraph", panel.lastGraphResult().type());
         panel.edit(first);
         assertEquals("PositionGraph", panel.lastGraphResult().type(),
                 "Show instances follows the selected graph class");
+    }
+
+    /**
+     * Starting a run is not a configuration change. It cleared the held result first, so
+     * a run that failed or was cancelled lost the completed one, and the manual decisions
+     * a new run should have carried over had nothing left to be copied from.
+     */
+    @Test void aRunThatDoesNotCompleteKeepsTheHeldResult() {
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = graphPanel(model);
+        text(panel, "graph.edgeProperty").setText("P31");
+        button(panel, "Apply graph").doClick();
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+        GraphDiscoveryResultStore.Artifact completed = panel.lastGraphResult();
+        panel.errorDialog((title, message) -> { });
+        panel.setProcessRunner(new SwingProcessRunner(null, null, null));
+
+        button(panel, "Run graph").doClick();
+
+        assertSame(completed, panel.lastGraphResult());
+    }
+
+    @Test void aRerunCarriesTheManualDecisionsOfTheResultItReplaces() {
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = graphPanel(model);
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+        WikidataDynamicObject decided = panel.lastGraphResult().instances().stream()
+                .filter(value -> "Q2".equals(value.getIdentifier())).findFirst().orElseThrow();
+        GraphDiscoveryResultStore.manualDecision(decided, "Rejected");
+
+        panel.graphResults(resultFor("Position"), "PositionGraph");
+
+        assertEquals("Rejected", panel.lastGraphResult().instances().stream()
+                .filter(value -> "Q2".equals(value.getIdentifier())).findFirst().orElseThrow()
+                .get(GraphDiscoveryResultStore.MANUAL_DECISION));
+    }
+
+    /**
+     * Results belong to the project, not to the editor. Opening a graph's editor loaded
+     * its saved file into what Save writes — an inspection that changed save state — and
+     * detaching the editor emptied every result. Loading the project is the one place a
+     * saved result is read, and it names the file.
+     */
+    @Test void theEditorNeitherLoadsNorDropsResults(@org.junit.jupiter.api.io.TempDir Path root)
+            throws Exception {
+        GeneratedProjectModel model = model();
+        model.name("History");
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        graph.graphSource(new wikidata.explore.model.GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode(
+                        "Position", "", GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(outputNode("Position"))));
+        dataset.DomainStorage storage = dataset.DomainStorage.in(root.toFile());
+        GraphDiscoveryResultStore.save(GraphDiscoveryResultStore.artifact(
+                "History", "PositionGraph", resultFor("Position")), storage);
+        GraphResults results = new GraphResults(model, storage);
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model, results);
+
+        panel.edit(graph);
+        assertTrue(results.all().isEmpty(), "opening the editor reads nothing");
+
+        List<String> said = new ArrayList<>();
+        results.restore(List.of(), said::add);
+        assertEquals(1, results.all().size());
+        assertTrue(said.getFirst().contains(GraphDiscoveryResultStore.destination(
+                storage, "History", "PositionGraph").getPath()), said.toString());
+
+        panel.abandon();
+        assertEquals(1, results.all().size(), "detaching the editor keeps the project's results");
     }
 
     @Test void savingUnchangedGraphConfigurationKeepsItsCompletedResult() {
@@ -234,9 +304,10 @@ class GraphConstraintsPanelTest {
                 List.of(outputNode("Position"))));
         GraphDiscoveryResultStore.Artifact saved = GraphDiscoveryResultStore.artifact(
                 model.name(), graphClass.className(), resultFor("Position"));
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphResults results = results(model);
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model, results);
 
-        panel.restoreGraphResults(saved.instances());
+        results.restore(saved.instances(), ignored -> null, ignored -> { });
         panel.edit(graphClass);
 
         assertNotNull(panel.lastGraphResult());
@@ -261,13 +332,13 @@ class GraphConstraintsPanelTest {
                 model.name(), embeddedClass.className(), resultFor("Position"));
         GraphDiscoveryResultStore.Artifact sidecar = GraphDiscoveryResultStore.artifact(
                 model.name(), sidecarClass.className(), resultFor("Position"));
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphResults results = results(model);
 
-        panel.restoreGraphResults(embedded.instances(), graphClass ->
-                graphClass == sidecarClass ? sidecar : null);
+        results.restore(embedded.instances(), graphClass ->
+                graphClass == sidecarClass ? sidecar : null, ignored -> { });
 
         assertEquals(List.of("GraphConstraint", "PositionReplacementExpansion"),
-                panel.graphResults().stream()
+                results.all().stream()
                         .map(GraphDiscoveryResultStore.Artifact::type).toList(),
                 "one Instances window must restore every named annotation set");
     }
@@ -325,7 +396,8 @@ class GraphConstraintsPanelTest {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");
         GeneratedClassModel graphClass = graphClass(model, "PositionGraph");
-        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        GraphResults results = results(model);
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model, results);
         panel.edit(graphClass);
         panel.graphResults(resultFor("Position"), "PositionGraph");
 
@@ -344,7 +416,7 @@ class GraphConstraintsPanelTest {
                         value.typeName().equals("PositionRelevance")
                                 && !value.directClassNames().contains("PositionGraph")),
                 "the annotations are typed as the set is named");
-        assertEquals(List.of(renamed), panel.graphResults(),
+        assertEquals(List.of(renamed), results.all(),
                 "and the save boundary is offered the restamped set");
     }
 
@@ -1439,6 +1511,12 @@ class GraphConstraintsPanelTest {
             GeneratedProjectModel model) {
         GeneratedClassModel graphClass = model.findClass("PositionGraph");
         return graphClass == null ? null : graphClass.graphSource();
+    }
+
+    /** A holder whose saved-result reads cannot reach the real data directory. */
+    private static GraphResults results(GeneratedProjectModel model) {
+        return new GraphResults(model, dataset.DomainStorage.in(
+                new java.io.File(System.getProperty("java.io.tmpdir"), "no-graph-results")));
     }
 
     private static GeneratedProjectModel model() {

@@ -145,14 +145,18 @@ final class GraphConstraintsPanel extends JPanel {
             propertyCache = Map::of;
     private Consumer<GraphDiscoveryResultStore.Artifact> graphResultConsumer = ignored -> {};
     private Runnable afterGraphResultApplied = () -> {};
-    /** Completed annotations belong to the graph class that produced them. The stable
-     * declaration id keeps that ownership intact while the class is renamed. */
-    private final Map<String, GraphDiscoveryResultStore.Artifact> graphResults =
-            new LinkedHashMap<>();
+    /** The project's graph results. The editor records a run into them and reads the
+     *  edited class's from them; it does not own them. */
+    private final GraphResults results;
 
     GraphConstraintsPanel(GeneratedProjectModel model) {
+        this(model, new GraphResults(model, dataset.DomainStorage.inDefaultLocation()));
+    }
+
+    GraphConstraintsPanel(GeneratedProjectModel model, GraphResults results) {
         super(new BorderLayout(8, 8));
         this.model = java.util.Objects.requireNonNull(model, "model");
+        this.results = java.util.Objects.requireNonNull(results, "results");
         populationOperationBox.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
@@ -221,102 +225,12 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     GraphDiscoveryResultStore.Artifact lastGraphResult() {
-        return clazz == null ? null : resultOf(clazz);
-    }
-
-    /**
-     * Every completed annotation set still owned by the class it was run for, under
-     * that class's current name.
-     *
-     * <p>Read by the save boundary, which writes each one.
-     */
-    List<GraphDiscoveryResultStore.Artifact> graphResults() {
-        return model.graphClasses().stream()
-                .map(this::resultOf)
-                .filter(java.util.Objects::nonNull)
-                .toList();
-    }
-
-    /** Restore every named graph's annotations when the project instances are loaded. */
-    void restoreGraphResults(
-            java.util.Collection<WikidataDynamicObject> loadedObjects) {
-        restoreGraphResults(loadedObjects, this::loadSavedGraphResultArtifact);
-    }
-
-    @FunctionalInterface
-    interface SavedGraphResultLoader {
-        GraphDiscoveryResultStore.Artifact load(GeneratedClassModel graphClass)
-                throws Exception;
-    }
-
-    /** Testable seam for the project's named graph-result files. */
-    void restoreGraphResults(
-            java.util.Collection<WikidataDynamicObject> loadedObjects,
-            SavedGraphResultLoader savedResultLoader) {
-        for (GeneratedClassModel graphClass : model.graphClasses()) {
-            if (resultOf(graphClass) != null || graphClass.graphSource() == null) continue;
-            GraphDiscoveryResultStore.Artifact restored = GraphDiscoveryResultStore.restore(
-                    model.name(), graphClass.className(),
-                    graphClass.graphSource().outputClassName(), loadedObjects);
-            // Older applied graph annotations may be reachable from the main pool.
-            // New named graph results live in their own files beneath the project.
-            // Opening the project must reach BOTH without requiring the reader to open
-            // each graph editor once merely to trigger its private load path.
-            if (restored == null && savedResultLoader != null) {
-                try {
-                    restored = savedResultLoader.load(graphClass);
-                } catch (Exception error) {
-                    status("Could not load saved graph annotations from "
-                            + GraphDiscoveryResultStore.destination(
-                                    model.name(), graphClass.className()).getPath()
-                            + ": " + message(error), true);
-                }
-            }
-            if (restored != null) {
-                graphResults.put(resultKey(graphClass), restored);
-            }
-        }
-    }
-
-    private GraphDiscoveryResultStore.Artifact loadSavedGraphResultArtifact(
-            GeneratedClassModel graphClass) throws Exception {
-        wikidata.explore.model.GraphClassSource source = graphClass.graphSource();
-        if (source == null || source.outputClassName().isBlank()) return null;
-        GraphDiscoveryConfiguration.PopulationOperation operation = source.nextNodes().stream()
-                .filter(node -> node.use()
-                        == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
-                .map(GraphDiscoveryConfiguration.NextNode::populationOperation)
-                .reduce((first, second) -> second)
-                .orElse(GraphDiscoveryConfiguration.PopulationOperation.NARROW);
-        return GraphDiscoveryResultStore.load(model.name(), graphClass.className(),
-                source.outputClassName(), operation);
-    }
-
-    /**
-     * The annotation set held for one graph class, under the names it has now.
-     *
-     * <p>The map is keyed by declarationId, which keeps ownership through a rename; the
-     * names the artifact recorded are restamped to the project's, the class's and its
-     * output class's current ones before it is handed out, so a save files it where
-     * the dialog says and types it as it is named.
-     */
-    private GraphDiscoveryResultStore.Artifact resultOf(GeneratedClassModel graphClass) {
-        if (graphClass == null) return null;
-        String key = resultKey(graphClass);
-        GraphDiscoveryResultStore.Artifact held = graphResults.get(key);
-        if (held == null) return null;
-        GraphDiscoveryResultStore.Artifact current = GraphDiscoveryResultStore.renamed(
-                held, model.name(), graphClass.className(),
-                graphClass.graphSource() == null
-                        ? null : graphClass.graphSource().outputClassName());
-        if (current != held) graphResults.put(key, current);
-        return current;
+        return results.of(clazz);
     }
 
     private void runGraph() {
         if (runner == null || runner.isRunning()) return;
         try {
-            clearCompletedPopulation();
             GeneratedProjectModel snapshot = model.copy();
             // The run is named by the class that declares it, so the snapshot's own copy
             // of that class is what the run reads — not the live one an edit could move
@@ -399,10 +313,7 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
-        GraphDiscoveryResultStore.Artifact applied =
-                GraphDiscoveryResultStore.applied(artifact);
-        remember(applied);
-        graphResultConsumer.accept(applied);
+        graphResultConsumer.accept(results.markApplied(owner(artifact.type()), artifact));
     }
 
     void revealAppliedGraphResult() {
@@ -465,7 +376,6 @@ final class GraphConstraintsPanel extends JPanel {
                             + ". Add the property connecting the two nodes to complete"
                             + " the graph."
                     : "Configured." + RUN_ONLY, false);
-            if (saved != null) loadSavedGraphResult(saved);
             updateRunEnabled();
             populated = true;
         } finally { loading = false; }
@@ -499,33 +409,6 @@ final class GraphConstraintsPanel extends JPanel {
                 GraphEvidenceCondition.ReviewDisposition.INCLUDE_AND_REPORT);
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         if (targetClassBox.getItemCount() > 0) targetClassBox.setSelectedIndex(0);
-    }
-
-    private void loadSavedGraphResult(GraphDiscoveryConfiguration saved) {
-        if (saved == null || lastGraphResult() != null) return;
-        // An unnamed constraint has no annotation set to load; saying so beats looking
-        // for a file whose name we would have had to invent.
-        if (saved.name().isBlank()) return;
-        String outputClass = saved.nextNodes().stream()
-                .filter(node -> node.use()
-                        == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
-                .map(GraphDiscoveryConfiguration.NextNode::populationClass)
-                .findFirst().orElse("");
-        if (outputClass.isBlank()) return;
-        try {
-            GraphDiscoveryResultStore.Artifact loaded = loadSavedGraphResultArtifact(clazz);
-            if (loaded != null) {
-                remember(loaded);
-                status("Loaded " + loaded.instances().size()
-                        + " saved graph annotations from "
-                        + GraphDiscoveryResultStore.destination(
-                                model.name(), saved.name()).getPath() + ".", false);
-            }
-        } catch (Exception error) {
-            status("Could not load saved graph annotations from "
-                    + GraphDiscoveryResultStore.destination(model.name(), saved.name()).getPath()
-                    + ": " + message(error), true);
-        }
     }
 
     /**
@@ -562,7 +445,6 @@ final class GraphConstraintsPanel extends JPanel {
      *  flushed into the new one. */
     void abandon() {
         populated = false;
-        graphResults.clear();
     }
 
     void applyEdits() {
@@ -1327,8 +1209,7 @@ final class GraphConstraintsPanel extends JPanel {
             String projectName, String graphName) {
         GraphDiscoveryResultStore.Artifact artifact =
                 GraphDiscoveryResultStore.artifact(projectName, graphName, result);
-        preserveManualDecisions(lastGraphResult(), artifact);
-        remember(graphName, artifact);
+        results.record(owner(graphName), artifact);
         var graph = result.graph();
         var last = graph.nodes().isEmpty() ? null : graph.nodes().getLast();
         int reached = last == null ? 0 : last.reached().size();
@@ -1362,23 +1243,15 @@ final class GraphConstraintsPanel extends JPanel {
                 + GraphDiscoveryResultStore.destinationOf(artifact).getPath() + ".";
     }
 
+    /** A changed configuration is the one thing that makes a held result stale. */
     private void clearCompletedPopulation() {
-        if (clazz != null) graphResults.remove(resultKey(clazz));
+        results.invalidate(clazz);
     }
 
-    private void remember(GraphDiscoveryResultStore.Artifact artifact) {
-        if (artifact != null) remember(artifact.type(), artifact);
-    }
-
-    private void remember(String graphName, GraphDiscoveryResultStore.Artifact artifact) {
+    /** The graph class a run of that name belongs to; the edited one when none is. */
+    private GeneratedClassModel owner(String graphName) {
         GeneratedClassModel owner = model.findClass(graphName);
-        if (owner == null) owner = clazz;
-        if (owner != null && artifact != null) graphResults.put(resultKey(owner), artifact);
-    }
-
-    private static String resultKey(GeneratedClassModel graphClass) {
-        String id = graphClass.declarationId();
-        return id.isBlank() ? graphClass.className() : id;
+        return owner == null ? clazz : owner;
     }
 
     static ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> artifactTab(
@@ -1413,23 +1286,6 @@ final class GraphConstraintsPanel extends JPanel {
         mark.setForeground("Accepted".equals(decision)
                 ? new Color(35, 125, 55) : new Color(175, 45, 40));
         return mark;
-    }
-
-    private static void preserveManualDecisions(
-            GraphDiscoveryResultStore.Artifact previous,
-            GraphDiscoveryResultStore.Artifact replacement) {
-        if (previous == null || replacement == null
-                || !previous.type().equals(replacement.type())) return;
-        Map<String, Object> decisions = new LinkedHashMap<>();
-        for (WikidataDynamicObject value : previous.instances()) {
-            Object decision = value.get(GraphDiscoveryResultStore.MANUAL_DECISION);
-            if (decision != null) decisions.put(value.getIdentifier(), decision);
-        }
-        for (WikidataDynamicObject value : replacement.instances()) {
-            Object decision = decisions.get(value.getIdentifier());
-            if (decision != null) GraphDiscoveryResultStore.manualDecision(
-                    value, String.valueOf(decision));
-        }
     }
 
     private static List<String> decisionValue(WikidataDynamicObject value) {
