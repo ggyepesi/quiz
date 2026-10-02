@@ -392,6 +392,21 @@ public final class DomainStorage {
     }
 
     /**
+     * The inventory the last Save committed: what the saved snapshot's instances were
+     * stamped against. Empty for a project saved before the manifest existed.
+     */
+    public ConstructInventory savedInventory(String projectName) {
+        List<ConstructInventory.Entry> entries = new ArrayList<>();
+        for (SavedConstruct saved : constructManifest(projectName).constructs) {
+            if (saved == null || saved.kind == null || saved.declarationId == null
+                    || saved.declarationId.isBlank() || saved.name == null
+                    || saved.name.isBlank()) continue;
+            entries.add(new ConstructInventory.Entry(saved.declarationId, saved.name, saved.kind));
+        }
+        return ConstructInventory.of(entries);
+    }
+
+    /**
      * Makes the durable construct inventory exactly the current one and removes only
      * snapshot artifacts no current construct owns. The manifest is written last: it
      * never advertises a reconciliation that did not finish.

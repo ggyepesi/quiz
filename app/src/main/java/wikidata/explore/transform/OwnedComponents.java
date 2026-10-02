@@ -109,8 +109,8 @@ public final class OwnedComponents {
                     if (!isSite(field, project)) continue;
                     GeneratedClassModel target = project.findClass(field.entityClassName());
                     if (target == null) continue; // validator reports the model error
-                    String typeKey = target.className() + "@"
-                            + ownerClass.className() + "." + field.name();
+                    String typeKey = siteKey(
+                            target.className(), ownerClass.className(), field.name());
                     for (WikidataDynamicObject owner : owners) {
                         if (owner == null
                                 || !isInstanceOf(owner, ownerClass.className(), project)) {
@@ -309,7 +309,7 @@ public final class OwnedComponents {
                 GeneratedClassModel target = project.findClass(field.entityClassName());
                 if (target == null) continue;
                 ownerClassBySite.put(
-                        target.className() + "@" + ownerClass.className() + "." + field.name(),
+                        siteKey(target.className(), ownerClass.className(), field.name()),
                         ownerClass.className());
             }
         }
@@ -359,6 +359,28 @@ public final class OwnedComponents {
             if (project.isSameOrSubclass(direct, expected)) return true;
         }
         return false;
+    }
+
+    /** A part's type key: the class it is, at the owner field that produces it. This is
+     *  the one composition of that key, and {@link #renamedSiteKey} its one inverse. */
+    static String siteKey(String targetClass, String ownerClass, String fieldName) {
+        return targetClass + "@" + ownerClass + "." + fieldName;
+    }
+
+    /**
+     * The site key with renamed classes at both ends, or the key unchanged when it is
+     * not a site key. Class names are sanitized identifiers, so neither carries the
+     * separators.
+     */
+    public static String renamedSiteKey(String key, Map<String, String> renames) {
+        if (key == null || renames == null || renames.isEmpty()) return key;
+        int at = key.indexOf('@');
+        int dot = key.indexOf('.', at + 1);
+        if (at <= 0 || dot <= at + 1) return key;
+        String target = key.substring(0, at);
+        String owner = key.substring(at + 1, dot);
+        return siteKey(renames.getOrDefault(target, target),
+                renames.getOrDefault(owner, owner), key.substring(dot + 1));
     }
 
     private static String key(String typeKey, String id) {

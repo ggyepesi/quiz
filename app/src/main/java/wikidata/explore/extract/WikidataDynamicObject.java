@@ -298,6 +298,23 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         if (type != null && !type.isBlank()) directClasses.add(type);
     }
 
+    /**
+     * Restamps every class claim a rename moved, old name to new, all at once, so a
+     * swap of two names cannot chain. The type key follows when it is a class name;
+     * an owned part's site key is composed elsewhere and set by its owner.
+     *
+     * <p>This changes {@link #hashCode()}: a caller rebuilds any hashed collection
+     * holding the object rather than patching it.
+     */
+    public void renameClasses(java.util.Map<String, String> renames) {
+        if (renames == null || renames.isEmpty()) return;
+        java.util.List<String> claims = new java.util.ArrayList<>(directClasses);
+        directClasses.clear();
+        claims.forEach(claim -> directClasses.add(renames.getOrDefault(claim, claim)));
+        if (type != null) type = renames.getOrDefault(type, type);
+        if (typeKey != null) typeKey = renames.getOrDefault(typeKey, typeKey);
+    }
+
     public void assignClass(String className) {
         if (className != null && !className.isBlank()) {
             directClasses.add(className);

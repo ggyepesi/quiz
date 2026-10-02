@@ -63,6 +63,68 @@ class ConstructInventoryTest {
                 "and reading that leaves the object exactly as it was");
     }
 
+    /**
+     * A renamed class is the same declaration under a new name, not a removed one.
+     * Read as removed, Save retracted every claim on it and the class's members left the
+     * snapshot (#309).
+     */
+    @Test void aRenameIsPairedByDeclarationIdAndRetractsNothing() {
+        GeneratedProjectModel project = project();
+        ConstructInventory before = ConstructInventory.of(project);
+        WikidataDynamicObject member = new WikidataDynamicObject("Q1", "Member");
+        member.type("Position");
+
+        project.renameClass("Position", "Office");
+        project.renameClass("PositionGraph", "OfficeGraph");
+        ConstructInventory after = ConstructInventory.of(project);
+        java.util.Map<String, String> renames = after.renamesSince(before);
+        wikidata.explore.generation.GenerationRuns.renameClasses(List.of(member), renames);
+
+        assertEquals(java.util.Map.of("Position", "Office", "PositionGraph", "OfficeGraph"),
+                renames);
+        assertEquals(List.of(member),
+                after.memberRoots(after.retractRemovedClaims(List.of(member))));
+        assertEquals("Office", member.typeName());
+        assertTrue(after.renamesSince(after).isEmpty());
+    }
+
+    /** Applied at once, so two classes trading names do not chain into one. */
+    @Test void renamesApplySimultaneously() {
+        WikidataDynamicObject a = new WikidataDynamicObject("Q1", "A");
+        a.type("Left");
+        WikidataDynamicObject b = new WikidataDynamicObject("Q2", "B");
+        b.type("Right");
+
+        wikidata.explore.generation.GenerationRuns.renameClasses(List.of(a, b),
+                java.util.Map.of("Left", "Right", "Right", "Left"));
+
+        assertEquals(java.util.Set.of("Right"), a.directClassNames());
+        assertEquals(java.util.Set.of("Left"), b.directClassNames());
+    }
+
+    /** A part is keyed by its site, the class it is at its owner's field; both ends follow
+     *  a rename, and so do the fetched-declaration records naming the class. */
+    @Test void aPartsSiteAndTheFetchedDeclarationsFollowTheRename() {
+        WikidataDynamicObject owner = new WikidataDynamicObject("Q1", "Owner");
+        owner.type("Person");
+        WikidataDynamicObject part = new WikidataDynamicObject("Q1", "Owner");
+        part.type("BirthName");
+        part.typeKey("BirthName@Person.birthName");
+        part.part(true);
+        owner.put("birthName", part);
+        java.util.Map<String, String> renames = java.util.Map.of("Person", "Human");
+
+        wikidata.explore.generation.GenerationRuns.renameClasses(List.of(owner), renames);
+
+        assertEquals("BirthName@Human.birthName", part.typeKey());
+        assertEquals("BirthName", part.typeName());
+        assertEquals("Human.birthDate:P569",
+                wikidata.explore.generation.GenerationRuns.renamedDeclarations(List.of(
+                        new wikidata.explore.extract.LoadedDeclaration(
+                                "Person", "birthDate", "P569", List.of("Q1"))), renames)
+                        .getFirst().key());
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");

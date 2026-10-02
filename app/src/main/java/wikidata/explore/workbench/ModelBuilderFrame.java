@@ -2370,6 +2370,7 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void modelChanged() {
+        restampRenamedInstances();
         classModelPanel.refresh();
         sourceWorkbench.refreshDomainOverview();
         refreshInstancesPanel();
@@ -2378,6 +2379,24 @@ public class ModelBuilderFrame extends JFrame {
         }
         if (guidePanel != null && guideWindow != null && guideWindow.isVisible()) {
             guidePanel.refresh();
+        }
+    }
+
+    /**
+     * Brings the held instances to the model's current class names. A rename changes
+     * the model only; the instances were stamped against the run's model, and showing
+     * or saving them under names the model no longer has made a renamed class look
+     * removed. Called wherever the instances are projected: on every model change and
+     * before Save.
+     */
+    private void restampRenamedInstances() {
+        if (lastRun == null) return;
+        try {
+            GenerationRun renamed =
+                    wikidata.explore.generation.GenerationRuns.renamedTo(lastRun, projectModel);
+            if (renamed != lastRun) replaceGenerationRun(renamed);
+        } catch (Exception error) {
+            reportGenerationError(error);
         }
     }
 
@@ -3058,6 +3077,11 @@ public class ModelBuilderFrame extends JFrame {
             graphDiscoveryLedger = saved.graphDiscovery();
             wikidata.explore.model.ConstructInventory inventory =
                     wikidata.explore.model.ConstructInventory.of(projectModel);
+            // Stamped against the inventory its Save committed: a class renamed since is
+            // the same class, so it is restamped before anything is retracted.
+            java.util.Map<String, String> renames =
+                    inventory.renamesSince(storage.savedInventory(projectModel.name()));
+            wikidata.explore.generation.GenerationRuns.renameClasses(saved.objects(), renames);
             List<WikidataDynamicObject> objects =
                     inventory.retractRemovedClaims(saved.objects());
             sourceWorkbench.restoreGraphResults(objects);
@@ -3082,7 +3106,8 @@ public class ModelBuilderFrame extends JFrame {
 
             acceptGenerationRun(new GenerationRun(
                     snapshot, 0, plan, objects, runtime, instances,
-                    null, saved.loadedDeclarations(),
+                    null, wikidata.explore.generation.GenerationRuns.renamedDeclarations(
+                            saved.loadedDeclarations(), renames),
                     GenerationRun.Quality.completeQuality(), List.of(),
                     GenerationRun.SelfReferenceAudit.restored(saved.selfReferences()),
                     GenerationRun.OwnedCompositionAudit.notRun(),
@@ -3277,6 +3302,7 @@ public class ModelBuilderFrame extends JFrame {
      * generated data take the same path; only their source differs.
      */
     private SnapshotWrite snapshotForSave(GeneratedProjectModel model) throws Exception {
+        restampRenamedInstances();
         wikidata.explore.model.ConstructInventory inventory =
                 wikidata.explore.model.ConstructInventory.of(model);
         if (lastRun != null && lastRun.dynamicObjects() != null
@@ -3295,9 +3321,16 @@ public class ModelBuilderFrame extends JFrame {
         }
         WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
                 new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(existing);
+        // The file was stamped against the inventory its Save committed; a class renamed
+        // since then is the same class, not a removed one.
+        java.util.Map<String, String> renames =
+                inventory.renamesSince(storage.savedInventory(model.name()));
+        wikidata.explore.generation.GenerationRuns.renameClasses(loaded.objects(), renames);
         return new SnapshotWrite(inventory.memberRoots(
                 inventory.retractRemovedClaims(loaded.objects())),
-                loaded.loadedDeclarations(), loaded.graphDiscovery(), loaded.selfReferences());
+                wikidata.explore.generation.GenerationRuns.renamedDeclarations(
+                        loaded.loadedDeclarations(), renames),
+                loaded.graphDiscovery(), loaded.selfReferences());
     }
 
     /** @return true only when every requested durable write completed. */

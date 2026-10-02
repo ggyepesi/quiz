@@ -21,6 +21,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConstructManifestTest {
     @TempDir Path temporary;
 
+    /** The committed manifest is read back as the inventory the saved snapshot was
+     *  stamped against, so a rename since that Save is seen as a rename. */
+    @Test void theSavedInventoryIsWhatTheLastSaveCommitted() throws Exception {
+        DomainStorage storage = DomainStorage.in(temporary.toFile());
+        GeneratedProjectModel project = project();
+        Files.createDirectories(storage.directory(project.name()).toPath());
+        storage.reconcileConstructs(project.name(), ConstructInventory.of(project));
+
+        String renamedFrom = project.rootClass().className();
+        project.renameClass(renamedFrom, "Office");
+
+        assertEquals(java.util.Map.of(renamedFrom, "Office"),
+                ConstructInventory.of(project).renamesSince(
+                        storage.savedInventory(project.name())));
+        assertTrue(storage.savedInventory("Never saved").entries().isEmpty());
+    }
+
     @Test void reconciliationTreatsEveryConstructAsOneInventoryEntry() throws Exception {
         DomainStorage storage = DomainStorage.in(temporary.toFile());
         GeneratedProjectModel project = project();

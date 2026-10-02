@@ -225,12 +225,10 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     /**
-     * Every completed annotation set still owned by the class it was run for.
+     * Every completed annotation set still owned by the class it was run for, under
+     * that class's current name.
      *
-     * <p>Read by the save boundary, which writes each one. A set whose class has since
-     * been renamed is dropped here rather than offered: its instances are stamped with
-     * the name the class had, so there is no file it could go to that would not be
-     * named one thing and typed another.
+     * <p>Read by the save boundary, which writes each one.
      */
     List<GraphDiscoveryResultStore.Artifact> graphResults() {
         return model.graphClasses().stream()
@@ -295,25 +293,24 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     /**
-     * The annotation set held for one graph class, or null once it stops describing it.
+     * The annotation set held for one graph class, under the names it has now.
      *
-     * <p>The map is keyed by declarationId, which is what keeps ownership through a
-     * rename — but ownership is not currency. The names the artifact recorded are what
-     * its instances are stamped with and what its file is keyed by, so when they stop
-     * matching the class, the run is of a class that no longer exists and is forgotten
-     * here. Running again replays the adjacency from the local store.
+     * <p>The map is keyed by declarationId, which keeps ownership through a rename; the
+     * names the artifact recorded are restamped to the project's, the class's and its
+     * output class's current ones before it is handed out, so a save files it where
+     * the dialog says and types it as it is named.
      */
     private GraphDiscoveryResultStore.Artifact resultOf(GeneratedClassModel graphClass) {
         if (graphClass == null) return null;
         String key = resultKey(graphClass);
         GraphDiscoveryResultStore.Artifact held = graphResults.get(key);
         if (held == null) return null;
-        if (GraphDiscoveryResultStore.describes(
-                held, model.name(), graphClass.className())) {
-            return held;
-        }
-        graphResults.remove(key);
-        return null;
+        GraphDiscoveryResultStore.Artifact current = GraphDiscoveryResultStore.renamed(
+                held, model.name(), graphClass.className(),
+                graphClass.graphSource() == null
+                        ? null : graphClass.graphSource().outputClassName());
+        if (current != held) graphResults.put(key, current);
+        return current;
     }
 
     private void runGraph() {

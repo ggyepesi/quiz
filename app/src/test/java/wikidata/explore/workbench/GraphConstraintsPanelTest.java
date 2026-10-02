@@ -311,21 +311,17 @@ class GraphConstraintsPanelTest {
     }
 
     /**
-     * A renamed graph class does not carry its old run forward, and the save dialog
-     * names the file the save writes.
+     * A renamed graph class keeps its run, restamped, and the save dialog names the file
+     * the save writes.
      *
-     * <p>The declaration id keeps the annotation set owned by its class through a
-     * rename — but ownership is not currency. The annotations are STAMPED with the name
-     * the class had when they were produced, and the file is keyed by that name, so
-     * re-filing them under the new one would write instances typed PositionGraph into a
-     * set called PositionRelevance. It was worse than that before: the save dialog built
-     * its path from the live names while the write took the artifact's recorded ones, so
-     * a rename made the dialog promise data/wikidata/offices/positionrelevance… while
-     * the save produced data/wikidata/historicalpositions/positiongraph… — the annotation
-     * set written under one name and looked for under another, which is the whole failure
-     * a graph class exists to prevent.
+     * <p>The declaration id keeps the annotation set owned by its class through a rename;
+     * the names the run recorded — what its annotations are STAMPED with and its file is
+     * keyed by — follow the class, so the set is never filed under one name while typed
+     * another. It used to be dropped, losing the run and its manual decisions to a rename
+     * (#309). Before that, the save dialog built its path from the live names while the
+     * write took the recorded ones.
      */
-    @Test void aRenamedGraphClassDoesNotCarryItsOldRunForward() {
+    @Test void aRenamedGraphClassCarriesItsRunRestamped() {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");
         GeneratedClassModel graphClass = graphClass(model, "PositionGraph");
@@ -340,28 +336,53 @@ class GraphConstraintsPanelTest {
 
         model.renameClass("PositionGraph", "PositionRelevance");
 
-        assertNull(panel.lastGraphResult(),
-                "a run of PositionGraph is not PositionRelevance's result; running "
-                        + "again replays the adjacency from the local store");
-        assertTrue(panel.graphResults().isEmpty(),
-                "and the save boundary is offered nothing it cannot file truthfully");
+        GraphDiscoveryResultStore.Artifact renamed = panel.lastGraphResult();
+        assertEquals("PositionRelevance", renamed.type());
+        assertEquals("data/wikidata/historicalpositions/positionrelevance.graph.snapshot.json",
+                GraphDiscoveryResultStore.destinationOf(renamed).getPath());
+        assertTrue(renamed.instances().stream().allMatch(value ->
+                        value.typeName().equals("PositionRelevance")
+                                && !value.directClassNames().contains("PositionGraph")),
+                "the annotations are typed as the set is named");
+        assertEquals(List.of(renamed), panel.graphResults(),
+                "and the save boundary is offered the restamped set");
     }
 
-    /** Renaming the project moves the annotation set the same way, for the same reason. */
-    @Test void aRenamedProjectDoesNotCarryItsGraphRunsForward() {
+    /** Renaming the project carries its graph runs the same way: the project's name is
+     *  half of where the annotation set goes. */
+    @Test void aRenamedProjectCarriesItsGraphRuns() {
         GeneratedProjectModel model = model();
         model.name("Historical Positions");
         GeneratedClassModel graphClass = graphClass(model, "PositionGraph");
         GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
         panel.edit(graphClass);
         panel.graphResults(resultFor("Position"), "PositionGraph");
-        assertNotNull(panel.lastGraphResult());
 
         model.name("Offices");
 
-        assertNull(panel.lastGraphResult(),
-                "the annotation set lives under the project directory, so the project's "
-                        + "name is half of where it goes");
+        GraphDiscoveryResultStore.Artifact carried = panel.lastGraphResult();
+        assertEquals("Offices", carried.projectName());
+        assertEquals("data/wikidata/offices/positiongraph.graph.snapshot.json",
+                GraphDiscoveryResultStore.destinationOf(carried).getPath());
+    }
+
+    /** The output class is renamed through the same restamp: candidates follow it, and the
+     *  field graph still keeps it from being served as a member. */
+    @Test void aRenamedOutputClassRestampsTheCandidates() {
+        GraphDiscoveryResultStore.Artifact ran = GraphDiscoveryResultStore.artifact(
+                "History", "PositionGraph", resultFor("Position"));
+
+        GraphDiscoveryResultStore.Artifact renamed = GraphDiscoveryResultStore.renamed(
+                ran, "History", "PositionGraph", "Office");
+
+        assertEquals("Office", renamed.outputClass());
+        assertTrue(renamed.candidates().stream().allMatch(value ->
+                value.directClassNames().contains("Office")
+                        && !value.directClassNames().contains("Position")));
+        assertEquals(List.of("Q2"), List.copyOf(renamed.acceptedIdentities()));
+        assertTrue(GraphDiscoveryResultStore.renamed(
+                renamed, "History", "PositionGraph", "Office") == renamed,
+                "nothing renamed is the same artifact");
     }
 
     /**

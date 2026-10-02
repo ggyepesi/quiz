@@ -93,19 +93,36 @@ final class GraphDiscoveryResultStore {
     }
 
     /**
-     * Whether an artifact is still the result of the class it is held for.
+     * The artifact under the names its owners have now: the project, the graph class and
+     * its output class. Returns {@code artifact} itself when none was renamed.
      *
-     * <p>Its annotations are STAMPED with the name the class had when the run produced
-     * them, and the file is keyed by that name, so a renamed class's old run is not that
-     * class's result under a new name — it is a run of a class that no longer exists.
-     * Re-filing it would write instances typed one way into a set named another, which
-     * is the drift this construct exists to prevent. Adjacency outlives the run that
-     * fetched it, so running again replays from the local store.
+     * <p>A rename keeps the declaration id, so the result still belongs to its class; what
+     * it recorded is the names its annotations and candidates are STAMPED with and its
+     * file is keyed by. Those are restamped together here, so the set is never written
+     * under one name while typed another. It used to be dropped instead, which lost the
+     * run and every manual decision on it to a rename.
      */
-    static boolean describes(Artifact artifact, String projectName, String graphName) {
-        return artifact != null
-                && artifact.type().equals(graphName)
-                && artifact.projectName().equals(projectName);
+    static Artifact renamed(Artifact artifact, String projectName, String graphName,
+                            String outputClass) {
+        if (artifact == null) return null;
+        String project = projectName == null ? artifact.projectName() : projectName;
+        String type = graphName == null || graphName.isBlank() ? artifact.type() : graphName;
+        String output = outputClass == null || outputClass.isBlank()
+                ? artifact.outputClass() : outputClass;
+        if (project.equals(artifact.projectName()) && type.equals(artifact.type())
+                && output.equals(artifact.outputClass())) {
+            return artifact;
+        }
+        Map<String, String> renames = new LinkedHashMap<>();
+        if (!type.equals(artifact.type())) renames.put(artifact.type(), type);
+        if (!output.equals(artifact.outputClass())) renames.put(artifact.outputClass(), output);
+        List<WikidataDynamicObject> stamped = new java.util.ArrayList<>(artifact.instances());
+        stamped.addAll(artifact.candidates());
+        wikidata.explore.generation.GenerationRuns.renameClasses(stamped, renames);
+        return new Artifact(project, type, output, artifact.populationOperation(),
+                artifact.instances(), artifact.candidates(),
+                new SnapshotDomain(artifact.instances(),
+                        fieldGraph(type, output, artifact.instances())));
     }
 
     static String save(Artifact artifact) throws Exception {

@@ -3,8 +3,10 @@ package wikidata.explore.generation;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.extract.WikidataDynamicObject;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -114,5 +116,70 @@ public final class GenerationRuns {
         Set<String> ungenerated = new LinkedHashSet<>(population);
         ungenerated.removeAll(kept);
         return new NarrowedPool(List.copyOf(expanded), Set.copyOf(kept), Set.copyOf(ungenerated));
+    }
+
+    /**
+     * The run as the current model names it: every class the model renamed since the run
+     * was stamped is restamped on the instances, their owned parts' site keys and the
+     * fetched-declaration records, and the run is materialized again against the current
+     * model. Returns {@code run} itself when nothing was renamed.
+     *
+     * <p>A rename keeps a class's declaration id, and nothing reached the instances: they
+     * kept claiming the old name, which Save took for a removed class and retracted, so a
+     * renamed class's members vanished from the snapshot (#309).
+     */
+    public static GenerationRun renamedTo(
+            GenerationRun run, wikidata.explore.model.GeneratedProjectModel current)
+            throws Exception {
+        if (run == null || current == null) return run;
+        Map<String, String> renames = wikidata.explore.model.ConstructInventory.of(current)
+                .renamesSince(wikidata.explore.model.ConstructInventory.of(run.modelSnapshot()));
+        if (renames.isEmpty()) return run;
+        renameClasses(run.dynamicObjects(), renames);
+        List<wikidata.explore.extract.LoadedDeclaration> declarations =
+                renamedDeclarations(run.loadedDeclarations(), renames);
+        wikidata.explore.model.GeneratedProjectModel snapshot = current.copy();
+        GenerationPipeline pipeline = new GenerationPipeline();
+        GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
+        return new GenerationRun(snapshot, run.depth(),
+                wikidata.explore.rule.RuleTreeCompiler.compileProject(snapshot),
+                run.dynamicObjects(), runtime,
+                pipeline.materialize(runtime, run.dynamicObjects()), run.remapState(),
+                declarations, run.quality(), run.fieldCoverage(), run.selfReferenceAudit(),
+                run.ownedCompositionAudit(), run.kindClassificationAudit(),
+                run.projectionAudit());
+    }
+
+    /** Fetched-declaration records name their class; they follow it like instances do. */
+    public static List<wikidata.explore.extract.LoadedDeclaration> renamedDeclarations(
+            List<wikidata.explore.extract.LoadedDeclaration> declarations,
+            Map<String, String> renames) {
+        if (declarations == null) return List.of();
+        if (renames == null || renames.isEmpty()) return declarations;
+        return declarations.stream()
+                .map(value -> new wikidata.explore.extract.LoadedDeclaration(
+                        renames.getOrDefault(value.className(), value.className()),
+                        value.fieldName(), value.propertyPid(), value.covered(),
+                        value.coveredQids()))
+                .toList();
+    }
+
+    /**
+     * Restamps every object reachable from {@code roots} — class claims, and an owned
+     * part's site key at both of its ends. One walk for every holder of instances, the
+     * generated pool and a graph result's annotations alike.
+     */
+    public static void renameClasses(
+            Collection<WikidataDynamicObject> roots, Map<String, String> renames) {
+        if (roots == null || renames == null || renames.isEmpty()) return;
+        for (WikidataDynamicObject value
+                : wikidata.explore.extract.WikidataObjectGraph.reachable(roots)) {
+            String siteKey = value.isPart() ? value.typeKey() : null;
+            value.renameClasses(renames);
+            if (siteKey != null) {
+                value.typeKey(wikidata.explore.transform.OwnedComponents
+                        .renamedSiteKey(siteKey, renames));
+            }
+        }
     }
 }

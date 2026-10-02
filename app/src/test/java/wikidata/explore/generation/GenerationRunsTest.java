@@ -141,4 +141,45 @@ class GenerationRunsTest {
     private static GenerationRun run(GeneratedViewableRuntime runtime) {
         return new GenerationRun(null, 0, null, List.of(), runtime, List.of());
     }
+
+    /**
+     * A rename reaches the held run: its instances, its fetched declarations and its model
+     * are the current names, and its Java instances are materialized as the renamed class.
+     * Nothing renamed hands back the same run (#309).
+     */
+    @Test void aRenamedClassIsRestampedOnTheHeldRun() throws Exception {
+        wikidata.explore.model.GeneratedProjectModel model =
+                wikidata.explore.model.GeneratedProjectModel.constellationDemo();
+        String from = model.rootClass().className();
+        WikidataDynamicObject member = new WikidataDynamicObject("Q1", "Orion");
+        member.type(from);
+        GenerationPipeline pipeline = new GenerationPipeline();
+        wikidata.explore.model.GeneratedProjectModel snapshot = model.copy();
+        GeneratedViewableRuntime runtime = pipeline.buildRuntime(snapshot);
+        GenerationRun run = new GenerationRun(snapshot, 0,
+                wikidata.explore.rule.RuleTreeCompiler.compileProject(snapshot),
+                List.of(member), runtime, pipeline.materialize(runtime, List.of(member)),
+                null, List.of(new wikidata.explore.extract.LoadedDeclaration(
+                        from, "label", "P1", List.of("Q1"))),
+                GenerationRun.Quality.completeQuality(), List.of(),
+                GenerationRun.SelfReferenceAudit.notRun(),
+                GenerationRun.OwnedCompositionAudit.notRun(),
+                GenerationRun.KindClassificationAudit.notRun(),
+                GenerationRun.ProjectionAudit.notRun());
+        assertSame(run, GenerationRuns.renamedTo(run, model));
+
+        model.renameClass(from, "Asterism");
+        GenerationRun renamed = GenerationRuns.renamedTo(run, model);
+
+        assertTrue(renamed != run);
+        assertTrue(member.directClassNames().contains("Asterism"));
+        assertFalse(member.directClassNames().contains(from));
+        assertTrue(renamed.modelSnapshot().findClass("Asterism") != null);
+        assertTrue(renamed.loadedDeclarations().getFirst().className().equals("Asterism"));
+        assertTrue(renamed.instances().stream()
+                .allMatch(value -> value.typeName().equals("Asterism")));
+        assertSame(renamed, GenerationRuns.renamedTo(renamed, model));
+        renamed.runtime().close();
+        runtime.close();
+    }
 }

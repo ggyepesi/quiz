@@ -78,10 +78,37 @@ public final class ConstructInventory {
         return new ConstructInventory(entries);
     }
 
+    /** The inventory a save committed, read back from its manifest entries. */
+    public static ConstructInventory of(Collection<Entry> entries) {
+        return new ConstructInventory(entries == null ? List.of()
+                : entries.stream().filter(java.util.Objects::nonNull).toList());
+    }
+
     public List<Entry> entries() { return entries; }
     public Set<String> classNames() { return classNames; }
     public Set<String> graphNames() { return graphNames; }
     public boolean containsId(String declarationId) { return byId.containsKey(clean(declarationId)); }
+
+    /**
+     * The class names that changed since {@code previous}, old name to new.
+     *
+     * <p>A rename keeps the declaration id and changes the name, so this is the one
+     * place the two inventories are paired. Instances name their classes, and they
+     * were stamped against {@code previous}: a holder of instances asks this, rather
+     * than reading a rename out of names, before it shows or saves them. Without it a
+     * renamed class looked removed, and Save retracted its members.
+     */
+    public Map<String, String> renamesSince(ConstructInventory previous) {
+        if (previous == null) return Map.of();
+        LinkedHashMap<String, String> renames = new LinkedHashMap<>();
+        for (Entry before : previous.entries) {
+            if (before.kind() != Kind.CLASS && before.kind() != Kind.GRAPH) continue;
+            Entry now = byId.get(before.declarationId());
+            if (now == null || now.kind() != before.kind()) continue;
+            if (!now.name().equals(before.name())) renames.put(before.name(), now.name());
+        }
+        return java.util.Collections.unmodifiableMap(renames);
+    }
 
     /**
      * Retracts class claims whose declarations no longer exist, and says so in its name:
