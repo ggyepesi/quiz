@@ -107,7 +107,7 @@ public final class GraphApplication {
                 GenerationRun.SelfReferenceAudit.notRun(),
                 GenerationRun.OwnedCompositionAudit.notRun(),
                 GenerationRun.KindClassificationAudit.notRun(),
-                GenerationRun.ProjectionAudit.notRun());
+                GenerationRun.ProjectionAudit.notRun()).producedLike(current);
 
         Set<String> added = new LinkedHashSet<>(narrowed.kept());
         added.removeAll(previousMembers);

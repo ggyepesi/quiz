@@ -32,9 +32,68 @@ public record GenerationRun(
         SelfReferenceAudit selfReferenceAudit,
         OwnedCompositionAudit ownedCompositionAudit,
         KindClassificationAudit kindClassificationAudit,
-        ProjectionAudit projectionAudit) {
+        ProjectionAudit projectionAudit,
+        String generatedFrom) {
+
+    /** {@link #generatedFrom} for a run whose instances came from a snapshot that does not
+     *  record which model produced it. It makes no claim either way. */
+    public static final String UNRECORDED = "unrecorded";
+
+    /** A run whose instances were generated from its own model — what every generation
+     *  produces. */
+    public GenerationRun(GeneratedProjectModel modelSnapshot, int depth, RuleNode plan,
+                         List<WikidataDynamicObject> dynamicObjects,
+                         GeneratedViewableRuntime runtime, List<Viewable> instances,
+                         RemapState remapState,
+                         List<wikidata.explore.extract.LoadedDeclaration> loadedDeclarations,
+                         Quality quality,
+                         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> fieldCoverage,
+                         SelfReferenceAudit selfReferenceAudit,
+                         OwnedCompositionAudit ownedCompositionAudit,
+                         KindClassificationAudit kindClassificationAudit,
+                         ProjectionAudit projectionAudit) {
+        this(modelSnapshot, depth, plan, dynamicObjects, runtime, instances, remapState,
+                loadedDeclarations, quality, fieldCoverage, selfReferenceAudit,
+                ownedCompositionAudit, kindClassificationAudit, projectionAudit, "");
+    }
+
+    /**
+     * The signature of the model these instances were generated from, or blank when that
+     * is not recorded.
+     *
+     * <p>Not {@code modelSnapshot}'s, in general. A run's model is the one its instances
+     * are MAPPED through: Load maps a snapshot through the current model, and Enrich,
+     * Remap, a graph Apply and a rename rebuild a run under the current model without
+     * generating again. Reading the producer off the mapping model is how a Save after a
+     * Load recorded the current model as the snapshot's producer, and a build then
+     * skipped the regeneration a model edit needed (#315). So the producer is stored:
+     * blank means the run's own model, and every run derived from another carries its
+     * predecessor's.
+     */
+    public String generatedFromSignature() {
+        if (generatedFrom.isBlank()) return DomainSave.signature(modelSnapshot);
+        return UNRECORDED.equals(generatedFrom) ? "" : generatedFrom;
+    }
+
+    /** This run, recorded as generated from what {@code previous} was generated from. */
+    public GenerationRun producedLike(GenerationRun previous) {
+        if (previous == null) return this;
+        return generatedFrom(previous.generatedFrom.isBlank()
+                ? DomainSave.signature(previous.modelSnapshot) : previous.generatedFrom);
+    }
+
+    /** This run, recorded as generated from the model with {@code signature}; blank
+     *  records that it is not known. */
+    public GenerationRun generatedFrom(String signature) {
+        return new GenerationRun(modelSnapshot, depth, plan, dynamicObjects, runtime,
+                instances, remapState, loadedDeclarations, quality, fieldCoverage,
+                selfReferenceAudit, ownedCompositionAudit, kindClassificationAudit,
+                projectionAudit,
+                signature == null || signature.isBlank() ? UNRECORDED : signature);
+    }
 
     public GenerationRun {
+        generatedFrom = generatedFrom == null ? "" : generatedFrom;
         loadedDeclarations = loadedDeclarations == null
                 ? List.of() : List.copyOf(loadedDeclarations);
         quality = quality == null ? Quality.completeQuality() : quality;

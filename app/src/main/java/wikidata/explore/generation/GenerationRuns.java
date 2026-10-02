@@ -147,7 +147,7 @@ public final class GenerationRuns {
                 pipeline.materialize(runtime, run.dynamicObjects()), run.remapState(),
                 declarations, run.quality(), run.fieldCoverage(), run.selfReferenceAudit(),
                 run.ownedCompositionAudit(), run.kindClassificationAudit(),
-                run.projectionAudit());
+                run.projectionAudit()).producedLike(run);
     }
 
     /**

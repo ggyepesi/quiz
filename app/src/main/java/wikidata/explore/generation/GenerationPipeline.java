@@ -527,7 +527,7 @@ public class GenerationPipeline {
                         previous.selfReferenceAudit().ledger()),
                 GenerationRun.OwnedCompositionAudit.ran(converged.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(converged.newlyClassifiedKinds()),
-                GenerationRun.ProjectionAudit.ran(projectedRecords));
+                GenerationRun.ProjectionAudit.ran(projectedRecords)).producedLike(previous);
     }
 
     /**
@@ -751,7 +751,7 @@ public class GenerationPipeline {
                         convergence.ownedComponentsCreated()),
                 GenerationRun.KindClassificationAudit.ran(
                         convergence.newlyClassifiedKinds()),
-                GenerationRun.ProjectionAudit.ran(projectedRecords));
+                GenerationRun.ProjectionAudit.ran(projectedRecords)).producedLike(previous);
     }
 
     /**
@@ -932,7 +932,7 @@ public class GenerationPipeline {
                 GenerationRun.KindClassificationAudit.ran(
                         converged.newlyClassifiedKinds()),
                 GenerationRun.ProjectionAudit.ran(
-                        transformed.projectionChangedInstances()));
+                        transformed.projectionChangedInstances())).producedLike(previous);
     }
 
     /**

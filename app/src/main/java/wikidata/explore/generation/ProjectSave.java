@@ -46,15 +46,27 @@ public final class ProjectSave {
      * any, is projected onto the current inventory and written again.
      */
     public record Run(List<WikidataDynamicObject> pool, List<LoadedDeclaration> loadedDeclarations,
-                      SelfReferenceLedger selfReferences, GeneratedProjectModel producedBy) {
+                      SelfReferenceLedger selfReferences, GeneratedProjectModel producedBy,
+                      String generatedFrom) {
         public Run {
             pool = pool == null ? List.of() : List.copyOf(pool);
             loadedDeclarations = loadedDeclarations == null ? List.of() : loadedDeclarations;
             selfReferences = selfReferences == null ? SelfReferenceLedger.EMPTY : selfReferences;
+            generatedFrom = generatedFrom == null ? "" : generatedFrom;
         }
 
+        /** A run freshly generated from {@code producedBy}. */
+        public Run(List<WikidataDynamicObject> pool, List<LoadedDeclaration> loadedDeclarations,
+                   SelfReferenceLedger selfReferences, GeneratedProjectModel producedBy) {
+            this(pool, loadedDeclarations, selfReferences, producedBy,
+                    producedBy == null ? "" : DomainSave.signature(producedBy));
+        }
+
+        /** The signature of the model the instances were generated from; blank when not
+         *  known. {@code producedBy} is the model they are stamped against, which after a
+         *  Load or an Enrich is not the same thing (#315). */
         String modelSignature() {
-            return producedBy == null ? "" : DomainSave.signature(producedBy);
+            return generatedFrom;
         }
     }
 

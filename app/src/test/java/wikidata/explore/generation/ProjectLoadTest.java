@@ -76,6 +76,55 @@ class ProjectLoadTest {
         loaded.run().runtime().close();
     }
 
+    /**
+     * The exact shape of #315: edit the model, load the saved instances, save. The loaded
+     * run is mapped through the edited model, but its instances came from the old one, and
+     * that is what the save records — so the snapshot reads stale, and a build regenerates.
+     */
+    @Test void aSaveAfterALoadRecordsTheModelTheInstancesCameFrom() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = domain();
+        save(model, storage, List.of(), member("Q1"));
+        String generatedFrom = storage.savedSnapshotSignature(model.name());
+
+        model.rootClass().generationDepth(model.rootClass().generationDepth() + 1);
+        GenerationRun loaded = ProjectLoad.load(
+                model, storage, storage.snapshotFile(model.name()), null).run();
+        ProjectSave resave = ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(loaded.dynamicObjects(), loaded.loadedDeclarations(), null,
+                        loaded.modelSnapshot(), loaded.generatedFromSignature()),
+                null, List.of()), storage);
+
+        assertEquals(List.of(ProjectSave.Warning.Kind.STALE_INSTANCES),
+                resave.warnings().stream().map(ProjectSave.Warning::kind).toList(),
+                "the desktop asks before saving instances older than the model");
+        resave.write();
+        assertEquals(generatedFrom, storage.savedSnapshotSignature(model.name()),
+                "not the edited model the instances were merely mapped through");
+        loaded.runtime().close();
+    }
+
+    /** A snapshot saved before the producer was recorded makes no claim, and loading and
+     *  saving it does not invent one. */
+    @Test void anUnrecordedProducerStaysUnrecordedThroughLoadAndSave() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = domain();
+        save(model, storage, List.of(), member("Q1"));
+        storage.reconcileConstructs(model.name(),
+                wikidata.explore.model.ConstructInventory.of(model), "");
+
+        GenerationRun loaded = ProjectLoad.load(
+                model, storage, storage.snapshotFile(model.name()), null).run();
+        assertEquals("", loaded.generatedFromSignature());
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(loaded.dynamicObjects(), loaded.loadedDeclarations(), null,
+                        loaded.modelSnapshot(), loaded.generatedFromSignature()),
+                null, List.of()), storage).write();
+
+        assertEquals("", storage.savedSnapshotSignature(model.name()));
+        loaded.runtime().close();
+    }
+
     /** Save with nothing loaded writes back exactly what Load reads. */
     @Test void saveAndLoadReadTheSnapshotTheSameWay() throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());

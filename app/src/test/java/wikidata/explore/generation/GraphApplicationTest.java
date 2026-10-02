@@ -60,6 +60,12 @@ class GraphApplicationTest {
                 GraphApplication.apply(result, model, current));
 
         assertEquals(1, applied.resultingMembers(), "narrowed to the one accepted Position");
+        assertEquals(current.generatedFrom("graph-producer").generatedFromSignature(),
+                applied.run().producedLike(current.generatedFrom("graph-producer"))
+                        .generatedFromSignature());
+        assertEquals(current.generatedFromSignature(),
+                applied.run().generatedFromSignature(),
+                "applying a graph regenerates nothing, so the producer carries over");
         assertTrue(applied.result().applied(), "the applied result says so, for the next Generate");
         current.runtime().close();
         applied.run().runtime().close();

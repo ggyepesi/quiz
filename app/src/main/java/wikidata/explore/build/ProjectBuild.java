@@ -299,7 +299,8 @@ public final class ProjectBuild {
                     ProjectSave save = ProjectSave.plan(new ProjectSave.Input(model,
                             run == null ? null : new ProjectSave.Run(run.dynamicObjects(),
                                     run.loadedDeclarations(),
-                                    run.selfReferenceAudit().ledger(), run.modelSnapshot()),
+                                    run.selfReferenceAudit().ledger(), run.modelSnapshot(),
+                                    run.generatedFromSignature()),
                             ledger, results.all()), storage);
                     if (!save.warnings().isEmpty()) {
                         outcome = State.FAILED;

@@ -2067,7 +2067,8 @@ public class ModelBuilderFrame extends JFrame {
                 lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
                 lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage(),
                 lastRun.selfReferenceAudit(), lastRun.ownedCompositionAudit(),
-                lastRun.kindClassificationAudit(), lastRun.projectionAudit()));
+                lastRun.kindClassificationAudit(), lastRun.projectionAudit())
+                .producedLike(lastRun));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
@@ -3167,7 +3168,8 @@ public class ModelBuilderFrame extends JFrame {
                             lastRun == null ? null : new wikidata.explore.generation.ProjectSave.Run(
                                     lastRun.dynamicObjects(), lastRun.loadedDeclarations(),
                                     lastRun.selfReferenceAudit().ledger(),
-                                    lastRun.modelSnapshot()),
+                                    lastRun.modelSnapshot(),
+                                    lastRun.generatedFromSignature()),
                             graphDiscoveryLedger, graphResults.all()),
                     storage);
         } catch (Exception unreadableSnapshot) {

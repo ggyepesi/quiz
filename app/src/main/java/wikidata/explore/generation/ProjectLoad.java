@@ -94,7 +94,11 @@ public final class ProjectLoad {
                 GenerationRun.SelfReferenceAudit.restored(projection.selfReferences()),
                 GenerationRun.OwnedCompositionAudit.notRun(),
                 GenerationRun.KindClassificationAudit.notRun(),
-                GenerationRun.ProjectionAudit.notRun()), projection, stale);
+                GenerationRun.ProjectionAudit.notRun())
+                // The instances came from the model the snapshot's Save recorded, not the
+                // one they are mapped through here.
+                .generatedFrom(storage.savedSnapshotSignature(model.name())),
+                projection, stale);
     }
 
     /** The registry records the model a served snapshot was generated from; a different
