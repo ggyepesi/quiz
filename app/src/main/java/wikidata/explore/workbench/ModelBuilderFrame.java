@@ -27,8 +27,6 @@ import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
 import wikidata.explore.model.*;
 import work.QueryContext;
-import datasource.graph.store.GraphStoreProvider;
-import datasource.persistence.PersistentGraphStore;
 import wikidata.explore.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.EnrichInstancesQuery;
@@ -257,11 +255,8 @@ public class ModelBuilderFrame extends JFrame {
         // datasource wired (WDQS default + DBpedia). client stays the WDQS primary.
         this.queryFactory = new QueryFactory(
                 client, apiClient, "quiz-modelbuilder (ggyepesi@gmail.com)");
-        QueryContext queryContext = queryFactory.newContext().with(
-                GraphStoreProvider.class,
-                (GraphStoreProvider) () -> new PersistentGraphStore(
-                        java.nio.file.Path.of(aux.Constants.wikidataDataDirectory,
-                                ".graph-cache")));
+        QueryContext queryContext = queryFactory.newContext(
+                java.nio.file.Path.of(aux.Constants.wikidataDataDirectory));
         this.querySession = new SwingQuerySession(queryContext);
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(

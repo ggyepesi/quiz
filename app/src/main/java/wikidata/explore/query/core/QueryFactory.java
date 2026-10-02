@@ -61,6 +61,18 @@ public final class QueryFactory implements AutoCloseable {
         return access.bind();
     }
 
+    /**
+     * {@link #newContext()} plus the persistent graph cache under {@code dataDirectory}:
+     * graph runs reuse every adjacency answer already downloaded. The desktop and a build
+     * from the command line take this one wiring, so both read and fill the same cache.
+     */
+    public QueryContext newContext(java.nio.file.Path dataDirectory) {
+        java.nio.file.Path cache = dataDirectory.resolve(".graph-cache");
+        return newContext().with(datasource.graph.store.GraphStoreProvider.class,
+                (datasource.graph.store.GraphStoreProvider) () ->
+                        new datasource.persistence.PersistentGraphStore(cache));
+    }
+
     @Override
     public synchronized void close() {
         if (closed) {

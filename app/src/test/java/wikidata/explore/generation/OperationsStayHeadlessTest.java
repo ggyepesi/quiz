@@ -29,7 +29,7 @@ class OperationsStayHeadlessTest {
     private static final List<String> OPERATIONS = List.of(
             "ProjectSave", "DomainSave", "DomainCounts", "GraphDiscoveryResultStore",
             "GenerationRuns", "GraphApplication", "ProjectLoad", "GraphResults",
-            "wikidata/explore/build/ProjectBuild");
+            "wikidata/explore/build/ProjectBuild", "wikidata/explore/build/BuildMain");
     private static final Pattern UI = Pattern.compile(
             "\\b(javax\\.swing|java\\.awt|wikidata\\.explore\\.workbench|quiz\\.transform\\.ui"
                     + "|process\\.swing)\\.(?:\\*|\\w[\\w.]*)");
