@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.explore.generation.GraphDiscoveryResultStore;
+
 import datasource.schema.FieldType;
 
 import wikidata.WikidataIds;

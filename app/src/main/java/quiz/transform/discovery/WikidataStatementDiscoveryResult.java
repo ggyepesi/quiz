@@ -1,5 +1,7 @@
 package quiz.transform.discovery;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import objectview.Viewable;
 import objectview.field.DynamicFieldSet;
 import objectview.field.FieldRef;

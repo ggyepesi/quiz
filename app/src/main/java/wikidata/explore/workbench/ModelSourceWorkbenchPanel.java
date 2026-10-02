@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.explore.generation.GraphDiscoveryResultStore;
+
 import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldSampleContext;
 import datasource.schema.FieldType;

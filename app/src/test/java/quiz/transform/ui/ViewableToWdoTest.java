@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.group.ViewableGroup;
 import objectview.ViewableAdapter;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;

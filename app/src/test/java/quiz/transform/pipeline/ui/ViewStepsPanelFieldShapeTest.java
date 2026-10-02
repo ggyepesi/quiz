@@ -6,7 +6,7 @@ import objectview.field.FieldPath;
 import flag.State;
 import flag.USState;
 import org.junit.jupiter.api.Test;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import quiz.transform.ui.TransformController;
 import quiz.transform.ui.ReflectionDomain;
 import wikidata.explore.extract.SnapshotFieldGraph;

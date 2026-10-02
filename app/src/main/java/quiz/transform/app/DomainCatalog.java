@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import quiz.DatasetRegistry;

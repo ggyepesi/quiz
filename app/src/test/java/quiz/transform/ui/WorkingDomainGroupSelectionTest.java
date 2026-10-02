@@ -4,7 +4,7 @@ import objectview.Viewable;
 import org.junit.jupiter.api.Test;
 import quiz.transform.EditableGroup;
 import quiz.transform.RelationClosureGroup;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;

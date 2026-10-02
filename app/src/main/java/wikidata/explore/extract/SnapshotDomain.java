@@ -1,4 +1,4 @@
-package quiz.transform.app;
+package wikidata.explore.extract;
 
 import objectview.Viewable;
 import domain.DomainField;
@@ -6,8 +6,6 @@ import domain.DomainModel;
 import domain.DomainSchemas;
 import objectview.field.FieldSchema;
 import objectview.viewconfig.FieldTypeSource;
-import wikidata.explore.extract.SnapshotFieldGraph;
-import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.Collection;
 import java.util.List;

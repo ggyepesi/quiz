@@ -1,5 +1,7 @@
 package quiz.web;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

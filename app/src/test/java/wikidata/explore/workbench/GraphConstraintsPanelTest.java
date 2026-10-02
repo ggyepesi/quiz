@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.explore.generation.GraphDiscoveryResultStore;
+
 import org.junit.jupiter.api.Test;
 import datasource.EntityRef;
 import datasource.graph.GraphDiscoveryConfiguration;

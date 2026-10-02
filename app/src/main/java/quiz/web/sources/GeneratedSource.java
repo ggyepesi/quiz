@@ -181,8 +181,8 @@ public class GeneratedSource implements ViewableSource {
             wikidata.explore.transform.BareReferenceCollapse.apply(all);
             boolean anyTyped = all.stream().anyMatch(o -> isStamped(o.typeName()));
             if (anyTyped) {
-                quiz.transform.app.SnapshotDomain domain =
-                        new quiz.transform.app.SnapshotDomain(all, loaded.fieldGraph());
+                wikidata.explore.extract.SnapshotDomain domain =
+                        new wikidata.explore.extract.SnapshotDomain(all, loaded.fieldGraph());
                 members = domain.instancesOf(type).stream()
                         .map(WikidataDynamicObject.class::cast)
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new));

@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;

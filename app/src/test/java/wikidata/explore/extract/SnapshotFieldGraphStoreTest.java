@@ -7,7 +7,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.transform.app.SnapshotDomain;
 import domain.DomainField;
 import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;

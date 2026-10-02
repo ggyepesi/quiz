@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.curation.ManualCuration;

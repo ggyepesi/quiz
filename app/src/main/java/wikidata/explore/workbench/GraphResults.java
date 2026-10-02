@@ -1,5 +1,7 @@
 package wikidata.explore.workbench;
 
+import wikidata.explore.generation.GraphDiscoveryResultStore;
+
 import datasource.graph.GraphDiscoveryConfiguration;
 import dataset.DomainStorage;
 import wikidata.explore.extract.WikidataDynamicObject;

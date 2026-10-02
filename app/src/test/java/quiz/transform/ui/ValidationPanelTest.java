@@ -3,7 +3,7 @@ package quiz.transform.ui;
 import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
 import quiz.curation.ScopeFilter;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import wikidata.explore.extract.SnapshotFieldGraph;
 import wikidata.explore.extract.WikidataDynamicObject;
 

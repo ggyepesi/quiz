@@ -1,10 +1,9 @@
-package wikidata.explore.workbench;
+package wikidata.explore.generation;
 
 import datasource.EntityRef;
 import datasource.graph.constraint.GraphEvidenceConditionResult;
 import datasource.graph.execution.GraphDiscoveryExecutor;
-import quiz.transform.app.SnapshotDomain;
-import quiz.DatasetRegistry;
+import wikidata.explore.extract.SnapshotDomain;
 import dataset.DomainStorage;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
@@ -16,12 +15,12 @@ import java.util.List;
 import java.util.Map;
 
 /** Materializes one graph execution as an ordinary TransformApp snapshot. */
-final class GraphDiscoveryResultStore {
-    static final String GRAPH_DECISION = "Graph decision";
-    static final String MANUAL_DECISION = "Manual decision";
-    static final String ANNOTATED_INSTANCE = "Annotated instance";
-    static final String GRAPH_ANNOTATION = "Graph annotation";
-    static final String OUTPUT_APPLIED = "Output applied";
+public final class GraphDiscoveryResultStore {
+    public static final String GRAPH_DECISION = "Graph decision";
+    public static final String MANUAL_DECISION = "Manual decision";
+    public static final String ANNOTATED_INSTANCE = "Annotated instance";
+    public static final String GRAPH_ANNOTATION = "Graph annotation";
+    public static final String OUTPUT_APPLIED = "Output applied";
 
     private GraphDiscoveryResultStore() { }
 
@@ -30,7 +29,7 @@ final class GraphDiscoveryResultStore {
      * default here is how a set gets written under one name and looked for under
      * another. Refuse instead: an unnamed constraint has nowhere to put its result.
      */
-    static String domainName(String graphConstraintName) {
+    public static String domainName(String graphConstraintName) {
         String name = graphConstraintName == null ? "" : graphConstraintName.trim();
         if (name.isBlank()) {
             throw new IllegalArgumentException(
@@ -40,30 +39,30 @@ final class GraphDiscoveryResultStore {
         return name;
     }
 
-    static File destination(String projectName, String graphConstraintName) {
+    public static File destination(String projectName, String graphConstraintName) {
         return destination(DomainStorage.inDefaultLocation(),
                 projectName, graphConstraintName);
     }
 
-    static File destination(
+    public static File destination(
             DomainStorage storage, String projectName, String graphConstraintName) {
         return new File(storage.directory(projectName),
                 DomainStorage.key(graphConstraintName) + ".graph.snapshot.json");
     }
 
-    static String save(
+    public static String save(
             String projectName, String graphConstraintName,
             ConfiguredGraphDiscoveryQuery.Result result)
             throws Exception {
         return save(artifact(projectName, graphConstraintName, result));
     }
 
-    static Artifact artifact(String graphConstraintName,
+    public static Artifact artifact(String graphConstraintName,
                              ConfiguredGraphDiscoveryQuery.Result result) {
         return artifact("", graphConstraintName, result);
     }
 
-    static Artifact artifact(String projectName, String graphConstraintName,
+    public static Artifact artifact(String projectName, String graphConstraintName,
                              ConfiguredGraphDiscoveryQuery.Result result) {
         String type = domainName(graphConstraintName);
         ResultObjects built = resultObjects(type, result);
@@ -88,7 +87,7 @@ final class GraphDiscoveryResultStore {
      * the write took the names the artifact recorded when it ran, and a rename between
      * the run and the save made them disagree silently.
      */
-    static File destinationOf(Artifact artifact) {
+    public static File destinationOf(Artifact artifact) {
         return destination(artifact.projectName(), artifact.type());
     }
 
@@ -102,7 +101,7 @@ final class GraphDiscoveryResultStore {
      * under one name while typed another. It used to be dropped instead, which lost the
      * run and every manual decision on it to a rename.
      */
-    static Artifact renamed(Artifact artifact, String projectName, String graphName,
+    public static Artifact renamed(Artifact artifact, String projectName, String graphName,
                             String outputClass) {
         if (artifact == null) return null;
         String project = projectName == null ? artifact.projectName() : projectName;
@@ -125,17 +124,17 @@ final class GraphDiscoveryResultStore {
                         fieldGraph(type, output, artifact.instances())));
     }
 
-    static String save(Artifact artifact) throws Exception {
+    public static String save(Artifact artifact) throws Exception {
         return save(artifact, DomainStorage.inDefaultLocation());
     }
 
-    static Artifact load(String projectName, String graphConstraintName,
+    public static Artifact load(String projectName, String graphConstraintName,
                          String outputClass) throws Exception {
         return load(projectName, graphConstraintName, outputClass,
                 datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW);
     }
 
-    static Artifact load(String projectName, String graphConstraintName,
+    public static Artifact load(String projectName, String graphConstraintName,
                          String outputClass,
                          datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation)
             throws Exception {
@@ -143,7 +142,7 @@ final class GraphDiscoveryResultStore {
                 DomainStorage.inDefaultLocation());
     }
 
-    static Artifact load(String projectName, String graphConstraintName,
+    public static Artifact load(String projectName, String graphConstraintName,
                          String outputClass,
                          datasource.graph.GraphDiscoveryConfiguration.PopulationOperation operation,
                          DomainStorage storage) throws Exception {
@@ -167,7 +166,7 @@ final class GraphDiscoveryResultStore {
      * Load instances has everything Show instances needs even when an older sidecar was
      * saved under a former graph name.
      */
-    static Artifact restore(String projectName, String graphConstraintName,
+    public static Artifact restore(String projectName, String graphConstraintName,
             String outputClass, java.util.Collection<WikidataDynamicObject> pool) {
         String type = domainName(graphConstraintName);
         List<WikidataDynamicObject> annotations = pool == null ? List.of() : pool.stream()
@@ -190,7 +189,7 @@ final class GraphDiscoveryResultStore {
      * set lost the annotation's reference to its instance and served the candidate class
      * as a member, and an applied set lost the decision facets as well.
      */
-    static wikidata.explore.extract.SnapshotFieldGraph fieldGraph(
+    public static wikidata.explore.extract.SnapshotFieldGraph fieldGraph(
             String type, String outputClass, List<WikidataDynamicObject> annotations) {
         wikidata.explore.extract.SnapshotFieldGraph model =
                 wikidata.explore.extract.SnapshotFieldGraph.derive(annotations);
@@ -225,7 +224,7 @@ final class GraphDiscoveryResultStore {
      * navigator — and a row is how a thing becomes something the reader must account for.
      * Opening the project reaches them.
      */
-    static String save(Artifact artifact, DomainStorage storage)
+    public static String save(Artifact artifact, DomainStorage storage)
             throws Exception {
         if (artifact.projectName().isBlank()) {
             throw new IllegalArgumentException("The graph result has no owning project");
@@ -240,7 +239,7 @@ final class GraphDiscoveryResultStore {
                 + "\"; opening that project reaches them.";
     }
 
-    static String save(
+    public static String save(
             String graphConstraintName, ConfiguredGraphDiscoveryQuery.Result result,
             ResultWriter writer) throws Exception {
         return save(artifact(graphConstraintName, result), writer);
@@ -252,22 +251,22 @@ final class GraphDiscoveryResultStore {
      * disagree: instances typed one way inside a domain called another, with nothing to
      * object.
      */
-    static String save(Artifact artifact, ResultWriter writer) throws Exception {
+    public static String save(Artifact artifact, ResultWriter writer) throws Exception {
         return writer.save(artifact.type(), artifact.instances(), artifact.model());
     }
 
-    record Artifact(String projectName, String type, String outputClass,
+    public record Artifact(String projectName, String type, String outputClass,
                     datasource.graph.GraphDiscoveryConfiguration.PopulationOperation populationOperation,
                     List<WikidataDynamicObject> instances,
                     List<WikidataDynamicObject> candidates, SnapshotDomain model) {
-        Artifact(String projectName, String type, String outputClass,
+        public Artifact(String projectName, String type, String outputClass,
                 List<WikidataDynamicObject> instances,
                 List<WikidataDynamicObject> candidates, SnapshotDomain model) {
             this(projectName, type, outputClass,
                     datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.NARROW,
                     instances, candidates, model);
         }
-        Artifact {
+        public Artifact {
             projectName = projectName == null ? "" : projectName.trim();
             outputClass = outputClass == null ? "" : outputClass.trim();
             populationOperation = populationOperation == null
@@ -278,7 +277,7 @@ final class GraphDiscoveryResultStore {
             java.util.Objects.requireNonNull(model, "model");
         }
 
-        List<WikidataDynamicObject> acceptedCandidates() {
+        public List<WikidataDynamicObject> acceptedCandidates() {
             return instances.stream().filter(GraphDiscoveryResultStore::included)
                     .map(value -> value.get(ANNOTATED_INSTANCE))
                     .filter(WikidataDynamicObject.class::isInstance)
@@ -291,7 +290,7 @@ final class GraphDiscoveryResultStore {
          * traversal reached, never a generated instance, so what a graph result
          * contributes to the project is this set of ids and nothing else.
          */
-        java.util.Set<String> acceptedIdentities() {
+        public java.util.Set<String> acceptedIdentities() {
             java.util.Set<String> ids = new java.util.LinkedHashSet<>();
             for (WikidataDynamicObject candidate : acceptedCandidates()) {
                 String id = candidate == null ? null : candidate.getIdentifier();
@@ -300,7 +299,7 @@ final class GraphDiscoveryResultStore {
             return ids;
         }
 
-        boolean applied() {
+        public boolean applied() {
             return instances.stream().anyMatch(value ->
                     Boolean.TRUE.equals(value.get(OUTPUT_APPLIED)));
         }
@@ -308,7 +307,7 @@ final class GraphDiscoveryResultStore {
 
     /** Records the explicit Apply on the annotation set itself, so Save domain and
      * Load instances retain which graph result may contribute pending generation input. */
-    static Artifact applied(Artifact artifact) {
+    public static Artifact applied(Artifact artifact) {
         if (artifact == null || artifact.applied()) return artifact;
         artifact.instances().forEach(value -> value.put(OUTPUT_APPLIED, true));
         SnapshotDomain refreshed = new SnapshotDomain(artifact.instances(),
@@ -322,7 +321,7 @@ final class GraphDiscoveryResultStore {
                                  List<WikidataDynamicObject> annotations,
                                  List<WikidataDynamicObject> candidates) { }
 
-    static List<WikidataDynamicObject> records(String type,
+    public static List<WikidataDynamicObject> records(String type,
             ConfiguredGraphDiscoveryQuery.Result result) {
         return resultObjects(type, result).annotations();
     }
@@ -439,7 +438,7 @@ final class GraphDiscoveryResultStore {
         return source + " —" + edge.relation().relationId() + "→ " + target;
     }
 
-    static void manualDecision(WikidataDynamicObject annotation, String decision) {
+    public static void manualDecision(WikidataDynamicObject annotation, String decision) {
         if (annotation == null) return;
         if (decision == null || decision.isBlank()) {
             annotation.dynamicFields().remove(MANUAL_DECISION);
@@ -448,7 +447,7 @@ final class GraphDiscoveryResultStore {
         }
     }
 
-    static boolean included(WikidataDynamicObject annotation) {
+    public static boolean included(WikidataDynamicObject annotation) {
         Object manual = annotation.get(MANUAL_DECISION);
         if ("Accepted".equals(manual)) return true;
         if ("Rejected".equals(manual)) return false;
@@ -460,7 +459,7 @@ final class GraphDiscoveryResultStore {
     }
 
     /** The graph's immutable classification; manual curation is deliberately separate. */
-    static List<String> originalDecisions(WikidataDynamicObject annotation) {
+    public static List<String> originalDecisions(WikidataDynamicObject annotation) {
         Object decision = annotation == null ? null : annotation.get(GRAPH_DECISION);
         if (decision instanceof List<?> values) {
             return values.stream().map(String::valueOf).toList();
@@ -474,7 +473,7 @@ final class GraphDiscoveryResultStore {
     }
 
     @FunctionalInterface
-    interface ResultWriter {
+    public interface ResultWriter {
         String save(String name, List<WikidataDynamicObject> members,
                     SnapshotDomain schema) throws Exception;
     }

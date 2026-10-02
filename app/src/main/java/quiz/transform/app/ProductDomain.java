@@ -1,5 +1,7 @@
 package quiz.transform.app;
 
+import wikidata.explore.extract.SnapshotDomain;
+
 import objectview.Viewable;
 import domain.DomainField;
 import domain.DomainModel;

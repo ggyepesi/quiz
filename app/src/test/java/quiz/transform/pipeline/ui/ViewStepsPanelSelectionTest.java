@@ -28,7 +28,7 @@ class ViewStepsPanelSelectionTest {
         graph.declareExhaustiveValues("GraphDiscoveryResult", "Decision",
                 List.of("Start", "Accepted", "Review", "Rejected"));
         TransformController controller = new TransformController(
-                new quiz.transform.app.SnapshotDomain(List.of(value), graph), null);
+                new wikidata.explore.extract.SnapshotDomain(List.of(value), graph), null);
         ViewStepsPanel panel = new ViewStepsPanel(
                 controller, () -> { }, null, List::of,
                 (field, filter) -> { }, () -> { });
@@ -55,14 +55,14 @@ class ViewStepsPanelSelectionTest {
                 wikidata.explore.extract.SnapshotFieldGraph.derive(List.of(value));
         declared.declareExhaustiveValues("GraphDiscoveryResult", "Decision",
                 List.of("Start", "Accepted", "Review", "Rejected"));
-        var source = new quiz.transform.app.SnapshotDomain(List.of(value), declared);
+        var source = new wikidata.explore.extract.SnapshotDomain(List.of(value), declared);
         java.io.File file = directory.resolve("graph-result.snapshot.json").toFile();
         new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
                 .saveWithFieldGraph(List.of(value), file, source);
         var loaded = new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(file);
         TransformController controller = new TransformController(
-                new quiz.transform.app.SnapshotDomain(loaded.objects(), loaded.fieldGraph()),
+                new wikidata.explore.extract.SnapshotDomain(loaded.objects(), loaded.fieldGraph()),
                 null);
         ViewStepsPanel panel = new ViewStepsPanel(
                 controller, () -> { }, null, List::of,

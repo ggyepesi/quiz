@@ -138,7 +138,7 @@ class GenerationResultSourceLinkTest {
                 "../data/wikidata/nobelprizes/nobelprizes.snapshot.json");
         var loaded = new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snapshot);
-        domain.DomainModel domain = new quiz.transform.app.SnapshotDomain(
+        domain.DomainModel domain = new wikidata.explore.extract.SnapshotDomain(
                 loaded.objects(), loaded.fieldGraph());
         List<objectview.Viewable> records = domain.instances().stream()
                 .filter(value -> "LaureatesWithMotivation".equals(value.typeName()))

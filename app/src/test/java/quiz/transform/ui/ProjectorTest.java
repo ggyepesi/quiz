@@ -3,7 +3,7 @@ package quiz.transform.ui;
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
 import quiz.transform.DynamicViewable;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.List;

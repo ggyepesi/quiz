@@ -2,7 +2,7 @@ package quiz.transform;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;
 import quiz.transform.ui.TransformController;
 import wikidata.explore.extract.WikidataDynamicObject;

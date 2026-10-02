@@ -7,7 +7,7 @@ import objectview.search.SearchAndSort;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import quiz.transform.app.SnapshotDomain;
+import wikidata.explore.extract.SnapshotDomain;
 import quiz.transform.app.ViewableToWdo;
 import domain.DomainModel;
 import quiz.transform.ui.ReflectionDomain;

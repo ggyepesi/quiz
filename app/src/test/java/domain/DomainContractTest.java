@@ -169,7 +169,7 @@ class DomainContractTest {
 
     /** Package-private backings referenced by class rather than by name. */
     private static final class SnapshotDomainNames {
-        static final Class<?> SNAPSHOT = quiz.transform.app.SnapshotDomain.class;
+        static final Class<?> SNAPSHOT = wikidata.explore.extract.SnapshotDomain.class;
         static final Class<?> REFLECTION = quiz.transform.ui.ReflectionDomain.class;
     }
 }
