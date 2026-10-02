@@ -36,7 +36,8 @@ class BuildResultsTest {
         assertEquals("RAN", card.get("Done"));
         assertEquals("STALE", card.get("State before"));
         assertEquals("the model changed since the snapshot was generated", card.get("Because"));
-        assertTrue(results.summary().contains("Run that graph in its editor"), results.summary());
+        assertTrue(results.summary().contains("accept or reject the Review entries"),
+                results.summary());
         assertTrue(results.summary().contains("offices.build.json"));
         assertEquals(1, results.tabs().get(1).cards().size(), "every file written is listed");
     }

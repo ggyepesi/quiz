@@ -120,8 +120,10 @@ public class QueryObjectResultPanel
 
     public record GroupedSection(
             List<Viewable> all, Map<String, List<Viewable>> partitions,
-            List<GroupAction> actions) {
+            List<GroupAction> actions,
+            List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> selectionActions) {
         public GroupedSection {
+            selectionActions = selectionActions == null ? List.of() : List.copyOf(selectionActions);
             all = all == null ? List.of() : List.copyOf(all);
             Map<String, List<Viewable>> copied = new LinkedHashMap<>();
             if (partitions != null) partitions.forEach((name, values) ->
@@ -132,7 +134,12 @@ public class QueryObjectResultPanel
 
         public GroupedSection(
                 List<Viewable> all, Map<String, List<Viewable>> partitions) {
-            this(all, partitions, List.of());
+            this(all, partitions, List.of(), List.of());
+        }
+
+        public GroupedSection(List<Viewable> all, Map<String, List<Viewable>> partitions,
+                              List<GroupAction> actions) {
+            this(all, partitions, actions, List.of());
         }
 
         public static GroupedSection of(
@@ -148,6 +155,17 @@ public class QueryObjectResultPanel
                 List<GroupAction> actions) {
             return new GroupedSection(all == null ? List.of() : List.copyOf(all),
                     copyPartitions(partitions), actions);
+        }
+
+        /** As {@link #of(List, Map, List)}, with edits that act on the selected members —
+         *  the same construct a workflow's result tabs use. */
+        public static GroupedSection of(
+                List<? extends Viewable> all,
+                Map<String, ? extends List<? extends Viewable>> partitions,
+                List<GroupAction> actions,
+                List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> selectionActions) {
+            return new GroupedSection(all == null ? List.of() : List.copyOf(all),
+                    copyPartitions(partitions), actions, selectionActions);
         }
 
         private static Map<String, List<Viewable>> copyPartitions(
@@ -260,12 +278,19 @@ public class QueryObjectResultPanel
             GroupedSection group, RenderContext context, JTabbedPane owner) {
         JTabbedPane decisions = new JTabbedPane();
         List<SearchPanel> searches = new ArrayList<>();
+        List<SearchableView> shown = new ArrayList<>();
         List<Map.Entry<String, List<Viewable>>> views = new ArrayList<>();
         views.add(Map.entry("All", group.all()));
         views.addAll(group.partitions().entrySet());
+        if (!group.selectionActions().isEmpty()) {
+            // Edits act on what is selected, so several must be selectable.
+            context.setSelectionEnabled(true);
+            context.setMultipleSelectionEnabled(true);
+        }
         for (Map.Entry<String, List<Viewable>> entry : views) {
             SearchableView view = browser(entry.getValue(), context, true);
             if (view.search() != null) searches.add(view.search());
+            shown.add(view);
             decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
         }
         JPanel panel = new JPanel(new BorderLayout(0, 4));
@@ -280,6 +305,9 @@ public class QueryObjectResultPanel
             }
             header.add(actions);
         }
+        if (!group.selectionActions().isEmpty()) {
+            header.add(selectionActions(group, context, shown));
+        }
         if (!searches.isEmpty()) header.add(new MultiSearchBar(searches));
         if (header.getComponentCount() > 0) panel.add(header, BorderLayout.NORTH);
         panel.add(decisions, BorderLayout.CENTER);
@@ -290,6 +318,39 @@ public class QueryObjectResultPanel
             decisions.setSelectedIndex(0);
         }));
         return panel;
+    }
+
+    /**
+     * Buttons that edit the selected members of {@code group}, and a line saying what the
+     * last one did. Only this group's members are edited, whatever else the shared
+     * selection holds, and the edited cards are redrawn in every tab that shows them.
+     */
+    private static JComponent selectionActions(GroupedSection group, RenderContext context,
+                                               List<SearchableView> shown) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        JLabel status = new JLabel("Ctrl/Cmd-click selects several.");
+        java.util.Set<Viewable> members = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        members.addAll(group.all());
+        for (process.swing.workflow.ProcessWorkflowResults.SelectionAction edit
+                : group.selectionActions()) {
+            JButton button = new JButton(edit.label());
+            button.addActionListener(ignored -> {
+                List<Viewable> chosen = context.selectedObjects().stream()
+                        .filter(Viewable.class::isInstance).map(Viewable.class::cast)
+                        .filter(members::contains).toList();
+                if (chosen.isEmpty()) {
+                    status.setText("Select entries of this graph first.");
+                    return;
+                }
+                edit.apply().accept(chosen);
+                shown.forEach(view -> view.refreshViewables(chosen));
+                status.setText(edit.label() + ": " + chosen.size() + " entr"
+                        + (chosen.size() == 1 ? "y" : "ies") + ".");
+            });
+            row.add(button);
+        }
+        row.add(status);
+        return row;
     }
 
     private SearchableView browser(

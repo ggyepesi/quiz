@@ -132,6 +132,45 @@ class GraphAnnotationsShareInstancesViewTest {
         assertEquals(1, applied[0]);
     }
 
+    /**
+     * A graph's Review entries can be decided where the graph's tab is shown (#317). They
+     * could only be decided in the dialog that follows running the graph, so a build that
+     * stopped awaiting a decision meant running the graph again just to reach it. An edit
+     * acts on the selected entries of its own graph only, and says what it did.
+     */
+    @Test void aGraphTabDecidesItsSelectedEntriesOnly() throws Exception {
+        DynamicViewable position = new DynamicViewable("Q1", "Position");
+        position.type("Position");
+        WikidataDynamicObject review = annotation("Q2", "Review");
+        WikidataDynamicObject other = annotation("Q3", "Review");
+        List<List<Viewable>> edited = new java.util.ArrayList<>();
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+        panel.acceptGrouped(new ObjectQueryResult(List.of(position), null, ""), Map.of(
+                "PositionValidity", QueryObjectResultPanel.GroupedSection.of(
+                        List.of(review, other), Map.of("Review", List.of(review, other)),
+                        List.of(), List.of(new process.swing.workflow.ProcessWorkflowResults
+                                .SelectionAction("Reject selection", edited::add)))));
+        SwingUtilities.invokeAndWait(() -> { });
+        JButton reject = descendants(panel, JButton.class).stream()
+                .filter(button -> button.getText().equals("Reject selection"))
+                .findFirst().orElseThrow();
+
+        reject.doClick();
+        assertTrue(edited.isEmpty(), "nothing selected, nothing edited");
+        assertTrue(descendants(panel, javax.swing.JLabel.class).stream().anyMatch(label ->
+                "Select entries of this graph first.".equals(label.getText())));
+
+        objectview.render.RenderContext context = panel.activeRenderContext();
+        context.select(review);
+        context.select(position, true);
+        reject.doClick();
+
+        assertEquals(List.of(List.<Viewable>of(review)), edited,
+                "the Position card is selected too, but it is not this graph's entry");
+        assertTrue(descendants(panel, javax.swing.JLabel.class).stream().anyMatch(label ->
+                "Reject selection: 1 entry.".equals(label.getText())));
+    }
+
     private static WikidataDynamicObject object(String qid, String type) {
         WikidataDynamicObject value = new WikidataDynamicObject(qid, qid);
         value.type(type);

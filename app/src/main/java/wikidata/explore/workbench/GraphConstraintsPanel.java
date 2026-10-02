@@ -1281,12 +1281,17 @@ final class GraphConstraintsPanel extends JPanel {
                         .map(value -> new ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>(
                                 value, () -> null, false,
                                 () -> manualDecisionMark(value))).toList();
-        List<ProcessWorkflowResults.SelectionAction> actions = List.of(
+        return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
+                artifact.model().representativeSample(artifact.type()), decisionActions());
+    }
+
+    /** Accept, reject, or clear the manual decision on selected graph entries: the one set
+     *  of decision edits, offered by the run's results and by the instances window alike. */
+    static List<ProcessWorkflowResults.SelectionAction> decisionActions() {
+        return List.of(
                 selectionAction("Accept selection", "Accepted"),
                 selectionAction("Reject selection", "Rejected"),
                 selectionAction("Clear manual decision", null));
-        return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
-                artifact.model().representativeSample(artifact.type()), actions);
     }
 
     private static ProcessWorkflowResults.SelectionAction selectionAction(

@@ -525,12 +525,29 @@ public class ModelBuilderFrame extends JFrame {
                             result.instances(), decisions, java.util.List.of(
                                     new wikidata.explore.query.swing.QueryObjectResultPanel
                                             .GroupAction("Apply accepted instances",
-                                            () -> applyGraphResultFromInstances(result)))));
+                                            () -> applyGraphResultFromInstances(result))),
+                            decidingMarksUnsaved(GraphConstraintsPanel.decisionActions())));
         }
         wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
         instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
                 inventory.visibleInstances(result.objects()), result.primaryClass(),
                 result.generatedSource(), result.typeOrder(), result.partTypes()), annotations);
+    }
+
+    /**
+     * The decision edits, each also marking the instances unsaved: a decision is project
+     * data that only Save writes, so closing asks first and a build says to save before it
+     * runs — a build reads the saved project, and would otherwise not see it.
+     */
+    private java.util.List<process.swing.workflow.ProcessWorkflowResults.SelectionAction>
+            decidingMarksUnsaved(
+            java.util.List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> edits) {
+        return edits.stream().map(edit ->
+                new process.swing.workflow.ProcessWorkflowResults.SelectionAction(
+                        edit.label(), chosen -> {
+                            edit.apply().accept(chosen);
+                            savedGenerationRun = null;
+                        })).toList();
     }
 
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {
@@ -1565,7 +1582,9 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<String> unsaved = new java.util.ArrayList<>();
         if (openModelFile == null) unsaved.add("the project has never been saved");
         else if (hasUnsavedChanges()) unsaved.add("the configuration has unsaved changes");
-        if (hasUnsavedGeneratedInstances()) unsaved.add("the generated instances are not saved");
+        if (hasUnsavedGeneratedInstances()) {
+            unsaved.add("the instances or graph decisions are not saved");
+        }
         String kind = projectModel.isModel() ? "model" : "domain";
         if (!unsaved.isEmpty()) {
             JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(
@@ -1693,9 +1712,9 @@ public class ModelBuilderFrame extends JFrame {
         String summary = switch (report.outcome()) {
             case CURRENT -> "Built: every step is current.";
             case AWAITING_DECISION -> "Stopped: a graph result is awaiting a decision, and the "
-                    + "snapshot was not replaced. Run that graph in its editor (it reuses the "
-                    + "cached facts and keeps earlier decisions), accept or reject the Review "
-                    + "entries named in the steps, apply, save, and build again.";
+                    + "snapshot was not replaced. Load the built instances, accept or reject "
+                    + "the Review entries named in the steps on that graph's tab, save, and "
+                    + "build again.";
             case INCOMPLETE -> "Stopped: generation was incomplete, so nothing was saved.";
             default -> "Stopped: a step failed, so nothing after it ran.";
         } + " Manifest: " + report.manifest().getPath();
