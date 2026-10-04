@@ -518,15 +518,19 @@ public class ModelBuilderFrame extends JFrame {
                 decisions.put(decision, result.instances().stream()
                         .filter(value -> GraphDiscoveryResultStore.originalDecisions(value)
                                 .contains(decision))
-                        .map(Viewable.class::cast).toList());
+                        .map(GraphResultPresentation::candidate).toList());
             }
             annotations.put(result.type(),
-                    wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection.of(
-                            result.instances(), decisions, java.util.List.of(
+                    wikidata.explore.query.swing.QueryObjectResultPanel.GroupedSection.presented(
+                            GraphResultPresentation.candidates(result.instances()), decisions,
+                            java.util.List.of(
                                     new wikidata.explore.query.swing.QueryObjectResultPanel
                                             .GroupAction("Apply accepted instances",
                                             () -> applyGraphResultFromInstances(result))),
-                            decidingMarksUnsaved(GraphConstraintsPanel.decisionActions())));
+                            decidingMarksUnsaved(
+                                    GraphResultPresentation.decisionActions(result)),
+                            GraphResultPresentation.shapeSample(result),
+                            GraphResultPresentation.decorator(result)));
         }
         wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
         instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(

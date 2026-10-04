@@ -823,7 +823,7 @@ class GraphConstraintsPanelTest {
         assertTrue(shown.tabs().stream().allMatch(tab -> tab.selectionActions().size() == 3));
     }
 
-    @Test void aRejectedBoundaryAnnotationNamesItsPopulationAndTraversalWitness() {
+    @Test void aRejectedBoundaryAnnotationNamesItsPopulationWithoutInventingWitnessText() {
         EntityRef root = EntityRef.wikidata("Q1");
         EntityRef boundary = EntityRef.wikidata("Q2");
         GraphRelation relation = new GraphRelation("wikidata", "P39");
@@ -857,8 +857,13 @@ class GraphConstraintsPanelTest {
         assertEquals("Rejected", annotation.get(GraphDiscoveryResultStore.GRAPH_DECISION));
         assertEquals("Population PositionsForHistory", annotation.get("Condition"));
         assertEquals("Not in PositionsForHistory", annotation.get("Reason"));
-        assertEquals(List.of("Starting position (Q1) —P39→ Boundary position (Q2)"),
-                annotation.get("Traversal witnesses"));
+        assertEquals(List.of("Q1"), annotation.get(GraphDiscoveryResultStore.REACHED_FROM));
+        assertEquals(null, annotation.get("Traversal witnesses"),
+                "the path is graph execution data, not evidence for this decision");
+        JPanel decoration = (JPanel) GraphResultPresentation.decoration(annotation);
+        assertEquals("● Rejected", ((JLabel) decoration.getComponent(0)).getText());
+        assertEquals("Reason: Not in PositionsForHistory",
+                ((JLabel) decoration.getComponent(1)).getText());
     }
 
     @Test void modelKindDoesNotDisableAReadyGraphConstraint() {
@@ -1062,12 +1067,25 @@ class GraphConstraintsPanelTest {
                 .field("wikidataSource"));
         ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> preview =
                 GraphConstraintsPanel.artifactTab("All", artifact, null);
-        assertTrue(preview.cards().getFirst().view() == artifact.instances().getFirst(),
-                "the preview must render the exact instance later passed to Save result");
+        ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact> card =
+                preview.cards().getFirst();
+        assertTrue(card.view() == artifact.candidates().getFirst(),
+                "the result is about the exact referenced Position candidate");
+        JPanel decoration = (JPanel) card.decoration().get();
+        assertEquals("● Accepted", ((JLabel) decoration.getComponent(0)).getText());
+        preview.selectionActions().stream()
+                .filter(action -> action.label().equals("Reject selection"))
+                .findFirst().orElseThrow().apply().accept(List.of(card.view()));
+        assertEquals("Rejected", artifact.instances().getFirst()
+                .get(GraphDiscoveryResultStore.MANUAL_DECISION),
+                "an action on the Position card edits its graph annotation");
+        JPanel overridden = (JPanel) card.decoration().get();
+        assertEquals("Manual decision: Rejected",
+                ((JLabel) overridden.getComponent(1)).getText());
         assertNotNull(objectview.field.FieldSet.of(preview.shapeSample(),
-                        artifact.model().fieldSchema("History"))
+                        artifact.model().fieldSchema("Position"))
                 .field("wikidataSource"),
-                "the preview must use the artificial model saved with those instances");
+                "the Position keeps the ordinary Wikidata source link");
         assertEquals("Save graph annotations \"History\" for \"Historical Positions\" "
                         + "with 1 instance and their field model to data/wikidata/"
                         + "historicalpositions/history.graph.snapshot.json.",

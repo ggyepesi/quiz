@@ -237,7 +237,10 @@ construct per thing produced:
    reference those candidates and the candidates carry a hidden reverse reference, so
    ObjectView/MultiInstance renders one connected object graph. Result tabs keep the graph's
    original Accepted/Review/Rejected classification; manual accept/reject is a separate
-   override mark and never rewrites or moves that original result. Applying NARROWS the output
+   override mark and never rewrites or moves that original result. **Those tabs render the
+   exact output-class candidate as the card, with the original decision, manual override and
+   per-candidate reason as decoration; graph configuration and traversal bookkeeping stay on
+   the hidden annotation, not as a second user-facing object.** Applying NARROWS the output
    class to the accepted population, keeping the project's own instances whole — it never
    replaces them with candidate shells. Population selections are created from class
    instances, not from the graph editor. The annotation snapshot lives beneath the owning
@@ -261,7 +264,7 @@ construct per thing produced:
    (for example outgoing `replaces` and incoming `replaced by`) and repeat them until no new
    identities are reached. A next node may name a `PopulationSelection` as its admission
    boundary: reached identities outside it remain Rejected annotations with the population
-   failure and traversal witness, but are never expanded, including during a repeated closure.
+   failure and reachability bookkeeping, but are never expanded, including during a repeated closure.
    The selection is an ordinary referenced/importable population, not a graph-owned QID list.
    This is a separate named graph rule, not another meaning hidden inside the original
    population-discovery constraint.

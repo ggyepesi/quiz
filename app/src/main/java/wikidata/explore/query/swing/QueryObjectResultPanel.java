@@ -121,7 +121,9 @@ public class QueryObjectResultPanel
     public record GroupedSection(
             List<Viewable> all, Map<String, List<Viewable>> partitions,
             List<GroupAction> actions,
-            List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> selectionActions) {
+            List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> selectionActions,
+            Viewable shapeSample,
+            java.util.function.Function<Viewable, JComponent> decoration) {
         public GroupedSection {
             selectionActions = selectionActions == null ? List.of() : List.copyOf(selectionActions);
             all = all == null ? List.of() : List.copyOf(all);
@@ -130,23 +132,31 @@ public class QueryObjectResultPanel
                     copied.put(name, values == null ? List.of() : List.copyOf(values)));
             partitions = Collections.unmodifiableMap(copied);
             actions = actions == null ? List.of() : List.copyOf(actions);
+            decoration = decoration == null ? ignored -> null : decoration;
         }
 
         public GroupedSection(
                 List<Viewable> all, Map<String, List<Viewable>> partitions) {
-            this(all, partitions, List.of(), List.of());
+            this(all, partitions, List.of(), List.of(), null, null);
         }
 
         public GroupedSection(List<Viewable> all, Map<String, List<Viewable>> partitions,
                               List<GroupAction> actions) {
-            this(all, partitions, actions, List.of());
+            this(all, partitions, actions, List.of(), null, null);
+        }
+
+        public GroupedSection(List<Viewable> all, Map<String, List<Viewable>> partitions,
+                              List<GroupAction> actions,
+                              List<process.swing.workflow.ProcessWorkflowResults.SelectionAction>
+                                      selectionActions) {
+            this(all, partitions, actions, selectionActions, null, null);
         }
 
         public static GroupedSection of(
                 List<? extends Viewable> all,
                 Map<String, ? extends List<? extends Viewable>> partitions) {
             return new GroupedSection(all == null ? List.of() : List.copyOf(all),
-                    copyPartitions(partitions), List.of());
+                    copyPartitions(partitions), List.of(), List.of(), null, null);
         }
 
         public static GroupedSection of(
@@ -154,7 +164,7 @@ public class QueryObjectResultPanel
                 Map<String, ? extends List<? extends Viewable>> partitions,
                 List<GroupAction> actions) {
             return new GroupedSection(all == null ? List.of() : List.copyOf(all),
-                    copyPartitions(partitions), actions);
+                    copyPartitions(partitions), actions, List.of(), null, null);
         }
 
         /** As {@link #of(List, Map, List)}, with edits that act on the selected members —
@@ -165,7 +175,22 @@ public class QueryObjectResultPanel
                 List<GroupAction> actions,
                 List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> selectionActions) {
             return new GroupedSection(all == null ? List.of() : List.copyOf(all),
-                    copyPartitions(partitions), actions, selectionActions);
+                    copyPartitions(partitions), actions, selectionActions, null, null);
+        }
+
+        /** A peer section whose rows keep their own model shape and decoration while
+         * sharing the ordinary ObjectView navigation and search machinery. */
+        public static GroupedSection presented(
+                List<? extends Viewable> all,
+                Map<String, ? extends List<? extends Viewable>> partitions,
+                List<GroupAction> actions,
+                List<process.swing.workflow.ProcessWorkflowResults.SelectionAction>
+                        selectionActions,
+                Viewable shapeSample,
+                java.util.function.Function<Viewable, JComponent> decoration) {
+            return new GroupedSection(all == null ? List.of() : List.copyOf(all),
+                    copyPartitions(partitions), actions, selectionActions,
+                    shapeSample, decoration);
         }
 
         private static Map<String, List<Viewable>> copyPartitions(
@@ -237,7 +262,14 @@ public class QueryObjectResultPanel
 
         RenderContext context = new RenderContext();
         context.setInPlaceNavigation(true);
-        context.setCardDecorator(cardDecorator);
+        java.util.Map<Viewable, java.util.function.Function<Viewable, JComponent>>
+                peerDecorations = new IdentityHashMap<>();
+        peerSections.values().forEach(group -> group.all().forEach(value ->
+                peerDecorations.put(value, group.decoration())));
+        context.setCardDecorator(value -> {
+            var decoration = peerDecorations.get(value);
+            return decoration == null ? cardDecorator.apply(value) : decoration.apply(value);
+        });
         context.setValueLinker(WikidataLinks.valueLinker());
         byType.values().forEach(values -> values.forEach(context::addTopLevel));
 
@@ -288,7 +320,7 @@ public class QueryObjectResultPanel
             context.setMultipleSelectionEnabled(true);
         }
         for (Map.Entry<String, List<Viewable>> entry : views) {
-            SearchableView view = browser(entry.getValue(), context, true);
+            SearchableView view = browser(entry.getValue(), context, true, group.shapeSample());
             if (view.search() != null) searches.add(view.search());
             shown.add(view);
             decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
@@ -355,8 +387,15 @@ public class QueryObjectResultPanel
 
     private SearchableView browser(
             List<Viewable> values, RenderContext context, boolean coordinated) {
+        return browser(values, context, coordinated, null);
+    }
+
+    private SearchableView browser(
+            List<Viewable> values, RenderContext context, boolean coordinated,
+            Viewable shapeSample) {
         List<Viewable> shown = capped(values);
-        Viewable sample = shown.isEmpty() ? null : shown.getFirst();
+        Viewable sample = shapeSample == null && !shown.isEmpty()
+                ? shown.getFirst() : shapeSample;
         return SearchableView.builder(shown)
                 .sample(sample)
                 .renderContext(context)

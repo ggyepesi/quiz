@@ -1307,36 +1307,11 @@ final class GraphConstraintsPanel extends JPanel {
                         .filter(value -> decision == null
                                 || decisionValue(value).contains(decision))
                         .map(value -> new ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact>(
-                                value, () -> null, false,
-                                () -> manualDecisionMark(value))).toList();
+                                GraphResultPresentation.candidate(value), () -> null, false,
+                                () -> GraphResultPresentation.decoration(value))).toList();
         return new ProcessWorkflowResults.Tab<>(title + " — " + cards.size() + " total", cards,
-                artifact.model().representativeSample(artifact.type()), decisionActions());
-    }
-
-    /** Accept, reject, or clear the manual decision on selected graph entries: the one set
-     *  of decision edits, offered by the run's results and by the instances window alike. */
-    static List<ProcessWorkflowResults.SelectionAction> decisionActions() {
-        return List.of(
-                selectionAction("Accept selection", "Accepted"),
-                selectionAction("Reject selection", "Rejected"),
-                selectionAction("Clear manual decision", null));
-    }
-
-    private static ProcessWorkflowResults.SelectionAction selectionAction(
-            String label, String decision) {
-        return new ProcessWorkflowResults.SelectionAction(label, values -> values.stream()
-                .filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast)
-                .forEach(value -> GraphDiscoveryResultStore.manualDecision(value, decision)));
-    }
-
-    private static JComponent manualDecisionMark(WikidataDynamicObject value) {
-        Object decision = value.get(GraphDiscoveryResultStore.MANUAL_DECISION);
-        if (decision == null) return null;
-        JLabel mark = new JLabel("Accepted".equals(decision) ? "● accepted" : "● rejected");
-        mark.setForeground("Accepted".equals(decision)
-                ? new Color(35, 125, 55) : new Color(175, 45, 40));
-        return mark;
+                GraphResultPresentation.shapeSample(artifact),
+                GraphResultPresentation.decisionActions(artifact));
     }
 
     private static List<String> decisionValue(WikidataDynamicObject value) {

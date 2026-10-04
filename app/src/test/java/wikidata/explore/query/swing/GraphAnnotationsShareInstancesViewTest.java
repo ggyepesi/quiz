@@ -141,16 +141,22 @@ class GraphAnnotationsShareInstancesViewTest {
     @Test void aGraphTabDecidesItsSelectedEntriesOnly() throws Exception {
         DynamicViewable position = new DynamicViewable("Q1", "Position");
         position.type("Position");
-        WikidataDynamicObject review = annotation("Q2", "Review");
-        WikidataDynamicObject other = annotation("Q3", "Review");
+        WikidataDynamicObject review = object("Q2", "Position");
+        WikidataDynamicObject other = object("Q3", "Position");
+        WikidataDynamicObject shape = object("__shape__:Position", "Position");
         List<List<Viewable>> edited = new java.util.ArrayList<>();
         QueryObjectResultPanel panel = new QueryObjectResultPanel();
         panel.acceptGrouped(new ObjectQueryResult(List.of(position), null, ""), Map.of(
-                "PositionValidity", QueryObjectResultPanel.GroupedSection.of(
+                "PositionValidity", QueryObjectResultPanel.GroupedSection.presented(
                         List.of(review, other), Map.of("Review", List.of(review, other)),
                         List.of(), List.of(new process.swing.workflow.ProcessWorkflowResults
-                                .SelectionAction("Reject selection", edited::add)))));
+                                .SelectionAction("Reject selection", edited::add)),
+                        shape, value -> new javax.swing.JLabel("● Review"))));
         SwingUtilities.invokeAndWait(() -> { });
+        objectview.render.RenderContext context = panel.activeRenderContext();
+        javax.swing.JLabel decoration = (javax.swing.JLabel) context.cardDecoration(review);
+        assertEquals("● Review", decoration.getText(),
+                "ObjectView decorates the ordinary Position card with its graph decision");
         JButton reject = descendants(panel, JButton.class).stream()
                 .filter(button -> button.getText().equals("Reject selection"))
                 .findFirst().orElseThrow();
@@ -160,7 +166,6 @@ class GraphAnnotationsShareInstancesViewTest {
         assertTrue(descendants(panel, javax.swing.JLabel.class).stream().anyMatch(label ->
                 "Select entries of this graph first.".equals(label.getText())));
 
-        objectview.render.RenderContext context = panel.activeRenderContext();
         context.select(review);
         context.select(position, true);
         reject.doClick();
