@@ -44,6 +44,8 @@ class WikidataSparqlRequestLogTest {
 
         assertTrue(lines.stream().anyMatch(line -> line.contains("SELECT ?worker")),
                 "a pooled request reports into the run's log: " + lines);
+        assertTrue(lines.stream().anyMatch(line -> line.contains("START GET")),
+                "the log names the HTTP representation actually sent: " + lines);
     }
 
     /** A scope that has closed stops claiming new requests. What it cannot do is silence

@@ -19,6 +19,9 @@ import java.util.function.Consumer;
 public class WikidataSparqlClient implements AutoCloseable {
     public static final String WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
     public static final String DBPEDIA_ENDPOINT  = "https://dbpedia.org/sparql";
+    // Stay below the common 8 KiB request-line ceiling. The query itself may be
+    // much larger: SPARQL POST carries the same form parameters in the body.
+    private static final int MAX_GET_URI_CHARACTERS = 7_000;
     private static final long REQUEST_TIMEOUT_SECONDS = 60;
     private static final long COMPLETION_WATCHDOG_SECONDS = 65;
 
@@ -210,8 +213,9 @@ public class WikidataSparqlClient implements AutoCloseable {
             String sparql, Consumer<String> capturedLog) {
         long id = querySeq.incrementAndGet();
         long started = System.nanoTime();
+        HttpRequest req = request(endpoint, userAgent, sparql);
 
-        capturedLog.accept("\n[SPARQL " + id + "] START\n"
+        capturedLog.accept("\n[SPARQL " + id + "] START " + req.method() + "\n"
                            + sparql
                            + "\n");
 
@@ -225,24 +229,6 @@ public class WikidataSparqlClient implements AutoCloseable {
                     new CancellationException("Interrupted before SPARQL send."));
             return failed;
         }
-
-        String encoded =
-                URLEncoder.encode(sparql, StandardCharsets.UTF_8);
-
-        HttpRequest req =
-                HttpRequest.newBuilder()
-                           .uri(URI.create(
-                                   endpoint
-                                           + "?query="
-                                           + encoded
-                                           + "&format=json"))
-                           .header(
-                                   "Accept",
-                                   "application/sparql-results+json")
-                           .header("User-Agent", userAgent)
-                           .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
-                           .GET()
-                           .build();
 
         CompletableFuture<List<WikidataBinding>> future =
                 http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
@@ -291,6 +277,34 @@ public class WikidataSparqlClient implements AutoCloseable {
         });
 
         return future;
+    }
+
+    /**
+     * One SPARQL protocol for every caller. A short query remains a cache-friendly
+     * GET; a query whose encoded request line is no longer safely portable uses the
+     * standard form-encoded POST representation instead. The query text and result
+     * semantics are identical.
+     */
+    static HttpRequest request(String endpoint, String userAgent, String sparql) {
+        String form = formBody(sparql);
+        String getUri = endpoint + "?" + form;
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .header("Accept", "application/sparql-results+json")
+                .header("User-Agent", userAgent)
+                .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS));
+        if (getUri.length() <= MAX_GET_URI_CHARACTERS) {
+            return request.uri(URI.create(getUri)).GET().build();
+        }
+        return request.uri(URI.create(endpoint))
+                .header("Content-Type",
+                        "application/x-www-form-urlencoded; charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
+    }
+
+    static String formBody(String sparql) {
+        return "query=" + URLEncoder.encode(sparql, StandardCharsets.UTF_8)
+                + "&format=json";
     }
 
     private static boolean isCancellation(Throwable t) {
