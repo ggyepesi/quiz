@@ -84,6 +84,11 @@ public final class ReferentClassStamp {
 
         int stamped = 0;
         java.util.Set<String> roleClasses = RoleSelections.roleClassNames(model);
+        // A kind admitted by evidence (Person: P31 = Q5) is assigned by classification,
+        // never by the field that holds a value — those values are kind candidates.
+        java.util.Set<String> admittedKinds = wikidata.explore.model.EntityRepresentations.admissions(model).stream()
+                .map(wikidata.explore.model.EntityRepresentations.Admission::className)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         Map<WikidataDynamicObject, Boolean> originallyTyped = new IdentityHashMap<>();
         for (WikidataDynamicObject o : instances) {
             if (o == null || o.typeName() == null) {
@@ -94,6 +99,7 @@ public final class ReferentClassStamp {
                 continue;
             }
             for (Map.Entry<String, String> e : byField.entrySet()) {
+                if (admittedKinds.contains(e.getValue())) continue;
                 stamped += stamp(o.get(e.getKey()), e.getValue(), model, roleClasses,
                         originallyTyped);
             }

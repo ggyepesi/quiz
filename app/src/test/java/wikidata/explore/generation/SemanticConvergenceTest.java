@@ -11,6 +11,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SemanticConvergenceTest {
@@ -75,7 +76,60 @@ class SemanticConvergenceTest {
                 "the field declaration must not add an unrelated class membership");
     }
 
+    /**
+     * A holder that is also a predecessor becomes Person by its evidence, once, and stays
+     * settled. The predecessor field targets Person directly, and it used to stamp Person
+     * outright; that is how the office "Taoiseach", given as a qualifier's predecessor,
+     * became a person in History. The field now makes its value a kind candidate, and
+     * evidence decides — fetched, as for any candidate whose evidence is not stored.
+     */
     @Test void aRepresentationAlsoUsedDirectlyByAStatementFieldSettles() {
+        GeneratedProjectModel model = holdingModel();
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "a holder");
+        WikidataDynamicObject record = new WikidataDynamicObject("Q1$stmt", "a holding");
+        record.type("OfficeHolding");
+        record.put("source", human);
+        record.put("predecessor", human);
+        java.util.ArrayList<WikidataDynamicObject> pool =
+                new java.util.ArrayList<>(List.of(record, human));
+        var api = new FakeWikidataApiClient().entity("Q1", "a holder",
+                java.util.Map.of("P31", List.of("Q5")));
+
+        assertTrue(wikidata.explore.transform.ReferentClassStamp.apply(model, pool) > 0);
+        assertFalse(human.directClassNames().contains("Person"),
+                "the predecessor field does not make its value a person by declaring one");
+        assertEquals(1, wikidata.explore.transform.ReferentKindClassifier.apply(
+                model, pool, api, null).classified());
+
+        assertEquals(java.util.Set.of("Person"), human.directClassNames(),
+                "the final Person kind stays settled instead of alternating with "
+                        + "PositionHolder on every pass");
+        assertEquals(0, wikidata.explore.transform.ReferentClassStamp.apply(model, pool),
+                "the next convergence pass must not restore PositionHolder");
+        assertEquals(0, wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
+                model, pool, pool, null).classified(),
+                "the next convergence pass must find no kind work left");
+    }
+
+    /** The other side: an office given as a predecessor stays an office. */
+    @Test void anOfficeGivenAsAPredecessorDoesNotBecomeAPerson() {
+        GeneratedProjectModel model = holdingModel();
+        WikidataDynamicObject office = new WikidataDynamicObject("Q191827", "Taoiseach");
+        WikidataDynamicObject record = new WikidataDynamicObject("Q2$stmt", "a holding");
+        record.type("OfficeHolding");
+        record.put("predecessor", office);
+        java.util.ArrayList<WikidataDynamicObject> pool =
+                new java.util.ArrayList<>(List.of(record));
+        var api = new FakeWikidataApiClient().entity("Q191827", "Taoiseach",
+                java.util.Map.of("P31", List.of("Q4164871")));
+
+        wikidata.explore.transform.ReferentClassStamp.apply(model, pool);
+        wikidata.explore.transform.ReferentKindClassifier.apply(model, pool, api, null);
+
+        assertFalse(office.directClassNames().contains("Person"), office.directClassNames().toString());
+    }
+
+    private static GeneratedProjectModel holdingModel() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
         holding.statementSource(new wikidata.explore.model.StatementClassSource("P39"));
@@ -92,28 +146,7 @@ class SemanticConvergenceTest {
         model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
                 "Person", List.of("Q5")));
         model.representationClasses(model.findClass("PositionHolder"), List.of("Person"));
-
-        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "a holder");
-        human.put("type", List.of(new WikidataDynamicObject("Q5", "human")));
-        WikidataDynamicObject record = new WikidataDynamicObject("Q1$stmt", "a holding");
-        record.type("OfficeHolding");
-        record.put("source", human);
-        record.put("predecessor", human);
-        java.util.ArrayList<WikidataDynamicObject> pool =
-                new java.util.ArrayList<>(List.of(record, human));
-
-        assertTrue(wikidata.explore.transform.ReferentClassStamp.apply(model, pool) > 0);
-        assertEquals(1, wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
-                model, pool, pool, null).classified());
-
-        assertEquals(java.util.Set.of("Person"), human.directClassNames(),
-                "the final Person kind stays settled instead of alternating with "
-                        + "PositionHolder on every pass");
-        assertEquals(0, wikidata.explore.transform.ReferentClassStamp.apply(model, pool),
-                "the next convergence pass must not restore PositionHolder");
-        assertEquals(0, wikidata.explore.transform.SnapshotEntityKindClassifier.apply(
-                model, pool, pool, null).classified(),
-                "the next convergence pass must find no kind work left");
+        return model;
     }
 
     @Test void anEarlierFieldFetchPlansTheP31ConsumedByFinalization() {

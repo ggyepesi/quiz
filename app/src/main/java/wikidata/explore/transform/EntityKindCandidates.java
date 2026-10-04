@@ -80,6 +80,16 @@ final class EntityKindCandidates {
                     representation.roleClassName(), Set.of()));
             candidates.addAll(eligible);
         }
+        // A field that names an admitted kind directly — a predecessor typed Person — is
+        // a population on which that admission is meaningful too. Its values become the
+        // kind by evidence, as a role's do, never by the field's declaration: a qualifier
+        // pointing at the office "Taoiseach" must not make it a person.
+        for (Map.Entry<String, Set<String>> direct
+                : directKindReferents(model, pool, admittedClasses).entrySet()) {
+            byKind.computeIfAbsent(direct.getKey(), ignored -> new LinkedHashSet<>())
+                    .addAll(direct.getValue());
+            candidates.addAll(direct.getValue());
+        }
         Map<String, Set<String>> frozen = new LinkedHashMap<>();
         byKind.forEach((name, qids) -> frozen.put(name, Set.copyOf(qids)));
         Map<String, Set<String>> frozenMembers = new LinkedHashMap<>();
@@ -87,5 +97,43 @@ final class EntityKindCandidates {
                 frozenMembers.put(name, Set.copyOf(qids)));
         return new Plan(Map.copyOf(frozen), Set.copyOf(candidates),
                 Map.copyOf(frozenMembers), Map.copyOf(objectsByQid), all.size());
+    }
+
+    /** The QIDs held by every ENTITY field that targets an admitted kind, by that kind. */
+    private static Map<String, Set<String>> directKindReferents(
+            GeneratedProjectModel model, Collection<WikidataDynamicObject> pool,
+            Set<String> admittedClasses) {
+        Map<String, Map<String, String>> kindFields = new LinkedHashMap<>();
+        for (wikidata.explore.model.GeneratedClassModel clazz : model.classes()) {
+            if (clazz == null) continue;
+            for (wikidata.explore.model.GeneratedFieldModel field : clazz.fields()) {
+                if (field != null && field.type() == datasource.schema.FieldType.ENTITY
+                        && admittedClasses.contains(field.entityClassName())) {
+                    kindFields.computeIfAbsent(clazz.className(), ignored -> new LinkedHashMap<>())
+                            .put(field.name(), field.entityClassName());
+                }
+            }
+        }
+        Map<String, Set<String>> byKind = new LinkedHashMap<>();
+        if (kindFields.isEmpty()) return byKind;
+        for (WikidataDynamicObject owner
+                : wikidata.explore.extract.WikidataObjectGraph.reachable(pool)) {
+            if (owner == null) continue;
+            for (String className : owner.directClassNames()) {
+                Map<String, String> fields = kindFields.get(className);
+                if (fields == null) continue;
+                fields.forEach((fieldName, kind) -> collectQids(owner.get(fieldName),
+                        byKind.computeIfAbsent(kind, ignored -> new LinkedHashSet<>())));
+            }
+        }
+        return byKind;
+    }
+
+    private static void collectQids(Object value, Set<String> into) {
+        if (value instanceof WikidataDynamicObject object) {
+            if (!object.isPart() && WikidataIds.isQid(object.qid())) into.add(object.qid());
+        } else if (value instanceof Collection<?> values) {
+            values.forEach(item -> collectQids(item, into));
+        }
     }
 }
