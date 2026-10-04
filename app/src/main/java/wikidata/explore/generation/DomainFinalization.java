@@ -94,6 +94,28 @@ public final class DomainFinalization {
                     counts[3] = expectations.dropped().size();
                     coverage.addAll(expectations.coverage());
                 }),
+                // AFTER every prune above, because each of them can remove a statement's
+                // subject or object and leave the statement behind. Before the owned-part
+                // rule, so a part of a dropped statement goes with it.
+                stage("statement-ends", "Drop statements missing a declared end", () -> {
+                    var incomplete = wikidata.explore.transform.IncompleteStatements
+                            .find(model, pool);
+                    if (incomplete.isEmpty()) return;
+                    java.util.Set<wikidata.explore.extract.WikidataDynamicObject> drop =
+                            java.util.Collections.newSetFromMap(
+                                    new java.util.IdentityHashMap<>());
+                    incomplete.forEach(value -> drop.add(value.statement()));
+                    pool.removeIf(drop::contains);
+                    if (log != null) {
+                        java.util.Map<String, Long> byEnd = incomplete.stream().collect(
+                                java.util.stream.Collectors.groupingBy(
+                                        value -> value.className() + "." + value.fieldName(),
+                                        java.util.LinkedHashMap::new,
+                                        java.util.stream.Collectors.counting()));
+                        log.message("Dropped " + incomplete.size() + " statement(s) whose "
+                                + "declared end was removed: " + byEnd + ".\n");
+                    }
+                }),
                 // AFTER every prune above, because each of them can remove an owner and
                 // leave its part behind — the same end state composition reaches by
                 // making a part for an entity that is never served. One rule, applied
