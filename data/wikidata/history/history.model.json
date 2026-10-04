@@ -9,6 +9,9 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
@@ -714,6 +717,9 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
@@ -1417,6 +1423,9 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "OWNED",
@@ -1606,6 +1615,9 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
@@ -1715,6 +1727,9 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "STATEMENT",
@@ -1722,6 +1737,14 @@
       "propertyPid" : "P39",
       "propertyLabel" : "position held",
       "objectBound" : {
+        "kind" : "UNBOUNDED",
+        "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+        "relationPid" : "",
+        "selectionName" : "",
+        "selectionId" : "",
+        "includeDescendants" : false
+      },
+      "discoveryObjectBound" : {
         "kind" : "VOCABULARY",
         "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
         "relationPid" : "",
@@ -2064,6 +2087,11 @@
     "baseClassId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "OUTSIDE_POPULATION",
+      "selectionName" : "PositionWithHoldersPopulation",
+      "selectionId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393"
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
@@ -2184,91 +2212,6 @@
       "labelLanguage" : "en",
       "primaryListField" : ""
     }
-  }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
-    "declarationId" : "decl:361a057c-bfed-44d8-a7b3-7aaf75527427",
-    "className" : "PersonPositionBoundaryDiscovery",
-    "baseClassName" : "",
-    "discriminatorPid" : "",
-    "discriminatorQid" : "",
-    "alias" : "",
-    "importedFrom" : "",
-    "classKind" : "GRAPH",
-    "graphSource" : {
-      "startNode" : {
-        "qidSourceClass" : "Person",
-        "populationSelection" : "",
-        "use" : "INTERMEDIATE_ONLY",
-        "populationSelectionId" : ""
-      },
-      "nextNodes" : [ "java.util.ImmutableCollections$ListN", [ {
-        "property" : {
-          "providerId" : "wikidata",
-          "relationId" : "P39"
-        },
-        "directionFromPrevious" : "OUTGOING",
-        "use" : "CLASS_POPULATION",
-        "populationClass" : "Position",
-        "evidenceCondition" : null,
-        "alternativeEdges" : [ "java.util.ImmutableCollections$ListN", [ ] ],
-        "populationOperation" : "ADD",
-        "repeatUntilStable" : false,
-        "admissionPopulationSelection" : "PositionWithHoldersPopulation",
-        "admissionPopulationSelectionId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393"
-      } ] ]
-    },
-    "generationDepth" : 1,
-    "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
-      "sourceQid" : "",
-      "sourceLabel" : "",
-      "propertyPid" : "",
-      "propertyLabel" : "",
-      "qualifierPid" : "",
-      "qualifierLabel" : "",
-      "subjectField" : "",
-      "matchValueField" : "",
-      "matchRoleField" : "",
-      "inverseField" : "",
-      "direction" : "ITEM_TO_ROOT",
-      "requireLabel" : true,
-      "labelLanguage" : "en",
-      "valueLanguage" : "",
-      "requireSitelink" : false,
-      "limit" : 200,
-      "rankBy" : "",
-      "rankDescending" : true,
-      "productionKind" : "AUTO",
-      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "sourceType" : "SPARQL"
-    },
-    "membership" : {
-      "kind" : "UNBOUNDED",
-      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
-      "relationPid" : "",
-      "selectionName" : "",
-      "selectionId" : "",
-      "includeDescendants" : false
-    },
-    "fields" : [ "java.util.ArrayList", [ ] ],
-    "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
-      "keyFields" : [ "java.util.ArrayList", [ ] ],
-      "reductions" : {
-        "@class" : "java.util.LinkedHashMap"
-      },
-      "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
-      "displayNameMode" : "LABEL",
-      "displayNameField" : "",
-      "displayNameTemplate" : "",
-      "labelLanguage" : "en",
-      "primaryListField" : ""
-    }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.VocabularySelection",
@@ -2291,5 +2234,6 @@
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Historical Positions",
     "classNames" : [ "java.util.ArrayList", [ "Position", "PositionWithHolders" ] ]
-  } ] ]
+  } ] ],
+  "buildOperations" : [ "java.util.ArrayList", [ ] ]
 }
