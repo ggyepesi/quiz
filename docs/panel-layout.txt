@@ -140,6 +140,10 @@
       combo: 4 item(s)
       text: [Q35637]
       label: Bounding the object restricts WHICH statements are collected.
+    piece: EntityEndEditor  [Find subjects using objects from]
+      label: Entities allowed:
+      combo: 3 item(s)
+      label: These objects find the subjects to load; they do not restrict which object values are retained on those subjects.
     label: ✓ Ready — statement property P166
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.

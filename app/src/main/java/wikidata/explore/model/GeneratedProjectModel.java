@@ -664,6 +664,18 @@ public class GeneratedProjectModel {
                     clazz.statementSource().subjectSelectionReference(
                             selection.declarationId(), next);
                 }
+                EntityBound discovery = clazz.statementSource().discoveryObjectBound();
+                if (discovery.kind() == EntityBound.Kind.VOCABULARY
+                        && references(selection.declarationId(), discovery.selectionId(),
+                                previous, discovery.selectionName())) {
+                    clazz.statementSource().discoveryObjectSelectionReference(
+                            selection.declarationId(), next);
+                }
+            }
+            SubclassCondition subclass = clazz.subclassCondition();
+            if (subclass.populationBased() && references(selection.declarationId(),
+                    subclass.selectionId(), previous, subclass.selectionName())) {
+                clazz.subclassCondition(subclass.rebound(selection.declarationId(), next));
             }
             if (fieldsPointHere) renameFieldSelection(
                     clazz.fields(), previous, next, selection.declarationId());
@@ -708,10 +720,21 @@ public class GeneratedProjectModel {
         for (GeneratedClassModel clazz : classes) {
             // A statement source names a SELECTION explicitly, so it is never ambiguous.
             if (clazz.statementSource() != null
-                    && clazz.statementSource().valueSelectionName().equalsIgnoreCase(name)) return true;
+                    && (boundReferences(clazz.statementSource().subjectBound(), name)
+                    || boundReferences(clazz.statementSource().objectBound(), name)
+                    || boundReferences(clazz.statementSource().discoveryObjectBound(), name))) {
+                return true;
+            }
+            if (clazz.subclassCondition().populationBased()
+                    && clazz.subclassCondition().selectionName().equalsIgnoreCase(name)) return true;
             if (fieldsPointHere && fieldReferencesSelection(clazz.fields(), name)) return true;
         }
         return false;
+    }
+
+    private static boolean boundReferences(EntityBound bound, String selectionName) {
+        return bound != null && bound.kind() == EntityBound.Kind.VOCABULARY
+                && bound.selectionName().equalsIgnoreCase(selectionName);
     }
 
     /**
@@ -844,6 +867,20 @@ public class GeneratedProjectModel {
                     if (subjectSelection != null) statement.subjectSelectionReference(
                             subjectSelection.declarationId(), subjectSelection.name());
                 }
+                EntityBound discoveryBound = statement.discoveryObjectBound();
+                if (discoveryBound.kind() == EntityBound.Kind.VOCABULARY) {
+                    Selection discoverySelection = resolveSelection(
+                            discoveryBound.selectionId(), discoveryBound.selectionName());
+                    if (discoverySelection != null) statement.discoveryObjectSelectionReference(
+                            discoverySelection.declarationId(), discoverySelection.name());
+                }
+            }
+            SubclassCondition subclass = clazz.subclassCondition();
+            if (subclass.populationBased()) {
+                Selection selection = resolveSelection(
+                        subclass.selectionId(), subclass.selectionName());
+                if (selection != null) clazz.subclassCondition(
+                        subclass.rebound(selection.declarationId(), selection.name()));
             }
             AggregateClassSource aggregate = clazz.aggregateSource();
             if (aggregate != null) {

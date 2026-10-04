@@ -14,6 +14,7 @@ public record CompiledStatementSource(
         String subjectField,
         wikidata.explore.model.EntityBound subjectBound,
         wikidata.explore.model.EntityBound objectBound,
+        wikidata.explore.model.EntityBound discoveryObjectBound,
         String valueField,
         String valueSelectionId,
         String valueSelectionName) {
@@ -29,6 +30,8 @@ public record CompiledStatementSource(
                 ? wikidata.explore.model.EntityBound.unbounded() : subjectBound;
         objectBound = objectBound == null
                 ? wikidata.explore.model.EntityBound.unbounded() : objectBound;
+        discoveryObjectBound = discoveryObjectBound == null
+                ? wikidata.explore.model.EntityBound.unbounded() : discoveryObjectBound;
         valueField = clean(valueField);
         valueSelectionId = clean(valueSelectionId);
         valueSelectionName = clean(valueSelectionName);
@@ -79,6 +82,7 @@ public record CompiledStatementSource(
                 subjectField,
                 source.subjectBound(),
                 source.objectBound(),
+                source.discoveryObjectBound(),
                 valueField,
                 source.valueSelectionId(),
                 source.valueSelectionName());

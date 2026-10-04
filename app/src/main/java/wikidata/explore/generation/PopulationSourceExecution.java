@@ -8,6 +8,7 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.ImportedPopulationInputs;
+import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.rule.RuleNode;
 
 import java.util.Collection;
@@ -62,6 +63,12 @@ public final class PopulationSourceExecution {
         if (clazz == null) {
             return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                     "No class selected");
+        }
+        if (MembershipPattern.of(clazz, project)
+                == MembershipPattern.POPULATION_SUBCLASS) {
+            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
+                    "its members are classified locally from its base class and saved "
+                            + "population, not by a population query");
         }
         if (clazz.isImported()) {
             ImportedPopulationInputs inputs = ImportedPopulationInputs.of(project);

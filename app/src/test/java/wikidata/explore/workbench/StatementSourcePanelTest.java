@@ -254,11 +254,14 @@ class StatementSourcePanelTest {
 
         java.util.List<EntityEndEditor> ends = new java.util.ArrayList<>();
         collect(panel, EntityEndEditor.class, ends);
-        assertEquals(2, ends.size(), "one editor per end, and no more");
+        assertEquals(3, ends.size(),
+                "the subject, retained object and subject-discovery objects use the "
+                        + "same saved-bound editor");
 
         String shown = labelTexts(panel);
-        assertEquals(2, occurrences(shown, "Entities allowed:"),
-                "both statement ends retain their population constraint: " + shown);
+        assertEquals(3, occurrences(shown, "Entities allowed:"),
+                "both statement ends and subject discovery retain one bound control: "
+                        + shown);
         assertFalse(shown.contains("Not projected"),
                 "projection is configured and explained by the receiving field: " + shown);
         assertFalse(shown.contains("Modelled as") || shown.contains("Goes into field"),

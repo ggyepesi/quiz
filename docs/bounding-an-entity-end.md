@@ -2,7 +2,7 @@
 
 ## Status
 
-Design note, no code. Works out one construct — how an end of a statement triple is
+Implemented. Works out one construct — how an end of a statement triple is
 bounded — used identically for the subject and the object. Written after a survey found
 most of it already exists, one layer down.
 
@@ -103,6 +103,21 @@ StatementClassSource
 `PopulationSelection`. It is **optional on both ends** — absent means unbounded, which a
 model may leave and a domain must resolve before generating, exactly as the subject
 destination rule now works.
+
+### Finding subjects is not the same as retaining objects
+
+A direct statement source has one further acquisition question which is not an end's
+population: **which object entities should be followed backwards to find the subjects?**
+`StatementClassSource.discoveryObjectBound` answers that question. It deliberately does not
+filter the statements retained after those subjects are known; `objectBound` remains the one
+answer to that separate question.
+
+For example, History uses `PositionWithHoldersPopulation` to discover people having one of
+those positions, then retains every P39 statement on those people. Positions outside the
+population therefore remain in the ordinary object graph and can be classified locally as
+the `ReachablePosition` subclass. Reusing `objectBound` for discovery would throw those
+boundary positions away before classification. The UI shows the acquisition input directly
+as **Find subjects using objects from**, after the subject/property/object triple.
 
 ### What happens to what exists
 

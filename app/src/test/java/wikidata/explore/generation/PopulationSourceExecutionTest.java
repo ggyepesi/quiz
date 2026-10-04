@@ -18,6 +18,7 @@ import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.PopulationSelection;
+import wikidata.explore.model.SubclassCondition;
 import wikidata.explore.rule.RuleNode;
 
 import java.util.List;
@@ -246,6 +247,43 @@ class PopulationSourceExecutionTest {
         assertEquals("no population source is configured", missing.reason());
         assertTrue(PopulationSourceExecution.resolve(project, person, null).available(),
                 "while an offline caller without a plan runs the rule it already compiled");
+    }
+
+    /**
+     * History's ReachablePosition extends Position and therefore has an effective
+     * inherited Position membership. That membership supplies candidates to the base;
+     * it is not a second query for the subclass. The first real run exposed the split
+     * decision: the pipeline description skipped it, but execution asked Wikidata for
+     * all 1,325 Position entities anyway.
+     */
+    @Test void aPopulationDerivedSubclassIsClassifiedLocallyNotAskedFor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        position.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", List.of("Q4164871"), false));
+        project.rootClass(position);
+        PopulationSelection population = new PopulationSelection("PositionsForHistory");
+        population.className("Position");
+        population.instanceQids(List.of("Q1"));
+        project.addSelection(population);
+        GeneratedClassModel reachable = new GeneratedClassModel("ReachablePosition");
+        reachable.baseClassName("Position");
+        reachable.subclassCondition(SubclassCondition.outsidePopulation(
+                population.name(), population.declarationId()));
+        project.addClass(reachable);
+
+        PopulationSourceExecution.Resolution withInheritedStep =
+                PopulationSourceExecution.resolve(project, reachable,
+                        plan("ReachablePosition", new SourceRecipe(
+                                "wikidata", "statement-membership",
+                                Map.of("property", "P31", "values", "Q4164871"))));
+        PopulationSourceExecution.Resolution offline =
+                PopulationSourceExecution.resolve(project, reachable, null);
+
+        assertTrue(!withInheritedStep.available());
+        assertTrue(!offline.available(),
+                "no execution path may reinterpret local classification as extraction");
+        assertTrue(withInheritedStep.reason().contains("classified locally"));
     }
 
     /** A skip states its cause; the run log showed \"Skip class OfficeHolding — .\" */

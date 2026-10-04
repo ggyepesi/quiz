@@ -58,6 +58,13 @@ public class ClassSourcePanel extends JPanel {
     // nominee membership AND P31=human). Property defaults to P31 but can be any.
     private final JTextField discriminatorPidField = new JTextField(MembershipPattern.INSTANCE_OF, 5);
     private final JTextField discriminatorQidField = new JTextField(8);
+    private final JLabel discriminatorEquals = new JLabel("=");
+    private static final String CONDITION_PROPERTY = "Property contains QID";
+    private static final String CONDITION_IN_POPULATION = "QID is in population";
+    private static final String CONDITION_OUTSIDE_POPULATION = "QID is outside population";
+    private final JComboBox<String> subclassConditionMode = new JComboBox<>(new String[] {
+            CONDITION_PROPERTY, CONDITION_IN_POPULATION, CONDITION_OUTSIDE_POPULATION});
+    private final JComboBox<String> subclassPopulation = new JComboBox<>();
     private final JLabel discriminatorLabel = new JLabel(" ");
     private final JLabel inheritedPopulationFilterLabel =
             new JLabel("Inherited population filter:");
@@ -222,10 +229,42 @@ public class ClassSourcePanel extends JPanel {
     // Fill the extends combo with the other classes (excluding self), selecting
     // this class's current base.
     private void populateClassDetails() {
-        discriminatorPidField.setText(clazz == null
-                ? MembershipPattern.INSTANCE_OF : clazz.effectiveDiscriminatorPid());
-        discriminatorQidField.setText(clazz == null ? "" : clazz.discriminatorQid());
+        wikidata.explore.model.SubclassCondition condition = clazz == null
+                ? wikidata.explore.model.SubclassCondition.none()
+                : clazz.subclassCondition();
+        discriminatorPidField.setText(condition.kind()
+                == wikidata.explore.model.SubclassCondition.Kind.PROPERTY_VALUE
+                ? condition.propertyPid() : MembershipPattern.INSTANCE_OF);
+        discriminatorQidField.setText(condition.kind()
+                == wikidata.explore.model.SubclassCondition.Kind.PROPERTY_VALUE
+                ? condition.qid() : "");
+        subclassPopulation.removeAllItems();
+        if (projectModel != null) projectModel.selections().stream()
+                .filter(wikidata.explore.model.PopulationSelection.class::isInstance)
+                .map(wikidata.explore.model.Selection::name)
+                .forEach(subclassPopulation::addItem);
+        if (condition.populationBased()) {
+            subclassConditionMode.setSelectedItem(condition.kind()
+                    == wikidata.explore.model.SubclassCondition.Kind.IN_POPULATION
+                    ? CONDITION_IN_POPULATION : CONDITION_OUTSIDE_POPULATION);
+            subclassPopulation.setSelectedItem(condition.selectionName());
+        } else {
+            subclassConditionMode.setSelectedItem(CONDITION_PROPERTY);
+        }
+        updateSubclassConditionControls();
         showInheritedPopulationFilter(clazz != null && !clazz.baseClassName().isBlank());
+    }
+
+    private void updateSubclassConditionControls() {
+        boolean property = CONDITION_PROPERTY.equals(
+                subclassConditionMode.getSelectedItem());
+        discriminatorPidField.setVisible(property);
+        discriminatorEquals.setVisible(property);
+        discriminatorQidField.setVisible(property);
+        discriminatorLabel.setVisible(property);
+        subclassPopulation.setVisible(!property);
+        inheritedPopulationFilter.revalidate();
+        inheritedPopulationFilter.repaint();
     }
 
     private void showInheritedPopulationFilter(boolean visible) {
@@ -367,10 +406,13 @@ public class ClassSourcePanel extends JPanel {
                 + "Extends.</html>");
         WikidataLinks.linkify(discriminatorLabel,
                 () -> RuleNode.cleanQid(discriminatorQidField.getText()));
+        inheritedPopulationFilter.add(subclassConditionMode);
         inheritedPopulationFilter.add(discriminatorPidField);
-        inheritedPopulationFilter.add(new JLabel("="));
+        inheritedPopulationFilter.add(discriminatorEquals);
         inheritedPopulationFilter.add(discriminatorQidField);
         inheritedPopulationFilter.add(discriminatorLabel);
+        inheritedPopulationFilter.add(subclassPopulation);
+        subclassConditionMode.addActionListener(event -> updateSubclassConditionControls());
         GridBagUtils.labeledRow(form, c, y++, inheritedPopulationFilterLabel,
                 inheritedPopulationFilter);
         header.onBaseSelectionChanged(this::showInheritedPopulationFilter);
@@ -758,10 +800,25 @@ public class ClassSourcePanel extends JPanel {
         boolean wasStatementClass = clazz.reifiesStatements();
 
         header.applyEdits();
-        clazz.discriminatorPid(header.hasSelectedBase()
-                ? RuleNode.cleanPid(discriminatorPidField.getText()) : "");
-        clazz.discriminatorQid(header.hasSelectedBase()
-                ? RuleNode.cleanQid(discriminatorQidField.getText()) : "");
+        if (!header.hasSelectedBase()) {
+            clazz.subclassCondition(wikidata.explore.model.SubclassCondition.none());
+        } else if (CONDITION_PROPERTY.equals(subclassConditionMode.getSelectedItem())) {
+            clazz.subclassCondition(wikidata.explore.model.SubclassCondition.propertyValue(
+                    RuleNode.cleanPid(discriminatorPidField.getText()),
+                    RuleNode.cleanQid(discriminatorQidField.getText())));
+        } else {
+            String selectionName = subclassPopulation.getSelectedItem() == null ? ""
+                    : subclassPopulation.getSelectedItem().toString();
+            wikidata.explore.model.Selection selection = projectModel == null ? null
+                    : projectModel.findSelection(selectionName);
+            String selectionId = selection == null ? "" : selection.declarationId();
+            clazz.subclassCondition(CONDITION_IN_POPULATION.equals(
+                    subclassConditionMode.getSelectedItem())
+                    ? wikidata.explore.model.SubclassCondition.inPopulation(
+                            selectionName, selectionId)
+                    : wikidata.explore.model.SubclassCondition.outsidePopulation(
+                            selectionName, selectionId));
+        }
         FieldSourceMapping m = clazz.instanceMapping();
         m.excludedTypeQids().clear();
         for (String tok : excludeTypesField.getText().trim().split("[,;\\s]+")) {

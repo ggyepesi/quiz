@@ -116,10 +116,13 @@ class OneTriplePerClassTest {
      * to know which one it was. Everything about that compiled and passed.
      */
     @Test void theTripleIsOneComponentWithOneControlPerElement() {
-        long ends = java.util.Arrays.stream(TripleEditor.class.getDeclaredFields())
+        List<String> ends = java.util.Arrays.stream(TripleEditor.class.getDeclaredFields())
                 .filter(field -> field.getType() == EntityEndEditor.class)
-                .count();
-        assertEquals(2, ends, "one subject end and one object end, no more");
+                .map(java.lang.reflect.Field::getName)
+                .toList();
+        assertEquals(List.of("subject", "object", "discoveryObject"), ends,
+                "the statement has its two retained ends and the separate object "
+                        + "input used only to discover subjects");
 
         long propertyFields = java.util.Arrays.stream(
                         TripleEditor.class.getDeclaredFields())

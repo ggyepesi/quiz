@@ -201,6 +201,14 @@ Consequences of this framing:
   *properties of the entities in the derived set*, loaded per-referent. See
   [Discovering field properties](#discovering-field-properties) below.
 
+### Population-derived subclasses
+
+A subclass may classify base instances by their stable datasource identity: the QID is
+inside, or outside, one saved `PopulationSelection`. This is ordinary subclassing, not a
+second population producer. The base instances must already be present in the generated
+object graph; semantic convergence assigns or retracts the subclass locally and then loads
+the subclass's fields through the usual referent-field path.
+
 ### Owned components — one projected object per owner
 
 Select **Owned class** as the target class's class kind. This records only the
@@ -293,10 +301,11 @@ not an exotic one — see R16 above.
 - an optional **subject population** (`sourceClassName`) — already-extracted members
   whose statements are read *outgoing*. Blank ⇒ subjects are discovered *incoming*
   from the property (`PopulationSubjectLoader`);
-- **allowed objects** (`valueSelection`) — a VOCABULARY Selection bounding which
-  entities may fill the object position, replacing a filter that would otherwise be
-  re-specified. Required when subjects are discovered, because then the objects are
-  the starting population.
+- **allowed objects** (`objectBound`) — which entities may fill the object position;
+- optional **subject-discovery objects** (`discoveryObjectBound`) — the concrete objects
+  followed backwards to find subjects, without filtering the statements later retained on
+  those subjects. When absent, a bounded object end still supplies this starting population
+  for compatibility.
 
 Both bullets two and three describe the same triple from opposite ends — see *Direction
 belongs to the traversal, not to the triple* above. They are acquisition

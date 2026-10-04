@@ -160,9 +160,13 @@ public final class ModelStatementReifications {
         // dropped, and includeDescendants with it. A bound stays a bound; only an
         // EXPLICIT one also names the QIDs a discovery walk can start from.
         EntityBound objectBound = resolve(statementSource.objectBound(), project);
+        EntityBound discoveryObjectBound = resolve(
+                statementSource.discoveryObjectBound(), project);
         List<String> discoveryValueQids =
-                objectBound.kind() == EntityBound.Kind.EXPLICIT
-                        ? new ArrayList<>(objectBound.qids())
+                discoveryObjectBound.kind() == EntityBound.Kind.EXPLICIT
+                        ? new ArrayList<>(discoveryObjectBound.qids())
+                        : objectBound.kind() == EntityBound.Kind.EXPLICIT
+                                ? new ArrayList<>(objectBound.qids())
                         : new ArrayList<>();
 
         List<QualifierLoadConfig.Qualifier> qualifiers = new ArrayList<>();
@@ -215,7 +219,9 @@ public final class ModelStatementReifications {
                 qualifiers,
                 discoveryValueQids,
                 discoverSubjects,
-                statementSource.valueSelectionName());
+                !statementSource.discoveryObjectBound().selectionName().isBlank()
+                        ? statementSource.discoveryObjectBound().selectionName()
+                        : statementSource.valueSelectionName());
 
         ReifyConstruct reify = new ReifyConstruct(
                 sourceClassName,

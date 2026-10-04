@@ -207,6 +207,12 @@ final class EntityEndEditor extends JPanel {
         return List.of(THESE_ENTITIES);
     }
 
+    /** Discovery starts from concrete entities; it may name them directly or through
+     * the one saved Selection construct. */
+    static List<String> explicitOrSelection() {
+        return List.of(ANY, THESE_ENTITIES, A_SELECTION);
+    }
+
     /** Offers the saved vocabularies and populations this project has. */
     void selections(Supplier<List<String>> names) {
         String selected = selected(vocabulary);

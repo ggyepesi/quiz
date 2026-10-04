@@ -44,6 +44,7 @@ public final class GeneratedProjectModelValidator {
             }
 
             validateClassReferences(project, clazz, problems);
+            validateSubclassCondition(project, clazz, problems);
             validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
             validateInverseFields(project, clazz, problems);
@@ -713,6 +714,34 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
+    private static void validateSubclassCondition(
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            List<Problem> problems) {
+        SubclassCondition condition = clazz.subclassCondition();
+        if (!condition.populationBased()) return;
+        if (!clazz.hasBase()) {
+            problems.add(Problem.error(clazz.className(),
+                    "A population subclass condition requires a base class."));
+            return;
+        }
+        Selection selection = project.findSelection(condition.selectionName());
+        if (!(selection instanceof PopulationSelection population)) {
+            problems.add(Problem.error(clazz.className(),
+                    "Subclass population '" + condition.selectionName()
+                            + "' does not exist or is not a Population selection."));
+            return;
+        }
+        GeneratedClassModel base = project.findClass(clazz.baseClassName());
+        if (base != null && !EntityRepresentations.fieldAccepts(
+                project, base.className(), java.util.Set.of(population.className()))) {
+            problems.add(Problem.error(clazz.className(),
+                    "Subclass population '" + population.name() + "' contains "
+                            + population.className() + " instances, not "
+                            + base.className() + " instances."));
+        }
+    }
+
 
     /**
      * An end bounded by a named selection is bounded only while that selection names
@@ -767,6 +796,8 @@ public final class GeneratedProjectModelValidator {
 
         validateSelectionBound(project, clazz, "subject", source.subjectBound(), problems);
         validateSelectionBound(project, clazz, "object", source.objectBound(), problems);
+        validateSelectionBound(project, clazz, "subject-discovery object",
+                source.discoveryObjectBound(), problems);
 
         // The source class is OPTIONAL: blank means the reify DISCOVERS its subjects
         // (the entities carrying the property into the value domain). That needs a

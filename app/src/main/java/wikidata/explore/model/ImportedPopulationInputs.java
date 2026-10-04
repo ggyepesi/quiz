@@ -40,6 +40,11 @@ public final class ImportedPopulationInputs {
             if (statement != null) {
                 addBound(referencedSelections, statement.subjectBound());
                 addBound(referencedSelections, statement.objectBound());
+                addBound(referencedSelections, statement.discoveryObjectBound());
+            }
+            SubclassCondition subclass = clazz.subclassCondition();
+            if (subclass.populationBased() && !subclass.selectionName().isBlank()) {
+                referencedSelections.add(subclass.selectionName());
             }
             addFieldSelections(project, referencedSelections, clazz.fields());
             GraphClassSource graph = clazz.graphSource();

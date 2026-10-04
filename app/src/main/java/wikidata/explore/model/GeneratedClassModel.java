@@ -36,6 +36,9 @@ public class GeneratedClassModel {
     // can discriminate on any type-like field, not just instance-of. Blank = none.
     private String discriminatorPid = "";
     private String discriminatorQid = "";
+    /** One authored narrowing rule for an inherited population.  The legacy
+     * discriminator fields remain readable so old models regenerate cleanly. */
+    private SubclassCondition subclassCondition = SubclassCondition.none();
     private String alias = "";
 
     /** The model this class is imported from, empty when the class is this project's
@@ -295,6 +298,28 @@ public class GeneratedClassModel {
         return discriminatorQid.matches("(?i)Q\\d+");
     }
 
+    public SubclassCondition subclassCondition() {
+        SubclassCondition configured = subclassCondition == null
+                ? SubclassCondition.none() : subclassCondition;
+        if (configured.configured()) return configured;
+        return hasDiscriminator()
+                ? SubclassCondition.propertyValue(effectiveDiscriminatorPid(), discriminatorQid)
+                : SubclassCondition.none();
+    }
+
+    public void subclassCondition(SubclassCondition value) {
+        subclassCondition = value == null ? SubclassCondition.none() : value;
+        if (subclassCondition.kind() == SubclassCondition.Kind.PROPERTY_VALUE) {
+            discriminatorPid = clean(subclassCondition.propertyPid());
+            discriminatorQid = clean(subclassCondition.qid());
+        } else {
+            discriminatorPid = "";
+            discriminatorQid = "";
+        }
+    }
+
+    public boolean hasSubclassCondition() { return subclassCondition().configured(); }
+
     public String effectiveDiscriminatorPid() {
         String pid = clean(discriminatorPid);
         return pid.matches("(?i)P\\d+") ? pid : MembershipPattern.INSTANCE_OF;
@@ -542,6 +567,7 @@ public class GeneratedClassModel {
         copy.baseClassId = baseClassId;
         copy.discriminatorPid = discriminatorPid;
         copy.discriminatorQid = discriminatorQid;
+        copy.subclassCondition = subclassCondition();
         copy.alias = alias;
         copy.importedFrom = importedFrom;
         copy.classKind = classKind;

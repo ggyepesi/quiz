@@ -19,6 +19,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModelStatementReificationsTest {
 
+    @Test void discoveryObjectsDoNotRestrictTheStatementsThatAreRetained() {
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        StatementClassSource source = new StatementClassSource("P39");
+        source.discoveryObjectBound(EntityBound.explicit(List.of("Q1", "Q2")));
+        source.objectBound(EntityBound.unbounded());
+        holding.statementSource(source);
+        holding.fields().add(field("position", FieldType.ENTITY, "P39", ""));
+        GeneratedFieldModel person = field("person", FieldType.ENTITY, "", "");
+        person.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.STATEMENT_SUBJECT);
+        holding.fields().add(person);
+        holding.canonical().keyFields().addAll(List.of("person", "position"));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(holding);
+
+        QualifierLoadConfig load = ModelStatementReifications
+                .deriveOne(holding, project).load();
+
+        assertEquals(List.of("Q1", "Q2"), load.discoveryValueQids());
+        assertEquals(EntityBound.Kind.UNBOUNDED, load.objectBound().kind());
+        assertTrue(load.discoverSubjects());
+    }
+
     private static GeneratedFieldModel field(String name, FieldType type,
                                              String pid, String qualifierPid) {
         GeneratedFieldModel f = new GeneratedFieldModel(name, type, FieldCardinality.SINGLE);

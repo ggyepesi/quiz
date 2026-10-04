@@ -62,6 +62,10 @@ final class TripleEditor extends JPanel {
             "Bounding the subject restricts WHOSE statements are collected.");
     private final EntityEndEditor object = new EntityEndEditor("Object",
             "Bounding the object restricts WHICH statements are collected.");
+    private final EntityEndEditor discoveryObject = new EntityEndEditor(
+            "Find subjects using objects from",
+            "These objects find the subjects to load; they do not restrict which "
+                    + "object values are retained on those subjects.");
     private final JTextField property = new JTextField(6);
     private final JLabel propertyLabel = new JLabel(" ");
     private final JComboBox<String> population = new JComboBox<>();
@@ -136,12 +140,16 @@ final class TripleEditor extends JPanel {
         objectCell.gridy = 2;
         add(objectRow, objectCell);
 
+        GridBagConstraints discoveryCell = (GridBagConstraints) wide.clone();
+        discoveryCell.gridy = 3;
+        add(discoveryObject, discoveryCell);
+
         GridBagConstraints givenCell = (GridBagConstraints) wide.clone();
-        givenCell.gridy = 3;
+        givenCell.gridy = 4;
         add(given, givenCell);
 
         GridBagConstraints statusCell = (GridBagConstraints) wide.clone();
-        statusCell.gridy = 4;
+        statusCell.gridy = 5;
         add(configurationStatus, statusCell);
 
         propertyActions.setOpaque(false);
@@ -177,7 +185,9 @@ final class TripleEditor extends JPanel {
         List<String> selections = selections(project);
         subject.selections(() -> selections);
         object.selections(() -> selections);
+        discoveryObject.selections(() -> selections);
         object.descendantOptionForExplicitQids(false);
+        discoveryObject.setVisible(false);
         subject.consequence(null);
         object.consequence(null);
         if (clazz.ownedClass()) {
@@ -226,6 +236,11 @@ final class TripleEditor extends JPanel {
         object.allowedModes(EntityEndEditor.allModes());
         object.show(source == null ? null : source.objectBound());
 
+        discoveryObject.setVisible(true);
+        discoveryObject.editable(true);
+        discoveryObject.allowedModes(EntityEndEditor.explicitOrSelection());
+        discoveryObject.show(source == null ? null : source.discoveryObjectBound());
+
         given.setText(" ");
     }
 
@@ -248,6 +263,7 @@ final class TripleEditor extends JPanel {
         next.propertyPid(pid);
         next.subjectBound(subject.bound());
         next.objectBound(object.bound());
+        next.discoveryObjectBound(discoveryObject.bound());
         clazz.statementSource(next);
     }
 
@@ -257,6 +273,7 @@ final class TripleEditor extends JPanel {
         EntityBound membership = clazz.membership();
 
         subject.setVisible(false);
+        discoveryObject.setVisible(false);
         sourceSubject.setText("<html><b>Instances produced:</b> "
                 + clazz.className() + "</html>");
         sourceSubject.setVisible(true);
@@ -317,6 +334,7 @@ final class TripleEditor extends JPanel {
         population.addItem("");
         population.setEnabled(false);
         subjectPopulationControls.setVisible(false);
+        discoveryObject.setVisible(false);
         statementSubjectPopulationRow.setVisible(false);
         sourceSubject.setVisible(false);
         subject.editable(false);
@@ -361,6 +379,7 @@ final class TripleEditor extends JPanel {
         population.removeAllItems();
         subject.show(null);
         object.show(null);
+        discoveryObject.show(null);
         given.setText(" ");
         configurationStatus.setText(" ");
     }

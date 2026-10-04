@@ -184,6 +184,7 @@ public final class GenerateDomainPipeline {
             if (pattern != MembershipPattern.REFERENCED
                     && pattern != MembershipPattern.OWNED_COMPONENT
                     && pattern != MembershipPattern.EVIDENCE_KIND
+                    && pattern != MembershipPattern.POPULATION_SUBCLASS
                     && !clazz.reifiesStatements()) {
                 out.add(clazz.className() + " — " + pattern
                         + ", depth " + clazz.generationDepth());
@@ -309,6 +310,7 @@ public final class GenerateDomainPipeline {
         for (GeneratedClassModel clazz : model.classes()) {
             MembershipPattern pattern = MembershipPattern.of(clazz, model);
             if (pattern == MembershipPattern.EVIDENCE_KIND
+                    || pattern == MembershipPattern.POPULATION_SUBCLASS
                     || pattern == MembershipPattern.OWNED_COMPONENT) {
                 addPropertyFields(out, clazz);
             }
@@ -508,6 +510,7 @@ public final class GenerateDomainPipeline {
             if (pattern == MembershipPattern.REFERENCED
                     || pattern == MembershipPattern.OWNED_COMPONENT
                     || pattern == MembershipPattern.EVIDENCE_KIND
+                    || pattern == MembershipPattern.POPULATION_SUBCLASS
                     || clazz.reifiesStatements()) continue;
             refs.add(PhaseExplanation.ModelReference.clazz(clazz.className()));
             if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(

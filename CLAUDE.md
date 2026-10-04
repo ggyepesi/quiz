@@ -222,6 +222,16 @@ construct per thing produced:
    entities may continue the walk. The group contains the reached members, renders through
    the ordinary ObjectView group panel, and performs no datasource requests.
 
+   **A statement's subject-discovery objects and retained objects are separate bounds.**
+   A saved population may answer “which objects do we use to find subjects?” without
+   answering “which object values do we keep on those subjects?”; generation must not
+   silently reuse one answer for both questions. This lets a controlled position population
+   discover its complete holder population while retaining the first outside positions as
+   the boundary. Such retained entities are classified through the ordinary subclass
+   condition: a subclass may say that its base instances' datasource QIDs are inside or
+   outside one saved `PopulationSelection`. It is local, idempotent classification over the
+   generated object graph, not a second population query and not a special graph run.
+
 19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
    identity, its name, rename propagation, its place in the classes list, its editor and its
    persistence all come from the class construct, and its instances are its annotation set.

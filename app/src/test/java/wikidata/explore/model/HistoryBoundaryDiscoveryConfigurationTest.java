@@ -1,15 +1,14 @@
 package wikidata.explore.model;
 
-import datasource.graph.GraphDiscoveryConfiguration;
-import datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-/** History keeps its one-hop boundary inspection explicit and does not misclassify it as output. */
+/** History retains and classifies its boundary through ordinary generation. */
 class HistoryBoundaryDiscoveryConfigurationTest {
 
     @Test void peopleDiscoverTheirPositionsOutsideTheImportedPopulation() throws Exception {
@@ -19,18 +18,20 @@ class HistoryBoundaryDiscoveryConfigurationTest {
         GeneratedClassModel reachable = history.findClass("ReachablePosition");
         assertNotNull(reachable);
         assertEquals("Position", reachable.baseClassName());
-
-        GraphClassSource source = history.findClass("PersonPositionBoundaryDiscovery")
-                .graphSource();
-        assertEquals("Person", source.startNode().qidSourceClass());
-        GraphDiscoveryConfiguration.NextNode position = source.nextNodes().getFirst();
-        assertEquals("P39", position.property().relationId());
-        assertEquals(GraphTraversalDirection.OUTGOING, position.directionFromPrevious());
-        assertEquals("Position", position.populationClass(),
-                "inside-population Positions are the accepted output until outside-output exists");
+        assertEquals(SubclassCondition.Kind.OUTSIDE_POPULATION,
+                reachable.subclassCondition().kind());
         assertEquals("PositionWithHoldersPopulation",
-                position.admissionPopulationSelection());
-        assertEquals(GraphDiscoveryConfiguration.PopulationOperation.ADD,
-                position.populationOperation());
+                reachable.subclassCondition().selectionName());
+
+        GeneratedClassModel holding = history.findClass("OfficeHolding");
+        assertEquals(EntityBound.Kind.UNBOUNDED,
+                holding.statementSource().objectBound().kind(),
+                "all positions on the discovered people are retained");
+        assertEquals("PositionWithHoldersPopulation",
+                holding.statementSource().discoveryObjectBound().selectionName(),
+                "the imported position population still controls subject discovery");
+
+        assertNull(history.findClass("PersonPositionBoundaryDiscovery"),
+                "the reusable graph construct remains available, but History no longer needs one");
     }
 }

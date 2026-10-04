@@ -6,6 +6,7 @@ import wikidata.explore.extract.LoadedDeclaration;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.transform.OwnedComponents;
+import wikidata.explore.transform.PopulationSubclassClassifier;
 import wikidata.explore.transform.ReferentClassStamp;
 import wikidata.explore.transform.ReferentFieldLoad;
 import wikidata.explore.transform.ReferentKindClassifier;
@@ -102,6 +103,8 @@ public final class SemanticConvergence {
             long fetchedBefore = api == null ? 0 : api.facts().fetchedDocuments();
             long hitsBefore = api == null ? 0 : api.facts().cacheHits();
             int stamped = ReferentClassStamp.apply(model, pool);
+            PopulationSubclassClassifier.Result populationSubclasses =
+                    PopulationSubclassClassifier.apply(model, pool);
             // Without a client the worklist runs its LOCAL subset: stamping roles,
             // classifying kinds from stored evidence, composing owned parts. Those need
             // nothing fetched, and a run forbidden to acquire is not a run forbidden to
@@ -153,7 +156,9 @@ public final class SemanticConvergence {
                     : ReferentKindClassifier.apply(
                             model, pool, api, sink, stored.withoutStoredEvidenceQids(),
                             nameMetadata(sourcePlan));
-            classified += stored.classified() + remote.classified();
+            classified += populationSubclasses.changed()
+                    + stored.classified() + remote.classified();
+            kindsClassified.addAll(populationSubclasses.newlyClassified());
             kindsClassified.addAll(stored.newlyClassified());
             Set<String> currentUnavailable = api == null
                     ? new LinkedHashSet<>(stored.withoutStoredEvidenceQids())
@@ -179,7 +184,8 @@ public final class SemanticConvergence {
 
             sink.message("Semantic convergence iteration " + iteration + ": "
                     + stamped + " role stamp(s), " + fields.loaded() + " field value(s), "
-                    + (stored.classified() + remote.classified()) + " kind(s), "
+                    + (populationSubclasses.changed() + stored.classified()
+                            + remote.classified()) + " classification(s), "
                     + made.created() + " owned value(s).\n");
             if (api != null) {
                 sink.message("Semantic fact reuse iteration " + iteration + ": "
@@ -189,7 +195,8 @@ public final class SemanticConvergence {
                         + " fetch(es) avoided.\n");
             }
             boolean productive = stamped != 0 || fields.loaded() != 0
-                    || stored.classified() + remote.classified() != 0
+                    || populationSubclasses.changed()
+                            + stored.classified() + remote.classified() != 0
                     || made.created() != 0 || componentStamps != 0;
             if (!productive) {
                 sink.message("Semantic convergence fixed point reached after "

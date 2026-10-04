@@ -42,6 +42,9 @@ public enum MembershipPattern {
      *  already in the pool (P31 = Q5 → Person). Configured, but by classification rather
      *  than by a membership query — so it must not read as "Unconfigured". */
     EVIDENCE_KIND("Evidence-derived kind"),
+    /** Members are inherited from the base and classified locally by whether their
+     * QID is inside or outside one saved PopulationSelection. */
+    POPULATION_SUBCLASS("Population-derived subclass"),
     /** {@code P31 = Qx} — every member is the same single type. */
     SINGLE_TYPE("Single type"),
     /** {@code P31 ∈ {type, subtypes…}} — members span several (sub)types. */
@@ -126,6 +129,9 @@ public enum MembershipPattern {
             return AGGREGATED;
         }
         if (clazz != null && clazz.classKind() == ClassKind.GRAPH) return GRAPH;
+        if (clazz != null && clazz.hasBase()
+                && clazz.subclassCondition().populationBased()
+                && clazz.subclassCondition().configured()) return POPULATION_SUBCLASS;
         MembershipPattern base = of(clazz);
         if (base != UNCONFIGURED) {
             return base;
@@ -430,6 +436,13 @@ public enum MembershipPattern {
             return EVIDENCE_KIND.label + " (" + kind.propertyPid() + " = " + shown
                     + (qids.size() > 3 ? ", +" + (qids.size() - 3) : "") + ")";
         }
+        if (of(clazz, project) == POPULATION_SUBCLASS) {
+            SubclassCondition condition = clazz.subclassCondition();
+            return POPULATION_SUBCLASS.label + " (QID "
+                    + (condition.kind() == SubclassCondition.Kind.IN_POPULATION
+                            ? "is in " : "is outside ")
+                    + condition.selectionName() + ")";
+        }
         return describe(clazz);
     }
 
@@ -477,7 +490,8 @@ public enum MembershipPattern {
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.
-            case OWNED_COMPONENT, REFERENCED, EVIDENCE_KIND, UNCONFIGURED -> p.label;
+            case OWNED_COMPONENT, REFERENCED, EVIDENCE_KIND, POPULATION_SUBCLASS,
+                    UNCONFIGURED -> p.label;
         };
     }
 

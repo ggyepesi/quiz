@@ -44,4 +44,43 @@ class SubjectBoundPersistenceTest {
         assertEquals(EntityBound.Kind.UNBOUNDED,
                 new StatementClassSource("P39").subjectBound().kind());
     }
+
+    @Test void discoveryBoundAndPopulationSubclassSurviveTheStore() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("History");
+        project.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        project.rootClass(position);
+        PopulationSelection population = new PopulationSelection("Positions");
+        population.className("Position");
+        population.instanceQids(List.of("Q1"));
+        project.addSelection(population);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        StatementClassSource source = new StatementClassSource("P39");
+        source.discoveryObjectBound(EntityBound.vocabulary(
+                population.name(), population.declarationId()));
+        holding.statementSource(source);
+        holding.canonical().keyFields().addAll(
+                wikidata.explore.model.StatementIdentity.structuralKey(holding));
+        project.addClass(holding);
+
+        GeneratedClassModel boundary = new GeneratedClassModel("ReachablePosition");
+        boundary.baseClassName("Position");
+        boundary.subclassCondition(SubclassCondition.outsidePopulation(
+                population.name(), population.declarationId()));
+        project.addClass(boundary);
+
+        File file = File.createTempFile("model-boundary", ".json");
+        file.deleteOnExit();
+        new GeneratedProjectModelStore().save(project, file);
+        GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(file);
+
+        assertEquals("Positions", loaded.findClass("OfficeHolding").statementSource()
+                .discoveryObjectBound().selectionName());
+        assertEquals(SubclassCondition.Kind.OUTSIDE_POPULATION,
+                loaded.findClass("ReachablePosition").subclassCondition().kind());
+        assertEquals("Positions", loaded.findClass("ReachablePosition")
+                .subclassCondition().selectionName());
+    }
 }

@@ -41,6 +41,10 @@ public final class StatementClassSource {
     // and id from several places and because saved models are written that way. They
     // read and write this field, so there is one place the object's bound lives.
     private EntityBound objectBound = EntityBound.unbounded();
+    /** Objects used to find statement subjects.  This is deliberately separate from
+     * objectBound: discovery may start from a controlled population while retaining
+     * every value found on the discovered subjects. */
+    private EntityBound discoveryObjectBound = EntityBound.unbounded();
     // Explicit graph participation. Statement structure alone must not silently
     // turn a relation into an expandable knowledge-graph frontier.
     // Which entities may be the SUBJECT of these statements. Absent until now: the
@@ -160,6 +164,10 @@ public final class StatementClassSource {
         objectBound(objectBound().rebound(id, name));
     }
 
+    void discoveryObjectSelectionReference(String id, String name) {
+        discoveryObjectBound(discoveryObjectBound().rebound(id, name));
+    }
+
     /** Rebinds the subject's vocabulary the same way — a rename must reach both ends,
      *  or renaming a Selection would keep bounding one and quietly stop bounding the
      *  other. */
@@ -214,10 +222,18 @@ public final class StatementClassSource {
         subjectBound = value == null ? EntityBound.unbounded() : value;
     }
 
+    public EntityBound discoveryObjectBound() {
+        return discoveryObjectBound == null ? EntityBound.unbounded() : discoveryObjectBound;
+    }
+
+    public void discoveryObjectBound(EntityBound value) {
+        discoveryObjectBound = value == null ? EntityBound.unbounded() : value;
+    }
+
     /** Whether either end of the triple is bounded — what makes discovery safe to
      *  run at all, since an unbounded join on both sides scans Wikidata. */
     public boolean hasBoundedEnd(boolean objectBounded) {
-        return objectBounded || subjectBound().bounded();
+        return objectBounded || subjectBound().bounded() || discoveryObjectBound().bounded();
     }
 
     public StatementClassSource copy() {
@@ -229,6 +245,7 @@ public final class StatementClassSource {
         c.graphExpansionPolicy = graphExpansionPolicy();
         c.subjectBound = subjectBound();
         c.objectBound = objectBound();
+        c.discoveryObjectBound = discoveryObjectBound();
         return c;
     }
 

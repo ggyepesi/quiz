@@ -72,10 +72,15 @@ public final class ClassImportPlan {
 
         LinkedHashSet<String> selectionNames = new LinkedHashSet<>();
         for (GeneratedClassModel clazz : closure.values()) {
-            if (clazz.statementSource() != null
-                    && clazz.statementSource().hasValueSelection()) {
-                selectionNames.add(clazz.statementSource().valueSelectionName());
+            if (clazz.statementSource() != null) {
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().subjectBound());
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().objectBound());
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().discoveryObjectBound());
             }
+            collectSubclassSelection(selectionNames, clazz.subclassCondition());
             collectFieldSelections(source, selectionNames, clazz.fields());
         }
         // Role selections are declarations over an imported class/field and belong
@@ -283,10 +288,12 @@ public final class ClassImportPlan {
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (GeneratedClassModel clazz : classes) {
             if (!selected.contains(clazz.className())) continue;
-            if (clazz.statementSource() != null
-                    && clazz.statementSource().hasValueSelection()) {
-                names.add(clazz.statementSource().valueSelectionName());
+            if (clazz.statementSource() != null) {
+                collectBoundSelection(names, clazz.statementSource().subjectBound());
+                collectBoundSelection(names, clazz.statementSource().objectBound());
+                collectBoundSelection(names, clazz.statementSource().discoveryObjectBound());
             }
+            collectSubclassSelection(names, clazz.subclassCondition());
             collectFieldSelections(source, names, clazz.fields());
         }
         for (Selection selection : selections) {
@@ -296,6 +303,18 @@ public final class ClassImportPlan {
                     && selected.contains(population.className())) names.add(population.name());
         }
         return names;
+    }
+
+    private static void collectBoundSelection(
+            Set<String> names, EntityBound bound) {
+        if (bound != null && bound.kind() == EntityBound.Kind.VOCABULARY
+                && !bound.selectionName().isBlank()) names.add(bound.selectionName());
+    }
+
+    private static void collectSubclassSelection(
+            Set<String> names, SubclassCondition condition) {
+        if (condition != null && condition.populationBased()
+                && !condition.selectionName().isBlank()) names.add(condition.selectionName());
     }
 
     private static Set<String> directClassDependencies(
