@@ -2,6 +2,7 @@ package quiz.ui;
 
 import org.junit.jupiter.api.Test;
 
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DialogsTest {
+    @Test void resizableDialogNeverStartsSmallerThanItsUsableMinimum() {
+        assertEquals(new Dimension(720, 560), Dialogs.dialogSize(
+                new Dimension(600, 400), new Dimension(720, 560)));
+        assertEquals(new Dimension(920, 760), Dialogs.dialogSize(
+                new Dimension(920, 760), new Dimension(720, 560)));
+    }
+
     @Test void explanatoryDialogTextWrapsAtOneSharedReadableWidth() {
         javax.swing.JTextArea area = (javax.swing.JTextArea) Dialogs.wrapped(
                 "Save model and instances to /a/very/long/path/that/would/otherwise/"

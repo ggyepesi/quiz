@@ -7,9 +7,11 @@ import quiz.transform.OperationGroup;
 import quiz.transform.pipeline.ui.FilterCondition;
 import quiz.transform.pipeline.ui.FilterOperator;
 
+import javax.swing.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -17,6 +19,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class TransformWorkbenchFilterGroupTest {
+    @Test void relationClosureSeedChooserLeavesRoomForSearchHitsAndCards() {
+        assertTrue(TransformWorkbenchPanel.relationClosureSeedDialogSize().width >= 900);
+        assertTrue(TransformWorkbenchPanel.relationClosureSeedDialogSize().height >= 700);
+        assertTrue(TransformWorkbenchPanel.relationClosureSeedDialogMinimumSize().height
+                >= 560);
+    }
+
+    @Test void fieldsPaneCanShrinkAndDefaultLayoutFavorsTheInstanceWorkspace() {
+        JPanel fields = new JPanel();
+        JPanel instances = new JPanel();
+
+        JSplitPane split = TransformWorkbenchPanel.workspaceSplit(fields, instances);
+
+        assertEquals(JSplitPane.HORIZONTAL_SPLIT, split.getOrientation());
+        assertEquals(280, fields.getMinimumSize().width);
+        assertEquals(420, instances.getMinimumSize().width);
+        assertEquals(420, split.getDividerLocation());
+        assertTrue(split.getResizeWeight() < 0.5,
+                "additional window width should primarily belong to the instance workspace");
+        assertTrue(split.isContinuousLayout());
+        assertTrue(split.isOneTouchExpandable());
+    }
+
     @Test void instanceActionsWrapWithoutClippingAnalyzeRelations() {
         assertTrue(TransformWorkbenchPanel.instanceActionsLayout()
                         instanceof objectview.utils.swing.WrapLayout,
@@ -38,6 +63,60 @@ class TransformWorkbenchFilterGroupTest {
                 "the connected pair and the singleton are both displayed classes");
         assertEquals(List.of(2, 1), groups.getChildren().stream()
                 .map(group -> group.getMembers().size()).toList());
+    }
+
+    @Test void aRelationClosurePathUsesTheSharedObjectViewBrowser() {
+        State france = new State("France");
+        TransformController controller = new TransformController(
+                new ReflectionDomain(List.of(france)), null);
+        quiz.transform.RelationClosureGroup.RelationPath path =
+                new quiz.transform.RelationClosureGroup.RelationPath(
+                        List.of(new quiz.transform.RelationClosureGroup.PathNode(
+                                quiz.transform.RelationClosureGroup.PathRole.ENTITY, france)),
+                        List.of());
+        graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
+
+        JSplitPane view = assertInstanceOf(JSplitPane.class,
+                TransformWorkbenchPanel.relationClosurePathView(controller, path, graph));
+
+        assertSame(graph, view.getTopComponent());
+        assertInstanceOf(objectview.view.SearchableView.class, view.getBottomComponent(),
+                "path instances must still use the ordinary ObjectView browser");
+        graph.close();
+    }
+
+    @Test void aRelationClosurePathGraphShowsOnlyDomainEndpointsAndRelationEdges() {
+        quiz.transform.DynamicViewable first = value("P1", "Apostolic king");
+        first.type("Position");
+        quiz.transform.DynamicViewable holder = value("H1", "Louis");
+        holder.type("Person");
+        quiz.transform.DynamicViewable shared = value("P2", "Carolingian emperor");
+        shared.type("Position");
+        quiz.transform.DynamicViewable holdingOne = value("O1", "First holding");
+        holdingOne.type("OfficeHolding");
+        quiz.transform.DynamicViewable holdingTwo = value("O2", "Second holding");
+        holdingTwo.type("OfficeHolding");
+        var firstNode = new quiz.transform.RelationClosureGroup.PathNode(
+                quiz.transform.RelationClosureGroup.PathRole.ENTITY, first);
+        var holderNode = new quiz.transform.RelationClosureGroup.PathNode(
+                quiz.transform.RelationClosureGroup.PathRole.MEMBER, holder);
+        var sharedNode = new quiz.transform.RelationClosureGroup.PathNode(
+                quiz.transform.RelationClosureGroup.PathRole.ENTITY, shared);
+        var path = new quiz.transform.RelationClosureGroup.RelationPath(
+                List.of(firstNode, holderNode, sharedNode), List.of(
+                new quiz.transform.RelationClosureGroup.PathEdge(
+                        firstNode, holderNode, holdingOne),
+                new quiz.transform.RelationClosureGroup.PathEdge(
+                        holderNode, sharedNode, holdingTwo)));
+
+        graphview.GraphViewModel graph = RelationClosurePathProjection.graph(path);
+
+        assertEquals(List.of("Apostolic king", "Louis", "Carolingian emperor"),
+                graph.nodes().stream().map(graphview.GraphViewModel.Node::label).toList());
+        assertEquals(List.of("Start Position", "Member Person", "Shared Position"),
+                graph.nodes().stream().map(node -> node.details().get("Path role")).toList());
+        assertEquals(List.of("OfficeHolding", "OfficeHolding"), graph.edges().stream()
+                .map(graphview.GraphViewModel.Edge::label).toList());
     }
 
     @Test void missingWikidataLabelMeansBlankOrStillShowingTheQid() {
@@ -88,4 +167,16 @@ class TransformWorkbenchFilterGroupTest {
         return value;
     }
 
+
+    /** A disabled path command says what would enable it, not one fixed sentence. */
+    @org.junit.jupiter.api.Test void theClosurePathCommandSaysWhyItIsUnavailable() {
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "Select one instance of this group to show its path",
+                TransformWorkbenchPanel.closurePathUnavailable(null, java.util.List.of()));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "Select a single instance to show its path",
+                TransformWorkbenchPanel.closurePathUnavailable(null, java.util.List.of(
+                        new quiz.transform.DynamicViewable("Q1", "One"),
+                        new quiz.transform.DynamicViewable("Q2", "Two"))));
+    }
 }

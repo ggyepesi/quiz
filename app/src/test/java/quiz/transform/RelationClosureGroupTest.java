@@ -11,6 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RelationClosureGroupTest {
@@ -42,6 +43,27 @@ class RelationClosureGroupTest {
 
         assertEquals(List.of("H1", "H2"), group.getMembers().stream()
                 .map(Viewable::getIdentifier).toList());
+        List<Viewable> path = group.pathTo(charles);
+        assertEquals(List.of("P1", "O1", "H1", "O2", "P2", "O3", "H2"),
+                path.stream().map(Viewable::getIdentifier).toList(),
+                "membership keeps one shortest path made from the original instances");
+        assertSame(apostolic, path.get(0));
+        assertSame(holdings.get(0), path.get(1));
+        assertSame(louis, path.get(2));
+        RelationClosureGroup.RelationPath relationPath = group.relationPathTo(charles);
+        assertEquals(List.of("P1", "H1", "P2", "H2"), relationPath.nodes().stream()
+                .map(node -> node.instance().getIdentifier()).toList(),
+                "positions and holders are the graph nodes");
+        assertEquals(List.of(RelationClosureGroup.PathRole.ENTITY,
+                        RelationClosureGroup.PathRole.MEMBER,
+                        RelationClosureGroup.PathRole.ENTITY,
+                        RelationClosureGroup.PathRole.MEMBER),
+                relationPath.nodes().stream().map(RelationClosureGroup.PathNode::role).toList());
+        assertEquals(List.of("O1", "O2", "O3"), relationPath.edges().stream()
+                .map(edge -> edge.bridge().getIdentifier()).toList(),
+                "office holdings connect the alternating domain instances");
+        assertTrue(group.pathTo(outsider).isEmpty(),
+                "an instance outside the closure has no invented path");
     }
 
     /** A closure without its boundary would stop at the seeds' own members and look

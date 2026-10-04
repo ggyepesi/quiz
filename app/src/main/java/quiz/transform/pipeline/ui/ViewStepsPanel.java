@@ -6,6 +6,7 @@ import objectview.viewconfig.FieldRow;
 import objectview.viewconfig.FieldTableContributor;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigEditor;
+import objectview.utils.swing.WrapLayout;
 import domain.DomainField;
 import objectview.field.FieldKind;
 import quiz.curation.ScopeFilter;
@@ -198,7 +199,7 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private JComponent memberRow() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JPanel p = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
         p.add(new JLabel("Class:"));
         p.add(memberTypeCombo);
         if (selectionCombo.getItemCount() > 1) {
@@ -236,7 +237,7 @@ public final class ViewStepsPanel extends JPanel {
                 "Field — pick one (a reference's nested fields are indented below it)"));
         fieldPicker.setChangeListener(this::onFieldSelectionChanged);
         p.add(fieldPicker, BorderLayout.CENTER);
-        JPanel scopes = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        JPanel scopes = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
         scopes.add(new JLabel("Show:"));
         scopes.add(allScope);
         scopes.add(missingScope);
@@ -255,7 +256,7 @@ public final class ViewStepsPanel extends JPanel {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 
-        JPanel condition = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        JPanel condition = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
         condition.setAlignmentX(Component.LEFT_ALIGNMENT);
         condition.add(new JLabel("Operator:"));
         condition.add(filterOperator);
@@ -268,7 +269,7 @@ public final class ViewStepsPanel extends JPanel {
         // This action needs its own allocated row. As the final item in the condition's
         // FlowLayout it wrapped at the real left-pane width, but BorderLayout.NORTH kept
         // only one line of height and clipped the wrapped button completely.
-        JPanel action = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        JPanel action = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
         action.setAlignmentX(Component.LEFT_ALIGNMENT);
         action.add(addFilterGroup);
         p.add(action);

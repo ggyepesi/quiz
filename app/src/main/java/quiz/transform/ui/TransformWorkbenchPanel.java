@@ -41,6 +41,10 @@ import domain.DomainModel;
  */
 public final class TransformWorkbenchPanel extends JPanel implements AutoCloseable {
 
+    private static final int FIELDS_PANE_MINIMUM_WIDTH = 280;
+    private static final int INSTANCES_PANE_MINIMUM_WIDTH = 420;
+    private static final int INITIAL_FIELDS_PANE_WIDTH = 420;
+
     private final TransformController controller;
 
     // The domain this workbench was opened for (e.g. "countries"), offered as the
@@ -61,6 +65,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             new JButton("Experimental: Discover Wikidata statements and qualifiers…");
     private final JButton analyzeRelationsButton =
             new JButton("Analyze relations…");
+    private final JButton showClosurePathButton =
+            new JButton("Show path to selected instance…");
     private final java.util.LinkedHashMap<String, Viewable> experimentSelection =
             new java.util.LinkedHashMap<>();
     private List<Viewable> selectedInstances = List.of();
@@ -150,9 +156,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // Analyze relations appear broken only for the initially selected class.
         JComponent right = buildRight();
         JComponent left = buildLeft();
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        split.setResizeWeight(0.42);
-        add(split, BorderLayout.CENTER);
+        add(workspaceSplit(left, right), BorderLayout.CENTER);
 
         // ViewStepsPanel seeds the controller (and mirrors it into its controls);
         // render the seeded result once the panel is wired.
@@ -164,7 +168,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         JPanel toolbar = new JPanel();
         toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        JPanel top = new JPanel(new objectview.utils.swing.WrapLayout(
+                FlowLayout.LEFT, 4, 2));
         top.setAlignmentX(Component.LEFT_ALIGNMENT);
         if (controller.domain().capability(SchemaView.class) != null) {
             top.add(button("Schema…", this::showSchema));
@@ -194,8 +199,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         quiz.curation.Curatable c =
                 controller.domain().capability(quiz.curation.Curatable.class);
         if (c != null && c.curation() != null) {
-            JPanel curationActions = new JPanel(
-                    new FlowLayout(FlowLayout.LEFT, 4, 2));
+            JPanel curationActions = new JPanel(new objectview.utils.swing.WrapLayout(
+                    FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
             curationActions.add(new JLabel("Curation:"));
             curationActions.add(button("Merge duplicates…",
@@ -216,6 +221,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
+    }
+
+    /**
+     * The two workbench concepts own their useful minimums. Swing's inherited minimum for
+     * the field editor includes every control on its longest row, which otherwise makes the
+     * visible divider effectively immovable. The initial location deliberately gives the
+     * instance/group workspace most of a normal 1400-pixel window.
+     */
+    static JSplitPane workspaceSplit(JComponent fields, JComponent instances) {
+        fields.setMinimumSize(new Dimension(FIELDS_PANE_MINIMUM_WIDTH, 0));
+        instances.setMinimumSize(new Dimension(INSTANCES_PANE_MINIMUM_WIDTH, 0));
+        JSplitPane split = new JSplitPane(
+                JSplitPane.HORIZONTAL_SPLIT, fields, instances);
+        split.setContinuousLayout(true);
+        split.setOneTouchExpandable(true);
+        split.setResizeWeight(0.30);
+        split.setDividerLocation(INITIAL_FIELDS_PANE_WIDTH);
+        return split;
     }
 
     private void discoverWikidataStatements() {
@@ -367,6 +390,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Measure self-referencing fields over the instances currently shown");
         analyzeRelationsButton.setEnabled(false);
         analyzeRelationsButton.addActionListener(e -> analyzeRelations());
+        showClosurePathButton.setToolTipText(
+                "Show the shortest stored-instance path from this group's seed");
+        showClosurePathButton.setVisible(false);
+        showClosurePathButton.setEnabled(false);
+        showClosurePathButton.addActionListener(e -> showSelectedClosurePath());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         actions.add(curateFieldButton);
         actions.add(identitiesButton);
@@ -382,6 +410,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 instanceActionsLayout());
         instanceActions.add(discoverStatementsButton);
         instanceActions.add(analyzeRelationsButton);
+        instanceActions.add(showClosurePathButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
@@ -1505,6 +1534,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         GroupMembersView grouped = new GroupMembersView(
                 root, group -> {
             activeGroup = group;
+            selectedInstances = List.of();
+            updateClosurePathAction();
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             List<Viewable> members = applySelectionScope(explicitMembers(group));
@@ -1528,6 +1559,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     ? editable : null;
             groups.setStatusText(selectedGroupStatus(group));
             ruleDetails.setEnabled(group instanceof quiz.transform.ProducedGroup);
+            updateClosurePathAction();
         });
         groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
         groups.addControl("Add relation closure group…",
@@ -1577,6 +1609,128 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Group rule", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private void updateClosurePathAction() {
+        boolean closure = activeGroup instanceof quiz.transform.RelationClosureGroup;
+        showClosurePathButton.setVisible(closure);
+        String unavailable = closure ? closurePathUnavailable(
+                (quiz.transform.RelationClosureGroup) activeGroup, selectedInstances) : null;
+        showClosurePathButton.setEnabled(closure && unavailable == null);
+        showClosurePathButton.setToolTipText(unavailable == null
+                ? "Show the shortest stored-instance path from this group's seed"
+                : unavailable);
+        if (instanceScopeHeader != null) {
+            instanceScopeHeader.revalidate();
+            instanceScopeHeader.repaint();
+        }
+    }
+
+    /** Why the path cannot be shown for this selection, or null when it can. A disabled
+     *  command says what would enable it. */
+    static String closurePathUnavailable(quiz.transform.RelationClosureGroup closure,
+                                         List<Viewable> selected) {
+        if (selected == null || selected.isEmpty()) {
+            return "Select one instance of this group to show its path";
+        }
+        if (selected.size() > 1) return "Select a single instance to show its path";
+        if (closure.relationPathTo(selected.getFirst()).isEmpty()) {
+            return selected.getFirst().getDisplayName() + " is not reached by this group";
+        }
+        return null;
+    }
+
+    private void showSelectedClosurePath() {
+        if (!(activeGroup instanceof quiz.transform.RelationClosureGroup closure)
+                || selectedInstances.size() != 1) return;
+        Viewable target = selectedInstances.getFirst();
+        quiz.transform.RelationClosureGroup.RelationPath path =
+                closure.relationPathTo(target);
+        if (path.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    target.getDisplayName() + " has no path in “"
+                            + closure.getDisplayName() + "”.",
+                    "Relation-closure path", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
+        JComponent view = relationClosurePathView(controller, path, graph);
+
+        JPanel content = new JPanel(new BorderLayout(4, 4));
+        // The path's own start: with several seeds, the shortest path to this member
+        // may begin at any of them, so the group's first seed would name the wrong one.
+        content.add(new JLabel(path.nodes().getFirst().instance().getDisplayName() + " → "
+                + target.getDisplayName() + " · shortest path · " + path.nodes().size()
+                + " instances · " + path.edges().size() + " " + closure.bridgeType()
+                + " links. A " + closure.entityField() + " between two "
+                + closure.memberType() + " instances is the shared "
+                + closure.entityField() + "."), BorderLayout.NORTH);
+        content.add(view, BorderLayout.CENTER);
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Path to " + target.getDisplayName(), Dialog.ModalityType.MODELESS);
+        dialog.add(content, BorderLayout.CENTER);
+        dialog.setSize(1120, 780);
+        dialog.setLocationRelativeTo(this);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed(java.awt.event.WindowEvent event) {
+                graph.close();
+            }
+        });
+        dialog.setVisible(true);
+    }
+
+    /** The graph explains the relation; the lower half keeps the same ObjectView cards,
+     * schemas, links, search and field configuration as the main instance panel. */
+    static JComponent relationClosurePathView(
+            TransformController controller,
+            quiz.transform.RelationClosureGroup.RelationPath path,
+            graphview.InteractiveGraphView graph) {
+        graph.model(RelationClosurePathProjection.graph(path));
+        graph.setMinimumSize(new Dimension(320, 220));
+
+        List<Viewable> instances = path.instances();
+        java.util.IdentityHashMap<Viewable, Integer> steps = new java.util.IdentityHashMap<>();
+        java.util.IdentityHashMap<Viewable, String> roles = new java.util.IdentityHashMap<>();
+        for (int index = 0; index < instances.size(); index++) {
+            steps.put(instances.get(index), index + 1);
+            roles.put(instances.get(index), RelationClosurePathProjection.roleLabel(
+                    path.nodes().get(index), index));
+        }
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        instances.forEach(context::addTopLevel);
+        JComponent instanceView = objectview.view.SearchableView.builder(instances)
+                .sample(instances.getFirst())
+                .renderContext(context)
+                .fieldSchemas(value -> controller.renderedFieldSchema(
+                        value, value.typeName()))
+                .cardDecorator(value -> new JLabel("Path node " + steps.get(value)
+                        + " of " + instances.size() + " · " + roles.get(value)))
+                .collapsible(true)
+                .build();
+        String entityType = path.nodes().stream()
+                .filter(node -> node.role()
+                        == quiz.transform.RelationClosureGroup.PathRole.ENTITY)
+                .map(node -> node.instance().typeName()).filter(java.util.Objects::nonNull)
+                .filter(type -> !type.isBlank()).findFirst().orElse("Entity");
+        String memberType = path.nodes().stream()
+                .filter(node -> node.role()
+                        == quiz.transform.RelationClosureGroup.PathRole.MEMBER)
+                .map(node -> node.instance().typeName()).filter(java.util.Objects::nonNull)
+                .filter(type -> !type.isBlank()).findFirst().orElse("Member");
+        graph.setBorder(BorderFactory.createTitledBorder(entityType + " / " + memberType
+                + " path — arrows are the connecting relation instances"));
+        instanceView.setBorder(BorderFactory.createTitledBorder(
+                "The same path instances in ObjectView"));
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, graph, instanceView);
+        split.setResizeWeight(0.42);
+        split.setDividerLocation(300);
+        split.setContinuousLayout(true);
+        split.setOneTouchExpandable(true);
+        return split;
+    }
+
     private static boolean belongsTo(objectview.group.ViewableGroup<?> root,
                                      objectview.group.ViewableGroup<?> candidate) {
         for (objectview.group.ViewableGroup<?> current = candidate; current != null;
@@ -1614,7 +1768,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             panel.add(instanceScopeHeader, BorderLayout.NORTH);
         }
         if (!experimentActive) {
-            panel.add(flatView(members, type, values -> selectedInstances = values,
+            panel.add(flatView(members, type, values -> {
+                        selectedInstances = values;
+                        updateClosurePathAction();
+                    },
                     this::experimentMark), BorderLayout.CENTER);
             return panel;
         }
@@ -1638,7 +1795,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         instanceActions.add(add);
         instances.add(instanceActions, BorderLayout.NORTH);
         experimentInstancesView = flatView(members, type,
-                values -> selectedInstances = values, this::experimentMark);
+                values -> {
+                    selectedInstances = values;
+                    updateClosurePathAction();
+                }, this::experimentMark);
         instances.add(experimentInstancesView, BorderLayout.CENTER);
         tabs.addTab("Instances", instances);
         List<Viewable> sample = List.copyOf(experimentSelection.values());
@@ -1919,14 +2079,17 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                         .map(Viewable.class::cast).toList()))
                 .collapsible(true)
                 .build();
-        view.setPreferredSize(new Dimension(760, 500));
+        // SearchableView divides this height between the search/hit navigator and the
+        // cards. Give both a useful initial workspace; the owning dialog remains freely
+        // resizable for larger result sets.
+        view.setPreferredSize(new Dimension(860, 620));
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(new JLabel("Select the starting " + option.entityField()
                 + " instance or instances:"), BorderLayout.NORTH);
         panel.add(view, BorderLayout.CENTER);
-        int answer = JOptionPane.showConfirmDialog(this, panel,
-                "Select relation-closure seed", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
+        int answer = quiz.ui.Dialogs.confirmResizable(this, panel,
+                "Select relation-closure seed", relationClosureSeedDialogSize(),
+                relationClosureSeedDialogMinimumSize());
         if (answer != JOptionPane.OK_OPTION) return List.of();
         if (selected.get().isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1934,6 +2097,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return List.of();
         }
         return selected.get();
+    }
+
+    static Dimension relationClosureSeedDialogSize() {
+        return new Dimension(920, 760);
+    }
+
+    static Dimension relationClosureSeedDialogMinimumSize() {
+        return new Dimension(720, 560);
     }
 
     private void addTypeSpecGroup(String type, objectview.group.ViewableGroup<?> root) {

@@ -6,6 +6,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import javax.swing.JComponent;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
@@ -36,6 +37,43 @@ public final class Dialogs {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, new Object[]{action, "Cancel"}, "Cancel");
         return answer == 0;
+    }
+
+    /**
+     * Show a component-rich OK/Cancel prompt whose workspace can be resized.
+     *
+     * <p>{@link JOptionPane#showConfirmDialog} makes its generated dialog
+     * non-resizable. That is suitable for a short question, but not for an ObjectView
+     * browser: its search-hit navigator and its results both need vertical space. This
+     * keeps JOptionPane's familiar result values while using the same owner/focus rule as
+     * the other workbench dialogs.</p>
+     */
+    public static int confirmResizable(
+            Component parent, JComponent content, String title,
+            Dimension initialSize, Dimension minimumSize) {
+        JOptionPane pane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.OK_CANCEL_OPTION);
+        Window dialogOwner = owner(parent);
+        JDialog dialog = pane.createDialog(dialogOwner, title);
+        raiseOnOpen(dialog);
+        dialog.setResizable(true);
+        if (minimumSize != null) dialog.setMinimumSize(new Dimension(minimumSize));
+        if (initialSize != null) dialog.setSize(dialogSize(initialSize, minimumSize));
+        dialog.setLocationRelativeTo(dialogOwner);
+        dialog.setVisible(true);
+        Object value = pane.getValue();
+        dialog.dispose();
+        return value instanceof Integer answer ? answer : JOptionPane.CLOSED_OPTION;
+    }
+
+    static Dimension dialogSize(Dimension requested, Dimension minimum) {
+        int width = requested == null ? 0 : requested.width;
+        int height = requested == null ? 0 : requested.height;
+        if (minimum != null) {
+            width = Math.max(width, minimum.width);
+            height = Math.max(height, minimum.height);
+        }
+        return new Dimension(width, height);
     }
 
     /** Consistent readable body for dialogs containing explanations or exact file paths. */
