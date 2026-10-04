@@ -277,6 +277,55 @@ class SnapshotFieldGraphStoreTest {
         assertFalse(file.exists(), "validation must precede opening the destination file");
     }
 
+    @Test void aDeepReachableEntityGraphIsSavedWithoutUsingTheJavaCallStack()
+            throws Exception {
+        int depth = 6_000;
+        WikidataDynamicObject root = wdo("Q0", "Node", false);
+        WikidataDynamicObject current = root;
+        for (int i = 1; i < depth; i++) {
+            WikidataDynamicObject next = wdo("Q" + i, "Node", false);
+            current.put("next", List.of(next));
+            current = next;
+        }
+        File file = new File(dir, "deep-entity-graph.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+
+        store.save(List.of(root), file);
+
+        var loaded = store.loadAllWithFieldGraph(file);
+        assertEquals(depth, loaded.objects().size(),
+                "every entity reached through the deep path must be pooled");
+        assertEquals("Q0", loaded.memberRoots().getFirst().getIdentifier());
+    }
+
+    @Test void loadingAFlattenedSnapshotDoesNotMaterializeAJsonTree()
+            throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper treeRejectingMapper =
+                new com.fasterxml.jackson.databind.ObjectMapper() {
+                    @Override
+                    public com.fasterxml.jackson.databind.JsonNode readTree(File file) {
+                        throw new AssertionError(
+                                "the complete snapshot must not be materialized as a tree");
+                    }
+                };
+        WikidataDynamicObjectJsonStore store =
+                new WikidataDynamicObjectJsonStore(treeRejectingMapper);
+        WikidataDynamicObject target = wdo("Q2", "Node", false);
+        WikidataDynamicObject root = wdo("Q1", "Node", false);
+        root.put("next", List.of(target));
+        File file = new File(dir, "streamed-load.snapshot.json");
+        store.save(List.of(root), file);
+
+        var loaded = store.loadAllWithFieldGraph(file);
+
+        assertEquals(2, loaded.objects().size());
+        assertSame(loaded.objects().stream()
+                        .filter(value -> "Q2".equals(value.getIdentifier()))
+                        .findFirst().orElseThrow(),
+                ((List<?>) loaded.memberRoots().getFirst().get("next")).getFirst(),
+                "streaming must still resolve references to the shared entity shell");
+    }
+
     private static WikidataDynamicObject wdo(
             String id, String type, boolean valueObject) {
         WikidataDynamicObject object =

@@ -2,7 +2,6 @@ package wikidata.explore.extract;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
@@ -87,7 +86,12 @@ public class WikidataDynamicObjectJsonStore {
     private final ObjectMapper mapper;
 
     public WikidataDynamicObjectJsonStore() {
-        mapper = new ObjectMapper();
+        this(new ObjectMapper());
+    }
+
+    /** Package seam for proving that snapshot loading never materializes a JSON tree. */
+    WikidataDynamicObjectJsonStore(ObjectMapper mapper) {
+        this.mapper = java.util.Objects.requireNonNull(mapper, "mapper");
 
         mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -265,7 +269,7 @@ public class WikidataDynamicObjectJsonStore {
         LinkedHashMap<String, List<WikidataDynamicObject>> byQid =
                 new LinkedHashMap<>();
         SnapshotFieldGraph.Builder fieldGraph = SnapshotFieldGraph.builder();
-        java.util.Set<WikidataDynamicObject> visited =
+        java.util.Set<Object> visited =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (WikidataDynamicObject o : memberRoots) {
             collect(o, byQid, visited, fieldGraph);
@@ -353,33 +357,42 @@ public class WikidataDynamicObjectJsonStore {
     private void collect(
             WikidataDynamicObject o,
             Map<String, List<WikidataDynamicObject>> byQid,
-            java.util.Set<WikidataDynamicObject> visited,
+            java.util.Set<Object> visited,
             SnapshotFieldGraph.Builder fieldGraph) {
-        if (o == null || !visited.add(o)) return;
-        fieldGraph.observe(o);
-        String key = keyOf(o);
-        // A value object is inlined by encode(), NOT pooled — but still recurse its
-        // fields so nested ENTITIES (e.g. a Laureate under an inlined wrapper) are pooled.
-        if (key != null && !o.isValueObject()) {
-            byQid.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
-        }
-        for (Object v : o.dynamicFields().values()) {
-            collectValue(v, byQid, visited, fieldGraph);
+        if (o == null) return;
+        java.util.ArrayDeque<Object> pending = new java.util.ArrayDeque<>();
+        pending.addLast(o);
+        while (!pending.isEmpty()) {
+            Object value = pending.removeLast();
+            if (value instanceof WikidataDynamicObject current) {
+                if (!visited.add(current)) continue;
+                fieldGraph.observe(current);
+                String key = keyOf(current);
+                // A value object is inlined by encode(), NOT pooled — but its fields
+                // are still traversed so nested ENTITIES are pooled. The explicit
+                // work stack is load-bearing: a generated graph may contain thousands
+                // of successive references, well beyond the Java call-stack limit.
+                if (key != null && !current.isValueObject()) {
+                    byQid.computeIfAbsent(key, ignored -> new ArrayList<>()).add(current);
+                }
+                pushInEncounterOrder(pending, current.dynamicFields().values());
+            } else if (value instanceof java.util.Collection<?> collection) {
+                if (!visited.add(collection)) continue;
+                pushInEncounterOrder(pending, collection);
+            } else if (value instanceof java.util.Map<?, ?> map) {
+                if (!visited.add(map)) continue;
+                pushInEncounterOrder(pending, map.values());
+            }
         }
     }
 
-    private void collectValue(Object v,
-            Map<String, List<WikidataDynamicObject>> byQid,
-            java.util.Set<WikidataDynamicObject> visited,
-            SnapshotFieldGraph.Builder fieldGraph) {
-        if (v instanceof WikidataDynamicObject w) {
-            collect(w, byQid, visited, fieldGraph);
-        } else if (v instanceof java.util.Collection<?> col) {
-            for (Object e : col) collectValue(e, byQid, visited, fieldGraph);
-        } else if (v instanceof java.util.Map<?, ?> map) {
-            for (Object e : map.values()) {
-                collectValue(e, byQid, visited, fieldGraph);
-            }
+    /** Push in reverse because the deque is LIFO, preserving the recursive walk's
+     * deterministic first-to-last encounter order without consuming the call stack. */
+    private static void pushInEncounterOrder(
+            java.util.ArrayDeque<Object> pending, Collection<?> values) {
+        Object[] ordered = values.toArray();
+        for (int i = ordered.length - 1; i >= 0; i--) {
+            if (ordered[i] != null) pending.addLast(ordered[i]);
         }
     }
 
@@ -641,19 +654,15 @@ public class WikidataDynamicObjectJsonStore {
      * Loads instances and their persisted schema from one parse of a current snapshot.
      */
     public LoadedSnapshot loadAllWithFieldGraph(File file) throws IOException {
-        JsonNode tree = mapper.readTree(file);
-        if (tree == null || !tree.has("entities") || !tree.has("roots")
-                || !tree.has("groupRoots") || !tree.has("groupRootBindings")
-                || !tree.has("fieldGraph")) {
-            throw new IOException("Unsupported snapshot format; regenerate " + file);
-        }
-        FlatSnapshot snapshot = mapper.treeToValue(tree, FlatSnapshot.class);
+        StreamedSnapshot loaded = readStreamedSnapshot(file);
+        FlatSnapshot snapshot = loaded.metadata();
         if (snapshot == null || snapshot.version != FORMAT_VERSION
                 || snapshot.fieldGraph == null
                 || snapshot.fieldGraph.version != SnapshotFieldGraph.FORMAT_VERSION) {
             throw new IOException("Unsupported snapshot version; regenerate " + file);
         }
-        Map<String, WikidataDynamicObject> entities = buildEntities(snapshot);
+        Map<String, WikidataDynamicObject> entities = loaded.entities();
+        finishEntities(entities, snapshot.fieldGraph);
         List<WikidataDynamicObject> objects = new ArrayList<>(entities.values());
         attachSchemas(objects, snapshot.fieldGraph);
         List<WikidataDynamicObject> groups = resolveRoots(
@@ -671,6 +680,114 @@ public class WikidataDynamicObjectJsonStore {
                         ? wikidata.explore.transform.SelfReferenceLedger.EMPTY
                         : snapshot.selfReferences);
     }
+
+    /**
+     * Reads the flattened pool without ever holding a second representation of the
+     * complete file. An entity DTO exists only long enough to create its live shell;
+     * its still-encoded fields move onto that shell and are resolved after every shell
+     * exists. This is the load-side counterpart of the flattened on-disk graph: a
+     * large snapshot must not first become a still-larger JsonNode tree.
+     */
+    private StreamedSnapshot readStreamedSnapshot(File file) throws IOException {
+        FlatSnapshot snapshot = new FlatSnapshot();
+        Map<String, WikidataDynamicObject> entities = new LinkedHashMap<>();
+        java.util.Set<String> present = new java.util.HashSet<>();
+        try (com.fasterxml.jackson.core.JsonParser parser =
+                     mapper.getFactory().createParser(file)) {
+            if (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                throw unsupportedSnapshot(file);
+            }
+            while (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_OBJECT) {
+                String name = parser.currentName();
+                if (name == null || parser.nextToken() == null) {
+                    throw unsupportedSnapshot(file);
+                }
+                switch (name) {
+                    case "version" -> snapshot.version = parser.getIntValue();
+                    case "roots" -> snapshot.roots = readList(parser, String.class);
+                    case "groupRoots" -> snapshot.groupRoots = readList(parser, String.class);
+                    case "groupRootBindings" -> snapshot.groupRootBindings =
+                            readList(parser, GroupRootRef.class);
+                    case "roleSelections" -> snapshot.roleSelections =
+                            readList(parser, RoleSelectionRef.class);
+                    case "entities" -> readEntities(parser, entities, file);
+                    case "loadedDeclarations" -> snapshot.loadedDeclarations =
+                            readList(parser, LoadedDeclaration.class);
+                    case "graphDiscovery" -> snapshot.graphDiscovery = readValue(
+                            parser, datasource.graph.GraphDiscoveryState.class);
+                    case "selfReferences" -> snapshot.selfReferences = readValue(
+                            parser, wikidata.explore.transform.SelfReferenceLedger.class);
+                    case "fieldGraph" -> snapshot.fieldGraph =
+                            readValue(parser, SnapshotFieldGraph.class);
+                    default -> parser.skipChildren();
+                }
+                present.add(name);
+            }
+        }
+        if (!present.containsAll(java.util.Set.of(
+                "entities", "roots", "groupRoots", "groupRootBindings", "fieldGraph"))) {
+            throw unsupportedSnapshot(file);
+        }
+        return new StreamedSnapshot(snapshot, entities);
+    }
+
+    private <T> T readValue(com.fasterxml.jackson.core.JsonParser parser, Class<T> type)
+            throws IOException {
+        if (parser.currentToken() == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
+            return null;
+        }
+        return mapper.readValue(parser, type);
+    }
+
+    private <T> List<T> readList(
+            com.fasterxml.jackson.core.JsonParser parser, Class<T> elementType)
+            throws IOException {
+        if (parser.currentToken() == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
+            return new ArrayList<>();
+        }
+        com.fasterxml.jackson.databind.JavaType type = mapper.getTypeFactory()
+                .constructCollectionType(ArrayList.class, elementType);
+        List<T> value = mapper.readValue(parser, type);
+        return value == null ? new ArrayList<>() : value;
+    }
+
+    /** Reads the default-typed List wrapper and releases every Entity DTO immediately. */
+    private void readEntities(
+            com.fasterxml.jackson.core.JsonParser parser,
+            Map<String, WikidataDynamicObject> byKey,
+            File file) throws IOException {
+        if (parser.currentToken() != com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+            throw unsupportedSnapshot(file);
+        }
+        com.fasterxml.jackson.core.JsonToken token = parser.nextToken();
+        boolean typedWrapper = token == com.fasterxml.jackson.core.JsonToken.VALUE_STRING;
+        if (typedWrapper) {
+            if (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+                throw unsupportedSnapshot(file);
+            }
+            token = parser.nextToken();
+        }
+        while (token != com.fasterxml.jackson.core.JsonToken.END_ARRAY) {
+            if (token != com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                throw unsupportedSnapshot(file);
+            }
+            Entity entity = mapper.readValue(parser, Entity.class);
+            WikidataDynamicObject shell = shell(entity);
+            byKey.put(compositeKey(entity.typeKey, entity.id), shell);
+            token = parser.nextToken();
+        }
+        if (typedWrapper
+                && parser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY) {
+            throw unsupportedSnapshot(file);
+        }
+    }
+
+    private static IOException unsupportedSnapshot(File file) {
+        return new IOException("Unsupported snapshot format; regenerate " + file);
+    }
+
+    private record StreamedSnapshot(
+            FlatSnapshot metadata, Map<String, WikidataDynamicObject> entities) { }
 
     private static Map<String, List<WikidataDynamicObject>> resolveRoleSelections(
             FlatSnapshot snapshot, Map<String, WikidataDynamicObject> entities)
@@ -755,46 +872,44 @@ public class WikidataDynamicObjectJsonStore {
     }
 
 
-    private Map<String, WikidataDynamicObject> buildEntities(FlatSnapshot snapshot) {
-        // Build shells first so refs (including cycles) resolve to one instance per
-        // ⟨type, qid⟩; carry the persisted type + typeKey so multi-class snapshots and the
-        // identity split round-trip.
-        Map<String, WikidataDynamicObject> byKey = new LinkedHashMap<>();
-        for (Entity e : snapshot.entities) {
-            WikidataDynamicObject o = new WikidataDynamicObject(e.id, e.name);
-            if (e.type != null && !e.type.isBlank()) {
-                o.type(e.type);
-            }
-            o.directClasses(e.classes);
-            String concreteType = mostSpecificClass(e.classes, snapshot.fieldGraph);
-            if (concreteType != null) o.type(concreteType);
-            if (e.typeKey != null && !e.typeKey.isBlank()) {
-                o.typeKey(e.typeKey);
-            }
-            o.referenceLabel(e.referenceLabel);
-            o.aliases(e.aliases);
-            o.wikidataStatementSources(e.wikidataStatements);
-            if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
-                o.categoryMemberships(categoryMemberships(e));
-            }
-            if (e.infoboxAnswered || e.wikipediaInfoboxDocument != null) {
-                o.infoboxParameters(infoboxParameters(e));
-            }
-            e.fieldStatus.forEach((field, token) -> {
-                FieldStatus status = FieldStatus.fromStored(token);
-                if (status != null) o.fieldStatus(field, status);
-            });
-            byKey.put(compositeKey(e.typeKey, e.id), o);
+    /** Creates the live identity object while the streamed DTO is still in hand. */
+    private static WikidataDynamicObject shell(Entity e) {
+        WikidataDynamicObject object = new WikidataDynamicObject(e.id, e.name);
+        if (e.type != null && !e.type.isBlank()) object.type(e.type);
+        object.directClasses(e.classes);
+        if (e.typeKey != null && !e.typeKey.isBlank()) object.typeKey(e.typeKey);
+        object.referenceLabel(e.referenceLabel);
+        object.aliases(e.aliases);
+        object.wikidataStatementSources(e.wikidataStatements);
+        if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
+            object.categoryMemberships(categoryMemberships(e));
+        }
+        if (e.infoboxAnswered || e.wikipediaInfoboxDocument != null) {
+            object.infoboxParameters(infoboxParameters(e));
+        }
+        e.fieldStatus.forEach((field, token) -> {
+            FieldStatus status = FieldStatus.fromStored(token);
+            if (status != null) object.fieldStatus(field, status);
+        });
+        // These encoded values are the one retained representation of the fields.
+        // Once every shell exists, finishEntities replaces Refs in place.
+        object.dynamicFields().putAll(e.fields);
+        return object;
+    }
+
+    /** Resolves the encoded values after all identities are known, including cycles. */
+    private void finishEntities(
+            Map<String, WikidataDynamicObject> byKey, SnapshotFieldGraph fieldGraph) {
+        for (WikidataDynamicObject object : byKey.values()) {
+            String concreteType = mostSpecificClass(
+                    object.directClassNames(), fieldGraph);
+            if (concreteType != null) object.type(concreteType);
         }
         Map<String, WikidataDynamicObject> byQidSingle = uniqueByQid(byKey);
-        for (Entity e : snapshot.entities) {
-            WikidataDynamicObject o = byKey.get(compositeKey(e.typeKey, e.id));
-            for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
-                o.dynamicFields().put(entry.getKey(),
-                        decode(entry.getValue(), byKey, byQidSingle));
-            }
+        for (WikidataDynamicObject object : byKey.values()) {
+            object.dynamicFields().replaceAll((field, value) ->
+                    decode(value, byKey, byQidSingle));
         }
-        return byKey;
     }
 
     private static List<datasource.evidence.CategoryMembership> categoryMemberships(Entity e) {
