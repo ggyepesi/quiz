@@ -619,7 +619,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     int unresolvedKindEvidence = unresolvedKindQids.size();
                     if (unresolvedKindEvidence > 0) {
                         partialPhase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
-                                unresolvedKindEvidence + " role member(s) unavailable");
+                                unresolvedKindEvidence
+                                        + " entity-kind referent(s) unavailable");
                     }
                     if (!qualityWarnings.isEmpty()) {
                         summary.append("\nPARTIAL\t")

@@ -19,6 +19,40 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentKindClassifierTest {
+    @Test void aDirectEvidenceKindFieldNeedsEvidenceWithoutARepresentationRule() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        model.rootClass(holding);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "a predecessor");
+        WikidataDynamicObject office = new WikidataDynamicObject("Q2", "an office");
+        WikidataDynamicObject first = new WikidataDynamicObject("Q1$stmt", "first");
+        first.type("OfficeHolding");
+        first.put("predecessor", human);
+        WikidataDynamicObject second = new WikidataDynamicObject("Q2$stmt", "second");
+        second.type("OfficeHolding");
+        second.put("predecessor", office);
+        List<WikidataDynamicObject> pool = List.of(first, second);
+
+        assertEquals(0, ReferentClassStamp.apply(model, pool),
+                "the field declaration nominates candidates; it does not prove Person");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "a predecessor", Map.of("P31", List.of("Q5")))
+                .entity("Q2", "an office", Map.of("P31", List.of("Q4164871")));
+
+        var result = ReferentKindClassifier.apply(model, pool, api, null);
+
+        assertEquals(1, result.classified());
+        assertTrue(human.directClassNames().contains("Person"));
+        assertTrue(!office.directClassNames().contains("Person"),
+                "a value in a Person field does not become Person when its evidence "
+                        + "is not human: " + office.directClassNames());
+    }
+
     @Test void aLocalSubclassUsesItsImportedBasesAdmission() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel event = new GeneratedClassModel("Event");

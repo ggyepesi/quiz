@@ -87,6 +87,18 @@ public final class EntityRepresentations {
     public static java.util.List<Admission> admissions(GeneratedProjectModel model) {
         if (model == null) return java.util.List.of();
         java.util.LinkedHashMap<String, Admission> found = new java.util.LinkedHashMap<>();
+        // An evidence rule defines a kind whether or not that kind also happens to be
+        // the target of a contextual role -> representation rule. A field declared as
+        // Person is itself a population on which Person's P31 admission is meaningful;
+        // requiring an unrelated PositionHolder -> Person rule made the same model fact
+        // mean two different things in two projects.
+        for (GeneratedClassModel candidate : model.classes()) {
+            EntityKindRule evidence = MembershipPattern.kindRule(candidate, model);
+            if (candidate != null && evidence != null) {
+                found.putIfAbsent(candidate.className(),
+                        new Admission(candidate.className(), evidence));
+            }
+        }
         for (EntityRepresentationRule representation : model.entityRepresentationRules()) {
             if (representation == null || !representation.isConfigured()) continue;
             GeneratedClassModel target = model.resolveClass(

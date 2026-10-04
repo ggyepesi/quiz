@@ -148,6 +148,73 @@ public final class FieldExpectations {
         return coverage(compiledExpectations(project), pool, null);
     }
 
+    /**
+     * The expectation audit after every later finalization prune has settled.
+     *
+     * <p>EXPECTED describes only records that will actually be served. REQUIRED also
+     * retains the missing records that this rule itself removed, because they are the
+     * evidence for its action. Records removed later by another rule belong to that
+     * rule and must not remain in this coverage report.</p>
+     */
+    public static List<FieldCoverage> settledCoverage(
+            CompiledProjectModel project,
+            Collection<WikidataDynamicObject> settledPool,
+            Result applied,
+            GenerationLog log) {
+        if (project == null || settledPool == null) return List.of();
+        return settledCoverage(inspect(project, settledPool), applied, log);
+    }
+
+    /** Raw-model counterpart used by planning/tests before model compilation. */
+    public static List<FieldCoverage> settledCoverage(
+            GeneratedProjectModel project,
+            Collection<WikidataDynamicObject> settledPool,
+            Result applied,
+            GenerationLog log) {
+        if (project == null || settledPool == null) return List.of();
+        return settledCoverage(inspect(project, settledPool), applied, log);
+    }
+
+    private static List<FieldCoverage> settledCoverage(
+            List<FieldCoverage> live, Result applied, GenerationLog log) {
+        MapKeyedCoverage before = new MapKeyedCoverage(
+                applied == null ? List.of() : applied.coverage());
+        List<FieldCoverage> settled = new ArrayList<>();
+        for (FieldCoverage current : live) {
+            FieldCoverage original = before.get(current.className(), current.fieldName());
+            if (current.level() == FieldExpectation.REQUIRED && original != null) {
+                List<WikidataDynamicObject> removedByExpectation =
+                        original.missingInstances();
+                settled.add(new FieldCoverage(current.className(), current.fieldName(),
+                        current.level(), current.total() + removedByExpectation.size(),
+                        current.present(), removedByExpectation));
+            } else {
+                settled.add(current);
+            }
+        }
+        logCoverage(settled, log);
+        return List.copyOf(settled);
+    }
+
+    private static final class MapKeyedCoverage {
+        private final java.util.Map<String, FieldCoverage> byField =
+                new java.util.LinkedHashMap<>();
+
+        MapKeyedCoverage(Collection<FieldCoverage> coverage) {
+            if (coverage != null) for (FieldCoverage field : coverage) {
+                if (field != null) byField.put(key(field.className(), field.fieldName()), field);
+            }
+        }
+
+        FieldCoverage get(String className, String fieldName) {
+            return byField.get(key(className, fieldName));
+        }
+
+        private static String key(String className, String fieldName) {
+            return String.valueOf(className) + "\u0000" + String.valueOf(fieldName);
+        }
+    }
+
     private static Result apply(
             List<Expected> expectations,
             Collection<WikidataDynamicObject> pool,
@@ -197,15 +264,21 @@ public final class FieldExpectations {
             }
             coverage.add(new FieldCoverage(
                     e.className(), e.fieldName(), e.level(), total, present, missing));
-            if (log != null) {
-                log.message("Expectation " + e.className() + "." + e.fieldName()
-                        + " (" + e.level() + "): " + present + "/" + total
-                        + " present, " + missing.size() + " missing"
-                        + (e.level() == FieldExpectation.REQUIRED ? " → dropped"
-                                : " (kept — see the present/missing facet)") + "\n");
-            }
         }
+        logCoverage(coverage, log);
         return coverage;
+    }
+
+    private static void logCoverage(
+            Collection<FieldCoverage> coverage, GenerationLog log) {
+        if (log == null || coverage == null) return;
+        for (FieldCoverage field : coverage) {
+            log.message("Expectation " + field.className() + "." + field.fieldName()
+                    + " (" + field.level() + "): " + field.present() + "/"
+                    + field.total() + " present, " + field.missing() + " missing"
+                    + (field.level() == FieldExpectation.REQUIRED ? " → dropped"
+                            : " (kept — see the present/missing facet)") + "\n");
+        }
     }
 
     private static boolean isEmpty(Object v) {

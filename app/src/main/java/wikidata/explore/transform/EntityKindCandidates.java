@@ -25,7 +25,7 @@ final class EntityKindCandidates {
                 Set<String> candidateQids,
                 Map<String, Set<String>> membersByRoleClass,
                 Map<String, WikidataDynamicObject> objectsByQid,
-                int allRoleMembers) {
+                int allPotentialCandidates) {
         boolean eligible(String qid, EntityRepresentations.Admission admission) {
             return admission != null && qidsByKindClass
                     .getOrDefault(admission.className(), Set.of()).contains(qid);
@@ -89,6 +89,7 @@ final class EntityKindCandidates {
             byKind.computeIfAbsent(direct.getKey(), ignored -> new LinkedHashSet<>())
                     .addAll(direct.getValue());
             candidates.addAll(direct.getValue());
+            all.addAll(direct.getValue());
         }
         Map<String, Set<String>> frozen = new LinkedHashMap<>();
         byKind.forEach((name, qids) -> frozen.put(name, Set.copyOf(qids)));

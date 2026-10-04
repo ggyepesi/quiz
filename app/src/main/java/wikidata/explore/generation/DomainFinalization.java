@@ -54,6 +54,8 @@ public final class DomainFinalization {
         // a value rather than only a log line (#96).
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
                 new java.util.ArrayList<>();
+        wikidata.explore.transform.FieldExpectations.Result[] expectationResult =
+                new wikidata.explore.transform.FieldExpectations.Result[1];
         List<WikidataDynamicObject> suspectedSelfReferences = new java.util.ArrayList<>();
         List<GenerationStage> stages = List.of(
                 // Classification has settled before finalization. Apply the field's
@@ -90,9 +92,9 @@ public final class DomainFinalization {
                 }),
                 stage("expectations", "Apply field expectations", () -> {
                     var expectations = wikidata.explore.transform.FieldExpectations.apply(
-                            compiled, pool, log);
+                            compiled, pool, null);
+                    expectationResult[0] = expectations;
                     counts[3] = expectations.dropped().size();
-                    coverage.addAll(expectations.coverage());
                 }),
                 // AFTER every prune above, because each of them can remove a statement's
                 // subject or object and leave the statement behind. Before the owned-part
@@ -136,6 +138,12 @@ public final class DomainFinalization {
                         }
                     }
                 }),
+                // The action audit is measured once the pool is final. Keep records
+                // removed BY a REQUIRED expectation, but do not report records that a
+                // different, later integrity rule removed as if they were still served.
+                stage("expectation-coverage", "Measure final field expectations", () ->
+                        coverage.addAll(wikidata.explore.transform.FieldExpectations
+                                .settledCoverage(compiled, pool, expectationResult[0], log))),
                 stage("vocabularies", "Build descriptive vocabularies",
                         () -> wikidata.explore.transform.DescriptiveVocabularyBuild.apply(
                                 model, vocabularyEvidence == null ? pool

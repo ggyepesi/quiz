@@ -180,8 +180,9 @@ public final class SnapshotEntityKindClassifier {
             log.message("Snapshot entity-kind classification: " + classified
                     + " newly classified, " + unknown + " unknown (" + withoutEvidence
                     + " without stored evidence); " + candidates.size() + " of "
-                    + candidatePlan.allRoleMembers()
-                    + " role member(s) eligible from evidence producers.\n");
+                    + candidatePlan.allPotentialCandidates()
+                    + " entity referent(s) eligible from evidence producers or "
+                    + "direct evidence-kind fields.\n");
         }
         return new Result(classified, unknown, withoutEvidence, withoutEvidenceQids,
                 List.copyOf(newlyClassified));

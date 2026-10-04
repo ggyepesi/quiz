@@ -88,7 +88,7 @@ public final class ReferentKindClassifier {
         WikidataApiClient.PartialEntities partial;
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         try (GenerationLog.Group group = sink.group(
-                "Classify " + candidates.size() + " role member(s) from "
+                "Classify " + candidates.size() + " entity referent(s) from "
                         + evidencePids + " evidence property(ies); retain "
                         + properties.size() + " planned property slice(s) ("
                         + String.join(", ", properties) + ")")) {
