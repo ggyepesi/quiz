@@ -139,8 +139,9 @@ public final class WikidataComputedFieldAcquisition {
             WikidataSparqlClient client, GenerationLog log,
             work.CancellationToken cancellation) throws Exception {
         List<String> qids = new ArrayList<>(targets.keySet());
-        Map<String, java.util.Set<String>> sources = new LinkedHashMap<>();
-        List<batch.WorkUnit<List<InheritedSource>>> units = new ArrayList<>();
+        Map<String, java.util.BitSet> sourcesByAncestor = new LinkedHashMap<>();
+        Map<String, Integer> sourceIds = new LinkedHashMap<>();
+        List<batch.WorkUnit<InheritedEdges>> units = new ArrayList<>();
         for (int offset = 0; offset < qids.size(); offset += BATCH) {
             List<String> batch = qids.subList(offset, Math.min(offset + BATCH, qids.size()));
             units.add(inheritedUnit(List.copyOf(batch), spec, client, field.name()));
@@ -149,15 +150,26 @@ public final class WikidataComputedFieldAcquisition {
                 + qids.size() + " instances from loaded-descendant batches of " + BATCH)) {
             batch.BatchPolicy policy = new batch.BatchPolicy(1, 4, 0L, false, 2);
             List<batch.WorkDescriptor> failed =
-                    new batch.BatchExecutor<List<InheritedSource>>(
+                    new batch.BatchExecutor<InheritedEdges>(
                             policy, group.batchProgress(),
                             wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
                             batch.BatchCheckpointStore.NONE, client.maxParallelRequests())
                     .runBestEffort(units, (descriptor, values) -> {
-                        for (InheritedSource value : values) {
-                            if (!targets.containsKey(value.ancestorQid())) continue;
-                            sources.computeIfAbsent(value.ancestorQid(), ignored ->
-                                    new java.util.LinkedHashSet<>()).add(value.sourceQid());
+                        for (Map.Entry<String, java.util.Set<String>> descendant
+                                : values.sourcesByDescendant().entrySet()) {
+                            java.util.Set<String> ancestors =
+                                    values.ancestorsByDescendant().getOrDefault(
+                                            descendant.getKey(), java.util.Set.of());
+                            for (String ancestor : ancestors) {
+                                if (!targets.containsKey(ancestor)) continue;
+                                java.util.BitSet sources = sourcesByAncestor.computeIfAbsent(
+                                        ancestor, ignored -> new java.util.BitSet());
+                                for (String source : descendant.getValue()) {
+                                    int sourceId = sourceIds.computeIfAbsent(source,
+                                            ignored -> sourceIds.size());
+                                    sources.set(sourceId);
+                                }
+                            }
                         }
                     });
             if (!failed.isEmpty()) {
@@ -169,12 +181,13 @@ public final class WikidataComputedFieldAcquisition {
         }
         for (Map.Entry<String, WikidataDynamicObject> target : targets.entrySet()) {
             target.getValue().put(field.name(),
-                    (long) sources.getOrDefault(target.getKey(), java.util.Set.of()).size());
+                    (long) sourcesByAncestor.getOrDefault(target.getKey(),
+                            new java.util.BitSet()).cardinality());
         }
         return targets.size();
     }
 
-    private static batch.WorkUnit<List<InheritedSource>> inheritedUnit(List<String> qids,
+    private static batch.WorkUnit<InheritedEdges> inheritedUnit(List<String> qids,
             WikidataDatasourceProvider.ComputedFieldSpec spec,
             WikidataSparqlClient client, String fieldName) {
         return new batch.WorkUnit<>() {
@@ -188,19 +201,27 @@ public final class WikidataComputedFieldAcquisition {
 
             @Override public String request() { return inheritedQuery(qids, spec); }
 
-            @Override public List<InheritedSource> execute() throws Exception {
-                List<InheritedSource> result = new ArrayList<>();
+            @Override public InheritedEdges execute() throws Exception {
+                Map<String, java.util.Set<String>> sources = new LinkedHashMap<>();
+                Map<String, java.util.Set<String>> ancestors = new LinkedHashMap<>();
                 for (WikidataBinding row : client.query(inheritedQuery(qids, spec))) {
+                    String descendant = qidFromUri(row.value("descendant"));
                     String ancestor = qidFromUri(row.value("entity"));
                     String source = qidFromUri(row.value("source"));
-                    if (ancestor != null && source != null) {
-                        result.add(new InheritedSource(ancestor, source));
+                    if (descendant == null) continue;
+                    if (source != null) {
+                        sources.computeIfAbsent(descendant, ignored ->
+                                new java.util.LinkedHashSet<>()).add(source);
+                    }
+                    if (ancestor != null) {
+                        ancestors.computeIfAbsent(descendant, ignored ->
+                                new java.util.LinkedHashSet<>()).add(ancestor);
                     }
                 }
-                return List.copyOf(result);
+                return new InheritedEdges(sources, ancestors);
             }
 
-            @Override public List<? extends batch.WorkUnit<List<InheritedSource>>> split() {
+            @Override public List<? extends batch.WorkUnit<InheritedEdges>> split() {
                 if (qids.size() < 2) return List.of();
                 int middle = qids.size() / 2;
                 return List.of(
@@ -216,13 +237,23 @@ public final class WikidataComputedFieldAcquisition {
             WikidataDatasourceProvider.ComputedFieldSpec spec) {
         String values = descendantQids.stream().filter(WikidataIds::isQid)
                 .map(qid -> "wd:" + qid).collect(java.util.stream.Collectors.joining(" "));
-        return "SELECT DISTINCT ?entity ?source WHERE { VALUES ?descendant { " + values
-                + " } ?source wdt:" + spec.propertyPid() + " ?descendant . "
-                + "?descendant wdt:P279+ ?entity . "
+        return "SELECT DISTINCT ?descendant ?entity ?source WHERE { "
+                + "VALUES ?descendant { " + values + " } { "
+                + "?source wdt:" + spec.propertyPid() + " ?descendant . } UNION { "
+                + "?descendant wdt:P279+ ?entity . } "
                 + "hint:Query hint:optimizer \"None\" . }";
     }
 
-    private record InheritedSource(String ancestorQid, String sourceQid) { }
+    /**
+     * The two sides of the inherited count deliberately remain separate. Joining them
+     * at WDQS materializes holder x ancestor rows: one observed 25-position batch
+     * returned 515,491 rows and exhausted the client heap when several responses were
+     * parsed concurrently. The union returns each edge once; the compact BitSets above
+     * perform the exact distinct-holder join after each bounded batch completes.
+     */
+    private record InheritedEdges(
+            Map<String, java.util.Set<String>> sourcesByDescendant,
+            Map<String, java.util.Set<String>> ancestorsByDescendant) { }
 
     private static batch.WorkUnit<Map<String, Long>> unit(List<String> qids,
             WikidataDatasourceProvider.ComputedFieldSpec spec,

@@ -44,11 +44,53 @@ class WikidataComputedFieldAcquisitionTest {
         assertTrue(query.contains("VALUES ?descendant { wd:Q11696 }"), query);
         assertTrue(query.contains("?source wdt:P39 ?descendant"), query);
         assertTrue(query.contains("?descendant wdt:P279+ ?entity"), query);
-        assertTrue(query.contains("SELECT DISTINCT ?entity ?source"), query);
+        assertTrue(query.contains("SELECT DISTINCT ?descendant ?entity ?source"), query);
+        assertTrue(query.contains("} UNION {"),
+                "holder and ancestor edges must not be multiplied at WDQS: " + query);
         assertTrue(query.contains("hint:Query hint:optimizer \"None\""), query);
         assertTrue(!query.contains("VALUES ?entity"),
                 "the endpoint must start from the bounded loaded descendants, not scan "
                         + "all holdings toward target ancestors");
+    }
+
+    @Test void inheritedHolderCountJoinsEdgesLocallyAndCountsSharedHolderOnce()
+            throws Exception {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var position = new wikidata.explore.model.GeneratedClassModel("Position");
+        position.addField("inheritedHolderCount", datasource.schema.FieldType.NUMBER,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        model.rootClass(position);
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue("Position",
+                        "inheritedHolderCount",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikidata",
+                        "inherited-incoming-relation-count", Map.of("property", "P39")));
+        var plan = datasource.api.SourceExecutionPlan.compile(
+                List.of(binding), datasource.Datasources.standard());
+        var first = position("Q101");
+        var second = position("Q102");
+        var ancestor = position("Q200");
+
+        try (var client = new wikidata.WikidataSparqlClient("test") {
+            @Override public List<wikidata.WikidataBinding> query(String sparql) {
+                return List.of(
+                        row("Q101", null, "Q900"),
+                        row("Q101", "Q200", null),
+                        row("Q102", null, "Q900"),
+                        row("Q102", null, "Q901"),
+                        row("Q102", "Q200", null));
+            }
+        }) {
+            WikidataComputedFieldAcquisition.apply(model,
+                    List.of(first, second, ancestor), plan, client,
+                    wikidata.explore.extract.GenerationLog.NOOP);
+        }
+
+        assertEquals(2L, ancestor.get("inheritedHolderCount"),
+                "one holder occupying two descendants must count once at the ancestor");
+        assertEquals(0L, first.get("inheritedHolderCount"));
+        assertEquals(0L, second.get("inheritedHolderCount"));
     }
 
     @Test void aFailedComputedFieldDoesNotPreventTheNextFieldFromRunning()
@@ -134,5 +176,24 @@ class WikidataComputedFieldAcquisitionTest {
                     wikidata.explore.extract.GenerationLog.NOOP);
         }
         assertEquals(2, maximum.get(), "the two 50-QID batches should overlap");
+    }
+
+    private static wikidata.explore.extract.WikidataDynamicObject position(String qid) {
+        var object = new wikidata.explore.extract.WikidataDynamicObject(qid, qid);
+        object.type("Position");
+        return object;
+    }
+
+    private static wikidata.WikidataBinding row(
+            String descendant, String ancestor, String source) {
+        Map<String, String> values = new java.util.LinkedHashMap<>();
+        values.put("descendant", "http://www.wikidata.org/entity/" + descendant);
+        if (ancestor != null) {
+            values.put("entity", "http://www.wikidata.org/entity/" + ancestor);
+        }
+        if (source != null) {
+            values.put("source", "http://www.wikidata.org/entity/" + source);
+        }
+        return new wikidata.WikidataBinding(values);
     }
 }
