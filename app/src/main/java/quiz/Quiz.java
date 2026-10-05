@@ -42,6 +42,9 @@ public abstract class Quiz extends Thread {
     protected final Map<List<Object>, Integer> correctAnswerUseCount = new HashMap<>();
     protected final Map<List<Object>, Integer> exhaustionUsage = new HashMap<>();
     protected final Set<List<Object>> exhaustedAnswers = new HashSet<>();
+    /** The answer keys each instance is the shown instance for — what marking an answer
+     *  used updates. Kept while indexing so a selection does not scan every answer. */
+    private final Map<Viewable, List<List<Object>>> answerKeysByInstance = new HashMap<>();
 
     protected int correctSelections = 0;
     protected int wrongSelections = 0;
@@ -199,7 +202,10 @@ public abstract class Quiz extends Thread {
                 queryViewables.putIfAbsent(qk, viewable);
             }
             for (List<Object> ak : answerKeys) {
-                answerViewables.putIfAbsent(ak, viewable);
+                if (answerViewables.putIfAbsent(ak, viewable) == null) {
+                    answerKeysByInstance.computeIfAbsent(viewable, ignored -> new ArrayList<>())
+                            .add(ak);
+                }
                 // The answer is correct once for every question alternative supplied
                 // by this instance, without retaining those repeated pairs.
                 correctAnswerUseCount.merge(ak, queryKeys.size(), Integer::sum);
@@ -272,15 +278,15 @@ public abstract class Quiz extends Thread {
     // Exhaustion helpers
     // -------------------------------------------------------------------------
 
+    /** Marks every answer key shown by {@code choice} as used once more. It scanned the
+     *  whole answer map on each selection; the keys of each instance are now indexed. */
     protected void markAnswerAsUsed(Viewable choice) {
-        for (Map.Entry<List<Object>, Viewable> e : answerViewables.entrySet()) {
-            if (e.getValue().equals(choice)) {
-                List<Object> key = e.getKey();
-                int used = exhaustionUsage.getOrDefault(key, 0) + 1;
-                exhaustionUsage.put(key, used);
-                int allowed = correctAnswerUseCount.getOrDefault(key, 1);
-                if (used >= allowed) exhaustedAnswers.add(key);
-            }
+        if (choice == null) return;
+        for (List<Object> key : answerKeysByInstance.getOrDefault(choice, List.of())) {
+            int used = exhaustionUsage.getOrDefault(key, 0) + 1;
+            exhaustionUsage.put(key, used);
+            int allowed = correctAnswerUseCount.getOrDefault(key, 1);
+            if (used >= allowed) exhaustedAnswers.add(key);
         }
     }
 

@@ -163,12 +163,14 @@ public class QuizListABCD extends Quiz {
         return quizOptions;
     }
 
-    private boolean isCorrectChoice(List<Object> questionKey, Viewable selected) {
+    boolean isCorrectChoice(List<Object> questionKey, Viewable selected) {
         List<List<Object>> correctKeys = answersToQuery.get(questionKey);
         if (correctKeys == null) return false;
         for (List<Object> key : correctKeys) {
             Viewable q = answerViewables.get(key);
-            if (q != null && q.getName().equals(selected.getName())) return true;
+            // The same instance, as marking it used asks — not the same name: two
+            // instances sharing a name would make a distractor count as correct.
+            if (q != null && q.equals(selected)) return true;
         }
         return false;
     }

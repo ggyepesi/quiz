@@ -90,13 +90,12 @@ public class QuizPairs extends Quiz {
             List<List<Object>> answers = answersToQuery.get(qKey);
             if (answers == null || answers.isEmpty()) continue;
 
-            // filter exhausted
-            List<List<Object>> available = new ArrayList<>();
-            for (List<Object> a : answers)
-                if (!exhaustedAnswers.contains(a)) available.add(a);
-            if (available.isEmpty()) continue;
-
-            List<Object> aKey = available.get(random.nextInt(available.size()));
+            // One not-yet-exhausted answer, chosen uniformly in one pass. Copying the
+            // available answers first cost the whole (possibly lazy Cartesian) answer
+            // list for every pair.
+            List<Object> aKey = quiz.data.FixedChoiceOptions.pickOne(
+                    answers, answer -> !exhaustedAnswers.contains(answer), random);
+            if (aKey == null) continue;
             Viewable q = queryViewables.get(qKey);
             Viewable a = answerViewables.get(aKey);
             if (q == null || a == null) continue;
