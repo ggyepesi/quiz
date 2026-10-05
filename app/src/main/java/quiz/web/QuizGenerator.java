@@ -1,6 +1,7 @@
 package quiz.web;
 
 import objectview.Viewable;
+import quiz.data.FixedChoiceOptions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -140,7 +141,8 @@ public final class QuizGenerator {
 
         for (int i = 0; i < count; i++) {
             Entry e = entries.get(i);
-            List<String> opts = options(e.answer(), e.exclude(), pool);
+            List<String> opts = FixedChoiceOptions.choose(
+                    List.of(e.answer()), e.exclude(), pool, OPTIONS, R);
             List<List<String>> optImages = null;
             if (hasImages) {
                 optImages = new ArrayList<>(opts.size());
@@ -193,28 +195,6 @@ public final class QuizGenerator {
             return fv.values();
         }
         return List.of();
-    }
-
-    private static List<String> options(
-            String correct, Set<String> exclude, List<String> pool) {
-        LinkedHashSet<String> opts = new LinkedHashSet<>();
-        opts.add(correct);
-
-        List<String> shuffled = new ArrayList<>(pool);
-        Collections.shuffle(shuffled, R);
-        for (String s : shuffled) {
-            if (opts.size() >= OPTIONS) {
-                break;
-            }
-            if (exclude.contains(s)) {
-                continue; // don't offer another correct value as a distractor
-            }
-            opts.add(s);
-        }
-
-        List<String> list = new ArrayList<>(opts);
-        Collections.shuffle(list, R);
-        return list;
     }
 
     private static String join(List<String> fields) {

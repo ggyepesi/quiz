@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ViewableKeyExtractorTest {
@@ -29,6 +30,24 @@ class ViewableKeyExtractorTest {
                 List.of("t1", "hu"),
                 List.of("t2", "en"),
                 List.of("t2", "hu")), extractor.combinations(item, config));
+    }
+
+    @Test
+    void cartesianKeysMaterializeOnlyTheRequestedCombination() {
+        Item item = new Item("one",
+                java.util.stream.IntStream.range(0, 1_000)
+                        .mapToObj(i -> "tag-" + i).toList(),
+                java.util.stream.IntStream.range(0, 1_000)
+                        .mapToObj(i -> "language-" + i).toList(),
+                null, Map.of());
+
+        List<List<Object>> combinations = extractor.combinations(
+                item, selected(Item.class, "tags", "languages"));
+
+        assertInstanceOf(ViewableKeyExtractor.LazyCartesianKeys.class, combinations);
+        assertEquals(1_000_000, combinations.size());
+        assertEquals(List.of("tag-0", "language-0"), combinations.getFirst());
+        assertEquals(List.of("tag-999", "language-999"), combinations.getLast());
     }
 
     @Test
@@ -64,6 +83,21 @@ class ViewableKeyExtractorTest {
         assertEquals("Dynamic", extractor.value(
                 item, objectview.field.ViewableContractFieldSet.DISPLAY_KEY));
         assertNull(extractor.value(item, "missing"));
+    }
+
+    @Test
+    void classlessSavedDomainConfigExtractsDynamicFields() {
+        DynamicViewable item = new DynamicViewable("q1", "Dynamic");
+        item.put("year", 1959);
+        ViewConfig config = new ViewConfig();
+        config.setAllFields(false);
+        config.addField(
+                objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                ViewConfig.leaf());
+        config.addField("year", ViewConfig.leaf());
+
+        assertEquals(List.of(List.of("Dynamic", 1959)),
+                extractor.combinations(item, config));
     }
 
     @Test

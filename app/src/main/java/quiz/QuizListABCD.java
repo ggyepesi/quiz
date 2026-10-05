@@ -3,6 +3,7 @@ package quiz;
 import objectview.Viewable;
 import objectview.viewconfig.ViewConfig;
 import quiz.model.QuizMode;
+import quiz.data.FixedChoiceOptions;
 import quiz.round.RoundProgress;
 import quiz.ui.AnswerPanelFactory;
 import quiz.ui.CardSelectionState;
@@ -15,7 +16,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
-import quiz.group.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 public class QuizListABCD extends Quiz {
 
@@ -28,7 +29,7 @@ public class QuizListABCD extends Quiz {
     public QuizListABCD(ViewConfig queryConfig,
                         ViewConfig answerConfig,
                         QuizAnswerType answerType,
-                        ViewableGroup group,
+                        ViewableGroup<?> group,
                         Map<String, ? extends Viewable> viewables) {
         super(queryConfig, answerConfig, group, viewables);
         this.mode = (answerType == QuizAnswerType.LIST)
@@ -113,15 +114,7 @@ public class QuizListABCD extends Quiz {
 
         } else {
             // -------- ABCD mode: 4 randomized options --------
-            List<List<Object>> corrects = answersToQuery.get(questionKey);
-            List<List<Object>> keys = pickFourOptions(corrects);
-
-            List<Viewable> quizOptions = new ArrayList<>();
-            for (List<Object> k : keys) {
-                if (exhaustedAnswers.contains(k)) continue;
-                Viewable q = answerViewables.get(k);
-                if (q != null) quizOptions.add(q);
-            }
+            List<Viewable> quizOptions = buildAnswerOptions(questionKey);
 
             JPanel answersPanel = panelFactory.createAnswerPanels(quizOptions, choice -> {
                 boolean correct = isCorrectChoice(questionKey, choice);
@@ -145,7 +138,10 @@ public class QuizListABCD extends Quiz {
     }
     // --- Helper logic ---
 
-    private List<Viewable> buildAnswerOptions(List<Object> questionKey) {
+    /** The one option-construction path for both List and ABCD. The returned set is
+     * final: rendering may mark choices but must not filter it afterwards, or a
+     * fixed-size round silently changes cardinality as exhaustion advances. */
+    List<Viewable> buildAnswerOptions(List<Object> questionKey) {
         List<List<Object>> correctAnswers = answersToQuery.get(questionKey);
         if (correctAnswers == null || correctAnswers.isEmpty()) return List.of();
 
@@ -155,7 +151,8 @@ public class QuizListABCD extends Quiz {
             candidateKeys = new ArrayList<>(answerViewables.keySet());
             Collections.shuffle(candidateKeys, random);
         } else {
-            candidateKeys = pickFourOptions(correctAnswers);
+            candidateKeys = FixedChoiceOptions.choose(
+                    correctAnswers, correctAnswers, answerViewables.keySet(), 4, random);
         }
 
         List<Viewable> quizOptions = new ArrayList<>();
@@ -164,23 +161,6 @@ public class QuizListABCD extends Quiz {
             if (q != null) quizOptions.add(q);
         }
         return quizOptions;
-    }
-
-    private List<List<Object>> pickFourOptions(List<List<Object>> correctAnswers) {
-        List<List<Object>> result = new ArrayList<>();
-        List<Object> correct = correctAnswers.get(random.nextInt(correctAnswers.size()));
-        result.add(correct);
-
-        List<List<Object>> allKeys = new ArrayList<>(answerViewables.keySet());
-        Collections.shuffle(allKeys, random);
-        for (List<Object> key : allKeys) {
-            if (correctAnswers.contains(key)) continue;
-            result.add(key);
-            if (result.size() >= 4) break;
-        }
-
-        Collections.shuffle(result, random);
-        return result;
     }
 
     private boolean isCorrectChoice(List<Object> questionKey, Viewable selected) {

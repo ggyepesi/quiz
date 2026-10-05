@@ -78,6 +78,10 @@ public final class DomainSaver implements DomainWriter {
         d.snapshotPath(file.getPath());
         d.types().addAll(types);
         d.rootClass(types.isEmpty() ? "" : types.iterator().next());
+        // A model's snapshot is local working data. Keep it loadable in TransformApp,
+        // but do not turn Save model into publishing a QuizFactory/web domain.
+        boolean served = backing == null || serves(backing.projectKind());
+        d.served(served);
         if (owner != null) {
             backing.writeProjectModel();
             d.modelPath(backing.modelFile().getPath());
@@ -100,7 +104,15 @@ public final class DomainSaver implements DomainWriter {
 
         return "Saved \"" + name + "\"  (" + members.size() + " members, types "
                 + types + ")\n" + file.getPath()
-                + "\nRegistered — now in the navigator and served by the web.";
+                + (served
+                        ? "\nRegistered — now in QuizFactory, the navigator, and the web."
+                        : "\nRegistered as model working data — loadable in TransformApp, "
+                                + "not offered by QuizFactory or the web.");
+    }
+
+    static boolean serves(
+            wikidata.explore.model.GeneratedProjectModel.ProjectKind kind) {
+        return kind == wikidata.explore.model.GeneratedProjectModel.ProjectKind.DOMAIN;
     }
 
     private static ProjectBacking backingFor(String name, DomainModel schema) {

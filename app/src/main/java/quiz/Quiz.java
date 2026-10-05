@@ -1,6 +1,7 @@
 package quiz;
 
 import objectview.Viewable;
+import objectview.field.FieldPath;
 import objectview.render.Card;
 
 import objectview.viewconfig.ViewConfig;
@@ -13,7 +14,7 @@ import java.awt.event.MouseListener;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import quiz.group.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 /**
  * Base quiz class — manages shared indexing, exhaustion counters, and UI utilities.
@@ -21,7 +22,7 @@ import quiz.group.ViewableGroup;
 public abstract class Quiz extends Thread {
     protected final ViewConfig queryConfig;
     protected final ViewConfig answerConfig;
-    protected final ViewableGroup group;
+    protected final ViewableGroup<?> group;
     protected final Map<String, ? extends Viewable> viewables;
 
     protected final Map<List<Object>, List<List<Object>>> answersToQuery = new LinkedHashMap<>();
@@ -50,7 +51,7 @@ public abstract class Quiz extends Thread {
 
     public Quiz(ViewConfig queryConfig,
                 ViewConfig answerConfig,
-                ViewableGroup group,
+                ViewableGroup<?> group,
                 Map<String, ? extends Viewable> viewables) {
         this.queryConfig = queryConfig == null ? new ViewConfig() : queryConfig;
         this.answerConfig = answerConfig == null ? new ViewConfig() : answerConfig;
@@ -73,10 +74,49 @@ public abstract class Quiz extends Thread {
     }
 
     public String prepareQuiz() {
-        if (group.getMembers().size() < 2) {
+        int selectedItems = group == null
+                ? viewables.size() : group.getMembers().size();
+        if (selectedItems < 2) {
             return "Quiz needs at least 2 Viewable items.";
         }
+        if (requiresDisjointQuestionAndAnswerFields()) {
+            Viewable sample = viewables.values().stream()
+                    .filter(Objects::nonNull)
+                    .filter(this::isInSelectedGroup)
+                    .findFirst().orElse(null);
+            String overlap = disjointFieldProblem(
+                    keyExtractor.paths(sample, queryConfig),
+                    keyExtractor.paths(sample, answerConfig));
+            if (overlap != null) return overlap;
+        }
+        if (answersToQuery.isEmpty()) {
+            return "No quiz items have values for every selected query and answer field. "
+                    + "Select fields that contain values in this class.";
+        }
+        if (queryViewables.size() < 2 || answerViewables.size() < 2) {
+            return "Quiz needs at least 2 distinct usable query and answer values for "
+                    + "the selected fields.";
+        }
         return null;
+    }
+
+    /** List, ABCD and Pairing present independently authored question and answer
+     * fields. Quiz kinds with one presentation config override this. */
+    protected boolean requiresDisjointQuestionAndAnswerFields() {
+        return true;
+    }
+
+    static String disjointFieldProblem(
+            Collection<FieldPath> questionFields,
+            Collection<FieldPath> answerFields) {
+        if (questionFields == null || answerFields == null) return null;
+        LinkedHashSet<FieldPath> overlaps = new LinkedHashSet<>(questionFields);
+        overlaps.retainAll(new LinkedHashSet<>(answerFields));
+        if (overlaps.isEmpty()) return null;
+        String fields = overlaps.stream().map(FieldPath::dotted)
+                .collect(java.util.stream.Collectors.joining(", "));
+        return "Question and answer fields must be disjoint. Used on both sides: "
+                + fields + ".";
     }
 
     public void show() {
@@ -137,15 +177,83 @@ public abstract class Quiz extends Thread {
             List<List<Object>> answerKeys = keyExtractor.combinations(viewable, answerConfig);
             if (queryKeys.isEmpty() || answerKeys.isEmpty()) continue;
 
+            // Every question key produced by one instance has the same correct answers.
+            // Keep that list once and share it; appending every q x a pair made large,
+            // multi-valued domains retain the Cartesian product as separate list entries.
+            List<List<Object>> sharedAnswers = answerKeys;
             for (List<Object> qk : queryKeys) {
-                for (List<Object> ak : answerKeys) {
-                    answersToQuery.computeIfAbsent(qk, k -> new ArrayList<>()).add(ak);
-                    queryViewables.putIfAbsent(qk, viewable);
-                    answerViewables.putIfAbsent(ak, viewable);
-                    // count occurrences of correct usage
-                    correctAnswerUseCount.merge(ak, 1, Integer::sum);
+                List<List<Object>> previous = answersToQuery.putIfAbsent(
+                        qk, sharedAnswers);
+                if (previous != null) {
+                    // Equal question values from different instances are one question
+                    // with all of their answers. Expand only that actual collision.
+                    CorrectAnswerBucket bucket;
+                    if (previous instanceof CorrectAnswerBucket existing) {
+                        bucket = existing;
+                    } else {
+                        bucket = new CorrectAnswerBucket(previous);
+                        answersToQuery.put(qk, bucket);
+                    }
+                    bucket.add(sharedAnswers);
                 }
+                queryViewables.putIfAbsent(qk, viewable);
             }
+            for (List<Object> ak : answerKeys) {
+                answerViewables.putIfAbsent(ak, viewable);
+                // The answer is correct once for every question alternative supplied
+                // by this instance, without retaining those repeated pairs.
+                correctAnswerUseCount.merge(ak, queryKeys.size(), Integer::sum);
+            }
+        }
+    }
+
+    /** Lazy concatenation used only when several instances have the same question
+     * value. The ordinary case keeps sharing one lazy Cartesian answer view. */
+    static final class CorrectAnswerBucket extends AbstractList<List<Object>> {
+        private final List<List<List<Object>>> segments = new ArrayList<>();
+        private int size;
+
+        CorrectAnswerBucket(List<List<Object>> first) {
+            add(first);
+        }
+
+        void add(List<List<Object>> segment) {
+            if (segment == null || segment.isEmpty()) return;
+            segments.add(segment);
+            size = Math.addExact(size, segment.size());
+        }
+
+        @Override public int size() {
+            return size;
+        }
+
+        @Override public List<Object> get(int index) {
+            Objects.checkIndex(index, size);
+            int remaining = index;
+            for (List<List<Object>> segment : segments) {
+                if (remaining < segment.size()) return segment.get(remaining);
+                remaining -= segment.size();
+            }
+            throw new IndexOutOfBoundsException(index);
+        }
+
+        @Override public Iterator<List<Object>> iterator() {
+            Iterator<List<List<Object>>> outer = segments.iterator();
+            return new Iterator<>() {
+                private Iterator<List<Object>> inner = Collections.emptyIterator();
+
+                @Override public boolean hasNext() {
+                    while (!inner.hasNext() && outer.hasNext()) {
+                        inner = outer.next().iterator();
+                    }
+                    return inner.hasNext();
+                }
+
+                @Override public List<Object> next() {
+                    if (!hasNext()) throw new NoSuchElementException();
+                    return inner.next();
+                }
+            };
         }
     }
 

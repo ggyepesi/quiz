@@ -14,7 +14,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
-import quiz.group.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 public class QuizSixDegrees extends Quiz {
 
@@ -37,9 +37,14 @@ public class QuizSixDegrees extends Quiz {
     private int revealedEdges = 0;
 
     public QuizSixDegrees(ViewConfig viewConfig,
-                          ViewableGroup group,
+                          ViewableGroup<?> group,
                           Map<String, ? extends Viewable> viewables) {
         super(viewConfig, viewConfig, group, viewables);
+    }
+
+    @Override
+    protected boolean requiresDisjointQuestionAndAnswerFields() {
+        return false;
     }
 
     @Override

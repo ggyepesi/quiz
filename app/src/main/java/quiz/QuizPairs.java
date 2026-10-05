@@ -14,7 +14,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
-import quiz.group.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 /** Side‑by‑side pairing quiz with exhaustion awareness. */
 public class QuizPairs extends Quiz {
@@ -26,7 +26,7 @@ public class QuizPairs extends Quiz {
 
     public QuizPairs(ViewConfig queryConfig,
                      ViewConfig answerConfig,
-                     ViewableGroup group,
+                     ViewableGroup<?> group,
                      Map<String, ? extends Viewable> viewables) {
         super(queryConfig, answerConfig, group, viewables);
     }

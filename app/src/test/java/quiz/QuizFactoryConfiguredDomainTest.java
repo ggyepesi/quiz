@@ -1,0 +1,134 @@
+package quiz;
+
+import domain.DelegatingDomainModel;
+import domain.DomainModel;
+import objectview.Viewable;
+import objectview.ViewableAdapter;
+import objectview.field.FieldPath;
+import objectview.viewconfig.DomainGroupRoot;
+import org.junit.jupiter.api.Test;
+import quiz.data.ViewableKeyExtractor;
+import quiz.transform.ui.ReflectionDomain;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** The selected served class, not a Java constant in QuizFactory, owns the quiz's
+ * instances, fields and saved grouping. */
+class QuizFactoryConfiguredDomainTest {
+
+    static final class Person extends ViewableAdapter {
+        final String label;
+        final String occupation;
+        Person(String label, String occupation) {
+            this.label = label;
+            this.occupation = occupation;
+        }
+        @Override public String getIdentifier() { return label; }
+        @Override public String getDisplayName() { return label; }
+    }
+
+    static final class Office extends ViewableAdapter {
+        final String label;
+        final int holderCount;
+        Office(String label, int holderCount) {
+            this.label = label;
+            this.holderCount = holderCount;
+        }
+        @Override public String getIdentifier() { return label; }
+        @Override public String getDisplayName() { return label; }
+    }
+
+    @Test void servedClassDrivesInstancesGroupAndDynamicFieldRows() {
+        Person person = new Person("Charles", "king");
+        Office office = new Office("Apostolic King of Hungary", 53);
+        quiz.group.ViewableGroup offices = new quiz.group.ViewableGroup("Offices");
+        offices.addMember(office, false);
+        DomainModel domain = domain(List.of(person, office), offices);
+
+        assertEquals(List.of(
+                        new QuizFactory.ServedClass("Person", 1),
+                        new QuizFactory.ServedClass("Office", 1)),
+                QuizFactory.servedClasses(domain));
+
+        QuizFactory.QuizSource people = QuizFactory.sourceFor(domain, "Person");
+        assertEquals(List.of(person), people.instances());
+        assertEquals(List.of("Charles"), people.viewables().keySet().stream().toList());
+        assertFalse(people.configuredGrouping());
+        assertEquals("All Person", people.root().getDisplayName());
+        assertEquals("Categorize is unavailable: class \"Person\" has no saved group root.",
+                QuizFactory.quizTypeUnavailableReason(
+                        QuizAnswerType.CATEGORIZE, "Person", false));
+        assertNull(QuizFactory.quizTypeUnavailableReason(
+                QuizAnswerType.ABCD, "Person", false));
+
+        QuizFactory.QuizSource officeSource = QuizFactory.sourceFor(domain, "Office");
+        assertEquals(List.of(office), officeSource.instances());
+        assertTrue(officeSource.configuredGrouping());
+        assertSame(offices, officeSource.root());
+
+        var editor = QuizFactory.fieldEditor(domain, "Office", false);
+        assertEquals(List.of(FieldPath.of("@view:display"),
+                        FieldPath.of("label"), FieldPath.of("holderCount")),
+                editor.selectedFieldPaths());
+        var queryConfig = editor.getConfig();
+        assertFalse(queryConfig.isThumb());
+        assertNull(queryConfig.getCls(),
+                "saved-domain field configs do not depend on a generated Java class");
+        assertEquals(List.of(List.of(
+                        "Apostolic King of Hungary",
+                        "Apostolic King of Hungary",
+                        53)),
+                new ViewableKeyExtractor().combinations(office, queryConfig));
+        assertTrue(QuizFactory.fieldEditor(domain, "Office", true)
+                .getConfig().isThumb());
+    }
+
+    @Test void aClassOutsideTheServedContractCannotBeOpenedAsAQuizSource() {
+        DomainModel domain = domain(
+                List.of(new Person("Charles", "king"), new Office("Office", 1)),
+                null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> QuizFactory.sourceFor(domain, "Name"));
+    }
+
+    @Test void onlyQuizKindsWithIndependentSidesRequireDisjointFields() {
+        assertTrue(QuizAnswerType.LIST.requiresDisjointQuestionAndAnswerFields());
+        assertTrue(QuizAnswerType.ABCD.requiresDisjointQuestionAndAnswerFields());
+        assertTrue(QuizAnswerType.PAIRING.requiresDisjointQuestionAndAnswerFields());
+        assertFalse(QuizAnswerType.CATEGORIZE.requiresDisjointQuestionAndAnswerFields());
+        assertFalse(QuizAnswerType.SIXDEGREES.requiresDisjointQuestionAndAnswerFields());
+
+        List<FieldPath> name = List.of(FieldPath.of("name"));
+        assertEquals(
+                "Question and answer fields must be disjoint. Used on both sides: name.",
+                QuizFactory.fieldSelectionProblem(QuizAnswerType.ABCD, name, name));
+        assertNull(QuizFactory.fieldSelectionProblem(
+                QuizAnswerType.CATEGORIZE, name, name));
+        assertNull(QuizFactory.fieldSelectionProblem(
+                QuizAnswerType.SIXDEGREES, name, name));
+    }
+
+    private static DomainModel domain(
+            List<? extends Viewable> values,
+            quiz.group.ViewableGroup offices) {
+        ReflectionDomain reflected = new ReflectionDomain(values);
+        return new DelegatingDomainModel(reflected) {
+            @Override public List<String> servedTypes() {
+                return List.of("Person", "Office");
+            }
+
+            @Override public List<DomainGroupRoot> groupRootBindings() {
+                return offices == null ? List.of()
+                        : List.of(new DomainGroupRoot("Office", offices));
+            }
+        };
+    }
+}

@@ -1,6 +1,7 @@
 package quiz;
 
 import objectview.Viewable;
+import objectview.field.FieldPath;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
@@ -11,14 +12,14 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
-import quiz.group.ViewableGroup;
+import objectview.group.ViewableGroup;
 
 public class QuizCategorize extends Quiz {
     private static final String ASSIGNED_CATEGORY_LABEL = "quiz.categorize.assignedCategoryLabel";
 
     private static final int ITEMS_PER_ROUND = 8;
 
-    private final ViewableGroup categoryRoot;
+    private final ViewableGroup<?> categoryRoot;
 
     private final List<CategoryItem> remainingItems = new ArrayList<>();
     private final Map<Card, CategoryItem> itemByPanel =
@@ -30,10 +31,41 @@ public class QuizCategorize extends Quiz {
     private int roundSize = 0;
 
     public QuizCategorize(ViewConfig queryConfig,
-                          ViewableGroup categoryRoot,
+                          ViewableGroup<?> categoryRoot,
                           Map<String, ? extends Viewable> viewables) {
-        super(queryConfig, new ViewConfig(), categoryRoot, viewables);
+        super(withoutCategoryField(queryConfig, categoryRoot),
+                new ViewConfig(), categoryRoot, viewables);
         this.categoryRoot = categoryRoot;
+    }
+
+    /** A facet's field is the answer to Categorize, so it must never be printed on
+     * the question card. The editor applies this same rule visibly; this copy keeps
+     * direct/programmatic construction safe as well. */
+    static ViewConfig withoutCategoryField(
+            ViewConfig source, ViewableGroup<?> categoryRoot) {
+        ViewConfig result = source == null ? new ViewConfig() : source.copy();
+        quiz.transform.FacetGroup.fieldPathOf(categoryRoot)
+                .ifPresent(path -> exclude(result, path, 0));
+        return result;
+    }
+
+    private static void exclude(ViewConfig config, FieldPath path, int segment) {
+        if (config == null || path == null || segment >= path.size()) return;
+        if (config.isAllFields()) {
+            // Turn the inclusive shorthand into an explicit list before removing one
+            // reflected field. Dynamic QuizFactory editors already return an explicit
+            // config because their rows come from the loaded sample/schema.
+            config.initializeAllFields(true);
+            config.setAllFields(false);
+        }
+        String key = path.segments().get(segment);
+        if (segment == path.size() - 1) {
+            config.getFields().remove(key);
+            config.getRememberedFields().remove(key);
+            return;
+        }
+        ViewConfig child = config.getFieldConfig(key);
+        if (child != null) exclude(child, path, segment + 1);
     }
 
     @Override
@@ -50,9 +82,11 @@ public class QuizCategorize extends Quiz {
     @Override
     public String prepareQuiz() {
         remainingItems.clear();
-        System.out.println("VIEWABLES " + viewables.size() + ", " + categoryRoot.getName());
-        for (ViewableGroup category : categoryRoot.getChildren()) {
-            System.out.println("  " + category.getName() + ", " + category.getMembers().size());
+        System.out.println("VIEWABLES " + viewables.size() + ", "
+                + categoryRoot.getDisplayName());
+        for (ViewableGroup<?> category : categoryRoot.getChildren()) {
+            System.out.println("  " + category.getDisplayName() + ", "
+                    + category.getMembers().size());
             if (category.getMembers().size() == viewables.size()) continue;
             for (objectview.Viewable member : category.getMembers()) {
                 if (member instanceof Viewable q) {
@@ -189,8 +223,8 @@ public class QuizCategorize extends Quiz {
 
     private JPanel buildCategoriesPanel(List<CategoryItem> round) {
         JPanel panel = new JPanel(new GridBagLayout());
-        Set<ViewableGroup> categories = new TreeSet<>(
-                Comparator.comparing(ViewableGroup::getName));
+        Set<ViewableGroup<?>> categories = new TreeSet<>(
+                Comparator.comparing(ViewableGroup::getDisplayName));
 
         for (CategoryItem item : round) {
             categories.add(item.category);
@@ -208,8 +242,8 @@ public class QuizCategorize extends Quiz {
                         GridBagConstraints.HORIZONTAL,
                         new Insets(8, 8, 16, 8)));
 
-        for (ViewableGroup category : categories) {
-            JButton button = new JButton(category.getName());
+        for (ViewableGroup<?> category : categories) {
+            JButton button = new JButton(category.getDisplayName());
             button.setFont(button.getFont().deriveFont(Font.BOLD, 18f));
             button.setHorizontalAlignment(SwingConstants.LEFT);
 
@@ -248,7 +282,7 @@ public class QuizCategorize extends Quiz {
         card.repaint();
     }
 
-    private void chooseCategory(ViewableGroup chosen) {
+    private void chooseCategory(ViewableGroup<?> chosen) {
         if (selectedPanel == null) {
             return;
         }
@@ -274,13 +308,13 @@ public class QuizCategorize extends Quiz {
         }
     }
 
-    private void markCorrect(Card panel, ViewableGroup category) {
+    private void markCorrect(Card panel, ViewableGroup<?> category) {
         markCorrectTrial();
         panel.setOpaque(true);
         panel.setBackground(new Color(170, 255, 170));
         panel.setBorder(BorderFactory.createLineBorder(Color.GREEN.darker(), 4, true));
 
-        JLabel label = new JLabel("✓ " + category.getName());
+        JLabel label = new JLabel("✓ " + category.getDisplayName());
         label.setForeground(Color.GREEN.darker());
         label.setFont(label.getFont().deriveFont(Font.BOLD, 16f));
 
@@ -350,6 +384,7 @@ public class QuizCategorize extends Quiz {
         frame.repaint();
     }
 
-    private record CategoryItem(String key, Viewable viewable, ViewableGroup category) {
+    private record CategoryItem(
+            String key, Viewable viewable, ViewableGroup<?> category) {
     }
 }

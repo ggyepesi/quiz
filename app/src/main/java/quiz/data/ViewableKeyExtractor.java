@@ -1,21 +1,19 @@
 package quiz.data;
 
 import objectview.Viewable;
-import objectview.ViewableAdapter;
-import objectview.field.FieldSet;
+import objectview.field.FieldAccess;
 import objectview.field.FieldPath;
 import objectview.field.ViewableFieldPaths;
 import objectview.viewconfig.ViewConfig;
 
-import java.lang.reflect.Field;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
+import java.util.RandomAccess;
 
 /**
  * Converts a ViewConfig into field paths and extracts the corresponding key
@@ -29,8 +27,25 @@ public final class ViewableKeyExtractor {
                 .stream().map(ViewableFieldPaths.PathInfo::path).toList();
     }
 
+    /** Configured paths for the actual backing being quizzed. Explicit saved-domain
+     * paths come directly from the config; a sample is needed only for the classless
+     * all-fields shorthand, which cannot name fields by itself. */
+    public List<FieldPath> paths(Viewable viewable, ViewConfig config) {
+        if (config == null) return List.of();
+        List<FieldPath> configured = paths(config);
+        if (!configured.isEmpty() || config.getCls() != null || viewable == null) {
+            return configured;
+        }
+        return ViewableFieldPaths.collectFromSample(
+                        viewable, config, ViewableFieldPaths.ALL_FIELDS)
+                .stream().map(ViewableFieldPaths.PathInfo::path).toList();
+    }
+
     public List<List<Object>> combinations(Viewable viewable, ViewConfig config) {
-        return combinations(viewable, paths(config));
+        if (viewable == null || config == null) {
+            return List.of();
+        }
+        return combinations(viewable, paths(viewable, config));
     }
 
     public List<List<Object>> combinations(
@@ -49,9 +64,7 @@ public final class ViewableKeyExtractor {
             alternativesPerPath.add(alternatives);
         }
 
-        List<List<Object>> out = new ArrayList<>();
-        buildCartesianKeys(alternativesPerPath, 0, new ArrayList<>(), out);
-        return List.copyOf(out);
+        return new LazyCartesianKeys(alternativesPerPath);
     }
 
     /**
@@ -70,9 +83,7 @@ public final class ViewableKeyExtractor {
         if (viewable == null || path == null || path.isRoot()) {
             return null;
         }
-        return extractPathValueRecursive(
-                viewable, path.segments(), 0,
-                Collections.newSetFromMap(new IdentityHashMap<>()));
+        return FieldAccess.getPathValues(viewable, path);
     }
 
     public List<Object> alternatives(Viewable viewable, String dottedPath) {
@@ -87,74 +98,6 @@ public final class ViewableKeyExtractor {
         List<Object> out = new ArrayList<>();
         flattenAlternatives(raw, out);
         return out;
-    }
-
-    private Object extractPathValueRecursive(
-            Object current, List<String> path, int index, Set<Object> visited) {
-        if (current == null) {
-            return null;
-        }
-        if (index >= path.size()) {
-            return current;
-        }
-
-        if (current instanceof Collection<?> collection) {
-            List<Object> out = new ArrayList<>();
-            for (Object item : collection) {
-                Object extracted = extractPathValueRecursive(item, path, index, visited);
-                Object summarized = summarizeExtracted(extracted);
-                if (!isEmptyValue(summarized)) {
-                    out.add(summarized);
-                }
-            }
-            return out;
-        }
-
-        if (current instanceof Map<?, ?> map) {
-            Map<Object, Object> out = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                Object extracted = extractPathValueRecursive(
-                        entry.getValue(), path, index, visited);
-                Object summarized = summarizeExtracted(extracted);
-                if (!isEmptyValue(summarized)) {
-                    out.put(summarizeSimple(entry.getKey()), summarized);
-                }
-            }
-            return out;
-        }
-
-        if (current instanceof Viewable viewable) {
-            if (!visited.add(viewable)) {
-                return safeName(viewable);
-            }
-            try {
-                String part = path.get(index);
-                FieldSet fields = FieldSet.of(viewable);
-                Object next = fields.has(part) ? fields.read(part) : null;
-                return extractPathValueRecursive(next, path, index + 1, visited);
-            } finally {
-                visited.remove(viewable);
-            }
-        }
-
-        if (current instanceof objectview.utils.Addressable addressable) {
-            String part = path.get(index);
-            Object next = addressable.viewNames().contains(part)
-                    ? addressable.view(part) : null;
-            return extractPathValueRecursive(next, path, index + 1, visited);
-        }
-
-        Field field = ViewableAdapter.getField(current.getClass(), path.get(index));
-        if (field == null) {
-            return null;
-        }
-        try {
-            field.setAccessible(true);
-            return extractPathValueRecursive(
-                    field.get(current), path, index + 1, visited);
-        } catch (ReflectiveOperationException e) {
-            return null;
-        }
     }
 
     private void flattenAlternatives(Object value, List<Object> out) {
@@ -233,19 +176,42 @@ public final class ViewableKeyExtractor {
         return false;
     }
 
-    private static void buildCartesianKeys(
-            List<List<Object>> lists,
-            int index,
-            List<Object> current,
-            List<List<Object>> out) {
-        if (index == lists.size()) {
-            out.add(List.copyOf(current));
-            return;
+    /** Immutable random-access view of a Cartesian product. Like a virtualized card
+     * list, it retains the compact alternatives and materializes only the requested
+     * combination. */
+    static final class LazyCartesianKeys
+            extends AbstractList<List<Object>> implements RandomAccess {
+        private final List<List<Object>> alternatives;
+        private final int size;
+
+        LazyCartesianKeys(List<List<Object>> alternatives) {
+            this.alternatives = List.copyOf(alternatives);
+            long product = 1;
+            for (List<Object> values : alternatives) {
+                product = Math.multiplyExact(product, values.size());
+                if (product > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException(
+                            "Selected fields produce more than " + Integer.MAX_VALUE
+                                    + " value combinations for one instance.");
+                }
+            }
+            this.size = (int) product;
         }
-        for (Object value : lists.get(index)) {
-            current.add(value);
-            buildCartesianKeys(lists, index + 1, current, out);
-            current.removeLast();
+
+        @Override public int size() {
+            return size;
+        }
+
+        @Override public List<Object> get(int index) {
+            Objects.checkIndex(index, size);
+            Object[] key = new Object[alternatives.size()];
+            int remaining = index;
+            for (int field = alternatives.size() - 1; field >= 0; field--) {
+                List<Object> values = alternatives.get(field);
+                key[field] = values.get(remaining % values.size());
+                remaining /= values.size();
+            }
+            return List.of(key);
         }
     }
 

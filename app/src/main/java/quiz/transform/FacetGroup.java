@@ -3,11 +3,14 @@ package quiz.transform;
 import objectview.Viewable;
 import objectview.facet.Facet;
 import objectview.facet.FacetKey;
+import objectview.field.FieldPath;
+import objectview.group.ViewableGroup;
 import objectview.group.ViewableGroup.Role;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A computed group whose value-group children are (re)produced by partitioning its parent scope's
@@ -65,6 +68,30 @@ public final class FacetGroup extends EditableGroup implements ProducedGroup {
     /** The rule: the field this group buckets its members by. */
     public String field() {
         return field;
+    }
+
+    public FieldPath fieldPath() {
+        return FieldPath.parse(field);
+    }
+
+    /**
+     * The declared facet field of any live or snapshot-backed group. Persisted groups
+     * are rendering adapters rather than {@code FacetGroup} instances, so consumers
+     * ask the group's own saved rule fields instead of branching on its Java class.
+     */
+    public static Optional<FieldPath> fieldPathOf(ViewableGroup<?> group) {
+        if (group == null) return Optional.empty();
+        objectview.field.FieldSet fields = group.fields();
+        if (!"facet".equals(text(fields.read("producer")))) {
+            return Optional.empty();
+        }
+        String field = text(fields.read("facetField"));
+        return field.isBlank() ? Optional.empty()
+                : Optional.of(FieldPath.parse(field));
+    }
+
+    private static String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     @Override public String getDisplayName() {

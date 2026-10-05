@@ -40,6 +40,9 @@ class FacetGroupTest {
 
         assertEquals("City", fg.memberType());
         assertEquals("region", fg.field());
+        assertEquals(objectview.field.FieldPath.of("region"), fg.fieldPath());
+        assertEquals(java.util.Optional.of(objectview.field.FieldPath.of("region")),
+                FacetGroup.fieldPathOf(fg));
         assertEquals(3, fg.getMembers().size());
         assertEquals(List.of("Paris", "Berlin", "Tokyo"),
                 fg.getMembers().stream().map(Viewable::getDisplayName).toList(),

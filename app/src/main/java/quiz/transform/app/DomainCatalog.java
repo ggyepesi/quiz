@@ -17,23 +17,68 @@ import domain.DomainModel;
 
 /**
  * Assembles the {@link DomainEntry} catalog for the navigator from the saved Wikidata
- * datasets ({@link DatasetRegistry}). The hand-written domains (States, Oscars, …) are no
- * longer listed as live built-ins: once exported via "Save as domain" they are served from
- * their saved snapshots like every other dataset (their Java builders stay in QuizFactory
- * for re-export). The UI stays independent of this.
+ * datasets ({@link DatasetRegistry}). TransformApp additionally receives the hand-written
+ * domains (States, Oscars, …) as live conversion inputs. Product consumers call
+ * {@link #configured()} and see saved served snapshots only.
  */
 public final class DomainCatalog {
 
     private DomainCatalog() {}
 
+    /** Saved product domains available to QuizFactory and the web-facing tools.
+     * Live hand-written domains deliberately do not enter this list: TransformApp
+     * exposes those as conversion sources, while a quiz consumes the saved result. */
+    public static List<DomainEntry> configured() {
+        return registered(DatasetRegistry.load(), true);
+    }
+
     public static List<DomainEntry> all() {
+        DatasetRegistry registry = DatasetRegistry.load();
+        List<DomainEntry> out = new ArrayList<>(registered(registry, false));
+        java.util.Set<String> registeredNames = out.stream().map(DomainEntry::name)
+                .collect(java.util.stream.Collectors.toSet());
+
+        out.addAll(unregisteredProjects(dataset.DomainStorage.inDefaultLocation(),
+                registeredNames, DomainSaver::destination));
+
+        // Live hand-written domains remain available here as conversion inputs. They
+        // are not QuizFactory products until TransformApp saves their configured snapshot.
+        for (QuizFactory.BuiltInDomain b : QuizFactory.builtInDomains()) {
+            out.add(new DomainEntry(b.icon() + " " + b.name(), "built-in",
+                    "Load built-in domain \"" + b.name() + "\" from the running application.",
+                    () -> ReflectionDomain.of(b.views())));
+        }
+
+        return out;
+    }
+
+    /** Registry-backed entries. Package-visible overload lets the catalogue rule be
+     * forced without replacing the user's real datasets.json. */
+    static List<DomainEntry> registered(
+            DatasetRegistry registry, boolean servedOnly) {
         List<DomainEntry> out = new ArrayList<>();
-        List<DatasetRegistry.Dataset> saved = DatasetRegistry.load().datasets();
+        List<DatasetRegistry.Dataset> saved = registry == null
+                ? List.of() : registry.datasets().stream()
+                        .sorted(java.util.Comparator.comparing(
+                                DatasetRegistry.Dataset::isModelBacked).reversed())
+                        .toList();
         java.util.Set<DatasetRegistry.Dataset> consumed =
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
         for (DatasetRegistry.Dataset d : saved) {
             if (consumed.contains(d)) continue;
+            if (servedOnly && !d.served()) {
+                if (d.isModelBacked()) {
+                    saved.stream()
+                            .filter(candidate -> candidate != d
+                                    && !candidate.isModelBacked())
+                            .filter(candidate -> java.util.Objects.equals(
+                                    d.name(), candidate.name()))
+                            .forEach(consumed::add);
+                }
+                consumed.add(d);
+                continue;
+            }
             DatasetRegistry.Dataset snapshotOwner = d;
             DatasetRegistry.Dataset modelOwner = d.isModelBacked() ? d : null;
             if (modelOwner != null) {
@@ -52,7 +97,8 @@ public final class DomainCatalog {
                     consumed.add(transformed);
                 }
             }
-            File snap = new File(snapshotOwner.snapshotPath());
+            File snap = new File(snapshotOwner.snapshotPath() == null
+                    ? "" : snapshotOwner.snapshotPath());
             if (snap.isFile()) {
                 File model = new File(modelOwner == null ? "" : modelOwner.modelPath());
                 File selectedSnapshot = snap;
@@ -65,21 +111,6 @@ public final class DomainCatalog {
             }
             consumed.add(d);
         }
-
-        out.addAll(unregisteredProjects(dataset.DomainStorage.inDefaultLocation(),
-                out.stream().map(DomainEntry::name)
-                        .collect(java.util.stream.Collectors.toSet()),
-                DomainSaver::destination));
-
-        // Re-wired: list the hand-written domains as LIVE ReflectionDomains again, so each can
-        // be opened on the current code and re-exported via "Save as domain" — producing fresh
-        // snapshots that match the live field model (no stale-schema translation).
-        for (QuizFactory.BuiltInDomain b : QuizFactory.builtInDomains()) {
-            out.add(new DomainEntry(b.icon() + " " + b.name(), "built-in",
-                    "Load built-in domain \"" + b.name() + "\" from the running application.",
-                    () -> ReflectionDomain.of(b.views())));
-        }
-
         return out;
     }
 

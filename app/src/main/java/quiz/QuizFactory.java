@@ -1,38 +1,35 @@
 package quiz;
 
 import aux.Constants;
-import flag.SportTeam;
 import flag.SportTeams;
-import flag.State;
 import flag.States;
-import language.Language;
 import language.Languages;
-import mythology.Creature;
 import mythology.MythologyEntities;
-import nobel.NobelPrize;
 import nobel.NobelPrizes;
 import objectview.Viewable;
-import objectview.ViewableAdapter;
+import objectview.field.FieldPath;
+import objectview.group.ViewableGroup;
 import objectview.viewconfig.DomainViews;
 import objectview.viewconfig.ViewConfig;
-import oscar.OscarNomination;
 import oscar.OscarNominations;
-import presidents.President;
 import presidents.USPresidents;
 import objectview.media.ImageBlurrer;
 import objectview.render.GroupView;
 import objectview.viewconfig.ViewConfigEditor;
+import domain.DomainModel;
+import quiz.transform.app.DomainCatalog;
+import quiz.transform.ui.DomainEntry;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.prefs.Preferences;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
-import quiz.group.ViewableGroup;
 
 public class QuizFactory {
 
@@ -53,46 +50,51 @@ public class QuizFactory {
         // so it works from any entry point, not only those that load QuizFactory.)
     }
 
-    private record QuizOption(
-            String icon,
-            String name,
-            DomainViews views,
-            Class<? extends ViewableAdapter> cls
-    ) {}
-
-    private static final List<QuizOption> quizOptions = List.of(
-            new QuizOption("🐉", "Mythology", new MythologyEntities(), Creature.class),
-            new QuizOption("🏳️", "States", new States(), State.class),
-            new QuizOption("⚽", "Sport Teams", new SportTeams(), SportTeam.class),
-            new QuizOption("🏅", "Nobel Prizes", new NobelPrizes(), NobelPrize.class),
-            new QuizOption("🇺🇸", "US Presidents", new USPresidents(), President.class),
-            new QuizOption("🗣️", "Languages", new Languages(), Language.class),
-            new QuizOption("🗣️", "Oscars", new OscarNominations(), OscarNomination.class)
-    );
-
     /** A built-in Viewable domain (icon, name, builder) — exposed so the transform
-     *  domain navigator (and later the web server) can offer the same domains as
-     *  the quiz, alongside the generated Wikidata datasets. */
+     * domain navigator can load the live implementation for conversion. QuizFactory
+     * itself consumes only configured snapshots from {@link DomainCatalog#configured()}. */
     public record BuiltInDomain(String icon, String name, DomainViews views) {}
 
+    private static final List<BuiltInDomain> BUILT_IN_DOMAINS = List.of(
+            new BuiltInDomain("🐉", "Mythology", new MythologyEntities()),
+            new BuiltInDomain("🏳️", "States", new States()),
+            new BuiltInDomain("⚽", "Sport Teams", new SportTeams()),
+            new BuiltInDomain("🏅", "Nobel Prizes", new NobelPrizes()),
+            new BuiltInDomain("🇺🇸", "US Presidents", new USPresidents()),
+            new BuiltInDomain("🗣️", "Languages", new Languages()),
+            new BuiltInDomain("🎬", "Oscars", new OscarNominations())
+    );
+
     public static List<BuiltInDomain> builtInDomains() {
-        List<BuiltInDomain> out = new java.util.ArrayList<>();
-        for (QuizOption o : quizOptions) {
-            out.add(new BuiltInDomain(o.icon(), o.name(), o.views()));
-        }
-        return out;
+        return BUILT_IN_DOMAINS;
     }
 
-    private static final String PREF_LAST_QUIZ = "lastQuizIndex";
+    private static final String PREF_LAST_DOMAIN = "lastDomain";
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(QuizFactory.class);
 
-    private static Class<? extends ViewableAdapter> cls;
     private static JFrame quizFrame;
 
+    private final String domainName;
+    private final String type;
+    private final DomainModel domain;
+    private final boolean configuredGrouping;
     private final Map<String, ? extends Viewable> viewables;
     private final GroupView rootView;
-    private final DomainViews qvs;
+
+    record ServedClass(String name, int instances) {
+        @Override public String toString() {
+            return name + "  (" + instances + " instance"
+                    + (instances == 1 ? "" : "s") + ")";
+        }
+    }
+
+    record QuizSource(
+            String type,
+            List<Viewable> instances,
+            Map<String, Viewable> viewables,
+            ViewableGroup<?> root,
+            boolean configuredGrouping) {}
 
     public static void main(String[] args) {
         Constants.setFontSizeMultiplier(1.5f);
@@ -100,6 +102,7 @@ public class QuizFactory {
     }
 
     private static void showQuizSelector() {
+        List<DomainEntry> configured = DomainCatalog.configured();
         JFrame frame = new JFrame("Select Quiz Source");
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
 
@@ -109,10 +112,7 @@ public class QuizFactory {
         optionsPanel.setLayout(new BoxLayout(optionsPanel, BoxLayout.Y_AXIS));
         optionsPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        int lastIndex = PREFS.getInt(PREF_LAST_QUIZ, 0);
-        if (lastIndex < 0 || lastIndex >= quizOptions.size()) {
-            lastIndex = 0;
-        }
+        String lastDomain = PREFS.get(PREF_LAST_DOMAIN, "");
 
         java.awt.Font optionFont = new java.awt.Font(
                 java.awt.Font.SANS_SERIF,
@@ -120,9 +120,9 @@ public class QuizFactory {
                 22
         );
 
-        for (int i = 0; i < quizOptions.size(); i++) {
-            QuizOption option = quizOptions.get(i);
-            String label = option.icon() + "  " + option.name();
+        for (int i = 0; i < configured.size(); i++) {
+            DomainEntry option = configured.get(i);
+            String label = option.name();
             JRadioButton radioButton = new JRadioButton(label);
             radioButton.setFont(optionFont);
             radioButton.setActionCommand(String.valueOf(i));
@@ -131,15 +131,28 @@ public class QuizFactory {
             group.add(radioButton);
             optionsPanel.add(radioButton);
 
-            if (i == lastIndex) {
+            if (option.name().equals(lastDomain)
+                    || (lastDomain.isBlank() && i == 0)) {
                 radioButton.setSelected(true);
             }
+        }
+        if (!configured.isEmpty() && group.getSelection() == null) {
+            group.getElements().nextElement().setSelected(true);
+        }
+
+        if (configured.isEmpty()) {
+            JLabel empty = new JLabel("<html>No configured domain is available.<br>"
+                    + "Open a source in TransformApp, configure it, and Save domain."
+                    + "<br>QuizFactory reads "
+                    + escapeHtml(DatasetRegistry.defaultFile().getPath()) + ".</html>");
+            empty.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+            optionsPanel.add(empty);
         }
 
         JScrollPane optionsScrollPane = new JScrollPane(optionsPanel);
         optionsScrollPane.setPreferredSize(new Dimension(900, 420));
 
-        JPanel buttonPanel = getButtonPanel(optionFont, group);
+        JPanel buttonPanel = getButtonPanel(optionFont, group, configured, frame);
 
         frame.add(optionsScrollPane, BorderLayout.CENTER);
         frame.add(buttonPanel);
@@ -150,14 +163,6 @@ public class QuizFactory {
         frame.setLocationRelativeTo(null);
         frame.setResizable(true);
         frame.setVisible(true);
-    }
-
-    private JRadioButton optionButton(String text) {
-        JRadioButton b = new JRadioButton("<html><div style='width:700px;'>"
-                                                  + escapeHtml(text)
-                                                  + "</div></html>");
-        b.setVerticalAlignment(SwingConstants.TOP);
-        return b;
     }
 
     private static String escapeHtml(String s) {
@@ -172,9 +177,12 @@ public class QuizFactory {
                 .replace("\"", "&quot;");
     }
 
-    private static JPanel getButtonPanel(Font optionFont, ButtonGroup group) {
-        JButton startButton = new JButton("Start");
+    private static JPanel getButtonPanel(
+            Font optionFont, ButtonGroup group,
+            List<DomainEntry> configured, JFrame selectorFrame) {
+        JButton startButton = new JButton("Load selected domain");
         startButton.setFont(optionFont);
+        startButton.setEnabled(!configured.isEmpty());
 
         startButton.addActionListener(e -> {
             if (quizFrame != null && quizFrame.isDisplayable()) {
@@ -184,36 +192,51 @@ public class QuizFactory {
                 return;
             }
 
+            if (group.getSelection() == null) return;
             int index = Integer.parseInt(group.getSelection().getActionCommand());
-            PREFS.putInt(PREF_LAST_QUIZ, index);
+            DomainEntry selected = configured.get(index);
+            PREFS.put(PREF_LAST_DOMAIN, selected.name());
+            if (!quiz.ui.Dialogs.confirmPersistence(
+                    selectorFrame, "Load domain", selected.loadDescription())) return;
 
-            QuizOption selected = quizOptions.get(index);
-            cls = selected.cls();
-
-            startButton.setText("Starting...");
+            startButton.setText("Loading \"" + selected.name() + "\"…");
             startButton.setEnabled(false);
-
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    quizFrame = new QuizFactory(selected.views()).showQuizzes();
-
-                    startButton.setText("Show");
-
-                    quizFrame.addWindowListener(new WindowAdapter() {
-                        @Override
-                        public void windowClosed(WindowEvent e) {
-                            quizFrame = null;
-                            startButton.setText("Start");
-                            startButton.setEnabled(true);
-                        }
-                    });
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    startButton.setText("Start");
-                } finally {
-                    startButton.setEnabled(true);
+            new SwingWorker<DomainModel, Void>() {
+                @Override protected DomainModel doInBackground() throws Exception {
+                    return selected.opener().open();
                 }
-            });
+
+                @Override protected void done() {
+                    try {
+                        DomainModel loaded = get();
+                        ServedClass servedClass = chooseServedClass(
+                                selectorFrame, selected.name(), loaded);
+                        if (servedClass == null) {
+                            startButton.setText("Load selected domain");
+                            return;
+                        }
+                        quizFrame = new QuizFactory(
+                                selected.name(), loaded, servedClass.name()).showQuizzes();
+                        startButton.setText("Show \"" + selected.name() + "\"");
+                        quizFrame.addWindowListener(new WindowAdapter() {
+                            @Override public void windowClosed(WindowEvent event) {
+                                quizFrame = null;
+                                startButton.setText("Load selected domain");
+                                startButton.setEnabled(true);
+                            }
+                        });
+                    } catch (Exception ex) {
+                        Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+                        JOptionPane.showMessageDialog(selectorFrame,
+                                "Could not load domain \"" + selected.name()
+                                        + "\":\n" + cause.getMessage(),
+                                "Load domain failed", JOptionPane.ERROR_MESSAGE);
+                        startButton.setText("Load selected domain");
+                    } finally {
+                        startButton.setEnabled(true);
+                    }
+                }
+            }.execute();
         });
 
         JPanel buttonPanel = new JPanel();
@@ -222,43 +245,117 @@ public class QuizFactory {
         return buttonPanel;
     }
 
-    public QuizFactory(DomainViews qvs) throws Exception {
-        this.qvs = qvs;
-        qvs.buildViews();
-        objectview.group.ViewableGroup<?> root =
-                objectview.group.MultiRootGroup.of(qvs.getRootGroups(), "All");
-        if (root == null) {
-            throw new IllegalStateException("Domain has no group root: "
-                    + qvs.getClass().getSimpleName());
-        }
-        // QuizFactory wants the standalone browser behavior: its tree's
-        // "Show instances" action opens the selected group's cards.
-        rootView = new GroupView(root);
-        // getViewables() is typed Viewable (objectview SPI); every element is in fact a
-        // Viewable here, so narrow it for the quiz-side generation code.
-        @SuppressWarnings("unchecked")
-        Map<String, ? extends Viewable> qz =
-                (Map<String, ? extends Viewable>) (Map<String, ?>) qvs.getViewables();
-        viewables = qz;
+    public QuizFactory(String domainName, DomainModel domain, String type) {
+        this.domainName = domainName;
+        this.domain = java.util.Objects.requireNonNull(domain, "domain");
+        QuizSource source = sourceFor(domain, type);
+        this.type = source.type();
+        this.viewables = source.viewables();
+        this.configuredGrouping = source.configuredGrouping();
+        this.rootView = new GroupView(source.root());
+    }
 
+    static List<ServedClass> servedClasses(DomainModel domain) {
+        if (domain == null) return List.of();
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(
+                domain.servedTypes());
+        return names.stream()
+                .filter(name -> name != null && !name.isBlank())
+                .map(name -> new ServedClass(name, domain.instancesOf(name).size()))
+                .toList();
+    }
+
+    private static ServedClass chooseServedClass(
+            Component parent, String domainName, DomainModel domain) {
+        List<ServedClass> classes = servedClasses(domain);
+        if (classes.isEmpty()) {
+            JOptionPane.showMessageDialog(parent,
+                    "Loaded domain \"" + domainName
+                            + "\", but it declares no served classes.",
+                    "No served class", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        Object selected = JOptionPane.showInputDialog(
+                parent,
+                "Loaded domain \"" + domainName
+                        + "\". Select the class whose instances the quiz will use.",
+                "Select served class",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                classes.toArray(),
+                classes.getFirst());
+        return selected instanceof ServedClass value ? value : null;
+    }
+
+    static QuizSource sourceFor(DomainModel domain, String type) {
+        if (domain == null) throw new IllegalArgumentException("Domain is required");
+        if (type == null || !domain.servedTypes().contains(type)) {
+            throw new IllegalArgumentException(
+                    "Class \"" + type + "\" is not served by this domain");
+        }
+        // Keep a read-only view rather than copying the reference array before the
+        // real quiz index is built. History's served classes can exceed 100,000 rows.
+        List<Viewable> instances = java.util.Collections.unmodifiableList(
+                domain.instancesOf(type));
+        if (instances.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Class \"" + type + "\" has no saved instances");
+        }
+        java.util.LinkedHashMap<String, Viewable> byId = new java.util.LinkedHashMap<>();
+        for (Viewable instance : instances) {
+            if (instance == null || instance.getIdentifier() == null) {
+                throw new IllegalArgumentException(
+                        "Class \"" + type + "\" contains an instance without an identifier");
+            }
+            byId.putIfAbsent(instance.getIdentifier(), instance);
+        }
+        ViewableGroup<?> configuredRoot = domain.groupRoot(type);
+        ViewableGroup<?> root = configuredRoot;
+        if (root == null) {
+            quiz.group.ViewableGroup flat = new quiz.group.ViewableGroup("All " + type);
+            instances.forEach(instance -> flat.addMember(instance, false));
+            root = flat;
+        }
+        return new QuizSource(type, instances,
+                java.util.Collections.unmodifiableMap(byId), root,
+                configuredRoot != null);
+    }
+
+    static ViewConfigEditor fieldEditor(
+            DomainModel domain, String type, boolean answer) {
+        ViewConfig config = new ViewConfig();
+        config.setAddListener(!answer);
+        config.setThumb(answer);
+        Viewable sample = domain.configSample(type);
+        ViewConfigEditor editor = new ViewConfigEditor(config, sample);
+        editor.setConfigRows(config, sample, domain.fieldTypes(type),
+                domain.structuralFields(type));
+        return editor;
+    }
+
+    private ViewConfigEditor fieldEditor(boolean answer) {
+        return fieldEditor(domain, type, answer);
     }
 
     public JFrame showQuizzes() {
-        ViewConfig queryConfig = ViewConfig.of(cls)
-                                           .initializeAllFields(true)
-                                           .setAddListener(true);       // or false if you don’t want UI listeners
-        ViewConfigEditor queryEditor = new ViewConfigEditor(queryConfig);
-
-        ViewConfig answerConfig = ViewConfig.of(cls)
-                                            .initializeAllFields(true)
-                                            .setAddListener(false)
-                                            .setThumb(true);
-        ViewConfigEditor answerEditor = new ViewConfigEditor(answerConfig);
+        ViewConfigEditor queryEditor = fieldEditor(false);
+        ViewConfigEditor answerEditor = fieldEditor(true);
 
         JPanel queryEditorPanel = new JPanel();
         queryEditorPanel.setLayout(new BoxLayout(queryEditorPanel, BoxLayout.Y_AXIS));
         queryEditorPanel.setBorder(BorderFactory.createTitledBorder("Query fields"));
         queryEditorPanel.add(new JScrollPane(queryEditor));
+        JLabel categoryFieldNotice = new JLabel();
+        categoryFieldNotice.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        categoryFieldNotice.setVisible(false);
+        queryEditorPanel.add(categoryFieldNotice);
+        String categorizeUnavailable = quizTypeUnavailableReason(
+                QuizAnswerType.CATEGORIZE, type, configuredGrouping);
+        if (categorizeUnavailable != null) {
+            JLabel noGroups = new JLabel(categorizeUnavailable);
+            noGroups.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+            queryEditorPanel.add(noGroups);
+        }
 
         JPanel answerEditorPanel = new JPanel();
         answerEditorPanel.setLayout(new BoxLayout(answerEditorPanel, BoxLayout.Y_AXIS));
@@ -288,9 +385,10 @@ public class QuizFactory {
 
         ButtonGroup group = new ButtonGroup();
 
-        JButton createQuizButton = getCreateQuizButton(group, queryEditor, answerEditor);
+        JButton createQuizButton = getCreateQuizButton(
+                group, queryEditor, answerEditor, categoryFieldNotice);
 
-        JFrame frame = new JFrame("Quiz - " + qvs.getClass().getSimpleName());
+        JFrame frame = new JFrame("Quiz - " + domainName + " - " + type);
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
 
         frame.add(mainSplit);
@@ -298,9 +396,20 @@ public class QuizFactory {
         for (QuizAnswerType type : QuizAnswerType.values()) {
             JRadioButton radioButton = new JRadioButton(type.name());
             radioButton.setActionCommand(type.name());
+            String unavailable = quizTypeUnavailableReason(
+                    type, this.type, configuredGrouping);
+            if (unavailable != null) {
+                radioButton.setEnabled(false);
+                radioButton.setToolTipText(unavailable);
+            }
+            radioButton.addActionListener(event -> updateCategoryFieldExclusion(
+                    group, queryEditor, categoryFieldNotice));
             group.add(radioButton);
             frame.add(radioButton);
         }
+
+        rootView.setSelectionHandler(selected -> updateCategoryFieldExclusion(
+                group, queryEditor, categoryFieldNotice));
 
         frame.add(createQuizButton);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -313,9 +422,60 @@ public class QuizFactory {
         return frame;
     }
 
+    static String quizTypeUnavailableReason(
+            QuizAnswerType quizType, String className, boolean configuredGrouping) {
+        return quizType == QuizAnswerType.CATEGORIZE && !configuredGrouping
+                ? "Categorize is unavailable: class \"" + className
+                        + "\" has no saved group root."
+                : null;
+    }
+
+    private void updateCategoryFieldExclusion(
+            ButtonGroup quizTypes,
+            ViewConfigEditor queryEditor,
+            JLabel notice) {
+        Set<FieldPath> excluded = categorizeExcludedFields(
+                selectedQuizType(quizTypes), rootView.selectedGroup());
+        queryEditor.setExcludedFieldPaths(excluded);
+        if (excluded.isEmpty()) {
+            notice.setText("");
+            notice.setVisible(false);
+        } else {
+            String fields = excluded.stream().map(FieldPath::dotted)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            notice.setText("Categorize excludes the category field from questions: "
+                    + fields);
+            notice.setVisible(true);
+        }
+    }
+
+    private static QuizAnswerType selectedQuizType(ButtonGroup group) {
+        return group == null || group.getSelection() == null ? null
+                : QuizAnswerType.valueOf(group.getSelection().getActionCommand());
+    }
+
+    static Set<FieldPath> categorizeExcludedFields(
+            QuizAnswerType type,
+            objectview.group.ViewableGroup<?> selectedGroup) {
+        return type == QuizAnswerType.CATEGORIZE
+                ? quiz.transform.FacetGroup.fieldPathOf(selectedGroup)
+                        .map(Set::of).orElseGet(Set::of)
+                : Set.of();
+    }
+
+    static String fieldSelectionProblem(
+            QuizAnswerType type,
+            java.util.Collection<FieldPath> questionFields,
+            java.util.Collection<FieldPath> answerFields) {
+        return type != null && type.requiresDisjointQuestionAndAnswerFields()
+                ? Quiz.disjointFieldProblem(questionFields, answerFields)
+                : null;
+    }
+
     private JButton getCreateQuizButton(ButtonGroup group,
                                         ViewConfigEditor queryEditor,
-                                        ViewConfigEditor answerEditor) {
+                                        ViewConfigEditor answerEditor,
+                                        JLabel categoryFieldNotice) {
         JButton createQuizButton = new JButton("Create quiz");
         createQuizButton.addActionListener(e -> {
             DefaultMutableTreeNode node =
@@ -324,15 +484,31 @@ public class QuizFactory {
                 JOptionPane.showMessageDialog(quizFrame, "Quiz type is not selected.");
                 return;
             }
-            ViewableGroup selectedGroup = node == null ? null : (ViewableGroup) rootView.getViewableGroup(node);
+            ViewableGroup<?> selectedGroup = node == null ? null
+                    : rootView.getViewableGroup(node);
+
+            // Read the editor only after applying the current quiz/group policy. This
+            // keeps creation and the visible list of allowed fields on one answer.
+            updateCategoryFieldExclusion(
+                    group, queryEditor, categoryFieldNotice);
 
             ViewConfig queryConfig = queryEditor.getConfig().copy();
             ViewConfig answerConfig = answerEditor.getConfig().copy();
 
+            QuizAnswerType answerType = QuizAnswerType.valueOf(
+                    group.getSelection().getActionCommand());
+            String overlap = fieldSelectionProblem(
+                    answerType, queryEditor.selectedFieldPaths(),
+                    answerEditor.selectedFieldPaths());
+            if (overlap != null) {
+                JOptionPane.showMessageDialog(
+                        quizFrame, overlap, "Question and answer fields overlap",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             queryConfig.setAddListener(false);
             answerConfig.setAddListener(false);
-
-            QuizAnswerType answerType = QuizAnswerType.valueOf(group.getSelection().getActionCommand());
 
             SwingUtilities.invokeLater(() ->
                     showQuiz(queryConfig, answerConfig, answerType,
@@ -345,7 +521,7 @@ public class QuizFactory {
     private void showQuiz(ViewConfig queryConfig,
                           ViewConfig answerConfig,
                           QuizAnswerType answerType,
-                          ViewableGroup selectedGroup,
+                          ViewableGroup<?> selectedGroup,
                           Map<String, ? extends Viewable> viewables) {
         Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
                                selectedGroup, viewables);
@@ -361,7 +537,7 @@ public class QuizFactory {
     private Quiz createQuiz(ViewConfig queryConfig,
                             ViewConfig answerConfig,
                             QuizAnswerType answerType,
-                            ViewableGroup selectedGroup,
+                            ViewableGroup<?> selectedGroup,
                             Map<String, ? extends Viewable> viewables) {
         return switch (answerType) {
             case ABCD, LIST ->
@@ -380,10 +556,20 @@ public class QuizFactory {
 }
 
 enum QuizAnswerType {
-    LIST,
-    ABCD,
-    PAIRING,
-    CATEGORIZE,
-    SIXDEGREES
+    LIST(true),
+    ABCD(true),
+    PAIRING(true),
+    CATEGORIZE(false),
+    SIXDEGREES(false);
+
+    private final boolean disjointQuestionAndAnswerFields;
+
+    QuizAnswerType(boolean disjointQuestionAndAnswerFields) {
+        this.disjointQuestionAndAnswerFields = disjointQuestionAndAnswerFields;
+    }
+
+    boolean requiresDisjointQuestionAndAnswerFields() {
+        return disjointQuestionAndAnswerFields;
+    }
 }
 //    INTERSECTION

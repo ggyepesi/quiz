@@ -251,6 +251,10 @@ class GeneratedSourceGroupingTest {
                         loaded.groupRootBindings().get(0).root());
         assertEquals("facet", adapted.getChildren().iterator().next()
                 .fields().read("producer"));
+        assertEquals(java.util.Optional.of(objectview.field.FieldPath.of("region")),
+                quiz.transform.FacetGroup.fieldPathOf(
+                        adapted.getChildren().iterator().next()),
+                "the saved group still declares which question field Categorize hides");
         quiz.transform.EditableGroup restored = quiz.transform.EditableGroup.copyOf(adapted);
         assertInstanceOf(quiz.transform.FacetGroup.class,
                 restored.getChildren().iterator().next());

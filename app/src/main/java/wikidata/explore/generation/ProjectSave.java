@@ -192,7 +192,8 @@ public final class ProjectSave {
             lines.add("Instances: (none generated yet — will be skipped)");
         } else {
             lines.add("Instances: " + roots.size() + " -> " + storage.snapshotFile(name()).getPath());
-            if (servesDataset()) lines.add("Registry:  " + storage.registryFile().getPath());
+            lines.add("Registry:  " + storage.registryFile().getPath()
+                    + (servesDataset() ? "" : " (model working data, not served)"));
             lines.add("Counts:    " + storage.countsFile(name()).getPath());
         }
         for (GraphDiscoveryResultStore.Artifact set : input.annotationSets()) {
@@ -229,10 +230,13 @@ public final class ProjectSave {
                     graphDiscovery, selfReferences);
             report.add("Instances: " + roots.size() + " -> " + snapshot.getPath());
             // Domains are served. A model's snapshot is local working data for curation
-            // and graph inputs; importing the model never imports it.
-            if (servesDataset()) report.add(register());
+            // and graph inputs: it is registered, so TransformApp can load it and Load
+            // instances can check it, but not served — the one registry state TransformApp's
+            // DomainSaver writes for a model too. Importing the model never imports it.
+            report.add(register());
             report.add(appendCounts(instanceStore.persistedMembers()));
         }
+
 
         for (GraphDiscoveryResultStore.Artifact set : input.annotationSets()) {
             report.add(GraphDiscoveryResultStore.save(set, storage));
@@ -277,9 +281,11 @@ public final class ProjectSave {
                 if (c != null && c.className() != null) types.add(c.className());
             }
             dataset.types(types);
+            dataset.served(servesDataset());
             registry.upsert(dataset);
             registry.save(file);
-            return "Registry:  " + file.getPath();
+            return "Registry:  " + file.getPath()
+                    + (servesDataset() ? "" : " (model working data, not served)");
         } catch (Exception error) {
             return "Registry:  could not update " + file.getPath() + ": " + error.getMessage();
         }

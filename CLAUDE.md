@@ -191,6 +191,14 @@ construct per thing produced:
    that kind and writes its semantic subclasses to the owning model and ordinary snapshot,
    never to a detached same-name transform dataset.
 
+   **QuizFactory and the web serve saved configured domains only.** Their catalogue is the
+   registry's saved `served` snapshots and each loaded domain's `servedTypes`; they never
+   carry a second hard-coded domain/class list. Live hand-written domains remain available
+   in TransformApp as conversion inputs, and enter QuizFactory only after **Save domain**.
+   A model snapshot is local working data: its registry entry stays, marked not served, so
+   TransformApp can still load it; changing a domain to a model stops serving it without
+   removing those local instances. Every save writes that one registry state.
+
 18. **A reusable instance population is a `PopulationSelection`.** It stores one class
    name and the stable datasource identities of explicitly chosen instances, never copies
    of their mutable objects. Sampling and highlighting only edit the draft; saving is an
@@ -334,6 +342,14 @@ construct per thing produced:
 
 - **Build features by assembling pieces that already exist.** Defer new automation until
   something really forces it.
+- **Quiz types share selection semantics.** Question/answer indexing, correctness and
+  exhaustion are common quiz-domain processing; a quiz type owns only its genuinely distinct
+  layout and interaction. A fixed-size choice set is constructed once and rendering never
+  filters it afterwards. Exhaustion may decide whether an answer is still owed as a correct
+  response or how it is marked, but an exhausted value remains a valid distractor. Selected
+  multi-value fields expose their Cartesian combinations as a lazy random-access view: the
+  shared quiz index retains compact alternatives and materializes only a requested key, never
+  the complete product or one copy of the same answer product per question key.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

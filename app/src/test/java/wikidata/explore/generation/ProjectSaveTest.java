@@ -63,8 +63,9 @@ class ProjectSaveTest {
         assertTrue(save.warnings().isEmpty());
     }
 
-    /** A model's snapshot is local working data; only a domain is registered to serve. */
-    @Test void aModelIsSavedButNotRegistered() throws Exception {
+    /** A model's snapshot is local working data: registered so it can be loaded, but not
+     *  served. */
+    @Test void aModelIsRegisteredButNotServed() throws Exception {
         DomainStorage storage = DomainStorage.in(root.toFile());
         GeneratedProjectModel model = domain();
         model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
@@ -73,9 +74,37 @@ class ProjectSaveTest {
                 run(model, member("Q1")), null, List.of()), storage);
         save.write();
 
-        assertFalse(save.planLines().stream().anyMatch(line -> line.startsWith("Registry")));
-        assertFalse(storage.registryFile().isFile());
+        assertTrue(save.planLines().stream().anyMatch(line -> line.startsWith("Registry")
+                && line.contains("not served")));
+        assertFalse(quiz.DatasetRegistry.load(storage.registryFile())
+                .datasets().getFirst().served());
         assertTrue(storage.snapshotFile(model.name()).isFile());
+    }
+
+    /** A domain turned into a model keeps one registry row, no longer served — the same
+     *  state TransformApp's save writes for a model — and keeps its local instances. */
+    @Test void changingADomainToAModelStopsServingItWithoutLosingItsRow()
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = domain();
+        ProjectSave.plan(new ProjectSave.Input(model,
+                run(model, member("Q1")), null, List.of()), storage).write();
+        assertTrue(quiz.DatasetRegistry.load(storage.registryFile())
+                .datasets().getFirst().served());
+
+        model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        ProjectSave save = ProjectSave.plan(new ProjectSave.Input(model,
+                run(model, member("Q1")), null, List.of()), storage);
+        assertTrue(save.planLines().stream().anyMatch(line -> line.contains("not served")),
+                save.planLines().toString());
+        save.write();
+
+        List<quiz.DatasetRegistry.Dataset> rows =
+                quiz.DatasetRegistry.load(storage.registryFile()).datasets();
+        assertEquals(1, rows.size());
+        assertFalse(rows.getFirst().served());
+        assertTrue(storage.snapshotFile(model.name()).isFile(),
+                "the model keeps its local working instances");
     }
 
     /**
