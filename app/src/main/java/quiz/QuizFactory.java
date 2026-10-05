@@ -327,7 +327,11 @@ public class QuizFactory {
         config.setAddListener(!answer);
         config.setThumb(answer);
         Viewable sample = domain.configSample(type);
-        ViewConfigEditor editor = new ViewConfigEditor(config, sample);
+        // A selected reference starts as its display value. Nested fields are still
+        // offered by the inline tree, but enter the quiz key only when the user checks
+        // them explicitly; selecting Person.spouse must not select another Person's
+        // complete field graph recursively.
+        ViewConfigEditor editor = new ViewConfigEditor(config, true, sample);
         editor.setConfigRows(config, sample, domain.fieldTypes(type),
                 domain.structuralFields(type));
         return editor;
@@ -510,12 +514,25 @@ public class QuizFactory {
             queryConfig.setAddListener(false);
             answerConfig.setAddListener(false);
 
-            SwingUtilities.invokeLater(() ->
+            setQuizCreationRunning(createQuizButton, true);
+            quizFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            SwingUtilities.invokeLater(() -> {
+                try {
                     showQuiz(queryConfig, answerConfig, answerType,
-                          selectedGroup, viewables)
-            );
+                            selectedGroup, viewables);
+                } finally {
+                    setQuizCreationRunning(createQuizButton, false);
+                    quizFrame.setCursor(Cursor.getDefaultCursor());
+                }
+            });
         });
         return createQuizButton;
+    }
+
+    static void setQuizCreationRunning(JButton button, boolean running) {
+        if (button == null) return;
+        button.setText(running ? "Creating quiz…" : "Create quiz");
+        button.setEnabled(!running);
     }
 
     private void showQuiz(ViewConfig queryConfig,
@@ -523,14 +540,20 @@ public class QuizFactory {
                           QuizAnswerType answerType,
                           ViewableGroup<?> selectedGroup,
                           Map<String, ? extends Viewable> viewables) {
-        Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
-                               selectedGroup, viewables);
-        String message = quiz.prepareQuiz();
-        System.out.println("PREPARE " + message);
-        if (message == null) {
-            quiz.show();
-        } else {
-            JOptionPane.showMessageDialog(quizFrame, message);
+        try {
+            Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
+                    selectedGroup, viewables);
+            String message = quiz.prepareQuiz();
+            System.out.println("PREPARE " + message);
+            if (message == null) {
+                quiz.show();
+            } else {
+                JOptionPane.showMessageDialog(quizFrame, message);
+            }
+        } catch (RuntimeException failure) {
+            JOptionPane.showMessageDialog(quizFrame,
+                    "Could not create quiz:\n" + failure.getMessage(),
+                    "Create quiz failed", JOptionPane.ERROR_MESSAGE);
         }
     }
 

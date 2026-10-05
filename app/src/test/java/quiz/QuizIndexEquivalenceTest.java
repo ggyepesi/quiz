@@ -123,6 +123,30 @@ class QuizIndexEquivalenceTest {
         compare("large", items, queryConfig(true), answerConfig(), null);
     }
 
+    /** The History Person report: one instance whose selected fields multiply past the
+     *  int range threw from the quiz constructor on the event thread. The quiz now
+     *  indexes nothing and prepareQuiz names the instance and the fields to narrow. */
+    @Test void aSelectionOneInstanceCannotIndexIsRefusedByNameNotThrown() {
+        List<String> many = new ArrayList<>();
+        for (int i = 0; i < 50_000; i++) many.add("v" + i);
+        Map<String, Item> items = new LinkedHashMap<>();
+        items.put("ordinary", new Item("ordinary", List.of("q"), List.of("l"), List.of("a")));
+        items.put("huge", new Item("huge", many, many, List.of("b")));
+
+        IndexedQuiz quiz = new IndexedQuiz(queryConfig(true), answerConfig(), null, items);
+        try {
+            String problem = quiz.prepareQuiz();
+            org.junit.jupiter.api.Assertions.assertNotNull(problem);
+            org.junit.jupiter.api.Assertions.assertTrue(problem.contains("huge")
+                    && problem.contains("queries (50000 values)")
+                    && problem.contains("languages (50000 values)"), problem);
+            org.junit.jupiter.api.Assertions.assertTrue(quiz.answers().isEmpty(),
+                    "nothing is half-indexed");
+        } finally {
+            quiz.dispose();
+        }
+    }
+
     private static void compare(String context, Map<String, Item> items,
                                 ViewConfig queryConfig, ViewConfig answerConfig,
                                 objectview.group.ViewableGroup<?> group) {

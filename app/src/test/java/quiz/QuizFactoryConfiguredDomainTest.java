@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import quiz.data.ViewableKeyExtractor;
 import quiz.transform.ui.ReflectionDomain;
 
+import javax.swing.JButton;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,6 +41,18 @@ class QuizFactoryConfiguredDomainTest {
         Office(String label, int holderCount) {
             this.label = label;
             this.holderCount = holderCount;
+        }
+        @Override public String getIdentifier() { return label; }
+        @Override public String getDisplayName() { return label; }
+    }
+
+    static final class RelatedPerson extends ViewableAdapter {
+        final String label;
+        final String biography;
+        RelatedPerson spouse;
+        RelatedPerson(String label, String biography) {
+            this.label = label;
+            this.biography = biography;
         }
         @Override public String getIdentifier() { return label; }
         @Override public String getDisplayName() { return label; }
@@ -114,6 +127,32 @@ class QuizFactoryConfiguredDomainTest {
                 QuizAnswerType.CATEGORIZE, name, name));
         assertNull(QuizFactory.fieldSelectionProblem(
                 QuizAnswerType.SIXDEGREES, name, name));
+    }
+
+    @Test void aSelectedReferenceStartsAtItsDisplayAndNotItsObjectGraph() {
+        RelatedPerson spouse = new RelatedPerson("Bob", "A long nested value");
+        RelatedPerson person = new RelatedPerson("Alice", "Another biography");
+        person.spouse = spouse;
+        ReflectionDomain domain = new ReflectionDomain(List.of(person, spouse));
+
+        var editor = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
+        List<FieldPath> selected = new ViewableKeyExtractor()
+                .paths(person, editor.getConfig());
+
+        assertTrue(selected.contains(FieldPath.parse("spouse.@view:display")), selected::toString);
+        assertFalse(selected.contains(FieldPath.parse("spouse.biography")), selected::toString);
+    }
+
+    @Test void creatingAQuizIsVisibleAndPreventsAnotherClick() {
+        JButton button = new JButton("Create quiz");
+
+        QuizFactory.setQuizCreationRunning(button, true);
+        assertEquals("Creating quiz…", button.getText());
+        assertFalse(button.isEnabled());
+
+        QuizFactory.setQuizCreationRunning(button, false);
+        assertEquals("Create quiz", button.getText());
+        assertTrue(button.isEnabled());
     }
 
     private static DomainModel domain(

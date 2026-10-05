@@ -46,6 +46,9 @@ public abstract class Quiz extends Thread {
      *  used updates. Kept while indexing so a selection does not scan every answer. */
     private final Map<Viewable, List<List<Object>>> answerKeysByInstance = new HashMap<>();
 
+    /** Why the selected fields could not be indexed; reported by prepareQuiz. */
+    private String indexProblem;
+
     protected int correctSelections = 0;
     protected int wrongSelections = 0;
 
@@ -77,6 +80,7 @@ public abstract class Quiz extends Thread {
     }
 
     public String prepareQuiz() {
+        if (indexProblem != null) return indexProblem;
         int selectedItems = group == null
                 ? viewables.size() : group.getMembers().size();
         if (selectedItems < 2) {
@@ -171,7 +175,23 @@ public abstract class Quiz extends Thread {
     // Indexing and exhaustion count setup
     // -------------------------------------------------------------------------
 
+    /** Indexes every selected instance, or none: a selection one instance cannot
+     *  index is refused whole and named, rather than thrown from the constructor —
+     *  which, run on the event thread, ended the quiz with only a stack trace. */
     protected void indexViewables() {
+        try {
+            indexEachViewable();
+        } catch (ViewableKeyExtractor.TooManyCombinations tooMany) {
+            answersToQuery.clear();
+            queryViewables.clear();
+            answerViewables.clear();
+            correctAnswerUseCount.clear();
+            answerKeysByInstance.clear();
+            indexProblem = tooMany.getMessage();
+        }
+    }
+
+    private void indexEachViewable() {
         for (Viewable viewable : viewables.values()) {
             if (viewable == null) continue;
             if (!isInSelectedGroup(viewable)) continue;

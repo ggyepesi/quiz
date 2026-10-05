@@ -347,9 +347,15 @@ construct per thing produced:
   layout and interaction. A fixed-size choice set is constructed once and rendering never
   filters it afterwards. Exhaustion may decide whether an answer is still owed as a correct
   response or how it is marked, but an exhausted value remains a valid distractor. Selected
-  multi-value fields expose their Cartesian combinations as a lazy random-access view: the
+  reference fields contribute the referenced instance's display value by default; nested
+  fields enter the quiz key only when the user explicitly selects them, so selecting a
+  self-reference such as `Person.spouse` never recursively selects another `Person` graph.
+  Selected multi-value fields expose their Cartesian combinations as a lazy random-access view: the
   shared quiz index retains compact alternatives and materializes only a requested key, never
-  the complete product or one copy of the same answer product per question key.
+  the complete product or one copy of the same answer product per question key. If one
+  instance still exceeds the indexable combination limit, quiz creation stops without a
+  partial index and reports that instance together with the contributing fields and their
+  value counts.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

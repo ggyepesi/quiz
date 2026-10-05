@@ -63,8 +63,44 @@ public final class ViewableKeyExtractor {
             }
             alternativesPerPath.add(alternatives);
         }
+        if (LazyCartesianKeys.product(alternativesPerPath) > Integer.MAX_VALUE) {
+            Map<FieldPath, Integer> counts = new LinkedHashMap<>();
+            for (int i = 0; i < paths.size(); i++) {
+                counts.put(paths.get(i), alternativesPerPath.get(i).size());
+            }
+            throw new TooManyCombinations(viewable, counts);
+        }
 
         return new LazyCartesianKeys(alternativesPerPath);
+    }
+
+    /** One instance's selected fields multiply past what a key list can index. Names
+     *  the instance and how many values each field contributed, so the person choosing
+     *  fields can see which selection to narrow. */
+    public static final class TooManyCombinations extends IllegalArgumentException {
+        private final transient Viewable instance;
+        private final Map<FieldPath, Integer> valueCounts;
+
+        TooManyCombinations(Viewable instance, Map<FieldPath, Integer> valueCounts) {
+            super(describe(instance, valueCounts));
+            this.instance = instance;
+            this.valueCounts = Map.copyOf(valueCounts);
+        }
+
+        public Viewable instance() { return instance; }
+        public Map<FieldPath, Integer> valueCounts() { return valueCounts; }
+
+        private static String describe(Viewable instance, Map<FieldPath, Integer> counts) {
+            String fields = counts.entrySet().stream()
+                    .filter(e -> e.getValue() > 1)
+                    .sorted(Map.Entry.<FieldPath, Integer>comparingByValue().reversed())
+                    .map(e -> e.getKey().dotted() + " (" + e.getValue() + " values)")
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return "The " + counts.size() + " selected fields of " + safeName(instance)
+                    + " combine into more than " + Integer.MAX_VALUE
+                    + " question or answer values. Multi-valued fields: " + fields
+                    + ". Select fewer fields.";
+        }
     }
 
     /**
@@ -186,16 +222,24 @@ public final class ViewableKeyExtractor {
 
         LazyCartesianKeys(List<List<Object>> alternatives) {
             this.alternatives = List.copyOf(alternatives);
-            long product = 1;
-            for (List<Object> values : alternatives) {
-                product = Math.multiplyExact(product, values.size());
-                if (product > Integer.MAX_VALUE) {
-                    throw new IllegalArgumentException(
-                            "Selected fields produce more than " + Integer.MAX_VALUE
-                                    + " value combinations for one instance.");
-                }
+            long product = product(alternatives);
+            if (product > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException(
+                        "Selected fields produce more than " + Integer.MAX_VALUE
+                                + " value combinations for one instance.");
             }
             this.size = (int) product;
+        }
+
+        /** The number of combinations, saturated just past the int limit so a product
+         *  of many large fields cannot overflow a long either. */
+        static long product(List<List<Object>> alternatives) {
+            long product = 1;
+            for (List<Object> values : alternatives) {
+                product *= values.size();
+                if (product > Integer.MAX_VALUE) return (long) Integer.MAX_VALUE + 1;
+            }
+            return product;
         }
 
         @Override public int size() {
