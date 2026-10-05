@@ -27,7 +27,11 @@ public abstract class Quiz extends Thread {
 
     protected final Map<List<Object>, List<List<Object>>> answersToQuery = new LinkedHashMap<>();
     protected final Map<List<Object>, Viewable> queryViewables = new LinkedHashMap<>();
+    protected final Map<List<Object>, ViewableKeyExtractor.KeyContent> queryContents =
+            new LinkedHashMap<>();
     protected final Map<List<Object>, Viewable> answerViewables = new LinkedHashMap<>();
+    protected final Map<List<Object>, ViewableKeyExtractor.KeyContent> answerContents =
+            new LinkedHashMap<>();
     protected final ViewableKeyExtractor keyExtractor = new ViewableKeyExtractor();
     protected final QuizCardFactory cardFactory;
 
@@ -42,9 +46,10 @@ public abstract class Quiz extends Thread {
     protected final Map<List<Object>, Integer> correctAnswerUseCount = new HashMap<>();
     protected final Map<List<Object>, Integer> exhaustionUsage = new HashMap<>();
     protected final Set<List<Object>> exhaustedAnswers = new HashSet<>();
-    /** The answer keys each instance is the shown instance for — what marking an answer
-     *  used updates. Kept while indexing so a selection does not scan every answer. */
-    private final Map<Viewable, List<List<Object>>> answerKeysByInstance = new HashMap<>();
+    /** The answer key each answer card stands for, by the card's assembled object.
+     *  One instance can supply several answer keys that now render differently, so a
+     *  card's instance cannot say which answer was chosen — its key does. */
+    private final Map<Viewable, List<Object>> answerKeyByCard = new java.util.IdentityHashMap<>();
 
     /** Why the selected fields could not be indexed; reported by prepareQuiz. */
     private String indexProblem;
@@ -184,9 +189,11 @@ public abstract class Quiz extends Thread {
         } catch (ViewableKeyExtractor.TooManyCombinations tooMany) {
             answersToQuery.clear();
             queryViewables.clear();
+            queryContents.clear();
             answerViewables.clear();
+            answerContents.clear();
             correctAnswerUseCount.clear();
-            answerKeysByInstance.clear();
+            answerKeyByCard.clear();
             indexProblem = tooMany.getMessage();
         }
     }
@@ -196,8 +203,10 @@ public abstract class Quiz extends Thread {
             if (viewable == null) continue;
             if (!isInSelectedGroup(viewable)) continue;
 
-            List<List<Object>> queryKeys = keyExtractor.combinations(viewable, queryConfig);
-            List<List<Object>> answerKeys = keyExtractor.combinations(viewable, answerConfig);
+            List<FieldPath> queryPaths = keyExtractor.paths(viewable, queryConfig);
+            List<FieldPath> answerPaths = keyExtractor.paths(viewable, answerConfig);
+            List<List<Object>> queryKeys = keyExtractor.combinations(viewable, queryPaths);
+            List<List<Object>> answerKeys = keyExtractor.combinations(viewable, answerPaths);
             if (queryKeys.isEmpty() || answerKeys.isEmpty()) continue;
 
             // Every question key produced by one instance has the same correct answers.
@@ -219,12 +228,17 @@ public abstract class Quiz extends Thread {
                     }
                     bucket.add(sharedAnswers);
                 }
-                queryViewables.putIfAbsent(qk, viewable);
+                if (queryViewables.putIfAbsent(qk, viewable) == null) {
+                    queryContents.put(qk, keyExtractor.contentObject(
+                            viewable, queryConfig, queryPaths, qk));
+                }
             }
             for (List<Object> ak : answerKeys) {
                 if (answerViewables.putIfAbsent(ak, viewable) == null) {
-                    answerKeysByInstance.computeIfAbsent(viewable, ignored -> new ArrayList<>())
-                            .add(ak);
+                    ViewableKeyExtractor.KeyContent content = keyExtractor.contentObject(
+                            viewable, answerConfig, answerPaths, ak);
+                    answerContents.put(ak, content);
+                    if (content != null) answerKeyByCard.put(content.object(), ak);
                 }
                 // The answer is correct once for every question alternative supplied
                 // by this instance, without retaining those repeated pairs.
@@ -298,16 +312,19 @@ public abstract class Quiz extends Thread {
     // Exhaustion helpers
     // -------------------------------------------------------------------------
 
-    /** Marks every answer key shown by {@code choice} as used once more. It scanned the
-     *  whole answer map on each selection; the keys of each instance are now indexed. */
-    protected void markAnswerAsUsed(Viewable choice) {
-        if (choice == null) return;
-        for (List<Object> key : answerKeysByInstance.getOrDefault(choice, List.of())) {
-            int used = exhaustionUsage.getOrDefault(key, 0) + 1;
-            exhaustionUsage.put(key, used);
-            int allowed = correctAnswerUseCount.getOrDefault(key, 1);
-            if (used >= allowed) exhaustedAnswers.add(key);
-        }
+    /** Marks one chosen answer key as used once more. Only that key: another answer
+     *  the same instance supplies is a different card and was not chosen. */
+    protected void markAnswerAsUsed(List<Object> key) {
+        if (key == null) return;
+        int used = exhaustionUsage.getOrDefault(key, 0) + 1;
+        exhaustionUsage.put(key, used);
+        int allowed = correctAnswerUseCount.getOrDefault(key, 1);
+        if (used >= allowed) exhaustedAnswers.add(key);
+    }
+
+    /** The answer key an answer card stands for; null for anything that is not one. */
+    protected List<Object> answerKeyOf(Viewable card) {
+        return card == null ? null : answerKeyByCard.get(card);
     }
 
     protected boolean isExhausted(List<Object> answerKey) {
@@ -361,5 +378,40 @@ public abstract class Quiz extends Thread {
      */
     protected Card createQueryPanel(Viewable viewable) {
         return cardFactory.create(viewable, queryConfig, QuizCardRole.PROMPT);
+    }
+
+    void setFieldSchemaResolver(
+            java.util.function.Function<Viewable, objectview.field.FieldSchema> resolver) {
+        cardFactory.setFieldSchemaResolver(resolver);
+    }
+
+    /** Renders the exact object that supplied this selected query key with the
+     * corresponding (possibly re-rooted) query ViewConfig. */
+    protected Card createQueryPanel(List<Object> queryKey) {
+        return createQueryPanel(queryKey, QuizCardRole.PROMPT);
+    }
+
+    protected Card createQueryPanel(List<Object> queryKey, QuizCardRole role) {
+        ViewableKeyExtractor.KeyContent content = queryContents.get(queryKey);
+        if (content == null) return null;
+        return cardFactory.create(
+                content.object(), content.viewConfig(), role);
+    }
+
+    protected Card createAnswerPanel(List<Object> answerKey, QuizCardRole role) {
+        ViewableKeyExtractor.KeyContent content = answerContents.get(answerKey);
+        if (content == null) return null;
+        return cardFactory.create(
+                content.object(), content.viewConfig(), role);
+    }
+
+    protected quiz.ui.ChoiceBoard.CardItem answerCardItem(
+            List<Object> answerKey) {
+        ViewableKeyExtractor.KeyContent content = answerContents.get(answerKey);
+        if (content == null) return null;
+        // The card's identity is its assembled object, which stands for exactly this
+        // key; the owning instance stays available as provenance via answerViewables.
+        return new quiz.ui.ChoiceBoard.CardItem(
+                content.object(), content.object(), content.viewConfig());
     }
 }

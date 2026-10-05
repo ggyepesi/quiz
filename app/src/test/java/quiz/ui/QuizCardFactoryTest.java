@@ -51,7 +51,7 @@ class QuizCardFactoryTest {
     }
 
     @Test
-    void pairingPreservesEditorMediaChoicesAndSuppliesMissingRootClass() {
+    void pairingPreservesEditorMediaChoicesAndItsClasslessDomainConfig() {
         ViewConfig source = configWithNestedField();
         source.setCls(null);
         source.setThumb(true);
@@ -61,10 +61,33 @@ class QuizCardFactoryTest {
                 item, source,
                 QuizCardPresentation.forRole(QuizCardRole.PAIR_ANSWER));
 
-        assertEquals(Item.class, result.getCls());
+        assertNull(result.getCls());
         assertTrue(result.isThumb());
         assertFalse(result.getFieldConfig("detail").isThumb());
         assertNull(source.getCls());
+    }
+
+    @Test
+    void missingConfigUsesTheRuntimeClass() {
+        ViewConfig result = factory.configurationFor(
+                item, null, QuizCardPresentation.forRole(QuizCardRole.PROMPT));
+
+        assertEquals(Item.class, result.getCls());
+    }
+
+    @Test
+    void aDynamicTupleKeepsItsClasslessSchemaConfiguration() {
+        quiz.transform.DynamicViewable dynamic =
+                new quiz.transform.DynamicViewable("Q1", "Dynamic");
+        dynamic.put("realField", "value");
+        ViewConfig source = new ViewConfig();
+        source.setAllFields(true);
+
+        ViewConfig result = factory.configurationFor(
+                dynamic, source, QuizCardPresentation.forRole(QuizCardRole.PROMPT));
+
+        assertNull(result.getCls(),
+                "the runtime DynamicFields carrier is not the logical domain class");
     }
 
     @Test

@@ -73,7 +73,7 @@ public class QuizPairs extends Quiz {
                 remaining.isEmpty() ? "Finish" : "Next",
                 () -> {
                     for (PairItem p : pairs) {
-                        markAnswerAsUsed(answerViewables.get(p.answerKey));
+                        markAnswerAsUsed(p.answerKey);
                     }
                     roundProgress.advance();
                     drawRound(remaining);
@@ -96,6 +96,8 @@ public class QuizPairs extends Quiz {
             List<Object> aKey = quiz.data.FixedChoiceOptions.pickOne(
                     answers, answer -> !exhaustedAnswers.contains(answer), random);
             if (aKey == null) continue;
+            // Pair selection/provenance stays on the source instance. Rendering
+            // below independently uses the assembled content object for qKey.
             Viewable q = queryViewables.get(qKey);
             Viewable a = answerViewables.get(aKey);
             if (q == null || a == null) continue;
@@ -109,10 +111,10 @@ public class QuizPairs extends Quiz {
         JPanel p = new JPanel(new GridBagLayout());
         int row = 0;
         for (PairItem item : data) {
-            Card left = cardFactory.create(
-                    item.query, queryConfig, QuizCardRole.PAIR_PROMPT);
-            Card right = cardFactory.create(
-                    item.answer, answerConfig, QuizCardRole.PAIR_ANSWER);
+            Card left = createQueryPanel(
+                    item.queryKey, QuizCardRole.PAIR_PROMPT);
+            Card right = createAnswerPanel(
+                    item.answerKey, QuizCardRole.PAIR_ANSWER);
             SelectableCard leftChoice =
                     new SelectableCard(item.query, left, false);
             SelectableCard rightChoice =

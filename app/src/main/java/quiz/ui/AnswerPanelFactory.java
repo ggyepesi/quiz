@@ -48,6 +48,17 @@ public class AnswerPanelFactory {
         return board;
     }
 
+    public JPanel createAnswerCardPanels(
+            List<ChoiceBoard.CardItem> options,
+            Consumer<Viewable> onSelect) {
+        ChoiceBoard board = ChoiceBoard.forCardItems(
+                options, cardFactory, ChoiceBoardPolicy.answers(2),
+                options == null ? List.of() : options.stream()
+                        .map(ChoiceBoard.CardItem::content).toList());
+        board.onSelected(onSelect);
+        return board;
+    }
+
     public static final class ScrollUtils {
         private ScrollUtils() {}
 

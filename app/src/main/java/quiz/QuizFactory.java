@@ -252,7 +252,15 @@ public class QuizFactory {
         this.type = source.type();
         this.viewables = source.viewables();
         this.configuredGrouping = source.configuredGrouping();
-        this.rootView = new GroupView(source.root());
+        this.rootView = new GroupView(
+                source.root(), domain.configSample(type), domain.fieldTypes(type),
+                this::fieldSchemaFor);
+    }
+
+    private objectview.field.FieldSchema fieldSchemaFor(Viewable value) {
+        if (value == null) return null;
+        String actual = domain.mostSpecificClass(value);
+        return domain.fieldSchema(actual == null ? value.typeName() : actual);
     }
 
     static List<ServedClass> servedClasses(DomainModel domain) {
@@ -562,7 +570,7 @@ public class QuizFactory {
                             QuizAnswerType answerType,
                             ViewableGroup<?> selectedGroup,
                             Map<String, ? extends Viewable> viewables) {
-        return switch (answerType) {
+        Quiz quiz = switch (answerType) {
             case ABCD, LIST ->
                     new QuizListABCD(queryConfig, answerConfig, answerType,
                                      selectedGroup, viewables);
@@ -575,6 +583,8 @@ public class QuizFactory {
                                                   viewables);
             default -> throw new IllegalArgumentException();
         };
+        quiz.setFieldSchemaResolver(this::fieldSchemaFor);
+        return quiz;
     }
 }
 

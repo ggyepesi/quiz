@@ -63,15 +63,14 @@ public class QuizListABCD extends Quiz {
         GridBagConstraints gbc = createGridBagConstraints();
 
         List<Object> questionKey = shuffledKeys.get(roundProgress.currentIndex());
-        Viewable viewable = queryViewables.get(questionKey);
-        if (viewable == null) {
+        if (!queryContents.containsKey(questionKey)) {
             roundProgress.advance();
             drawNextRound();
             return;
         }
 
         // --- 1️⃣ QUESTION ------------------------------------------------------
-        queryComponent = createQueryPanel(viewable);
+        queryComponent = createQueryPanel(questionKey);
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0;
         gbc.weighty = (mode == QuizMode.LIST ? 0.25 : 0.35);
@@ -85,18 +84,18 @@ public class QuizListABCD extends Quiz {
             // -------- LIST mode: show all items with 3 visual states --------
             List<List<Object>> allKeys = new ArrayList<>(answerViewables.keySet());
             Collections.shuffle(allKeys, random);
-            List<Viewable> choices = new ArrayList<>();
+            List<ChoiceBoard.CardItem> choices = new ArrayList<>();
             List<List<Object>> choiceKeys = new ArrayList<>();
             for (List<Object> key : allKeys) {
-                Viewable q = answerViewables.get(key);
-                if (q != null) {
-                    choices.add(q);
+                ChoiceBoard.CardItem choice = answerCardItem(key);
+                if (choice != null) {
+                    choices.add(choice);
                     choiceKeys.add(key);
                 }
             }
-            ChoiceBoard panel = new ChoiceBoard(
-                    choices, answerConfig, cardFactory,
-                    ChoiceBoardPolicy.answers(2));
+            ChoiceBoard panel = ChoiceBoard.forCardItems(
+                    choices, cardFactory, ChoiceBoardPolicy.answers(2),
+                    choices.stream().map(ChoiceBoard.CardItem::content).toList());
             for (int index = 0; index < choiceKeys.size(); index++) {
                 if (exhaustedAnswers.contains(choiceKeys.get(index))) {
                     panel.setState(index, CardSelectionState.EXHAUSTED);
@@ -104,7 +103,7 @@ public class QuizListABCD extends Quiz {
             }
             panel.onChoice(choice -> {
                 if (!isCorrectChoice(questionKey, choice.item())) return;
-                markAnswerAsUsed(choice.item());
+                markAnswerAsUsed(answerKeyOf(choice.item()));
                 choice.card().setState(CardSelectionState.CORRECT);
                 roundShell.setAdvanceEnabled(true);
             });
@@ -114,12 +113,16 @@ public class QuizListABCD extends Quiz {
 
         } else {
             // -------- ABCD mode: 4 randomized options --------
-            List<Viewable> quizOptions = buildAnswerOptions(questionKey);
+            List<List<Object>> optionKeys = buildAnswerOptionKeys(questionKey);
+            List<ChoiceBoard.CardItem> quizOptions = optionKeys.stream()
+                    .map(this::answerCardItem)
+                    .filter(Objects::nonNull)
+                    .toList();
 
-            JPanel answersPanel = panelFactory.createAnswerPanels(quizOptions, choice -> {
+            JPanel answersPanel = panelFactory.createAnswerCardPanels(quizOptions, choice -> {
                 boolean correct = isCorrectChoice(questionKey, choice);
                 if (!correct) return;
-                markAnswerAsUsed(choice);
+                markAnswerAsUsed(answerKeyOf(choice));
                 highlightSelection(choice);
                 roundShell.setAdvanceEnabled(true);
             });
@@ -142,6 +145,13 @@ public class QuizListABCD extends Quiz {
      * final: rendering may mark choices but must not filter it afterwards, or a
      * fixed-size round silently changes cardinality as exhaustion advances. */
     List<Viewable> buildAnswerOptions(List<Object> questionKey) {
+        return buildAnswerOptionKeys(questionKey).stream()
+                .map(answerViewables::get)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private List<List<Object>> buildAnswerOptionKeys(List<Object> questionKey) {
         List<List<Object>> correctAnswers = answersToQuery.get(questionKey);
         if (correctAnswers == null || correctAnswers.isEmpty()) return List.of();
 
@@ -155,24 +165,16 @@ public class QuizListABCD extends Quiz {
                     correctAnswers, correctAnswers, answerViewables.keySet(), 4, random);
         }
 
-        List<Viewable> quizOptions = new ArrayList<>();
-        for (List<Object> key : candidateKeys) {
-            Viewable q = answerViewables.get(key);
-            if (q != null) quizOptions.add(q);
-        }
-        return quizOptions;
+        return candidateKeys;
     }
 
+    /** Whether the chosen card's answer key is one of this question's correct keys.
+     *  Neither its name nor its owning instance decides: two instances can share a
+     *  name, and one instance can supply a correct answer and a distractor. */
     boolean isCorrectChoice(List<Object> questionKey, Viewable selected) {
+        List<Object> chosen = answerKeyOf(selected);
         List<List<Object>> correctKeys = answersToQuery.get(questionKey);
-        if (correctKeys == null) return false;
-        for (List<Object> key : correctKeys) {
-            Viewable q = answerViewables.get(key);
-            // The same instance, as marking it used asks — not the same name: two
-            // instances sharing a name would make a distractor count as correct.
-            if (q != null && q.equals(selected)) return true;
-        }
-        return false;
+        return chosen != null && correctKeys != null && correctKeys.contains(chosen);
     }
 
     private void highlightSelection(Viewable selected) {
@@ -182,7 +184,7 @@ public class QuizListABCD extends Quiz {
 
         for (Component c : container.getComponents()) {
             if (c instanceof SelectableCard selectable) {
-                boolean same = selectable.item().equals(selected);
+                boolean same = selectable.item() == selected;
                 selectable.setState(same
                         ? CardSelectionState.CORRECT
                         : CardSelectionState.IDLE);

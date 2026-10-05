@@ -16,9 +16,16 @@ import java.util.Collection;
  */
 public final class QuizCardFactory {
     private final Collection<? extends Viewable> quizContext;
+    private java.util.function.Function<Viewable, objectview.field.FieldSchema>
+            fieldSchemas = ignored -> null;
 
     public QuizCardFactory(Collection<? extends Viewable> quizContext) {
         this.quizContext = quizContext == null ? java.util.List.of() : quizContext;
+    }
+
+    public void setFieldSchemaResolver(
+            java.util.function.Function<Viewable, objectview.field.FieldSchema> resolver) {
+        fieldSchemas = resolver == null ? ignored -> null : resolver;
     }
 
     public Card create(
@@ -56,6 +63,7 @@ public final class QuizCardFactory {
                 ? localContext
                 : presentation.useQuizContext() ? quizContext : java.util.List.of();
         RenderContext context = new RenderContext(contextItems);
+        context.setFieldSchemaResolver(fieldSchemas);
         context.putClassConfig(viewable.getClass(), config);
 
         return new Card(
@@ -80,9 +88,6 @@ public final class QuizCardFactory {
         ViewConfig config = sourceConfig == null
                 ? ViewConfig.of(viewable == null ? null : viewable.getClass())
                 : sourceConfig.copy();
-        if (viewable != null && config.getCls() == null) {
-            config.setCls(viewable.getClass());
-        }
         if (presentation.disableConfigListeners()) {
             config.setAddListener(false);
         }

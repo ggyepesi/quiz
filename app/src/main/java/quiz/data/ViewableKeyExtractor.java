@@ -1,6 +1,8 @@
 package quiz.data;
 
 import objectview.Viewable;
+import objectview.ViewableAdapter;
+import objectview.field.DynamicFields;
 import objectview.field.FieldAccess;
 import objectview.field.FieldPath;
 import objectview.field.ViewableFieldPaths;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.RandomAccess;
+import java.util.Set;
 
 /**
  * Converts a ViewConfig into field paths and extracts the corresponding key
@@ -23,22 +26,231 @@ import java.util.RandomAccess;
 public final class ViewableKeyExtractor {
 
     public List<FieldPath> paths(ViewConfig config) {
-        return ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS)
-                .stream().map(ViewableFieldPaths.PathInfo::path).toList();
+        return pathInfos(config).stream()
+                .map(ViewableFieldPaths.PathInfo::path).toList();
+    }
+
+    public List<ViewableFieldPaths.PathInfo> pathInfos(ViewConfig config) {
+        return ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS);
     }
 
     /** Configured paths for the actual backing being quizzed. Explicit saved-domain
      * paths come directly from the config; a sample is needed only for the classless
      * all-fields shorthand, which cannot name fields by itself. */
     public List<FieldPath> paths(Viewable viewable, ViewConfig config) {
+        return pathInfos(viewable, config).stream()
+                .map(ViewableFieldPaths.PathInfo::path).toList();
+    }
+
+    public List<ViewableFieldPaths.PathInfo> pathInfos(
+            Viewable viewable, ViewConfig config) {
         if (config == null) return List.of();
-        List<FieldPath> configured = paths(config);
+        List<ViewableFieldPaths.PathInfo> configured = pathInfos(config);
         if (!configured.isEmpty() || config.getCls() != null || viewable == null) {
             return configured;
         }
         return ViewableFieldPaths.collectFromSample(
-                        viewable, config, ViewableFieldPaths.ALL_FIELDS)
-                .stream().map(ViewableFieldPaths.PathInfo::path).toList();
+                viewable, config, ViewableFieldPaths.ALL_FIELDS);
+    }
+
+    /** The assembled query/answer object for one selected key. It contains only
+     * configured fields; fields below a collection retain only the member producing
+     * this key, while a directly selected collection retains all of its members.
+     * The exact selecting config is also the presentation config; Card makes its
+     * own defensive copy before applying role-specific flags. */
+    public KeyContent contentObject(
+            Viewable owner, ViewConfig config,
+            List<FieldPath> paths, List<Object> key) {
+        if (owner == null || config == null || paths == null || paths.isEmpty()
+                || key == null) {
+            return null;
+        }
+        return new KeyContent(
+                new SelectedTuple(this, owner, paths, key), config);
+    }
+
+    /** Content assembled by the quiz engine for one key, paired with the same
+     * query/answer config that selected it. */
+    public record KeyContent(Viewable object, ViewConfig viewConfig) { }
+
+    /** A view of exactly one selected key.  The source instance remains separately
+     * indexed by {@code Quiz}; this object owns presentation only. */
+    private static final class SelectedTuple extends ViewableAdapter
+            implements DynamicFields {
+        private final ViewableKeyExtractor extractor;
+        private final Viewable source;
+        private final List<FieldPath> paths;
+        private final List<Object> key;
+        private final boolean displaySelected;
+        private volatile Map<String, Object> fields;
+
+        SelectedTuple(ViewableKeyExtractor extractor, Viewable source,
+                      List<FieldPath> paths, List<Object> key) {
+            this.extractor = extractor;
+            this.source = source;
+            this.paths = paths;
+            this.key = List.copyOf(key);
+            this.displaySelected = selectsDisplay(source, paths);
+        }
+
+        @Override public String getIdentifier() { return source.getIdentifier(); }
+        @Override public String getDisplayName() {
+            return displaySelected ? source.getDisplayName() : "";
+        }
+        @Override public String typeName() { return source.typeName(); }
+        @Override public Set<String> directClassNames() {
+            return source.directClassNames();
+        }
+        @Override public boolean isPart() { return source.isPart(); }
+
+        @Override public Map<String, Object> dynamicFieldValues() {
+            Map<String, Object> ready = fields;
+            if (ready == null) {
+                synchronized (this) {
+                    ready = fields;
+                    if (ready == null) {
+                        ready = Map.copyOf(extractor.projectFields(
+                                source, paths, key));
+                        fields = ready;
+                    }
+                }
+            }
+            return ready;
+        }
+    }
+
+    private static boolean selectsDisplay(
+            Viewable source, List<FieldPath> paths) {
+        String display = objectview.field.ViewableContractFieldSet.displayKey(
+                objectview.field.FieldSet.of(source));
+        for (FieldPath path : paths) {
+            if (path != null && path.size() == 1
+                    && (path.leaf().equals(display)
+                    || path.leaf().equals(
+                            objectview.field.ViewableContractFieldSet.DISPLAY_KEY))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Object> projectFields(
+            Viewable source, List<FieldPath> paths, List<Object> key) {
+        Map<String, List<Integer>> byField = new LinkedHashMap<>();
+        for (int index = 0; index < paths.size(); index++) {
+            FieldPath path = paths.get(index);
+            if (path == null || path.isRoot()) continue;
+            byField.computeIfAbsent(path.segments().getFirst(), ignored -> new ArrayList<>())
+                    .add(index);
+        }
+
+        Map<String, Object> projected = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Integer>> entry : byField.entrySet()) {
+            String field = entry.getKey();
+            Object raw = FieldAccess.getPathValues(source, FieldPath.of(field));
+            if (raw == null) continue;
+
+            List<Integer> indexes = entry.getValue();
+            boolean hasNested = indexes.stream().anyMatch(
+                    index -> paths.get(index).size() > 1);
+            if (!hasNested) {
+                // A selected reference contributes its display value by default. Keep
+                // all elements of a directly selected collection, but make each
+                // referenced element a display-only tuple rather than exposing its
+                // complete source object.
+                projected.put(field, selectedLeafValue(raw));
+                continue;
+            }
+
+            List<FieldPath> suffixes = new ArrayList<>(indexes.size());
+            List<Object> wanted = new ArrayList<>(indexes.size());
+            for (int index : indexes) {
+                FieldPath path = paths.get(index);
+                suffixes.add(new FieldPath(path.segments().subList(1, path.size())));
+                wanted.add(key.get(index));
+            }
+            Object nested = projectNested(raw, suffixes, wanted);
+            if (nested != null && !isEmptyValue(nested)) projected.put(field, nested);
+        }
+        return projected;
+    }
+
+    private Object selectedLeafValue(Object value) {
+        if (value instanceof Viewable viewable) {
+            return displayTuple(viewable);
+        }
+        if (value instanceof Collection<?> collection) {
+            List<Object> selected = new ArrayList<>(collection.size());
+            for (Object item : collection) selected.add(selectedLeafValue(item));
+            return selected;
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<Object, Object> selected = new LinkedHashMap<>();
+            map.forEach((key, item) -> selected.put(key, selectedLeafValue(item)));
+            return selected;
+        }
+        return value;
+    }
+
+    private Object projectNested(
+            Object raw, List<FieldPath> suffixes, List<Object> wanted) {
+        if (raw instanceof Viewable viewable) {
+            return projectedMatch(viewable, suffixes, wanted);
+        }
+        if (raw instanceof Collection<?> collection) {
+            List<Object> matches = new ArrayList<>();
+            for (Object value : collection) {
+                if (!(value instanceof Viewable viewable)) continue;
+                Object match = projectedMatch(viewable, suffixes, wanted);
+                if (match != null) matches.add(match);
+            }
+            // A nested collection is the multiplication boundary. One tuple carries
+            // its one matching member as a scalar; keeping a one-element collection
+            // would hide that selected value behind ObjectView's collapsed-list UI.
+            return matches.size() == 1 ? matches.getFirst() : matches;
+        }
+        if (raw instanceof Map<?, ?> map) {
+            Map<Object, Object> matches = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!(entry.getValue() instanceof Viewable viewable)) continue;
+                Object match = projectedMatch(viewable, suffixes, wanted);
+                if (match != null) matches.put(entry.getKey(), match);
+            }
+            return matches;
+        }
+        return null;
+    }
+
+    private Viewable projectedMatch(
+            Viewable candidate, List<FieldPath> suffixes, List<Object> wanted) {
+        boolean matches = false;
+        for (List<Object> combination : combinations(candidate, suffixes)) {
+            if (combination.equals(wanted)) {
+                matches = true;
+                break;
+            }
+        }
+        if (!matches) return null;
+
+        List<FieldPath> nestedPaths = new ArrayList<>();
+        List<Object> nestedKey = new ArrayList<>();
+        for (int index = 0; index < suffixes.size(); index++) {
+            if (!suffixes.get(index).isRoot()) {
+                nestedPaths.add(suffixes.get(index));
+                nestedKey.add(wanted.get(index));
+            }
+        }
+        return nestedPaths.isEmpty()
+                ? displayTuple(candidate)
+                : new SelectedTuple(this, candidate,
+                        List.copyOf(nestedPaths), nestedKey);
+    }
+
+    private SelectedTuple displayTuple(Viewable candidate) {
+        return new SelectedTuple(this, candidate,
+                List.of(FieldPath.of(
+                        objectview.field.ViewableContractFieldSet.DISPLAY_KEY)),
+                List.of(safeName(candidate)));
     }
 
     public List<List<Object>> combinations(Viewable viewable, ViewConfig config) {

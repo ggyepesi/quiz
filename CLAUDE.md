@@ -347,7 +347,16 @@ construct per thing produced:
   layout and interaction. A fixed-size choice set is constructed once and rendering never
   filters it afterwards. Exhaustion may decide whether an answer is still owed as a correct
   response or how it is marked, but an exhausted value remains a valid distractor. Selected
-  reference fields contribute the referenced instance's display value by default; nested
+  keys are also the content boundary: the quiz engine assembles the exact query and answer
+  objects that produced each key and retains their source-instance identity for scoring. Each
+  assembled object contains only the configured fields; an unselected display label is explicitly
+  empty. The same query/answer `ViewConfig` is reused for field order and presentation — there is
+  no second mapping — while the assembled object's absent fields enforce the selection. ObjectView
+  must not rediscover the tuple. Selecting a collection field itself keeps the whole
+  collection in the assembled object; selecting fields below it multiplies by collection member
+  and keeps fields selected below that collection correlated within the same member. Selected
+  reference fields contribute a display-only assembled reference by default (never the reference's
+  owner); nested
   fields enter the quiz key only when the user explicitly selects them, so selecting a
   self-reference such as `Person.spouse` never recursively selects another `Person` graph.
   Selected multi-value fields expose their Cartesian combinations as a lazy random-access view: the

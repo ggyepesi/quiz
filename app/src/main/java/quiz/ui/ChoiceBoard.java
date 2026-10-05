@@ -20,6 +20,11 @@ import java.util.function.Consumer;
  */
 public final class ChoiceBoard extends JPanel {
     public record Choice(int index, Viewable item, SelectableCard card) {}
+    /** The quiz-selected source used for scoring, and the exact content/config
+     * ObjectView renders. Keeping these separate prevents presentation from
+     * changing answer identity. */
+    public record CardItem(
+            Viewable source, Viewable content, ViewConfig viewConfig) {}
 
     private final ChoiceBoardPolicy policy;
     private final List<Choice> choices = new ArrayList<>();
@@ -39,6 +44,25 @@ public final class ChoiceBoard extends JPanel {
             QuizCardFactory cardFactory,
             ChoiceBoardPolicy policy,
             Collection<? extends Viewable> localRenderContext) {
+        this(toCardItems(items, cardConfig), cardFactory, policy,
+                localRenderContext, true);
+    }
+
+    public static ChoiceBoard forCardItems(
+            List<CardItem> items,
+            QuizCardFactory cardFactory,
+            ChoiceBoardPolicy policy,
+            Collection<? extends Viewable> localRenderContext) {
+        return new ChoiceBoard(items, cardFactory, policy,
+                localRenderContext, true);
+    }
+
+    private ChoiceBoard(
+            List<CardItem> items,
+            QuizCardFactory cardFactory,
+            ChoiceBoardPolicy policy,
+            Collection<? extends Viewable> localRenderContext,
+            boolean cardItems) {
         if (cardFactory == null || policy == null) {
             throw new IllegalArgumentException(
                     "ChoiceBoard needs a card factory and policy");
@@ -47,13 +71,13 @@ public final class ChoiceBoard extends JPanel {
         setLayout(new GridBagLayout());
 
         int index = 0;
-        for (Viewable item : items == null ? List.<Viewable>of() : items) {
-            if (item == null) continue;
+        for (CardItem item : items == null ? List.<CardItem>of() : items) {
+            if (item == null || item.source() == null || item.content() == null) continue;
             Card content = cardFactory.create(
-                    item, cardConfig, policy.cardRole(), localRenderContext);
+                    item.content(), item.viewConfig(), policy.cardRole(), localRenderContext);
             SelectableCard selectable =
-                    new SelectableCard(item, content, policy.framedIdle());
-            Choice choice = new Choice(index++, item, selectable);
+                    new SelectableCard(item.source(), content, policy.framedIdle());
+            Choice choice = new Choice(index++, item.source(), selectable);
             choices.add(choice);
             selectable.onSelected(ignored -> select(choice));
 
@@ -66,6 +90,15 @@ public final class ChoiceBoard extends JPanel {
                     GridBagConstraints.BOTH,
                     new Insets(6, 6, 6, 6)));
         }
+    }
+
+    private static List<CardItem> toCardItems(
+            List<? extends Viewable> items, ViewConfig config) {
+        if (items == null) return List.of();
+        return items.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(item -> new CardItem(item, item, config))
+                .toList();
     }
 
     public List<Choice> choices() {
