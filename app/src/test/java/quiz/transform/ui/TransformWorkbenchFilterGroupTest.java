@@ -75,14 +75,44 @@ class TransformWorkbenchFilterGroupTest {
                                 quiz.transform.RelationClosureGroup.PathRole.ENTITY, france)),
                         List.of());
         graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
+        quiz.transform.RelationClosureGroup closure = new quiz.transform.RelationClosureGroup(
+                "States", "State", "Relation", "member", "entity",
+                "States", List.of(france));
 
-        JSplitPane view = assertInstanceOf(JSplitPane.class,
-                TransformWorkbenchPanel.relationClosurePathView(controller, path, graph));
+        JTabbedPane view = assertInstanceOf(JTabbedPane.class,
+                TransformWorkbenchPanel.relationClosurePathView(
+                        controller, closure, path, graph));
 
-        assertSame(graph, view.getTopComponent());
-        assertInstanceOf(objectview.view.SearchableView.class, view.getBottomComponent(),
+        assertSame(graph, view.getComponentAt(0));
+        assertEquals(List.of("Path", "Timeline", "Instances"),
+                java.util.stream.IntStream.range(0, view.getTabCount())
+                        .mapToObj(view::getTitleAt).toList());
+        assertInstanceOf(objectview.view.SearchableView.class, view.getComponentAt(2),
                 "path instances must still use the ordinary ObjectView browser");
         graph.close();
+    }
+
+    @Test void aMultiSeedPathHeaderNamesTheSeedThatActuallyReachedTheMember() {
+        quiz.transform.DynamicViewable configuredFirst = value("P0", "First configured");
+        quiz.transform.DynamicViewable actualStart = value("P1", "Actual start");
+        quiz.transform.DynamicViewable target = value("H1", "Reached holder");
+        target.type("Person");
+        var startNode = new quiz.transform.RelationClosureGroup.PathNode(
+                quiz.transform.RelationClosureGroup.PathRole.ENTITY, actualStart);
+        var targetNode = new quiz.transform.RelationClosureGroup.PathNode(
+                quiz.transform.RelationClosureGroup.PathRole.MEMBER, target);
+        quiz.transform.DynamicViewable bridge = value("O1", "Holding");
+        bridge.type("OfficeHolding");
+        var path = new quiz.transform.RelationClosureGroup.RelationPath(
+                List.of(startNode, targetNode), List.of(
+                new quiz.transform.RelationClosureGroup.PathEdge(
+                        startNode, targetNode, bridge)));
+        var closure = new quiz.transform.RelationClosureGroup(
+                "Holders", "Person", "OfficeHolding", "source", "position",
+                "Positions", List.of(configuredFirst, actualStart));
+
+        assertTrue(TransformWorkbenchPanel.closurePathHeader(closure, path, target)
+                .startsWith("Actual start → Reached holder"));
     }
 
     @Test void aRelationClosurePathGraphShowsOnlyDomainEndpointsAndRelationEdges() {

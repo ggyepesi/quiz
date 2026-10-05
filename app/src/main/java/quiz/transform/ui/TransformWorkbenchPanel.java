@@ -1653,17 +1653,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
 
         graphview.InteractiveGraphView graph = new graphview.InteractiveGraphView();
-        JComponent view = relationClosurePathView(controller, path, graph);
+        JComponent view = relationClosurePathView(controller, closure, path, graph);
 
         JPanel content = new JPanel(new BorderLayout(4, 4));
         // The path's own start: with several seeds, the shortest path to this member
         // may begin at any of them, so the group's first seed would name the wrong one.
-        content.add(new JLabel(path.nodes().getFirst().instance().getDisplayName() + " → "
-                + target.getDisplayName() + " · shortest path · " + path.nodes().size()
-                + " instances · " + path.edges().size() + " " + closure.bridgeType()
-                + " links. A " + closure.entityField() + " between two "
-                + closure.memberType() + " instances is the shared "
-                + closure.entityField() + "."), BorderLayout.NORTH);
+        content.add(new JLabel(closurePathHeader(closure, path, target)), BorderLayout.NORTH);
         content.add(view, BorderLayout.CENTER);
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 "Path to " + target.getDisplayName(), Dialog.ModalityType.MODELESS);
@@ -1679,10 +1674,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.setVisible(true);
     }
 
-    /** The graph explains the relation; the lower half keeps the same ObjectView cards,
-     * schemas, links, search and field configuration as the main instance panel. */
+    /** Path, timeline and instances are views of one retained path. Domain instances
+     * keep the same ObjectView cards, schemas, links, search and field configuration. */
     static JComponent relationClosurePathView(
             TransformController controller,
+            quiz.transform.RelationClosureGroup closure,
             quiz.transform.RelationClosureGroup.RelationPath path,
             graphview.InteractiveGraphView graph) {
         graph.model(RelationClosurePathProjection.graph(path));
@@ -1723,12 +1719,95 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 + " path — arrows are the connecting relation instances"));
         instanceView.setBorder(BorderFactory.createTitledBorder(
                 "The same path instances in ObjectView"));
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, graph, instanceView);
-        split.setResizeWeight(0.42);
-        split.setDividerLocation(300);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Path", graph);
+        tabs.addTab("Timeline", relationClosureTimelineView(
+                controller, closure.bridgeType(), path));
+        tabs.addTab("Instances", instanceView);
+        return tabs;
+    }
+
+    static String closurePathHeader(quiz.transform.RelationClosureGroup closure,
+                                    quiz.transform.RelationClosureGroup.RelationPath path,
+                                    Viewable target) {
+        return path.nodes().getFirst().instance().getDisplayName() + " → "
+                + target.getDisplayName() + " · shortest path · " + path.nodes().size()
+                + " instances · " + path.edges().size() + " " + closure.bridgeType()
+                + " links. A " + closure.entityField() + " between two "
+                + closure.memberType() + " instances is the shared "
+                + closure.entityField() + ".";
+    }
+
+    /** Timeline and selected holding detail are two views of the same retained edges. */
+    static JComponent relationClosureTimelineView(
+            TransformController controller, String bridgeType,
+            quiz.transform.RelationClosureGroup.RelationPath path) {
+        RelationClosureTimeline.DateFields fields =
+                RelationClosureTimeline.configuredFields(controller, bridgeType);
+        RelationClosureTimeline.Model model = RelationClosureTimeline.of(path, fields);
+        JPanel detail = new JPanel(new BorderLayout());
+        detail.setMinimumSize(new Dimension(320, 190));
+        java.util.function.Consumer<RelationClosureTimeline.Holding> inspect = holding -> {
+            detail.removeAll();
+            detail.setBorder(BorderFactory.createTitledBorder("Selected "
+                    + holding.relation().typeName() + " — "
+                    + holding.position().getDisplayName() + " / "
+                    + holding.member().getDisplayName()));
+            detail.add(relationClosureHoldingView(controller, holding.relation()),
+                    BorderLayout.CENTER);
+            detail.revalidate();
+            detail.repaint();
+        };
+        RelationClosureTimelinePanel timeline =
+                new RelationClosureTimelinePanel(model, inspect);
+        JScrollPane scroll = new JScrollPane(timeline,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        JButton fit = new JButton("Fit");
+        fit.addActionListener(event -> timeline.fit());
+        JButton zoomIn = new JButton("Zoom in");
+        zoomIn.addActionListener(event -> timeline.zoom(1.5));
+        JButton zoomOut = new JButton("Zoom out");
+        zoomOut.addActionListener(event -> timeline.zoom(1 / 1.5));
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        controls.add(fit);
+        controls.add(zoomIn);
+        controls.add(zoomOut);
+        controls.add(new JLabel("  Date fields: "
+                + (fields.configured() ? fields.description() : "not configured")
+                + " · " + model.holdings().size() + " " + bridgeType
+                + " instances · " + model.unplaced().size()
+                + " undated or invalid"));
+        JPanel timelineArea = new JPanel(new BorderLayout(4, 4));
+        timelineArea.add(controls, BorderLayout.NORTH);
+        timelineArea.add(scroll, BorderLayout.CENTER);
+        if (model.holdings().isEmpty()) {
+            detail.add(new JLabel("  This path has no relation instance to inspect."),
+                    BorderLayout.CENTER);
+        } else {
+            inspect.accept(model.holdings().getFirst());
+        }
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, timelineArea, detail);
+        split.setResizeWeight(0.62);
+        split.setDividerLocation(390);
         split.setContinuousLayout(true);
         split.setOneTouchExpandable(true);
         return split;
+    }
+
+    private static JComponent relationClosureHoldingView(
+            TransformController controller, Viewable holding) {
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        context.addTopLevel(holding);
+        return objectview.view.SearchableView.builder(List.of(holding))
+                .sample(holding)
+                .renderContext(context)
+                .fieldSchemas(value -> controller.renderedFieldSchema(
+                        value, value.typeName()))
+                .collapsible(true)
+                .build();
     }
 
     private static boolean belongsTo(objectview.group.ViewableGroup<?> root,
