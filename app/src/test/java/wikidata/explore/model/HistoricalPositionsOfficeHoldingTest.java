@@ -11,23 +11,39 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The curated office vocabulary drives the ordinary qualified-relation workflow. */
 class HistoricalPositionsOfficeHoldingTest {
 
+    /**
+     * A population of offices with holders does not grow along P279 into the classes its
+     * offices are kinds of (#329). An unbounded upward walk accepted all 604 superclasses,
+     * and the 215 it added — minister, chairperson, bishop, member of parliament,
+     * president — brought 62,013 holders into History who hold none of the offices in the
+     * population. A graph may still widen it upward, but only within an admission
+     * population that says which classes are offices worth holding.
+     */
     @Test
-    void positionWithHoldersExpandsUpItsSuperclassClosure() throws Exception {
+    void positionWithHoldersDoesNotGrowAlongAnUnboundedSuperclassWalk() throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(new File(
                 "../data/wikidata/historicalpositions/historicalpositions.model.json"));
 
-        GeneratedClassModel expansion = model.findClass("PositionSuperclassExpansion");
-        assertEquals(ClassKind.GRAPH, expansion.classKind());
-        assertEquals("PositionWithHolders", expansion.graphSource()
-                .startNode().qidSourceClass());
-        var next = expansion.graphSource().nextNodes().getFirst();
-        assertEquals("P279", next.property().relationId());
-        assertEquals(datasource.graph.GraphTraversalDirection.OUTGOING,
-                next.directionFromPrevious());
-        assertEquals("PositionWithHolders", next.populationClass());
-        assertEquals(datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
-                next.populationOperation());
-        assertTrue(next.repeatUntilStable());
+        for (GeneratedClassModel graph : model.graphClasses()) {
+            for (var node : graph.graphSource().nextNodes()) {
+                boolean upward = "P279".equals(node.property().relationId())
+                        && node.directionFromPrevious()
+                        == datasource.graph.GraphTraversalDirection.OUTGOING;
+                boolean addsToPopulation = "PositionWithHolders".equals(node.populationClass())
+                        && node.populationOperation()
+                        == datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD;
+                assertTrue(!(upward && addsToPopulation)
+                                || !node.admissionPopulationSelection().isBlank(),
+                        graph.className() + " widens PositionWithHolders along P279 "
+                                + "with no admission population");
+            }
+        }
+        List<String> population = ((PopulationSelection) model.findSelection(
+                "PositionWithHoldersPopulation")).instanceQids();
+        for (String generic : List.of("Q83307", "Q140686", "Q29182", "Q486839", "Q30461")) {
+            assertTrue(!population.contains(generic),
+                    generic + " is a class of offices, not an office with holders");
+        }
     }
 
     @Test
