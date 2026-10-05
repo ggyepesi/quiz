@@ -152,17 +152,25 @@ public final class ViewableKeyExtractor {
     private boolean factorsOf(Object value, PathNode node, List<Factor> out, Viewable owner,
                               List<FieldPath> paths) {
         if (value instanceof Collection<?> collection && !node.children.isEmpty()) {
-            // One factor whose alternatives are the elements' own combinations, joined.
+            // One factor whose alternatives are the elements' own combinations. Keep
+            // both the per-element products and their concatenation lazy: grouping is
+            // a correlation rule, not permission to materialize the product again.
             List<Integer> covered = new ArrayList<>();
             node.positions(covered);
-            List<Object> partials = new ArrayList<>();
+            List<List<Object>> elements = new ArrayList<>();
+            long total = 0;
             for (Object element : collection) {
                 List<Factor> inner = new ArrayList<>();
                 if (!factorsOf(element, node, inner, owner, paths)) continue;
-                expand(inner, partials, owner, paths);
+                List<Object> partials = mergedPartials(inner, owner, paths);
+                if (total + partials.size() > Integer.MAX_VALUE) {
+                    throw tooMany(owner, paths, inner);
+                }
+                total += partials.size();
+                elements.add(partials);
             }
-            if (partials.isEmpty()) return false;
-            out.add(new Factor(covered, partials));
+            if (elements.isEmpty()) return false;
+            out.add(new Factor(covered, new ConcatenatedPartials(elements, (int) total)));
             return true;
         }
         if (!node.ends.isEmpty()) {
@@ -184,25 +192,80 @@ public final class ViewableKeyExtractor {
         return true;
     }
 
-    /** Appends every combination of {@code factors} — one element's — as one partial. */
-    private static void expand(List<Factor> factors, List<Object> out, Viewable owner,
-                               List<FieldPath> paths) {
+    /** One element's factor product as a lazy list of merged partials. */
+    private static List<Object> mergedPartials(
+            List<Factor> factors, Viewable owner, List<FieldPath> paths) {
         List<List<Object>> alternatives = new ArrayList<>(factors.size());
         for (Factor factor : factors) alternatives.add(factor.partials());
-        long count = LazyCartesianKeys.product(alternatives);
-        if (count > Integer.MAX_VALUE || out.size() + count > Integer.MAX_VALUE) {
-            Map<String, Integer> counts = new LinkedHashMap<>();
-            for (Factor factor : factors) {
-                counts.put(factor.label(paths), factor.partials().size());
-            }
-            throw new TooManyCombinations(owner, paths.size(), counts);
+        if (LazyCartesianKeys.product(alternatives) > Integer.MAX_VALUE) {
+            throw tooMany(owner, paths, factors);
         }
-        for (List<Object> combination : new LazyCartesianKeys(alternatives)) {
+        return new MergedPartials(new LazyCartesianKeys(alternatives));
+    }
+
+    private static TooManyCombinations tooMany(
+            Viewable owner, List<FieldPath> paths, List<Factor> factors) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Factor factor : factors) {
+            counts.put(factor.label(paths), factor.partials().size());
+        }
+        return new TooManyCombinations(owner, paths.size(), counts);
+    }
+
+    /** Lazily merges the independently selected fields of one collection element. */
+    static final class MergedPartials extends AbstractList<Object> implements RandomAccess {
+        private final LazyCartesianKeys factors;
+
+        MergedPartials(LazyCartesianKeys factors) {
+            this.factors = factors;
+        }
+
+        @Override public int size() {
+            return factors.size();
+        }
+
+        @Override public Object get(int index) {
+            List<Object> combination = factors.get(index);
             Partial merged = null;
             for (Object part : combination) {
                 merged = merged == null ? (Partial) part : merged.merge((Partial) part);
             }
-            out.add(merged);
+            return merged;
+        }
+    }
+
+    /** Random-access concatenation of the tuple products contributed by collection
+     *  elements. Only the element containing the requested index is touched. */
+    static final class ConcatenatedPartials
+            extends AbstractList<Object> implements RandomAccess {
+        private final List<List<Object>> elements;
+        private final int[] ends;
+        private final int size;
+
+        ConcatenatedPartials(List<List<Object>> elements, int size) {
+            this.elements = List.copyOf(elements);
+            this.ends = new int[elements.size()];
+            int end = 0;
+            for (int i = 0; i < elements.size(); i++) {
+                end += elements.get(i).size();
+                ends[i] = end;
+            }
+            if (end != size) {
+                throw new IllegalArgumentException("Concatenated size changed while building");
+            }
+            this.size = size;
+        }
+
+        @Override public int size() {
+            return size;
+        }
+
+        @Override public Object get(int index) {
+            Objects.checkIndex(index, size);
+            int element = java.util.Arrays.binarySearch(ends, index + 1);
+            if (element < 0) element = -element - 1;
+            int start = element == 0 ? 0 : ends[element - 1];
+            return elements.get(element).get(index - start);
         }
     }
 

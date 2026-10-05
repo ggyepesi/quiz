@@ -4,9 +4,11 @@ import objectview.ViewableAdapter;
 import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.RandomAccess;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -139,6 +141,34 @@ class QuizKeyGroupingTest {
                 refused.getMessage());
     }
 
+    /** Correlation must not undo the lazy-product rule: sizing a grouped element's
+     *  product must not read and merge every combination. */
+    @Test void aGroupedElementProductIsNotMaterializedWhenItIsSized() {
+        CountingList first = new CountingList(1_000);
+        CountingList second = new CountingList(1_000);
+        var product = new ViewableKeyExtractor.LazyCartesianKeys(
+                List.of(first, second));
+        var grouped = new ViewableKeyExtractor.MergedPartials(product);
+
+        assertEquals(1_000_000, grouped.size());
+        assertEquals(0, first.reads + second.reads,
+                "no combination is read before the quiz requests it");
+    }
+
+    @Test void collectionElementProductsAreConcatenatedWithoutReadingThem() {
+        CountingList first = new CountingList(2);
+        CountingList second = new CountingList(3);
+        var grouped = new ViewableKeyExtractor.ConcatenatedPartials(
+                List.of(first, second), 5);
+
+        assertEquals(5, grouped.size());
+        assertEquals(0, first.reads + second.reads);
+        assertEquals("v2", grouped.getLast());
+        assertEquals(0, first.reads);
+        assertEquals(1, second.reads,
+                "only the collection element containing the requested tuple is read");
+    }
+
     private List<List<Object>> keys(Person person, String... dotted) {
         List<FieldPath> paths = new ArrayList<>();
         for (String path : dotted) paths.add(FieldPath.parse(path));
@@ -149,6 +179,26 @@ class QuizKeyGroupingTest {
         Person person = new Person("Solo");
         person.offices.add(office);
         return person;
+    }
+
+    private static final class CountingList extends AbstractList<Object>
+            implements RandomAccess {
+        private final int size;
+        private int reads;
+
+        private CountingList(int size) {
+            this.size = size;
+        }
+
+        @Override public Object get(int index) {
+            java.util.Objects.checkIndex(index, size);
+            reads++;
+            return "v" + index;
+        }
+
+        @Override public int size() {
+            return size;
+        }
     }
 
     @SuppressWarnings("unused")
