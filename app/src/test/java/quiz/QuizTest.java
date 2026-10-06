@@ -96,10 +96,16 @@ class QuizGenerationTest {
 
         ViewConfig queryConfig = ViewConfig.of(HistoricalPerson.class);
         queryConfig.setAllFields(false);
-        queryConfig.addField("spouse", ViewConfig.leaf());
+        ViewConfig spouseConfig = ViewConfig.of(NamedEntity.class);
+        spouseConfig.setAllFields(false);
+        spouseConfig.addField(ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        queryConfig.addField("spouse", spouseConfig);
         ViewConfig answerConfig = ViewConfig.of(HistoricalPerson.class);
         answerConfig.setAllFields(false);
-        answerConfig.addField("offices", ViewConfig.leaf());
+        ViewConfig officeConfig = ViewConfig.of(NamedEntity.class);
+        officeConfig.setAllFields(false);
+        officeConfig.addField(ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        answerConfig.addField("offices", officeConfig);
 
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null, people);
 
@@ -107,7 +113,7 @@ class QuizGenerationTest {
     }
 
     @Test
-    void nestedQuestionRendersOnlyTheCollectionMemberThatProducedItsKey() {
+    void nestedQuestionKeepsTheWholeCollectionThatProducedItsKeys() {
         Position president = new Position("P1", "President");
         Position deputy = new Position("P2", "Member of the Congress of Deputies");
         QuizPerson person = new QuizPerson("Q1", "Narcís Verdaguer i Callís",
@@ -141,15 +147,77 @@ class QuizGenerationTest {
                 "selection and rendering must use the same ViewConfig");
         assertEquals("QuizPerson", prompt.getViewable().typeName());
         assertEquals("", prompt.getTitle());
-        assertEquals(List.of("President"), new quiz.data.ViewableKeyExtractor()
+        assertEquals(List.of("President", "Member of the Congress of Deputies"),
+                new quiz.data.ViewableKeyExtractor()
                 .alternatives(prompt.getViewable(),
                         "offices.position.@view:display"));
-        assertTrue(rendersText(prompt, "President"), () -> renderTree(prompt, ""));
+        assertTrue(rendersText(prompt, "President"),
+                () -> "the key's collection must render open:\n" + renderTree(prompt, ""));
         assertFalse(rendersText(prompt, person.getDisplayName()));
     }
 
     @Test
-    void selectedReferenceDisplayRendersThePositionRatherThanItsHoldingOwner() {
+    void duplicateOfficeStatementsDoNotHideTheSelectedPositionInACollection() {
+        Position president = new Position("P1", "President");
+        QuizPerson person = new QuizPerson("Q1", personName(),
+                List.of(
+                        new OfficeHolding("H1", personName(), president),
+                        new OfficeHolding("H2", personName(), president)),
+                "answer");
+
+        ViewConfig positionConfig = ViewConfig.of(Position.class);
+        positionConfig.setAllFields(false);
+        positionConfig.addField(
+                ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        ViewConfig officeConfig = ViewConfig.of(OfficeHolding.class);
+        officeConfig.setAllFields(false);
+        officeConfig.addField("position", positionConfig);
+        ViewConfig queryConfig = ViewConfig.of(QuizPerson.class);
+        queryConfig.setAllFields(false);
+        queryConfig.addField("offices", officeConfig);
+        ViewConfig answerConfig = ViewConfig.of(QuizPerson.class);
+        answerConfig.setAllFields(false);
+        answerConfig.addField("answer", ViewConfig.leaf());
+
+        TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
+                Map.of(person.getIdentifier(), person));
+
+        Card prompt = quiz.questionCard("President");
+        assertNotNull(prompt);
+        Object selectedOffice = objectview.field.FieldAccess.getPathValues(
+                prompt.getViewable(), objectview.field.FieldPath.of("offices"));
+        assertInstanceOf(List.class, selectedOffice,
+                "key enumeration must not trim the assembled collection");
+        assertEquals(2, ((List<?>) selectedOffice).size());
+    }
+
+    @Test
+    void selectedDisplayNameIsTheCardTitleNotAMachineNamedField() {
+        quiz.transform.DynamicViewable person =
+                new quiz.transform.DynamicViewable(
+                        "Q1", "Frederick, Prince of Wales");
+        person.put("answer", "question");
+        ViewConfig queryConfig = new ViewConfig();
+        queryConfig.setAllFields(false);
+        queryConfig.addField("answer", ViewConfig.leaf());
+        ViewConfig answerConfig = new ViewConfig();
+        answerConfig.setAllFields(false);
+        answerConfig.addField("name", ViewConfig.leaf());
+
+        TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
+                Map.of(person.getIdentifier(), person));
+
+        Card answer = quiz.answerCard("Frederick, Prince of Wales");
+        assertNotNull(answer);
+        assertEquals("Frederick, Prince of Wales", answer.getTitle());
+        assertFalse(((objectview.field.DynamicFields) answer.getViewable())
+                        .dynamicFieldValues()
+                        .containsKey("name"),
+                "the real display field is a presentation role, not a value row");
+    }
+
+    @Test
+    void selectedReferenceDisplayProjectsThePositionRatherThanItsHoldingOwner() {
         Position president = new Position("P1", "President");
         QuizPerson person = new QuizPerson("Q1", personName(),
                 List.of(new OfficeHolding("H1", personName(), president)),
@@ -157,8 +225,10 @@ class QuizGenerationTest {
 
         ViewConfig officeConfig = ViewConfig.of(OfficeHolding.class);
         officeConfig.setAllFields(false);
-        // This bare reference is the editor's saved shorthand for its display label.
-        officeConfig.addField("position", ViewConfig.leaf());
+        ViewConfig positionConfig = ViewConfig.of(Position.class);
+        positionConfig.setAllFields(false);
+        positionConfig.addField("@view:display", ViewConfig.leaf());
+        officeConfig.addField("position", positionConfig);
         ViewConfig queryConfig = ViewConfig.of(QuizPerson.class);
         queryConfig.setAllFields(false);
         queryConfig.addField("offices", officeConfig);
@@ -176,7 +246,8 @@ class QuizGenerationTest {
         assertEquals("", prompt.getTitle());
         assertEquals(List.of("President"), new quiz.data.ViewableKeyExtractor()
                 .alternatives(prompt.getViewable(), "offices.position"));
-        assertTrue(rendersText(prompt, "President"), () -> renderTree(prompt, ""));
+        assertTrue(rendersText(prompt, "President"),
+                () -> "the key's collection must render open:\n" + renderTree(prompt, ""));
         assertFalse(rendersText(prompt, person.getDisplayName()));
     }
 
@@ -194,6 +265,8 @@ class QuizGenerationTest {
 
         ViewConfig positionConfig = new ViewConfig();
         positionConfig.setAllFields(false);
+        positionConfig.addField(
+                ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
         ViewConfig officeConfig = new ViewConfig();
         officeConfig.setAllFields(false);
         officeConfig.addField("position", positionConfig);
@@ -214,7 +287,8 @@ class QuizGenerationTest {
         assertEquals("", prompt.getTitle());
         assertEquals(List.of("President"), new quiz.data.ViewableKeyExtractor()
                 .alternatives(prompt.getViewable(), "offices.position"));
-        assertTrue(rendersText(prompt, "President"), () -> renderTree(prompt, ""));
+        assertTrue(rendersText(prompt, "President"),
+                () -> "the key's collection must render open:\n" + renderTree(prompt, ""));
         assertFalse(rendersText(prompt, person.getDisplayName()));
     }
 
@@ -256,7 +330,8 @@ class QuizGenerationTest {
                 "an unselected owner display label is explicitly empty");
         assertEquals("1800-01-01", objectview.field.FieldAccess.getPathValues(
                 prompt.getViewable(), objectview.field.FieldPath.of("dateOfBirth")));
-        assertEquals(List.of("President"), new quiz.data.ViewableKeyExtractor()
+        assertEquals(List.of("President", "Deputy"),
+                new quiz.data.ViewableKeyExtractor()
                 .alternatives(prompt.getViewable(), "offices.position"));
         assertEquals("", prompt.getTitle(),
                 "the unselected Person/holding display label must not leak into the query");
@@ -294,15 +369,17 @@ class QuizGenerationTest {
         assertNotSame(person, answer.getViewable());
         assertEquals("QuizPerson", answer.getViewable().typeName());
         assertEquals("", answer.getTitle());
-        assertEquals(List.of("President"), new quiz.data.ViewableKeyExtractor()
+        assertEquals(List.of("President", "Member of the Congress of Deputies"),
+                new quiz.data.ViewableKeyExtractor()
                 .alternatives(answer.getViewable(),
                         "offices.position.@view:display"));
-        assertTrue(rendersText(answer, "President"), () -> renderTree(answer, ""));
+        assertTrue(rendersText(answer, "President"),
+                () -> "the key's collection must render open:\n" + renderTree(answer, ""));
         assertFalse(rendersText(answer, person.getDisplayName()));
     }
 
     @Test
-    void selectingACollectionItselfKeepsTheWholeCollectionContentObject() {
+    void selectingAnObjectCollectionWithoutChildrenProducesNoQuizValue() {
         QuizPerson person = new QuizPerson("Q1", personName(),
                 List.of(
                         new OfficeHolding("H1", "First holding",
@@ -320,13 +397,87 @@ class QuizGenerationTest {
         TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
                 Map.of(person.getIdentifier(), person));
 
+        assertEquals(0, quiz.questionCount(),
+                "the object-field caption is presentation, not an implicit display key");
+    }
+
+    @Test
+    void selectingAnObjectCollectionsDisplayKeepsAllMembersInTheContentObject() {
+        QuizPerson person = new QuizPerson("Q1", personName(),
+                List.of(
+                        new OfficeHolding("H1", "First holding",
+                                new Position("P1", "President")),
+                        new OfficeHolding("H2", "Second holding",
+                                new Position("P2", "Deputy"))),
+                "answer");
+        ViewConfig officeConfig = ViewConfig.of(OfficeHolding.class);
+        officeConfig.setAllFields(false);
+        officeConfig.addField(
+                ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        ViewConfig queryConfig = ViewConfig.of(QuizPerson.class);
+        queryConfig.setAllFields(false);
+        queryConfig.addField("offices", officeConfig);
+        ViewConfig answerConfig = ViewConfig.of(QuizPerson.class);
+        answerConfig.setAllFields(false);
+        answerConfig.addField("answer", ViewConfig.leaf());
+
+        TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
+                Map.of(person.getIdentifier(), person));
+
         Card first = quiz.questionCard("First holding");
         Card second = quiz.questionCard("Second holding");
-        assertNotSame(person, first.getViewable());
-        assertNotSame(person, second.getViewable());
+        assertNotNull(first);
+        assertNotNull(second);
         assertEquals(List.of("First holding", "Second holding"),
                 new quiz.data.ViewableKeyExtractor()
-                        .alternatives(first.getViewable(), "offices"));
+                        .alternatives(first.getViewable(),
+                                "offices.@view:display"));
+        assertEquals(List.of("First holding", "Second holding"),
+                new quiz.data.ViewableKeyExtractor()
+                        .alternatives(second.getViewable(),
+                                "offices.@view:display"));
+    }
+
+    @Test
+    void untickingAnOfficeDisplayDoesNotRemoveOtherOfficesFromTheContentObject() {
+        QuizPerson person = new QuizPerson("Q1", personName(),
+                List.of(
+                        new OfficeHolding("H1", "First holding",
+                                new Position("P1", "President")),
+                        new OfficeHolding("H2", "Second holding",
+                                new Position("P2", "Deputy"))),
+                "answer");
+        ViewConfig positionConfig = ViewConfig.of(Position.class);
+        positionConfig.setAllFields(false);
+        positionConfig.addField(
+                ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        ViewConfig officeConfig = ViewConfig.of(OfficeHolding.class);
+        officeConfig.setAllFields(false);
+        officeConfig.addField("position", positionConfig);
+        ViewConfig queryConfig = ViewConfig.of(QuizPerson.class);
+        queryConfig.setAllFields(false);
+        queryConfig.addField("offices", officeConfig);
+        ViewConfig answerConfig = ViewConfig.of(QuizPerson.class);
+        answerConfig.setAllFields(false);
+        answerConfig.addField("answer", ViewConfig.leaf());
+
+        TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
+                Map.of(person.getIdentifier(), person));
+
+        Card prompt = quiz.questionCard("President");
+        assertNotNull(prompt);
+        Object offices = objectview.field.FieldAccess.getPathValues(
+                prompt.getViewable(), objectview.field.FieldPath.of("offices"));
+        assertInstanceOf(List.class, offices);
+        assertEquals(2, ((List<?>) offices).size());
+        assertEquals(List.of("", ""), ((List<?>) offices).stream()
+                .map(Viewable.class::cast)
+                .map(Viewable::getDisplayName)
+                .toList(), "only the unticked Office titles disappear");
+        assertEquals(List.of("President", "Deputy"),
+                new quiz.data.ViewableKeyExtractor().alternatives(
+                        prompt.getViewable(),
+                        "offices.position.@view:display"));
     }
 
     private static String personName() {

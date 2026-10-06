@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import quiz.data.ViewableKeyExtractor;
 import quiz.transform.ui.ReflectionDomain;
 
-import javax.swing.JButton;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -130,7 +129,7 @@ class QuizFactoryConfiguredDomainTest {
                 QuizAnswerType.SIXDEGREES, name, name));
     }
 
-    @Test void aSelectedReferenceStartsAtItsDisplayAndNotItsObjectGraph() {
+    @Test void aSelectedReferenceDoesNotSelectAnyChildField() {
         RelatedPerson spouse = new RelatedPerson("Bob", "A long nested value");
         RelatedPerson person = new RelatedPerson("Alice", "Another biography");
         person.spouse = spouse;
@@ -140,7 +139,7 @@ class QuizFactoryConfiguredDomainTest {
         List<FieldPath> selected = new ViewableKeyExtractor()
                 .paths(person, editor.getConfig());
 
-        assertTrue(selected.contains(FieldPath.parse("spouse.@view:display")), selected::toString);
+        assertFalse(selected.contains(FieldPath.parse("spouse.@view:display")), selected::toString);
         assertFalse(selected.contains(FieldPath.parse("spouse.biography")), selected::toString);
     }
 
@@ -182,9 +181,9 @@ class QuizFactoryConfiguredDomainTest {
                 "nothing left to resolve");
     }
 
-    /** A ticked reference with nothing ticked under it means its display name again,
-     *  so unticking its display name on the other side unticks the reference too. */
-    @Test void aReferenceLeftWithNothingTickedIsUntickedToo() {
+    /** Removing the last overlapping child does not remove its independently selected
+     * object-field caption. It still contributes no quiz value path. */
+    @Test void aReferenceLeftWithNothingTickedRemainsCaptionOnly() {
         RelatedPerson person = marriedPerson();
         ReflectionDomain domain = new ReflectionDomain(List.of(person, person.spouse));
         var question = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
@@ -195,11 +194,12 @@ class QuizFactoryConfiguredDomainTest {
         List<FieldPath> left = new ViewableKeyExtractor().paths(person, question.getConfig());
         assertTrue(left.stream().noneMatch(path -> path.first().equals("spouse")),
                 left::toString);
+        assertTrue(question.selectedFieldPaths().contains(FieldPath.parse("spouse")));
     }
 
-    /** Only what conflicts is unticked: the spouse's display name, not the spouse's
-     *  biography the question also asks about. */
-    @Test void fieldsUnderAReferenceThatDoNotConflictStay() {
+    /** A caption-only object selection on the answer side conflicts with none of the
+     * explicitly selected nested values on the question side. */
+    @Test void captionOnlyReferenceDoesNotConflictWithNestedFields() {
         RelatedPerson person = marriedPerson();
         ReflectionDomain domain = new ReflectionDomain(List.of(person, person.spouse));
         ViewConfig spouse = new ViewConfig();
@@ -219,7 +219,7 @@ class QuizFactoryConfiguredDomainTest {
 
         List<FieldPath> left = new ViewableKeyExtractor().paths(person, question.getConfig());
         assertTrue(left.contains(FieldPath.parse("spouse.biography")), left::toString);
-        assertFalse(left.contains(FieldPath.parse("spouse.@view:display")), left::toString);
+        assertTrue(left.contains(FieldPath.parse("spouse.@view:display")), left::toString);
     }
 
     private static RelatedPerson marriedPerson() {
@@ -227,18 +227,6 @@ class QuizFactoryConfiguredDomainTest {
         RelatedPerson person = new RelatedPerson("Alice", "Another biography");
         person.spouse = spouse;
         return person;
-    }
-
-    @Test void creatingAQuizIsVisibleAndPreventsAnotherClick() {
-        JButton button = new JButton("Create quiz");
-
-        QuizFactory.setQuizCreationRunning(button, true);
-        assertEquals("Creating quiz…", button.getText());
-        assertFalse(button.isEnabled());
-
-        QuizFactory.setQuizCreationRunning(button, false);
-        assertEquals("Create quiz", button.getText());
-        assertTrue(button.isEnabled());
     }
 
     private static DomainModel domain(

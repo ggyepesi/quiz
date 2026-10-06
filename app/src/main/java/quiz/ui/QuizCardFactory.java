@@ -36,6 +36,19 @@ public final class QuizCardFactory {
                 QuizCardPresentation.forRole(role), null);
     }
 
+    /** A card for an assembled quiz key: the collections and references on the
+     * paths that produced the key start open, so the selected values are visible
+     * rather than behind a collapsed "field (N)" header. */
+    public Card create(
+            Viewable viewable,
+            ViewConfig sourceConfig,
+            QuizCardRole role,
+            Collection<? extends Viewable> localContext,
+            java.util.List<FieldPath> reveal) {
+        return create(viewable, sourceConfig,
+                QuizCardPresentation.forRole(role), localContext, reveal);
+    }
+
     public Card create(
             Viewable viewable,
             ViewConfig sourceConfig,
@@ -50,6 +63,16 @@ public final class QuizCardFactory {
             ViewConfig sourceConfig,
             QuizCardPresentation presentation,
             Collection<? extends Viewable> localContext) {
+        return create(viewable, sourceConfig, presentation, localContext,
+                java.util.List.of());
+    }
+
+    public Card create(
+            Viewable viewable,
+            ViewConfig sourceConfig,
+            QuizCardPresentation presentation,
+            Collection<? extends Viewable> localContext,
+            java.util.List<FieldPath> reveal) {
         if (viewable == null) {
             throw new IllegalArgumentException("Quiz card needs a Viewable");
         }
@@ -65,6 +88,9 @@ public final class QuizCardFactory {
         RenderContext context = new RenderContext(contextItems);
         context.setFieldSchemaResolver(fieldSchemas);
         context.putClassConfig(viewable.getClass(), config);
+        if (reveal != null) {
+            for (FieldPath path : reveal) context.revealPath(viewable, path);
+        }
 
         return new Card(
                 Card.identitySetOf(),

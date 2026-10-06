@@ -53,6 +53,7 @@ public abstract class Quiz extends Thread {
 
     /** Why the selected fields could not be indexed; reported by prepareQuiz. */
     private String indexProblem;
+    private boolean indexed;
 
     protected int correctSelections = 0;
     protected int wrongSelections = 0;
@@ -64,6 +65,16 @@ public abstract class Quiz extends Thread {
                 ViewConfig answerConfig,
                 ViewableGroup<?> group,
                 Map<String, ? extends Viewable> viewables) {
+        this(queryConfig, answerConfig, group, viewables, false);
+    }
+
+    /** QuizFactory defers the expensive index until its visible background
+     * preparation action; direct construction keeps the historical eager contract. */
+    protected Quiz(ViewConfig queryConfig,
+                   ViewConfig answerConfig,
+                   ViewableGroup<?> group,
+                   Map<String, ? extends Viewable> viewables,
+                   boolean deferIndexing) {
         this.queryConfig = queryConfig == null ? new ViewConfig() : queryConfig;
         this.answerConfig = answerConfig == null ? new ViewConfig() : answerConfig;
 
@@ -81,10 +92,11 @@ public abstract class Quiz extends Thread {
         this.frame.setSize(1400, 900);
         this.frame.setLocationRelativeTo(null);
 
-        indexViewables();
+        if (!deferIndexing) ensureIndexed();
     }
 
     public String prepareQuiz() {
+        ensureIndexed();
         if (indexProblem != null) return indexProblem;
         int selectedItems = group == null
                 ? viewables.size() : group.getMembers().size();
@@ -196,6 +208,12 @@ public abstract class Quiz extends Thread {
             answerKeyByCard.clear();
             indexProblem = tooMany.getMessage();
         }
+    }
+
+    private void ensureIndexed() {
+        if (indexed) return;
+        indexViewables();
+        indexed = true;
     }
 
     private void indexEachViewable() {
@@ -395,14 +413,14 @@ public abstract class Quiz extends Thread {
         ViewableKeyExtractor.KeyContent content = queryContents.get(queryKey);
         if (content == null) return null;
         return cardFactory.create(
-                content.object(), content.viewConfig(), role);
+                content.object(), content.viewConfig(), role, null, content.paths());
     }
 
     protected Card createAnswerPanel(List<Object> answerKey, QuizCardRole role) {
         ViewableKeyExtractor.KeyContent content = answerContents.get(answerKey);
         if (content == null) return null;
         return cardFactory.create(
-                content.object(), content.viewConfig(), role);
+                content.object(), content.viewConfig(), role, null, content.paths());
     }
 
     protected quiz.ui.ChoiceBoard.CardItem answerCardItem(
@@ -412,6 +430,7 @@ public abstract class Quiz extends Thread {
         // The card's identity is its assembled object, which stands for exactly this
         // key; the owning instance stays available as provenance via answerViewables.
         return new quiz.ui.ChoiceBoard.CardItem(
-                content.object(), content.object(), content.viewConfig());
+                content.object(), content.object(), content.viewConfig(),
+                content.paths());
     }
 }

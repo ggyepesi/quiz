@@ -341,10 +341,10 @@ public class QuizFactory {
             config.setAllFields(false);
             config.addField(displayKey(sample), ViewConfig.leaf());
         }
-        // A selected reference starts as its display value. Nested fields are still
-        // offered by the inline tree, but enter the quiz key only when the user checks
-        // them explicitly; selecting Person.spouse must not select another Person's
-        // complete field graph recursively.
+        // Object fields and their children are independent selections. DISPLAY is an
+        // ordinary child field: checking Person.spouse selects the object-field caption
+        // only, until the reader explicitly checks spouse.Display label or another
+        // nested field.
         ViewConfigEditor editor = new ViewConfigEditor(config, true, sample);
         editor.setConfigRows(config, sample, domain.fieldTypes(type),
                 domain.structuralFields(type));
@@ -371,27 +371,16 @@ public class QuizFactory {
         List<FieldPath> otherFields = other.selectedFieldPaths();
         Set<FieldPath> overlap = new java.util.LinkedHashSet<>(changedFields);
         overlap.retainAll(new java.util.HashSet<>(otherFields));
-        // A reference row is not itself a quiz field; what conflicts is what is ticked
-        // under it. Unticking only those keeps the other side's unrelated fields under
-        // the same reference, and uncheckFieldPath unticks a reference left empty.
-        overlap.removeIf(path -> hasFieldUnder(path, changedFields)
-                || hasFieldUnder(path, otherFields));
+        // When nested fields are selected, compare those concrete paths rather than
+        // treating their parent object field as a duplicate of every child. Unticking
+        // a child leaves the independently selected parent caption intact.
+        overlap.removeIf(path -> changed.isObjectFieldPath(path)
+                || other.isObjectFieldPath(path));
         List<FieldPath> unticked = new java.util.ArrayList<>();
         for (FieldPath path : overlap) {
             if (other.uncheckFieldPath(path)) unticked.add(path);
         }
         return unticked;
-    }
-
-    private static boolean hasFieldUnder(FieldPath reference, List<FieldPath> fields) {
-        for (FieldPath field : fields) {
-            if (field.size() > reference.size()
-                    && field.segments().subList(0, reference.size())
-                            .equals(reference.segments())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private ViewConfigEditor fieldEditor(boolean answer) {
@@ -589,47 +578,30 @@ public class QuizFactory {
             queryConfig.setAddListener(false);
             answerConfig.setAddListener(false);
 
-            setQuizCreationRunning(createQuizButton, true);
-            quizFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    showQuiz(queryConfig, answerConfig, answerType,
-                            selectedGroup, viewables);
-                } finally {
-                    setQuizCreationRunning(createQuizButton, false);
-                    quizFrame.setCursor(Cursor.getDefaultCursor());
-                }
-            });
+            Quiz quiz;
+            try {
+                quiz = createQuiz(queryConfig, answerConfig, answerType,
+                        selectedGroup, viewables);
+            } catch (RuntimeException failure) {
+                showQuizCreationFailure(failure);
+                return;
+            }
+            process.swing.SwingActionRunner.run(
+                    createQuizButton, "Preparing quiz…", quizFrame,
+                    quiz::prepareQuiz,
+                    problem -> {
+                        if (problem == null) quiz.show();
+                        else JOptionPane.showMessageDialog(quizFrame, problem);
+                    },
+                    this::showQuizCreationFailure);
         });
         return createQuizButton;
     }
 
-    static void setQuizCreationRunning(JButton button, boolean running) {
-        if (button == null) return;
-        button.setText(running ? "Creating quiz…" : "Create quiz");
-        button.setEnabled(!running);
-    }
-
-    private void showQuiz(ViewConfig queryConfig,
-                          ViewConfig answerConfig,
-                          QuizAnswerType answerType,
-                          ViewableGroup<?> selectedGroup,
-                          Map<String, ? extends Viewable> viewables) {
-        try {
-            Quiz quiz = createQuiz(queryConfig, answerConfig, answerType,
-                    selectedGroup, viewables);
-            String message = quiz.prepareQuiz();
-            System.out.println("PREPARE " + message);
-            if (message == null) {
-                quiz.show();
-            } else {
-                JOptionPane.showMessageDialog(quizFrame, message);
-            }
-        } catch (RuntimeException failure) {
-            JOptionPane.showMessageDialog(quizFrame,
-                    "Could not create quiz:\n" + failure.getMessage(),
-                    "Create quiz failed", JOptionPane.ERROR_MESSAGE);
-        }
+    private void showQuizCreationFailure(Throwable failure) {
+        JOptionPane.showMessageDialog(quizFrame,
+                "Could not create quiz:\n" + failure.getMessage(),
+                "Create quiz failed", JOptionPane.ERROR_MESSAGE);
     }
 
     private Quiz createQuiz(ViewConfig queryConfig,
@@ -640,14 +612,14 @@ public class QuizFactory {
         Quiz quiz = switch (answerType) {
             case ABCD, LIST ->
                     new QuizListABCD(queryConfig, answerConfig, answerType,
-                                     selectedGroup, viewables);
+                                     selectedGroup, viewables, true);
             case PAIRING ->
                     new QuizPairs(queryConfig, answerConfig, selectedGroup,
-                                  viewables);
+                                  viewables, true);
             case CATEGORIZE -> new QuizCategorize(queryConfig, selectedGroup,
-                                                  viewables);
+                                                  viewables, true);
             case SIXDEGREES -> new QuizSixDegrees(queryConfig, selectedGroup,
-                                                  viewables);
+                                                  viewables, true);
             default -> throw new IllegalArgumentException();
         };
         quiz.setFieldSchemaResolver(this::fieldSchemaFor);

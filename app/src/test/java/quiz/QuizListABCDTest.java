@@ -3,7 +3,16 @@ package quiz;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
 import objectview.viewconfig.ViewConfig;
+import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
+import quiz.data.ViewableKeyExtractor;
+import quiz.ui.SearchableChoiceBoard;
+import objectview.render.Card;
+
+import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.GridBagLayout;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +52,46 @@ class QuizListABCDTest {
 
         assertEquals(4, choices.size());
         assertTrue(choices.stream().anyMatch(item -> "two".equals(item.getIdentifier())));
+        quiz.frame.dispose();
+    }
+
+    @Test
+    void listSearchSortAndViewStartWithTheAnswerConfiguration() {
+        QuizListABCD quiz = quiz(QuizAnswerType.LIST);
+
+        SearchableChoiceBoard board =
+                quiz.createListAnswerBoard(List.of("q1"));
+        var state = board.search().configState();
+        ViewableKeyExtractor extractor = new ViewableKeyExtractor();
+        List<FieldPath> expected = List.of(FieldPath.of("answer"));
+
+        assertEquals(expected, extractor.paths(state.search()));
+        assertEquals(expected, extractor.paths(state.sort()));
+        assertEquals(expected, extractor.paths(state.view()));
+        quiz.frame.dispose();
+    }
+
+    @Test
+    void listKeepsSearchControlsCompactAndGivesTheScrollableQueryLessHeight() throws Exception {
+        QuizListABCD quiz = quiz(QuizAnswerType.LIST);
+        javax.swing.JComponent[] content = new javax.swing.JComponent[1];
+        SwingUtilities.invokeAndWait(() ->
+                content[0] = quiz.createRoundContent(List.of("q1")));
+
+        Component[] sections = content[0].getComponents();
+        assertEquals(2, sections.length);
+        JScrollPane query = (JScrollPane) sections[0];
+        assertTrue(query.getViewport().getView() instanceof Card,
+                "the query card must have its own scroll boundary");
+        SearchableChoiceBoard answers = (SearchableChoiceBoard) sections[1];
+        assertTrue(!answers.controlsExpanded(),
+                "Search / sort / view starts collapsed so answers remain visible");
+
+        GridBagLayout layout = (GridBagLayout) content[0].getLayout();
+        double queryWeight = layout.getConstraints(query).weighty;
+        double answerWeight = layout.getConstraints(answers).weighty;
+        assertTrue(answerWeight > queryWeight,
+                "the answer browser must receive more height than the query");
         quiz.frame.dispose();
     }
 

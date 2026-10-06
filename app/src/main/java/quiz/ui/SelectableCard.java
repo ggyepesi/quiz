@@ -1,7 +1,9 @@
 package quiz.ui;
 
 import objectview.render.Card;
+import objectview.render.RenderedInstanceHost;
 import objectview.Viewable;
+import objectview.field.FieldPath;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -22,7 +24,7 @@ import java.util.function.Consumer;
  * owns quiz highlighting, so changing selection never replaces Card's own
  * structural border.
  */
-public final class SelectableCard extends JPanel {
+public final class SelectableCard extends JPanel implements RenderedInstanceHost {
     private static final Color IDLE_BACKGROUND = new Color(250, 250, 250);
     private static final Color EXHAUSTED_BACKGROUND = new Color(230, 230, 230);
     private static final Color CORRECT_BACKGROUND = new Color(170, 255, 170);
@@ -95,6 +97,33 @@ public final class SelectableCard extends JPanel {
                 && state != CardSelectionState.DISABLED
                 && state != CardSelectionState.CORRECT
                 && state != CardSelectionState.WRONG;
+    }
+
+    @Override public Viewable renderedInstance() {
+        return content instanceof RenderedInstanceHost host
+                ? host.renderedInstance() : item;
+    }
+
+    @Override public void setHighlightColor(Color color) {
+        if (content instanceof RenderedInstanceHost host) host.setHighlightColor(color);
+    }
+
+    @Override public boolean isHighlighted() {
+        return content instanceof RenderedInstanceHost host && host.isHighlighted();
+    }
+
+    @Override public boolean revealPath(FieldPath path) {
+        return content instanceof RenderedInstanceHost host && host.revealPath(path);
+    }
+
+    @Override public Component revealPathMember(
+            FieldPath path, java.util.List<Viewable> collectionMembers) {
+        return content instanceof RenderedInstanceHost host
+                ? host.revealPathMember(path, collectionMembers) : null;
+    }
+
+    @Override public void refreshRenderedContent() {
+        if (content instanceof RenderedInstanceHost host) host.refreshRenderedContent();
     }
 
     private void applyState() {

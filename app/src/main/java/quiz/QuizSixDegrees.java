@@ -39,7 +39,14 @@ public class QuizSixDegrees extends Quiz {
     public QuizSixDegrees(ViewConfig viewConfig,
                           ViewableGroup<?> group,
                           Map<String, ? extends Viewable> viewables) {
-        super(viewConfig, viewConfig, group, viewables);
+        this(viewConfig, group, viewables, false);
+    }
+
+    QuizSixDegrees(ViewConfig viewConfig,
+                   ViewableGroup<?> group,
+                   Map<String, ? extends Viewable> viewables,
+                   boolean deferIndexing) {
+        super(viewConfig, viewConfig, group, viewables, deferIndexing);
     }
 
     @Override

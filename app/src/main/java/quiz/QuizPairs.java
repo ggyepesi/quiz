@@ -28,7 +28,15 @@ public class QuizPairs extends Quiz {
                      ViewConfig answerConfig,
                      ViewableGroup<?> group,
                      Map<String, ? extends Viewable> viewables) {
-        super(queryConfig, answerConfig, group, viewables);
+        this(queryConfig, answerConfig, group, viewables, false);
+    }
+
+    QuizPairs(ViewConfig queryConfig,
+              ViewConfig answerConfig,
+              ViewableGroup<?> group,
+              Map<String, ? extends Viewable> viewables,
+              boolean deferIndexing) {
+        super(queryConfig, answerConfig, group, viewables, deferIndexing);
     }
 
     @Override

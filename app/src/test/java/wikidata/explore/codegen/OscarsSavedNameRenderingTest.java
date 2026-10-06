@@ -67,7 +67,11 @@ class OscarsSavedNameRenderingTest {
 
             ViewConfig personOnly = ViewConfig.leaf();
             personOnly.setCls((Class<? extends Viewable>) mapped.getClass());
-            personOnly.addField("structuredName", ViewConfig.leaf());
+            ViewConfig selectedName = ViewConfig.leaf();
+            selectedName.setCls((Class<? extends Viewable>) mappedName.getClass());
+            selectedName.addField("familyName", ViewConfig.leaf());
+            selectedName.addField("givenName", ViewConfig.leaf());
+            personOnly.addField("structuredName", selectedName);
             RenderContext context = new RenderContext(List.of(mapped));
             // Reproduce ModelBuilder's shared multi-type context: the standalone Name
             // section may have a deliberately restrictive view, but that must not empty
@@ -76,16 +80,11 @@ class OscarsSavedNameRenderingTest {
             Card[] collapsed = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> collapsed[0] = new Card(
                     mapped, personOnly, context, false));
-            assertTrue(containsComponent(collapsed[0], objectview.render.ReferenceRow.class),
-                    "the structured value has an explicit disclosure control");
-
-            context.setExpanded(mappedName, true);
-            Card[] rendered = new Card[1];
-            javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] = new Card(
-                    mapped, personOnly, context, false));
-            String visible = componentText(rendered[0]);
-            assertTrue(visible.contains("familyName") || visible.contains("givenName"),
-                    () -> "structuredName rendered no nested name fields: " + visible);
+            assertFalse(containsComponent(collapsed[0], objectview.render.ReferenceRow.class),
+                    "without its Display field, the structured value has no label chip");
+            assertTrue(containsField(collapsed[0], "familyName")
+                            || containsField(collapsed[0], "givenName"),
+                    "structuredName rendered no nested name fields");
 
             MultiView multi = new MultiView();
             multi.addSection("Person", mapped.getClass(), List.of(mapped));
@@ -100,11 +99,9 @@ class OscarsSavedNameRenderingTest {
             javax.swing.SwingUtilities.invokeAndWait(() -> multi.context().focusTopLevel(mapped));
             Card actual = findRenderedCard(multi, mapped);
             assertNotNull(actual, "the virtual Person section materializes Elia Kazan");
-            String actualVisible = componentText(actual);
-            assertTrue(actualVisible.contains("familyName")
-                            || actualVisible.contains("givenName"),
-                    () -> "ModelBuilder-style MultiView rendered no nested fields: "
-                            + actualVisible);
+            assertTrue(containsField(actual, "familyName")
+                            || containsField(actual, "givenName"),
+                    "ModelBuilder-style MultiView rendered no nested fields");
         }
     }
 
@@ -130,6 +127,20 @@ class OscarsSavedNameRenderingTest {
         if (component instanceof Container container) {
             for (Component child : container.getComponents()) {
                 if (containsComponent(child, type)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsField(Component component, String fieldName) {
+        if (component instanceof javax.swing.JComponent jc
+                && fieldName.equals(jc.getClientProperty(
+                        objectview.field.FieldProperties.FIELD_NAME_PROPERTY))) {
+            return true;
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                if (containsField(child, fieldName)) return true;
             }
         }
         return false;

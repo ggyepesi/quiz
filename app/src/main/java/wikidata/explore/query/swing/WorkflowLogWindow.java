@@ -254,12 +254,31 @@ public class WorkflowLogWindow implements LogListener {
     static SearchPanel queryLogSearch(CardListView view, RenderContext context) {
         SearchPanel search = new SearchPanel(LogNode.class, null,
                 new SearchPanel.ConfigState(
-                        ViewConfig.of(LogNode.class), null, null));
+                        queryLogSearchConfig(), null, null));
         search.setRenderContext(context);
         search.setFieldHighlight(true);
         search.setTarget(view.getCardsPanel(), view.getCardsScrollPane());
         view.addTargetListener(search);
         return search;
+    }
+
+    /**
+     * A log is an inline recursive tree, so searching the whole log is an explicit
+     * recursive selection rather than the unrelated meaning "select this object-field
+     * caption". The final level remains all-fields: ObjectView's bounded inline-value
+     * search can find a still-deeper entry there and retain its identity route for
+     * disclosure.
+     */
+    private static ViewConfig queryLogSearchConfig() {
+        ViewConfig level = ViewConfig.of(LogNode.class);
+        for (int depth = 0;
+             depth < objectview.field.ValueText.NESTED_DEPTH;
+             depth++) {
+            ViewConfig parent = ViewConfig.of(LogNode.class);
+            parent.addField("steps", level);
+            level = parent;
+        }
+        return level;
     }
 
     /** Associates a live executable pipeline with the log history saved afterwards. */

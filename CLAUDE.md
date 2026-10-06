@@ -175,6 +175,11 @@ construct per thing produced:
    to ask whether a running operation is loading, downloading, recomputing, saving or
    stuck.)*
 
+   An action that continues after its click immediately disables its trigger and names
+   the current work on the button or adjacent status. Expensive work runs off the Swing
+   event thread so that state can actually be painted, and every success or failure path
+   restores the action state.
+
 17. **Same concept means the same processing and the same UI.** A preview, saved
    result and subsequently loaded domain are not three representations that may merely
    resemble one another: they use the same instances and the same declared model through
@@ -352,12 +357,13 @@ construct per thing produced:
   assembled object contains only the configured fields; an unselected display label is explicitly
   empty. The same query/answer `ViewConfig` is reused for field order and presentation — there is
   no second mapping — while the assembled object's absent fields enforce the selection. ObjectView
-  must not rediscover the tuple. Selecting a collection field itself keeps the whole
-  collection in the assembled object; selecting fields below it multiplies by collection member
-  and keeps fields selected below that collection correlated within the same member. Selected
-  reference fields contribute a display-only assembled reference by default (never the reference's
-  owner); nested
-  fields enter the quiz key only when the user explicitly selects them, so selecting a
+  must not rediscover the tuple. Selecting a collection keeps the whole selected collection in
+  the assembled object. Key extraction may enumerate its members, and fields selected below an
+  object collection stay correlated within the same member, but that enumeration never trims the
+  collection presented by the assembled query or answer object. Selected
+  object fields and their child fields are independent selections. Selecting an object field
+  alone contributes its caption but no value path; its display or other nested fields enter the
+  quiz key only when the user explicitly selects them, so selecting a
   self-reference such as `Person.spouse` never recursively selects another `Person` graph.
   Selected multi-value fields expose their Cartesian combinations as a lazy random-access view: the
   shared quiz index retains compact alternatives and materializes only a requested key, never
@@ -365,6 +371,13 @@ construct per thing produced:
   instance still exceeds the indexable combination limit, quiz creation stops without a
   partial index and reports that instance together with the contributing fields and their
   value counts.
+- **ObjectView DISPLAY is an ordinary field with one presentation role.** It is selected,
+  hidden, searched, sorted and projected by the same `ViewConfig` rules as every other field.
+  When selected, it is painted as the title/caption of that object field rather than as a
+  separate value row. Selecting an object field never selects DISPLAY (or any other child)
+  implicitly; with no selected children the field renders its field-name caption alone. An
+  explicit empty child config has that literal meaning and is not a legacy shorthand for a
+  display-only or all-fields config.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

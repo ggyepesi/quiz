@@ -5,6 +5,9 @@ import objectview.ViewableAdapter;
 import objectview.field.DynamicFields;
 import objectview.field.FieldAccess;
 import objectview.field.FieldPath;
+import objectview.field.FieldRef;
+import objectview.field.FieldSchema;
+import objectview.field.FieldSet;
 import objectview.field.ViewableFieldPaths;
 import objectview.viewconfig.ViewConfig;
 
@@ -12,6 +15,7 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,19 +49,23 @@ public final class ViewableKeyExtractor {
     public List<ViewableFieldPaths.PathInfo> pathInfos(
             Viewable viewable, ViewConfig config) {
         if (config == null) return List.of();
-        List<ViewableFieldPaths.PathInfo> configured = pathInfos(config);
-        if (!configured.isEmpty() || config.getCls() != null || viewable == null) {
-            return configured;
+        // A classless dynamic config cannot tell whether an empty child config names a
+        // scalar or an object field. The actual backing can, so use the shared sample
+        // discovery path and do not accidentally reinterpret a bare object field as
+        // its display value.
+        if (config.getCls() == null && viewable != null) {
+            return ViewableFieldPaths.collectFromSample(
+                    viewable, config, ViewableFieldPaths.ALL_FIELDS);
         }
-        return ViewableFieldPaths.collectFromSample(
-                viewable, config, ViewableFieldPaths.ALL_FIELDS);
+        return pathInfos(config);
     }
 
     /** The assembled query/answer object for one selected key. It contains only
-     * configured fields; fields below a collection retain only the member producing
-     * this key, while a directly selected collection retains all of its members.
-     * The exact selecting config is also the presentation config; Card makes its
-     * own defensive copy before applying role-specific flags. */
+     * configured fields, while a selected collection retains all of its members.
+     * Key extraction may enumerate those members and correlate their nested fields,
+     * but that does not change the content being presented. The exact selecting
+     * config is also the presentation config; Card makes its own defensive copy
+     * before applying role-specific flags. */
     public KeyContent contentObject(
             Viewable owner, ViewConfig config,
             List<FieldPath> paths, List<Object> key) {
@@ -66,31 +74,36 @@ public final class ViewableKeyExtractor {
             return null;
         }
         return new KeyContent(
-                new SelectedTuple(this, owner, paths, key), config);
+                new SelectedTuple(this, owner, config), config, paths);
     }
 
     /** Content assembled by the quiz engine for one key, paired with the same
-     * query/answer config that selected it. */
-    public record KeyContent(Viewable object, ViewConfig viewConfig) { }
+     * query/answer config that selected it and the paths that produced the key.
+     * Every instance of one source shares the same unmodifiable path list. */
+    public record KeyContent(
+            Viewable object, ViewConfig viewConfig, List<FieldPath> paths) { }
 
-    /** A view of exactly one selected key.  The source instance remains separately
-     * indexed by {@code Quiz}; this object owns presentation only. */
+    /** The configured projection of one key's source instance. The source instance
+     * remains separately indexed by {@code Quiz}; this object owns presentation only.
+     * Several keys from one collection deliberately project the same complete selected
+     * collection. */
     private static final class SelectedTuple extends ViewableAdapter
             implements DynamicFields {
         private final ViewableKeyExtractor extractor;
         private final Viewable source;
-        private final List<FieldPath> paths;
-        private final List<Object> key;
+        private final ViewConfig config;
         private final boolean displaySelected;
+        private final FieldSchema schema;
         private volatile Map<String, Object> fields;
 
         SelectedTuple(ViewableKeyExtractor extractor, Viewable source,
-                      List<FieldPath> paths, List<Object> key) {
+                      ViewConfig config) {
             this.extractor = extractor;
             this.source = source;
-            this.paths = paths;
-            this.key = List.copyOf(key);
-            this.displaySelected = selectsDisplay(source, paths);
+            this.config = config;
+            this.displaySelected = selectsDisplay(source, config);
+            List<FieldRef> selectedSchema = extractor.projectSchema(source, config);
+            this.schema = () -> selectedSchema;
         }
 
         @Override public String getIdentifier() { return source.getIdentifier(); }
@@ -102,6 +115,7 @@ public final class ViewableKeyExtractor {
             return source.directClassNames();
         }
         @Override public boolean isPart() { return source.isPart(); }
+        @Override public FieldSchema dynamicFieldSchema() { return schema; }
 
         @Override public Map<String, Object> dynamicFieldValues() {
             Map<String, Object> ready = fields;
@@ -110,7 +124,7 @@ public final class ViewableKeyExtractor {
                     ready = fields;
                     if (ready == null) {
                         ready = Map.copyOf(extractor.projectFields(
-                                source, paths, key));
+                                source, config));
                         fields = ready;
                     }
                 }
@@ -120,137 +134,80 @@ public final class ViewableKeyExtractor {
     }
 
     private static boolean selectsDisplay(
-            Viewable source, List<FieldPath> paths) {
-        String display = objectview.field.ViewableContractFieldSet.displayKey(
-                objectview.field.FieldSet.of(source));
-        for (FieldPath path : paths) {
-            if (path != null && path.size() == 1
-                    && (path.leaf().equals(display)
-                    || path.leaf().equals(
-                            objectview.field.ViewableContractFieldSet.DISPLAY_KEY))) {
-                return true;
-            }
+            Viewable source, ViewConfig config) {
+        if (source == null || config == null) return false;
+        if (config.getFields().containsKey(
+                objectview.field.ViewableContractFieldSet.DISPLAY_KEY)) {
+            return true;
         }
-        return false;
+        FieldSet fields = FieldSet.of(source);
+        FieldRef display = fields.displayField();
+        return display != null && selected(config, display);
+    }
+
+    private static boolean selected(ViewConfig config, FieldRef field) {
+        if (config.getFields().containsKey(field.name())) return true;
+        return field.minor() ? config.isAllMinorFields() : config.isAllFields();
     }
 
     private Map<String, Object> projectFields(
-            Viewable source, List<FieldPath> paths, List<Object> key) {
-        Map<String, List<Integer>> byField = new LinkedHashMap<>();
-        for (int index = 0; index < paths.size(); index++) {
-            FieldPath path = paths.get(index);
-            if (path == null || path.isRoot()) continue;
-            byField.computeIfAbsent(path.segments().getFirst(), ignored -> new ArrayList<>())
-                    .add(index);
-        }
-
+            Viewable source, ViewConfig config) {
+        FieldSet fields = FieldSet.of(source);
         Map<String, Object> projected = new LinkedHashMap<>();
-        for (Map.Entry<String, List<Integer>> entry : byField.entrySet()) {
-            String field = entry.getKey();
-            Object raw = FieldAccess.getPathValues(source, FieldPath.of(field));
+        for (String name : selectedNames(fields, config)) {
+            FieldRef field = fields.field(name);
+            if (field == null || field.role()
+                    == objectview.field.FieldRole.DISPLAY) continue;
+            Object raw = fields.read(name);
             if (raw == null) continue;
-
-            List<Integer> indexes = entry.getValue();
-            boolean hasNested = indexes.stream().anyMatch(
-                    index -> paths.get(index).size() > 1);
-            if (!hasNested) {
-                // A selected reference contributes its display value by default. Keep
-                // all elements of a directly selected collection, but make each
-                // referenced element a display-only tuple rather than exposing its
-                // complete source object.
-                projected.put(field, selectedLeafValue(raw));
-                continue;
-            }
-
-            List<FieldPath> suffixes = new ArrayList<>(indexes.size());
-            List<Object> wanted = new ArrayList<>(indexes.size());
-            for (int index : indexes) {
-                FieldPath path = paths.get(index);
-                suffixes.add(new FieldPath(path.segments().subList(1, path.size())));
-                wanted.add(key.get(index));
-            }
-            Object nested = projectNested(raw, suffixes, wanted);
-            if (nested != null && !isEmptyValue(nested)) projected.put(field, nested);
+            Object value = projectSelectedValue(raw, config.getFieldConfig(name));
+            if (!isEmptyValue(value)) projected.put(name, value);
         }
         return projected;
     }
 
-    private Object selectedLeafValue(Object value) {
-        if (value instanceof Viewable viewable) {
-            return displayTuple(viewable);
+    private List<FieldRef> projectSchema(
+            Viewable source, ViewConfig config) {
+        FieldSet fields = FieldSet.of(source);
+        List<FieldRef> projected = new ArrayList<>();
+        for (String name : selectedNames(fields, config)) {
+            FieldRef field = fields.field(name);
+            if (field != null) projected.add(field);
         }
+        return List.copyOf(projected);
+    }
+
+    private static LinkedHashSet<String> selectedNames(
+            FieldSet fields, ViewConfig config) {
+        LinkedHashSet<String> selected = new LinkedHashSet<>(
+                config.getFields().keySet());
+        for (FieldRef field : fields.fields()) {
+            if (selected(config, field)) selected.add(field.name());
+        }
+        return selected;
+    }
+
+    private Object projectSelectedValue(Object value, ViewConfig childConfig) {
         if (value instanceof Collection<?> collection) {
             List<Object> selected = new ArrayList<>(collection.size());
-            for (Object item : collection) selected.add(selectedLeafValue(item));
+            for (Object item : collection) {
+                Object projected = projectSelectedValue(item, childConfig);
+                if (projected != null) selected.add(projected);
+            }
             return selected;
         }
         if (value instanceof Map<?, ?> map) {
             Map<Object, Object> selected = new LinkedHashMap<>();
-            map.forEach((key, item) -> selected.put(key, selectedLeafValue(item)));
+            map.forEach((key, item) -> selected.put(
+                    key, projectSelectedValue(item, childConfig)));
             return selected;
         }
+        if (value instanceof Viewable viewable) {
+            ViewConfig selected = childConfig == null
+                    ? ViewConfig.leaf() : childConfig;
+            return new SelectedTuple(this, viewable, selected);
+        }
         return value;
-    }
-
-    private Object projectNested(
-            Object raw, List<FieldPath> suffixes, List<Object> wanted) {
-        if (raw instanceof Viewable viewable) {
-            return projectedMatch(viewable, suffixes, wanted);
-        }
-        if (raw instanceof Collection<?> collection) {
-            List<Object> matches = new ArrayList<>();
-            for (Object value : collection) {
-                if (!(value instanceof Viewable viewable)) continue;
-                Object match = projectedMatch(viewable, suffixes, wanted);
-                if (match != null) matches.add(match);
-            }
-            // A nested collection is the multiplication boundary. One tuple carries
-            // its one matching member as a scalar; keeping a one-element collection
-            // would hide that selected value behind ObjectView's collapsed-list UI.
-            return matches.size() == 1 ? matches.getFirst() : matches;
-        }
-        if (raw instanceof Map<?, ?> map) {
-            Map<Object, Object> matches = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!(entry.getValue() instanceof Viewable viewable)) continue;
-                Object match = projectedMatch(viewable, suffixes, wanted);
-                if (match != null) matches.put(entry.getKey(), match);
-            }
-            return matches;
-        }
-        return null;
-    }
-
-    private Viewable projectedMatch(
-            Viewable candidate, List<FieldPath> suffixes, List<Object> wanted) {
-        boolean matches = false;
-        for (List<Object> combination : combinations(candidate, suffixes)) {
-            if (combination.equals(wanted)) {
-                matches = true;
-                break;
-            }
-        }
-        if (!matches) return null;
-
-        List<FieldPath> nestedPaths = new ArrayList<>();
-        List<Object> nestedKey = new ArrayList<>();
-        for (int index = 0; index < suffixes.size(); index++) {
-            if (!suffixes.get(index).isRoot()) {
-                nestedPaths.add(suffixes.get(index));
-                nestedKey.add(wanted.get(index));
-            }
-        }
-        return nestedPaths.isEmpty()
-                ? displayTuple(candidate)
-                : new SelectedTuple(this, candidate,
-                        List.copyOf(nestedPaths), nestedKey);
-    }
-
-    private SelectedTuple displayTuple(Viewable candidate) {
-        return new SelectedTuple(this, candidate,
-                List.of(FieldPath.of(
-                        objectview.field.ViewableContractFieldSet.DISPLAY_KEY)),
-                List.of(safeName(candidate)));
     }
 
     public List<List<Object>> combinations(Viewable viewable, ViewConfig config) {

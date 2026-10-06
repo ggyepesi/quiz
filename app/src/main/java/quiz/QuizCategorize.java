@@ -33,8 +33,15 @@ public class QuizCategorize extends Quiz {
     public QuizCategorize(ViewConfig queryConfig,
                           ViewableGroup<?> categoryRoot,
                           Map<String, ? extends Viewable> viewables) {
+        this(queryConfig, categoryRoot, viewables, false);
+    }
+
+    QuizCategorize(ViewConfig queryConfig,
+                   ViewableGroup<?> categoryRoot,
+                   Map<String, ? extends Viewable> viewables,
+                   boolean deferIndexing) {
         super(withoutCategoryField(queryConfig, categoryRoot),
-                new ViewConfig(), categoryRoot, viewables);
+                new ViewConfig(), categoryRoot, viewables, deferIndexing);
         this.categoryRoot = categoryRoot;
     }
 

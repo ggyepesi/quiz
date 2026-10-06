@@ -11,6 +11,7 @@ import quiz.ui.SelectableCard;
 import quiz.ui.ChoiceBoard;
 import quiz.ui.ChoiceBoardPolicy;
 import quiz.ui.RoundShell;
+import quiz.ui.SearchableChoiceBoard;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,6 +20,9 @@ import java.util.List;
 import objectview.group.ViewableGroup;
 
 public class QuizListABCD extends Quiz {
+
+    private static final double LIST_QUERY_WEIGHT = 0.18;
+    private static final double LIST_ANSWER_WEIGHT = 0.82;
 
     private final QuizMode mode;
     private final AnswerPanelFactory panelFactory;
@@ -31,7 +35,16 @@ public class QuizListABCD extends Quiz {
                         QuizAnswerType answerType,
                         ViewableGroup<?> group,
                         Map<String, ? extends Viewable> viewables) {
-        super(queryConfig, answerConfig, group, viewables);
+        this(queryConfig, answerConfig, answerType, group, viewables, false);
+    }
+
+    QuizListABCD(ViewConfig queryConfig,
+                 ViewConfig answerConfig,
+                 QuizAnswerType answerType,
+                 ViewableGroup<?> group,
+                 Map<String, ? extends Viewable> viewables,
+                 boolean deferIndexing) {
+        super(queryConfig, answerConfig, group, viewables, deferIndexing);
         this.mode = (answerType == QuizAnswerType.LIST)
                 ? QuizMode.LIST
                 : QuizMode.ABCD;
@@ -59,9 +72,6 @@ public class QuizListABCD extends Quiz {
             return;
         }
 
-        JPanel roundContent = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = createGridBagConstraints();
-
         List<Object> questionKey = shuffledKeys.get(roundProgress.currentIndex());
         if (!queryContents.containsKey(questionKey)) {
             roundProgress.advance();
@@ -69,46 +79,47 @@ public class QuizListABCD extends Quiz {
             return;
         }
 
+        JComponent roundContent = createRoundContent(questionKey);
+        if (roundContent == null) {
+            roundProgress.advance();
+            drawNextRound();
+            return;
+        }
+
+        roundShell.showRound(
+                roundProgress.snapshot(),
+                roundContent,
+                () -> {
+            roundProgress.advance();
+            drawNextRound();
+        });
+    }
+
+    JComponent createRoundContent(List<Object> questionKey) {
+        JPanel roundContent = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = createGridBagConstraints();
+
         // --- 1️⃣ QUESTION ------------------------------------------------------
         queryComponent = createQueryPanel(questionKey);
+        if (queryComponent == null) return null;
+        JScrollPane queryScroll = new JScrollPane(
+                queryComponent,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        queryScroll.setBorder(BorderFactory.createEmptyBorder());
+        queryScroll.setMinimumSize(new Dimension(0, 0));
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0;
-        gbc.weighty = (mode == QuizMode.LIST ? 0.25 : 0.35);
-        roundContent.add(queryComponent, gbc);
+        gbc.weighty = (mode == QuizMode.LIST ? LIST_QUERY_WEIGHT : 0.35);
+        roundContent.add(queryScroll, gbc);
 
         // --- 2️⃣ ANSWER SECTION -----------------------------------------------
         gbc.gridy++;
-        gbc.weighty = (mode == QuizMode.LIST ? 0.65 : 0.55);
+        gbc.weighty = (mode == QuizMode.LIST ? LIST_ANSWER_WEIGHT : 0.55);
 
         if (mode == QuizMode.LIST) {
-            // -------- LIST mode: show all items with 3 visual states --------
-            List<List<Object>> allKeys = new ArrayList<>(answerViewables.keySet());
-            Collections.shuffle(allKeys, random);
-            List<ChoiceBoard.CardItem> choices = new ArrayList<>();
-            List<List<Object>> choiceKeys = new ArrayList<>();
-            for (List<Object> key : allKeys) {
-                ChoiceBoard.CardItem choice = answerCardItem(key);
-                if (choice != null) {
-                    choices.add(choice);
-                    choiceKeys.add(key);
-                }
-            }
-            ChoiceBoard panel = ChoiceBoard.forCardItems(
-                    choices, cardFactory, ChoiceBoardPolicy.answers(2),
-                    choices.stream().map(ChoiceBoard.CardItem::content).toList());
-            for (int index = 0; index < choiceKeys.size(); index++) {
-                if (exhaustedAnswers.contains(choiceKeys.get(index))) {
-                    panel.setState(index, CardSelectionState.EXHAUSTED);
-                }
-            }
-            panel.onChoice(choice -> {
-                if (!isCorrectChoice(questionKey, choice.item())) return;
-                markAnswerAsUsed(answerKeyOf(choice.item()));
-                choice.card().setState(CardSelectionState.CORRECT);
-                roundShell.setAdvanceEnabled(true);
-            });
-
-            answerComponent = new JScrollPane(panel);
+            // -------- LIST mode: all answers through ObjectView search/sort/view --------
+            answerComponent = createListAnswerBoard(questionKey);
             roundContent.add(answerComponent, gbc);
 
         } else {
@@ -131,15 +142,33 @@ public class QuizListABCD extends Quiz {
             roundContent.add(answerComponent, gbc);
         }
 
-        roundShell.showRound(
-                roundProgress.snapshot(),
-                roundContent,
-                () -> {
-            roundProgress.advance();
-            drawNextRound();
-        });
+        return roundContent;
     }
     // --- Helper logic ---
+
+    SearchableChoiceBoard createListAnswerBoard(List<Object> questionKey) {
+        List<List<Object>> choiceKeys = buildAnswerOptionKeys(questionKey);
+        List<ChoiceBoard.CardItem> choices = choiceKeys.stream()
+                .map(this::answerCardItem)
+                .filter(Objects::nonNull)
+                .toList();
+        SearchableChoiceBoard board = new SearchableChoiceBoard(
+                choices, cardFactory, ChoiceBoardPolicy.answers(2),
+                choices.stream().map(ChoiceBoard.CardItem::content).toList(),
+                answerConfig);
+        for (int index = 0; index < choices.size(); index++) {
+            if (exhaustedAnswers.contains(answerKeyOf(choices.get(index).source()))) {
+                board.setState(index, CardSelectionState.EXHAUSTED);
+            }
+        }
+        board.onChoice(choice -> {
+            if (!isCorrectChoice(questionKey, choice.item())) return;
+            markAnswerAsUsed(answerKeyOf(choice.item()));
+            board.setState(choice.index(), CardSelectionState.CORRECT);
+            roundShell.setAdvanceEnabled(true);
+        });
+        return board;
+    }
 
     /** The one option-construction path for both List and ABCD. The returned set is
      * final: rendering may mark choices but must not filter it afterwards, or a

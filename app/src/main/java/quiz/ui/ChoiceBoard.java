@@ -12,6 +12,7 @@ import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import objectview.field.FieldPath;
 import java.util.function.Consumer;
 
 /**
@@ -23,8 +24,15 @@ public final class ChoiceBoard extends JPanel {
     /** The quiz-selected source used for scoring, and the exact content/config
      * ObjectView renders. Keeping these separate prevents presentation from
      * changing answer identity. */
+    /** One choice; {@code reveal} names the paths that selected it, whose
+     * collections and references the card opens so the selected values show. */
     public record CardItem(
-            Viewable source, Viewable content, ViewConfig viewConfig) {}
+            Viewable source, Viewable content, ViewConfig viewConfig,
+            List<FieldPath> reveal) {
+        public CardItem(Viewable source, Viewable content, ViewConfig viewConfig) {
+            this(source, content, viewConfig, List.of());
+        }
+    }
 
     private final ChoiceBoardPolicy policy;
     private final List<Choice> choices = new ArrayList<>();
@@ -74,7 +82,8 @@ public final class ChoiceBoard extends JPanel {
         for (CardItem item : items == null ? List.<CardItem>of() : items) {
             if (item == null || item.source() == null || item.content() == null) continue;
             Card content = cardFactory.create(
-                    item.content(), item.viewConfig(), policy.cardRole(), localRenderContext);
+                    item.content(), item.viewConfig(), policy.cardRole(),
+                    localRenderContext, item.reveal());
             SelectableCard selectable =
                     new SelectableCard(item.source(), content, policy.framedIdle());
             Choice choice = new Choice(index++, item.source(), selectable);

@@ -84,10 +84,9 @@ class ViewConfigEditorTreeConfigTest {
                 "unselected nested field must not appear");
     }
 
-    /** A field picker such as QuizFactory asks references to start at their display
-     *  value. Inline tree discovery must honour that at every nested level; otherwise
-     *  checking Person.spouse silently checks the spouse's complete Person graph. */
-    @Test void nameOnlyNestedDefaultSelectsOnlyTheReferencedDisplay() {
+    /** allFields applies at this level; it must not silently turn a referenced
+     * object's display into a selected child field. */
+    @Test void referenceSelectionDoesNotImplicitlySelectDisplay() {
         ViewConfig config = ViewConfig.all(DynamicViewable.class);
 
         ViewConfig result = new ViewConfigEditor(
@@ -95,18 +94,13 @@ class ViewConfigEditorTreeConfigTest {
 
         ViewConfig category = result.getFieldConfig("category");
         assertNotNull(category);
-        assertEquals(Set.of(objectview.field.ViewableContractFieldSet.displayKey(
-                        DynamicViewable.class)),
-                category.getFields().keySet(),
-                "nested fields are added only when the user checks them");
+        assertEquals(Set.of(), category.getFields().keySet(),
+                "nested fields are selected only when the user checks them");
     }
 
-    /** A reference that starts unchecked had its rows built under an unchecked parent.
-     *  Checking it later stored ALL its fields while every row under it still read
-     *  unchecked — and the next rebuild from that config would check every nested
-     *  field. Checking it now ticks, and saves, exactly what its default means: the
-     *  display row in a name-only editor, every row under it otherwise. */
-    @Test void checkingAReferenceLaterTicksAndSavesItsDefaultAlike() throws Exception {
+    /** Checking an object field selects that field alone, independently of the editor's
+     * historical name-only constructor option. */
+    @Test void checkingAReferenceLaterDoesNotSelectAnyChild() throws Exception {
         for (boolean nameOnly : new boolean[] {true, false}) {
             DynamicViewable nomination = nominationSample();
             nomination.put("note", "x");
@@ -121,16 +115,11 @@ class ViewConfigEditorTreeConfigTest {
             check(editor, "category");
 
             ViewConfig category = editor.getConfig().getFieldConfig("category");
-            if (nameOnly) {
-                assertTrue(ticked(editor, "category." + display));
-                assertFalse(ticked(editor, "category.year"));
-                assertEquals(Set.of(display), category.getFields().keySet(),
-                        "saved as its display, as shown");
-            } else {
-                assertTrue(ticked(editor, "category.year"));
-                assertTrue(ticked(editor, "category.winner"));
-                assertTrue(category.showsFieldByName("year"), "saved as all, as shown");
-            }
+            assertFalse(ticked(editor, "category." + display));
+            assertFalse(ticked(editor, "category.year"));
+            assertFalse(ticked(editor, "category.winner"));
+            assertFalse(category.isAllFields());
+            assertEquals(Set.of(), category.getFields().keySet());
         }
     }
 
