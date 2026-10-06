@@ -335,6 +335,12 @@ public class QuizFactory {
         config.setAddListener(!answer);
         config.setThumb(answer);
         Viewable sample = domain.configSample(type);
+        if (answer) {
+            // An answer starts as the instance's display name alone; other fields
+            // are added by ticking them. The question side starts with every field.
+            config.setAllFields(false);
+            config.addField(displayKey(sample), ViewConfig.leaf());
+        }
         // A selected reference starts as its display value. Nested fields are still
         // offered by the inline tree, but enter the quiz key only when the user checks
         // them explicitly; selecting Person.spouse must not select another Person's
@@ -343,6 +349,49 @@ public class QuizFactory {
         editor.setConfigRows(config, sample, domain.fieldTypes(type),
                 domain.structuralFields(type));
         return editor;
+    }
+
+    private static String displayKey(Viewable sample) {
+        return sample == null
+                ? objectview.field.ViewableContractFieldSet.DISPLAY_KEY
+                : objectview.field.ViewableContractFieldSet.displayKey(
+                        objectview.field.FieldSet.of(sample));
+    }
+
+    /**
+     * Keeps question and answer fields disjoint while a quiz type requires it: every
+     * field ticked on {@code changed} that is also ticked on {@code other} is unticked
+     * on {@code other}, visibly, as unticking its box would.
+     *
+     * @return the fields unticked on {@code other}
+     */
+    static List<FieldPath> keepDisjoint(
+            ViewConfigEditor changed, ViewConfigEditor other) {
+        List<FieldPath> changedFields = changed.selectedFieldPaths();
+        List<FieldPath> otherFields = other.selectedFieldPaths();
+        Set<FieldPath> overlap = new java.util.LinkedHashSet<>(changedFields);
+        overlap.retainAll(new java.util.HashSet<>(otherFields));
+        // A reference row is not itself a quiz field; what conflicts is what is ticked
+        // under it. Unticking only those keeps the other side's unrelated fields under
+        // the same reference, and uncheckFieldPath unticks a reference left empty.
+        overlap.removeIf(path -> hasFieldUnder(path, changedFields)
+                || hasFieldUnder(path, otherFields));
+        List<FieldPath> unticked = new java.util.ArrayList<>();
+        for (FieldPath path : overlap) {
+            if (other.uncheckFieldPath(path)) unticked.add(path);
+        }
+        return unticked;
+    }
+
+    private static boolean hasFieldUnder(FieldPath reference, List<FieldPath> fields) {
+        for (FieldPath field : fields) {
+            if (field.size() > reference.size()
+                    && field.segments().subList(0, reference.size())
+                            .equals(reference.segments())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ViewConfigEditor fieldEditor(boolean answer) {
@@ -414,11 +463,24 @@ public class QuizFactory {
                 radioButton.setEnabled(false);
                 radioButton.setToolTipText(unavailable);
             }
-            radioButton.addActionListener(event -> updateCategoryFieldExclusion(
-                    group, queryEditor, categoryFieldNotice));
+            radioButton.addActionListener(event -> {
+                updateCategoryFieldExclusion(group, queryEditor, categoryFieldNotice);
+                // Choosing a type that needs disjoint fields resolves an existing
+                // overlap in favour of the answer, the smaller deliberate choice.
+                if (requiresDisjoint(group)) keepDisjoint(answerEditor, queryEditor);
+            });
             group.add(radioButton);
             frame.add(radioButton);
         }
+
+        // Ticking a field on one side unticks it on the other while the chosen quiz
+        // type needs disjoint question and answer fields.
+        queryEditor.setChangeListener(() -> {
+            if (requiresDisjoint(group)) keepDisjoint(queryEditor, answerEditor);
+        });
+        answerEditor.setChangeListener(() -> {
+            if (requiresDisjoint(group)) keepDisjoint(answerEditor, queryEditor);
+        });
 
         rootView.setSelectionHandler(selected -> updateCategoryFieldExclusion(
                 group, queryEditor, categoryFieldNotice));
@@ -459,6 +521,11 @@ public class QuizFactory {
                     + fields);
             notice.setVisible(true);
         }
+    }
+
+    private static boolean requiresDisjoint(ButtonGroup group) {
+        QuizAnswerType type = selectedQuizType(group);
+        return type != null && type.requiresDisjointQuestionAndAnswerFields();
     }
 
     private static QuizAnswerType selectedQuizType(ButtonGroup group) {

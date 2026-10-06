@@ -6,6 +6,7 @@ import objectview.Viewable;
 import objectview.ViewableAdapter;
 import objectview.field.FieldPath;
 import objectview.viewconfig.DomainGroupRoot;
+import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import quiz.data.ViewableKeyExtractor;
 import quiz.transform.ui.ReflectionDomain;
@@ -141,6 +142,91 @@ class QuizFactoryConfiguredDomainTest {
 
         assertTrue(selected.contains(FieldPath.parse("spouse.@view:display")), selected::toString);
         assertFalse(selected.contains(FieldPath.parse("spouse.biography")), selected::toString);
+    }
+
+    /** An answer starts as the instance's display name alone; the question side
+     *  starts with every field. */
+    @Test void anAnswerStartsWithOnlyTheDisplayName() {
+        RelatedPerson person = new RelatedPerson("Alice", "A biography");
+        ReflectionDomain domain = new ReflectionDomain(List.of(person));
+
+        List<FieldPath> answer = QuizFactory.fieldEditor(
+                domain, "RelatedPerson", true).selectedFieldPaths();
+        List<FieldPath> question = QuizFactory.fieldEditor(
+                domain, "RelatedPerson", false).selectedFieldPaths();
+
+        assertEquals(List.of(FieldPath.parse("@view:display")), answer);
+        assertTrue(question.contains(FieldPath.parse("biography")), question::toString);
+        assertTrue(question.contains(FieldPath.parse("@view:display")), question::toString);
+    }
+
+    /** Ticking a field on one side unticks it on the other, visibly, and only there. */
+    @Test void aFieldTickedOnOneSideIsUntickedOnTheOther() {
+        RelatedPerson person = new RelatedPerson("Alice", "A biography");
+        ReflectionDomain domain = new ReflectionDomain(List.of(person));
+        var question = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
+        var answer = QuizFactory.fieldEditor(domain, "RelatedPerson", true);
+        int[] questionChanges = {0};
+        question.setChangeListener(() -> questionChanges[0]++);
+
+        List<FieldPath> unticked = QuizFactory.keepDisjoint(answer, question);
+
+        assertEquals(List.of(FieldPath.parse("@view:display")), unticked);
+        assertFalse(question.selectedFieldPaths().contains(FieldPath.parse("@view:display")));
+        assertTrue(question.selectedFieldPaths().contains(FieldPath.parse("biography")),
+                "a field ticked only on the question side stays");
+        assertEquals(List.of(FieldPath.parse("@view:display")), answer.selectedFieldPaths(),
+                "the side just ticked is not changed");
+        assertTrue(questionChanges[0] > 0, "the untick is announced like a click");
+        assertEquals(List.of(), QuizFactory.keepDisjoint(answer, question),
+                "nothing left to resolve");
+    }
+
+    /** A ticked reference with nothing ticked under it means its display name again,
+     *  so unticking its display name on the other side unticks the reference too. */
+    @Test void aReferenceLeftWithNothingTickedIsUntickedToo() {
+        RelatedPerson person = marriedPerson();
+        ReflectionDomain domain = new ReflectionDomain(List.of(person, person.spouse));
+        var question = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
+        var answer = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
+
+        QuizFactory.keepDisjoint(answer, question);
+
+        List<FieldPath> left = new ViewableKeyExtractor().paths(person, question.getConfig());
+        assertTrue(left.stream().noneMatch(path -> path.first().equals("spouse")),
+                left::toString);
+    }
+
+    /** Only what conflicts is unticked: the spouse's display name, not the spouse's
+     *  biography the question also asks about. */
+    @Test void fieldsUnderAReferenceThatDoNotConflictStay() {
+        RelatedPerson person = marriedPerson();
+        ReflectionDomain domain = new ReflectionDomain(List.of(person, person.spouse));
+        ViewConfig spouse = new ViewConfig();
+        spouse.setAllFields(false);
+        spouse.addField("@view:display", ViewConfig.leaf());
+        spouse.addField("biography", ViewConfig.leaf());
+        ViewConfig config = new ViewConfig();
+        config.setAllFields(false);
+        config.addField("label", ViewConfig.leaf());
+        config.addField("spouse", spouse);
+        var question = new objectview.viewconfig.ViewConfigEditor(config, true, person);
+        question.setConfigRows(config, person, domain.fieldTypes("RelatedPerson"),
+                domain.structuralFields("RelatedPerson"));
+        var answer = QuizFactory.fieldEditor(domain, "RelatedPerson", false);
+
+        QuizFactory.keepDisjoint(answer, question);
+
+        List<FieldPath> left = new ViewableKeyExtractor().paths(person, question.getConfig());
+        assertTrue(left.contains(FieldPath.parse("spouse.biography")), left::toString);
+        assertFalse(left.contains(FieldPath.parse("spouse.@view:display")), left::toString);
+    }
+
+    private static RelatedPerson marriedPerson() {
+        RelatedPerson spouse = new RelatedPerson("Bob", "A long nested value");
+        RelatedPerson person = new RelatedPerson("Alice", "Another biography");
+        person.spouse = spouse;
+        return person;
     }
 
     @Test void creatingAQuizIsVisibleAndPreventsAnotherClick() {
