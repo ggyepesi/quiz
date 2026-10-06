@@ -59,6 +59,19 @@ Discovery's results had no search box, because they were a `JTable` rather than 
   must not create one UI component per member. Live appends update only the new suffix and the
   containing field's count; they do not rescan or relayout all prior members.
 
+- **Render `ViewConfig` literally and recursively.** Unticked fields contribute nothing. A
+  selected object with no selected children contributes its field name. A selected DISPLAY
+  field has one painted occurrence: the object's caption, carrying that DISPLAY field's path
+  and value for search/highlighting; it is never repeated as a body row. Every selected
+  collection contributes `field name (size)` immediately and builds its configured members only
+  after expansion. Initial expansion is independent presentation policy: singleton media and
+  explicitly inline workflow content remain visible, while ordinary collections start folded.
+  A scalar reference to an object already shown as a top-level card is navigation only.
+  Members of an explicitly expanded object collection remain that collection's configured
+  projection: top-level registration must not suppress their selected child fields.
+  `@Inline`, `@Reference`, dynamic/reflected backing, and card/table layout are presentation
+  choices and must not alter those semantics.
+
 ## objectview stays generic
 
 `objectview` must know nothing about Wikidata or any app concept. App knowledge enters through

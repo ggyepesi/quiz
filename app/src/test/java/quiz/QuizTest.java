@@ -210,10 +210,11 @@ class QuizGenerationTest {
         Card answer = quiz.answerCard("Frederick, Prince of Wales");
         assertNotNull(answer);
         assertEquals("Frederick, Prince of Wales", answer.getTitle());
-        assertFalse(((objectview.field.DynamicFields) answer.getViewable())
-                        .dynamicFieldValues()
-                        .containsKey("name"),
-                "the real display field is a presentation role, not a value row");
+        assertEquals("Frederick, Prince of Wales",
+                ((objectview.field.DynamicFields) answer.getViewable())
+                        .dynamicFieldValues().get("name"),
+                "the selected DISPLAY value is projected like every other field; "
+                        + "its role additionally makes it the caption");
     }
 
     @Test

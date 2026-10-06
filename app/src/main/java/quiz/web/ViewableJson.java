@@ -12,6 +12,7 @@ import objectview.Viewable;
 import objectview.ViewableAdapter;
 import objectview.viewconfig.ViewConfigJsonIO;
 import objectview.viewconfig.ViewConfigJsonIO.JsonConfig;
+import objectview.viewconfig.ConfiguredFieldSelection;
 
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
@@ -41,7 +42,13 @@ public final class ViewableJson {
     private ViewableJson() {}
 
     public static ViewableView of(Viewable q) {
-        return of(q, Collections.newSetFromMap(new IdentityHashMap<>()));
+        return of(q, Collections.newSetFromMap(new IdentityHashMap<>()),
+                q == null ? null : configFor(q.typeName()));
+    }
+
+    /** Serializes {@code q} under an explicit root config instead of its saved one. */
+    static ViewableView of(Viewable q, JsonConfig config) {
+        return of(q, Collections.newSetFromMap(new IdentityHashMap<>()), config);
     }
 
     public static String json(Viewable q) {
@@ -330,7 +337,8 @@ public final class ViewableJson {
             return null;
         }
         return buildField(owner.typeName(), owner.getIdentifier(), fr, value,
-                Collections.newSetFromMap(new IdentityHashMap<>()));
+                Collections.newSetFromMap(new IdentityHashMap<>()),
+                childConfig(configFor(owner.typeName()), fieldName));
     }
 
     /**
@@ -372,10 +380,13 @@ public final class ViewableJson {
         return String.join(", ", parts);
     }
 
-    private static ViewableView of(Viewable q, Set<Object> visited) {
+    /** Serializes one occurrence of {@code q} under {@code config}: the owning
+     * field's child config, or the type's own config at the root. */
+    private static ViewableView of(Viewable q, Set<Object> visited, JsonConfig config) {
         String id = q.getIdentifier();
-        String name = q.getDisplayName();
         String type = q.typeName();
+        objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
+        String name = displayCaption(q, config);
 
         // Cycle guard: a Viewable already on the current path renders shallow.
         if (!visited.add(q)) {
@@ -388,7 +399,6 @@ public final class ViewableJson {
             // and render each through one builder. No `instanceof DynamicFields` fork.
             List<ViewableView.Field> fields = new ArrayList<>();
             Set<String> structural = STRUCTURAL_BY_TYPE.getOrDefault(type, Set.of());
-            objectview.field.FieldSet fs = objectview.field.FieldSet.of(q);
             for (objectview.field.FieldRef fr : fs.fields()) {
                 String fn = fr.name();
                 // Contract fields are already represented by the view header/id;
@@ -404,13 +414,14 @@ public final class ViewableJson {
                 if (!ViewableAdapter.isValidQuizValue(value)) {
                     continue;
                 }
-                ViewableView.Field field = buildField(type, id, fr, value, visited);
+                ViewableView.Field field = buildField(
+                        type, id, fr, value, visited, childConfig(config, fn));
                 if (field != null) {
                     fields.add(field);
                 }
             }
 
-            return new ViewableView(id, name, type, applyViewConfig(type, fields));
+            return new ViewableView(id, name, type, applyViewConfig(config, fields));
         } finally {
             visited.remove(q);
         }
@@ -455,10 +466,9 @@ public final class ViewableJson {
      *  fields first in config order; the rest appended only when allFields is
      *  set (else hidden). No config -> unchanged (show everything). */
     private static List<ViewableView.Field> applyViewConfig(
-            String type, List<ViewableView.Field> fields) {
+            JsonConfig cfg, List<ViewableView.Field> fields) {
 
-        JsonConfig cfg = configFor(type);
-        if (cfg == null || cfg.fields == null || cfg.fields.isEmpty()) {
+        if (cfg == null) {
             return fields;
         }
 
@@ -468,7 +478,9 @@ public final class ViewableJson {
         }
 
         List<ViewableView.Field> out = new ArrayList<>();
-        for (String fieldName : cfg.fields.keySet()) {
+        Map<String, JsonConfig> configured = cfg.fields == null
+                ? Map.of() : cfg.fields;
+        for (String fieldName : configured.keySet()) {
             ViewableView.Field f = byName.remove(fieldName);
             if (f != null) {
                 out.add(f);
@@ -480,6 +492,43 @@ public final class ViewableJson {
         return out;
     }
 
+    /** DISPLAY is painted once as the object caption, but its selection follows
+     * the same per-type ViewConfig as every body field. */
+    static boolean displaySelected(
+            objectview.field.FieldSet fields, JsonConfig config) {
+        if (config == null) return true;
+        objectview.field.FieldRef display = fields == null ? null : fields.displayField();
+        return ConfiguredFieldSelection.selected(
+                display,
+                config.allFields,
+                config.allMinorFields,
+                config.fields == null ? Set.of() : config.fields.keySet());
+    }
+
+    private static String displayCaption(Viewable value, JsonConfig config) {
+        if (value == null) return "";
+        String caption = displaySelected(objectview.field.FieldSet.of(value), config)
+                ? value.getDisplayName() : "";
+        return caption == null ? "" : caption;
+    }
+
+    /** The caption of a navigable reference: its selected DISPLAY, else the shared
+     * navigation label, so a captionless link stays clickable. */
+    static String referenceCaption(Viewable value, JsonConfig config) {
+        String caption = displayCaption(value, config);
+        return caption.isBlank() ? objectview.render.ReferenceRow.NAVIGATION_LABEL : caption;
+    }
+
+    /** The config an object field's value renders under: the field's own child
+     * config, else the target type's config — the rule the desktop card follows. */
+    private static JsonConfig childConfig(JsonConfig owner, String fieldName) {
+        return owner == null || owner.fields == null ? null : owner.fields.get(fieldName);
+    }
+
+    private static JsonConfig occurrenceConfig(JsonConfig fieldConfig, Viewable value) {
+        return fieldConfig != null ? fieldConfig : configFor(value.typeName());
+    }
+
     // The ONE field builder (#87). A declared field's annotation-derived render hints
     // (carried on the FieldRef) take precedence; then the value's SHAPE decides, and
     // shape is backing-agnostic — so a dynamic (map-held) field, which carries no
@@ -487,7 +536,7 @@ public final class ViewableJson {
     // collection, boolean, text). One path serves both representations.
     private static ViewableView.Field buildField(
             String ownerType, String ownerId, objectview.field.FieldRef fr, Object value,
-            Set<Object> visited) {
+            Set<Object> visited, JsonConfig fieldConfig) {
 
         String name = fr.name();
 
@@ -503,18 +552,18 @@ public final class ViewableJson {
             return linkField(name, s, fr.linkText());
         }
         if (fr.embedded()) {
-            List<ViewableView> nodes = inlineNodes(value, visited);
+            List<ViewableView> nodes = inlineNodes(value, visited, fieldConfig);
             if (!nodes.isEmpty()) return ViewableView.Field.inline(name, nodes);
         }
         if (fr.role() == objectview.field.FieldRole.PROVENANCE) {
             if (value instanceof Viewable source) {
-                return ViewableView.Field.ref(name, inlineRef(source, visited));
+                return ViewableView.Field.ref(name, inlineRef(source, visited, fieldConfig));
             }
             if (value instanceof Collection<?> sources) {
                 List<ViewableView.Ref> refs = sources.stream()
                         .filter(Viewable.class::isInstance)
                         .map(Viewable.class::cast)
-                        .map(source -> inlineRef(source, visited))
+                        .map(source -> inlineRef(source, visited, fieldConfig))
                         .toList();
                 if (!refs.isEmpty()) return ViewableView.Field.refs(name, refs);
             }
@@ -544,17 +593,18 @@ public final class ViewableJson {
         // useful chip label. This presentation decision is deliberately independent
         // of whether the object is stored as an ENTITY or a VALUE.
         if (isStructuralWrapper(value)) {
-            List<ViewableView> nodes = inlineNodes(value, visited);
+            List<ViewableView> nodes = inlineNodes(value, visited, fieldConfig);
             return nodes.isEmpty() ? null : ViewableView.Field.inline(name, nodes);
         }
         if (value instanceof Viewable q) {
-            return referenceOrLink(name, q, visited);
+            return referenceOrLink(name, q, visited, fieldConfig);
         }
         if (value instanceof Collection<?> c) {
-            return collectionField(ownerType, ownerId, name, c, visited);
+            return collectionField(ownerType, ownerId, name, c, visited, fieldConfig);
         }
         if (value instanceof Map<?, ?> m) {
-            return collectionField(ownerType, ownerId, name, m.values(), visited);
+            return collectionField(ownerType, ownerId, name, m.values(), visited,
+                    fieldConfig);
         }
         if (value instanceof Boolean flag) {
             return booleanField(name, flag);
@@ -575,15 +625,16 @@ public final class ViewableJson {
     // isn't in the store, so an internal ref is a dead end; if it carries an
     // external URL (its @Link field) we link out to that page instead.
     private static ViewableView.Field referenceOrLink(
-            String name, Viewable q, Set<Object> visited) {
+            String name, Viewable q, Set<Object> visited, JsonConfig fieldConfig) {
         boolean domainType = !q.typeName().equals(q.getClass().getSimpleName());
         if (!domainType) {
             String ext = externalUrl(q);
             if (ext != null) {
-                return ViewableView.Field.link(name, q.getDisplayName(), ext);
+                return ViewableView.Field.link(name,
+                        referenceCaption(q, occurrenceConfig(fieldConfig, q)), ext);
             }
         }
-        return ViewableView.Field.ref(name, ref(q, visited));
+        return ViewableView.Field.ref(name, ref(q, visited, fieldConfig));
     }
 
     // The value of the first non-blank @Link (URL) field on the object, if any
@@ -623,7 +674,7 @@ public final class ViewableJson {
 
     private static ViewableView.Field collectionField(
             String ownerType, String ownerId, String name, Collection<?> items,
-            Set<Object> visited) {
+            Set<Object> visited, JsonConfig fieldConfig) {
 
         // A collection of images (e.g. flag versions): one indexed image URL
         // per item, by position in the collection.
@@ -649,7 +700,7 @@ public final class ViewableJson {
         List<ViewableView.Ref> refs = new ArrayList<>();
         for (Object item : items) {
             if (item instanceof Viewable q) {
-                refs.add(ref(q, visited));
+                refs.add(ref(q, visited, fieldConfig));
             }
         }
         if (!refs.isEmpty()) {
@@ -666,21 +717,22 @@ public final class ViewableJson {
         return values.isEmpty() ? null : ViewableView.Field.list(name, values);
     }
 
-    private static List<ViewableView> inlineNodes(Object value, Set<Object> visited) {
+    private static List<ViewableView> inlineNodes(
+            Object value, Set<Object> visited, JsonConfig fieldConfig) {
         List<ViewableView> nodes = new ArrayList<>();
 
         if (value instanceof Viewable q) {
-            nodes.add(of(q, visited));
+            nodes.add(of(q, visited, occurrenceConfig(fieldConfig, q)));
         } else if (value instanceof Collection<?> c) {
             for (Object item : c) {
                 if (item instanceof Viewable q) {
-                    nodes.add(of(q, visited));
+                    nodes.add(of(q, visited, occurrenceConfig(fieldConfig, q)));
                 }
             }
         } else if (value instanceof Map<?, ?> m) {
             for (Object item : m.values()) {
                 if (item instanceof Viewable q) {
-                    nodes.add(of(q, visited));
+                    nodes.add(of(q, visited, occurrenceConfig(fieldConfig, q)));
                 }
             }
         }
@@ -705,21 +757,29 @@ public final class ViewableJson {
         return ViewableView.Field.link(name, label == null ? url : label, url);
     }
 
-    private static ViewableView.Ref ref(Viewable q, Set<Object> visited) {
+    private static ViewableView.Ref ref(
+            Viewable q, Set<Object> visited, JsonConfig fieldConfig) {
+        JsonConfig config = occurrenceConfig(fieldConfig, q);
         // A value object isn't in the pool, so its chip can't be FETCHED to expand —
         // carry its contents INLINE so the chip expands from embedded data. An entity's
         // chip stays lazy (fetched by id). Rendering shape (chip) is uniform either way.
         boolean valueObject = isValueObject(q);
-        ViewableView inline = valueObject ? of(q, visited) : null;
+        ViewableView inline = valueObject ? of(q, visited, config) : null;
+        // Only an entity chip navigates (the client fetches it by id); a value
+        // object expands its embedded content and so needs no navigation label.
         return new ViewableView.Ref(
                 valueObject ? null : q.getIdentifier(),
-                q.getDisplayName(), q.typeName(), thumbUrl(q), inline);
+                valueObject ? displayCaption(q, config) : referenceCaption(q, config),
+                q.typeName(), thumbUrl(q), inline);
     }
 
     /** Provenance is inspectable but never a member of the served object pool. */
-    private static ViewableView.Ref inlineRef(Viewable q, Set<Object> visited) {
+    private static ViewableView.Ref inlineRef(
+            Viewable q, Set<Object> visited, JsonConfig fieldConfig) {
+        JsonConfig config = occurrenceConfig(fieldConfig, q);
         return new ViewableView.Ref(
-                null, q.getDisplayName(), q.typeName(), thumbUrl(q), of(q, visited));
+                null, displayCaption(q, config), q.typeName(), thumbUrl(q),
+                of(q, visited, config));
     }
 
     /** A small render URL for {@code q}'s first media field (e.g. a Laureate's portrait),

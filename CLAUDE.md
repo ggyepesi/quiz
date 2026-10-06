@@ -373,11 +373,26 @@ construct per thing produced:
   value counts.
 - **ObjectView DISPLAY is an ordinary field with one presentation role.** It is selected,
   hidden, searched, sorted and projected by the same `ViewConfig` rules as every other field.
-  When selected, it is painted as the title/caption of that object field rather than as a
-  separate value row. Selecting an object field never selects DISPLAY (or any other child)
-  implicitly; with no selected children the field renders its field-name caption alone. An
-  explicit empty child config has that literal meaning and is not a legacy shorthand for a
-  display-only or all-fields config.
+  When selected, its one painted occurrence is that object's title/caption; it is not repeated
+  as a body row. The caption carries the DISPLAY field path/value for search and highlighting.
+  When unselected there is neither field value nor caption and no
+  fallback through `getName`, `getDisplayName` or a reference label, while every other child
+  still follows its own tick.
+  Selecting an object field never selects DISPLAY (or any other child) implicitly; with no
+  selected children the field renders its field-name caption alone. An explicit empty child
+  config has that literal meaning and is not a legacy shorthand for a display-only or
+  all-fields config. Unticked means absent for every field and field role. A ticked collection
+  always renders `field name (size)` immediately, including size zero, and renders its members
+  lazily only when expanded; each member recursively follows the same config. Whether it starts
+  expanded is a presentation policy independent of selection: singleton media and explicitly
+  inline workflow content remain immediately visible, while ordinary collections start folded.
+  Render hints, backing type and card/table layout may change presentation, never these selection
+  semantics. A scalar reference whose target already has a top-level card is navigation only and
+  never repeats that target's configured fields inline; with its DISPLAY unticked the
+  link reads “Open”, naming the action and never the object or its type. An explicitly
+  expanded object collection is different: its members are the collection's configured
+  projection, so top-level registration never suppresses their selected child fields. DISPLAY selection controls neither navigation nor
+  whether those collection-member fields render.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

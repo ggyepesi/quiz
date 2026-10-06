@@ -156,8 +156,7 @@ public final class ViewableKeyExtractor {
         Map<String, Object> projected = new LinkedHashMap<>();
         for (String name : selectedNames(fields, config)) {
             FieldRef field = fields.field(name);
-            if (field == null || field.role()
-                    == objectview.field.FieldRole.DISPLAY) continue;
+            if (field == null) continue;
             Object raw = fields.read(name);
             if (raw == null) continue;
             Object value = projectSelectedValue(raw, config.getFieldConfig(name));
