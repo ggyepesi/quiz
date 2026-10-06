@@ -1,9 +1,8 @@
 # Literal ViewConfig rendering
 
-Status: **approved (2026-10-06). Phases 1–5 done, and phase 6's editor boundary: the
-editor desugars configs where they enter and emits literal ones; the table's columns are
-the literal leaf paths. Remaining in phase 6: confirm Apply rebuilds visible cards.
-Next: phase 7 (web).**
+Status: **approved (2026-10-06). Phases 1–6 done: the
+editor desugars configs where they enter and emits literal ones, the table's columns are
+the literal leaf paths, and Apply rebuilds the cards on screen. Next: phase 7 (web).**
 
 > A field is rendered if and only if it is ticked. Collections and DISPLAY have a
 > few specific rules (§2). Nothing else decides.
