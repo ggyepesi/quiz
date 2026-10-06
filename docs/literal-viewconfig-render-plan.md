@@ -1,7 +1,9 @@
 # Literal ViewConfig rendering
 
-Status: **approved (2026-10-06). Phases 1–4 done: `objectview.plan` (desugar, defaults,
-resolver, executor, mock harness) and Card as a sink of the executor. Phase 5 (table) next.**
+Status: **approved (2026-10-06). Phases 1–5 done, and phase 6's editor boundary: the
+editor desugars configs where they enter and emits literal ones; the table's columns are
+the literal leaf paths. Remaining in phase 6: confirm Apply rebuilds visible cards.
+Next: phase 7 (web).**
 
 > A field is rendered if and only if it is ticked. Collections and DISPLAY have a
 > few specific rules (§2). Nothing else decides.

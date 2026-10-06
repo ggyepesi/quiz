@@ -190,13 +190,15 @@ class ViewConfigEditorTreeConfigTest {
     @Test void switchRefreshesAllMinorFieldsFromNewConfig() {
         ViewConfigEditor editor =
                 new ViewConfigEditor(topConfig(), (objectview.Viewable) null);  // all-minor off
-        assertFalse(editor.getConfig().isAllMinorFields());
+        assertFalse(Boolean.TRUE.equals(editor.getConfig().minorFieldsVisible()));
 
         ViewConfig withMinor = topConfig();
         withMinor.setAllMinorFields(true);
         editor.setConfigRows(withMinor, null, null, Set.of());
 
-        assertTrue(editor.getConfig().isAllMinorFields(),
+        // The editor emits literal configs (directive 24): "all minor fields" arrives as
+        // ticks plus the minor-fields switch, which is the state that must refresh.
+        assertTrue(Boolean.TRUE.equals(editor.getConfig().minorFieldsVisible()),
                 "the all-minor-fields state must refresh from the switched-in config");
     }
 
