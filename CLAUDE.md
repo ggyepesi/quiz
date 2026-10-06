@@ -343,6 +343,16 @@ construct per thing produced:
    *(Trigger: a class/graph/selection/population has its own load, show, removal or save
    rule, or a configuration edit deletes instance files before Save domain/model.)*
 
+24. **Modularity: express a construct in simpler existing ones, immediately.** When a
+   construct can be written in terms of simpler constructs that already exist, rewrite it
+   into them once, at the boundary where it enters (creation, load, edit), and let every
+   consumer see only the simpler form. A shorthand that survives past that boundary forces
+   each consumer to interpret it, and each interprets it slightly differently: `allFields`,
+   `allMinorFields` and an absent child config were read by the editor, Card, ValueRenderer,
+   the table, the web serializer and quiz extraction, each with its own fallback, while the
+   same config looked like a plain list of ticks to the person who wrote it. *(Trigger: a
+   flag, alias or "absent means …" that more than one consumer branches on.)*
+
 ## Working agreements
 
 - **Build features by assembling pieces that already exist.** Defer new automation until
