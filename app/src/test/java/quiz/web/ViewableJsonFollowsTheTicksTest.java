@@ -104,6 +104,17 @@ class ViewableJsonFollowsTheTicksTest {
         assertEquals(List.of("director"), names(view));
     }
 
+    @Test void bothBooleanValuesAreRenderedLiterally() {
+        ViewConfig config = ViewConfig.leaf();
+        config.addField("enabled", ViewConfig.leaf());
+        config.addField("archived", ViewConfig.leaf());
+
+        ViewableView view = ViewableJson.of(new Flags(), config);
+
+        assertEquals("true", field(view, "enabled").value());
+        assertEquals("false", field(view, "archived").value());
+    }
+
     private static List<String> names(ViewableView view) {
         return view.fields().stream().map(ViewableView.Field::name).toList();
     }
@@ -141,5 +152,12 @@ class ViewableJsonFollowsTheTicksTest {
         @Override public String getIdentifier() { return title; }
         @Override public String getDisplayName() { return title; }
         @Override public String typeName() { return "Movie"; }
+    }
+
+    private static final class Flags extends ViewableAdapter {
+        @SuppressWarnings("unused") private final boolean enabled = true;
+        @SuppressWarnings("unused") private final boolean archived = false;
+        @Override public String getIdentifier() { return "flags"; }
+        @Override public String getDisplayName() { return "flags"; }
     }
 }

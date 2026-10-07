@@ -6,7 +6,6 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import objectview.render.FieldLabels;
 import objectview.media.ImageRef;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
@@ -15,6 +14,7 @@ import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.field.FieldSet;
 import objectview.plan.Disclosure;
+import objectview.plan.DecisionRenderer;
 import objectview.plan.PlanResolver;
 import objectview.plan.RenderExecutor;
 import objectview.plan.RenderSink;
@@ -58,7 +58,13 @@ public final class ViewableJson {
 
     /** The card of {@code q} under {@code config} instead of its saved one. */
     static ViewableView of(Viewable q, ViewConfig config) {
-        return card(q, literalFor(q, config), q, FieldPath.ROOT);
+        return card(q, literalFor(q, config), q, FieldPath.ROOT, executor());
+    }
+
+    /** Test/adapter entry point that applies the same disclosure state as another
+     * renderer. Production cards use {@link Disclosure#INITIAL}. */
+    static ViewableView of(Viewable q, ViewConfig config, Disclosure disclosure) {
+        return card(q, literalFor(q, config), q, FieldPath.ROOT, executor(disclosure));
     }
 
     /** A collection member fetched by its chip: the projection the collection's config
@@ -76,7 +82,7 @@ public final class ViewableJson {
         for (String segment : at.segments()) {
             config = config == null ? null : config.getFieldConfig(segment);
         }
-        return card(q, config == null ? ViewConfig.leaf() : config, root, at);
+        return card(q, config == null ? ViewConfig.leaf() : config, root, at, executor());
     }
 
     public static String json(Viewable q) {
@@ -372,7 +378,7 @@ public final class ViewableJson {
         ViewConfig child = literalFor(owner, null).getFieldConfig(fieldName);
         ViewConfig one = ViewConfig.leaf();
         one.addField(fieldName, child == null ? ViewConfig.leaf() : child);
-        return card(owner, one, owner, FieldPath.ROOT).fields().stream()
+        return card(owner, one, owner, FieldPath.ROOT, executor()).fields().stream()
                 .filter(field -> fieldName.equals(field.name()))
                 .findFirst().orElse(null);
     }
@@ -543,8 +549,7 @@ public final class ViewableJson {
     /** Serializes the card of {@code q} under {@code literal}; config paths start at
      * {@code base}, and {@code root} is the card whose config that is. */
     private static ViewableView card(Viewable q, ViewConfig literal, Viewable root,
-                                     FieldPath base) {
-        RenderExecutor executor = executor();
+                                     FieldPath base, RenderExecutor executor) {
         RenderExecutor.Level level = executor.level(q, literal);
         Set<Viewable> ancestors = Collections.newSetFromMap(new IdentityHashMap<>());
         ancestors.add(q);
@@ -554,7 +559,10 @@ public final class ViewableJson {
 
     /** Paints executor decisions as JSON. It makes no selection, representation,
      * navigation or caption decision of its own. */
-    private record Sink(RenderExecutor executor, Viewable root) {
+    private record Sink(RenderExecutor executor, Viewable root)
+            implements DecisionRenderer<ViewableView.Field, Sink.Context> {
+
+        private record Context(Viewable owner, Set<Viewable> ancestors) {}
 
         ViewableView card(RenderExecutor.Level level, RenderSink.Occurrence at,
                           Set<Viewable> ancestors) {
@@ -570,15 +578,40 @@ public final class ViewableJson {
 
         private ViewableView.Field field(Viewable owner, RenderExecutor.Decision decision,
                                          Set<Viewable> ancestors) {
-            String name = decision.field() == null ? "" : decision.field().name();
-            return switch (decision.kind()) {
-                case SKIP -> null;
-                case LEAF -> leaf(owner, decision.field().field(), decision.value());
-                case NAVIGATION -> ViewableView.Field.ref(name, navigation(decision.object()));
-                case BACK_REFERENCE -> backReference(name, decision.object());
-                case OBJECT -> object(name, decision, ancestors);
-                case COLLECTION -> collection(owner, name, decision, ancestors);
-            };
+            return renderDecision(decision, new Context(owner, ancestors));
+        }
+
+        @Override public ViewableView.Field skip(RenderExecutor.Decision decision,
+                                                 Context context) {
+            return null;
+        }
+
+        @Override public ViewableView.Field leaf(RenderExecutor.Decision decision,
+                                                 Context context) {
+            return ViewableJson.leaf(
+                    context.owner(), decision.field().field(), decision.value());
+        }
+
+        @Override public ViewableView.Field navigation(RenderExecutor.Decision decision,
+                                                       Context context) {
+            return ViewableView.Field.ref(decision.field().name(),
+                    navigation(decision.object()));
+        }
+
+        @Override public ViewableView.Field backReference(RenderExecutor.Decision decision,
+                                                          Context context) {
+            return backReference(decision.field().name(), decision.object());
+        }
+
+        @Override public ViewableView.Field object(RenderExecutor.Decision decision,
+                                                   Context context) {
+            return object(decision.field().name(), decision, context.ancestors());
+        }
+
+        @Override public ViewableView.Field collection(RenderExecutor.Decision decision,
+                                                       Context context) {
+            return collection(context.owner(), decision.field().name(), decision,
+                    context.ancestors());
         }
 
         private static ViewableView.Ref navigation(RenderExecutor.Level object) {
@@ -633,7 +666,7 @@ public final class ViewableJson {
                                               RenderExecutor.Decision decision,
                                               Set<Viewable> ancestors) {
             Collection<?> items = RenderExecutor.members(decision.value());
-            boolean open = Disclosure.initiallyOpen(decision.field(), decision.value());
+            boolean open = decision.open();
             List<String> images = images(owner, name, items);
             if (!images.isEmpty()) {
                 return ViewableView.Field.images(name, images).collection(items.size(), open);
@@ -708,8 +741,7 @@ public final class ViewableJson {
     // ---- Leaves -------------------------------------------------------------
 
     /** A text, link or media value: the shape decides, for declared and dynamic fields
-     * alike. A boolean reads as a badge: the humanized field name when true, omitted
-     * when false — never "true"/"false". */
+     * alike. Scalar values, including both booleans, are rendered literally. */
     private static ViewableView.Field leaf(Viewable owner, FieldRef fr, Object value) {
         String name = fr.name();
         String media = mediaUrl(owner, name, value);
@@ -723,9 +755,6 @@ public final class ViewableJson {
             return isImageKey(name)
                     ? ViewableView.Field.image(name, url)       // e.g. a sky chart
                     : linkField(name, url, name);               // e.g. a wikidata link
-        }
-        if (value instanceof Boolean flag) {
-            return flag ? ViewableView.Field.text(name, FieldLabels.humanize(name)) : null;
         }
         return ViewableView.Field.text(name, String.valueOf(value));
     }
