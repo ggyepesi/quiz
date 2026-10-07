@@ -31,6 +31,22 @@ import java.util.Set;
  */
 public final class ViewableKeyExtractor {
 
+    // The schemas a selection is rewritten against: an instance's own (its most
+    // specific class) and a declared type's by name. Without them an instance's type is
+    // its carried schema or its class; its values never decide what fields exist.
+    private java.util.function.Function<Viewable, FieldSchema> valueSchemas = value -> null;
+    private java.util.function.Function<String, FieldSchema> typeSchemas = type -> null;
+
+    public void setSchemas(java.util.function.Function<Viewable, FieldSchema> valueSchemas,
+                           java.util.function.Function<String, FieldSchema> typeSchemas) {
+        this.valueSchemas = valueSchemas == null ? value -> null : valueSchemas;
+        this.typeSchemas = typeSchemas == null ? type -> null : typeSchemas;
+    }
+
+    private TypeShape shape(Viewable viewable) {
+        return TypeShape.of(viewable, valueSchemas.apply(viewable), typeSchemas);
+    }
+
     /** The key paths of {@code config} against its configured class. */
     public List<FieldPath> paths(ViewConfig config) {
         if (config == null) return List.of();
@@ -42,7 +58,7 @@ public final class ViewableKeyExtractor {
     public List<FieldPath> paths(Viewable viewable, ViewConfig config) {
         if (config == null) return List.of();
         return keyPaths(config, viewable == null
-                ? TypeShape.ofClass(config.getCls()) : TypeShape.ofSample(viewable, null));
+                ? TypeShape.ofClass(config.getCls()) : shape(viewable));
     }
 
     /** The paths a selection puts into a key: the selection's value paths, the one
@@ -76,7 +92,7 @@ public final class ViewableKeyExtractor {
                 || key == null) {
             return null;
         }
-        ViewConfig literal = literal(config, TypeShape.ofSample(owner, null));
+        ViewConfig literal = literal(config, shape(owner));
         return new KeyContent(new SelectedTuple(this, owner, literal), literal, paths);
     }
 

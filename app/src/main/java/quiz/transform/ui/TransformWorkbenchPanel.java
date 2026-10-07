@@ -1296,8 +1296,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         MultiView multi = new MultiView();
         multi.context().setCollapsibleCards(true);
         multi.context().setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
-        multi.context().setFieldSchemaResolver(
-                value -> controller.fieldSchema(value.typeName()));
+        multi.context().setSchemas(controller::fieldSchema);
         multi.addSection("Findings", sampleClass(findings.getFirst()), findings,
                 relationSample(quiz.transform.RelationProfileRows.FINDING, findings),
                 java.util.Set.of(), null);
@@ -1458,6 +1457,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .hiddenFields(controller.structuralFields(type))
                     .fieldTypes(controller.fieldTypes(type))
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, type))
+                    .typeSchemas(controller::fieldSchema)
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
@@ -1484,6 +1484,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .hiddenFields(controller.structuralFields(renderedType))
                     .fieldTypes(controller.fieldTypes(renderedType))
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, renderedType))
+                    .typeSchemas(controller::fieldSchema)
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
@@ -1499,8 +1500,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         mv.context().setCardDecorator(cardDecorator);
         mv.context().addSelectionSetListener(values -> selectionListener.accept(values.stream()
                 .filter(Viewable.class::isInstance).map(Viewable.class::cast).toList()));
-        mv.context().setFieldSchemaResolver(
-                q -> controller.fieldSchema(q.typeName()));
+        mv.context().setSchemas(controller::fieldSchema);
         for (java.util.Map.Entry<String, List<Viewable>> e : byType.entrySet()) {
             String t = e.getKey();
             List<Viewable> objs = e.getValue();
@@ -1701,6 +1701,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .renderContext(context)
                 .fieldSchemas(value -> controller.renderedFieldSchema(
                         value, value.typeName()))
+                .typeSchemas(controller::fieldSchema)
                 .cardDecorator(value -> new JLabel("Path node " + steps.get(value)
                         + " of " + instances.size() + " · " + roles.get(value)))
                 .collapsible(true)
@@ -1806,6 +1807,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .renderContext(context)
                 .fieldSchemas(value -> controller.renderedFieldSchema(
                         value, value.typeName()))
+                .typeSchemas(controller::fieldSchema)
                 .collapsible(true)
                 .build();
     }
@@ -2153,6 +2155,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .sample(candidates.getFirst())
                 .fieldSchemas(value -> controller.renderedFieldSchema(
                         value, value.typeName()))
+                .typeSchemas(controller::fieldSchema)
                 .selectionSetListener(values -> selected.set(values.stream()
                         .filter(Viewable.class::isInstance)
                         .map(Viewable.class::cast).toList()))

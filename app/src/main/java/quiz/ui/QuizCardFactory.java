@@ -23,9 +23,14 @@ public final class QuizCardFactory {
         this.quizContext = quizContext == null ? java.util.List.of() : quizContext;
     }
 
-    public void setFieldSchemaResolver(
-            java.util.function.Function<Viewable, objectview.field.FieldSchema> resolver) {
-        fieldSchemas = resolver == null ? ignored -> null : resolver;
+    private java.util.function.Function<String, objectview.field.FieldSchema>
+            typeSchemas = ignored -> null;
+
+    public void setSchemas(
+            java.util.function.Function<Viewable, objectview.field.FieldSchema> valueSchemas,
+            java.util.function.Function<String, objectview.field.FieldSchema> typeSchemas) {
+        fieldSchemas = valueSchemas == null ? ignored -> null : valueSchemas;
+        this.typeSchemas = typeSchemas == null ? ignored -> null : typeSchemas;
     }
 
     public Card create(
@@ -87,6 +92,7 @@ public final class QuizCardFactory {
                 : presentation.useQuizContext() ? quizContext : java.util.List.of();
         RenderContext context = new RenderContext(contextItems);
         context.setFieldSchemaResolver(fieldSchemas);
+        context.setTypeSchemaResolver(typeSchemas);
         if (reveal != null) {
             for (FieldPath path : reveal) context.revealPath(viewable, path);
         }

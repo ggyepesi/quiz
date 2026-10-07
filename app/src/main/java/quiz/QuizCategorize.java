@@ -50,7 +50,7 @@ public class QuizCategorize extends Quiz {
     private static TypeShape shape(ViewConfig config, Map<String, ? extends Viewable> viewables) {
         Viewable sample = viewables == null || viewables.isEmpty()
                 ? null : viewables.values().iterator().next();
-        return sample != null ? TypeShape.ofSample(sample, null)
+        return sample != null ? TypeShape.of(sample, null, null)
                 : TypeShape.ofClass(config == null ? null : config.getCls());
     }
 

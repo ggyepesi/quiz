@@ -431,6 +431,26 @@ public final class ViewableJson {
     private static final Map<String, Set<String>> STRUCTURAL_BY_TYPE =
             new ConcurrentHashMap<>();
 
+    // The schemas of the served types, by name: each served snapshot registers its field
+    // graph. A nested field's target type is looked up here, never read off its value.
+    private static final List<java.util.function.Function<String, FieldSchema>> TYPE_SCHEMAS =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /** Registers a source of served type schemas (a snapshot's field graph). */
+    public static void registerTypeSchemas(
+            java.util.function.Function<String, FieldSchema> schemas) {
+        if (schemas != null) TYPE_SCHEMAS.add(schemas);
+    }
+
+    private static FieldSchema typeSchema(String typeName) {
+        if (typeName == null) return null;
+        for (java.util.function.Function<String, FieldSchema> schemas : TYPE_SCHEMAS) {
+            FieldSchema schema = schemas.apply(typeName);
+            if (schema != null) return schema;
+        }
+        return null;
+    }
+
     /** Registers the fields to hide for a served type (see {@link #STRUCTURAL_BY_TYPE}). */
     public static void registerStructural(String type, Set<String> fields) {
         if (type != null && !type.isBlank() && fields != null && !fields.isEmpty()) {
@@ -450,18 +470,23 @@ public final class ViewableJson {
     /** The literal config {@code q}'s card renders under: {@code given}, else its type's
      * saved config, else the one default — rewritten here, where it enters the web. */
     static ViewConfig literalFor(Viewable q, ViewConfig given) {
-        TypeShape shape = TypeShape.ofSample(q, ViewableJson::schema);
+        TypeShape shape = TypeShape.of(q, schema(q), ViewableJson::typeSchema);
         ViewConfig config = given != null ? given : savedConfig(q.typeName());
         return config == null ? ViewDefaults.newView(shape)
                 : ViewConfigDesugar.literal(config, shape);
     }
 
-    /** The schema the web renders with: the object's own fields, with the registered
-     * structural ones and internal "__" plumbing marked structural. */
+    /** The schema the web renders {@code q} with: its type's served schema, else the one
+     * a loaded object carries, with the registered structural fields and internal "__"
+     * plumbing marked structural. Null for a declared class, whose reflected fields are
+     * its schema. Never the keys an object happens to hold. */
     private static FieldSchema schema(Viewable q) {
+        FieldSchema base = typeSchema(q.typeName());
+        if (base == null) base = FieldSet.carriedSchema(q);
+        if (base == null) return null;
         Set<String> structural = STRUCTURAL_BY_TYPE.getOrDefault(q.typeName(), Set.of());
         List<FieldRef> fields = new ArrayList<>();
-        for (FieldRef field : FieldSet.of(q).fields()) {
+        for (FieldRef field : base.fields()) {
             boolean plumbing = structural.contains(field.name())
                     || (field.name() != null && field.name().startsWith("__"));
             fields.add(plumbing && !field.structural()
@@ -476,6 +501,33 @@ public final class ViewableJson {
     private static boolean navigable(Viewable q) {
         return !isValueObject(q) && !isBlank(q.getIdentifier())
                 && !q.typeName().equals(q.getClass().getSimpleName());
+    }
+
+    /** The fields of {@code instance}'s type, or of the type {@code path} leads to from
+     * it: read from the schemas, never from the values any instance holds. */
+    public static List<FieldRef> typeFields(Viewable instance, String path) {
+        if (instance == null) return List.of();
+        TypeShape shape = TypeShape.of(instance, schema(instance), ViewableJson::typeSchema);
+        if (path != null && !path.isBlank()) {
+            for (String segment : FieldPath.parse(path).segments()) {
+                FieldRef field = shape == null ? null : shape.fields().stream()
+                        .filter(f -> f.name().equals(segment)).findFirst().orElse(null);
+                shape = field == null ? null : shape.nested(field);
+            }
+        }
+        return shape == null ? List.of() : shape.fields();
+    }
+
+    /** The kind a field is painted as on the web, from its schema. */
+    public static String webKind(FieldRef field) {
+        boolean media = field.kind() == objectview.field.FieldKind.MEDIA
+                || field.valueKind() == objectview.field.FieldKind.MEDIA;
+        boolean collection = field.collection()
+                || field.kind() == objectview.field.FieldKind.COLLECTION;
+        if (media) return collection ? "images" : "image";
+        if (field.reference() || field.annotatedReference()) return collection ? "refs" : "ref";
+        if (field.link()) return "link";
+        return collection ? "list" : "text";
     }
 
     private static RenderExecutor executor() {

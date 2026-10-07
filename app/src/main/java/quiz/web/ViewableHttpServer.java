@@ -384,18 +384,13 @@ public class ViewableHttpServer {
                 kinds.put(field.name(), "text");
                 labels.put(field.name(), field.label());
             }
-            int seen = 0;
-            for (Viewable q : qs) {
-                Viewable target = nested ? ViewableJson.resolvePath(q, path) : q;
-                if (target != null) {
-                    for (ViewableView.Field field : ViewableJson.of(target).fields()) {
-                        kinds.putIfAbsent(field.name(), field.kind());
-                        labels.putIfAbsent(field.name(), field.name());
-                    }
-                }
-                if (++seen >= 40) {
-                    break;
-                }
+            // The type's schema names its fields; an instance only names the type.
+            Viewable first = qs.isEmpty() ? null : qs.iterator().next();
+            for (objectview.field.FieldRef field
+                    : ViewableJson.typeFields(first, nested ? path : null)) {
+                if (field.structural()) continue;
+                kinds.putIfAbsent(field.name(), ViewableJson.webKind(field));
+                labels.putIfAbsent(field.name(), field.label());
             }
 
             List<Map<String, Object>> out = new ArrayList<>();

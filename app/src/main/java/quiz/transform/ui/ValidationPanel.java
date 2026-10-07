@@ -1885,6 +1885,7 @@ public final class ValidationPanel extends JPanel {
                                                    .hiddenFields(domain.structuralFields(type))
                                                    .fieldTypes(domain.fieldTypes(type))
                                                    .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                                                   .typeSchemas(domain::fieldSchema)
                                                    .cardDecorator(member -> IdentityChip.of(identityQid(member)))
                                                    .collapsible(true)
                                                    .selectionListener(o -> {

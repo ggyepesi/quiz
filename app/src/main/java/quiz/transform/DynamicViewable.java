@@ -47,6 +47,12 @@ public class DynamicViewable extends ViewableAdapter implements DynamicFields {
 
     @Override public Map<String, Object> dynamicFieldValues() { return fields; }
 
+    /** Its type's declared fields ({@link objectview.field.RecordTypes}): what fields a
+     * record has is its producer's statement, never read off the values it holds. */
+    @Override public objectview.field.FieldSchema dynamicFieldSchema() {
+        return objectview.field.RecordTypes.schema(typeName());
+    }
+
     @Override public boolean equals(Object o) {
         return o instanceof DynamicViewable d && id.equals(d.id) && typeName().equals(d.typeName());
     }

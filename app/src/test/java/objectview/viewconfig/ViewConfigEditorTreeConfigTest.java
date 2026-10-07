@@ -1,5 +1,7 @@
 package objectview.viewconfig;
 
+import objectview.field.RecordTypes;
+
 import org.junit.jupiter.api.Test;
 import quiz.transform.DynamicViewable;
 
@@ -20,6 +22,21 @@ import static org.junit.jupiter.api.Assertions.*;
  * child fields, so the tree recurses and round-trips.
  */
 class ViewConfigEditorTreeConfigTest {
+    static {
+        // The fixture records' types, declared as a producer declares them (#363).
+        RecordTypes.declare("Category", RecordTypes.number("year"), RecordTypes.value("winner"));
+        RecordTypes.declare("Nomination", RecordTypes.number("year"),
+                RecordTypes.record("category", "Category"), RecordTypes.text("note"));
+        RecordTypes.declare("Motivation", RecordTypes.text("action"));
+        RecordTypes.declare("Laureate", RecordTypes.value("portrait"));
+        RecordTypes.declare("LaureatesWithMotivation",
+                RecordTypes.records("laureates", "Laureate"),
+                RecordTypes.record("motivation", "Motivation"));
+        RecordTypes.declare("NobelPrize",
+                RecordTypes.records("laureatesWithMotivation", "LaureatesWithMotivation"));
+    }
+
+
 
     /** nomination → category(reference) with year + winner child fields. */
     private static DynamicViewable nominationSample() {
@@ -108,8 +125,9 @@ class ViewConfigEditorTreeConfigTest {
             config.setAllFields(false);
             config.addField("note", ViewConfig.leaf());
             ViewConfigEditor editor = new ViewConfigEditor(config, nameOnly, nomination);
-            String display = objectview.field.ViewableContractFieldSet.displayKey(
-                    DynamicViewable.class);
+            // Category is a declared record type: its DISPLAY row is the contract one,
+            // since the declaration names no carrier class.
+            String display = objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
 
             assertFalse(ticked(editor, "category." + display), "starts unchecked");
             check(editor, "category");

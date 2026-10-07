@@ -27,6 +27,22 @@ public final class RelationProfileRows {
     public static final String MEASURE = "RelationMeasure";
     public static final String FINDING = "RelationFinding";
 
+    static {
+        // The fields of the rows this class builds, stated once (#363).
+        objectview.field.RecordTypes.declare(MEASURE,
+                objectview.field.RecordTypes.text("relation"),
+                objectview.field.RecordTypes.number("value"),
+                objectview.field.RecordTypes.text("reading"),
+                objectview.field.RecordTypes.references("instances"));
+        objectview.field.RecordTypes.declare(FINDING,
+                objectview.field.RecordTypes.text("relation"),
+                objectview.field.RecordTypes.text("finding"),
+                objectview.field.RecordTypes.reference("from"),
+                objectview.field.RecordTypes.reference("to"),
+                objectview.field.RecordTypes.text("missing"),
+                objectview.field.RecordTypes.reference("member"));
+    }
+
     private RelationProfileRows() { }
 
     /** Rows shown by the report and the number of findings they represent. The latter

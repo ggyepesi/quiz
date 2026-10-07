@@ -158,6 +158,10 @@ final class GraphPatternSamplePanel extends JPanel {
         Map<String, DynamicViewable> targets = views(sample.targets(),
                 choice.pattern().targetNodeClass());
         List<Viewable> statementCards = new ArrayList<>();
+        objectview.field.RecordTypes.declare(choice.pattern().statementClass(),
+                objectview.field.RecordTypes.reference(choice.pattern().sourceField()),
+                objectview.field.RecordTypes.reference(choice.pattern().targetField()),
+                objectview.field.RecordTypes.text("Relation"));
         for (GraphPatternSampleQuery.Edge edge : sample.statements()) {
             DynamicViewable card = new DynamicViewable(edge.statementId(),
                     edge.source().label() + " — " + edge.target().label());
@@ -215,6 +219,7 @@ final class GraphPatternSamplePanel extends JPanel {
     private static Map<String, DynamicViewable> views(
             List<GraphPatternSampleQuery.Node> nodes, String type) {
         Map<String, DynamicViewable> out = new LinkedHashMap<>();
+        objectview.field.RecordTypes.declare(type, objectview.field.RecordTypes.text("QID"));
         for (GraphPatternSampleQuery.Node node : nodes) {
             DynamicViewable view = new DynamicViewable(node.qid(), node.label());
             view.type(type); view.put("QID", node.qid());

@@ -57,6 +57,24 @@ public final class SourceYieldCards {
         return cards;
     }
 
+    static {
+        // The fields of the cards this view builds, stated once (#363).
+        objectview.field.RecordTypes.declare("Source yield",
+                objectview.field.RecordTypes.text("Outcome"),
+                objectview.field.RecordTypes.text("Summary"),
+                objectview.field.RecordTypes.records("Candidates found", "Source candidate"));
+        objectview.field.RecordTypes.declare("Source candidate",
+                objectview.field.RecordTypes.text("Source"),
+                objectview.field.RecordTypes.text("Field"),
+                objectview.field.RecordTypes.value("Current value"),
+                objectview.field.RecordTypes.value("Proposed value"),
+                objectview.field.RecordTypes.text("Suggested action"),
+                objectview.field.RecordTypes.value("Evidence"),
+                objectview.field.RecordTypes.value("Image"),
+                objectview.field.RecordTypes.text("Attribution"),
+                objectview.field.RecordTypes.text("License"));
+    }
+
     private static Viewable fieldCard(
             SourceYield yield, EnrichmentProposal.FieldCandidate candidate) {
         DynamicViewable view = new DynamicViewable(

@@ -189,6 +189,36 @@ public final class FindDataBatchReviewPanel {
         return " [" + source.kind() + property + "]";
     }
 
+    static {
+        // The fields of the review cards, stated once (#363).
+        for (String outcome : List.of("Needs identity choice", "Corroborated", "Not found",
+                "Overwrite", "Found")) {
+            objectview.field.RecordTypes.declare(outcome,
+                    objectview.field.RecordTypes.text("Outcome"),
+                    objectview.field.RecordTypes.text("Summary"),
+                    objectview.field.RecordTypes.records("Proposed changes", "Proposed value"));
+        }
+        objectview.field.RecordTypes.declare("Proposed value",
+                objectview.field.RecordTypes.text("Target field"),
+                objectview.field.RecordTypes.value("Value"),
+                objectview.field.RecordTypes.text("Action"),
+                objectview.field.RecordTypes.text("Source"),
+                objectview.field.RecordTypes.text("Semantic property"),
+                objectview.field.RecordTypes.value("Source URL"),
+                objectview.field.RecordTypes.records("Evidence", "Evidence"),
+                objectview.field.RecordTypes.text("Compatibility"));
+        objectview.field.RecordTypes.declare("Evidence",
+                objectview.field.RecordTypes.text("Supporting text"),
+                objectview.field.RecordTypes.text("Document"),
+                objectview.field.RecordTypes.value("Source URL"),
+                objectview.field.RecordTypes.text("Document version"),
+                objectview.field.RecordTypes.value("Retrieved"),
+                objectview.field.RecordTypes.text("Extraction"),
+                objectview.field.RecordTypes.text("Confidence"),
+                objectview.field.RecordTypes.text("Warnings"),
+                objectview.field.RecordTypes.text("Claim ID"));
+    }
+
     /** Every value that Apply will stage gets its own nested card and evidence list. */
     static List<Viewable> changeCards(EnrichmentProposal proposal) {
         List<Viewable> result = new ArrayList<>();

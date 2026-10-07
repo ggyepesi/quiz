@@ -17,6 +17,22 @@ public final class StructureDiscoveryRows {
     public static final String FAMILY = "StructureFamily";
     public static final String SHARED_LINK = "SharedNeighbourLink";
 
+    static {
+        // The fields of the rows this class builds, stated once (#363).
+        objectview.field.RecordTypes.declare(FAMILY,
+                objectview.field.RecordTypes.reference("representative"),
+                objectview.field.RecordTypes.number("representativeSharedCount"),
+                objectview.field.RecordTypes.number("familySharedCount"),
+                objectview.field.RecordTypes.number("memberCount"),
+                objectview.field.RecordTypes.references("members"),
+                objectview.field.RecordTypes.references("sharedEntities"));
+        objectview.field.RecordTypes.declare(SHARED_LINK,
+                objectview.field.RecordTypes.reference("left"),
+                objectview.field.RecordTypes.reference("right"),
+                objectview.field.RecordTypes.number("sharedCount"),
+                objectview.field.RecordTypes.references("sharedEntities"));
+    }
+
     private StructureDiscoveryRows() { }
 
     public static List<Viewable> families(StructureDiscovery.Result result) {

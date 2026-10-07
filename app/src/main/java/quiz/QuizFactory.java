@@ -254,7 +254,7 @@ public class QuizFactory {
         this.configuredGrouping = source.configuredGrouping();
         this.rootView = new GroupView(
                 source.root(), domain.configSample(type), domain.fieldTypes(type),
-                this::fieldSchemaFor);
+                this::fieldSchemaFor, domain::fieldSchema);
     }
 
     private objectview.field.FieldSchema fieldSchemaFor(Viewable value) {
@@ -622,7 +622,7 @@ public class QuizFactory {
                                                   viewables, true);
             default -> throw new IllegalArgumentException();
         };
-        quiz.setFieldSchemaResolver(this::fieldSchemaFor);
+        quiz.setSchemas(this::fieldSchemaFor, domain::fieldSchema);
         return quiz;
     }
 }

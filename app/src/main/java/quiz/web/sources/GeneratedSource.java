@@ -174,6 +174,13 @@ public class GeneratedSource implements ViewableSource {
             WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
                     store.loadAllWithFieldGraph(file);
             List<WikidataDynamicObject> all = loaded.objects();
+            // The served types' schemas, so the web reads nested types off the field
+            // graph rather than off the objects.
+            if (loaded.fieldGraph() != null) {
+                wikidata.explore.extract.SnapshotFieldGraph graph = loaded.fieldGraph();
+                quiz.web.ViewableJson.registerTypeSchemas(
+                        name -> graph.fieldSchema(name, java.util.Set.of()));
+            }
             groupRoots = loaded.groupRoots();
             groupRootBindings = loaded.groupRootBindings();
             // Bare references (unstamped, no substance — e.g. type values) read

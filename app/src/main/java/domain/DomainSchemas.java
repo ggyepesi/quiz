@@ -302,7 +302,8 @@ public final class DomainSchemas {
             }
             return new FieldTypeInfo(field.typeLabel(), field.structural(),
                     field.minor(), nested == null ? null : target, nested,
-                    field.label(), field.role(), field.kind(), field.valueKind());
+                    field.label(), field.role(), field.kind(), field.valueKind(),
+                    field.embedded());
         }
 
         @Override public List<String> fieldNames() {

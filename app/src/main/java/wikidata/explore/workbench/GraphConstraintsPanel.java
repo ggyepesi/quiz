@@ -1359,6 +1359,10 @@ final class GraphConstraintsPanel extends JPanel {
                     .map(classification -> entityView(
                             classification.node(), result, "Rejected"))
                     .toList();
+            objectview.field.RecordTypes.declare("Rejection reason",
+                    objectview.field.RecordTypes.text("Condition"),
+                    objectview.field.RecordTypes.number("Count"),
+                    objectview.field.RecordTypes.records("Rejected nodes", "Rejected"));
             DynamicViewable group = new DynamicViewable(
                     "rejection-reason-" + (++index), reason.reason());
             group.type("Rejection reason");
@@ -1376,6 +1380,7 @@ final class GraphConstraintsPanel extends JPanel {
 
     private static DynamicViewable entityView(EntityRef entity,
             ConfiguredGraphDiscoveryQuery.Result result, String type) {
+        objectview.field.RecordTypes.declare(type, objectview.field.RecordTypes.text("QID"));
         DynamicViewable card = new DynamicViewable(entity.id(), result.label(entity));
         card.type(type);
         card.put("QID", entity.id());
@@ -1399,46 +1404,52 @@ final class GraphConstraintsPanel extends JPanel {
             GeneratedClassModel graphClass,
             java.util.Collection<? extends Viewable> instances) {
         GraphDiscoveryConfiguration graph = configurationOf(graphClass);
-        DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
-        summary.type("Graph discovery");
-        summary.put("Adjacency facts",
+        // The summary's fields depend on the configured nodes: they are collected,
+        // declared as the record type's fields, and only then written (#363).
+        java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
+        fields.put("Adjacency facts",
                 "Load saved answers from the persistent graph cache; download only missing answers");
-        summary.put("Classification",
+        fields.put("Classification",
                 "Repeat locally from the loaded graph facts");
-        summary.put("Labels",
+        fields.put("Labels",
                 "Fetch again; labels are not stored in the graph cache");
-        summary.put("Results",
+        fields.put("Results",
                 "Rebuild and save every start and reached entity for TransformApp");
-        summary.put("Results file",
+        fields.put("Results file",
                 GraphDiscoveryResultStore.destination(
                         snapshot.name(), graph.name()).getPath());
-        summary.put("Annotation set", graph.name());
-        summary.put("Start class", startClassName(snapshot, graph.startNode()));
-        summary.put("Start input", graph.startNode().populationSelection().isBlank()
+        fields.put("Annotation set", graph.name());
+        fields.put("Start class", startClassName(snapshot, graph.startNode()));
+        fields.put("Start input", graph.startNode().populationSelection().isBlank()
                 ? "All loaded " + graph.startNode().qidSourceClass() + " instances"
                 : "Saved population " + graph.startNode().populationSelection());
-        summary.put("Start QIDs", startQidCount(snapshot, graph.startNode(), instances));
+        fields.put("Start QIDs", startQidCount(snapshot, graph.startNode(), instances));
         for (int index = 0; index < graph.nextNodes().size(); index++) {
             GraphDiscoveryConfiguration.NextNode next = graph.nextNodes().get(index);
             String prefix = graph.nextNodes().size() == 1 ? "" : "Node " + (index + 1) + " ";
-            summary.put(prefix + "Edge", next.property().relationId() + " "
+            fields.put(prefix + "Edge", next.property().relationId() + " "
                     + directionLabel(next.directionFromPrevious()));
-            summary.put(prefix + "Reached entities", next.use()
+            fields.put(prefix + "Reached entities", next.use()
                     == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
                     ? "Members of " + next.populationClass() : "Intermediate only");
-            summary.put(prefix + "Admit and expand", next.admissionPopulationSelection().isBlank()
+            fields.put(prefix + "Admit and expand", next.admissionPopulationSelection().isBlank()
                     ? "Any reached entity"
                     : "Members of " + next.admissionPopulationSelection());
             if (!next.admissionPopulationSelection().isBlank()) {
-                summary.put(prefix + "Outside population",
+                fields.put(prefix + "Outside population",
                         "Rejected boundary entities, retained with the traversal witness, and not expanded");
             }
             GraphEvidenceCondition evidence = next.evidenceCondition();
-            summary.put(prefix + "Evidence relations",
+            fields.put(prefix + "Evidence relations",
                     evidence == null ? 0 : evidence.evidencePaths().size());
-            summary.put(prefix + "Evidence tests",
+            fields.put(prefix + "Evidence tests",
                     evidence == null ? 0 : evidence.tests().size());
         }
+        objectview.field.RecordTypes.declare("Graph discovery", fields.keySet().stream()
+                .map(objectview.field.RecordTypes::value).toList());
+        DynamicViewable summary = new DynamicViewable("graph-plan", "Configured graph");
+        summary.type("Graph discovery");
+        fields.forEach(summary::put);
         return summary;
     }
 

@@ -398,9 +398,13 @@ public abstract class Quiz extends Thread {
         return cardFactory.create(viewable, queryConfig, QuizCardRole.PROMPT);
     }
 
-    void setFieldSchemaResolver(
-            java.util.function.Function<Viewable, objectview.field.FieldSchema> resolver) {
-        cardFactory.setFieldSchemaResolver(resolver);
+    /** The domain schemas: an instance's own (its most specific class) and a
+     * declared type's by name. Cards and key extraction use the same two. */
+    void setSchemas(
+            java.util.function.Function<Viewable, objectview.field.FieldSchema> valueSchemas,
+            java.util.function.Function<String, objectview.field.FieldSchema> typeSchemas) {
+        cardFactory.setSchemas(valueSchemas, typeSchemas);
+        keyExtractor.setSchemas(valueSchemas, typeSchemas);
     }
 
     /** Renders the exact object that supplied this selected query key with the

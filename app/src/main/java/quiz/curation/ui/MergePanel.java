@@ -384,6 +384,7 @@ public final class MergePanel extends JPanel {
                 .hiddenFields(domain.structuralFields(type))
                 .fieldTypes(domain.fieldTypes(type))
                 .fieldSchemas(q -> domain.fieldSchema(q.typeName()))
+                .typeSchemas(domain::fieldSchema)
                 .collapsible(true)
                 .selectionListener(o -> selected = o instanceof Viewable q ? q : null)
                 .emptyMessage("No instances of this type.")
