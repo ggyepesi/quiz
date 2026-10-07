@@ -4,6 +4,8 @@ import objectview.Viewable;
 import objectview.field.FieldPath;
 import objectview.utils.swing.GridBagUtils;
 import objectview.render.Card;
+import objectview.plan.TypeShape;
+import objectview.plan.ViewConfigDesugar;
 import objectview.viewconfig.ViewConfig;
 
 import javax.swing.*;
@@ -40,9 +42,16 @@ public class QuizCategorize extends Quiz {
                    ViewableGroup<?> categoryRoot,
                    Map<String, ? extends Viewable> viewables,
                    boolean deferIndexing) {
-        super(withoutCategoryField(queryConfig, categoryRoot),
+        super(withoutCategoryField(queryConfig, categoryRoot, shape(queryConfig, viewables)),
                 new ViewConfig(), categoryRoot, viewables, deferIndexing);
         this.categoryRoot = categoryRoot;
+    }
+
+    private static TypeShape shape(ViewConfig config, Map<String, ? extends Viewable> viewables) {
+        Viewable sample = viewables == null || viewables.isEmpty()
+                ? null : viewables.values().iterator().next();
+        return sample != null ? TypeShape.ofSample(sample, null)
+                : TypeShape.ofClass(config == null ? null : config.getCls());
     }
 
     /** A facet's field is the answer to Categorize, so it must never be printed on
@@ -50,7 +59,17 @@ public class QuizCategorize extends Quiz {
      * direct/programmatic construction safe as well. */
     static ViewConfig withoutCategoryField(
             ViewConfig source, ViewableGroup<?> categoryRoot) {
-        ViewConfig result = source == null ? new ViewConfig() : source.copy();
+        return withoutCategoryField(source, categoryRoot,
+                TypeShape.ofClass(source == null ? null : source.getCls()));
+    }
+
+    /** The literal selection of {@code source} against {@code shape}, without the
+     * facet's field: shorthand is rewritten into ticks first, so removing one tick
+     * leaves exactly the rest. */
+    static ViewConfig withoutCategoryField(
+            ViewConfig source, ViewableGroup<?> categoryRoot, TypeShape shape) {
+        ViewConfig result = ViewConfigDesugar.selection(
+                source == null ? new ViewConfig() : source, shape);
         quiz.transform.FacetGroup.fieldPathOf(categoryRoot)
                 .ifPresent(path -> exclude(result, path, 0));
         return result;
@@ -58,13 +77,6 @@ public class QuizCategorize extends Quiz {
 
     private static void exclude(ViewConfig config, FieldPath path, int segment) {
         if (config == null || path == null || segment >= path.size()) return;
-        if (config.isAllFields()) {
-            // Turn the inclusive shorthand into an explicit list before removing one
-            // reflected field. Dynamic QuizFactory editors already return an explicit
-            // config because their rows come from the loaded sample/schema.
-            config.initializeAllFields(true);
-            config.setAllFields(false);
-        }
         String key = path.segments().get(segment);
         if (segment == path.size() - 1) {
             config.getFields().remove(key);

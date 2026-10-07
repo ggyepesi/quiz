@@ -1,9 +1,10 @@
 # Literal ViewConfig rendering
 
-Status: **approved (2026-10-06). Phases 1–7 done: the
+Status: **approved (2026-10-06). Phases 1–8 done: the
 editor desugars configs where they enter and emits literal ones, the table's columns are
 the literal leaf paths, Apply rebuilds the cards on screen, and the web card is a sink
-of the same executor. Next: phase 8 (quiz).**
+of the same executor, as are quiz content and key extraction. Next: phase 9
+(cleanup).**
 
 > A field is rendered if and only if it is ticked. Collections and DISPLAY have a
 > few specific rules (§2). Nothing else decides.
@@ -216,6 +217,15 @@ Each phase ends in tests and a reviewable commit. No phase adds a fallback.
    `WebFollowsTheMockTraceTest` checks the web against the mock trace for 50 tick
    combinations.
 8. **Quiz** renders through the same plan; key extraction reads literal configs.
+   Done 2026-10-07: `ViewableKeyExtractor` reads key paths straight off literal ticks
+   (a ticked object with nothing ticked below it contributes its caption, never a value
+   path); shorthand reaches it only through `ViewConfigDesugar.selection`, and a config
+   that is already literal is used as it is, so selection and rendering share one
+   config object. The assembled content object projects exactly the ticked fields.
+   `QuizCategorize` removes the facet field from the literal selection instead of
+   expanding shorthand itself. The unused `QuizConfig`/`QuizConfigEditor` are deleted.
+   Quiz cards render through Card and the web quiz through `ViewableJson.fieldOf`,
+   both sinks of the executor.
 9. **Cleanup.** No caller of `isAllFields`, `isAllMinorFields` or the alias remains
    outside `ViewConfigDesugar`; delete obsolete APIs.
 

@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -106,6 +108,24 @@ class ViewableKeyExtractorTest {
 
         assertEquals(List.of(), extractor.combinations(
                 item, selected(Item.class, "tags", "languages")));
+    }
+
+    /** Key extraction reads literal ticks: "all fields" is rewritten into ticks once,
+     *  and an object it includes contributes its caption but no value path, so a
+     *  shorthand selection never reaches below an object. */
+    @Test
+    void aShorthandSelectionKeysOnlyTheValuesItTicks() {
+        Item child = new Item("child", List.of(), List.of(), List.of(), Map.of());
+        Item item = new Item("one", List.of("t1"), List.of("en"), List.of(child), Map.of());
+
+        List<objectview.field.FieldPath> paths =
+                extractor.paths(item, ViewConfig.of(Item.class));
+
+        assertTrue(paths.contains(objectview.field.FieldPath.of("tags")), paths::toString);
+        assertFalse(paths.contains(objectview.field.FieldPath.of("children")),
+                "an object without ticks below it is not a key value: " + paths);
+        assertTrue(paths.stream().allMatch(path -> path.size() == 1),
+                "shorthand never selects below an object: " + paths);
     }
 
     private static ViewConfig selected(

@@ -8,7 +8,8 @@ import objectview.field.FieldPath;
 import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.field.FieldSet;
-import objectview.field.ViewableFieldPaths;
+import objectview.plan.TypeShape;
+import objectview.plan.ViewConfigDesugar;
 import objectview.viewconfig.ViewConfig;
 
 import java.util.AbstractList;
@@ -23,49 +24,77 @@ import java.util.RandomAccess;
 import java.util.Set;
 
 /**
- * Converts a ViewConfig into field paths and extracts the corresponding key
- * combinations from a Viewable. This is quiz-domain logic: it has no Swing,
+ * Converts a literal selection config into field paths and extracts the
+ * corresponding key combinations from a Viewable. This is quiz-domain logic: it has no Swing,
  * HTTP, JSON, scoring, or round dependencies.
  */
 public final class ViewableKeyExtractor {
 
+    /** The key paths of {@code config} against its configured class. */
     public List<FieldPath> paths(ViewConfig config) {
-        return pathInfos(config).stream()
-                .map(ViewableFieldPaths.PathInfo::path).toList();
-    }
-
-    public List<ViewableFieldPaths.PathInfo> pathInfos(ViewConfig config) {
-        return ViewableFieldPaths.collect(config, ViewableFieldPaths.ALL_FIELDS);
-    }
-
-    /** Configured paths for the actual backing being quizzed. Explicit saved-domain
-     * paths come directly from the config; a sample is needed only for the classless
-     * all-fields shorthand, which cannot name fields by itself. */
-    public List<FieldPath> paths(Viewable viewable, ViewConfig config) {
-        return pathInfos(viewable, config).stream()
-                .map(ViewableFieldPaths.PathInfo::path).toList();
-    }
-
-    public List<ViewableFieldPaths.PathInfo> pathInfos(
-            Viewable viewable, ViewConfig config) {
         if (config == null) return List.of();
-        // A classless dynamic config cannot tell whether an empty child config names a
-        // scalar or an object field. The actual backing can, so use the shared sample
-        // discovery path and do not accidentally reinterpret a bare object field as
-        // its display value.
-        if (config.getCls() == null && viewable != null) {
-            return ViewableFieldPaths.collectFromSample(
-                    viewable, config, ViewableFieldPaths.ALL_FIELDS);
+        return keyPaths(config, TypeShape.ofClass(config.getCls()));
+    }
+
+    /** The key paths of {@code config} for the actual backing being quizzed: the
+     *  instance's own fields, so dynamic and declared backings read alike. */
+    public List<FieldPath> paths(Viewable viewable, ViewConfig config) {
+        if (config == null) return List.of();
+        return keyPaths(config, viewable == null
+                ? TypeShape.ofClass(config.getCls()) : TypeShape.ofSample(viewable, null));
+    }
+
+    /**
+     * The paths a selection puts into a key, read straight off its literal ticks
+     * (directive 24: {@link ViewConfigDesugar#selection} is the only reader of its
+     * shorthand). A ticked field with ticks below it contributes those; a ticked
+     * object with nothing ticked below it contributes its caption to the content but
+     * no value path, so selecting {@code Person.spouse} never selects another
+     * Person's fields; any other ticked field is a path.
+     */
+    private static List<FieldPath> keyPaths(ViewConfig config, TypeShape shape) {
+        List<FieldPath> out = new ArrayList<>();
+        collectKeyPaths(literal(config, shape), shape, FieldPath.ROOT, out);
+        return List.copyOf(new LinkedHashSet<>(out));
+    }
+
+    /** {@code config} as a literal selection: shorthand is rewritten by
+     * {@link ViewConfigDesugar#selection}; a config that is already literal (as every
+     * field editor emits) is used as it is, so the quiz selects and renders with the
+     * one config object. */
+    private static ViewConfig literal(ViewConfig config, TypeShape shape) {
+        return ViewConfigDesugar.isLiteral(config)
+                ? config : ViewConfigDesugar.selection(config, shape);
+    }
+
+    private static void collectKeyPaths(ViewConfig literal, TypeShape shape,
+                                        FieldPath prefix, List<FieldPath> out) {
+        for (Map.Entry<String, ViewConfig> ticked : literal.getFields().entrySet()) {
+            FieldPath path = prefix.append(ticked.getKey());
+            FieldRef field = shape == null ? null : field(shape, ticked.getKey());
+            TypeShape nested = field == null ? null : shape.nested(field);
+            ViewConfig child = ticked.getValue();
+            if (child != null && !child.getFields().isEmpty()) {
+                collectKeyPaths(child, nested, path, out);
+            } else if (nested == null) {
+                out.add(path);
+            }
         }
-        return pathInfos(config);
+    }
+
+    private static FieldRef field(TypeShape shape, String name) {
+        for (FieldRef field : shape.fields()) {
+            if (field.name().equals(name)) return field;
+        }
+        return null;
     }
 
     /** The assembled query/answer object for one selected key. It contains only
-     * configured fields, while a selected collection retains all of its members.
+     * the ticked fields, while a selected collection retains all of its members.
      * Key extraction may enumerate those members and correlate their nested fields,
-     * but that does not change the content being presented. The exact selecting
-     * config is also the presentation config; Card makes its own defensive copy
-     * before applying role-specific flags. */
+     * but that does not change the content being presented. The literal selection is
+     * also the presentation config; Card makes its own defensive copy before applying
+     * role-specific flags. */
     public KeyContent contentObject(
             Viewable owner, ViewConfig config,
             List<FieldPath> paths, List<Object> key) {
@@ -73,8 +102,8 @@ public final class ViewableKeyExtractor {
                 || key == null) {
             return null;
         }
-        return new KeyContent(
-                new SelectedTuple(this, owner, config), config, paths);
+        ViewConfig literal = literal(config, TypeShape.ofSample(owner, null));
+        return new KeyContent(new SelectedTuple(this, owner, literal), literal, paths);
     }
 
     /** Content assembled by the quiz engine for one key, paired with the same
@@ -83,10 +112,10 @@ public final class ViewableKeyExtractor {
     public record KeyContent(
             Viewable object, ViewConfig viewConfig, List<FieldPath> paths) { }
 
-    /** The configured projection of one key's source instance. The source instance
-     * remains separately indexed by {@code Quiz}; this object owns presentation only.
-     * Several keys from one collection deliberately project the same complete selected
-     * collection. */
+    /** The configured projection of one key's source instance under a literal
+     * selection: exactly its ticked fields. The source instance remains separately
+     * indexed by {@code Quiz}; this object owns presentation only. Several keys from
+     * one collection deliberately project the same complete selected collection. */
     private static final class SelectedTuple extends ViewableAdapter
             implements DynamicFields {
         private final ViewableKeyExtractor extractor;
@@ -133,57 +162,40 @@ public final class ViewableKeyExtractor {
         }
     }
 
-    private static boolean selectsDisplay(
-            Viewable source, ViewConfig config) {
-        if (source == null || config == null) return false;
-        if (config.getFields().containsKey(
+    private static boolean selectsDisplay(Viewable source, ViewConfig literal) {
+        if (source == null || literal == null) return false;
+        if (literal.getFields().containsKey(
                 objectview.field.ViewableContractFieldSet.DISPLAY_KEY)) {
             return true;
         }
-        FieldSet fields = FieldSet.of(source);
-        FieldRef display = fields.displayField();
-        return display != null && selected(config, display);
-    }
-
-    private static boolean selected(ViewConfig config, FieldRef field) {
-        if (config.getFields().containsKey(field.name())) return true;
-        return field.minor() ? config.isAllMinorFields() : config.isAllFields();
+        FieldRef display = FieldSet.of(source).displayField();
+        return display != null && literal.getFields().containsKey(display.name());
     }
 
     private Map<String, Object> projectFields(
-            Viewable source, ViewConfig config) {
+            Viewable source, ViewConfig literal) {
         FieldSet fields = FieldSet.of(source);
         Map<String, Object> projected = new LinkedHashMap<>();
-        for (String name : selectedNames(fields, config)) {
+        for (String name : literal.getFields().keySet()) {
             FieldRef field = fields.field(name);
             if (field == null) continue;
             Object raw = fields.read(name);
             if (raw == null) continue;
-            Object value = projectSelectedValue(raw, config.getFieldConfig(name));
+            Object value = projectSelectedValue(raw, literal.getFieldConfig(name));
             if (!isEmptyValue(value)) projected.put(name, value);
         }
         return projected;
     }
 
     private List<FieldRef> projectSchema(
-            Viewable source, ViewConfig config) {
+            Viewable source, ViewConfig literal) {
         FieldSet fields = FieldSet.of(source);
         List<FieldRef> projected = new ArrayList<>();
-        for (String name : selectedNames(fields, config)) {
+        for (String name : literal.getFields().keySet()) {
             FieldRef field = fields.field(name);
             if (field != null) projected.add(field);
         }
         return List.copyOf(projected);
-    }
-
-    private static LinkedHashSet<String> selectedNames(
-            FieldSet fields, ViewConfig config) {
-        LinkedHashSet<String> selected = new LinkedHashSet<>(
-                config.getFields().keySet());
-        for (FieldRef field : fields.fields()) {
-            if (selected(config, field)) selected.add(field.name());
-        }
-        return selected;
     }
 
     private Object projectSelectedValue(Object value, ViewConfig childConfig) {
