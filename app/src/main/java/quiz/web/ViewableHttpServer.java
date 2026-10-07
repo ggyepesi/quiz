@@ -196,7 +196,15 @@ public class ViewableHttpServer {
                 writeJson(ex, 404, Map.of("error", "not found: " + type + "/" + id));
                 return;
             }
-            writeJson(ex, 200, ViewableJson.of(q), addressed(ex, type));
+            String rootType = queryParam(ex, "root");
+            String rootId = queryParam(ex, "rootId");
+            // A collection member renders under its collection's config: the chip names
+            // the card whose config that is and the path below it.
+            Viewable root = rootType == null || rootId == null
+                    ? null : store.get(addressed(ex, rootType), rootId);
+            writeJson(ex, 200, root == null ? ViewableJson.of(q)
+                    : ViewableJson.member(q, root, queryParam(ex, "path")),
+                    addressed(ex, type));
         } catch (Exception e) {
             writeJson(ex, 500, Map.of("error", String.valueOf(e.getMessage())));
         }

@@ -15,9 +15,16 @@
     inline: (f) => f.nodes?.length,
   };
   const fieldLabel = (f) => {
-    const n = collectionLen[f.kind]?.(f);
+    const n = f.size ?? collectionLen[f.kind]?.(f);
     return n == null ? f.name : `${f.name} (${n})`;
   };
+
+  // A collection starts folded unless the server says it starts open (singleton
+  // media, @Inline content); the reader's toggles are kept per field name.
+  let toggled = $state({});
+  const folded = (f) => f.open === false && (f.name in toggled ? !toggled[f.name] : true);
+  const foldable = (f) => f.open != null && (f.size ?? 0) > 0;
+  const toggle = (f) => { toggled[f.name] = folded(f); };
 </script>
 
 <div class="card" class:heading class:nested={depth > 0} class:deep={depth > 2}>
@@ -31,9 +38,19 @@
   <dl class="fields">
     {#each view.fields ?? [] as f}
       <div class="field">
-        <dt title={f.name}>{fieldLabel(f)}</dt>
+        <dt title={f.name}>
+          {#if foldable(f)}
+            <button class="fold" onclick={() => toggle(f)}>
+              <span class="tri" class:open={!folded(f)}>▸</span>{fieldLabel(f)}
+            </button>
+          {:else}
+            {fieldLabel(f)}
+          {/if}
+        </dt>
         <dd>
-          {#if f.kind === 'text'}
+          {#if folded(f) || f.kind === 'empty'}
+            <!-- folded: name (size) alone; empty: the field name alone -->
+          {:else if f.kind === 'text'}
             {f.value}
           {:else if f.kind === 'list'}
             <span class="chips">
@@ -123,6 +140,18 @@
     font-size: 0.86rem;
   }
   .inline { display: grid; gap: 10px; }
+  .fold {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+  }
+  .fold .tri { color: var(--faint); font-size: 0.7em; transition: transform 0.12s ease; }
+  .fold .tri.open { transform: rotate(90deg); color: var(--muted); }
   .imgs { display: flex; flex-wrap: wrap; gap: 8px; }
 
   @media (max-width: 720px) {

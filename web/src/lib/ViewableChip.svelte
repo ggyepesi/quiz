@@ -16,7 +16,7 @@
         child = ref.inline;   // a value object — contents embedded, no fetch
       } else {
         loading = true;
-        child = await getViewable(ref.type, ref.id);
+        child = await getViewable(ref.type, ref.id, ref.via);
         missing = child === null;
         loading = false;
       }
@@ -24,6 +24,14 @@
   }
 </script>
 
+<!-- With neither an id to fetch nor embedded content, nothing is ticked below the
+     caption: the chip is the caption alone and does not open. -->
+{#if !ref.id && !ref.inline}
+<span class="chip plain">
+  {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
+  <span class="name" title={ref.name}>{ref.name}</span>
+</span>
+{:else}
 <div class="chip" class:open>
   <button class="head" onclick={toggle}>
     <span class="tri" class:open>▸</span>
@@ -43,9 +51,18 @@
     </div>
   {/if}
 </div>
+{/if}
 
 <style>
   .chip { display: inline-block; max-width: 100%; }
+  .chip.plain {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 12px;
+    background: var(--chip-bg);
+  }
   .chip.open { display: block; }
 
   .head {

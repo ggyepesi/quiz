@@ -22,11 +22,21 @@ public record ViewableView(
         String type,
         List<Field> fields) {
 
-    /** A reference to another Viewable, resolved lazily by the client. */
-    /** A chip. {@code inline} is the embedded expansion for a VALUE object (not pooled,
-     *  so it can't be fetched by id); null for an entity, whose chip fetches lazily. */
+    /** A chip. {@code inline} is the embedded expansion for an object that is not
+     *  fetched by id; null for an entity, whose chip fetches lazily. {@code via} is set
+     *  on a collection member's chip: the member renders under its collection's config,
+     *  so the fetch names the card whose config that is and the config path below it.
+     *  A chip with neither id nor inline is a caption alone. */
     public record Ref(String id, String name, String type, String thumb,
-                      ViewableView inline) {}
+                      ViewableView inline, Via via) {
+        public Ref(String id, String name, String type, String thumb, ViewableView inline) {
+            this(id, name, type, thumb, inline, null);
+        }
+    }
+
+    /** The config a lazily fetched member renders under: the child config at
+     *  {@code path} of the card {@code type}/{@code id}. */
+    public record Via(String type, String id, String path) {}
 
     /**
      * One rendered field. {@code kind} selects which payload is populated:
@@ -37,7 +47,11 @@ public record ViewableView(
      *   <li>{@code ref}    — {@code ref} (single nested Viewable)</li>
      *   <li>{@code refs}   — {@code refs} (collection/map of Viewables)</li>
      *   <li>{@code inline} — {@code nodes} (fully expanded nested views)</li>
+     *   <li>{@code empty}  — nothing: a ticked object with nothing ticked under it shows
+     *       its field name alone</li>
      * </ul>
+     * {@code size} and {@code open} are set on a collection: it always shows
+     * {@code name (size)}, and its members show once it is unfolded.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Field(
@@ -49,7 +63,26 @@ public record ViewableView(
             String url,
             Ref ref,
             List<Ref> refs,
-            List<ViewableView> nodes) {
+            List<ViewableView> nodes,
+            Integer size,
+            Boolean open) {
+
+        public Field(String name, String kind, String value, List<String> values,
+                     String label, String url, Ref ref, List<Ref> refs,
+                     List<ViewableView> nodes) {
+            this(name, kind, value, values, label, url, ref, refs, nodes, null, null);
+        }
+
+        /** This field as a collection of {@code size} members that starts unfolded
+         *  when {@code open}. */
+        public Field collection(int size, boolean open) {
+            return new Field(name, kind, value, values, label, url, ref, refs, nodes,
+                    size, open);
+        }
+
+        public static Field empty(String name) {
+            return new Field(name, "empty", null, null, null, null, null, null, null);
+        }
 
         public static Field text(String name, String value) {
             return new Field(name, "text", value, null, null, null, null, null, null);

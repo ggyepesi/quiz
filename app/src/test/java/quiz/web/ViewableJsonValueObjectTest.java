@@ -1,5 +1,7 @@
 package quiz.web;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
 import objectview.annotations.Inline;
@@ -75,37 +77,62 @@ class ViewableJsonValueObjectTest {
         }
     }
 
+    /** Rule 3: a ticked object with nothing ticked under it shows its field name
+     *  alone, whether it is a value or an entity. */
     @Test
-    void anonymousObjectRendersStructurallyRegardlessOfValueIdentity() {
+    void anObjectWithNothingTickedUnderItIsItsFieldNameAlone() {
         ViewableView view = ViewableJson.of(new Owner(new AnonymousDetail()));
 
         assertEquals(1, view.fields().size());
+        assertEquals("empty", view.fields().get(0).kind());
+        assertEquals("detail", view.fields().get(0).name());
+    }
+
+    /** Rule 6: an object opens in place, showing its ticked fields. */
+    @Test
+    void aCaptionlessObjectWithTickedFieldsOpensInPlace() {
+        ViewableView view = ViewableJson.of(new Owner(new AnonymousDetail()), detail("text"));
+
         ViewableView.Field detail = view.fields().get(0);
         assertEquals("inline", detail.kind());
-        assertEquals(1, detail.nodes().size());
         assertEquals("AnonymousDetail", detail.nodes().get(0).type());
+        assertEquals("", detail.nodes().get(0).name());
+        assertEquals("detail", detail.nodes().get(0).fields().get(0).value());
     }
 
+    /** The default ticks a nested object's DISPLAY and nothing deeper, so a value is
+     *  its caption; with fields ticked it opens under that caption. */
     @Test
-    void namedValueKeepsTheOrdinaryChipShapeButEmbedsItsExpansion() {
-        ViewableView view = ViewableJson.of(new Owner(new NamedValue()));
+    void aNamedValueIsItsCaptionUntilAFieldUnderItIsTicked() {
+        ViewableView byDefault = ViewableJson.of(new Owner(new NamedValue()));
+        assertEquals("text", byDefault.fields().get(0).kind());
+        assertEquals("Named value", byDefault.fields().get(0).value());
 
-        ViewableView.Field detail = view.fields().get(0);
-        assertEquals("ref", detail.kind());
-        assertEquals("Named value", detail.ref().name());
-        assertNull(detail.ref().id());
-        assertNotNull(detail.ref().inline());
+        ViewableView ticked = ViewableJson.of(new Owner(new NamedValue()),
+                detail("@view:display", "text"));
+        ViewableView.Field detail = ticked.fields().get(0);
+        assertEquals("inline", detail.kind());
+        assertEquals("Named value", detail.nodes().get(0).name());
+        assertEquals(List.of("text"),
+                detail.nodes().get(0).fields().stream().map(ViewableView.Field::name).toList());
     }
 
+    /** An entity without a card of its own on the web is not a navigation chip; it
+     *  is projected like any other object. */
     @Test
-    void namedEntityKeepsTheSameChipShapeAndUsesLazyExpansion() {
+    void anEntityWithoutItsOwnCardIsProjectedNotLinked() {
         ViewableView view = ViewableJson.of(new Owner(new NamedEntity()));
 
-        ViewableView.Field detail = view.fields().get(0);
-        assertEquals("ref", detail.kind());
-        assertEquals("Named entity", detail.ref().name());
-        assertEquals("entity-id", detail.ref().id());
-        assertNull(detail.ref().inline());
+        assertEquals("text", view.fields().get(0).kind());
+        assertEquals("Named entity", view.fields().get(0).value());
+    }
+
+    private static objectview.viewconfig.ViewConfig detail(String... fields) {
+        objectview.viewconfig.ViewConfig detail = objectview.viewconfig.ViewConfig.leaf();
+        for (String field : fields) detail.addField(field, objectview.viewconfig.ViewConfig.leaf());
+        objectview.viewconfig.ViewConfig owner = objectview.viewconfig.ViewConfig.leaf();
+        owner.addField("detail", detail);
+        return owner;
     }
 
     @Test

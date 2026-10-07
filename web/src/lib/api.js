@@ -78,9 +78,14 @@ export function getCoverage(type) {
   return json(`${apiBase()}/api/coverage?type=${encodeURIComponent(type)}`);
 }
 
-/** @returns {Promise<object|null>} full ViewableView */
-export function getViewable(type, id) {
-  return json(`${apiBase()}/api/viewable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
+/** A card, or — with `via` from a collection member's chip — that member as its
+ *  collection's config projects it ({type, id} of the owning card, config `path`).
+ *  @returns {Promise<object|null>} full ViewableView */
+export function getViewable(type, id, via = null) {
+  const base = `${apiBase()}/api/viewable/${encodeURIComponent(type)}/${encodeURIComponent(id)}`;
+  if (!via) return json(base);
+  const p = new URLSearchParams({ root: via.type, rootId: via.id, path: via.path });
+  return json(`${base}?${p}`);
 }
 
 /** Fields of a type, or — with a dotted `path` — the fields available under a

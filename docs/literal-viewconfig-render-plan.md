@@ -1,8 +1,9 @@
 # Literal ViewConfig rendering
 
-Status: **approved (2026-10-06). Phases 1–6 done: the
+Status: **approved (2026-10-06). Phases 1–7 done: the
 editor desugars configs where they enter and emits literal ones, the table's columns are
-the literal leaf paths, and Apply rebuilds the cards on screen. Next: phase 7 (web).**
+the literal leaf paths, Apply rebuilds the cards on screen, and the web card is a sink
+of the same executor. Next: phase 8 (quiz).**
 
 > A field is rendered if and only if it is ticked. Collections and DISPLAY have a
 > few specific rules (§2). Nothing else decides.
@@ -201,7 +202,19 @@ Each phase ends in tests and a reviewable commit. No phase adds a fallback.
    `ViewDefaults`/`ViewConfigDesugar`; applying a config rebuilds visible cards from
    it. Then re-run the phase-0 route and record the outcome here.
 7. **Web becomes a sink.** An entity fetched later by id carries its field's config
-   path.
+   path. Done 2026-10-07: `ViewableJson` paints `RenderExecutor` decisions from a literal
+   config (the type's saved config, else `ViewDefaults`); its own `allFields` reading,
+   caption rule and structural filter are gone (structural fields reach the executor as
+   the schema's flag). On the web an object has its own card when it is a pooled entity
+   of a served domain type; a scalar reference to it is a navigation chip. A collection
+   member with ticked fields below its caption is a chip that fetches it with
+   `?root=&rootId=&path=`, so it renders under its collection's config
+   (`ViewableJson.member`). A collection carries `size` and its initial `open`; the
+   client folds it. Member captions are serialized even while folded, since the JSON is
+   built once. A chip's avatar is its first ticked media field (rule 1). A caption-only
+   object with an external URL is painted as a link to it.
+   `WebFollowsTheMockTraceTest` checks the web against the mock trace for 50 tick
+   combinations.
 8. **Quiz** renders through the same plan; key extraction reads literal configs.
 9. **Cleanup.** No caller of `isAllFields`, `isAllMinorFields` or the alias remains
    outside `ViewConfigDesugar`; delete obsolete APIs.
