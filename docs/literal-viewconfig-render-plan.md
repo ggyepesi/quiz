@@ -48,7 +48,11 @@ once, where it enters, and give every other decision exactly one owner.
    collection are that collection's projection even when they also have cards.
 8. An object already on the current path renders as a back-reference, never again.
 9. Selecting an object field never selects DISPLAY or any other child implicitly. An
-   object implicitly included by "all fields" has nothing ticked under it.
+   object implicitly included by "all fields" — which only a default writes — gets its
+   DISPLAY ticked and nothing else in a View config (agreed 2026-10-07), so a default
+   reference reads as its target's name rather than "Open". Those are ordinary ticks a
+   reader can untick. A field selection (search, sort, quiz key) gets nothing under it
+   (`ViewConfigDesugar.selection`), since a nested value enters a key only when ticked.
 10. The IDENTITY role is never a body field.
 11. Structural fields are never included by "all fields"; only an explicit tick shows
     them.
@@ -77,7 +81,7 @@ level. Its field map lists exactly the ticked fields, under their real names (ne
 the `@view:display` alias). Each ticked object or object-collection field has its
 own literal child config, which may be empty. Absence means unticked; that is the
 plain reading of a list of ticks, not a shorthand. A literal config is finite,
-because an object implicitly included by "all fields" gets an empty child (rule 9).
+because an object implicitly included by "all fields" gets its DISPLAY alone (rule 9).
 
 ### 3.2 `ViewConfigDesugar` — the only reader of shorthand
 
@@ -93,8 +97,8 @@ After phase 9 nothing else reads `isAllFields`, `isAllMinorFields` or the alias.
 
 ### 3.3 `ViewDefaults` — one default
 
-A new View config ticks every top-level field (minor ones included) and nothing
-below them (rule 9). It is produced already literal. The editor, Card, the table and
+A new View config ticks every top-level field (minor ones included) and the DISPLAY
+of each object they lead to, nothing deeper (rule 9). It is produced already literal. The editor, Card, the table and
 the web no longer create defaults of their own.
 
 ### 3.4 `PlanResolver`
@@ -212,5 +216,6 @@ their current paths. Each migrated consumer has no fallback.
   or not exist. For a recursive type it cannot be desugared finitely. Literal configs
   need no recursion, because of rule 9, so the plan does not adopt it.
 - The uncommitted `CLAUDE.md` text says that navigation versus inline is a per-field
-  config choice, and that defaults tick DISPLAY for nested objects. Both differ from
-  rules 7 and 9. They stay as committed until decided.
+  config choice. That differs from rule 7 and stays as committed until decided. Its
+  other half — defaults tick DISPLAY for nested objects — was adopted on 2026-10-07
+  (rule 9).
