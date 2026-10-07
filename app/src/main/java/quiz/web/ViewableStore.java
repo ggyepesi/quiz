@@ -290,18 +290,23 @@ public class ViewableStore {
         }
     }
 
-    /** Index q and, recursively, every Viewable reachable through its fields. */
-    private void indexReachable(String domain, Viewable q, Set<Object> visited) {
-        if (q == null || !visited.add(q)) {
-            return;
-        }
+    /** Index q and every Viewable reachable through its fields. The walk keeps its own
+     * stack: a domain's reference chains (History's successions, 177k office holdings)
+     * run deeper than a thread's call stack, and a recursive walk overflowed, leaving
+     * the index half built so that later lookups answered "not found". */
+    private void indexReachable(String domain, Viewable start, Set<Object> visited) {
+        java.util.Deque<Viewable> pending = new java.util.ArrayDeque<>();
+        pending.push(start);
+        while (!pending.isEmpty()) {
+            Viewable q = pending.pop();
+            if (q == null || !visited.add(q)) continue;
 
-        // Reached from a value this domain owns, so it is this domain's: a domain owns
-        // its instances, and nothing references across domains.
-        index.putIfAbsent(key(new Address(domain, q.typeName()), q.getIdentifier()), q);
+            // Reached from a value this domain owns, so it is this domain's: a domain
+            // owns its instances, and nothing references across domains.
+            index.putIfAbsent(key(new Address(domain, q.typeName()), q.getIdentifier()), q);
 
-        for (Viewable child : children(q)) {
-            indexReachable(domain, child, visited);
+            List<Viewable> children = children(q);
+            for (int i = children.size() - 1; i >= 0; i--) pending.push(children.get(i));
         }
     }
 

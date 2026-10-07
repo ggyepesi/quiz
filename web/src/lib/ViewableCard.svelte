@@ -7,17 +7,9 @@
 
   let { view, heading = false, depth = 0 } = $props();
 
-  // Collections show "fieldName (n)" like the desktop CollectionHeader convention.
-  const collectionLen = {
-    list: (f) => f.values?.length,
-    images: (f) => f.values?.length,
-    refs: (f) => f.refs?.length,
-    inline: (f) => f.nodes?.length,
-  };
-  const fieldLabel = (f) => {
-    const n = f.size ?? collectionLen[f.kind]?.(f);
-    return n == null ? f.name : `${f.name} (${n})`;
-  };
+  // A collection shows "fieldName (n)" like the desktop CollectionHeader convention.
+  // The server sends its size; an object opened in place is not a collection.
+  const fieldLabel = (f) => f.size == null ? f.name : `${f.name} (${f.size})`;
 
   // A collection starts folded unless the server says it starts open (singleton
   // media, @Inline content); the reader's toggles are kept per field name.
