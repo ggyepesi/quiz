@@ -393,7 +393,8 @@ construct per thing produced:
   config has that literal meaning and is not a legacy shorthand for a display-only or
   all-fields config. A newly created default View config is the one exception to that
   word "implicitly": it ticks every top-level field and the DISPLAY of each object they
-  lead to (nothing deeper), as ordinary ticks a reader can untick (`ViewDefaults`). A
+  lead to (nothing deeper), and an `@Inline` object's own fields one level deep, since it
+  is part of its owner — all as ordinary ticks a reader can untick (`ViewDefaults`). A
   field selection's default (search, sort, quiz key) ticks nothing below an object.
   Unticked means absent for every field and field role. A ticked collection
   always renders `field name (size)` immediately, including size zero, and renders its members

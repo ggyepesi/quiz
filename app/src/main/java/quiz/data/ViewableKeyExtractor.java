@@ -8,6 +8,7 @@ import objectview.field.FieldPath;
 import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.field.FieldSet;
+import objectview.plan.LiteralPaths;
 import objectview.plan.TypeShape;
 import objectview.plan.ViewConfigDesugar;
 import objectview.viewconfig.ViewConfig;
@@ -44,18 +45,13 @@ public final class ViewableKeyExtractor {
                 ? TypeShape.ofClass(config.getCls()) : TypeShape.ofSample(viewable, null));
     }
 
-    /**
-     * The paths a selection puts into a key, read straight off its literal ticks
-     * (directive 24: {@link ViewConfigDesugar#selection} is the only reader of its
-     * shorthand). A ticked field with ticks below it contributes those; a ticked
-     * object with nothing ticked below it contributes its caption to the content but
-     * no value path, so selecting {@code Person.spouse} never selects another
-     * Person's fields; any other ticked field is a path.
-     */
+    /** The paths a selection puts into a key: the selection's value paths, the one
+     * rule search, sort and quiz keys share ({@link LiteralPaths#selection}). Selecting
+     * {@code Person.spouse} alone contributes its caption, never another Person's
+     * fields. */
     private static List<FieldPath> keyPaths(ViewConfig config, TypeShape shape) {
-        List<FieldPath> out = new ArrayList<>();
-        collectKeyPaths(literal(config, shape), shape, FieldPath.ROOT, out);
-        return List.copyOf(new LinkedHashSet<>(out));
+        return LiteralPaths.selection(config, shape, false).stream()
+                .map(objectview.field.ViewableFieldPaths.PathInfo::path).toList();
     }
 
     /** {@code config} as a literal selection: shorthand is rewritten by
@@ -65,28 +61,6 @@ public final class ViewableKeyExtractor {
     private static ViewConfig literal(ViewConfig config, TypeShape shape) {
         return ViewConfigDesugar.isLiteral(config)
                 ? config : ViewConfigDesugar.selection(config, shape);
-    }
-
-    private static void collectKeyPaths(ViewConfig literal, TypeShape shape,
-                                        FieldPath prefix, List<FieldPath> out) {
-        for (Map.Entry<String, ViewConfig> ticked : literal.getFields().entrySet()) {
-            FieldPath path = prefix.append(ticked.getKey());
-            FieldRef field = shape == null ? null : field(shape, ticked.getKey());
-            TypeShape nested = field == null ? null : shape.nested(field);
-            ViewConfig child = ticked.getValue();
-            if (child != null && !child.getFields().isEmpty()) {
-                collectKeyPaths(child, nested, path, out);
-            } else if (nested == null) {
-                out.add(path);
-            }
-        }
-    }
-
-    private static FieldRef field(TypeShape shape, String name) {
-        for (FieldRef field : shape.fields()) {
-            if (field.name().equals(name)) return field;
-        }
-        return null;
     }
 
     /** The assembled query/answer object for one selected key. It contains only

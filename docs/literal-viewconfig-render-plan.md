@@ -1,10 +1,10 @@
 # Literal ViewConfig rendering
 
-Status: **approved (2026-10-06). Phases 1–8 done: the
+Status: **approved (2026-10-06). All nine phases done (2026-10-07): the
 editor desugars configs where they enter and emits literal ones, the table's columns are
 the literal leaf paths, Apply rebuilds the cards on screen, and the web card is a sink
-of the same executor, as are quiz content and key extraction. Next: phase 9
-(cleanup).**
+of the same executor, as are quiz content and key extraction; nothing outside the
+desugar reads the shorthand, and a guard test keeps it so.**
 
 > A field is rendered if and only if it is ticked. Collections and DISPLAY have a
 > few specific rules (§2). Nothing else decides.
@@ -52,7 +52,9 @@ once, where it enters, and give every other decision exactly one owner.
 9. Selecting an object field never selects DISPLAY or any other child implicitly. An
    object implicitly included by "all fields" — which only a default writes — gets its
    DISPLAY ticked and nothing else in a View config (agreed 2026-10-07), so a default
-   reference reads as its target's name rather than "Open". Those are ordinary ticks a
+   reference reads as its target's name rather than "Open". An `@Inline` object is
+   part of its owner, so the default ticks its own fields one level deep (agreed
+   2026-10-07; objects below it get their DISPLAY alone). Those are ordinary ticks a
    reader can untick. A field selection (search, sort, quiz key) gets nothing under it
    (`ViewConfigDesugar.selection`), since a nested value enters a key only when ticked.
 10. The IDENTITY role is never a body field.
@@ -99,8 +101,9 @@ After phase 9 nothing else reads `isAllFields`, `isAllMinorFields` or the alias.
 
 ### 3.3 `ViewDefaults` — one default
 
-A new View config ticks every top-level field (minor ones included) and the DISPLAY
-of each object they lead to, nothing deeper (rule 9). It is produced already literal. The editor, Card, the table and
+A new View config ticks every top-level field (minor ones included), the DISPLAY of
+each object they lead to, and an `@Inline` object's own fields one level deep;
+nothing deeper (rule 9). It is produced already literal. The editor, Card, the table and
 the web no longer create defaults of their own.
 
 ### 3.4 `PlanResolver`
@@ -227,7 +230,18 @@ Each phase ends in tests and a reviewable commit. No phase adds a fallback.
    Quiz cards render through Card and the web quiz through `ViewableJson.fieldOf`,
    both sinks of the executor.
 9. **Cleanup.** No caller of `isAllFields`, `isAllMinorFields` or the alias remains
-   outside `ViewConfigDesugar`; delete obsolete APIs.
+   outside `ViewConfigDesugar`; delete obsolete APIs. Done 2026-10-07:
+   `ShorthandIsReadOnlyAtTheBoundaryTest` fails on any new reader of the flags outside
+   the desugar and the config's own storage. Search, sort and quiz keys share
+   `LiteralPaths.selection`, which replaced the three `ViewableFieldPaths` collectors
+   (class, schema, sample). Those disagreed about a ticked object with nothing ticked
+   below it; the one rule is the written one: it contributes its caption, never a
+   value path. `ViewConfig.all` (which expanded shorthand itself, giving every nested
+   object an "all fields" child), `initializeAllFields`, `showsField`,
+   `visibleFieldsFor`, `mergedForChild`, `ConfiguredFieldSelection` (now the desugar's
+   private rule), the unused `RenderEstimator`, and `RenderContext`'s per-type config
+   store (written by CardListView and the quiz, read by nothing since phase 4) are
+   deleted. The field editor reads its literal config by key.
 
 Between phases 4 and 8, migrated consumers execute the plan and unmigrated ones keep
 their current paths. Each migrated consumer has no fallback.

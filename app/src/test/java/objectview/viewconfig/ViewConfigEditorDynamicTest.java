@@ -21,7 +21,7 @@ class ViewConfigEditorDynamicTest {
         nomination.put("year", 2000);
         nomination.put("category", category);
 
-        ViewConfig config = ViewConfig.all(DynamicViewable.class);
+        ViewConfig config = ViewConfig.of(DynamicViewable.class);
         ViewConfigEditor editor = new ViewConfigEditor(config, nomination);
 
         ViewConfig result = editor.getConfig();

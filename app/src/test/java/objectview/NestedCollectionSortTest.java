@@ -60,7 +60,7 @@ class NestedCollectionSortTest {
         langChild.addField(leaf, ViewConfig.leaf());
         cfg.addField("languages", langChild);
         FieldTypeSource schema = domain.fieldTypes("State");
-        var paths = ViewableFieldPaths.collectFromSchema(cfg, schema, true);
+        var paths = selectedPaths(cfg, schema, true);
         assertTrue(paths.stream().anyMatch(p -> p.dotted().equals("languages." + leaf)),
                 "enumeration should produce languages." + leaf + " (got " +
                         paths.stream().map(ViewableFieldPaths.PathInfo::dotted).toList() + ")");
@@ -97,5 +97,32 @@ class NestedCollectionSortTest {
 
         assertEquals("Germany", sorted.get(0).getDisplayName(),
                 "sort by languages.name should order by the language display name (Arabic < Zulu)");
+    }
+
+    // The selection's value paths (LiteralPaths.selection) against a class, sample or
+    // schema shape; the old collectors each read the shorthand themselves.
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofClass(config.getCls()), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.Viewable sample, objectview.viewconfig.ViewConfig config,
+            boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofSample(sample, null), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config,
+            objectview.viewconfig.FieldTypeSource schema, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.of(schema), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config) {
+        return selectedPaths(config, true);
     }
 }

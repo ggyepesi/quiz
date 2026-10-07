@@ -47,7 +47,7 @@ class GenerationResultSourceLinkTest {
 
         javax.swing.SwingUtilities.invokeAndWait(() -> {
             rendered[0] = new objectview.render.Card(
-                    record, objectview.viewconfig.ViewConfig.all(record.getClass()),
+                    record, objectview.viewconfig.ViewConfig.of(record.getClass()),
                     new objectview.render.RenderContext(), false);
             rendered[0].setSize(260, 160);
             layoutTree(rendered[0]);
@@ -96,9 +96,19 @@ class GenerationResultSourceLinkTest {
             for (Object source : assertInstanceOf(List.class, sourceValue)) {
                 context.toggleExpanded(source);
             }
-            rendered[0] = new objectview.render.Card(
-                    record, objectview.viewconfig.ViewConfig.all(record.getClass()),
-                    context, false);
+            // Provenance is inspectable: a default shows each source's caption, and
+            // ticking the statement's fields shows them below it.
+            objectview.viewconfig.ViewConfig statement =
+                    objectview.viewconfig.ViewConfig.leaf();
+            for (String field : List.of("@view:display", "statementSubject",
+                    "statementProperty", "statementObject", "statementValue", "guid",
+                    "statementJson")) {
+                statement.addField(field, objectview.viewconfig.ViewConfig.leaf());
+            }
+            objectview.viewconfig.ViewConfig config =
+                    objectview.viewconfig.ViewConfig.of(record.getClass());
+            config.addField("wikidataSource", statement);
+            rendered[0] = new objectview.render.Card(record, config, context, false);
             rendered[0].setOpaque(true);
             rendered[0].setBackground(java.awt.Color.WHITE);
             java.awt.Dimension preferred = rendered[0].getPreferredSize();
@@ -165,7 +175,7 @@ class GenerationResultSourceLinkTest {
         search.setAllFields(false);
         search.addField("laureates", laureate);
 
-        var paths = objectview.field.ViewableFieldPaths.collectFromSchema(
+        var paths = selectedPaths(
                 search, schema, true);
         var hits = new objectview.search.SearchAndSort().searchViewablesByPath(
                 records, List.of("duve"), paths, false);
@@ -256,5 +266,32 @@ class GenerationResultSourceLinkTest {
         for (java.awt.Component child : container.getComponents()) {
             if (child instanceof java.awt.Container nested) layoutTree(nested);
         }
+    }
+
+    // The selection's value paths (LiteralPaths.selection) against a class, sample or
+    // schema shape; the old collectors each read the shorthand themselves.
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofClass(config.getCls()), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.Viewable sample, objectview.viewconfig.ViewConfig config,
+            boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofSample(sample, null), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config,
+            objectview.viewconfig.FieldTypeSource schema, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.of(schema), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config) {
+        return selectedPaths(config, true);
     }
 }

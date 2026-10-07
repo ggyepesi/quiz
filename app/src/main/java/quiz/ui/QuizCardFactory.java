@@ -87,7 +87,6 @@ public final class QuizCardFactory {
                 : presentation.useQuizContext() ? quizContext : java.util.List.of();
         RenderContext context = new RenderContext(contextItems);
         context.setFieldSchemaResolver(fieldSchemas);
-        context.putConfig(viewable, config);
         if (reveal != null) {
             for (FieldPath path : reveal) context.revealPath(viewable, path);
         }

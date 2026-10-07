@@ -51,7 +51,7 @@ class NumericFieldSnapshotSortTest {
         cfg.addField("speakers", ViewConfig.leaf());
         FieldTypeSource schema = domain.fieldTypes("Language");
         List<ViewableFieldPaths.PathInfo> paths =
-                ViewableFieldPaths.collectFromSchema(cfg, schema, true);
+                selectedPaths(cfg, schema, true);
 
         List<Viewable> languages = domain.instances().stream()
                 .filter(v -> "Language".equals(v.typeName()))
@@ -61,5 +61,32 @@ class NumericFieldSnapshotSortTest {
         assertEquals(List.of("B", "A", "C"),
                 sorted.stream().map(Viewable::getDisplayName).toList(),
                 "speakers (@Numeric) must sort by value: 20 < 100 < 3 million");
+    }
+
+    // The selection's value paths (LiteralPaths.selection) against a class, sample or
+    // schema shape; the old collectors each read the shorthand themselves.
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofClass(config.getCls()), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.Viewable sample, objectview.viewconfig.ViewConfig config,
+            boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofSample(sample, null), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config,
+            objectview.viewconfig.FieldTypeSource schema, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.of(schema), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config) {
+        return selectedPaths(config, true);
     }
 }

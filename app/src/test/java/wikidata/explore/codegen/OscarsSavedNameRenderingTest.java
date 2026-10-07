@@ -73,10 +73,6 @@ class OscarsSavedNameRenderingTest {
             selectedName.addField("givenName", ViewConfig.leaf());
             personOnly.addField("structuredName", selectedName);
             RenderContext context = new RenderContext(List.of(mapped));
-            // Reproduce ModelBuilder's shared multi-type context: the standalone Name
-            // section may have a deliberately restrictive view, but that must not empty
-            // the owned Name value opened through Person.structuredName.
-            context.putConfig(mappedName, ViewConfig.leaf());
             Card[] collapsed = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> collapsed[0] = new Card(
                     mapped, personOnly, context, false));

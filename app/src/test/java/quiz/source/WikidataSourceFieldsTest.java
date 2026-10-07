@@ -74,7 +74,7 @@ class WikidataSourceFieldsTest {
 
         javax.swing.SwingUtilities.invokeAndWait(() -> card[0] =
                 new objectview.render.Card(statement,
-                        objectview.viewconfig.ViewConfig.all(
+                        objectview.viewconfig.ViewConfig.of(
                                 WikidataStatementSource.class), false));
 
         assertEquals(6, count(card[0], objectview.render.LinkRow.class),

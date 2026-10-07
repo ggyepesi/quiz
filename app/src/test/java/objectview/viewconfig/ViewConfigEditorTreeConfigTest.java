@@ -87,7 +87,7 @@ class ViewConfigEditorTreeConfigTest {
     /** allFields applies at this level; it must not silently turn a referenced
      * object's display into a selected child field. */
     @Test void referenceSelectionDoesNotImplicitlySelectDisplay() {
-        ViewConfig config = ViewConfig.all(DynamicViewable.class);
+        ViewConfig config = ViewConfig.of(DynamicViewable.class);
 
         ViewConfig result = new ViewConfigEditor(
                 config, true, nominationSample()).getConfig();

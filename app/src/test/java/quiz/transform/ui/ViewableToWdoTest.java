@@ -485,7 +485,7 @@ class ViewableToWdoTest {
         javax.swing.SwingUtilities.invokeAndWait(() -> {
             defaultCard[0] = new Card(
                     loadedEntity,
-                    ViewConfig.all(WikidataDynamicObject.class),
+                    ViewConfig.of(WikidataDynamicObject.class),
                     context, false);
             detailedCard[0] = new Card(
                     loadedEntity,

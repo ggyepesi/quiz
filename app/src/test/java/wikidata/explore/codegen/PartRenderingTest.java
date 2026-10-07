@@ -70,7 +70,7 @@ class PartRenderingTest {
 
             Card[] card = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> card[0] = new Card(
-                    mapped, ViewConfig.all(mapped.getClass()),
+                    mapped, ViewConfig.of(mapped.getClass()),
                     new RenderContext(List.of(mapped)), false));
             assertEquals("Douglas Adams", card[0].getTitle(),
                     "the owner keeps its own heading even though its part now carries "

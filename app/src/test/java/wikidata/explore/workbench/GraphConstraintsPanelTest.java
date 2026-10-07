@@ -960,7 +960,7 @@ class GraphConstraintsPanelTest {
                 "the annotation set is keyed by the class name, so a rename moves it");
         assertEquals("PositionGraph", summary.get("Annotation set"));
         renderArtifact(new Card(summary,
-                        ViewConfig.all(DynamicViewable.class), false),
+                        ViewConfig.of(DynamicViewable.class), false),
                 "graph-run-loaded-and-repeated-work.png");
     }
 
@@ -1134,7 +1134,7 @@ class GraphConstraintsPanelTest {
                 members.stream().map(DynamicViewable::getDisplayName).toList());
 
         renderArtifact(new Card(unmatched,
-                        ViewConfig.all(DynamicViewable.class), false),
+                        ViewConfig.of(DynamicViewable.class), false),
                 "rejected-nodes-grouped-by-reason.png");
     }
 

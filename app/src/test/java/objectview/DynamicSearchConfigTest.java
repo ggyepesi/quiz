@@ -37,13 +37,13 @@ class DynamicSearchConfigTest {
 
     private static List<ViewableFieldPaths.PathInfo> paths(
             Viewable sample, ViewConfig config) {
-        return ViewableFieldPaths.collectFromSample(
-                sample, config, ViewableFieldPaths.NOT_MEDIA_FIELDS);
+        return selectedPaths(
+                sample, config, true);
     }
 
     @Test void configNamedDynamicFieldYieldsAPath() {
         List<ViewableFieldPaths.PathInfo> paths =
-                ViewableFieldPaths.collect(explicit("won"));
+                selectedPaths(explicit("won"));
         assertTrue(paths.stream().anyMatch(p -> p.dotted().equals("won")),
                 paths.toString());
         // name was NOT named and allFields is off — it must not sneak in.
@@ -94,10 +94,37 @@ class DynamicSearchConfigTest {
         b.put("year", 1999);
 
         List<ViewableFieldPaths.PathInfo> sortPaths =
-                ViewableFieldPaths.collect(explicit("year"));
+                selectedPaths(explicit("year"));
         List<Viewable> sorted = new SearchAndSort()
                 .sortViewables(List.of(a, b), sortPaths);
 
         assertEquals("B", sorted.get(0).getDisplayName());   // 1999 first
+    }
+
+    // The selection's value paths (LiteralPaths.selection) against a class, sample or
+    // schema shape; the old collectors each read the shorthand themselves.
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofClass(config.getCls()), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.Viewable sample, objectview.viewconfig.ViewConfig config,
+            boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.ofSample(sample, null), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config,
+            objectview.viewconfig.FieldTypeSource schema, boolean excludeMedia) {
+        return objectview.plan.LiteralPaths.selection(config,
+                objectview.plan.TypeShape.of(schema), excludeMedia);
+    }
+
+    private static java.util.List<objectview.field.ViewableFieldPaths.PathInfo> selectedPaths(
+            objectview.viewconfig.ViewConfig config) {
+        return selectedPaths(config, true);
     }
 }

@@ -92,7 +92,7 @@ class ConfigFieldRowSourceSchemaTest {
 
     @Test void schemaMinorDynamicFieldIsHiddenFromTheTable() {
         FieldRowContext ctx = new FieldRowContext(
-                ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                ViewConfig.of(DynamicViewable.class), stateWithMinor(),
                 false, false, Set.of(), minorSchema());
 
         List<FieldRow> rows = ConfigFieldRowSource.INSTANCE.rows(ctx);
@@ -110,14 +110,14 @@ class ConfigFieldRowSourceSchemaTest {
 
     @Test void minorOnlyRowsDoNotInjectTheOrdinaryIdentityName() {
         FieldRowContext live = new FieldRowContext(
-                ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                ViewConfig.of(DynamicViewable.class), stateWithMinor(),
                 true, false, Set.of(), minorSchema());
         List<FieldRow> liveRows = ConfigFieldRowSource.INSTANCE.rows(live);
         assertEquals(List.of("isoCode"),
                 liveRows.stream().map(r -> r.path().dotted()).toList());
 
         FieldRowContext schemaOnly = new FieldRowContext(
-                ViewConfig.all(DynamicViewable.class), null,
+                ViewConfig.of(DynamicViewable.class), null,
                 true, false, Set.of(), minorSchema());
         List<FieldRow> schemaRows = ConfigFieldRowSource.INSTANCE.rows(schemaOnly);
         assertEquals(List.of("isoCode"),
@@ -126,7 +126,7 @@ class ConfigFieldRowSourceSchemaTest {
 
     @Test void hasMinorFieldsDetectsDynamicMinor() {
         assertTrue(ConfigFieldRowSource.INSTANCE.hasMinorFields(new FieldRowContext(
-                        ViewConfig.all(DynamicViewable.class), stateWithMinor(),
+                        ViewConfig.of(DynamicViewable.class), stateWithMinor(),
                         false, false, Set.of(), minorSchema())),
                 "hasMinorFields must see a schema-declared dynamic minor field");
 
@@ -134,7 +134,7 @@ class ConfigFieldRowSourceSchemaTest {
         plain.type("State");
         plain.put("population", 1L);
         assertFalse(ConfigFieldRowSource.INSTANCE.hasMinorFields(new FieldRowContext(
-                        ViewConfig.all(DynamicViewable.class), plain,
+                        ViewConfig.of(DynamicViewable.class), plain,
                         false, false, Set.of(), minorSchema())),
                 "no minor field present -> no bar");
     }
@@ -145,7 +145,7 @@ class ConfigFieldRowSourceSchemaTest {
         nomination.put("category", new ArrayList<>());   // present but EMPTY -> no child value
 
         FieldRowContext ctx = new FieldRowContext(
-                ViewConfig.all(DynamicViewable.class), nomination,
+                ViewConfig.of(DynamicViewable.class), nomination,
                 false, false, Set.of(), schema());
 
         FieldRow category = row(ConfigFieldRowSource.INSTANCE.rows(ctx), "category");
@@ -155,7 +155,7 @@ class ConfigFieldRowSourceSchemaTest {
         // And drilling into it enumerates the schema children WITHOUT any sample.
         NestedFieldSource nested = category.nested();
         FieldRowContext childCtx = new FieldRowContext(
-                ViewConfig.all(nested.type()), nested.sample(),
+                ViewConfig.of(nested.type()), nested.sample(),
                 false, false, Set.of(), nested.fieldTypes());
         List<FieldRow> childRows = ConfigFieldRowSource.INSTANCE.rows(childCtx);
         assertTrue(childRows.stream().anyMatch(

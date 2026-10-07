@@ -64,7 +64,6 @@ public class BenchmarkRunner {
             System.out.println(c.getClass().getName());
         }
         System.out.println(fullConfig);
-        System.out.println(fullConfig.visibleFieldsFor(OscarNomination.class));
 
         Card.RenderStats.print();
 

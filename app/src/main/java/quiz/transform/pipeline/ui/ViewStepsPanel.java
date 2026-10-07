@@ -288,7 +288,7 @@ public final class ViewStepsPanel extends JPanel {
         } else {
             Viewable sample = controller.configSample(type);
             fieldPicker.setConfigRows(
-                    sample == null ? new ViewConfig() : ViewConfig.all(sampleClass(sample)),
+                    sample == null ? new ViewConfig() : ViewConfig.of(sampleClass(sample)),
                     sample,
                     controller.fieldTypes(type),
                     controller.structuralFields(type));

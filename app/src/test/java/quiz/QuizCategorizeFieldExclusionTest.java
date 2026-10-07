@@ -35,7 +35,7 @@ class QuizCategorizeFieldExclusionTest {
     }
 
     @Test void directCategorizeConstructionCannotPutTheAnswerOnTheQuestionCard() {
-        ViewConfig all = ViewConfig.all(Team.class);
+        ViewConfig all = ViewConfig.of(Team.class);
         FacetGroup leagues = new FacetGroup("Leagues", "Team", "league");
 
         ViewConfig questions = QuizCategorize.withoutCategoryField(all, leagues);
