@@ -188,7 +188,7 @@
 </div>
 
 <style>
-  .app { display: flex; flex-direction: column; height: 100vh; }
+  .app { display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; }
 
   .topbar {
     display: flex;
@@ -200,12 +200,23 @@
     border-bottom: 1px solid var(--line);
     flex: none;
   }
-  .brand { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
+  .brand { flex: none; font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
   .brand .dot { color: var(--accent); margin: 0 3px; }
   .brand .sub { color: var(--muted); font-weight: 500; }
 
-  .tabs { display: flex; gap: 14px; align-items: center; }
-  .domain { display: flex; align-items: center; gap: 4px; }
+  /* The domain row scrolls inside itself. As a flex item it would otherwise keep its
+     full width, push the page wider than the window, and choosing a domain far right
+     scrolled the whole page — list and card with it — sideways (#367). */
+  .tabs {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .domain { flex: none; display: flex; align-items: center; gap: 4px; }
   .domain + .domain { border-left: 1px solid var(--border, #2a2a2a); padding-left: 14px; }
   .domain-name {
     font-size: 11px;
@@ -227,7 +238,7 @@
   .domain.active .domain-select { border-color: var(--accent); color: var(--accent); }
   .domain-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
 
-  .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .actions { flex: none; margin-left: auto; display: flex; gap: 8px; align-items: center; }
   .play {
     padding: 6px 14px;
     border-radius: 999px;
