@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * The web renders a field that inherits an ancestor's config as the desktop card does
@@ -36,6 +37,19 @@ class WebFoldsInheritedLevelsTest {
         @Override public String getDisplayName() { return name; }
         /** A pooled entity of a served type, so its chip fetches it by id. */
         @Override public String typeName() { return "Position"; }
+    }
+
+    static final class LocalOffice extends ViewableAdapter {
+        @DisplayField private final String name;
+        private final String country;
+        @Reference LocalOffice predecessor;
+
+        LocalOffice(String name, String country) {
+            this.name = name;
+            this.country = country;
+        }
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
     }
 
     private final Office president = new Office("President", "Germany");
@@ -71,6 +85,24 @@ class WebFoldsInheritedLevelsTest {
                 "the opened member renders by the inherited config");
         assertEquals(Boolean.FALSE, field(opened, "replaces").open(),
                 "and its own inherited list starts folded again");
+    }
+
+    @Test void aFoldedNonPooledObjectKeepsItsBodyBehindAnInlineChip() {
+        LocalOffice head = new LocalOffice("Head", "Here");
+        LocalOffice predecessor = new LocalOffice("Predecessor", "There");
+        head.predecessor = predecessor;
+        ViewConfig config = ViewConfig.leaf();
+        config.addField("name", ViewConfig.leaf());
+        config.addField("country", ViewConfig.leaf());
+        config.addField("predecessor", ViewConfig.leaf());
+
+        ViewableView card = ViewableJson.of(head, config);
+        ViewableView.Ref chip = field(card, "predecessor").ref();
+
+        assertNotNull(chip, "the folded object remains an expandable chip");
+        assertNull(chip.id(), "a value object has no pool address");
+        assertNotNull(chip.inline(), "its configured projection travels with the chip");
+        assertEquals("There", field(chip.inline(), "country").value());
     }
 
     private static ViewableView.Field field(ViewableView card, String name) {

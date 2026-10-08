@@ -75,8 +75,10 @@ public final class ViewableKeyExtractor {
      * field editor emits) is used as it is, so the quiz selects and renders with the
      * one config object. */
     private static ViewConfig literal(ViewConfig config, TypeShape shape) {
-        return ViewConfigDesugar.isLiteral(config)
-                ? config : ViewConfigDesugar.selection(config, shape);
+        // This is the boundary that knows the same field tree is a finite quiz
+        // selection, not a recursive View. Keep that fact on the shared config so
+        // every desktop/web renderer interprets it identically.
+        return ViewConfigDesugar.preparedSelection(config, shape);
     }
 
     /** The assembled query/answer object for one selected key. It contains only

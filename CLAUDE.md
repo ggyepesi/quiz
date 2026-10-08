@@ -403,7 +403,9 @@ construct per thing produced:
   reader's clicks set the depth; an object already on the path ends it. Search and sort
   read through the same inheritance, each object once per level from a root; a quiz key
   never inherits. A sort compares a path's values one by one in the order it reads them
-  (#368).
+  (#368). A finite field selection records that fact on its `ViewConfig`; a renderer must
+  not infer View recursion from the same literal field tree. This keeps one config usable
+  for both quiz projection and presentation without reinterpreting its selected paths.
   Unticked means absent for every field and field role. A ticked collection
   always renders `field name (size)` immediately, including size zero, and renders its members
   lazily only when expanded; each member recursively follows the same config. Whether it starts

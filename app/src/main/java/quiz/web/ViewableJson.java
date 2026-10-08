@@ -481,7 +481,7 @@ public final class ViewableJson {
         TypeShape shape = TypeShape.of(q, schema(q), ViewableJson::typeSchema);
         ViewConfig config = given != null ? given : savedConfig(q.typeName());
         return config == null ? ViewDefaults.newView(shape)
-                : ViewConfigDesugar.literal(config, shape);
+                : ViewConfigDesugar.preparedView(config, shape);
     }
 
     /** The schema the web renders {@code q} with: its type's served schema, else the one
@@ -660,8 +660,12 @@ public final class ViewableJson {
                             null, new ViewableView.Via(root.typeName(),
                                     root.getIdentifier(), decision.at().path().toString())));
                 }
-                return object.caption() == null ? ViewableView.Field.empty(name)
-                        : ViewableView.Field.text(name, object.caption());
+                // A value object has no pool address to fetch, but folding must not
+                // discard its configured body. Carry the same projection inline; the
+                // client still builds/paints it only when the chip is opened.
+                return ViewableView.Field.ref(name, new ViewableView.Ref(
+                        null, chip, target.typeName(), thumb(object),
+                        nested(object, decision.at(), ancestors)));
             }
             return ViewableView.Field.inline(name,
                     List.of(nested(object, decision.at(), ancestors)));
