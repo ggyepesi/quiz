@@ -78,7 +78,9 @@ class PartRenderingTest {
 
             ViewConfig selectedAsWhole = ViewConfig.leaf();
             selectedAsWhole.setCls((Class<? extends Viewable>) mapped.getClass());
-            selectedAsWhole.addField("birthName", ViewConfig.leaf());
+            ViewConfig everyPartField = ViewConfig.leaf();
+            everyPartField.setAllFields(true);
+            selectedAsWhole.addField("birthName", everyPartField);
             Card[] whole = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> whole[0] = new Card(
                     mapped, selectedAsWhole,

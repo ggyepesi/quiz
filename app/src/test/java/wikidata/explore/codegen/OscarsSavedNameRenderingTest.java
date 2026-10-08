@@ -69,8 +69,9 @@ class OscarsSavedNameRenderingTest {
             personOnly.setCls((Class<? extends Viewable>) mapped.getClass());
             ViewConfig selectedName = ViewConfig.leaf();
             selectedName.setCls((Class<? extends Viewable>) mappedName.getClass());
-            selectedName.addField("familyName", ViewConfig.leaf());
-            selectedName.addField("givenName", ViewConfig.leaf());
+            // given and family names are objects: each is a branch, shown by its DISPLAY
+            selectedName.addField("familyName", displayOnly());
+            selectedName.addField("givenName", displayOnly());
             personOnly.addField("structuredName", selectedName);
             RenderContext context = new RenderContext(List.of(mapped));
             Card[] collapsed = new Card[1];
@@ -151,5 +152,11 @@ class OscarsSavedNameRenderingTest {
             }
         }
         return null;
+    }
+
+    private static ViewConfig displayOnly() {
+        ViewConfig display = ViewConfig.leaf();
+        display.addField(objectview.field.ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+        return display;
     }
 }

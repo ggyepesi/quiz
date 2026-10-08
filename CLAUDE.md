@@ -388,10 +388,14 @@ construct per thing produced:
   When unselected there is neither field value nor caption and no
   fallback through `getName`, `getDisplayName` or a reference label, while every other child
   still follows its own tick.
-  Selecting an object field never selects DISPLAY (or any other child) implicitly; with no
-  selected children the field renders its field-name caption alone. An explicit empty child
-  config has that literal meaning and is not a legacy shorthand for a display-only or
-  all-fields config. A newly created default View config is the one exception to that
+  Selecting an object field never selects DISPLAY (or any other child) implicitly. In a
+  quiz key an object with no selected children contributes its field-name caption alone; in
+  a View, search or sort config an object or object collection is a branch, present only
+  while something below it is selected (or it inherits), so neither a caption alone nor
+  `field name (size)` alone is a View state. An older config that ticked one alone is
+  converted where it enters (`ViewConfigDesugar.connected`), never by a renderer. An
+  explicit empty child config is not a legacy shorthand for a display-only or all-fields
+  config. A newly created default View config is the one exception to that
   word "implicitly": it ticks every top-level field and the DISPLAY of each object they
   lead to (nothing deeper), and an `@Inline` object's own fields one level deep, since it
   is part of its owner — all as ordinary ticks a reader can untick (`ViewDefaults`). A
@@ -418,6 +422,15 @@ construct per thing produced:
   expanded object collection is different: its members are the collection's configured
   projection, so top-level registration never suppresses their selected child fields. DISPLAY selection controls neither navigation nor
   whether those collection-member fields render.
+  **The Search, Sort and View editors admit only connected nested selections.** A raw
+  value or collection of raw values may be a terminal tick. Ticking a nested value
+  activates every object/collection owner on its path; an object owner cannot be
+  activated without a selected nested field. Unticking an owner suppresses its whole
+  configured branch without erasing it: remembered descendant ticks stay visible but
+  disabled, are persisted, and return when the owner is reticked. Removing individual
+  descendants, or the explicit **Clear fields** action, is what forgets them. Search
+  may still find a field hidden by View; navigating to the current hit temporarily
+  reveals that path without changing the saved View configuration.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

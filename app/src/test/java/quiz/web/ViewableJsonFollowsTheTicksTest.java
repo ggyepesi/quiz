@@ -92,15 +92,23 @@ class ViewableJsonFollowsTheTicksTest {
         assertEquals(List.of("birthDate"), names(fetched));
     }
 
-    @Test void aTickedObjectWithNothingUnderItIsItsFieldNameAlone() {
+    @Test void aTickedObjectWithNothingUnderItIsNotShown() {
+        ViewConfig alone = ViewConfig.leaf();
+        alone.addField("director", ViewConfig.leaf());
+        assertEquals(List.of(), names(ViewableJson.of(film, alone)),
+                "a field-name caption alone is not a View state");
+
+        ViewConfig birthDate = ViewConfig.leaf();
+        birthDate.addField("birthDate", ViewConfig.leaf());
         ViewConfig config = ViewConfig.leaf();
-        config.addField("director", ViewConfig.leaf());
+        config.addField("director", birthDate);
 
         ViewableView view = ViewableJson.of(film, config);
 
         assertEquals("ref", field(view, "director").kind(),
                 "the director still has its own card, so it navigates");
-        assertEquals(ReferenceRow.NAVIGATION_LABEL, field(view, "director").ref().name());
+        assertEquals(ReferenceRow.NAVIGATION_LABEL, field(view, "director").ref().name(),
+                "its DISPLAY is unticked, so the link names the action");
         assertEquals(List.of("director"), names(view));
     }
 

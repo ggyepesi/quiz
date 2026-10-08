@@ -81,6 +81,19 @@ property is globally single-valued, and an unresolved "Auto-detect" was compiled
 sampling found nothing. The field editor therefore asks **Single value** or **List** directly.
 Sampling shows values for members that carry the property; it never changes the field.
 
+## Nested field choices stay connected and reversible
+
+Search, Sort and View use the same nested-field editor rule. A selected value activates
+every owner on its path. An object or object collection is a branch switch, not a value
+endpoint, and cannot be active without a selected nested field; raw values and raw-value
+collections may be endpoints.
+
+Unticking an owner suppresses its configured subtree rather than deleting it. The saved
+descendant checks remain visible, disabled and persisted, and reticking the owner restores
+them. Removing individual descendant checks or pressing **Clear fields** is the explicit
+forget operation. A checked descendant behind an unchecked owner must never look active or
+silently enter the effective configuration.
+
 ## Structure and population are different rows
 
 Which field receives an end is STRUCTURE and the model owns it; which entities may occupy
