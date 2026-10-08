@@ -169,16 +169,16 @@ public final class ViewableKeyExtractor {
         FieldSet fields = FieldSet.of(source);
         Map<String, Object> projected = new LinkedHashMap<>();
         for (String name : literal.getFields().keySet()) {
-            // Contract fields are addresses onto Viewable methods, not stored data.
-            // SelectedTuple supplies DISPLAY through getDisplayName(); copying the
-            // reserved key into its dynamic map would turn it into an ordinary field
-            // whenever a domain schema is overlaid later by a renderer.
-            if (objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(name)
-                    || objectview.field.ViewableContractFieldSet.IDENTITY_KEY.equals(name)) {
-                continue;
-            }
             FieldRef field = fields.field(name);
             if (field == null) continue;
+            // A header role computed from the Viewable contract is an address onto a
+            // method, not stored data: SelectedTuple supplies it through
+            // getDisplayName(). Copying it into the dynamic map would make it an
+            // ordinary field once a renderer overlays a domain schema. A real
+            // @DisplayField is data and is copied like any other.
+            if (field.role().renderedInHeader() && field instanceof FieldRef.Computed) {
+                continue;
+            }
             Object raw = fields.read(name);
             if (raw == null) continue;
             Object value = projectSelectedValue(raw, literal.getFieldConfig(name));
