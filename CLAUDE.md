@@ -396,6 +396,14 @@ construct per thing produced:
   lead to (nothing deeper), and an `@Inline` object's own fields one level deep, since it
   is part of its owner — all as ordinary ticks a reader can untick (`ViewDefaults`). A
   field selection's default (search, sort, quiz key) ticks nothing below an object.
+  A field whose declared type is already on its config path — the editor's ↩, the root
+  included — has no config of its own: it inherits the nearest ancestor's of that type
+  (`ConfigChain`), written into the config where it is made. An inherited occurrence,
+  object or collection, starts folded, so each expand opens exactly one level and only the
+  reader's clicks set the depth; an object already on the path ends it. Search and sort
+  read through the same inheritance, each object once per level from a root; a quiz key
+  never inherits. A sort compares a path's values one by one in the order it reads them
+  (#368).
   Unticked means absent for every field and field role. A ticked collection
   always renders `field name (size)` immediately, including size zero, and renders its members
   lazily only when expanded; each member recursively follows the same config. Whether it starts

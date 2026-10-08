@@ -81,6 +81,8 @@ public final class ViewableJson {
         ViewConfig config = literalFor(root, rootConfig);
         for (String segment : at.segments()) {
             config = config == null ? null : config.getFieldConfig(segment);
+            // An inherited field reads its ancestor's config (#368).
+            if (config != null) config = config.effective();
         }
         return card(q, config == null ? ViewConfig.leaf() : config, root, at, executor());
     }
@@ -646,6 +648,20 @@ public final class ViewableJson {
                 return external == null
                         ? ViewableView.Field.text(name, object.caption())
                         : ViewableView.Field.link(name, object.caption(), external);
+            }
+            if (!decision.open()) {
+                // A folded object (an inherited level, #368) is a chip the reader opens:
+                // fetched under the config at its path, so each open reads one level.
+                Viewable target = object.target();
+                String chip = object.caption() != null ? object.caption() : name;
+                if (navigable(target) && root != null) {
+                    return ViewableView.Field.ref(name, new ViewableView.Ref(
+                            target.getIdentifier(), chip, target.typeName(), thumb(object),
+                            null, new ViewableView.Via(root.typeName(),
+                                    root.getIdentifier(), decision.at().path().toString())));
+                }
+                return object.caption() == null ? ViewableView.Field.empty(name)
+                        : ViewableView.Field.text(name, object.caption());
             }
             return ViewableView.Field.inline(name,
                     List.of(nested(object, decision.at(), ancestors)));
