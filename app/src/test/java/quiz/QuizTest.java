@@ -218,6 +218,40 @@ class QuizGenerationTest {
     }
 
     @Test
+    void syntheticDisplayAnswerUsesItsHumanLabelAndNeverShowsItsReservedKey() {
+        TestCard item = new TestCard("Ada", List.of("question"), List.of("unused"));
+        ViewConfig queryConfig = ViewConfig.of(TestCard.class);
+        queryConfig.setAllFields(false);
+        queryConfig.addField("queries", ViewConfig.leaf());
+        ViewConfig answerConfig = ViewConfig.of(TestCard.class);
+        answerConfig.setAllFields(false);
+        answerConfig.addField(
+                ViewableContractFieldSet.DISPLAY_KEY, ViewConfig.leaf());
+
+        TestQuiz quiz = new TestQuiz(queryConfig, answerConfig, null,
+                Map.of(item.getIdentifier(), item));
+        objectview.field.FieldSchema sourceTypeSchema =
+                () -> new objectview.field.ReflectionFieldSet(item).fields();
+        quiz.setSchemas(ignored -> sourceTypeSchema, ignored -> sourceTypeSchema);
+
+        Card answer = quiz.answerCard("Ada");
+        assertNotNull(answer);
+        assertEquals("Ada", answer.getTitle());
+        assertFalse(((objectview.field.DynamicFields) answer.getViewable())
+                        .dynamicFieldValues().containsKey(
+                                ViewableContractFieldSet.DISPLAY_KEY),
+                "the display contract is computed, never copied into field data");
+        objectview.field.FieldRef renderedDisplay = objectview.field.FieldSet.of(
+                answer.getViewable(), sourceTypeSchema).field(
+                        ViewableContractFieldSet.DISPLAY_KEY);
+        assertNotNull(renderedDisplay);
+        assertEquals("Display label", renderedDisplay.label());
+        assertEquals(objectview.field.FieldRole.DISPLAY, renderedDisplay.role());
+        assertFalse(rendersText(answer, ViewableContractFieldSet.DISPLAY_KEY),
+                "the reserved key is an address, never a field label");
+    }
+
+    @Test
     void selectedReferenceDisplayProjectsThePositionRatherThanItsHoldingOwner() {
         Position president = new Position("P1", "President");
         QuizPerson person = new QuizPerson("Q1", personName(),

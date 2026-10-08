@@ -169,6 +169,14 @@ public final class ViewableKeyExtractor {
         FieldSet fields = FieldSet.of(source);
         Map<String, Object> projected = new LinkedHashMap<>();
         for (String name : literal.getFields().keySet()) {
+            // Contract fields are addresses onto Viewable methods, not stored data.
+            // SelectedTuple supplies DISPLAY through getDisplayName(); copying the
+            // reserved key into its dynamic map would turn it into an ordinary field
+            // whenever a domain schema is overlaid later by a renderer.
+            if (objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(name)
+                    || objectview.field.ViewableContractFieldSet.IDENTITY_KEY.equals(name)) {
+                continue;
+            }
             FieldRef field = fields.field(name);
             if (field == null) continue;
             Object raw = fields.read(name);

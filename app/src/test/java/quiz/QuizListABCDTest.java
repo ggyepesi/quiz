@@ -6,6 +6,8 @@ import objectview.viewconfig.ViewConfig;
 import objectview.field.FieldPath;
 import org.junit.jupiter.api.Test;
 import quiz.data.ViewableKeyExtractor;
+import quiz.ui.ChoiceBoard;
+import quiz.ui.QuizCardRole;
 import quiz.ui.SearchableChoiceBoard;
 import objectview.render.Card;
 
@@ -19,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** ABCD chooses four cards once. Removing exhausted keys afterwards made later
@@ -72,6 +76,37 @@ class QuizListABCDTest {
     }
 
     @Test
+    void listAnswerBoardKeepsSyntheticDisplayAsTheCaption() {
+        Map<String, Item> items = new LinkedHashMap<>();
+        items.put("one", new Item("one", "q1", "a1"));
+        items.put("two", new Item("two", "q2", "a2"));
+        ViewConfig display = ViewConfig.of(Item.class);
+        display.setAllFields(false);
+        display.addField(
+                objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                ViewConfig.leaf());
+        QuizListABCD quiz = new QuizListABCD(
+                selected("question"), display, QuizAnswerType.LIST,
+                null, items);
+        objectview.field.FieldSchema sourceTypeSchema =
+                () -> new objectview.field.ReflectionFieldSet(items.get("one")).fields();
+        quiz.setSchemas(ignored -> sourceTypeSchema, ignored -> sourceTypeSchema);
+
+        SearchableChoiceBoard board = quiz.createListAnswerBoard(List.of("q1"));
+        ChoiceBoard.CardItem item = quiz.answerCardItem(List.of("one"));
+        assertNotNull(item);
+        Card rendered = quiz.cardFactory.create(
+                item.content(), board.search().getViewConfig(),
+                QuizCardRole.OPTION, List.of(item.content()), item.reveal());
+
+        assertEquals("one", rendered.getTitle());
+        assertFalse(rendersText(rendered,
+                        objectview.field.ViewableContractFieldSet.DISPLAY_KEY),
+                "the List answer board must not turn the display address into a body field");
+        quiz.frame.dispose();
+    }
+
+    @Test
     void listKeepsSearchControlsCompactAndGivesTheScrollableQueryLessHeight() throws Exception {
         QuizListABCD quiz = quiz(QuizAnswerType.LIST);
         javax.swing.JComponent[] content = new javax.swing.JComponent[1];
@@ -110,6 +145,18 @@ class QuizListABCDTest {
         config.setAllFields(false);
         config.addField(field, ViewConfig.leaf());
         return config;
+    }
+
+    private static boolean rendersText(java.awt.Container root, String expected) {
+        for (java.awt.Component component : root.getComponents()) {
+            if (component instanceof objectview.render.TextRow row
+                    && row.matchesRenderedText(List.of(expected), true)) return true;
+            if (component instanceof javax.swing.JLabel label
+                    && expected.equals(label.getText())) return true;
+            if (component instanceof java.awt.Container child
+                    && rendersText(child, expected)) return true;
+        }
+        return false;
     }
 
     @SuppressWarnings("unused")
