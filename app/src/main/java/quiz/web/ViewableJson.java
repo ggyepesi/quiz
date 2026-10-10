@@ -25,7 +25,6 @@ import objectview.plan.ViewDefaults;
 import objectview.viewconfig.ViewConfig;
 import objectview.viewconfig.ViewConfigJsonIO;
 
-import java.lang.reflect.Field;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -545,7 +544,8 @@ public final class ViewableJson {
     /** The executor the web renders with; the disclosure is the client's to change. */
     static RenderExecutor executor(Disclosure disclosure) {
         return new RenderExecutor(new PlanResolver(), ViewableJson::schema,
-                ViewableJson::navigable, disclosure);
+                ViewableJson::navigable, disclosure,
+                wikidata.ui.WikidataLinks.valueLinker());
     }
 
     /** Serializes the card of {@code q} under {@code literal}; config paths start at
@@ -644,10 +644,10 @@ public final class ViewableJson {
             RenderExecutor.Level object = decision.object();
             if (!object.hasBody()) {
                 if (object.caption() == null) return ViewableView.Field.empty(name);
-                String external = externalUrl(object.target());
-                return external == null
+                return object.captionUrl() == null
                         ? ViewableView.Field.text(name, object.caption())
-                        : ViewableView.Field.link(name, object.caption(), external);
+                        : ViewableView.Field.link(
+                                name, object.caption(), object.captionUrl());
             }
             if (!decision.open()) {
                 // A folded object (an inherited level, #368) is a chip the reader opens:
@@ -731,7 +731,8 @@ public final class ViewableJson {
             String caption = object.caption() == null ? "" : object.caption();
             if (!object.hasBody()) {
                 return object.caption() == null ? null : new ViewableView.Ref(
-                        null, caption, target.typeName(), thumb(object), null);
+                        null, caption, target.typeName(), thumb(object), null,
+                        null, object.captionUrl());
             }
             if (navigable(target) && root != null) {
                 return new ViewableView.Ref(target.getIdentifier(), caption,
@@ -814,24 +815,6 @@ public final class ViewableJson {
             idx++;
         }
         return urls;
-    }
-
-    // The value of the first non-blank @Link (URL) field on the object, if any
-    // -- e.g. WikidataDynamicObject.wikidataUrl: where a caption-only object links to.
-    private static String externalUrl(Viewable q) {
-        for (Field f : ViewableAdapter.getAllFields(q.getClass())) {
-            if (!ViewableAdapter.isLinkField(f)) {
-                continue;
-            }
-            try {
-                f.setAccessible(true);
-                if (f.get(q) instanceof String s && isHttp(s)) {
-                    return s;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
     }
 
     private static boolean isImageKey(String name) {

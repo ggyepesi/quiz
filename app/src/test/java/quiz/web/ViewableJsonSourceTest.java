@@ -62,6 +62,16 @@ class ViewableJsonSourceTest {
         assertEquals("https://www.wikidata.org/wiki/Q42", identity.url());
     }
 
+    @Test void defaultEntitySourceCaptionIsTheSameQidLink() {
+        var person = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q42", "Douglas Adams");
+
+        ViewableView.Ref source = source(ViewableJson.of(person)).refs().getFirst();
+
+        assertEquals("Q42", source.name());
+        assertEquals("https://www.wikidata.org/wiki/Q42", source.url());
+    }
+
     @Test void multipleStatementsShareOneExpandableWebSourceField() {
         var award = new wikidata.explore.extract.WikidataDynamicObject(
                 "modeled-key", "Le Duc Tho — Nobel Peace Prize");

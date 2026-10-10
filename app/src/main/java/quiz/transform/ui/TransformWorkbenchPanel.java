@@ -1458,6 +1458,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .fieldTypes(controller.fieldTypes(type))
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, type))
                     .typeSchemas(controller::fieldSchema)
+                    .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
@@ -1485,6 +1486,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .fieldTypes(controller.fieldTypes(renderedType))
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, renderedType))
                     .typeSchemas(controller::fieldSchema)
+                    .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
@@ -1497,6 +1499,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
         MultiView mv = new MultiView();
         mv.context().setCollapsibleCards(true);
+        mv.context().setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
         mv.context().setCardDecorator(cardDecorator);
         mv.context().addSelectionSetListener(values -> selectionListener.accept(values.stream()
                 .filter(Viewable.class::isInstance).map(Viewable.class::cast).toList()));

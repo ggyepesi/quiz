@@ -10,6 +10,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Entity and statement provenance use one ordinary, inspectable field. */
@@ -95,6 +96,35 @@ class WikidataSourceFieldsTest {
         assertTrue(source.collection());
         assertEquals(2, assertInstanceOf(
                 List.class, fields.read("wikidataSource")).size());
+    }
+
+    @Test void theDefaultSourceCaptionKeepsItsWikidataLink() throws Exception {
+        var entity = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q42", "Douglas Adams");
+        Object sources = FieldSet.of(entity).read("wikidataSource");
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        context.setCollectionExpanded(sources, true);
+        objectview.render.Card[] rendered = new objectview.render.Card[1];
+
+        javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
+                new objectview.render.Card(entity, null, context, false));
+
+        objectview.render.LinkRow link = find(
+                rendered[0], objectview.render.LinkRow.class);
+        assertNotNull(link);
+        assertEquals("https://www.wikidata.org/wiki/Q42", link.url());
+    }
+
+    private static <T> T find(java.awt.Component root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) {
+                T found = find(child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private static int count(java.awt.Component root, Class<?> type) {

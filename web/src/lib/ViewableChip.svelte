@@ -29,7 +29,11 @@
 {#if !ref.id && !ref.inline}
 <span class="chip plain">
   {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
-  <span class="name" title={ref.name}>{ref.name}</span>
+  {#if ref.url}
+    <a class="name" href={ref.url} target="_blank" rel="noreferrer" title={ref.name}>{ref.name} ↗</a>
+  {:else}
+    <span class="name" title={ref.name}>{ref.name}</span>
+  {/if}
 </span>
 {:else}
 <div class="chip" class:open>

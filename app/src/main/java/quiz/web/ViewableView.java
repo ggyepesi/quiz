@@ -28,9 +28,14 @@ public record ViewableView(
      *  so the fetch names the card whose config that is and the config path below it.
      *  A chip with neither id nor inline is a caption alone. */
     public record Ref(String id, String name, String type, String thumb,
-                      ViewableView inline, Via via) {
+                      ViewableView inline, Via via, String url) {
         public Ref(String id, String name, String type, String thumb, ViewableView inline) {
-            this(id, name, type, thumb, inline, null);
+            this(id, name, type, thumb, inline, null, null);
+        }
+
+        public Ref(String id, String name, String type, String thumb,
+                   ViewableView inline, Via via) {
+            this(id, name, type, thumb, inline, via, null);
         }
     }
 

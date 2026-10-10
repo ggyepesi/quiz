@@ -68,7 +68,9 @@ Discovery's results had no search box, because they were a `JTable` rather than 
   explicitly inline workflow content remain visible, while ordinary collections start folded.
   A scalar reference to an object already shown as a top-level card is navigation only.
   Members of an explicitly expanded object collection remain that collection's configured
-  projection: top-level registration must not suppress their selected child fields.
+  projection: top-level registration must not suppress their selected child fields. A
+  reference member whose target has a top-level card keeps the projection and navigates from
+  its caption; the disclosure glyph independently expands or collapses that projection.
   `@Inline`, `@Reference`, dynamic/reflected backing, and card/table layout are presentation
   choices and must not alter those semantics.
 

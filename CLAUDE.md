@@ -420,8 +420,11 @@ construct per thing produced:
   never repeats that target's configured fields inline; with its DISPLAY unticked the
   link reads “Open”, naming the action and never the object or its type. An explicitly
   expanded object collection is different: its members are the collection's configured
-  projection, so top-level registration never suppresses their selected child fields. DISPLAY selection controls neither navigation nor
-  whether those collection-member fields render.
+  projection, so top-level registration never suppresses their selected child fields. A
+  member of a reference collection whose target has a top-level card keeps that projection
+  and its caption navigates to the card; its separate disclosure glyph still expands or
+  collapses the projection. DISPLAY selection controls neither navigation nor whether those
+  collection-member fields render.
   **The Search, Sort and View editors admit only connected nested selections.** A raw
   value or collection of raw values may be a terminal tick. Ticking a nested value
   activates every object/collection owner on its path; an object owner cannot be

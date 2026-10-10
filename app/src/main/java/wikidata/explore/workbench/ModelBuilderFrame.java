@@ -1513,6 +1513,9 @@ public class ModelBuilderFrame extends JFrame {
         process.swing.workflow.ProcessWorkflowAction<GenerationRun, GenerationRun> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return phaseId; }
+                    @Override public java.util.function.Function<Object, String> valueLinker() {
+                        return wikidata.ui.WikidataLinks.valueLinker();
+                    }
                     @Override public process.ProcessWorkflowPipeline pipeline() {
                         return pipeline;
                     }
