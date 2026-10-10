@@ -3,8 +3,12 @@ package wikidata.explore.rule;
 import java.util.List;
 import wikidata.explore.model.EntityBound;
 import org.junit.jupiter.api.Test;
+import wikidata.explore.compiled.CompiledClass;
+import wikidata.explore.compiled.CompiledProjectModel;
+import wikidata.explore.compiled.ProjectModelCompiler;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.SubclassCondition;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,6 +57,7 @@ class SubclassDiscriminatorTest {
         p.addClass(film);
 
         RuleNode node = RuleTreeCompiler.compileClass(film, p);
+        assertFalse(node.membershipFilterIncludesDescendants());
         String sparql = wikidata.explore.query.template.rule.RuleNodeQueryBuilder
                 .valuesQuery(node);
         assertTrue(sparql.contains("wdt:P31 wd:Q11424"), sparql);
@@ -73,5 +78,38 @@ class SubclassDiscriminatorTest {
         String sparql = wikidata.explore.query.template.rule.RuleNodeQueryBuilder
                 .valuesQuery(node);
         assertTrue(sparql.contains("wdt:P1411 wd:Q103916"), sparql);
+    }
+
+    @Test void descendantDiscriminatorUsesTheSameClosureInBothCompilerPaths() {
+        GeneratedProjectModel p = oscarProject();
+        GeneratedClassModel moon = new GeneratedClassModel("Moon");
+        moon.baseClassName("Oscarnominations");
+        moon.subclassCondition(SubclassCondition.propertyValue(
+                "P31", "Q109645860", true));
+        p.addClass(moon);
+
+        RuleNode editableNode = RuleTreeCompiler.compileClass(moon, p);
+        assertTrue(editableNode.membershipFilterIncludesDescendants());
+        assertDescendantFilter(
+                wikidata.explore.query.template.rule.RuleNodeQueryBuilder
+                        .valuesQuery(editableNode));
+
+        CompiledProjectModel compiledProject = ProjectModelCompiler.compile(p);
+        CompiledClass compiledMoon = compiledProject.findClass("Moon").orElseThrow();
+        assertTrue(compiledMoon.discriminatorIncludesDescendants());
+        RuleNode compiledNode = RuleTreeCompiler.compileClass(
+                compiledMoon, compiledProject);
+        assertTrue(compiledNode.membershipFilterIncludesDescendants());
+        assertDescendantFilter(
+                wikidata.explore.query.template.rule.RuleNodeQueryBuilder
+                        .valuesQuery(compiledNode));
+    }
+
+    private static void assertDescendantFilter(String sparql) {
+        assertTrue(sparql.contains(
+                "?value wdt:P31 ?membershipFilterValue"), sparql);
+        assertTrue(sparql.contains(
+                "?membershipFilterValue wdt:P279* wd:Q109645860"), sparql);
+        assertFalse(sparql.contains("?value wdt:P31 wd:Q109645860"), sparql);
     }
 }

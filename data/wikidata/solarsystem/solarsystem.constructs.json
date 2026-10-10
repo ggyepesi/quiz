@@ -1,0 +1,35 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:86a4ab27-cb49-45ce-a30f-0d0117c3a00f",
+    "name" : "SolarSystem",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  }, {
+    "declarationId" : "decl:116e1293-2eb4-40e9-af2d-910111f33a8f",
+    "name" : "Sun",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  }, {
+    "declarationId" : "decl:6b4c73eb-cd37-4780-a9c9-cdc4683bec18",
+    "name" : "Planet",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  }, {
+    "declarationId" : "decl:133088cd-a639-4cf2-8862-bc311d10a066",
+    "name" : "Moon",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  }, {
+    "declarationId" : "decl:60eea04e-a549-481e-bff1-1775135513b8",
+    "name" : "PlanetType",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  }, {
+    "declarationId" : "decl:4eab0fc8-9a56-4dd1-b173-d24d41e28767",
+    "name" : "CelestialBody",
+    "kind" : "CLASS",
+    "artifact" : "solarsystem.snapshot.json"
+  } ],
+  "snapshotSignature" : "model-v2:7be8208864ac0d30c46a2b12d3d5fddd743ef9da1cd51646bb9b02b9ae8eb882"
+}

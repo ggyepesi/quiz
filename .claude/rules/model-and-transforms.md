@@ -89,6 +89,13 @@ implementation distinction is not appended to the instance name.
 Remap re-runs the pure transforms offline in the same order. Enrich is additive and works in
 place, checkpointed by exact covered QIDs.
 
+A collection assembled from several already-produced routes is one `UNION` field production.
+It stores ordered field paths on the field, picked from the owning class's declared fields with
+the finite field picker (never typed), runs after inverts in the shared replayable transform
+sequence, leaves its source fields intact, and deduplicates by normal value identity. It records
+no per-value provenance. It is never compiled into a datasource query and never reimplements
+acquisition for one domain.
+
 # SPARQL
 
 Generated queries follow `docs/sparql-generation-rules.md` (R1–R18): two-sided VALUES, a

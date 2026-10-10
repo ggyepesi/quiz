@@ -303,7 +303,8 @@ public class GeneratedClassModel {
                 ? SubclassCondition.none() : subclassCondition;
         if (configured.configured()) return configured;
         return hasDiscriminator()
-                ? SubclassCondition.propertyValue(effectiveDiscriminatorPid(), discriminatorQid)
+                ? SubclassCondition.propertyValue(
+                        effectiveDiscriminatorPid(), discriminatorQid, false)
                 : SubclassCondition.none();
     }
 

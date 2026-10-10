@@ -5,6 +5,7 @@ import wikidata.explore.model.*;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.List;
 
 /**
  * Immutable runtime snapshot of {@link FieldSourceMapping}.
@@ -21,6 +22,7 @@ public record CompiledFieldSource(
         String matchValueField,
         String matchRoleField,
         String inverseField,
+        List<String> unionSourcePaths,
         MissingQualifierPolicy missingQualifierPolicy,
         wikidata.explore.model.RoleKind roleKind,
         RuleDirection direction,
@@ -51,6 +53,10 @@ public record CompiledFieldSource(
         matchValueField = clean(matchValueField);
         matchRoleField = clean(matchRoleField);
         inverseField = clean(inverseField);
+        unionSourcePaths = unionSourcePaths == null
+                ? List.of()
+                : unionSourcePaths.stream().map(CompiledFieldSource::clean)
+                        .filter(value -> !value.isBlank()).distinct().toList();
         roleKind = roleKind == null
                 ? wikidata.explore.model.RoleKind.REFERENCE
                 : roleKind;
@@ -99,6 +105,7 @@ public record CompiledFieldSource(
                 source.matchValueField(),
                 source.matchRoleField(),
                 source.inverseField(),
+                source.unionSourcePaths(),
                 source.missingQualifierPolicy(),
                 source.roleKind(),
                 source.direction(),

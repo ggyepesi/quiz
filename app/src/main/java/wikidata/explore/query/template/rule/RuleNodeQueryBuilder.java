@@ -973,8 +973,15 @@ public final class RuleNodeQueryBuilder {
     // class's instances.
     private static void appendMembershipFilter(WikidataQueryBuilder q, RuleNode node) {
         if (node.hasMembershipFilter()) {
-            q.rawWhere("?value wdt:" + node.membershipPid()
-                    + " wd:" + node.membershipQid() + " .");
+            if (node.membershipFilterIncludesDescendants()) {
+                q.rawWhere("?value wdt:" + node.membershipPid()
+                        + " ?membershipFilterValue .");
+                q.rawWhere("?membershipFilterValue wdt:P279* wd:"
+                        + node.membershipQid() + " .");
+            } else {
+                q.rawWhere("?value wdt:" + node.membershipPid()
+                        + " wd:" + node.membershipQid() + " .");
+            }
         }
     }
 

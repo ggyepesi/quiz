@@ -16,6 +16,7 @@ public final class CompiledClass {
     private final String baseClassName;
     private final String discriminatorPid;
     private final String discriminatorQid;
+    private final boolean discriminatorIncludesDescendants;
     private final int generationDepth;
     private final ClassKind classKind;
 
@@ -44,6 +45,7 @@ public final class CompiledClass {
             String baseClassName,
             String discriminatorPid,
             String discriminatorQid,
+            boolean discriminatorIncludesDescendants,
             int generationDepth,
             ClassKind classKind,
             CompiledFieldSource sourceMapping,
@@ -62,6 +64,7 @@ public final class CompiledClass {
         this.baseClassName = clean(baseClassName);
         this.discriminatorPid = clean(discriminatorPid);
         this.discriminatorQid = clean(discriminatorQid);
+        this.discriminatorIncludesDescendants = discriminatorIncludesDescendants;
         this.generationDepth = Math.max(0, generationDepth);
         this.classKind = classKind == null ? ClassKind.SOURCE : classKind;
         this.sourceMapping = sourceMapping == null
@@ -97,6 +100,9 @@ public final class CompiledClass {
     public boolean hasBase() { return !baseClassName.isBlank(); }
     public String discriminatorPid() { return discriminatorPid; }
     public String discriminatorQid() { return discriminatorQid; }
+    public boolean discriminatorIncludesDescendants() {
+        return discriminatorIncludesDescendants;
+    }
     public boolean hasDiscriminator() {
         return discriminatorQid.matches("(?i)Q\\d+");
     }

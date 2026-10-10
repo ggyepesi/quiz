@@ -59,6 +59,59 @@ class FieldSourcePanelRowsTest {
                 "an INVERT field must be asked the one thing it needs");
     }
 
+    /** A union's sources are picked from the owning class's declared fields, the way
+     *  a quiz key's paths are, and never typed. */
+    @Test void aFieldUnionPicksItsSourcePathsFromTheOwnersFieldsAndIsNotAnInverse()
+            throws Exception {
+        GeneratedFieldModel allMoons = field("allMoons", FieldType.ENTITY,
+                FieldProductionKind.UNION, "Moon");
+        GeneratedProjectModel project = projectContaining(allMoons, true);
+        GeneratedClassModel planet = project.declaringClass(allMoons);
+        planet.addField("moons", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Moon");
+        planet.addField("moonKinds", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("MoonKind");
+        GeneratedClassModel moonKind = new GeneratedClassModel("MoonKind");
+        moonKind.addField("moons", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Moon");
+        project.addClass(moonKind);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(allMoons);
+
+        List<String> shown = visibleRowLabels(panel);
+        assertTrue(shown.contains("Union of fields:"), shown.toString());
+        assertFalse(shown.contains("Inverse of:"), shown.toString());
+        assertTrue(components(panel, javax.swing.JTextArea.class).isEmpty(),
+                "no path is typed");
+
+        objectview.viewconfig.ViewConfigEditor picker = only(
+                components(panel, objectview.viewconfig.ViewConfigEditor.class));
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+            picker.setSelectedPath(objectview.field.FieldPath.parse("moonKinds.moons"));
+            assertTrue(picker.checkFieldPath(objectview.field.FieldPath.of("moons")));
+            assertTrue(picker.checkFieldPath(objectview.field.FieldPath.of("moonKinds")));
+            assertTrue(picker.checkFieldPath(
+                    objectview.field.FieldPath.of("moonKinds", "moons")));
+        });
+        button(panel, "Apply field source").doClick();
+
+        assertEquals(FieldCardinality.COLLECTION, allMoons.cardinality());
+        assertEquals(List.of("moons", "moonKinds.moons"),
+                allMoons.mapping().unionSourcePaths(),
+                "moonKinds is the way to its moons, not a source of its own");
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(allMoons);
+        assertEquals(List.of(objectview.field.FieldPath.of("moons"),
+                        objectview.field.FieldPath.of("moonKinds"),
+                        objectview.field.FieldPath.of("moonKinds", "moons")),
+                only(components(reopened, objectview.viewconfig.ViewConfigEditor.class))
+                        .selectedFieldPaths(),
+                "the stored sources come back ticked");
+    }
+
     /**
      * Expansion follows an edge and then follows it again, so it is offered only where
      * the target is the owner's own class. A cross-class target reaches instances of
@@ -249,6 +302,24 @@ class FieldSourcePanelRowsTest {
             }
         }
         throw new AssertionError("No button named " + text);
+    }
+
+    private static <T extends Component> List<T> components(Container root, Class<T> type) {
+        List<T> found = new ArrayList<>();
+        ArrayDeque<Container> pending = new ArrayDeque<>();
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            for (Component component : pending.removeFirst().getComponents()) {
+                if (type.isInstance(component)) found.add(type.cast(component));
+                if (component instanceof Container child) pending.addLast(child);
+            }
+        }
+        return found;
+    }
+
+    private static <T> T only(List<T> found) {
+        assertEquals(1, found.size(), found.toString());
+        return found.get(0);
     }
 
     /** The labels a reader can actually see, in layout order. */

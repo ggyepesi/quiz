@@ -1,0 +1,21 @@
+{
+  "project" : "Solar System",
+  "builtAt" : "2026-10-09T16:39:33",
+  "outcome" : "CURRENT",
+  "steps" : [ {
+    "operation" : "decl:946fb1e3-8a27-41c9-81c5-d207c08f549c",
+    "step" : "Generate project",
+    "state" : "STALE",
+    "because" : [ "the model changed since the snapshot was generated" ],
+    "action" : "RAN",
+    "detail" : "39 objects"
+  }, {
+    "operation" : "decl:845bfcde-8477-4e60-b83e-1491b621c24d",
+    "step" : "Save project",
+    "state" : "STALE",
+    "because" : [ "Generate project runs" ],
+    "action" : "RAN",
+    "detail" : "39 instances saved"
+  } ],
+  "files" : [ "Config:    data/wikidata/solarsystem/solarsystem.model.json", "Rule tree: data/wikidata/solarsystem/solarsystem.ruletree.json", "Instances: 39 -> data/wikidata/solarsystem/solarsystem.snapshot.json", "Registry:  data/wikidata/datasets.json", "Counts:    data/wikidata/solarsystem/solarsystem.counts.tsv", "Construct inventory: data/wikidata/solarsystem/solarsystem.constructs.json" ]
+}

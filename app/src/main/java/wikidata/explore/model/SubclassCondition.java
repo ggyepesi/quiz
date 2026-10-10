@@ -15,6 +15,7 @@ public record SubclassCondition(
         Kind kind,
         String propertyPid,
         String qid,
+        boolean includeDescendants,
         String selectionName,
         String selectionId) {
 
@@ -29,19 +30,28 @@ public record SubclassCondition(
     }
 
     public static SubclassCondition none() {
-        return new SubclassCondition(Kind.NONE, "", "", "", "");
+        return new SubclassCondition(Kind.NONE, "", "", false, "", "");
     }
 
     public static SubclassCondition propertyValue(String pid, String qid) {
-        return new SubclassCondition(Kind.PROPERTY_VALUE, pid, qid, "", "");
+        return propertyValue(pid, qid, false);
+    }
+
+    /** A property/value condition whose value may also be a subclass of the
+     * configured QID. For example, {@code P31 → planetary moon} admits an entity
+     * typed {@code moon of Jupiter} because that type is below planetary moon. */
+    public static SubclassCondition propertyValue(
+            String pid, String qid, boolean includeDescendants) {
+        return new SubclassCondition(
+                Kind.PROPERTY_VALUE, pid, qid, includeDescendants, "", "");
     }
 
     public static SubclassCondition inPopulation(String name, String id) {
-        return new SubclassCondition(Kind.IN_POPULATION, "", "", name, id);
+        return new SubclassCondition(Kind.IN_POPULATION, "", "", false, name, id);
     }
 
     public static SubclassCondition outsidePopulation(String name, String id) {
-        return new SubclassCondition(Kind.OUTSIDE_POPULATION, "", "", name, id);
+        return new SubclassCondition(Kind.OUTSIDE_POPULATION, "", "", false, name, id);
     }
 
     public boolean configured() {
@@ -59,7 +69,7 @@ public record SubclassCondition(
 
     public SubclassCondition rebound(String id, String name) {
         return populationBased()
-                ? new SubclassCondition(kind, "", "", name, id) : this;
+                ? new SubclassCondition(kind, "", "", false, name, id) : this;
     }
 
     private static String clean(String value) {

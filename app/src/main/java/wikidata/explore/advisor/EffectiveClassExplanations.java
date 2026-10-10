@@ -89,6 +89,9 @@ public final class EffectiveClassExplanations {
     private static String sourceDescription(
             wikidata.explore.compiled.CompiledFieldSource source) {
         if (!source.inverseField().isBlank()) return "Inverse of " + source.inverseField();
+        if (!source.unionSourcePaths().isEmpty()) {
+            return "Union of " + String.join(", ", source.unionSourcePaths());
+        }
         if (!source.qualifierPid().isBlank()) {
             return source.sourceType() + " qualifier " + source.displayQualifier();
         }
@@ -190,7 +193,11 @@ public final class EffectiveClassExplanations {
                         : "qualifier · " + qualifier;
             }
             case PLAIN -> {
-                yield field.source().displayProperty();
+                yield field.source().productionKind()
+                        == wikidata.explore.model.FieldProductionKind.UNION
+                        ? "union of " + String.join(", ",
+                                field.source().unionSourcePaths())
+                        : field.source().displayProperty();
             }
         };
     }

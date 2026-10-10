@@ -65,8 +65,10 @@ public final class StatementTransforms {
         INVERTS("inverts",
                 (model, pool, log, filled) -> {
                     ModelInverts.apply(model, pool, log); return 0; }),
-        // The only stage that can say WHICH records it touched, so the only one given
-        // somewhere to put them. The rest ignore the collector rather than pretend.
+        FIELD_UNIONS("field unions",
+                ModelFieldUnions::apply),
+        // Stages that fill derived values report WHICH records they touched through
+        // the shared collector; stages that only rearrange or prune ignore it.
         YEAR_PROJECTIONS("year projections",
                 ModelYearProjections::apply),
         COMPANION_MATCH("companion match", null);
@@ -190,7 +192,7 @@ public final class StatementTransforms {
      * the invert alone — so a value restriction declared on a class applied or did not
      * depending on which button was pressed.
      *
-     * @return how many field values a projection filled
+     * @return how many derived field values were changed
      */
     public static int applyIdempotent(
             CompiledProjectModel compiled,

@@ -21,6 +21,10 @@ public enum FieldProductionKind {
      *  query. E.g. {@code Category.nominees} = the reverse of
      *  {@code Oscarnominations.categories}. */
     INVERT,
+    /** DERIVED, not fetched: a collection assembled from the values already present
+     *  at one or more field paths on the same instance. Source order is retained and
+     *  duplicate values are removed by their normal identity. */
+    UNION,
     /** DERIVED, not fetched as a value: a BOOLEAN that is true iff a companion
      *  statement ({@code companionProperty[value, roleQualifier]}) exists on this
      *  record's subject with the same value and role. E.g. {@code Nomination.won} =
@@ -40,6 +44,7 @@ public enum FieldProductionKind {
             case STATEMENT_OBJECT -> "Statement object";
             case STATEMENT_PARTICIPANTS -> "Statement participants";
             case INVERT -> "Invert (reverse of another field)";
+            case UNION -> "Union of fields";
             case COMPANION_MATCH -> "Companion match (outcome flag)";
             case AUTO -> "Auto";
         };

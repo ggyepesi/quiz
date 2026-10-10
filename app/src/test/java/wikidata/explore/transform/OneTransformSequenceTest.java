@@ -174,6 +174,7 @@ class OneTransformSequenceTest {
                 "ModelStatementReifications.reify",
                 "FieldValueRestrictions.apply",
                 "ModelInverts.apply",
+                "ModelFieldUnions.apply",
                 "ModelYearProjections.apply",
                 "CompanionMatch.applyWithSets");
 

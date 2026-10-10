@@ -40,6 +40,7 @@ public class RuleNode {
     // object in the constellation (galaxies, nebulae, …), not just stars.
     private String membershipPid = "";
     private String membershipQid = "";
+    private boolean membershipFilterIncludesDescendants;
 
     // -----------------------------------------------------------------
     // Label config
@@ -122,6 +123,8 @@ public class RuleNode {
         s.membershipIncludesDescendants(membershipIncludesDescendants());
         s.membershipPid(membershipPid());
         s.membershipQid(membershipQid());
+        s.membershipFilterIncludesDescendants(
+                membershipFilterIncludesDescendants());
         s.requireSitelink(requireSitelink());
         s.propertyPid(propertyPid);
         s.propertyLabel(propertyLabel);
@@ -199,6 +202,17 @@ public class RuleNode {
 
     public String membershipQid() { return membershipQid; }
     public void   membershipQid(String qid) { this.membershipQid = cleanQid(qid); }
+
+    /** Whether the secondary property/value membership filter admits values below
+     * its configured QID through {@code P279*}. This is independent of the primary
+     * population relation's descendant expansion. */
+    public boolean membershipFilterIncludesDescendants() {
+        return membershipFilterIncludesDescendants;
+    }
+
+    public void membershipFilterIncludesDescendants(boolean value) {
+        membershipFilterIncludesDescendants = value;
+    }
 
     // "Notable only": require an English Wikipedia article (sitelink). A
     // selective entry that bounds a huge class to its notable members.

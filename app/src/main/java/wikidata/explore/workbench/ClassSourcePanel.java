@@ -59,6 +59,8 @@ public class ClassSourcePanel extends JPanel {
     private final JTextField discriminatorPidField = new JTextField(MembershipPattern.INSTANCE_OF, 5);
     private final JTextField discriminatorQidField = new JTextField(8);
     private final JLabel discriminatorEquals = new JLabel("=");
+    private final JCheckBox discriminatorIncludesDescendants =
+            new JCheckBox("Include subclasses");
     private static final String CONDITION_PROPERTY = "Property contains QID";
     private static final String CONDITION_IN_POPULATION = "QID is in population";
     private static final String CONDITION_OUTSIDE_POPULATION = "QID is outside population";
@@ -238,6 +240,9 @@ public class ClassSourcePanel extends JPanel {
         discriminatorQidField.setText(condition.kind()
                 == wikidata.explore.model.SubclassCondition.Kind.PROPERTY_VALUE
                 ? condition.qid() : "");
+        discriminatorIncludesDescendants.setSelected(condition.kind()
+                == wikidata.explore.model.SubclassCondition.Kind.PROPERTY_VALUE
+                && condition.includeDescendants());
         subclassPopulation.removeAllItems();
         if (projectModel != null) projectModel.selections().stream()
                 .filter(wikidata.explore.model.PopulationSelection.class::isInstance)
@@ -262,6 +267,7 @@ public class ClassSourcePanel extends JPanel {
         discriminatorEquals.setVisible(property);
         discriminatorQidField.setVisible(property);
         discriminatorLabel.setVisible(property);
+        discriminatorIncludesDescendants.setVisible(property);
         subclassPopulation.setVisible(!property);
         inheritedPopulationFilter.revalidate();
         inheritedPopulationFilter.repaint();
@@ -404,6 +410,8 @@ public class ClassSourcePanel extends JPanel {
                 + "(for example Q5 human). This does not allow objects into the "
                 + "population triple; it filters the instances inherited through "
                 + "Extends.</html>");
+        discriminatorIncludesDescendants.setToolTipText(
+                "Also accept values whose class is below this QID through P279.");
         WikidataLinks.linkify(discriminatorLabel,
                 () -> RuleNode.cleanQid(discriminatorQidField.getText()));
         inheritedPopulationFilter.add(subclassConditionMode);
@@ -411,6 +419,7 @@ public class ClassSourcePanel extends JPanel {
         inheritedPopulationFilter.add(discriminatorEquals);
         inheritedPopulationFilter.add(discriminatorQidField);
         inheritedPopulationFilter.add(discriminatorLabel);
+        inheritedPopulationFilter.add(discriminatorIncludesDescendants);
         inheritedPopulationFilter.add(subclassPopulation);
         subclassConditionMode.addActionListener(event -> updateSubclassConditionControls());
         GridBagUtils.labeledRow(form, c, y++, inheritedPopulationFilterLabel,
@@ -805,7 +814,8 @@ public class ClassSourcePanel extends JPanel {
         } else if (CONDITION_PROPERTY.equals(subclassConditionMode.getSelectedItem())) {
             clazz.subclassCondition(wikidata.explore.model.SubclassCondition.propertyValue(
                     RuleNode.cleanPid(discriminatorPidField.getText()),
-                    RuleNode.cleanQid(discriminatorQidField.getText())));
+                    RuleNode.cleanQid(discriminatorQidField.getText()),
+                    discriminatorIncludesDescendants.isSelected()));
         } else {
             String selectionName = subclassPopulation.getSelectedItem() == null ? ""
                     : subclassPopulation.getSelectedItem().toString();

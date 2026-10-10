@@ -100,13 +100,16 @@ class PanelLayoutIsCheckedInTest {
         if (Boolean.getBoolean("panel.layout.write")) {
             Files.writeString(golden, actual.toString());
         }
-        String checkedIn = Files.readString(golden);
-        if (!checkedIn.equals(actual.toString())) {
+        // The artifact describes components and order; the number of blank lines after
+        // its final component is not panel structure.
+        String checkedIn = Files.readString(golden).stripTrailing();
+        String rendered = actual.toString().stripTrailing();
+        if (!checkedIn.equals(rendered)) {
             // The diff is the point, and an assertion message is not where anyone can
             // read a 300-line one.
             Path seen = golden.resolveSibling("panel-layout.actual.txt");
             Files.writeString(seen, actual.toString());
-            assertEquals(checkedIn, actual.toString(),
+            assertEquals(checkedIn, rendered,
                     "the editors no longer look like " + golden + "; diff it against "
                             + seen + ", then re-run with -Dpanel.layout.write=true to "
                             + "accept the new layout");

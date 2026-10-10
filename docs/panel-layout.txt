@@ -300,7 +300,7 @@
     label: Display:
     combo: 3 item(s)
   label: Load as:
-  combo: 10 item(s)
+  combo: 11 item(s)
   label: Source
   label: From:
   combo: 12 item(s)
@@ -494,4 +494,3 @@
   button: Run graph  (disabled)
   button: Clear draft
   button: Apply graph
-

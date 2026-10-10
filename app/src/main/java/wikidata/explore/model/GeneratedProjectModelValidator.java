@@ -48,6 +48,7 @@ public final class GeneratedProjectModelValidator {
             validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
             validateInverseFields(project, clazz, problems);
+            validateUnionFields(project, clazz, problems);
             validateCanonical(project, clazz, problems);
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
@@ -463,6 +464,99 @@ public final class GeneratedProjectModelValidator {
                               + " reference " + owner.className()
                               + "; choose the exact inverse field."));
         }
+    }
+
+    private static void validateUnionFields(
+            GeneratedProjectModel project, GeneratedClassModel owner,
+            List<Problem> problems) {
+        for (GeneratedFieldModel union : owner.fields()) {
+            if (union == null || union.mapping().productionKind()
+                    != FieldProductionKind.UNION) continue;
+            if (union.cardinality() != FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(path(owner, union),
+                        "A field union must produce a collection."));
+            }
+            List<String> sources = union.mapping().unionSourcePaths();
+            if (sources.isEmpty()) {
+                problems.add(Problem.error(path(owner, union),
+                        "A field union requires at least one source field path."));
+                continue;
+            }
+            for (String sourcePath : sources) {
+                validateUnionSourcePath(project, owner, union, sourcePath, problems);
+            }
+        }
+    }
+
+    private static void validateUnionSourcePath(
+            GeneratedProjectModel project, GeneratedClassModel owner,
+            GeneratedFieldModel union, String sourcePath, List<Problem> problems) {
+        String cleanPath = clean(sourcePath);
+        String[] segments = cleanPath.split("\\.", -1);
+        if (cleanPath.isBlank() || java.util.Arrays.stream(segments)
+                .anyMatch(String::isBlank)) {
+            problems.add(Problem.error(path(owner, union),
+                    "Union source path '" + sourcePath + "' is not a valid field path."));
+            return;
+        }
+        if (segments[0].equals(union.name())) {
+            problems.add(Problem.error(path(owner, union),
+                    "Union source path '" + cleanPath
+                            + "' reads the field it is producing."));
+            return;
+        }
+        GeneratedClassModel current = owner;
+        GeneratedFieldModel source = null;
+        for (int index = 0; index < segments.length; index++) {
+            source = findEffectiveField(current, project, segments[index]);
+            if (source == null) {
+                problems.add(Problem.error(path(owner, union),
+                        "Union source path '" + cleanPath + "' has no field '"
+                                + segments[index] + "' on " + current.className() + "."));
+                return;
+            }
+            if (index < segments.length - 1) {
+                if (source.type() != FieldType.ENTITY) {
+                    problems.add(Problem.error(path(owner, union),
+                            "Union source path '" + cleanPath + "' cannot continue through "
+                                    + current.className() + "." + source.name()
+                                    + " because it is not an entity field."));
+                    return;
+                }
+                current = project.findClass(source.entityClassName());
+                if (current == null) {
+                    problems.add(Problem.error(path(owner, union),
+                            "Union source path '" + cleanPath + "' cannot continue through "
+                                    + source.entityClassName() + " because that class does not exist."));
+                    return;
+                }
+            }
+        }
+        if (!compatibleUnionValues(project, union, source)) {
+            problems.add(Problem.error(path(owner, union),
+                    "Union source path '" + cleanPath + "' produces "
+                            + source.displayType() + ", not " + union.displayType() + "."));
+        }
+    }
+
+    private static boolean compatibleUnionValues(
+            GeneratedProjectModel project, GeneratedFieldModel target,
+            GeneratedFieldModel source) {
+        if (source == null || target.type() != source.type()) return false;
+        if (target.type() != FieldType.ENTITY) return true;
+        String expected = clean(target.entityClassName());
+        String actual = clean(source.entityClassName());
+        return expected.isEmpty() || (!actual.isEmpty()
+                && (project.isSameOrSubclass(actual, expected)
+                || EntityRepresentations.mayRepresent(project, expected, actual)));
+    }
+
+    private static GeneratedFieldModel findEffectiveField(
+            GeneratedClassModel owner, GeneratedProjectModel project, String name) {
+        if (owner == null) return null;
+        return owner.effectiveFields(project).stream()
+                .filter(field -> field != null && name.equals(field.name()))
+                .findFirst().orElse(null);
     }
 
     private static void validateOwnedClass(

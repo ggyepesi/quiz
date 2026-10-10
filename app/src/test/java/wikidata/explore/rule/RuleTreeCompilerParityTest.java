@@ -15,6 +15,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * The Phase-3 gate for the extraction compiler: compiling from the editable model
@@ -57,6 +58,12 @@ class RuleTreeCompilerParityTest {
         back.entityClassName("Star");
         back.mapping().propertyPid("P59");
         back.mapping().productionKind(FieldProductionKind.INVERT);   // excluded from the plan
+        GeneratedFieldModel union =
+                root.addField("allStars", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        union.entityClassName("Star");
+        union.mapping().propertyPid("P999");
+        union.mapping().productionKind(FieldProductionKind.UNION);
+        union.mapping().unionSourcePaths().addAll(List.of("stars", "backref"));
         project.rootClass(root);
 
         GeneratedClassModel star = new GeneratedClassModel("Star");
@@ -96,5 +103,8 @@ class RuleTreeCompilerParityTest {
                 RuleNodeQueryBuilder.fieldOptimizedValuesQuery(fromEditable),
                 RuleNodeQueryBuilder.fieldOptimizedValuesQuery(fromCompiled),
                 "fieldOptimizedValuesQuery must be byte-identical");
+        assertFalse(RuleNodeQueryBuilder.valuesQuery(fromEditable).contains("P999"),
+                "a derived union never becomes a datasource query even if stale source "
+                        + "configuration remains on the field");
     }
 }

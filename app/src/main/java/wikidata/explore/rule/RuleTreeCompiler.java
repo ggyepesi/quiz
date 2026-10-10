@@ -98,6 +98,8 @@ public final class RuleTreeCompiler {
         if (clazz.hasDiscriminator()) {
             node.membershipPid(clazz.effectiveDiscriminatorPid());
             node.membershipQid(RuleNode.cleanQid(clazz.discriminatorQid()));
+            node.membershipFilterIncludesDescendants(
+                    clazz.subclassCondition().includeDescendants());
         }
 
         // Explicit instance QIDs: when membership is blank these ARE the
@@ -182,10 +184,12 @@ public final class RuleTreeCompiler {
         FieldProductionKind kind = resolvedProductionKind(field);
         FieldSourceMapping m = field.mapping();
 
-        // INVERT and COMPANION_MATCH fields are DERIVED post-extraction (ModelInverts,
-        // CompanionMatcher) — not fetched — so they don't belong in the query plan.
+        // INVERT, UNION and COMPANION_MATCH fields are DERIVED post-extraction
+        // (ModelInverts, ModelFieldUnions, CompanionMatcher) — not fetched — so they
+        // don't belong in the query plan.
         // (COMPANION_MATCH's propertyPid is the companion property, not a value to load.)
         if (kind == FieldProductionKind.INVERT
+                || kind == FieldProductionKind.UNION
                 || kind == FieldProductionKind.COMPANION_MATCH
                 || kind == FieldProductionKind.OWNED_COMPONENT) {
             return;
@@ -395,6 +399,8 @@ public final class RuleTreeCompiler {
         if (clazz.hasDiscriminator()) {
             node.membershipPid(clazz.discriminatorPid());   // already effective
             node.membershipQid(RuleNode.cleanQid(clazz.discriminatorQid()));
+            node.membershipFilterIncludesDescendants(
+                    clazz.discriminatorIncludesDescendants());
         }
 
         for (String qid : clazz.seedQids()) {
@@ -462,6 +468,7 @@ public final class RuleTreeCompiler {
         CompiledFieldSource m = field.source();
 
         if (kind == FieldProductionKind.INVERT
+                || kind == FieldProductionKind.UNION
                 || kind == FieldProductionKind.COMPANION_MATCH
                 || kind == FieldProductionKind.OWNED_COMPONENT) {
             return;

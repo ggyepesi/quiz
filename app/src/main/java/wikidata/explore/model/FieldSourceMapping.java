@@ -5,6 +5,8 @@ import wikidata.LabelledId;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -49,6 +51,10 @@ public class FieldSourceMapping {
     /** INVERT only: the explicit forward reference on the referenced class. Blank is
      * retained for legacy models, where ModelInverts may infer an unambiguous field. */
     private String inverseField = "";
+
+    /** UNION only: field paths on the owning instance whose values are combined. */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final List<String> unionSourcePaths = new ArrayList<>();
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private MissingQualifierPolicy missingQualifierPolicy;
@@ -184,6 +190,8 @@ public class FieldSourceMapping {
     public String inverseField() { return inverseField; }
 
     public void inverseField(String value) { inverseField = clean(value); }
+
+    public List<String> unionSourcePaths() { return unionSourcePaths; }
 
     public MissingQualifierPolicy missingQualifierPolicy() {
         return missingQualifierPolicy;
@@ -332,6 +340,8 @@ public class FieldSourceMapping {
         matchValueField = other.matchValueField;
         matchRoleField = other.matchRoleField;
         inverseField = other.inverseField;
+        unionSourcePaths.clear();
+        unionSourcePaths.addAll(other.unionSourcePaths);
 
         missingQualifierPolicy = other.missingQualifierPolicy;
         roleKind = other.roleKind;

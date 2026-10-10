@@ -55,6 +55,7 @@ public class FieldSourcePanel extends JPanel {
     // whose rule ALREADY exists are held here; inventing a relevance rule in the
     // editor is how it drifts from what actually compiles.
     private FormRow inverseFieldRow;
+    private FormRow unionSourcesRow;
     private FormRow graphExpansionRow;
     private FormRow subjectFieldRow;
     private FormRow matchValueRow;
@@ -126,6 +127,12 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<FieldProductionKind> productionBox =
             new JComboBox<>(FieldProductionKind.values());
     private final JComboBox<String> inverseFieldBox = new JComboBox<>();
+    // A union's sources are picked from the owning class's declared field tree with
+    // the finite field picker the quiz key uses; a typed path is how a model drifts
+    // from what it names (directive 13).
+    private final JPanel unionSourcesHolder = new JPanel(new BorderLayout());
+    private objectview.viewconfig.ViewConfigEditor unionSourcesPicker;
+    private GeneratedFieldModel unionPickerField;
     private final JComboBox<GraphExpansionPolicy> graphExpansionBox =
             new JComboBox<>(GraphExpansionPolicy.values());
 
@@ -225,12 +232,18 @@ public class FieldSourcePanel extends JPanel {
             refreshStatementFieldControls();
             refreshOwnedComponentControls();
             refreshInverseFieldChoices();
+            if (productionBox.getSelectedItem() == FieldProductionKind.UNION
+                    && (unionSourcesPicker == null || unionPickerField != field)) {
+                refreshUnionSourcePicker();
+            }
             updateRecommendation();
         });
         productionBox.setToolTipText(
                 productionExplain((FieldProductionKind) productionBox.getSelectedItem()));
         inverseFieldBox.setToolTipText("The forward reference on the target class whose "
                 + "values this collection reverses. No datasource query is issued.");
+        unionSourcesHolder.setToolTipText("Tick the fields whose values are combined, read "
+                + "from this instance. Example: moons and moonKinds → moons.");
         graphExpansionBox.setToolTipText("Whether graph discovery follows this typed "
                 + "entity relation. Curated frontier waits for explicit selection.");
         shapeBox.setToolTipText(
@@ -352,6 +365,8 @@ public class FieldSourcePanel extends JPanel {
                 == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = productionBox.getSelectedItem()
                 == FieldProductionKind.INVERT;
+        boolean union = productionBox.getSelectedItem()
+                == FieldProductionKind.UNION;
         boolean statementEnd = productionBox.getSelectedItem()
                 == FieldProductionKind.STATEMENT_SUBJECT
                 || productionBox.getSelectedItem()
@@ -378,6 +393,12 @@ public class FieldSourcePanel extends JPanel {
             propertyPidField.setText("");
             qualifierPidField.setText("");
             requiredBox.setSelected(false);
+        } else if (union) {
+            qualifierPidField.setEnabled(false);
+            shapeBox.setSelectedItem(FieldCardinality.COLLECTION);
+            propertyPidField.setText("");
+            qualifierPidField.setText("");
+            requiredBox.setSelected(false);
         } else if (statementEnd) {
             qualifierPidField.setEnabled(false);
             propertyPidField.setText("");
@@ -395,6 +416,7 @@ public class FieldSourcePanel extends JPanel {
         return !aggregated
                 && production != FieldProductionKind.OWNED_COMPONENT
                 && production != FieldProductionKind.INVERT
+                && production != FieldProductionKind.UNION
                 && production != FieldProductionKind.STATEMENT_SUBJECT
                 && production != FieldProductionKind.STATEMENT_OBJECT;
     }
@@ -613,6 +635,7 @@ public class FieldSourcePanel extends JPanel {
                 field.sortDescending() ? "descending" : "ascending");
         directionBox.setSelectedItem(m.direction());
         productionBox.setSelectedItem(m.productionKind());
+        refreshUnionSourcePicker();
         refreshInverseFieldChoices();
         graphExpansionBox.setSelectedItem(field.graphExpansionPolicy());
         filterOpBox.setSelectedItem(symbolOf(field.filterOperator()));
@@ -681,6 +704,7 @@ refreshOwnedComponentControls();
     private void refreshCompanionApplicability() {
         Object pk = productionBox.getSelectedItem();
         boolean companion = pk == FieldProductionKind.COMPANION_MATCH;
+        applicable(unionSourcesRow, pk == FieldProductionKind.UNION);
         // A DATE field (Auto production) can overlay its value from a referenced
         // date — year ← via.source (e.g. edition.date) — a field-level transform
         // that composes with the field's own source. Enable via (Subject field) +
@@ -784,6 +808,8 @@ refreshOwnedComponentControls();
         GridBagUtils.wideRow(form, y++, producedBy);
         GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
         inverseFieldRow = FormRow.add(form, c, y++, "Inverse of:", inverseFieldBox);
+        unionSourcesRow = FormRow.add(form, c, y++, "Union of fields:",
+                unionSourcesHolder);
         graphExpansionRow = FormRow.add(form, c, y++, "Graph expansion:", graphExpansionBox);
 
         // --- Where it comes from ---
@@ -1056,11 +1082,12 @@ refreshOwnedComponentControls();
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = pk == FieldProductionKind.INVERT;
+        boolean union = pk == FieldProductionKind.UNION;
         boolean statementSubject = pk == FieldProductionKind.STATEMENT_SUBJECT;
         boolean statementObject = pk == FieldProductionKind.STATEMENT_OBJECT;
         boolean statementParticipants =
                 pk == FieldProductionKind.STATEMENT_PARTICIPANTS;
-        if (ownedComponent || inverse || statementSubject || statementObject) {
+        if (ownedComponent || inverse || union || statementSubject || statementObject) {
             // The edge itself is the producer. The component's declared fields load
             // their own properties using the owner's identifier.
             m.propertyPid("");
@@ -1111,6 +1138,8 @@ refreshOwnedComponentControls();
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.COLLECTION);
             field.renderMode(FieldRenderMode.REFERENCE);
+        } else if (union) {
+            field.cardinality(FieldCardinality.COLLECTION);
         } else if (statementSubject) {
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.SINGLE);
@@ -1152,6 +1181,13 @@ refreshOwnedComponentControls();
         m.inverseField(m.productionKind() == FieldProductionKind.INVERT
                 && inverseFieldBox.getSelectedItem() != null
                 ? inverseFieldBox.getSelectedItem().toString() : "");
+        if (m.productionKind() != FieldProductionKind.UNION) {
+            m.unionSourcePaths().clear();
+        } else if (unionSourcesPicker != null && unionPickerField == field) {
+            List<String> picked = pickedUnionSourcePaths();
+            m.unionSourcePaths().clear();
+            m.unionSourcePaths().addAll(picked);
+        }
         propertyLabel.setText(m.propertyLabel());
 
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
@@ -1285,6 +1321,10 @@ refreshOwnedComponentControls();
                     + "in memory from data already generated (no query, no depth, no "
                     + "cycle).<br><i>Example:</i> Category.nominees = the reverse of "
                     + "Oscarnominations.categories.</html>";
+            case UNION -> "<html><b>Union of fields</b> — <b>derived</b>, not fetched: "
+                    + "combine the values already present at the configured field paths, "
+                    + "preserving their order and removing duplicates.<br><i>Example:</i> "
+                    + "allMoons = moons + moonKinds.moons.</html>";
             case COMPANION_MATCH -> "<html><b>Companion match</b> — a <b>Boolean</b> "
                     + "that is true iff a companion statement "
                     + "(<i>Companion&nbsp;property</i>[value, <i>Role&nbsp;qualifier</i>]) "
@@ -1434,6 +1474,65 @@ refreshOwnedComponentControls();
 
     // The class that owns the field being edited (so we can sample its
     // instances for DBpedia property discovery).
+    /** Shows the owning class's declared fields with this union's sources ticked. Built
+     * only for a UNION field: the schema comes from the model's declarations
+     * ({@link wikidata.explore.extract.SnapshotFieldGraph}), never from instances. */
+    private void refreshUnionSourcePicker() {
+        unionSourcesHolder.removeAll();
+        unionSourcesPicker = null;
+        unionPickerField = null;
+        GeneratedClassModel owner = ownerClass();
+        if (field != null && owner != null && field.mapping().productionKind()
+                == FieldProductionKind.UNION) {
+            wikidata.explore.extract.SnapshotFieldGraph.Builder builder =
+                    wikidata.explore.extract.SnapshotFieldGraph.builder();
+            builder.declare(projectModel);
+            wikidata.explore.extract.SnapshotFieldGraph graph = builder.build();
+            objectview.viewconfig.ViewConfigEditor picker =
+                    new objectview.viewconfig.ViewConfigEditor(
+                            unionSourcesConfig(field.mapping().unionSourcePaths()), true,
+                            graph.shapeSample(owner.className()));
+            picker.setSchemas(
+                    value -> graph.fieldSchema(value.typeName(), java.util.Set.of()),
+                    type -> graph.fieldSchema(type, java.util.Set.of()));
+            picker.setPreferredSize(new Dimension(360, 180));
+            unionSourcesHolder.add(picker, BorderLayout.CENTER);
+            unionSourcesPicker = picker;
+            unionPickerField = field;
+        }
+        unionSourcesHolder.revalidate();
+        unionSourcesHolder.repaint();
+    }
+
+    /** The stored source paths as the ticks of a finite field selection. */
+    private static objectview.viewconfig.ViewConfig unionSourcesConfig(List<String> paths) {
+        objectview.viewconfig.ViewConfig root = objectview.viewconfig.ViewConfig.leaf();
+        for (String path : paths) {
+            objectview.viewconfig.ViewConfig level = root;
+            for (String segment : path.split("\\.")) {
+                if (segment.isBlank()) continue;
+                objectview.viewconfig.ViewConfig next = level.getFieldConfig(segment);
+                if (next == null) {
+                    next = objectview.viewconfig.ViewConfig.leaf();
+                    level.addField(segment, next);
+                }
+                level = next;
+            }
+        }
+        return root;
+    }
+
+    /** The ticked paths that end the selection: a ticked object the reader went on to
+     * tick fields under is the way to them, not a source of its own. */
+    private List<String> pickedUnionSourcePaths() {
+        List<objectview.field.FieldPath> selected = unionSourcesPicker.selectedFieldPaths();
+        List<String> dotted = selected.stream().map(objectview.field.FieldPath::dotted).toList();
+        return dotted.stream()
+                .filter(path -> dotted.stream().noneMatch(other ->
+                        other.startsWith(path + ".")))
+                .distinct().toList();
+    }
+
     private GeneratedClassModel ownerClass() {
         if (projectModel == null || field == null) {
             return null;

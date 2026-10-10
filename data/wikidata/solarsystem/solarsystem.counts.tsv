@@ -1,0 +1,5 @@
+# Solar System — per-class counts, one row per save
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-10-09T15:53:19	total=13	Planet=8	PlanetType=2	Moon=1	SolarSystem=1	Sun=1
+2026-10-09T16:39:33	total=39	Moon=27	Planet=8	PlanetType=2	SolarSystem=1	Sun=1
+2026-10-10T00:34:58	total=309	Moon=297	Planet=8	PlanetType=2	SolarSystem=1	Sun=1

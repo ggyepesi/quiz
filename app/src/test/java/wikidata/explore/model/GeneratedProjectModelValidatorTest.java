@@ -12,6 +12,45 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
 
+    @Test void aFieldUnionNamesExistingCompatiblePathsAndACollectionTarget() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel planet = new GeneratedClassModel("Planet");
+        GeneratedClassModel moon = new GeneratedClassModel("Moon");
+        GeneratedClassModel kind = new GeneratedClassModel("MoonKind");
+        project.rootClass(planet);
+        project.addClass(moon);
+        project.addClass(kind);
+        GeneratedFieldModel kinds = planet.addField(
+                "moonKinds", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        kinds.entityClassName("MoonKind");
+        GeneratedFieldModel typed = kind.addField(
+                "moons", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        typed.entityClassName("Moon");
+        GeneratedFieldModel all = planet.addField(
+                "allMoons", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        all.entityClassName("Moon");
+        all.mapping().productionKind(FieldProductionKind.UNION);
+        all.mapping().unionSourcePaths().add("moonKinds.moons");
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("moonKinds.unknown");
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("has no field 'unknown' on MoonKind"));
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("allMoons");
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("reads the field it is producing"));
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("moonKinds.moons");
+        all.cardinality(FieldCardinality.SINGLE);
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("must produce a collection"));
+    }
+
     @Test void sourceContentKeyIsValidatedLikeEveryOtherModeledKey() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");

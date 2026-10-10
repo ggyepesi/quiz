@@ -331,6 +331,10 @@ public class ModelGraphPanel extends JPanel {
                     ? "inverse (choose forward field)"
                     : "inverse of " + field.entityClassName() + "." + forward;
         }
+        if (field.mapping().productionKind() == FieldProductionKind.UNION) {
+            return "union of " + String.join(", ",
+                    field.mapping().unionSourcePaths());
+        }
         String source = switch (field.mapping().sourceType()) {
             case SPARQL -> "WD";
             case DBPEDIA -> "DB";

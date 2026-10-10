@@ -108,6 +108,7 @@ public final class ProjectModelCompiler {
                         ? clazz.effectiveDiscriminatorPid()
                         : "",
                 clazz.discriminatorQid(),
+                clazz.subclassCondition().includeDescendants(),
                 clazz.generationDepth(),
                 clazz.classKind(),
                 CompiledFieldSource.from(
