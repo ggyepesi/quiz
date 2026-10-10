@@ -1037,8 +1037,11 @@ public class RuleTreeExtractor {
                     demand.metadata().contains(FactDemand.EntityMetadata.ALIASES));
             boolean retainLabel = factDemands.stream().anyMatch(demand ->
                     demand.metadata().contains(FactDemand.EntityMetadata.LABEL));
+            boolean retainSitelinks = factDemands.stream().anyMatch(demand ->
+                    demand.metadata().contains(FactDemand.EntityMetadata.SITELINKS));
             int filled = applyEntityClaims(
-                    members, outgoingFields, details, retainLabel, retainAliases);
+                    members, outgoingFields, details, retainLabel, retainAliases,
+                    retainSitelinks);
             if (!outgoingFields.isEmpty()) {
                 g.message("Fetched field(s) [" + names + "] for " + filled + "/"
                                   + memberQids.size() + " members via wbgetentities.\n");
@@ -1062,7 +1065,7 @@ public class RuleTreeExtractor {
             List<WikidataDynamicObject> members,
             List<RuleIncludedField> outgoingFields,
             Map<String, WikidataApiClient.ApiEntity> details) {
-        return applyEntityClaims(members, outgoingFields, details, true, true);
+        return applyEntityClaims(members, outgoingFields, details, true, true, true);
     }
 
     private int applyEntityClaims(
@@ -1070,13 +1073,15 @@ public class RuleTreeExtractor {
             List<RuleIncludedField> outgoingFields,
             Map<String, WikidataApiClient.ApiEntity> details,
             boolean retainLabel,
-            boolean retainAliases) {
+            boolean retainAliases,
+            boolean retainSitelinks) {
 
         int filled = 0;
         for (WikidataDynamicObject member : members) {
             WikidataApiClient.ApiEntity e = details.get(member.qid());
             if (e == null) continue;
             if (retainAliases) member.aliases(e.aliases());
+            if (retainSitelinks) member.enwikiTitle(e.enwikiTitle());
             if (retainLabel && isPlaceholderLabel(member) && !e.label().isBlank()) {
                 member.name(e.label());
             }

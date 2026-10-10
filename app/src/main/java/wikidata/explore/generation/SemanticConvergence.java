@@ -128,7 +128,9 @@ public final class SemanticConvergence {
                                 .filter(java.util.Objects::nonNull)
                                 .map(c -> c.className())
                                 .collect(java.util.stream.Collectors.toSet())
-                                : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan));
+                                : wikidata.explore.model.ClassNameSourcePlan.aliases(sourcePlan),
+                        wikidata.explore.model.ArticleCorrespondencePlan.classes(
+                                model, sourcePlan));
             }
             loaded += fields.loaded();
             fields.completed().forEach(done -> {

@@ -13,6 +13,7 @@ public enum SourceBindingSlot {
     CLASS_IDENTITY("identity", BindingScope.CLASS_IDENTITY),
     CLASS_LABEL("label", BindingScope.CLASS_NAMES),
     CLASS_ALIASES("alternate-names", BindingScope.CLASS_NAMES),
+    ARTICLE_CORRESPONDENCE("article-correspondence", BindingScope.SOURCE_CORRESPONDENCE),
     PRIMARY_FIELD_VALUE("primary", BindingScope.FIELD_VALUE),
     CATEGORY_EVIDENCE("wikipedia-category", BindingScope.FIELD_VALUE),
     FALLBACK_FIELD_VALUE("additional-source", BindingScope.FIELD_VALUE);

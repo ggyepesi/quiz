@@ -72,7 +72,8 @@ public final class DomainSave {
      * so a rule over the spelling would drop exactly the fields the fingerprint is for.
      */
     private static final java.util.Set<String> DECLARATION_IDENTITY_FIELDS = java.util.Set.of(
-            "declarationId", "classDeclarationId", "entityDeclarationId",
+            "declarationId", "classDeclarationId", "contextClassDeclarationId",
+            "entityDeclarationId",
             "baseClassId", "classId", "ownerClassId", "sourceClassId",
             // "selectionId" is where a vocabulary reference's identity now lives: the
             // object's bound stopped being a pair of valueSelection fields and became

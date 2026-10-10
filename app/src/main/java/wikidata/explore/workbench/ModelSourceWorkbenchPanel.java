@@ -11,6 +11,8 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.OwnedComponentSite;
+import wikidata.explore.model.OwnedFieldSources;
 import wikidata.explore.model.ProductionChain;
 import wikidata.explore.model.RuleDirection;
 import wikidata.explore.model.StatementClassSource;
@@ -24,6 +26,7 @@ import wikidata.explore.rule.RuleTreeCompiler;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import workbench.ExploreByExamplePanel;
@@ -767,14 +770,20 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public FieldSampleContext fieldSampleContextForSelected() {
+        List<FieldSampleContext> contexts = fieldSampleContextsForSelected();
+        return contexts.isEmpty() ? null : contexts.getFirst();
+    }
+
+    public List<FieldSampleContext> fieldSampleContextsForSelected() {
         applyEdits();
 
         if (selected
                 instanceof GeneratedFieldModel field) {
-            return fieldSampleContext(projectModel, field);
+            return fieldSampleContexts(projectModel, field,
+                    fieldSourcePanel.selectedSourceSite());
         }
 
-        return null;
+        return List.of();
     }
 
     static FieldSampleContext fieldSampleContext(
@@ -787,6 +796,35 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     owner,
                     field,
                     MembershipPattern.typeQid(owner, model));
+    }
+
+    static List<FieldSampleContext> fieldSampleContexts(
+            GeneratedProjectModel model, GeneratedFieldModel field,
+            OwnedComponentSite selectedSite) {
+        if (model == null || field == null) return List.of();
+        GeneratedClassModel component = model.declaringClass(field);
+        if (component == null || !component.ownedClass()) {
+            FieldSampleContext context = fieldSampleContext(model, field);
+            return context == null ? List.of() : List.of(context);
+        }
+        String path = OwnedFieldSources.declaredFieldPath(component, field);
+        List<OwnedComponentSite> sites = selectedSite == null
+                ? MembershipPattern.ownedBy(component, model).stream()
+                        .map(site -> new OwnedComponentSite(component.className(),
+                                site.ownerClass(), site.fieldName())).toList()
+                : List.of(selectedSite);
+        List<FieldSampleContext> contexts = new java.util.ArrayList<>();
+        for (OwnedComponentSite site : sites) {
+            GeneratedClassModel owner = model.findClass(site.ownerClass());
+            GeneratedFieldModel effective = OwnedFieldSources.effectiveField(
+                    model, component, site, path);
+            if (owner == null || effective == null) continue;
+            GeneratedClassModel bearer = MembershipPattern.owningEntityClass(owner, model);
+            if (bearer != null) owner = bearer;
+            contexts.add(new FieldSampleContext(owner, effective,
+                    MembershipPattern.typeQid(owner, model), site));
+        }
+        return List.copyOf(contexts);
     }
 
     public void useProperty(
@@ -986,8 +1024,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         samplePanel.setClassSampleSupplier(this::classSampleQueryForSelected);
         samplePanel.setClassSampleUnavailableReason(this::classSampleUnavailableReason);
         samplePanel.onClassSample(onClassSample);
-        samplePanel.setFieldSampleSupplier(
-                this::fieldSampleContextForSelected);
+        samplePanel.setFieldSampleContextsSupplier(
+                this::fieldSampleContextsForSelected);
 
         // Success stays out of the reader's way; a failure does not, or the message
         // naming the unsampleable field lands on a tab nobody is looking at.

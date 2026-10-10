@@ -114,6 +114,8 @@
   label: Wikidata id (QID) · Label
   label: Additional names:
   check: Add aliases (Also known as)
+  label: Source links:
+  check: Add English Wikipedia source link
   label: Current source: items with instance of (not selected)
 
 == Statement class - StatementSourcePanel ==

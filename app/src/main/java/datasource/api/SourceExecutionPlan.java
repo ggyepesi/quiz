@@ -69,6 +69,9 @@ public final class SourceExecutionPlan {
                         + binding.target().className()
                         + (binding.target().fieldPath().isBlank() ? ""
                                 : "." + binding.target().fieldPath())
+                        + (binding.target().contextual()
+                                ? " at " + binding.target().contextClassName() + "."
+                                + binding.target().contextFieldPath() : "")
                         + " [" + binding.target().slot().id() + "]: "
                         + previous.recipe().providerId() + "."
                         + previous.recipe().operationId() + " and "

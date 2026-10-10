@@ -13,11 +13,19 @@ public record SourceBindingTarget(
         String className,
         String fieldPath,
         SourceBindingSlot slot,
-        String classDeclarationId) {
+        String classDeclarationId,
+        String contextClassName,
+        String contextFieldPath,
+        String contextClassDeclarationId) {
+
+    public SourceBindingTarget(BindingScope scope, String className, String fieldPath,
+            SourceBindingSlot slot, String classDeclarationId) {
+        this(scope, className, fieldPath, slot, classDeclarationId, "", "", "");
+    }
 
     public SourceBindingTarget(BindingScope scope, String className, String fieldPath,
             SourceBindingSlot slot) {
-        this(scope, className, fieldPath, slot, "");
+        this(scope, className, fieldPath, slot, "", "", "", "");
     }
 
     public SourceBindingTarget {
@@ -26,6 +34,9 @@ public record SourceBindingTarget(
         fieldPath = clean(fieldPath);
         if (slot == null) throw new IllegalArgumentException("Binding slot is required");
         classDeclarationId = clean(classDeclarationId);
+        contextClassName = clean(contextClassName);
+        contextFieldPath = clean(contextFieldPath);
+        contextClassDeclarationId = clean(contextClassDeclarationId);
         if (slot.scope() != scope) {
             throw new IllegalArgumentException(
                     "Source binding slot " + slot + " has scope " + slot.scope()
@@ -37,6 +48,16 @@ public record SourceBindingTarget(
         if (scope != BindingScope.FIELD_VALUE && !fieldPath.isBlank()) {
             throw new IllegalArgumentException(
                     "Only a field-value binding may name a field path");
+        }
+        if (scope != BindingScope.FIELD_VALUE
+                && (!contextClassName.isBlank() || !contextFieldPath.isBlank()
+                || !contextClassDeclarationId.isBlank())) {
+            throw new IllegalArgumentException(
+                    "Only a field-value binding may name an ownership context");
+        }
+        if (contextClassName.isBlank() != contextFieldPath.isBlank()) {
+            throw new IllegalArgumentException(
+                    "An ownership context needs both its class and field path");
         }
     }
 
@@ -56,10 +77,29 @@ public record SourceBindingTarget(
         return new SourceBindingTarget(BindingScope.CLASS_NAMES, className, "", slot);
     }
 
+    public static SourceBindingTarget sourceCorrespondence(
+            String className, SourceBindingSlot slot) {
+        return new SourceBindingTarget(
+                BindingScope.SOURCE_CORRESPONDENCE, className, "", slot);
+    }
+
     public static SourceBindingTarget fieldValue(
             String className, String fieldPath, SourceBindingSlot slot) {
         return new SourceBindingTarget(
                 BindingScope.FIELD_VALUE, className, fieldPath, slot);
+    }
+
+    /** A value source used only when an owned component is produced at one site. */
+    public static SourceBindingTarget ownedFieldValue(
+            String className, String fieldPath,
+            String ownerClassName, String ownerFieldPath,
+            SourceBindingSlot slot) {
+        return new SourceBindingTarget(BindingScope.FIELD_VALUE, className, fieldPath,
+                slot, "", ownerClassName, ownerFieldPath, "");
+    }
+
+    public boolean contextual() {
+        return !contextClassName.isBlank();
     }
 
     /** Slot replacement remains compatible with callers that have not yet resolved the
@@ -70,11 +110,14 @@ public record SourceBindingTarget(
                 && scope == that.scope
                 && className.equals(that.className)
                 && fieldPath.equals(that.fieldPath)
+                && contextClassName.equals(that.contextClassName)
+                && contextFieldPath.equals(that.contextFieldPath)
                 && slot == that.slot;
     }
 
     @Override public int hashCode() {
-        return java.util.Objects.hash(scope, className, fieldPath, slot);
+        return java.util.Objects.hash(scope, className, fieldPath, slot,
+                contextClassName, contextFieldPath);
     }
 
     private static String cleanRequired(String value, String what) {

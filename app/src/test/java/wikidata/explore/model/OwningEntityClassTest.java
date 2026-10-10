@@ -65,10 +65,9 @@ class OwningEntityClassTest {
                 MembershipPattern.describe(name, project));
     }
 
-    /** Owners of DIFFERENT kinds disagree: no one type speaks for the class's fields, so
-     *  the resolution reports nothing rather than taking whichever was declared first —
-     *  and the validator rejects the model, so the UI never has to reason about it. */
-    @Test void sitesOnDifferentKindsOfOwnerDoNotResolve() {
+    /** Owners of different kinds have no single sampling type. The plural site list is
+     *  the answer; the shared schema remains valid and each site may map it differently. */
+    @Test void sitesOnDifferentKindsAreValidAndRequireAChosenSite() {
         GeneratedProjectModel project = project();
         GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
         organisation.membership(EntityBound.relation("P31", List.of("Q43229"), false));
@@ -86,10 +85,7 @@ class OwningEntityClassTest {
 
         GeneratedProjectModelValidator.ValidationResult result =
                 GeneratedProjectModelValidator.validate(project);
-        org.junit.jupiter.api.Assertions.assertTrue(
-                result.problems().stream().anyMatch(problem ->
-                        problem.message().contains("different kinds of entity")),
-                result.format());
+        org.junit.jupiter.api.Assertions.assertTrue(result.valid(), result.format());
     }
 
     /** An owned class nobody owns has no entities behind it — and no cycle hangs it. */

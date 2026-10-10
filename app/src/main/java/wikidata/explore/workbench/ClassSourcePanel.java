@@ -128,7 +128,10 @@ public class ClassSourcePanel extends JPanel {
     private final javax.swing.JLabel canonicalKindLabel = new javax.swing.JLabel();
     private final javax.swing.JLabel canonicalSourcesLabel = new javax.swing.JLabel();
     private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
+    private final JCheckBox wikipediaArticleBox =
+            new JCheckBox("Add English Wikipedia source link");
     private boolean shownAliases;
+    private boolean shownWikipediaArticle;
     private boolean configurationDirty;
     // Mode, field and template, asked the way every kind now asks them.
     private final DisplayNameEditor displayNameEditor = new DisplayNameEditor();
@@ -156,6 +159,7 @@ public class ClassSourcePanel extends JPanel {
         watchConfiguration(rankByBox);
         watchConfiguration(rankDescBox);
         watchConfiguration(aliasesBox);
+        watchConfiguration(wikipediaArticleBox);
         watchConfiguration(displayNameEditor);
         watchConfiguration(identityEditor);
     }
@@ -537,6 +541,10 @@ public class ClassSourcePanel extends JPanel {
                 + "and sort like other fields.");
         GridBagUtils.labeledRow(form, c, y++, "Additional names:", aliasesBox);
 
+        wikipediaArticleBox.setToolTipText("Retain the entity's enwiki sitelink and "
+                + "render it as the Wikipedia source. This is independent of its fields.");
+        GridBagUtils.labeledRow(form, c, y++, "Source links:", wikipediaArticleBox);
+
         GridBagUtils.wideRow(form, y++, summaryLabel);
 
         add(scroll, BorderLayout.CENTER);
@@ -909,6 +917,9 @@ public class ClassSourcePanel extends JPanel {
         shownAliases = clazz != null && ClassSourceBindings.binding(clazz,
                 SourceBindingSlot.CLASS_ALIASES) != null;
         aliasesBox.setSelected(shownAliases);
+        shownWikipediaArticle = clazz != null
+                && ClassSourceBindings.articleCorrespondence(clazz) != null;
+        wikipediaArticleBox.setSelected(shownWikipediaArticle);
         displayNameEditor.show(clazz);
         identityEditor.show(clazz);
 
@@ -934,6 +945,8 @@ public class ClassSourcePanel extends JPanel {
         // well would be the same fact derived two ways — and the two would agree until
         // a construct's identity regime changed on one side only.
         aliasesBox.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
+        wikipediaArticleBox.setEnabled(
+                hasClass && clazz.classKind() == ClassKind.SOURCE);
     }
 
     private String describeClassSources() {
@@ -968,6 +981,11 @@ public class ClassSourcePanel extends JPanel {
             ClassSourceBindings.declareRequiredNameSources(clazz);
             ClassSourceBindings.aliases(clazz, aliasesBox.isSelected());
             shownAliases = aliasesBox.isSelected();
+        }
+        if (wikipediaArticleBox.isSelected() != shownWikipediaArticle) {
+            ClassSourceBindings.wikipediaArticle(
+                    clazz, wikipediaArticleBox.isSelected());
+            shownWikipediaArticle = wikipediaArticleBox.isSelected();
         }
 
         String warning = displayNameEditor.warning();

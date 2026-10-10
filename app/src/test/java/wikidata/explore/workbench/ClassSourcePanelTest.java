@@ -77,6 +77,23 @@ class ClassSourcePanelTest {
         assertNotNull(ClassSourceBindings.binding(person, SourceBindingSlot.CLASS_ALIASES));
     }
 
+    @Test void wikipediaSourceLinkIsAnExplicitPersistedClassChoice() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        ClassSourcePanel panel = panelFor(person);
+        panel.edit(person);
+
+        JCheckBox wikipedia = checkBox(panel, "Add English Wikipedia source link");
+        assertNotNull(wikipedia);
+        assertFalse(wikipedia.isSelected());
+        wikipedia.setSelected(true);
+        panel.applyEdits();
+
+        assertNotNull(ClassSourceBindings.binding(
+                person, SourceBindingSlot.ARTICLE_CORRESPONDENCE));
+        panel.edit(person);
+        assertTrue(checkBox(panel, "Add English Wikipedia source link").isSelected());
+    }
+
     @Test void applyingAPopulationNeverDeclaresInstanceFields() {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         position.membership(wikidata.explore.model.EntityBound.relation(

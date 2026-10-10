@@ -89,6 +89,26 @@ class ClassNameSourcePlanTest {
                 && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
     }
 
+    @Test void aConfiguredWikipediaSourceDemandsAndExposesTheCorrespondence() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel body = new GeneratedClassModel("CelestialBody");
+        GeneratedClassModel moon = new GeneratedClassModel("Moon");
+        moon.baseClassName("CelestialBody");
+        model.rootClass(body);
+        model.addClass(moon);
+        ClassSourceBindings.wikipediaArticle(body, true);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+
+        assertEquals(Set.of("CelestialBody", "Moon"),
+                ArticleCorrespondencePlan.classes(model, plan));
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("CelestialBody")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Moon")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+    }
+
     @Test void aMissingPlanDoesNotPretendEveryClassUsesAnArticle() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.rootClass(new GeneratedClassModel("Movie"));

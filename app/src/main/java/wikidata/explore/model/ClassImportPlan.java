@@ -25,6 +25,7 @@ public final class ClassImportPlan {
     private final List<GeneratedClassModel> classes;
     private final List<Selection> selections;
     private final List<EntityKindRule> kindRules;
+    private final List<EntityRepresentationRule> representationRules;
     private final Set<String> conflicts;
 
     private ClassImportPlan(
@@ -34,6 +35,7 @@ public final class ClassImportPlan {
             List<GeneratedClassModel> classes,
             List<Selection> selections,
             List<EntityKindRule> kindRules,
+            List<EntityRepresentationRule> representationRules,
             Set<String> conflicts) {
         this.source = source;
         this.target = target;
@@ -41,6 +43,7 @@ public final class ClassImportPlan {
         this.classes = List.copyOf(classes);
         this.selections = List.copyOf(selections);
         this.kindRules = List.copyOf(kindRules);
+        this.representationRules = List.copyOf(representationRules);
         this.conflicts = Set.copyOf(conflicts);
     }
 
@@ -68,6 +71,11 @@ public final class ClassImportPlan {
                         clazz.statementSource().sourceClassName());
             }
             collectFieldClassDependencies(source, pending, clazz.fields());
+            source.entityRepresentationRules().stream()
+                    .filter(rule -> rule != null
+                            && rule.roleClassName().equals(clazz.className()))
+                    .forEach(rule -> addClassDependency(source, pending,
+                            rule.representationClassName()));
         }
 
         LinkedHashSet<String> selectionNames = new LinkedHashSet<>();
@@ -101,6 +109,13 @@ public final class ClassImportPlan {
         List<EntityKindRule> rules = source.entityKindRules().stream()
                 .filter(r -> r != null && closure.containsKey(r.className()))
                 .toList();
+        List<EntityRepresentationRule> representations =
+                source.entityRepresentationRules().stream()
+                        .filter(rule -> rule != null
+                                && closure.containsKey(rule.roleClassName())
+                                && closure.containsKey(
+                                        rule.representationClassName()))
+                        .toList();
         LinkedHashSet<String> conflicts = new LinkedHashSet<>();
         closure.keySet().stream().filter(n -> target.findClass(n) != null)
                 .forEach(conflicts::add);
@@ -108,7 +123,8 @@ public final class ClassImportPlan {
                 .filter(n -> target.findSelection(n) != null).forEach(conflicts::add);
 
         return new ClassImportPlan(source, target, requested.className(),
-                new ArrayList<>(closure.values()), selections, rules, conflicts);
+                new ArrayList<>(closure.values()), selections, rules,
+                representations, conflicts);
     }
 
     public String requestedClass() { return requestedClass; }
@@ -250,6 +266,28 @@ public final class ClassImportPlan {
             else copy.importedFrom(owner);
             candidate.replaceEntityKindRule(copy);
         }
+        for (EntityRepresentationRule rule : representationRules) {
+            if (!selected.contains(rule.roleClassName())
+                    || !selected.contains(rule.representationClassName())) continue;
+            String owner = rule.isImported() ? rule.importedFrom() : source.name();
+            EntityRepresentationRule existing = candidate.entityRepresentationRules()
+                    .stream().filter(item -> item.roleClassName().equals(
+                                    rule.roleClassName())
+                            && item.representationClassName().equals(
+                                    rule.representationClassName()))
+                    .findFirst().orElse(null);
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import the " + owner
+                        + " representation " + rule.roleClassName() + " → "
+                        + rule.representationClassName()
+                        + ": a local or differently owned rule already defines it.");
+            }
+            EntityRepresentationRule copy = rule.copy();
+            copy.importedFrom(ownership == Ownership.IMPORT ? owner : "");
+            candidate.replaceEntityRepresentationRule(copy);
+        }
         if (ownership == Ownership.IMPORT) {
             references.forEach((owner, names) ->
                     candidate.addImport(new ModelImport(owner, names)));
@@ -325,6 +363,12 @@ public final class ClassImportPlan {
                 && source.findClass(clazz.statementSource().sourceClassName()) != null) {
             names.add(clazz.statementSource().sourceClassName());
         }
+        source.entityRepresentationRules().stream()
+                .filter(rule -> rule != null
+                        && rule.roleClassName().equals(clazz.className())
+                        && source.findClass(rule.representationClassName()) != null)
+                .map(EntityRepresentationRule::representationClassName)
+                .forEach(names::add);
         collectFieldClassNames(source, names, clazz.fields());
         return names;
     }

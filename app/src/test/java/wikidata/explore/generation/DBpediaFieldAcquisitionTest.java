@@ -76,6 +76,42 @@ class DBpediaFieldAcquisitionTest {
         }
     }
 
+    @Test void contextualBindingFillsOnlyItsOwnedProductionSite() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        discovery.addField("wording", FieldType.STRING, FieldCardinality.SINGLE);
+        model.rootClass(discovery);
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.ownedFieldValue("Discovery", "wording",
+                        "Person", "discovery",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("dbpedia", "property",
+                        Map.of("property", "wording")));
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard());
+        WikidataDynamicObject personPart = part("Q1", "Discovery@Person.discovery");
+        WikidataDynamicObject organisationPart =
+                part("Q1", "Discovery@Organisation.discovery");
+
+        try (FakeClient client = new FakeClient()) {
+            DBpediaFieldAcquisition.apply(model,
+                    List.of(personPart, organisationPart), plan, client,
+                    GenerationLog.NOOP);
+        }
+
+        assertEquals("Sierra Leone", personPart.get("wording"));
+        assertEquals(null, organisationPart.get("wording"));
+    }
+
+    private static WikidataDynamicObject part(String qid, String typeKey) {
+        WikidataDynamicObject value = new WikidataDynamicObject(qid, "Part");
+        value.type("Discovery");
+        value.part(true);
+        value.typeKey(typeKey);
+        return value;
+    }
+
     private static final class FakeClient extends WikidataSparqlClient {
         private String query = "";
         private FakeClient() { super("test", 1, "https://example.test/sparql"); }

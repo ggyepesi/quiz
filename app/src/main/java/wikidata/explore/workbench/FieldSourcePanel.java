@@ -66,6 +66,7 @@ public class FieldSourcePanel extends JPanel {
     private FormRow qualifierTimeRow;
     private FormRow missingQualifierRow;
     private FormRow reifyRoleRow;
+    private FormRow sourceContextRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -188,6 +189,14 @@ public class FieldSourcePanel extends JPanel {
 
     private final JComboBox<FieldSourceType> sourceTypeBox =
             new JComboBox<>(FieldSourceType.values());
+    private final JComboBox<SourceContext> sourceContextBox = new JComboBox<>();
+    private final JButton clearSourceOverrideButton =
+            new JButton("Use shared default");
+    private boolean updatingSourceContext;
+
+    record SourceContext(String label, OwnedComponentSite site) {
+        @Override public String toString() { return label; }
+    }
 
     public FieldSourcePanel() {
         super(new BorderLayout(4, 4));
@@ -481,7 +490,11 @@ public class FieldSourcePanel extends JPanel {
         workbench.AdditionalSourcePicker.choose(this, queryRunner,
                 workbench.AdditionalSourcePicker.ofType(typeQid, 8),
                 choice -> {
-                    FieldSourceMapping fallback = field.ensureFallbackMapping();
+                    OwnedFieldSource override = sourceContext().site() == null
+                            ? null : activeOverride(true);
+                    FieldSourceMapping fallback = override == null
+                            ? field.ensureFallbackMapping()
+                            : override.ensureFallbackMapping();
                     fallback.sourceType(choice.sourceType());
                     fallback.propertyPid(choice.property());
                     fallback.propertyLabel(choice.label());
@@ -493,7 +506,7 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void refreshFallbackLabel() {
-        FieldSourceMapping fallback = field == null ? null : field.fallbackMapping();
+        FieldSourceMapping fallback = activeFallbackMapping();
         boolean set = fallback != null && !fallback.propertyPid().isBlank();
         fallbackLabel.setText(set ? fallback.propertyPid() + " ("
                 + fallback.sourceType() + ")" : "none");
@@ -513,7 +526,7 @@ public class FieldSourcePanel extends JPanel {
      *  rule stays editable on a class whose sample happens to carry no categories. */
     private void editCategoryRule(String observedCategory) {
         if (field == null) return;
-        WikipediaCategoryRule existing = field.wikipediaCategoryRule();
+        WikipediaCategoryRule existing = activeCategoryRule();
         JTextField pattern = new JTextField(observedCategory != null ? observedCategory
                 : existing == null ? "" : existing.pattern(), 28);
         JComboBox<CategoryCandidatePolicy> policy =
@@ -536,7 +549,11 @@ public class FieldSourcePanel extends JPanel {
                     "The pattern must contain exactly one <value> placeholder.");
             return;
         }
-        WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
+        OwnedFieldSource override = sourceContext().site() == null
+                ? null : activeOverride(true);
+        WikipediaCategoryRule rule = override == null
+                ? field.ensureWikipediaCategoryRule()
+                : override.ensureWikipediaCategoryRule();
         rule.pattern(entered);
         rule.policy((CategoryCandidatePolicy) policy.getSelectedItem());
         FieldSourceBindings.synchronizeForSave(projectModel);
@@ -545,7 +562,7 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void refreshCategoryLabel() {
-        WikipediaCategoryRule rule = field == null ? null : field.wikipediaCategoryRule();
+        WikipediaCategoryRule rule = activeCategoryRule();
         boolean set = rule != null && rule.configured();
         categoryLabel.setText(set ? rule.pattern() + " — " + rule.policy() : "none");
         clearCategoryButton.setEnabled(set);
@@ -556,6 +573,18 @@ public class FieldSourcePanel extends JPanel {
      *  are the owner's entities, so they are the ones that carry the properties. */
     private String classTypeQid() {
         GeneratedClassModel owner = ownerClass();
+        OwnedComponentSite site = selectedSourceSite();
+        if (owner != null && owner.ownedClass() && site == null
+                && sourceContextBox.getItemCount() > 2) {
+            JOptionPane.showMessageDialog(this,
+                    "Choose the owner field whose entities should be inspected in "
+                            + "'Source applies to'.",
+                    "Choose owner site", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        if (site != null && projectModel != null) {
+            owner = projectModel.findClass(site.ownerClass());
+        }
         GeneratedClassModel bearer = projectModel == null
                 ? null : MembershipPattern.owningEntityClass(owner, projectModel);
         if (bearer != null) owner = bearer;
@@ -580,16 +609,18 @@ public class FieldSourcePanel extends JPanel {
         // an unapplied PID currently sitting in the editor.
         apply();
         GeneratedClassModel owner = ownerClass();
-        String pid = field == null || field.mapping() == null
-                ? null : RuleNode.cleanPid(field.mapping().propertyPid());
+        FieldSourceMapping source = activeSourceMapping(false);
+        String pid = source == null ? null
+                : RuleNode.cleanPid(source.propertyPid());
         if (field == null || owner == null || pid == null || pid.isBlank()) {
             JOptionPane.showMessageDialog(this,
                     "Only a field loaded from a property can be re-fetched.",
                     "Re-fetch", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        OwnedComponentSite site = selectedSourceSite();
         onReloadField.accept(wikidata.explore.extract.LoadedDeclaration.key(
-                owner.className(), field.name(), pid));
+                site == null ? owner.className() : site.key(), field.name(), pid));
         applyStatusLabel.setText("✓ will re-fetch " + field.name());
     }
 
@@ -604,7 +635,13 @@ public class FieldSourcePanel extends JPanel {
         return propertyPidField;
     }
 
+    javax.swing.JComboBox<SourceContext> sourceContextBox() {
+        return sourceContextBox;
+    }
+
     public void edit(GeneratedFieldModel field) {
+        OwnedComponentSite previousSite = this.field == field
+                ? selectedSourceSite() : null;
         this.field = field;
 
         if (field == null) {
@@ -617,7 +654,7 @@ public class FieldSourcePanel extends JPanel {
         titleLabel.setText("Field: " + field.name());
 
         fieldDefinitionPanel.edit(field.definition());
-        sourceTypeBox.setSelectedItem(m.sourceType());
+        refreshSourceContexts(previousSite);
         // What is stored, not a guess: a blank class is an unclassed reference to
         // generation, and showing a class derived from the field name made the flush
         // store one nobody chose. The guess still seeds a field when its property is
@@ -633,7 +670,6 @@ public class FieldSourcePanel extends JPanel {
                 field.hasSort() ? field.sortFieldName() : NO_SORT);
         sortDirBox.setSelectedItem(
                 field.sortDescending() ? "descending" : "ascending");
-        directionBox.setSelectedItem(m.direction());
         productionBox.setSelectedItem(m.productionKind());
         refreshUnionSourcePicker();
         refreshInverseFieldChoices();
@@ -642,25 +678,133 @@ public class FieldSourcePanel extends JPanel {
         filterValueField.setText(field.filterValue() == null
                                          ? "" : trimDouble(field.filterValue()));
 
-        propertyPidField.setText(m.propertyPid());
-        qualifierPidField.setText(m.qualifierPid());
-        valueLanguageField.setText(m.valueLanguage());
-        qualifierDateModeBox.setSelectedItem(m.qualifierDateMode());
         missingQualifierBox.setSelectedItem(
                 policyLabel(m.missingQualifierPolicy()));
         roleKindBox.setSelectedItem(m.roleKind());
         refreshStatementFieldControls();
         expectationBox.setSelectedItem(field.expectation());
-        propertyLabel.setText(m.propertyLabel());
-
-        limitSpinner.setValue(Math.max(1, m.limit()));
-
         refreshCompanionRows();
         refreshFallbackLabel();
         refreshCategoryLabel();
         updateRecommendation();
-refreshOwnedComponentControls();
-                refreshGraphExpansionControl();
+        refreshOwnedComponentControls();
+        refreshGraphExpansionControl();
+    }
+
+    private void refreshSourceContexts(OwnedComponentSite selectedSite) {
+        updatingSourceContext = true;
+        sourceContextBox.removeAllItems();
+        sourceContextBox.addItem(new SourceContext("Shared default", null));
+        GeneratedClassModel component = ownerClass();
+        if (component != null && component.ownedClass() && projectModel != null) {
+            for (MembershipPattern.OwnedBy ownedBy :
+                    MembershipPattern.ownedBy(component, projectModel)) {
+                SourceContext context = new SourceContext(
+                        ownedBy.ownerClass() + "." + ownedBy.fieldName(),
+                        new OwnedComponentSite(component.className(),
+                                ownedBy.ownerClass(), ownedBy.fieldName()));
+                sourceContextBox.addItem(context);
+                if (context.site().equals(selectedSite)) {
+                    sourceContextBox.setSelectedItem(context);
+                }
+            }
+        }
+        if (sourceContextBox.getSelectedItem() == null) sourceContextBox.setSelectedIndex(0);
+        updatingSourceContext = false;
+        applicable(sourceContextRow, sourceContextBox.getItemCount() > 1);
+        loadSelectedSourceContext();
+    }
+
+    private void loadSelectedSourceContext() {
+        FieldSourceMapping mapping = activeSourceMapping(false);
+        if (mapping == null) mapping = field == null ? null : field.mapping();
+        if (mapping == null) return;
+        sourceTypeBox.setSelectedItem(mapping.sourceType());
+        directionBox.setSelectedItem(mapping.direction());
+        propertyPidField.setText(mapping.propertyPid());
+        qualifierPidField.setText(mapping.qualifierPid());
+        valueLanguageField.setText(mapping.valueLanguage());
+        qualifierDateModeBox.setSelectedItem(mapping.qualifierDateMode());
+        propertyLabel.setText(mapping.propertyLabel());
+        limitSpinner.setValue(Math.max(1, mapping.limit()));
+        refreshFallbackLabel();
+        refreshCategoryLabel();
+        updateRecommendation();
+        clearSourceOverrideButton.setEnabled(
+                selectedSourceSite() != null && activeOverride(false) != null);
+    }
+
+    private void clearSourceOverride() {
+        OwnedComponentSite site = selectedSourceSite();
+        if (site == null || projectModel == null) return;
+        GeneratedFieldModel ownership = OwnedFieldSources.ownershipField(projectModel, site);
+        OwnedFieldSources.removeOverride(ownership, componentFieldPath());
+        FieldSourceBindings.synchronizeForSave(projectModel);
+        loadSelectedSourceContext();
+        afterChange.accept(null);
+    }
+
+    private SourceContext sourceContext() {
+        Object selected = sourceContextBox.getSelectedItem();
+        return selected instanceof SourceContext context ? context
+                : new SourceContext("Shared default", null);
+    }
+
+    public OwnedComponentSite selectedSourceSite() {
+        return sourceContext().site();
+    }
+
+    private String componentFieldPath() {
+        return OwnedFieldSources.declaredFieldPath(ownerClass(), field);
+    }
+
+    private OwnedFieldSource activeOverride(boolean create) {
+        SourceContext context = sourceContext();
+        if (context.site() == null || projectModel == null) return null;
+        GeneratedFieldModel ownership =
+                OwnedFieldSources.ownershipField(projectModel, context.site());
+        String path = componentFieldPath();
+        OwnedFieldSource override = OwnedFieldSources.override(ownership, path);
+        if (override == null && create) {
+            override = OwnedFieldSources.ensureOverride(ownership, path);
+            override.mapping().copyAcquisitionFrom(field.mapping());
+            if (field.fallbackMapping() != null) {
+                override.fallbackMapping(field.fallbackMapping().copy());
+            }
+            if (field.wikipediaCategoryRule() != null) {
+                override.wikipediaCategoryRule(field.wikipediaCategoryRule().copy());
+            }
+        }
+        return override;
+    }
+
+    private FieldSourceMapping activeSourceMapping(boolean create) {
+        OwnedFieldSource override = activeOverride(create);
+        return override == null ? field == null ? null : field.mapping()
+                : override.mapping();
+    }
+
+    private FieldSourceMapping activeFallbackMapping() {
+        OwnedFieldSource override = activeOverride(false);
+        return override == null ? field == null ? null : field.fallbackMapping()
+                : override.fallbackMapping();
+    }
+
+    private WikipediaCategoryRule activeCategoryRule() {
+        OwnedFieldSource override = activeOverride(false);
+        return override == null ? field == null ? null : field.wikipediaCategoryRule()
+                : override.wikipediaCategoryRule();
+    }
+
+    private boolean sourceEditorDiffers(FieldSourceMapping mapping) {
+        if (mapping == null) return false;
+        return mapping.sourceType() != sourceTypeBox.getSelectedItem()
+                || !mapping.propertyPid().equals(propertyPidField.getText().trim())
+                || !mapping.qualifierPid().equals(
+                        RuleNode.cleanPid(qualifierPidField.getText()))
+                || !mapping.valueLanguage().equals(valueLanguageField.getText().trim())
+                || mapping.qualifierDateMode() != qualifierDateModeBox.getSelectedItem()
+                || mapping.direction() != directionBox.getSelectedItem();
     }
 
     // Populate the COMPANION_MATCH match-field pickers from the owning class's
@@ -757,11 +901,13 @@ refreshOwnedComponentControls();
             return;
         }
 
-        field.mapping().propertyPid(pid);
-        field.mapping().propertyLabel(label);
+        FieldSourceMapping source = activeSourceMapping(
+                sourceContext().site() != null);
+        source.propertyPid(pid);
+        source.propertyLabel(label);
 
-        propertyPidField.setText(field.mapping().propertyPid());
-        propertyLabel.setText(field.mapping().propertyLabel());
+        propertyPidField.setText(source.propertyPid());
+        propertyLabel.setText(source.propertyLabel());
 
         autoAdjustFromProperty(pid, label);
 
@@ -814,6 +960,14 @@ refreshOwnedComponentControls();
 
         // --- Where it comes from ---
         GridBagUtils.wideRow(form, y++, sectionLabel("Source"));
+        sourceContextBox.setToolTipText("Shared default, or a source override used only "
+                + "when this owned component is produced by the selected owner field.");
+        JPanel sourceContextPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        sourceContextPanel.add(sourceContextBox);
+        sourceContextPanel.add(clearSourceOverrideButton);
+        clearSourceOverrideButton.addActionListener(e -> clearSourceOverride());
+        sourceContextRow = FormRow.add(
+                form, c, y++, "Source applies to:", sourceContextPanel);
         GridBagUtils.labeledRow(form, c, y++, "From:", sourceTypeBox);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -837,7 +991,10 @@ refreshOwnedComponentControls();
                 + "or its DBpedia projection, used only when the primary has no value.");
         fallbackButton.addActionListener(e -> chooseFallback());
         clearFallbackButton.addActionListener(e -> {
-            if (field != null) field.fallbackMapping(null);
+            OwnedFieldSource override = sourceContext().site() == null
+                    ? null : activeOverride(true);
+            if (override != null) override.fallbackMapping(null);
+            else if (field != null) field.fallbackMapping(null);
             FieldSourceBindings.synchronizeForSave(projectModel);
             refreshFallbackLabel();
             afterChange.accept(null);
@@ -852,7 +1009,10 @@ refreshOwnedComponentControls();
                 + "as an additive, versioned source for this field.");
         categoryButton.addActionListener(e -> configureCategoryRule());
         clearCategoryButton.addActionListener(e -> {
-            if (field != null) field.wikipediaCategoryRule(null);
+            OwnedFieldSource override = sourceContext().site() == null
+                    ? null : activeOverride(true);
+            if (override != null) override.wikipediaCategoryRule(null);
+            else if (field != null) field.wikipediaCategoryRule(null);
             FieldSourceBindings.synchronizeForSave(projectModel);
             refreshCategoryLabel();
             afterChange.accept(null);
@@ -964,6 +1124,9 @@ refreshOwnedComponentControls();
             updateRecommendation();
             refreshGraphExpansionControl();
         });
+        sourceContextBox.addActionListener(e -> {
+            if (!updatingSourceContext) loadSelectedSourceContext();
+        });
         objectTypeBox.addActionListener(e -> {
             if (updatingObjectTypeBox) {
                 return;
@@ -1072,13 +1235,22 @@ refreshOwnedComponentControls();
         // to revisit it.
 
         FieldSourceMapping m = field.mapping();
-        m.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
-        m.propertyPid(propertyPidField.getText());
-        m.qualifierPid(
-                RuleNode.cleanPid(qualifierPidField.getText()));
-        m.valueLanguage(valueLanguageField.getText());
-        m.qualifierDateMode(
-                (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
+        OwnedFieldSource existingOverride = activeOverride(false);
+        FieldSourceMapping displayedSource = existingOverride == null
+                ? m : existingOverride.mapping();
+        boolean sourceChanged = sourceEditorDiffers(displayedSource);
+        FieldSourceMapping source = sourceContext().site() == null
+                ? m : existingOverride != null || sourceChanged
+                ? activeSourceMapping(true) : null;
+        if (source != null) {
+            source.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
+            source.propertyPid(propertyPidField.getText());
+            source.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
+            source.valueLanguage(valueLanguageField.getText());
+            source.qualifierDateMode(
+                    (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
+            source.direction((RuleDirection) directionBox.getSelectedItem());
+        }
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = pk == FieldProductionKind.INVERT;
@@ -1119,14 +1291,16 @@ refreshOwnedComponentControls();
             m.matchValueField(v == null ? "" : v.toString());
             m.matchRoleField(r == null ? "" : r.toString());
         }
-        m.direction((RuleDirection) directionBox.getSelectedItem());
+        if (sourceContext().site() == null) {
+            m.direction((RuleDirection) directionBox.getSelectedItem());
+        }
 
         // autoAdjustFromProperty inspects a WIKIDATA property. A post-extraction source
         // does not name one — "numbermainstars", "Infobox film.country" — so the source
         // itself says whether there is a PID here to inspect.
         if (typeBox.getSelectedItem() == FieldType.AUTO
-                && !m.sourceType().filledAfterExtraction()) {
-            autoAdjustFromProperty(m.propertyPid(), m.propertyLabel());
+                && source != null && !source.sourceType().filledAfterExtraction()) {
+            autoAdjustFromProperty(source.propertyPid(), source.propertyLabel());
         }
 
         field.definition(fieldDefinitionPanel.definition());
@@ -1188,7 +1362,8 @@ refreshOwnedComponentControls();
             m.unionSourcePaths().clear();
             m.unionSourcePaths().addAll(picked);
         }
-        propertyLabel.setText(m.propertyLabel());
+        propertyLabel.setText(source == null
+                ? displayedSource.propertyLabel() : source.propertyLabel());
 
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
                 owner,
@@ -1216,6 +1391,8 @@ refreshOwnedComponentControls();
         titleLabel.setText("Field: " + field.name());
 
         updateRecommendation();
+        clearSourceOverrideButton.setEnabled(
+                selectedSourceSite() != null && activeOverride(false) != null);
 
         // The model changed either way — the tree labels and the dirty state depend on it.
         // Only the ANNOUNCEMENT is optional: a confirmation flash and a re-selection make
@@ -1814,6 +1991,12 @@ refreshOwnedComponentControls();
 
     private void clear() {
         titleLabel.setText("Field");
+        updatingSourceContext = true;
+        sourceContextBox.removeAllItems();
+        sourceContextBox.addItem(new SourceContext("Shared default", null));
+        updatingSourceContext = false;
+        clearSourceOverrideButton.setEnabled(false);
+        applicable(sourceContextRow, false);
         fieldNameField.setText("");
         refreshObjectTypeBox("");
         propertyPidField.setText("");

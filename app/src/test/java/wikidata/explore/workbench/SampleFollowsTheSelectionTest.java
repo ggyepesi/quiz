@@ -22,6 +22,47 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SampleFollowsTheSelectionTest {
 
+    @Test void sharedOwnedFieldSamplingCoversAllSitesAndUsesTheirOverrides() {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var person = new wikidata.explore.model.GeneratedClassModel("Person");
+        person.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", List.of("Q5"), false));
+        var personDiscovery = person.addField("discovery", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        personDiscovery.entityClassName("Discovery");
+        personDiscovery.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+        var constellation = new wikidata.explore.model.GeneratedClassModel("Constellation");
+        constellation.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", List.of("Q8928"), false));
+        var constellationDiscovery = constellation.addField(
+                "discovery", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        constellationDiscovery.entityClassName("Discovery");
+        constellationDiscovery.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+        var discovery = new wikidata.explore.model.GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        var date = discovery.addField("date", datasource.schema.FieldType.DATE,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        date.mapping().propertyPid("P575");
+        var override = wikidata.explore.model.OwnedFieldSources.ensureOverride(
+                constellationDiscovery, "date");
+        override.mapping().copyAcquisitionFrom(date.mapping());
+        override.mapping().propertyPid("P61");
+        model.rootClass(person);
+        model.addClass(constellation);
+        model.addClass(discovery);
+
+        var contexts = ModelSourceWorkbenchPanel.fieldSampleContexts(
+                model, date, null);
+
+        assertEquals(List.of("Person", "Constellation"), contexts.stream()
+                .map(value -> value.ownerClass().className()).toList());
+        assertEquals(List.of("P575", "P61"), contexts.stream()
+                .map(value -> value.field().mapping().propertyPid()).toList());
+    }
+
     /** One question — sample what is selected — so one control asks it. */
     @Test void thereIsOneSampleButton() {
         List<JButton> buttons = buttonsIn(new NodeSamplePanel());

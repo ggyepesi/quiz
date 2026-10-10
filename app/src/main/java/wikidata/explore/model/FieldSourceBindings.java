@@ -40,11 +40,15 @@ public final class FieldSourceBindings {
                 }
             }
             synchronize(owner, path, field);
+            migrateOwnedOverrides(owner, path, field);
         });
     }
 
     public static void synchronizeForSave(GeneratedProjectModel project) {
-        visit(project, FieldSourceBindings::synchronize);
+        visit(project, (owner, path, field) -> {
+            synchronize(owner, path, field);
+            synchronizeOwnedOverrides(owner, path, field);
+        });
     }
 
     /** Banks pending edits and returns the FIELD bindings, in model order. Class
@@ -69,6 +73,24 @@ public final class FieldSourceBindings {
                 }
                 bindings.add(binding);
             }
+            for (OwnedFieldSource override : field.ownedFieldSources()) {
+                if (override == null) continue;
+                for (SourceBinding binding : override.sourceBindings()) {
+                    SourceBindingTarget target = binding.target();
+                    if (!field.entityClassName().equals(target.className())
+                            || !override.fieldPath().equals(target.fieldPath())
+                            || !owner.equals(target.contextClassName())
+                            || !path.equals(target.contextFieldPath())) {
+                        throw new IllegalArgumentException("Contextual source binding target "
+                                + target.className() + "." + target.fieldPath()
+                                + " at " + target.contextClassName() + "."
+                                + target.contextFieldPath() + " is stored on "
+                                + owner + "." + path + " for "
+                                + field.entityClassName() + "." + override.fieldPath());
+                    }
+                    bindings.add(binding);
+                }
+            }
         });
         return List.copyOf(bindings);
     }
@@ -78,6 +100,22 @@ public final class FieldSourceBindings {
         if (field == null || binding == null) return;
         if (binding.target().scope() != datasource.api.BindingScope.FIELD_VALUE) {
             throw new IllegalArgumentException("A model field needs a field-value binding");
+        }
+        if (binding.target().contextual()) {
+            throw new IllegalArgumentException(
+                    "A contextual binding belongs to its owned-field source override");
+        }
+        field.sourceBindings().removeIf(existing -> existing.sameTarget(binding));
+        field.sourceBindings().add(binding);
+        projectLegacy(field, binding);
+    }
+
+    public static void put(OwnedFieldSource field, SourceBinding binding) {
+        if (field == null || binding == null) return;
+        if (binding.target().scope() != datasource.api.BindingScope.FIELD_VALUE
+                || !binding.target().contextual()) {
+            throw new IllegalArgumentException(
+                    "An owned-field source needs a contextual field-value binding");
         }
         field.sourceBindings().removeIf(existing -> existing.sameTarget(binding));
         field.sourceBindings().add(binding);
@@ -102,24 +140,63 @@ public final class FieldSourceBindings {
                 category(owner, path, field.wikipediaCategoryRule()));
     }
 
+    private static void migrateOwnedOverrides(
+            String owner, String path, GeneratedFieldModel ownershipField) {
+        for (OwnedFieldSource override : ownershipField.ownedFieldSources()) {
+            if (override == null) continue;
+            for (SourceBinding binding : List.copyOf(override.sourceBindings())) {
+                projectLegacy(override, binding);
+            }
+        }
+        synchronizeOwnedOverrides(owner, path, ownershipField);
+    }
+
+    private static void synchronizeOwnedOverrides(
+            String owner, String path, GeneratedFieldModel ownershipField) {
+        for (OwnedFieldSource override : ownershipField.ownedFieldSources()) {
+            if (override == null || override.fieldPath().isBlank()) continue;
+            SourceBindingTarget primaryTarget = SourceBindingTarget.ownedFieldValue(
+                    ownershipField.entityClassName(), override.fieldPath(), owner, path,
+                    SourceBindingSlot.PRIMARY_FIELD_VALUE);
+            SourceBindingTarget fallbackTarget = SourceBindingTarget.ownedFieldValue(
+                    ownershipField.entityClassName(), override.fieldPath(), owner, path,
+                    SourceBindingSlot.FALLBACK_FIELD_VALUE);
+            SourceBindingTarget categoryTarget = SourceBindingTarget.ownedFieldValue(
+                    ownershipField.entityClassName(), override.fieldPath(), owner, path,
+                    SourceBindingSlot.CATEGORY_EVIDENCE);
+            replace(override.sourceBindings(), SourceBindingSlot.PRIMARY_FIELD_VALUE,
+                    primary(primaryTarget, override.mapping()));
+            replace(override.sourceBindings(), SourceBindingSlot.FALLBACK_FIELD_VALUE,
+                    fallback(fallbackTarget, override.fallbackMapping()));
+            replace(override.sourceBindings(), SourceBindingSlot.CATEGORY_EVIDENCE,
+                    category(categoryTarget, override.wikipediaCategoryRule()));
+        }
+    }
+
     private static SourceBinding primary(
             String owner, String path, FieldSourceMapping mapping) {
+        return primary(SourceBindingTarget.fieldValue(
+                owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE), mapping);
+    }
+
+    private static SourceBinding primary(
+            SourceBindingTarget target, FieldSourceMapping mapping) {
         if (mapping == null) return null;
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
-            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+            return binding(target,
                     WikidataDatasourceProvider.ID, WikidataDatasourceProvider.SITELINK_COUNT,
                     Map.of());
         }
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
             if (clean(mapping.propertyPid()).isBlank()) return null;
-            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+            return binding(target,
                     WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.INCOMING_RELATION_COUNT,
                     Map.of(PROPERTY, clean(mapping.propertyPid())));
         }
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT) {
             if (clean(mapping.propertyPid()).isBlank()) return null;
-            return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+            return binding(target,
                     WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.INHERITED_INCOMING_RELATION_COUNT,
                     Map.of(PROPERTY, clean(mapping.propertyPid())));
@@ -127,7 +204,7 @@ public final class FieldSourceBindings {
         if (clean(mapping.propertyPid()).isBlank()) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null) return null;
-        return binding(owner, path, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+        return binding(target,
                 source.provider(), source.operation(),
                 Map.of(PROPERTY, clean(mapping.propertyPid()),
                         LABEL, clean(mapping.propertyLabel()),
@@ -138,11 +215,17 @@ public final class FieldSourceBindings {
 
     private static SourceBinding fallback(
             String owner, String path, FieldSourceMapping mapping) {
+        return fallback(SourceBindingTarget.fieldValue(
+                owner, path, SourceBindingSlot.FALLBACK_FIELD_VALUE), mapping);
+    }
+
+    private static SourceBinding fallback(
+            SourceBindingTarget target, FieldSourceMapping mapping) {
         if (mapping == null || clean(mapping.propertyPid()).isBlank()
                 || mapping.sourceType() == null) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null || WikidataDatasourceProvider.ID.equals(source.provider())) return null;
-        return binding(owner, path, SourceBindingSlot.FALLBACK_FIELD_VALUE,
+        return binding(target,
                 source.provider(), source.operation(), Map.of(PROPERTY, clean(mapping.propertyPid()),
                         LABEL, clean(mapping.propertyLabel()),
                         SOURCE_TYPE, mapping.sourceType().name()));
@@ -150,49 +233,80 @@ public final class FieldSourceBindings {
 
     private static SourceBinding category(
             String owner, String path, WikipediaCategoryRule rule) {
+        return category(SourceBindingTarget.fieldValue(
+                owner, path, SourceBindingSlot.CATEGORY_EVIDENCE), rule);
+    }
+
+    private static SourceBinding category(
+            SourceBindingTarget target, WikipediaCategoryRule rule) {
         if (rule == null || clean(rule.pattern()).isBlank()) return null;
-        return binding(owner, path, SourceBindingSlot.CATEGORY_EVIDENCE,
+        return binding(target,
                 WikipediaDatasourceProvider.ID, WikipediaCategoryDiscoveryOperation.ID,
                 Map.of(PATTERN, clean(rule.pattern()), POLICY, rule.policy().name()));
     }
 
     private static SourceBinding binding(String owner, String path, SourceBindingSlot slot,
             String provider, String operation, Map<String, String> parameters) {
-        return new SourceBinding(SourceBindingTarget.fieldValue(owner, path, slot),
+        return binding(SourceBindingTarget.fieldValue(owner, path, slot), provider,
+                operation, parameters);
+    }
+
+    private static SourceBinding binding(SourceBindingTarget target,
+            String provider, String operation, Map<String, String> parameters) {
+        return new SourceBinding(target,
                 new SourceRecipe(provider, operation, parameters));
     }
 
     private static void replace(
             GeneratedFieldModel field, SourceBindingSlot slot, SourceBinding replacement) {
-        field.sourceBindings().removeIf(binding -> binding.target().slot() == slot
+        replace(field.sourceBindings(), slot, replacement);
+    }
+
+    private static void replace(
+            List<SourceBinding> bindings, SourceBindingSlot slot,
+            SourceBinding replacement) {
+        bindings.removeIf(binding -> binding.target().slot() == slot
                 && (replacement != null || legacyProjected(binding.recipe())));
-        if (replacement != null) field.sourceBindings().add(replacement);
+        if (replacement != null) bindings.add(replacement);
     }
 
     private static void projectLegacy(GeneratedFieldModel field, SourceBinding binding) {
+        projectLegacy(field.mapping(), field::ensureFallbackMapping,
+                field::ensureWikipediaCategoryRule, binding);
+    }
+
+    private static void projectLegacy(OwnedFieldSource field, SourceBinding binding) {
+        projectLegacy(field.mapping(), field::ensureFallbackMapping,
+                field::ensureWikipediaCategoryRule, binding);
+    }
+
+    private static void projectLegacy(FieldSourceMapping primary,
+            java.util.function.Supplier<FieldSourceMapping> fallback,
+            java.util.function.Supplier<WikipediaCategoryRule> category,
+            SourceBinding binding) {
         SourceBindingSlot slot = binding.target().slot();
         SourceRecipe recipe = binding.recipe();
         if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
-            WikipediaCategoryRule rule = field.ensureWikipediaCategoryRule();
+            WikipediaCategoryRule rule = category.get();
             rule.pattern(recipe.parameter(PATTERN));
             try { rule.policy(CategoryCandidatePolicy.valueOf(recipe.parameter(POLICY))); }
             catch (RuntimeException ignored) { rule.policy(CategoryCandidatePolicy.REVIEW); }
             return;
         }
         if (slot == SourceBindingSlot.FALLBACK_FIELD_VALUE) {
-            FieldSourceMapping mapping = field.ensureFallbackMapping();
+            FieldSourceMapping mapping = fallback.get();
             mapping.sourceType(sourceType(recipe));
             mapping.propertyPid(recipe.parameter(PROPERTY));
             mapping.propertyLabel(recipe.parameter(LABEL));
         } else if (slot == SourceBindingSlot.PRIMARY_FIELD_VALUE) {
-            field.mapping().sourceType(sourceType(recipe));
-            field.mapping().propertyPid(recipe.parameter(PROPERTY));
-            field.mapping().propertyLabel(recipe.parameter(LABEL));
+            primary.sourceType(sourceType(recipe));
+            primary.propertyPid(recipe.parameter(PROPERTY));
+            primary.propertyLabel(recipe.parameter(LABEL));
             // Old bindings predate this parameter; absence must not erase the
             // mapping-side value during migration. An explicit blank still clears it.
             if (recipe.parameters().containsKey(VALUE_LANGUAGE)) {
-                field.mapping().valueLanguage(recipe.parameter(VALUE_LANGUAGE));
+                primary.valueLanguage(recipe.parameter(VALUE_LANGUAGE));
             }
         }
     }

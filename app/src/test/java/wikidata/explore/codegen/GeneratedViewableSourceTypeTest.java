@@ -8,6 +8,7 @@ import wikidata.explore.model.FieldCardinality;
 import wikidata.explore.model.FieldRenderMode;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.ClassSourceBindings;
 
 import java.util.List;
 
@@ -87,6 +88,30 @@ class GeneratedViewableSourceTypeTest {
         assertTrue(source.contains("@objectview.annotations.Label(\"Catalog source\")"));
         assertTrue(source.contains("public String catalogSource"));
         assertFalse(source.contains("wikidataSource"));
+    }
+
+    @Test void configuredWikipediaCorrespondenceIsARealLinkedSourceField()
+            throws Exception {
+        GeneratedClassModel body = new GeneratedClassModel("CelestialBody");
+        ClassSourceBindings.wikipediaArticle(body, true);
+
+        String source = generator.sourceFor(body);
+
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikipedia source\")"));
+        assertTrue(source.contains("public objectview.Viewable wikipediaSource"));
+
+        var dynamic = new wikidata.explore.extract.WikidataDynamicObject("Q525", "Sun");
+        dynamic.type("CelestialBody");
+        dynamic.enwikiTitle("Sun");
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(body)) {
+            objectview.Viewable mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(dynamic)).getFirst();
+            Object article = objectview.field.FieldSet.of(mapped).read("wikipediaSource");
+            assertTrue(article instanceof quiz.source.WikipediaSource);
+            assertEquals("https://en.wikipedia.org/wiki/Sun",
+                    ((quiz.source.WikipediaSource) article).url());
+        }
     }
 
     @Test void aStatementRetainsItsWikidataOccurrenceLink() throws Exception {

@@ -273,6 +273,15 @@ public class GeneratedProjectModel {
                 .map(EntityRepresentationRule::copy).forEach(entityRepresentationRules::add);
     }
 
+    public void replaceEntityRepresentationRule(EntityRepresentationRule replacement) {
+        if (replacement == null || !replacement.isConfigured()) return;
+        entityRepresentationRules.removeIf(rule -> rule != null
+                && rule.roleClassName().equals(replacement.roleClassName())
+                && rule.representationClassName().equals(
+                        replacement.representationClassName()));
+        entityRepresentationRules.add(replacement);
+    }
+
     /** Replaces the ordered alternatives owned by one role class. */
     public void representationClasses(GeneratedClassModel role, List<String> classNames) {
         if (role == null) return;
@@ -488,6 +497,11 @@ public class GeneratedProjectModel {
                 field.entityReference(targetId, to);
             }
             renameBindingTargets(field.sourceBindings(), from, to, targetId);
+            for (OwnedFieldSource override : field.ownedFieldSources()) {
+                if (override != null) {
+                    renameBindingTargets(override.sourceBindings(), from, to, targetId);
+                }
+            }
             renameFieldTargets(field.fields(), from, to, targetId);
         }
     }
@@ -501,13 +515,22 @@ public class GeneratedProjectModel {
         if (bindings == null) return;
         for (int i = 0; i < bindings.size(); i++) {
             datasource.api.SourceBinding binding = bindings.get(i);
-            if (binding == null || !references(targetId,
-                    binding.target().classDeclarationId(), from,
-                    binding.target().className())) continue;
+            if (binding == null) continue;
             datasource.api.SourceBindingTarget target = binding.target();
+            boolean renameTarget = references(targetId, target.classDeclarationId(),
+                    from, target.className());
+            boolean renameContext = references(targetId,
+                    target.contextClassDeclarationId(), from,
+                    target.contextClassName());
+            if (!renameTarget && !renameContext) continue;
             bindings.set(i, new datasource.api.SourceBinding(
-                    new datasource.api.SourceBindingTarget(target.scope(), to,
-                            target.fieldPath(), target.slot(), targetId),
+                    new datasource.api.SourceBindingTarget(target.scope(),
+                            renameTarget ? to : target.className(), target.fieldPath(),
+                            target.slot(), renameTarget ? targetId
+                                    : target.classDeclarationId(),
+                            renameContext ? to : target.contextClassName(),
+                            target.contextFieldPath(), renameContext ? targetId
+                                    : target.contextClassDeclarationId()),
                     binding.recipe()));
         }
     }
@@ -538,8 +561,29 @@ public class GeneratedProjectModel {
             if (field == null) continue;
             String path = prefix.isBlank() ? field.name() : prefix + "." + field.name();
             retargetBindings(field.sourceBindings(), owner, path);
+            for (OwnedFieldSource override : field.ownedFieldSources()) {
+                if (override != null) retargetOwnedBindings(override.sourceBindings(),
+                        field.entityClassName(), override.fieldPath(), owner, path);
+            }
             reconcileFieldBindingTargets(owner, path, field.fields());
         }
+    }
+
+    private static void retargetOwnedBindings(
+            List<datasource.api.SourceBinding> bindings,
+            String targetClass, String targetPath, String owner, String ownerPath) {
+        if (bindings == null) return;
+        for (int i = 0; i < bindings.size(); i++) {
+            datasource.api.SourceBinding binding = bindings.get(i);
+            if (binding == null) continue;
+            datasource.api.SourceBindingTarget target = binding.target();
+            bindings.set(i, new datasource.api.SourceBinding(
+                    new datasource.api.SourceBindingTarget(target.scope(), targetClass,
+                            targetPath, target.slot(), target.classDeclarationId(), owner,
+                            ownerPath, target.contextClassDeclarationId()),
+                    binding.recipe()));
+        }
+        deduplicateBindings(bindings);
     }
 
     private static void retargetBindings(List<datasource.api.SourceBinding> bindings,
@@ -562,6 +606,17 @@ public class GeneratedProjectModel {
         // A save after the old rename leak could already contain both the stale and
         // newly synchronized address. Once retargeted they occupy the same semantic
         // slot; retain the later entry, matching normal replace semantics.
+        java.util.LinkedHashMap<datasource.api.SourceBindingTarget,
+                datasource.api.SourceBinding> unique = new java.util.LinkedHashMap<>();
+        for (datasource.api.SourceBinding binding : bindings) {
+            if (binding != null) unique.put(binding.target(), binding);
+        }
+        bindings.clear();
+        bindings.addAll(unique.values());
+    }
+
+    private static void deduplicateBindings(
+            List<datasource.api.SourceBinding> bindings) {
         java.util.LinkedHashMap<datasource.api.SourceBindingTarget,
                 datasource.api.SourceBinding> unique = new java.util.LinkedHashMap<>();
         for (datasource.api.SourceBinding binding : bindings) {
@@ -947,6 +1002,11 @@ public class GeneratedProjectModel {
                         selection.declarationId(), selection.name());
             }
             normalizeBindings(field.sourceBindings(), owner);
+            for (OwnedFieldSource override : field.ownedFieldSources()) {
+                if (override == null) continue;
+                normalizeOwnedBindings(override.sourceBindings(), field.entityClassName(),
+                        override.fieldPath(), owner, field.name());
+            }
             normalizeFields(field.fields(), owner);
         }
     }
@@ -960,7 +1020,25 @@ public class GeneratedProjectModel {
             datasource.api.SourceBindingTarget target = binding.target();
             bindings.set(i, new datasource.api.SourceBinding(
                     new datasource.api.SourceBindingTarget(target.scope(), owner.className(),
-                            target.fieldPath(), target.slot(), owner.declarationId()),
+                            target.fieldPath(), target.slot(), owner.declarationId(),
+                            target.contextClassName(), target.contextFieldPath(),
+                            target.contextClassDeclarationId()),
+                    binding.recipe()));
+        }
+    }
+
+    private static void normalizeOwnedBindings(
+            List<datasource.api.SourceBinding> bindings, String targetClass,
+            String targetPath, GeneratedClassModel owner, String ownerPath) {
+        if (bindings == null || owner == null) return;
+        for (int i = 0; i < bindings.size(); i++) {
+            datasource.api.SourceBinding binding = bindings.get(i);
+            if (binding == null) continue;
+            datasource.api.SourceBindingTarget address = binding.target();
+            bindings.set(i, new datasource.api.SourceBinding(
+                    new datasource.api.SourceBindingTarget(address.scope(), targetClass,
+                            targetPath, address.slot(), address.classDeclarationId(),
+                            owner.className(), ownerPath, owner.declarationId()),
                     binding.recipe()));
         }
     }
@@ -1062,6 +1140,8 @@ public class GeneratedProjectModel {
         authored.classes.removeIf(GeneratedClassModel::isImported);
         authored.selections.removeIf(Selection::isImported);
         authored.entityKindRules.removeIf(EntityKindRule::isImported);
+        authored.entityRepresentationRules.removeIf(
+                EntityRepresentationRule::isImported);
         if (authored.rootClass != null && authored.rootClass.isImported()) {
             throw new IllegalStateException("A project's root class must be authored locally");
         }

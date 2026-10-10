@@ -105,6 +105,7 @@ public final class ClassSourceBindings {
             remove(clazz, SourceBindingSlot.CLASS_IDENTITY);
             remove(clazz, SourceBindingSlot.CLASS_LABEL);
             remove(clazz, SourceBindingSlot.CLASS_ALIASES);
+            remove(clazz, SourceBindingSlot.ARTICLE_CORRESPONDENCE);
         }
     }
 
@@ -168,6 +169,25 @@ public final class ClassSourceBindings {
         if (binding(clazz, SourceBindingSlot.CLASS_ALIASES) != null) return true;
         return binding(clazz, SourceBindingSlot.CLASS_IDENTITY) == null
                 && binding(clazz, SourceBindingSlot.CLASS_LABEL) == null;
+    }
+
+    public static SourceBinding articleCorrespondence(GeneratedClassModel clazz) {
+        return binding(clazz, SourceBindingSlot.ARTICLE_CORRESPONDENCE);
+    }
+
+    /** Explicitly exposes the entity's English Wikipedia article as provenance. */
+    public static void wikipediaArticle(GeneratedClassModel clazz, boolean enabled) {
+        if (clazz == null) return;
+        remove(clazz, SourceBindingSlot.ARTICLE_CORRESPONDENCE);
+        if (enabled && clazz.classKind() == ClassKind.SOURCE) {
+            clazz.sourceBindings().add(new SourceBinding(
+                    SourceBindingTarget.sourceCorrespondence(clazz.className(),
+                            SourceBindingSlot.ARTICLE_CORRESPONDENCE),
+                    new SourceRecipe(WikidataDatasourceProvider.ID,
+                            WikidataDatasourceProvider.SITELINK,
+                            Map.of("wiki",
+                                    wikidata.WikidataLanguageDefaults.wikipediaSite()))));
+        }
     }
 
     private static SourceBinding classBinding(GeneratedClassModel clazz,

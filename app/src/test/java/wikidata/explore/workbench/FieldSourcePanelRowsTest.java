@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.StatementFieldSemantics;
+import wikidata.explore.model.OwnedFieldSource;
 
 import javax.swing.JComponent;
 import javax.swing.JButton;
@@ -36,6 +37,53 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * held the label, so nothing could be hidden and there was no visible set to assert.
  */
 class FieldSourcePanelRowsTest {
+
+    @Test void ownedFieldListsOwnerSitesAndOnlyApplyCreatesAnOverride() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel personDiscovery = person.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        personDiscovery.entityClassName("Discovery");
+        personDiscovery.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
+        GeneratedFieldModel organisationDiscovery = organisation.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        organisationDiscovery.entityClassName("Discovery");
+        organisationDiscovery.mapping().productionKind(
+                FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        GeneratedFieldModel date = discovery.addField(
+                "date", FieldType.DATE, FieldCardinality.SINGLE);
+        date.mapping().propertyPid("P575");
+        project.rootClass(person);
+        project.addClass(organisation);
+        project.addClass(discovery);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(date);
+
+        JComboBox<FieldSourcePanel.SourceContext> contexts = panel.sourceContextBox();
+        assertEquals(3, contexts.getItemCount());
+        contexts.setSelectedIndex(2);
+        assertTrue(organisationDiscovery.ownedFieldSources().isEmpty(),
+                "inspection must not mutate the model");
+
+        panel.pendingPropertyField().setText("P734");
+        panel.applyEdits();
+
+        OwnedFieldSource override =
+                organisationDiscovery.ownedFieldSources().getFirst();
+        assertEquals("date", override.fieldPath());
+        assertEquals("P734", override.mapping().propertyPid());
+        assertEquals("P575", date.mapping().propertyPid(),
+                "the shared default remains unchanged");
+        assertTrue(personDiscovery.ownedFieldSources().isEmpty());
+
+        button(panel, "Use shared default").doClick();
+        assertTrue(organisationDiscovery.ownedFieldSources().isEmpty());
+        assertEquals("P575", panel.pendingPropertyField().getText());
+    }
 
     @Test void anOrdinaryFieldIsNotOfferedTheRowsOfOtherKinds() {
         FieldSourcePanel panel = editing(field("birthName", FieldType.STRING,

@@ -30,6 +30,19 @@ class SourceBindingTest {
         assertNotEquals(dbpedia.recipe(), wikipedia.recipe());
     }
 
+    @Test void ownershipSitesAreDistinctSourceTargetsForOneLogicalField() {
+        SourceBindingTarget person = SourceBindingTarget.ownedFieldValue(
+                "Discovery", "date", "Person", "discovery",
+                SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        SourceBindingTarget constellation = SourceBindingTarget.ownedFieldValue(
+                "Discovery", "date", "Constellation", "discovery",
+                SourceBindingSlot.PRIMARY_FIELD_VALUE);
+
+        assertNotEquals(person, constellation);
+        assertTrue(person.contextual());
+        assertEquals("Person", person.contextClassName());
+    }
+
     @Test void resolutionChecksTheScopeOfTheAttachment() {
         SourceBinding category = new SourceBinding(
                 SourceBindingTarget.fieldValue("Movie", "locations",

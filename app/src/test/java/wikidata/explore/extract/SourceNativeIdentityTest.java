@@ -49,4 +49,17 @@ class SourceNativeIdentityTest {
                 "the carrier does not invent a Wikidata link for another source's id");
         assertEquals("2018", loaded.get("year"));
     }
+
+    @Test void wikipediaCorrespondenceRoundTripsWithTheEntity(
+            @TempDir Path directory) throws Exception {
+        WikidataDynamicObject sun = new WikidataDynamicObject("Q525", "Sun");
+        sun.type("CelestialBody");
+        sun.enwikiTitle("Sun");
+
+        Path snapshot = directory.resolve("solar.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(sun), snapshot.toFile());
+
+        assertEquals("Sun", store.loadAll(snapshot.toFile()).getFirst().enwikiTitle());
+    }
 }

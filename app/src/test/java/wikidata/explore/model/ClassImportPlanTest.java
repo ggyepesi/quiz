@@ -255,6 +255,30 @@ class ClassImportPlanTest {
         assertTrue(model.entityKindRules().getFirst().isImported());
     }
 
+    @Test void anImportedRoleKeepsItsEvidenceBasedRepresentation() {
+        GeneratedProjectModel discovery = emptyModel();
+        discovery.name("Discovery");
+        GeneratedClassModel discoverer = new GeneratedClassModel("Discoverer");
+        discovery.rootClass(discoverer);
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        discovery.addClass(person);
+        discovery.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        discovery.representationClasses(discoverer, List.of("Person"));
+
+        GeneratedProjectModel astronomy = history();
+        ClassImportPlan.of(discovery, astronomy, "Discoverer").apply(
+                Set.of("Discoverer", "Person"), ClassImportPlan.Ownership.IMPORT);
+
+        EntityRepresentationRule imported = astronomy.entityRepresentationRules()
+                .getFirst();
+        assertEquals("Discoverer", imported.roleClassName());
+        assertEquals("Person", imported.representationClassName());
+        assertEquals("Discovery", imported.importedFrom());
+        assertTrue(imported.isImported());
+        assertTrue(astronomy.withoutResolvedImports().entityRepresentationRules().isEmpty(),
+                "the importer persists the model reference, not a duplicate rule");
+    }
+
     @Test void refreshingAnImportDoesNotReportItsOwnDeclarationsAsCollisions() {
         GeneratedProjectModel source = oscarPeople();
         GeneratedProjectModel importer = emptyModel();

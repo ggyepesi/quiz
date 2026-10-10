@@ -585,33 +585,25 @@ public final class GeneratedProjectModelValidator {
                             + "display name would be its OWNER's. Its instances render "
                             + "as their fields; use a TEMPLATE to name them."));
         }
-        // An Owned class may be produced at several sites, but its FIELDS are shared by
-        // all of them and load from the owner's entity — so every site must be on the
-        // same kind of owner. Person.fullname + Person.birthName is fine; adding
-        // Organisation.legalName would make Name.familyName (P734, a property of humans)
-        // meaningless for half its instances.
-        List<GeneratedClassModel> owners =
-                MembershipPattern.owningEntityClasses(clazz, project);
-        if (owners.size() > 1) {
-            problems.add(Problem.error(clazz.className(),
-                    "Owned class '" + clazz.className() + "' is produced from different "
-                            + "kinds of entity ("
-                            + owners.stream().map(GeneratedClassModel::className)
-                                    .collect(java.util.stream.Collectors.joining(", "))
-                            + ") at " + MembershipPattern.ownedBy(clazz, project).stream()
-                                    .map(site -> site.ownerClass() + "." + site.fieldName())
-                                    .collect(java.util.stream.Collectors.joining(", "))
-                            + ". Its fields load from the owner, so one owned class "
-                            + "cannot serve owners of different kinds — give each its own."));
-        }
+        // An Owned class may be produced at several sites. Its fields are one shared
+        // schema; each producing field may override only their acquisition sources.
+        // The runtime identity already includes the site, so distinct owners neither
+        // collapse nor require artificial subclasses merely to name their provenance.
     }
 
     private static void validateOwnedComponentFields(
             GeneratedProjectModel project, GeneratedClassModel owner,
             List<Problem> problems) {
         for (GeneratedFieldModel field : owner.fields()) {
-            if (field == null || field.mapping().productionKind()
-                    != FieldProductionKind.OWNED_COMPONENT) continue;
+            if (field == null) continue;
+            if (field.mapping().productionKind()
+                    != FieldProductionKind.OWNED_COMPONENT) {
+                if (!field.ownedFieldSources().isEmpty()) {
+                    problems.add(Problem.error(path(owner, field),
+                            "Owned-field source overrides require an Owned component field."));
+                }
+                continue;
+            }
             if (field.type() != FieldType.ENTITY
                     || field.cardinality() != FieldCardinality.SINGLE) {
                 problems.add(Problem.error(path(owner, field),
@@ -646,6 +638,35 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(path(owner, field),
                         "Owned component class '" + target.className()
                                 + "' must not define an independent membership source."));
+            }
+            validateOwnedFieldSources(project, owner, field, target, problems);
+        }
+    }
+
+    private static void validateOwnedFieldSources(
+            GeneratedProjectModel project, GeneratedClassModel owner,
+            GeneratedFieldModel ownershipField, GeneratedClassModel target,
+            List<Problem> problems) {
+        Set<String> paths = new LinkedHashSet<>();
+        for (OwnedFieldSource override : ownershipField.ownedFieldSources()) {
+            if (override == null) continue;
+            String fieldPath = clean(override.fieldPath());
+            if (fieldPath.isBlank()) {
+                problems.add(Problem.error(path(owner, ownershipField),
+                        "An owned-field source override needs a component field path."));
+                continue;
+            }
+            if (!paths.add(fieldPath)) {
+                problems.add(Problem.error(path(owner, ownershipField),
+                        "Owned-field source path '" + fieldPath
+                                + "' is configured more than once."));
+                continue;
+            }
+            if (target != null && OwnedFieldSources.declaredField(
+                    project, target.className(), fieldPath) == null) {
+                problems.add(Problem.error(path(owner, ownershipField),
+                        "Owned-field source path '" + fieldPath + "' is not a field of '"
+                                + target.className() + "'."));
             }
         }
     }

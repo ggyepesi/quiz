@@ -71,7 +71,45 @@ public final class ConfiguredInstanceFields {
                 }
             }
         }
+        collectConfiguredFields(model, project, registry, fields,
+                new LinkedHashSet<>());
         return List.copyOf(fields.values());
+    }
+
+    private static void collectConfiguredFields(
+            GeneratedClassModel model,
+            GeneratedProjectModel project,
+            DatasourceRegistry registry,
+            LinkedHashMap<String, Field> fields,
+            Set<String> seen) {
+        if (model == null || !seen.add(model.className())) return;
+        for (SourceBinding binding : model.sourceBindings()) {
+            DatasourceProvider provider = registry.provider(
+                    binding.recipe().providerId()).orElseThrow(() ->
+                    new IllegalStateException("No datasource provider '"
+                            + binding.recipe().providerId() + "'"));
+            for (DatasourceInstanceField declaration : provider.instanceFields(binding)) {
+                put(fields, binding.recipe().providerId(), declaration);
+            }
+        }
+        if (project != null && model.hasBase()) {
+            collectConfiguredFields(project.findClass(model.baseClassName()), project,
+                    registry, fields, seen);
+        }
+    }
+
+    private static void put(LinkedHashMap<String, Field> fields, String providerId,
+            DatasourceInstanceField declaration) {
+        if (declaration == null || declaration.name() == null
+                || declaration.name().isBlank()) return;
+        Field configured = new Field(providerId, declaration);
+        Field previous = fields.putIfAbsent(declaration.name(), configured);
+        if (previous != null && !previous.providerId().equals(providerId)) {
+            throw new IllegalArgumentException(
+                    "Datasource instance field '" + declaration.name()
+                            + "' is declared by both " + previous.providerId()
+                            + " and " + providerId);
+        }
     }
 
     private static void collectProviders(

@@ -50,35 +50,42 @@ class SolarSystemSavedModelTest {
         GeneratedClassModel celestialBody = model.findClass("CelestialBody");
 
         assertNotNull(celestialBody);
+        assertEquals("Astronomy", celestialBody.importedFrom());
         assertEquals("CelestialBody", model.findClass("Sun").baseClassName());
         assertEquals("CelestialBody", model.findClass("Planet").baseClassName());
         assertEquals("CelestialBody", model.findClass("Moon").baseClassName());
         assertField(model, "CelestialBody", "image", "P18");
         assertField(model, "CelestialBody", "radius", "P2120");
         assertField(model, "CelestialBody", "diameter", "P2386");
-        assertField(model, "CelestialBody", "discoveryDate", "P575");
-        assertField(model, "CelestialBody", "discoverer", "P61");
+        GeneratedFieldModel discovery = field(model, "CelestialBody", "discovery");
+        assertEquals("Discovery", discovery.entityClassName());
+        assertEquals(FieldProductionKind.OWNED_COMPONENT,
+                discovery.mapping().productionKind());
+        assertEquals("P575", field(model, "Discovery", "date")
+                .mapping().propertyPid());
+        assertEquals("P61", field(model, "Discovery", "discoverers")
+                .mapping().propertyPid());
         assertEquals(FieldCardinality.COLLECTION,
-                field(model, "CelestialBody", "discoverer").cardinality());
+                field(model, "Discovery", "discoverers").cardinality());
         assertTrue(model.findClass("Planet").effectiveFields(model).stream()
                 .anyMatch(field -> "image".equals(field.name())));
         assertTrue(model.findClass("Moon").effectiveFields(model).stream()
                 .anyMatch(field -> "radius".equals(field.name())));
         assertTrue(model.findClass("Moon").effectiveFields(model).stream()
-                .anyMatch(field -> "discoveryDate".equals(field.name())));
+                .anyMatch(field -> "discovery".equals(field.name())));
         assertTrue(model.findClass("Moon").effectiveFields(model).stream()
-                .anyMatch(field -> "discoverer".equals(field.name())));
+                .anyMatch(field -> "discovery".equals(field.name())));
     }
 
     @Test void humanDiscoverersUseTheSharedEvidenceBasedPersonKind() throws Exception {
         GeneratedProjectModel model = load();
         GeneratedClassModel person = model.findClass("Person");
-        GeneratedFieldModel discoverer = field(model, "CelestialBody", "discoverer");
+        GeneratedFieldModel discoverer = field(model, "Discovery", "discoverers");
 
         assertNotNull(person);
-        assertEquals("Person", discoverer.entityClassName());
-        assertEquals(person.declarationId(), discoverer.entityDeclarationId());
-        assertEquals(MembershipPattern.REFERENCED, MembershipPattern.of(person, model));
+        assertEquals("Discoverer", discoverer.entityClassName());
+        assertEquals("Person", person.importedFrom());
+        assertEquals("Discovery", model.findClass("Discoverer").importedFrom());
 
         EntityKindRule rule = model.entityKindRules().stream()
                 .filter(candidate -> "Person".equals(candidate.className()))
@@ -86,6 +93,26 @@ class SolarSystemSavedModelTest {
         assertEquals(person.declarationId(), rule.classId());
         assertEquals("P31", rule.propertyPid());
         assertEquals(List.of("Q5"), rule.evidenceQids());
+        EntityRepresentationRule representation = model.entityRepresentationRules()
+                .stream().filter(candidate -> candidate.roleClassName()
+                        .equals("Discoverer")).findFirst().orElseThrow();
+        assertEquals("Person", representation.representationClassName());
+        assertEquals("Discovery", representation.importedFrom());
+    }
+
+    @Test void wikipediaCorrespondenceIsConfiguredOnceOnEachSchemaRoot()
+            throws Exception {
+        GeneratedProjectModel model = load();
+
+        for (String name : List.of(
+                "SolarSystem", "CelestialBody", "PlanetType", "MoonKind")) {
+            assertNotNull(ClassSourceBindings.articleCorrespondence(
+                    model.findClass(name)), name);
+        }
+        assertTrue(ArticleCorrespondencePlan.classes(model,
+                ModelSourceExecutionPlan.compile(model, datasource.Datasources.standard()))
+                .containsAll(List.of("Sun", "Planet", "Moon")),
+                "CelestialBody correspondence is inherited by all three subclasses");
     }
 
     @Test void relationshipsUseTheClaimDirectionAndRepeatTheirBounds() throws Exception {

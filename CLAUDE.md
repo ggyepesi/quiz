@@ -93,12 +93,15 @@ construct per thing produced:
    a mess on the way. *(Trigger: "quick hack now, clean it up later.")*
 8. **Survey what already exists BEFORE adding anything.** The structure is usually already
    there — go find it. Proactively, not as an after-the-fact check.
+   *(Trigger: about to write a new class or mechanism.)*
 9. **Source identity is constrained by configured type.** A shared datasource identifier
    unifies copies only when the consuming field accepts the entity's configured class: the
    same class, a subclass, or an explicit contextual representation. Merely occurring in a
    field must never retype an incompatible entity; incompatible values are absent from both
    the saved dynamic pool and its rendered materialization. *(Trigger: "the QID is the same".)*
-   *(Trigger: about to write a new class or mechanism.)*
+   A correspondence to another source (for example a Wikidata entity's English Wikipedia
+   article) is class-level source configuration and renders as provenance; it is not a
+   domain field and must not be rediscovered separately by each field or application.
 9. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
    inspection state only; it must not silently configure another tool, mutate the model, or
    start expensive work. A mutation is an explicit, verb-labelled command that names its target
@@ -352,6 +355,17 @@ construct per thing produced:
    the table, the web serializer and quiz extraction, each with its own fallback, while the
    same config looked like a plain list of ticks to the person who wrote it. *(Trigger: a
    flag, alias or "absent means …" that more than one consumer branches on.)*
+
+25. **An owned class has one schema and any number of production sites.** The owned
+   class declares field type, cardinality and rendering once. Each owner field is a
+   production site and may override only how those shared fields are acquired (for
+   example, the same logical field may read `P1` from one owner kind and `P2` from
+   another). Runtime identity is component class + production site + owner identity.
+   Sampling asks for one explicitly selected owner site or all sites; property discovery
+   names the site it inspects. Never introduce an artificial subclass merely to give the
+   same component schema a second owner, and never let a site override change schema or
+   derivation semantics.
+   *(Trigger: an owned component is useful on a second owner class.)*
 
 ## Working agreements
 

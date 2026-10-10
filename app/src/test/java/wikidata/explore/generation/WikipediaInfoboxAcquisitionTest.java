@@ -51,6 +51,40 @@ class WikipediaInfoboxAcquisitionTest {
         assertEquals("Sierra Leone", objects.getFirst().get("country"));
     }
 
+    @Test void contextualBindingFillsOnlyItsOwnedProductionSite() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        discovery.addField("wording", FieldType.STRING, FieldCardinality.SINGLE);
+        model.rootClass(discovery);
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.ownedFieldValue(
+                        "Discovery", "wording", "Movie", "discovery",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikipedia", "infobox-parameter",
+                        java.util.Map.of("property", "Infobox film.country")));
+        var plan = datasource.api.SourceExecutionPlan.compile(
+                List.of(binding), datasource.Datasources.standard());
+        WikidataDynamicObject moviePart = part("Discovery@Movie.discovery");
+        WikidataDynamicObject otherPart = part("Discovery@Book.discovery");
+
+        WikipediaInfoboxAcquisition.apply(model, List.of(moviePart, otherPart),
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7,
+                        "{{Infobox film\n| country = Sierra Leone\n}}"), plan);
+
+        assertEquals("Sierra Leone", moviePart.get("wording"));
+        assertNull(otherPart.get("wording"));
+    }
+
+    private static WikidataDynamicObject part(String typeKey) {
+        WikidataDynamicObject value = new WikidataDynamicObject("Q1", "Part");
+        value.type("Discovery");
+        value.part(true);
+        value.typeKey(typeKey);
+        return value;
+    }
+
     @Test void theAcquiredValueKeepsTheRevisionAndDigestOfItsArticle() throws Exception {
         GeneratedProjectModel model = model();
         List<WikidataDynamicObject> objects = films(1);

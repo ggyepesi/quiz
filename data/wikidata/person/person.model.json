@@ -9,9 +9,14 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -578,6 +583,22 @@
         "operationId" : "aliases",
         "parameters" : {
           "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "SOURCE_CORRESPONDENCE",
+        "className" : "Person",
+        "fieldPath" : "",
+        "slot" : "ARTICLE_CORRESPONDENCE",
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "sitelink",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$Map1",
+          "wiki" : "enwiki"
         }
       }
     } ] ],
@@ -604,9 +625,14 @@
     "baseClassName" : "",
     "discriminatorPid" : "P31",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -1175,6 +1201,22 @@
           "@class" : "java.util.ImmutableCollections$MapN"
         }
       }
+    }, {
+      "target" : {
+        "scope" : "SOURCE_CORRESPONDENCE",
+        "className" : "Person",
+        "fieldPath" : "",
+        "slot" : "ARTICLE_CORRESPONDENCE",
+        "classDeclarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613"
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "sitelink",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$Map1",
+          "wiki" : "enwiki"
+        }
+      }
     } ] ],
     "canonical" : {
       "@class" : "wikidata.explore.model.CanonicalSpec",
@@ -1197,9 +1239,14 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "OWNED",
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -1387,5 +1434,6 @@
     "evidenceQids" : [ "java.util.ArrayList", [ "Q5" ] ]
   } ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
-  "imports" : [ "java.util.ArrayList", [ ] ]
+  "imports" : [ "java.util.ArrayList", [ ] ],
+  "buildOperations" : [ "java.util.ArrayList", [ ] ]
 }

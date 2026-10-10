@@ -447,6 +447,8 @@ public class WikidataDynamicObjectJsonStore {
         java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) aliases.addAll(o.aliases());
         e.aliases.addAll(aliases);
+        e.enwikiTitle = instances.stream().map(WikidataDynamicObject::enwikiTitle)
+                .filter(title -> !title.isBlank()).findFirst().orElse("");
         java.util.LinkedHashMap<String, quiz.source.WikidataStatementSource> statements =
                 new java.util.LinkedHashMap<>();
         for (WikidataDynamicObject o : instances) {
@@ -880,6 +882,7 @@ public class WikidataDynamicObjectJsonStore {
         if (e.typeKey != null && !e.typeKey.isBlank()) object.typeKey(e.typeKey);
         object.referenceLabel(e.referenceLabel);
         object.aliases(e.aliases);
+        object.enwikiTitle(e.enwikiTitle);
         object.wikidataStatementSources(e.wikidataStatements);
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             object.categoryMemberships(categoryMemberships(e));
@@ -1020,6 +1023,7 @@ public class WikidataDynamicObjectJsonStore {
         e.id = null;                       // a value has no identity
         e.name = w.getDisplayName();
         e.aliases.addAll(w.aliases());
+        e.enwikiTitle = w.enwikiTitle();
         e.wikidataStatements.addAll(w.wikidataStatementSources());
         if (!w.categoryMemberships().isEmpty()) {
             e.wikipediaCategoryDocument = w.categoryMemberships().getFirst().document();
@@ -1055,6 +1059,7 @@ public class WikidataDynamicObjectJsonStore {
         o.directClasses(e.classes);
         o.referenceLabel(e.referenceLabel);
         o.aliases(e.aliases);
+        o.enwikiTitle(e.enwikiTitle);
         o.wikidataStatementSources(e.wikidataStatements);
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             o.categoryMemberships(categoryMemberships(e));
@@ -1114,6 +1119,9 @@ public class WikidataDynamicObjectJsonStore {
         public String name;
         // wbgetentities "Also known as" identity metadata (not a claim field).
         public List<String> aliases = new ArrayList<>();
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+        public String enwikiTitle;
         /** Full source triples for statement-derived records. */
         public List<quiz.source.WikidataStatementSource> wikidataStatements =
                 new ArrayList<>();

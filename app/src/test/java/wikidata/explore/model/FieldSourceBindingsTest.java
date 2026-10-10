@@ -83,6 +83,43 @@ class FieldSourceBindingsTest {
         assertEquals("country", restored.fallbackMapping().propertyPid());
     }
 
+    @Test void ownedSiteOverrideHasItsOwnResolvableAddressAndRoundTrips(
+            @TempDir Path directory) throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel component = person.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        component.entityClassName("Discovery");
+        component.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        GeneratedFieldModel date = discovery.addField(
+                "date", FieldType.DATE, FieldCardinality.SINGLE);
+        date.mapping().propertyPid("P575");
+        model.rootClass(person);
+        model.addClass(discovery);
+
+        OwnedFieldSource override = OwnedFieldSources.ensureOverride(component, "date");
+        override.mapping().copyAcquisitionFrom(date.mapping());
+        override.mapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        override.mapping().propertyPid("Infobox person.discovered");
+        Path file = directory.resolve("model.json");
+
+        new GeneratedProjectModelStore().save(model, file.toFile());
+        GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(file.toFile());
+        GeneratedFieldModel restoredSite = loaded.findClass("Person").fields().getFirst();
+        OwnedFieldSource restored = restoredSite.ownedFieldSources().getFirst();
+        SourceBinding binding = restored.sourceBindings().getFirst();
+
+        assertEquals("Infobox person.discovered", restored.mapping().propertyPid());
+        assertEquals("Discovery", binding.target().className());
+        assertEquals("date", binding.target().fieldPath());
+        assertEquals("Person", binding.target().contextClassName());
+        assertEquals("discovery", binding.target().contextFieldPath());
+        assertNotNull(binding.resolve(Datasources.standard()));
+    }
+
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel movie = new GeneratedClassModel("Movie");

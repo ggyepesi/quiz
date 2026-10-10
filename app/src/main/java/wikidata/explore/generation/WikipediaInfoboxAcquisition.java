@@ -63,7 +63,7 @@ public final class WikipediaInfoboxAcquisition {
         if (declarations.isEmpty()) return new Result(0, 0, 0);
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
-            if (object != null && !object.isPart() && WikidataIds.isQid(object.qid())
+            if (object != null && WikidataIds.isQid(object.qid())
                     && !object.infoboxAnswered()
                     && declarations.stream().anyMatch(d -> applies(model, object, d)
                     && object.get(d.field().name()) == null)) {
@@ -249,7 +249,9 @@ public final class WikipediaInfoboxAcquisition {
                     step.prepared().familyId())) continue;
             if (parameter == null) continue;
             GeneratedClassModel owner = model.findClass(step.target().className());
-            GeneratedFieldModel field = declaredField(owner, step.target().fieldPath());
+            GeneratedFieldModel field = wikidata.explore.model.OwnedFieldSources
+                    .declaredField(model, step.target().className(),
+                            step.target().fieldPath());
             if (owner == null || field == null) {
                 throw new IllegalArgumentException("Datasource plan targets unknown field "
                         + step.target().className() + "." + step.target().fieldPath());
@@ -259,7 +261,7 @@ public final class WikipediaInfoboxAcquisition {
                         + step.target().className() + "." + step.target().fieldPath()
                         + ": " + parameter);
             }
-            result.add(new Declaration(owner, field, parameter));
+            result.add(new Declaration(owner, field, parameter, step.target()));
         }
         return List.copyOf(result);
     }
@@ -298,6 +300,14 @@ public final class WikipediaInfoboxAcquisition {
 
     private static boolean applies(GeneratedProjectModel model, WikidataDynamicObject object,
             Declaration declaration) {
+        if (declaration.target() != null && declaration.target().contextual()) {
+            wikidata.explore.model.OwnedComponentSite site =
+                    wikidata.explore.model.OwnedComponentSite.parse(object.typeKey());
+            return site != null
+                    && declaration.target().className().equals(site.targetClass())
+                    && declaration.target().contextClassName().equals(site.ownerClass())
+                    && declaration.target().contextFieldPath().equals(site.ownerField());
+        }
         for (String direct : object.directClassNames()) {
             for (GeneratedClassModel current = model.findClass(direct); current != null;
                     current = current.baseClassName().isBlank()
@@ -311,6 +321,12 @@ public final class WikipediaInfoboxAcquisition {
         return URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20");
     }
     private record Declaration(
-            GeneratedClassModel owner, GeneratedFieldModel field, String parameter) { }
+            GeneratedClassModel owner, GeneratedFieldModel field, String parameter,
+            datasource.api.SourceBindingTarget target) {
+        private Declaration(GeneratedClassModel owner, GeneratedFieldModel field,
+                String parameter) {
+            this(owner, field, parameter, null);
+        }
+    }
     public record Result(int pages, int values, int batches) { }
 }

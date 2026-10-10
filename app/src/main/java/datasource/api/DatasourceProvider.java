@@ -14,6 +14,11 @@ public interface DatasourceProvider {
         return List.of();
     }
 
+    /** Ordinary instance fields contributed only when one operation is configured. */
+    default List<? extends DatasourceInstanceField> instanceFields(SourceBinding binding) {
+        return List.of();
+    }
+
     default Optional<DatasourceOperation> operation(String operationId) {
         return operations().stream()
                 .filter(operation -> operation.id().equals(operationId))

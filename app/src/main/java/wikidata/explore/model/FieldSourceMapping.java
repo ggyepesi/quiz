@@ -370,6 +370,40 @@ public class FieldSourceMapping {
         rankDescending = other.rankDescending;
     }
 
+    /**
+     * Replaces only the part of a field mapping that says where values are acquired.
+     * Shape and derivation remain properties of the shared field declaration: an owner
+     * site may read {@code P1} instead of {@code P2}, but it cannot turn that logical
+     * field into an inverse, union, companion match, or a differently shaped value.
+     */
+    public void copyAcquisitionFrom(FieldSourceMapping other) {
+        if (other == null) return;
+        sourceQid = other.sourceQid;
+        sourceLabel = other.sourceLabel;
+        propertyPid = other.propertyPid;
+        propertyLabel = other.propertyLabel;
+        qualifierPid = other.qualifierPid;
+        qualifierLabel = other.qualifierLabel;
+        qualifierDateMode = other.qualifierDateMode;
+        direction = other.direction;
+        requireLabel = other.requireLabel;
+        requireSitelink = other.requireSitelink;
+        labelLanguage = other.labelLanguage;
+        valueLanguage = other.valueLanguage;
+        limit = other.limit;
+        sourceType = other.sourceType;
+        allowedQids.clear();
+        allowedQids.addAll(other.allowedQids);
+        excludedQids.clear();
+        excludedQids.addAll(other.excludedQids);
+        additionalTypeQids.clear();
+        additionalTypeQids.addAll(other.additionalTypeQids);
+        excludedTypeQids.clear();
+        excludedTypeQids.addAll(other.excludedTypeQids);
+        rankBy = other.rankBy;
+        rankDescending = other.rankDescending;
+    }
+
     public FieldSourceType sourceType() {
         return sourceType;
     }

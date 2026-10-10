@@ -9,6 +9,7 @@ public final class EntityRepresentationRule {
     private String roleClassId = "";
     private String representationClassName = "";
     private String representationClassId = "";
+    private String importedFrom = "";
 
     public EntityRepresentationRule() { }
 
@@ -44,11 +45,16 @@ public final class EntityRepresentationRule {
         return !roleClassName().isBlank() && !representationClassName().isBlank();
     }
 
+    public String importedFrom() { return clean(importedFrom); }
+    public void importedFrom(String value) { importedFrom = clean(value); }
+    public boolean isImported() { return !importedFrom().isBlank(); }
+
     public EntityRepresentationRule copy() {
         EntityRepresentationRule copy = new EntityRepresentationRule(
                 roleClassName, representationClassName);
         copy.roleClassId = roleClassId;
         copy.representationClassId = representationClassId;
+        copy.importedFrom = importedFrom;
         return copy;
     }
 

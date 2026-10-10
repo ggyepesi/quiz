@@ -61,6 +61,10 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private boolean infoboxAnswered;
 
+    /** The configured English Wikipedia correspondence retained from wbgetentities. */
+    @Hidden
+    private String enwikiTitle = "";
+
     @Hidden
     @JsonIgnore
     private String referenceLabel;
@@ -197,6 +201,14 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     public boolean infoboxAnswered() { return infoboxAnswered; }
+
+    public String enwikiTitle() {
+        return enwikiTitle == null ? "" : enwikiTitle;
+    }
+
+    public void enwikiTitle(String value) {
+        enwikiTitle = value == null ? "" : value.trim();
+    }
 
     /** A PART of another object — an owned component, carrying its owner's identity.
      *  It is in the pool because it is reachable, not because it is a root, so it is
@@ -497,6 +509,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         copy.categoryMembershipsAnswered = categoryMembershipsAnswered;
         copy.infoboxParameters = infoboxParameters;
         copy.infoboxAnswered = infoboxAnswered;
+        copy.enwikiTitle = enwikiTitle;
         // Provenance is a declared field, but unlike domain references its values are
         // immutable source descriptors. Carry the exact values here; PoolCopy only
         // rewires the dynamic domain-field graph supplied by its caller.

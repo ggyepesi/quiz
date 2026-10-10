@@ -55,6 +55,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
     public static final String SOURCE_FIELD = "wikidataSource";
+    public static final String WIKIPEDIA_SOURCE_FIELD = "wikipediaSource";
 
     private static final DatasourceInstanceField SOURCE =
             new DatasourceInstanceField() {
@@ -176,6 +177,37 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     @Override public List<? extends DatasourceOperation> operations() { return operations; }
     @Override public List<? extends DatasourceInstanceField> instanceFields() {
         return List.of(SOURCE);
+    }
+
+    @Override public List<? extends DatasourceInstanceField> instanceFields(
+            datasource.api.SourceBinding binding) {
+        if (binding == null
+                || binding.target().scope() != BindingScope.SOURCE_CORRESPONDENCE
+                || !ID.equals(binding.recipe().providerId())
+                || !SITELINK.equals(binding.recipe().operationId())) return List.of();
+        String wiki = binding.recipe().parameter("wiki").trim();
+        if (wiki.isBlank()) wiki = "enwiki";
+        if (!"enwiki".equals(wiki)) {
+            throw new IllegalArgumentException(
+                    "Wikipedia source links currently support enwiki, not " + wiki);
+        }
+        return List.of(new WikipediaArticleField(wiki));
+    }
+
+    private record WikipediaArticleField(String wiki) implements DatasourceInstanceField {
+        @Override public String name() { return WIKIPEDIA_SOURCE_FIELD; }
+        @Override public String label() { return "Wikipedia source"; }
+        @Override public SourceValueSchema valueSchema() {
+            return new SourceValueSchema(SourceValueKind.ENTITY_REFERENCE, false,
+                    datasource.wikipedia.WikipediaDatasourceProvider.ID);
+        }
+        @Override public Object value(Object source) {
+            if (!(source instanceof wikidata.explore.extract.WikidataDynamicObject o)) {
+                return null;
+            }
+            String title = o.enwikiTitle();
+            return title.isBlank() ? null : new quiz.source.WikipediaSource(title);
+        }
     }
 
     private static DatasourceOperation offering(

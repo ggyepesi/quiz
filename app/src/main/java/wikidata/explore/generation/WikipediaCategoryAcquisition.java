@@ -42,11 +42,12 @@ public final class WikipediaCategoryAcquisition {
                         SourceExecutionPlan sourcePlan, Fetcher fetcher) throws Exception {
         if (!configured(sourcePlan)) return new Result(0, 0, 0);
         java.util.Objects.requireNonNull(api, "Wikidata entity client is required");
-        Map<String, WikidataDynamicObject> entities = new LinkedHashMap<>();
+        Map<String, List<WikidataDynamicObject>> entities = new LinkedHashMap<>();
         for (WikidataDynamicObject value : pool) {
-            if (value != null && WikidataIds.isQid(value.qid()) && !value.isPart()
-                    && !value.categoryMembershipsAnswered()) {
-                entities.putIfAbsent(value.qid(), value);
+            if (value != null && WikidataIds.isQid(value.qid())
+                    && !value.categoryMembershipsAnswered()
+                    && (!value.isPart() || categoryApplies(value, sourcePlan))) {
+                entities.computeIfAbsent(value.qid(), ignored -> new ArrayList<>()).add(value);
             }
         }
         java.util.concurrent.atomic.AtomicInteger pages = new java.util.concurrent.atomic.AtomicInteger();
@@ -68,9 +69,9 @@ public final class WikipediaCategoryAcquisition {
                     batch.BatchCheckpointStore.NONE,
                     api.entityConcurrency()).run(units, (descriptor, result) -> {
                         result.forEach((qid, acquired) -> {
-                            WikidataDynamicObject entity = entities.get(qid);
-                            if (entity == null) return;
-                            entity.categoryMemberships(acquired);
+                            List<WikidataDynamicObject> copies = entities.get(qid);
+                            if (copies == null) return;
+                            copies.forEach(entity -> entity.categoryMemberships(acquired));
                             pages.incrementAndGet();
                             memberships.addAndGet(acquired.size());
                         });
@@ -80,6 +81,20 @@ public final class WikipediaCategoryAcquisition {
         log.message("Wikipedia categories: " + memberships.get() + " membership(s) on "
                 + pages.get() + " page(s), " + batches.get() + " batch(es).\n");
         return new Result(pages.get(), memberships.get(), batches.get());
+    }
+
+    private static boolean categoryApplies(
+            WikidataDynamicObject value, SourceExecutionPlan sourcePlan) {
+        wikidata.explore.model.OwnedComponentSite site =
+                wikidata.explore.model.OwnedComponentSite.parse(value.typeKey());
+        if (site == null) return false;
+        return sourcePlan.steps(datasource.api.BindingScope.FIELD_VALUE).stream()
+                .filter(step -> step.prepared().familyId().equals(
+                        datasource.wikipedia.WikipediaCategoryDiscoveryOperation.FAMILY))
+                .anyMatch(step -> step.target().className().equals(site.targetClass())
+                        && (!step.target().contextual()
+                        || step.target().contextClassName().equals(site.ownerClass())
+                        && step.target().contextFieldPath().equals(site.ownerField())));
     }
 
     private static batch.WorkUnit<Map<String, List<CategoryMembership>>> unit(

@@ -47,6 +47,8 @@ import java.util.Set;
 public final class ReferentFieldLoad {
     private static final String ALIASES_FIELD = "@aliases";
     private static final String ALIASES_PROPERTY = "@aliases";
+    private static final String SITELINKS_FIELD = "@sitelinks";
+    private static final String SITELINKS_PROPERTY = "@sitelinks";
 
     /** Immutable model-derived property bundles retained on each producer's first
      * claims fetch. Population QIDs remain dynamic; the property closure does not. */
@@ -254,6 +256,21 @@ public final class ReferentFieldLoad {
             AcquisitionManifest manifest,
             java.util.Set<String> aliasClasses) {
 
+        return load(model, pool, api, log, alreadyLoaded, deferLabels, manifest,
+                aliasClasses, java.util.Set.of());
+    }
+
+    public static Result load(
+            GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api,
+            GenerationLog log,
+            Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            boolean deferLabels,
+            AcquisitionManifest manifest,
+            java.util.Set<String> aliasClasses,
+            java.util.Set<String> sitelinkClasses) {
+
         if (model == null || pool == null || api == null) {
             return new Result(0, java.util.List.of());
         }
@@ -267,17 +284,21 @@ public final class ReferentFieldLoad {
         // Classes never extracted as roots, and their declared property-fields.
         Map<String, List<GeneratedFieldModel>> byClass = new LinkedHashMap<>();
         for (GeneratedClassModel c : model.classes()) {
-            if (c == null || !loadsHere(MembershipPattern.of(c, model))) {
+            MembershipPattern pattern = c == null ? MembershipPattern.UNCONFIGURED
+                    : MembershipPattern.of(c, model);
+            if (c == null || !loadsHere(pattern)) {
                 continue;
             }
             List<GeneratedFieldModel> fields = new ArrayList<>();
             for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f != null && loadableType(f.type())
-                        && clean(f.mapping().propertyPid()).matches("(?i)P\\d+")) {
+                        && (clean(f.mapping().propertyPid()).matches("(?i)P\\d+")
+                        || pattern == MembershipPattern.OWNED_COMPONENT)) {
                     fields.add(f);
                 }
             }
-            if (!fields.isEmpty()) {
+            if (!fields.isEmpty() || sitelinkClasses != null
+                    && sitelinkClasses.contains(c.className())) {
                 byClass.put(c.className(), fields);
             }
         }
@@ -308,112 +329,220 @@ public final class ReferentFieldLoad {
         List<wikidata.explore.extract.LoadedDeclaration> completed = new ArrayList<>();
         List<wikidata.explore.extract.LoadedDeclaration> failed = new ArrayList<>();
         for (Map.Entry<String, List<GeneratedFieldModel>> e : byClass.entrySet()) {
-            List<WikidataDynamicObject> objs = referents.get(e.getKey());
-            if (objs == null || objs.isEmpty()) {
+            List<WikidataDynamicObject> classObjects = referents.get(e.getKey());
+            if (classObjects == null || classObjects.isEmpty()) {
                 continue;
             }
-            boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey());
-            EntityFieldBatch entityBatch = loadEntityFields(
-                    e.getKey(), e.getValue(), objs, known, api, sink, deferLabels,
-                    retainAliases,
-                    manifest == null ? Set.of() : manifest.propertiesFor(e.getKey()));
-            for (WikidataDynamicObject obj : objs) {
-                WikidataApiClient.ApiEntity metadata = entityBatch.entities().get(obj.qid());
-                // Aliases name the Wikidata ENTITY, not an owned projection that merely
-                // borrows its QID (Name@Person.structuredName).
-                if (retainAliases && !obj.isPart() && metadata != null) {
-                    obj.aliases(metadata.aliases());
-                }
-            }
-            LiteralFieldBatch literalBatch = loadLiteralFields(
-                    e.getKey(), e.getValue(), objs, known, api, sink);
-            // A literal-only load parses statements, not ApiEntity metadata, so those
-            // classes still need one identity pass. Where an entity request already ran,
-            // its response answered this and the pass below asks for nothing.
-            if (retainAliases) {
-                String aliasesKey = wikidata.explore.extract.LoadedDeclaration.key(
-                        e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY);
-                wikidata.explore.extract.LoadedDeclaration aliasesDone = known.get(aliasesKey);
-                Set<String> aliasesCovered = aliasesDone == null
-                        ? new LinkedHashSet<>()
-                        : new LinkedHashSet<>(aliasesDone.coveredQids());
-                // Coverage follows what the response ANSWERED, never what it was assumed
-                // to answer: an entity request carries aliases (WikidataApiClient
-                // .entityProps), and the entity says so itself, so a document fetched
-                // without them can never be banked as though it had them.
-                entityBatch.entities().forEach((qid, metadata) -> {
-                    if (metadata.aliasesAnswered()) aliasesCovered.add(qid);
-                });
-                List<String> metadataQids = objs.stream()
-                        .filter(obj -> !obj.isPart() && !aliasesCovered.contains(obj.qid()))
-                        .map(WikidataDynamicObject::qid).distinct().toList();
-                if (!metadataQids.isEmpty()) {
-                    try (GenerationLog.Group group = sink.group(
-                            "Load entity aliases on " + e.getKey() + " for "
-                                    + metadataQids.size() + " entities")) {
-                        Map<String, List<String>> metadata =
-                                api.getAliases(metadataQids, group.batchSink());
-                        for (WikidataDynamicObject obj : objs) {
-                            List<String> aliases = metadata.get(obj.qid());
-                            if (!obj.isPart() && aliases != null) obj.aliases(aliases);
-                        }
-                        aliasesCovered.addAll(metadata.keySet());
-                    } catch (Exception ex) {
-                        sink.message("Entity aliases on " + e.getKey() + " unavailable ("
-                                + ex.getMessage() + ") — field values remain usable.\n");
+            for (ReferentGroup load : referentGroups(
+                    model, e.getKey(), e.getValue(), classObjects)) {
+                String loadKey = load.loadKey();
+                List<GeneratedFieldModel> fields = load.fields();
+                List<WikidataDynamicObject> objs = load.objects();
+                boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey())
+                        && objs.stream().anyMatch(value -> !value.isPart());
+                boolean retainSitelinks = sitelinkClasses != null
+                        && sitelinkClasses.contains(e.getKey())
+                        && objs.stream().anyMatch(value -> !value.isPart());
+                EntityFieldBatch entityBatch = loadEntityFields(
+                        loadKey, fields, objs, known, api, sink, deferLabels,
+                        retainAliases, retainSitelinks,
+                        manifest == null ? Set.of() : manifest.propertiesFor(e.getKey()));
+                for (WikidataDynamicObject obj : objs) {
+                    WikidataApiClient.ApiEntity metadata = entityBatch.entities().get(obj.qid());
+                    // Aliases name the Wikidata ENTITY, not an owned projection that merely
+                    // borrows its QID (Name@Person.structuredName).
+                    if (retainAliases && !obj.isPart() && metadata != null) {
+                        obj.aliases(metadata.aliases());
+                    }
+                    if (retainSitelinks && !obj.isPart() && metadata != null) {
+                        obj.enwikiTitle(metadata.enwikiTitle());
                     }
                 }
-                if (!aliasesCovered.isEmpty()) {
-                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), ALIASES_FIELD, ALIASES_PROPERTY, aliasesCovered));
+                LiteralFieldBatch literalBatch = loadLiteralFields(
+                        loadKey, fields, objs, known, api, sink);
+                // A literal-only load parses statements, not ApiEntity metadata, so those
+                // classes still need one identity pass. Where an entity request already ran,
+                // its response answered this and the pass below asks for nothing.
+                if (retainAliases) {
+                    String aliasesKey = wikidata.explore.extract.LoadedDeclaration.key(
+                            loadKey, ALIASES_FIELD, ALIASES_PROPERTY);
+                    wikidata.explore.extract.LoadedDeclaration aliasesDone = known.get(aliasesKey);
+                    Set<String> aliasesCovered = aliasesDone == null
+                            ? new LinkedHashSet<>()
+                            : new LinkedHashSet<>(aliasesDone.coveredQids());
+                    // Coverage follows what the response ANSWERED, never what it was assumed
+                    // to answer: an entity request carries aliases (WikidataApiClient
+                    // .entityProps), and the entity says so itself, so a document fetched
+                    // without them can never be banked as though it had them.
+                    entityBatch.entities().forEach((qid, metadata) -> {
+                        if (metadata.aliasesAnswered()) aliasesCovered.add(qid);
+                    });
+                    List<String> metadataQids = objs.stream()
+                            .filter(obj -> !obj.isPart() && !aliasesCovered.contains(obj.qid()))
+                            .map(WikidataDynamicObject::qid).distinct().toList();
+                    if (!metadataQids.isEmpty()) {
+                        try (GenerationLog.Group group = sink.group(
+                                "Load entity aliases on " + e.getKey() + " for "
+                                        + metadataQids.size() + " entities")) {
+                            Map<String, List<String>> metadata =
+                                    api.getAliases(metadataQids, group.batchSink());
+                            for (WikidataDynamicObject obj : objs) {
+                                List<String> aliases = metadata.get(obj.qid());
+                                if (!obj.isPart() && aliases != null) obj.aliases(aliases);
+                            }
+                            aliasesCovered.addAll(metadata.keySet());
+                        } catch (Exception ex) {
+                            sink.message("Entity aliases on " + e.getKey() + " unavailable ("
+                                    + ex.getMessage() + ") — field values remain usable.\n");
+                        }
+                    }
+                    if (!aliasesCovered.isEmpty()) {
+                        completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                                loadKey, ALIASES_FIELD, ALIASES_PROPERTY, aliasesCovered));
+                    }
                 }
+                if (retainSitelinks) {
+                    String sitelinksKey = wikidata.explore.extract.LoadedDeclaration.key(
+                            loadKey, SITELINKS_FIELD, SITELINKS_PROPERTY);
+                    wikidata.explore.extract.LoadedDeclaration sitelinksDone =
+                            known.get(sitelinksKey);
+                    Set<String> sitelinksCovered = sitelinksDone == null
+                            ? new LinkedHashSet<>()
+                            : new LinkedHashSet<>(sitelinksDone.coveredQids());
+                    sitelinksCovered.addAll(entityBatch.entities().keySet());
+                    List<String> metadataQids = objs.stream()
+                            .filter(obj -> !obj.isPart()
+                                    && !sitelinksCovered.contains(obj.qid()))
+                            .map(WikidataDynamicObject::qid).distinct().toList();
+                    if (!metadataQids.isEmpty()) {
+                        try (GenerationLog.Group group = sink.group(
+                                "Load English Wikipedia article correspondence on "
+                                        + e.getKey() + " for " + metadataQids.size()
+                                        + " entities")) {
+                            Map<String, WikidataApiClient.ApiEntity> metadata =
+                                    api.getEntities(metadataQids, List.of(),
+                                            Set.of(FactDemand.EntityMetadata.SITELINKS),
+                                            group.batchSink());
+                            for (WikidataDynamicObject obj : objs) {
+                                WikidataApiClient.ApiEntity entity = metadata.get(obj.qid());
+                                if (!obj.isPart() && entity != null) {
+                                    obj.enwikiTitle(entity.enwikiTitle());
+                                }
+                            }
+                            sitelinksCovered.addAll(metadata.keySet());
+                        } catch (Exception ex) {
+                            sink.message("English Wikipedia article correspondence on "
+                                    + e.getKey() + " unavailable (" + ex.getMessage()
+                                    + ") — other field values remain usable.\n");
+                        }
+                    }
+                    if (!sitelinksCovered.isEmpty()) {
+                        completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                                loadKey, SITELINKS_FIELD, SITELINKS_PROPERTY,
+                                sitelinksCovered));
+                    }
+                }
+                for (GeneratedFieldModel f : fields) {
+                    String pid = clean(f.mapping().propertyPid());
+                    String key = wikidata.explore.extract.LoadedDeclaration.key(
+                            loadKey, f.name(), pid);
+                    wikidata.explore.extract.LoadedDeclaration done = known.get(key);
+                    Set<String> coveredQids = done == null
+                            ? Set.of() : new LinkedHashSet<>(done.coveredQids());
+                    Set<String> currentQids = new LinkedHashSet<>();
+                    for (WikidataDynamicObject obj : objs) currentQids.add(obj.qid());
+                    if (!coveredQids.isEmpty() && coveredQids.containsAll(currentQids)) {
+                        sink.message("Referent field " + e.getKey() + "." + f.name()
+                                + " (" + pid + ") already loaded for " + currentQids.size()
+                                + " entities — skipped.\n");
+                        completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                                loadKey, f.name(), pid, currentQids));
+                        continue;
+                    }
+                    List<WikidataDynamicObject> uncovered = objs.stream()
+                            .filter(obj -> !coveredQids.contains(obj.qid()))
+                            .toList();
+                    LoadOutcome outcome = loadField(
+                            loadKey, uncovered, f, sink, entityBatch, literalBatch);
+                    loaded += outcome.loaded();
+                    // Coverage is per ENTITY, not per declaration: everything asked about
+                    // that an answer came back for is covered — including an entity that
+                    // simply has no such property — and only the entities no batch reached
+                    // stay unresolved. Reporting the whole declaration as unresolved because
+                    // one batch of 50 failed both overstated what is missing (4,972 entities
+                    // named for ~150 real failures) and made the next run re-ask for all of
+                    // it.
+                    Set<String> nowCovered = new LinkedHashSet<>(currentQids);
+                    nowCovered.removeAll(outcome.unavailable());
+                    if (!nowCovered.isEmpty()) {
+                        completed.add(new wikidata.explore.extract.LoadedDeclaration(
+                                loadKey, f.name(), pid, nowCovered));
+                    } else if (done != null) {
+                        // Nothing new was reached; keep the coverage an earlier run earned.
+                        completed.add(done);
+                    }
+                    if (!outcome.completed()) {
+                        failed.add(new wikidata.explore.extract.LoadedDeclaration(
+                                loadKey, f.name(), pid, outcome.unavailable()));
+                    }
             }
-            for (GeneratedFieldModel f : e.getValue()) {
-                String pid = clean(f.mapping().propertyPid());
-                String key = wikidata.explore.extract.LoadedDeclaration.key(
-                        e.getKey(), f.name(), pid);
-                wikidata.explore.extract.LoadedDeclaration done = known.get(key);
-                Set<String> coveredQids = done == null
-                        ? Set.of() : new LinkedHashSet<>(done.coveredQids());
-                Set<String> currentQids = new LinkedHashSet<>();
-                for (WikidataDynamicObject obj : objs) currentQids.add(obj.qid());
-                if (!coveredQids.isEmpty() && coveredQids.containsAll(currentQids)) {
-                    sink.message("Referent field " + e.getKey() + "." + f.name()
-                            + " (" + pid + ") already loaded for " + currentQids.size()
-                            + " entities — skipped.\n");
-                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), f.name(), pid, currentQids));
-                    continue;
-                }
-                List<WikidataDynamicObject> uncovered = objs.stream()
-                        .filter(obj -> !coveredQids.contains(obj.qid()))
-                        .toList();
-                LoadOutcome outcome = loadField(
-                        e.getKey(), uncovered, f, sink, entityBatch, literalBatch);
-                loaded += outcome.loaded();
-                // Coverage is per ENTITY, not per declaration: everything asked about
-                // that an answer came back for is covered — including an entity that
-                // simply has no such property — and only the entities no batch reached
-                // stay unresolved. Reporting the whole declaration as unresolved because
-                // one batch of 50 failed both overstated what is missing (4,972 entities
-                // named for ~150 real failures) and made the next run re-ask for all of
-                // it.
-                Set<String> nowCovered = new LinkedHashSet<>(currentQids);
-                nowCovered.removeAll(outcome.unavailable());
-                if (!nowCovered.isEmpty()) {
-                    completed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), f.name(), pid, nowCovered));
-                } else if (done != null) {
-                    // Nothing new was reached; keep the coverage an earlier run earned.
-                    completed.add(done);
-                }
-                if (!outcome.completed()) {
-                    failed.add(new wikidata.explore.extract.LoadedDeclaration(
-                            e.getKey(), f.name(), pid, outcome.unavailable()));
-                }
             }
         }
         return new Result(loaded, List.copyOf(completed), List.copyOf(failed));
+    }
+
+    private record ReferentGroup(
+            String loadKey, List<GeneratedFieldModel> fields,
+            List<WikidataDynamicObject> objects) { }
+
+    /** Owned instances carry their production site, so each site gets its own sources. */
+    private static List<ReferentGroup> referentGroups(
+            GeneratedProjectModel model, String className,
+            List<GeneratedFieldModel> defaults, List<WikidataDynamicObject> objects) {
+        GeneratedClassModel target = model.findClass(className);
+        if (target == null || MembershipPattern.of(target, model)
+                != MembershipPattern.OWNED_COMPONENT) {
+            return List.of(new ReferentGroup(className, defaults, objects));
+        }
+        Map<String, List<WikidataDynamicObject>> bySourceContext = new LinkedHashMap<>();
+        for (WikidataDynamicObject object : objects) {
+            wikidata.explore.model.OwnedComponentSite site =
+                    wikidata.explore.model.OwnedComponentSite.parse(object.typeKey());
+            if (site == null || !className.equals(site.targetClass())) continue;
+            GeneratedFieldModel ownership =
+                    wikidata.explore.model.OwnedFieldSources.ownershipField(model, site);
+            String contextKey = ownership == null
+                    || ownership.ownedFieldSources().isEmpty()
+                    ? className : site.key();
+            bySourceContext.computeIfAbsent(contextKey, ignored -> new ArrayList<>())
+                    .add(object);
+        }
+        List<ReferentGroup> groups = new ArrayList<>();
+        // An owned class is admitted with every loadable field, since a site override may
+        // give a field the property its shared default lacks. Each group loads only the
+        // fields that, in its own context, name a property.
+        List<GeneratedFieldModel> sharedLoadable = defaults.stream()
+                .filter(field -> WikidataIds.isPid(clean(field.mapping().propertyPid())))
+                .toList();
+        bySourceContext.forEach((key, values) -> {
+            if (className.equals(key)) {
+                if (!sharedLoadable.isEmpty()) {
+                    groups.add(new ReferentGroup(className, sharedLoadable, values));
+                }
+                return;
+            }
+            wikidata.explore.model.OwnedComponentSite site =
+                    wikidata.explore.model.OwnedComponentSite.parse(key);
+            List<GeneratedFieldModel> fields =
+                    wikidata.explore.model.OwnedFieldSources
+                            .effectiveFields(model, target, site).stream()
+                            .filter(field -> field != null && loadableType(field.type())
+                                    && WikidataIds.isPid(
+                                            clean(field.mapping().propertyPid())))
+                            .toList();
+            if (!fields.isEmpty()) groups.add(new ReferentGroup(key, fields, values));
+        });
+        return List.copyOf(groups);
     }
 
     /**
@@ -452,7 +581,8 @@ public final class ReferentFieldLoad {
             List<WikidataDynamicObject> objs,
             Map<String, wikidata.explore.extract.LoadedDeclaration> known,
             WikidataApiClient api, GenerationLog log, boolean deferLabels,
-            boolean retainAliases, Set<String> prospectivePids) {
+            boolean retainAliases, boolean retainSitelinks,
+            Set<String> prospectivePids) {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : fields) {
@@ -497,7 +627,8 @@ public final class ReferentFieldLoad {
             // Only the entities no batch reached are unresolved.
             WikidataApiClient.PartialEntities partial = api.getEntityClaimsPartial(
                     new ArrayList<>(qids), new ArrayList<>(pids),
-                    metadataProjection(!deferLabels, retainAliases), group.batchSink());
+                    metadataProjection(!deferLabels, retainAliases, retainSitelinks),
+                    group.batchSink());
             details = partial.entities();
             unavailable = new LinkedHashSet<>(partial.unavailableQids());
             if (!unavailable.isEmpty()) {
@@ -537,11 +668,12 @@ public final class ReferentFieldLoad {
     }
 
     private static Set<FactDemand.EntityMetadata> metadataProjection(
-            boolean label, boolean aliases) {
+            boolean label, boolean aliases, boolean sitelinks) {
         java.util.EnumSet<FactDemand.EntityMetadata> metadata =
                 java.util.EnumSet.noneOf(FactDemand.EntityMetadata.class);
         if (label) metadata.add(FactDemand.EntityMetadata.LABEL);
         if (aliases) metadata.add(FactDemand.EntityMetadata.ALIASES);
+        if (sitelinks) metadata.add(FactDemand.EntityMetadata.SITELINKS);
         return metadata;
     }
 
@@ -607,9 +739,26 @@ public final class ReferentFieldLoad {
             String pid = clean(field.mapping().propertyPid());
             if (WikidataIds.isPid(pid)) producerPids.add(pid);
         }
+        if (producer.ownedClass()) {
+            for (MembershipPattern.OwnedBy ownedBy :
+                    MembershipPattern.ownedBy(producer, model)) {
+                wikidata.explore.model.OwnedComponentSite site =
+                        new wikidata.explore.model.OwnedComponentSite(
+                                producer.className(), ownedBy.ownerClass(),
+                                ownedBy.fieldName());
+                for (GeneratedFieldModel field :
+                        wikidata.explore.model.OwnedFieldSources.effectiveFields(
+                                model, producer, site)) {
+                    String pid = clean(field.mapping().propertyPid());
+                    if (WikidataIds.isPid(pid)) producerPids.add(pid);
+                }
+            }
+        }
         // Sibling entity and literal fields share the same physical claims response.
         // Bank all of them on the first entity-valued/evidence fetch.
         Set<String> planned = new LinkedHashSet<>(producerPids);
+        collectOwnedPropertyClosure(model, producerClass, planned,
+                new LinkedHashSet<>());
         for (var rule : model.entityKindRules()) {
             if (rule == null || !rule.isConfigured()
                     || !producerPids.contains(rule.propertyPid())) continue;
@@ -654,9 +803,36 @@ public final class ReferentFieldLoad {
                     == FieldProductionKind.OWNED_COMPONENT
                     || target != null && target.ownedClass();
             if (owned && target != null) {
-                collectOwnedPropertyClosure(
-                        model, target.className(), pids, visited);
+                GeneratedClassModel declaring = model.declaringClass(field);
+                wikidata.explore.model.OwnedComponentSite site =
+                        new wikidata.explore.model.OwnedComponentSite(
+                                target.className(), declaring == null
+                                        ? clazz.className() : declaring.className(),
+                                field.name());
+                collectOwnedPropertyClosure(model, target, site, pids, visited);
             }
+        }
+    }
+
+    private static void collectOwnedPropertyClosure(
+            GeneratedProjectModel model, GeneratedClassModel target,
+            wikidata.explore.model.OwnedComponentSite site, Set<String> pids,
+            Set<String> visited) {
+        if (target == null || site == null || !visited.add(site.key())) return;
+        for (GeneratedFieldModel field :
+                wikidata.explore.model.OwnedFieldSources.effectiveFields(
+                        model, target, site)) {
+            String pid = clean(field.mapping().propertyPid());
+            if (WikidataIds.isPid(pid)) pids.add(pid);
+            if (field.type() != FieldType.ENTITY) continue;
+            GeneratedClassModel nested = model.findClass(field.entityClassName());
+            if (nested == null || !(field.mapping().productionKind()
+                    == FieldProductionKind.OWNED_COMPONENT || nested.ownedClass())) continue;
+            GeneratedClassModel declaring = model.declaringClass(field);
+            collectOwnedPropertyClosure(model, nested,
+                    new wikidata.explore.model.OwnedComponentSite(nested.className(),
+                            declaring == null ? target.className() : declaring.className(),
+                            field.name()), pids, visited);
         }
     }
 

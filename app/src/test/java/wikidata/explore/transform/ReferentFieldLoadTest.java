@@ -11,15 +11,50 @@ import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedProjectModelValidator;
+import wikidata.explore.model.OwnedFieldSource;
+import wikidata.explore.model.OwnedFieldSources;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentFieldLoadTest {
+
+    @Test void aConfiguredArticleLoadsForAFieldlessNestedReferent() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel body = new GeneratedClassModel("CelestialBody");
+        body.addField("discoverer", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Discoverer");
+        GeneratedClassModel discovererClass = new GeneratedClassModel("Discoverer");
+        model.rootClass(body);
+        model.addClass(discovererClass);
+
+        WikidataDynamicObject discoverer =
+                new WikidataDynamicObject("Q42", "Douglas Adams");
+        discoverer.type("Discoverer");
+        FakeWikidataApiClient api = new FakeWikidataApiClient() {
+            @Override public Map<String, WikidataApiClient.ApiEntity> getEntities(
+                    List<String> qids, List<String> claimPids,
+                    WikidataApiClient.BatchLog batchLog) {
+                return Map.of("Q42", new WikidataApiClient.ApiEntity(
+                        "Q42", "Douglas Adams", Map.of(), false, Map.of(),
+                        List.of(), false, Map.of(), "Douglas_Adams", Map.of()));
+            }
+        };
+
+        ReferentFieldLoad.load(model, List.of(discoverer), api, null, List.of(),
+                true, ReferentFieldLoad.compileManifest(model), Set.of(),
+                Set.of("Discoverer"));
+
+        assertEquals("Douglas_Adams", discoverer.enwikiTitle(),
+                "source correspondence is metadata of the referent, not a domain field");
+    }
 
     @Test void sourceMembersDiscoveredOutsideTheirRootQueryStillLoadImages() {
         GeneratedProjectModel model = new GeneratedProjectModel();
@@ -163,6 +198,7 @@ class ReferentFieldLoadTest {
         int literalLoads;
         List<String> loadedPids = List.of();
         List<String> loadedLiteralPids = List.of();
+        final java.util.Set<String> everyClaimPid = new java.util.LinkedHashSet<>();
 
         @Override public Map<String, WikidataApiClient.ApiEntity> getEntities(
                 List<String> qids, List<String> claimPids,
@@ -170,6 +206,7 @@ class ReferentFieldLoadTest {
             if (claimPids != null && !claimPids.isEmpty()) {
                 claimLoads++;
                 loadedPids = List.copyOf(claimPids);
+                everyClaimPid.addAll(claimPids);
             }
             return super.getEntities(qids, claimPids, batchLog);
         }
@@ -223,6 +260,97 @@ class ReferentFieldLoadTest {
                 ((WikidataDynamicObject) component.get("givenName")).getDisplayName());
         assertEquals("Adams",
                 ((WikidataDynamicObject) component.get("familyName")).getDisplayName());
+    }
+
+    @Test void theSameOwnedFieldMayUseDifferentPropertiesAtDifferentOwnerSites() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel personName = person.addField(
+                "personalName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        personName.entityClassName("Name");
+        personName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
+        organisation.membership(EntityBound.relation("P31", List.of("Q43229"), false));
+        GeneratedFieldModel legalName = organisation.addField(
+                "legalName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        legalName.entityClassName("Name");
+        legalName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        GeneratedFieldModel part = name.addField(
+                "primaryPart", FieldType.ENTITY, FieldCardinality.SINGLE);
+        part.mapping().propertyPid("P735");
+        OwnedFieldSource override = OwnedFieldSources.ensureOverride(
+                legalName, "primaryPart");
+        override.mapping().copyAcquisitionFrom(part.mapping());
+        override.mapping().propertyPid("P734");
+        model.rootClass(person);
+        model.addClass(organisation);
+        model.addClass(name);
+
+        ReferentFieldLoad.AcquisitionManifest manifest =
+                ReferentFieldLoad.compileManifest(model);
+        assertTrue(manifest.propertiesFor("Person").contains("P735"));
+        assertTrue(manifest.propertiesFor("Organisation").contains("P734"));
+        assertEquals(Set.of("P734", "P735"),
+                manifest.propertiesFor("Name"));
+
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "Human owner");
+        human.type("Person");
+        WikidataDynamicObject company = new WikidataDynamicObject("Q2", "Company owner");
+        company.type("Organisation");
+        OwnedComponents.apply(model, List.of(human, company), null, null);
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "Human owner", Map.of("P735", List.of("Q11")))
+                .entity("Q2", "Company owner", Map.of("P734", List.of("Q22")))
+                .entity("Q11", "Human name part")
+                .entity("Q22", "Organisation name part");
+
+        assertEquals(2, ReferentFieldLoad.apply(
+                model, List.of(human, company), api, null));
+        WikidataDynamicObject humanName =
+                (WikidataDynamicObject) human.get("personalName");
+        WikidataDynamicObject companyName =
+                (WikidataDynamicObject) company.get("legalName");
+        assertEquals("Human name part", ((WikidataDynamicObject)
+                humanName.get("primaryPart")).getDisplayName());
+        assertEquals("Organisation name part", ((WikidataDynamicObject)
+                companyName.get("primaryPart")).getDisplayName());
+        assertTrue(GeneratedProjectModelValidator.validate(model).valid());
+    }
+
+    /** An owned class is admitted with its property-less fields, because a site override
+     *  may supply one; a site without an override must still not ask for them. */
+    @Test void aSiteWithoutAnOverrideLoadsOnlyTheOwnedFieldsThatNameAProperty() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel personName = person.addField(
+                "personalName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        personName.entityClassName("Name");
+        personName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        name.addField("primaryPart", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P735");
+        name.addField("unsourced", FieldType.ENTITY, FieldCardinality.SINGLE);
+        model.rootClass(person);
+        model.addClass(name);
+
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "Human owner");
+        human.type("Person");
+        OwnedComponents.apply(model, List.of(human), null, null);
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "Human owner", Map.of("P735", List.of("Q11")))
+                .entity("Q11", "Human name part");
+
+        ReferentFieldLoad.apply(model, List.of(human), api, null);
+
+        assertEquals(Set.of("P735"), api.everyClaimPid,
+                "a field with no property is not requested under a blank one");
+        assertEquals("Human name part", ((WikidataDynamicObject) ((WikidataDynamicObject)
+                human.get("personalName")).get("primaryPart")).getDisplayName());
     }
 
     @Test void firstKindEvidenceFetchRetainsThePossibleKindAndOwnedFieldClosure() {

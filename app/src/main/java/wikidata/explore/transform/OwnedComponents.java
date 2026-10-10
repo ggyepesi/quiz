@@ -364,7 +364,8 @@ public final class OwnedComponents {
     /** A part's type key: the class it is, at the owner field that produces it. This is
      *  the one composition of that key, and {@link #renamedSiteKey} its one inverse. */
     static String siteKey(String targetClass, String ownerClass, String fieldName) {
-        return targetClass + "@" + ownerClass + "." + fieldName;
+        return new wikidata.explore.model.OwnedComponentSite(
+                targetClass, ownerClass, fieldName).key();
     }
 
     /**
@@ -374,13 +375,12 @@ public final class OwnedComponents {
      */
     public static String renamedSiteKey(String key, Map<String, String> renames) {
         if (key == null || renames == null || renames.isEmpty()) return key;
-        int at = key.indexOf('@');
-        int dot = key.indexOf('.', at + 1);
-        if (at <= 0 || dot <= at + 1) return key;
-        String target = key.substring(0, at);
-        String owner = key.substring(at + 1, dot);
-        return siteKey(renames.getOrDefault(target, target),
-                renames.getOrDefault(owner, owner), key.substring(dot + 1));
+        wikidata.explore.model.OwnedComponentSite site =
+                wikidata.explore.model.OwnedComponentSite.parse(key);
+        if (site == null) return key;
+        return siteKey(renames.getOrDefault(site.targetClass(), site.targetClass()),
+                renames.getOrDefault(site.ownerClass(), site.ownerClass()),
+                site.ownerField());
     }
 
     private static String key(String typeKey, String id) {

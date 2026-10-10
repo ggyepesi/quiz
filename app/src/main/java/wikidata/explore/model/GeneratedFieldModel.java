@@ -81,6 +81,10 @@ public class GeneratedFieldModel {
     @com.fasterxml.jackson.annotation.JsonInclude(
             com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
     private final List<SourceBinding> sourceBindings = new ArrayList<>();
+    /** Source overrides for fields of the owned component this field produces. */
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+    private final List<OwnedFieldSource> ownedFieldSources = new ArrayList<>();
     private final List<GeneratedFieldModel> fields = new ArrayList<>();
 
     // For deserialization (GeneratedProjectModelStore).
@@ -272,6 +276,8 @@ public class GeneratedFieldModel {
             c.wikipediaCategoryRule = wikipediaCategoryRule.copy();
         }
         c.sourceBindings.addAll(sourceBindings);
+        ownedFieldSources.stream().filter(java.util.Objects::nonNull)
+                .map(OwnedFieldSource::copy).forEach(c.ownedFieldSources::add);
 
         for (GeneratedFieldModel f : fields) {
             if (f != null) {
@@ -311,6 +317,8 @@ public class GeneratedFieldModel {
     }
 
     public List<SourceBinding> sourceBindings() { return sourceBindings; }
+
+    public List<OwnedFieldSource> ownedFieldSources() { return ownedFieldSources; }
 
     public List<GeneratedFieldModel> fields() { return fields; }
 

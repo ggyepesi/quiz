@@ -33,8 +33,8 @@ public class NodeSamplePanel extends JPanel {
     private Supplier<String> classSampleUnavailableReason =
             () -> "Select the class to sample instances.";
 
-    private Supplier<FieldSampleContext> fieldSampleSupplier =
-            () -> null;
+    private Supplier<List<FieldSampleContext>> fieldSampleSupplier =
+            List::of;
 
     private Consumer<String> log =
             s -> {};
@@ -137,9 +137,15 @@ public class NodeSamplePanel extends JPanel {
 
     public void setFieldSampleSupplier(
             Supplier<FieldSampleContext> supplier) {
+        this.fieldSampleSupplier = supplier == null ? List::of : () -> {
+            FieldSampleContext context = supplier.get();
+            return context == null ? List.of() : List.of(context);
+        };
+    }
 
-        this.fieldSampleSupplier =
-                supplier == null ? () -> null : supplier;
+    public void setFieldSampleContextsSupplier(
+            Supplier<List<FieldSampleContext>> supplier) {
+        this.fieldSampleSupplier = supplier == null ? List::of : supplier;
     }
 
     public void log(Consumer<String> log) {
@@ -249,7 +255,7 @@ public class NodeSamplePanel extends JPanel {
      */
     private Query<Object> buildSampleQuery() {
         applyEdits.run();
-        if (fieldSampleSupplier.get() != null) return erased(buildFieldSampleQuery());
+        if (!fieldSampleSupplier.get().isEmpty()) return erased(buildFieldSampleQuery());
         return erased(buildClassSampleQuery());
     }
 
@@ -299,11 +305,11 @@ public class NodeSamplePanel extends JPanel {
         return query;
     }
 
-    private SampleFieldQuery buildFieldSampleQuery() {
+    private Query<TableQueryResult> buildFieldSampleQuery() {
         applyEdits.run();
 
-        FieldSampleContext context =
-                fieldSampleSupplier.get();
+        List<FieldSampleContext> contexts = fieldSampleSupplier.get();
+        FieldSampleContext context = contexts.isEmpty() ? null : contexts.getFirst();
 
         if (context == null || context.field() == null) {
             statusLabel.setText("Select a field to sample field values.");
@@ -334,26 +340,24 @@ public class NodeSamplePanel extends JPanel {
                         ? includedField.propertyLabel()
                         : context.field().name();
 
-        contextLabel.setText(
-                ownerName
-                        + "  —  "
-                        + fieldPid
-                        + " · "
-                        + propLabel
-                        + "  →  value");
+        contextLabel.setText(contexts.size() == 1
+                ? ownerName + "  —  " + fieldPid + " · " + propLabel + "  →  value"
+                : "All " + contexts.size() + " owner sites  —  "
+                        + context.field().name() + "  →  value");
 
-        tableModel.setColumnIdentifiers(new Object[]{
-                ownerName + " QID",
-                ownerName,
-                fieldPid + " · " + propLabel,
+        tableModel.setColumnIdentifiers(contexts.size() == 1 ? new Object[]{
+                ownerName + " QID", ownerName, fieldPid + " · " + propLabel,
                 propLabel + " label"
-        });
+        } : new Object[]{"Owner QID", "Owner site and label", "Value", "Value label"});
 
         tableModel.setRowCount(0);
         ((CardLayout) resultCards.getLayout()).show(resultCards, "field");
         statusLabel.setText("Sampling field values...");
 
-        return new SampleFieldQuery(context, SAMPLE_LIMIT);
+        return contexts.size() == 1
+                ? new SampleFieldQuery(context, SAMPLE_LIMIT)
+                : new wikidata.explore.query.logical.SampleFieldSitesQuery(
+                        contexts, SAMPLE_LIMIT);
     }
 
     void acceptClassSample(ClassSampleResult result) {
@@ -479,7 +483,7 @@ public class NodeSamplePanel extends JPanel {
         // ONE question, asked in the order the button answers it: a selected field is
         // sampled as a field, anything else as a class. Two independent enablement rules
         // is what let an aggregate offer both buttons and honour neither.
-        boolean field = queryRunner != null && fieldSampleSupplier.get() != null;
+        boolean field = queryRunner != null && !fieldSampleSupplier.get().isEmpty();
 
         String reason;
         if (queryRunner == null) {
