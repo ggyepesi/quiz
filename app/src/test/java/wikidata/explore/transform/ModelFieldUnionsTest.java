@@ -52,6 +52,32 @@ class ModelFieldUnionsTest {
                 "replaying a loaded snapshot is idempotent");
     }
 
+    /** #380: a union that reads another union declared after it used to see that
+     *  field unfilled on the first run, and only a second run completed it. */
+    @Test void aUnionReadingALaterDeclaredUnionIsCompleteAfterOneRun() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel planet = project.findClass("Planet");
+        GeneratedFieldModel bodies = new GeneratedFieldModel(
+                "bodies", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        bodies.entityClassName("Moon");
+        bodies.mapping().productionKind(FieldProductionKind.UNION);
+        bodies.mapping().unionSourcePaths().add("allMoons");
+        planet.fields().add(0, bodies);   // declared before the union it reads
+        WikidataDynamicObject jupiter = object("Q319", "Jupiter", "Planet");
+        WikidataDynamicObject io = object("Q3123", "Io", "Moon");
+        io.put("parentBody", jupiter);
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(jupiter, io));
+
+        int changed = StatementTransforms.applyIdempotent(
+                ProjectModelCompiler.compile(project), pool, null);
+
+        assertEquals(List.of(io), jupiter.get("bodies"),
+                "the reading union sees the union it reads, whatever their order");
+        assertEquals(2, changed, "allMoons and bodies, each counted once");
+        assertEquals(0, StatementTransforms.applyIdempotent(
+                ProjectModelCompiler.compile(project), pool, null));
+    }
+
     @Test void editableAndCompiledModelsDeriveTheSameUnion() {
         GeneratedProjectModel project = project();
 

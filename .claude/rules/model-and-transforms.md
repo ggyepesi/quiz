@@ -93,7 +93,8 @@ A collection assembled from several already-produced routes is one `UNION` field
 It stores ordered field paths on the field, picked from the owning class's declared fields with
 the finite field picker (never typed), runs after inverts in the shared replayable transform
 sequence, leaves its source fields intact, and deduplicates by normal value identity. It records
-no per-value provenance. It is never compiled into a datasource query and never reimplements
+no per-value provenance. A union may read another union in any declaration order: the step repeats
+until no union changes. It is never compiled into a datasource query and never reimplements
 acquisition for one domain.
 
 # SPARQL

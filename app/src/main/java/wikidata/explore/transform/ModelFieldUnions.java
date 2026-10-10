@@ -23,7 +23,8 @@ import java.util.Map;
  * Fills collection fields declared as {@link FieldProductionKind#UNION} from
  * values already present elsewhere on the same object graph. No datasource is
  * consulted: the configured field paths are read in order and duplicate values
- * retain their first occurrence.
+ * retain their first occurrence. A union may read another union; passes repeat until
+ * none changes, so declaration order never decides the result.
  */
 public final class ModelFieldUnions {
 
@@ -58,34 +59,58 @@ public final class ModelFieldUnions {
                              Collection<WikidataDynamicObject> pool,
                              GenerationLog log,
                              List<WikidataDynamicObject> changedOut) {
-        int changed = 0;
-        for (FieldUnion union : unions) {
-            int fieldChanges = 0;
-            for (WikidataDynamicObject instance : pool) {
-                if (instance == null
-                        || !instance.directClassNames().contains(union.className())) {
-                    continue;
+        // A union may read another union's field (allBodies = planets + allMoons), in
+        // any declaration order, so one pass can read a field that is filled later in
+        // that same pass (#380). Each pass recomputes every union from its sources, so
+        // repeating passes until none changes anything settles them all; a replay over
+        // already-settled data stops after its first pass. The bound only guards a
+        // cyclic declaration whose order keeps moving, and says so.
+        Map<WikidataDynamicObject, java.util.Set<String>> changedFields =
+                new java.util.IdentityHashMap<>();
+        int[] perUnion = new int[unions.size()];
+        boolean settled = false;
+        for (int pass = 0; pass <= unions.size() && !settled; pass++) {
+            settled = true;
+            for (int index = 0; index < unions.size(); index++) {
+                FieldUnion union = unions.get(index);
+                for (WikidataDynamicObject instance : pool) {
+                    if (instance == null
+                            || !instance.directClassNames().contains(union.className())) {
+                        continue;
+                    }
+                    LinkedHashSet<Object> values = new LinkedHashSet<>();
+                    for (String sourcePath : union.sourcePaths()) {
+                        flatten(FieldAccess.getPathValues(
+                                instance, FieldPath.parse(sourcePath)), values);
+                    }
+                    List<Object> result = new ArrayList<>(values);
+                    if (sameValues(instance.get(union.targetField()), result)) continue;
+                    instance.put(union.targetField(), result);
+                    settled = false;
+                    if (changedFields.computeIfAbsent(instance, ignored ->
+                            new java.util.HashSet<>()).add(union.targetField())) {
+                        perUnion[index]++;
+                    }
+                    if (changedOut != null && !changedOut.contains(instance)) {
+                        changedOut.add(instance);
+                    }
                 }
-                LinkedHashSet<Object> values = new LinkedHashSet<>();
-                for (String sourcePath : union.sourcePaths()) {
-                    flatten(FieldAccess.getPathValues(
-                            instance, FieldPath.parse(sourcePath)), values);
-                }
-                List<Object> result = new ArrayList<>(values);
-                if (sameValues(instance.get(union.targetField()), result)) continue;
-                instance.put(union.targetField(), result);
-                fieldChanges++;
-                changed++;
-                if (changedOut != null && !changedOut.contains(instance)) {
-                    changedOut.add(instance);
-                }
-            }
-            if (log != null) {
-                log.message("Union " + union.className() + "." + union.targetField()
-                        + " <- " + union.sourcePaths() + ": " + fieldChanges
-                        + " changed\n");
             }
         }
+        if (log != null) {
+            for (int index = 0; index < unions.size(); index++) {
+                FieldUnion union = unions.get(index);
+                log.message("Union " + union.className() + "." + union.targetField()
+                        + " <- " + union.sourcePaths() + ": " + perUnion[index]
+                        + " changed\n");
+            }
+            if (!settled) {
+                log.message("Unions did not settle after " + (unions.size() + 1)
+                        + " passes: their declarations read each other in a cycle\n");
+            }
+        }
+        int changed = 0;
+        for (int count : perUnion) changed += count;
         return changed;
     }
 
