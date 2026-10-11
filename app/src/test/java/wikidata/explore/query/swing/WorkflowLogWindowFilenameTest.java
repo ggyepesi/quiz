@@ -94,6 +94,26 @@ class WorkflowLogWindowFilenameTest {
         assertTrue(WorkflowLogWindow.refreshFully(work.LogStatus.FAILED));
     }
 
+    @Test void switchingProjectsForgetsLogsPipelinesAndSaveDestination() throws Exception {
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        window.saveContext("History", directory.resolve("history"));
+        window.registerPipeline("Generate History", pipeline(),
+                "History", directory.resolve("history"));
+        window.info("An old-project message");
+        long deadline = System.nanoTime()
+                + java.util.concurrent.TimeUnit.SECONDS.toNanos(2);
+        while (window.workflowCount() == 0 && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+
+        window.resetForProjectSwitch();
+
+        assertEquals(0, window.workflowCount(),
+                "the next project must not reopen the previous project's rows");
+        assertNull(window.destination(),
+                "the next saved log must not use the previous project's name or folder");
+    }
+
     private static process.ProcessWorkflowPipeline pipeline() {
         return new process.ProcessWorkflowPipeline(java.util.List.of());
     }

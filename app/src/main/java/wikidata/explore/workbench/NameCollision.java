@@ -1,48 +1,60 @@
 package wikidata.explore.workbench;
 
-import objectview.annotations.Reference;
 import objectview.Viewable;
-import objectview.ViewableAdapter;
+import objectview.group.ViewableGroupAdapter;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
- * One name shared by several distinct entities (e.g. 5 different "Agenor"s).
- * Rendered as a small card — the {@code name} plus the colliding {@code entities}
- * — so the ambiguity is inspectable in the generated instances window rather
- * than only in the query log.
- *
- * <p>Each entry is the actual generated instance where one exists (a typed
- * {@code Character}/{@code Episode} you can click through to), otherwise a
- * a {@link quiz.source.WikidataSource} carrying just the QID + wiki link.
+ * One ambiguous label as an ordinary ObjectView group whose members are the actual
+ * generated instances carrying that label. The group tree supplies the collision name
+ * and cardinality; selecting it shows those instances with the same card renderer used
+ * everywhere else.
  */
-public class NameCollision extends ViewableAdapter {
+final class NameCollision extends ViewableGroupAdapter {
 
-    public String name = "";
+    private static final String TYPE = "NameCollision";
+    private final String key;
 
-    @Reference
-    public List<Viewable> entities = List.of();
-
-    public NameCollision() {
+    NameCollision(String className, String name, Collection<? extends Viewable> entities) {
+        super(key(className, name), label(className, name));
+        this.key = key(className, name);
+        if (entities != null) entities.forEach(this::putMember);
     }
 
-    public NameCollision(String name, List<Viewable> entities) {
-        this.name = name == null ? "" : name;
-        this.entities = entities == null ? List.of() : entities;
+    private NameCollision(String identifier, String displayName) {
+        super(identifier, displayName);
+        this.key = identifier;
     }
 
-    @Override
-    public String getIdentifier() {
-        return name;
+    static NameCollision root(List<NameCollision> collisions) {
+        NameCollision root = new NameCollision("name-collisions", "Name collisions");
+        if (collisions != null) collisions.forEach(root::addCollision);
+        return root;
     }
 
-    @Override
-    public String getDisplayName() {
-        return name;
+    private void addCollision(NameCollision collision) {
+        if (collision == null) return;
+        collision.parent(this);
+        putChild(collision);
     }
 
-    @Override
-    public String typeName() {
-        return "NameCollision";
+    @Override public String groupKey() { return key; }
+
+    @Override public String typeName() { return TYPE; }
+
+    private static String key(String className, String name) {
+        return text(className) + '\0' + text(name);
+    }
+
+    private static String label(String className, String name) {
+        String type = text(className);
+        String label = text(name);
+        return type.isBlank() ? label : label + " — " + type;
+    }
+
+    private static String text(String value) {
+        return value == null ? "" : value;
     }
 }

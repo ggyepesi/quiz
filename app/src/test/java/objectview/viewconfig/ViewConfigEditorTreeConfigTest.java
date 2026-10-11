@@ -214,7 +214,7 @@ class ViewConfigEditorTreeConfigTest {
         withMinor.setAllMinorFields(true);
         editor.setConfigRows(withMinor, null, null, Set.of());
 
-        // The editor emits literal configs (directive 24): "all minor fields" arrives as
+        // The editor emits literal configs (directive 25): "all minor fields" arrives as
         // ticks plus the minor-fields switch, which is the state that must refresh.
         assertTrue(Boolean.TRUE.equals(editor.getConfig().minorFieldsVisible()),
                 "the all-minor-fields state must refresh from the switched-in config");

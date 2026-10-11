@@ -2,7 +2,10 @@ package wikidata.explore.generation;
 
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.FieldCardinality;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.GeneratedProjectModel;
+import datasource.schema.FieldType;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,32 @@ class CompiledPipelineRunTest {
         return new GraphCheckpoint(stage, List.of(), List.of(), List.of(), List.of(),
                 datasource.graph.GraphDiscoveryState.EMPTY,
                 GenerationRun.Quality.completeQuality(), "sig");
+    }
+
+    @Test void executionUsesTheExactNormalizedSnapshotThatWasCompiled() {
+        GeneratedProjectModel editable = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("Root");
+        var partField = root.addField(
+                "part", FieldType.ENTITY, FieldCardinality.SINGLE);
+        partField.entityClassName("Part");
+        partField.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel part = new GeneratedClassModel("Part");
+        part.ownedClass(true);
+        editable.rootClass(root);
+        editable.addClass(part);
+
+        CompiledPipelineRun run = CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(editable));
+
+        assertFalse(run.blocked(), run.explain());
+        assertNotSame(editable, run.request().model());
+        assertEquals("Root", run.request().model().findClass("Part").fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow().entityClassName());
+        assertEquals("Owner", editable.findClass("Part").fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow().entityClassName(),
+                "settling a run must not rewrite the editor's model");
     }
 
     /**

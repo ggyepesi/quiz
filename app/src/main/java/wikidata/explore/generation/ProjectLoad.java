@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 /**
  * Loading a project's saved instances, as an operation that runs without a window
- * (directive 22). A build reuses a saved output this way instead of regenerating it.
+ * (directive 23). A build reuses a saved output this way instead of regenerating it.
  *
  * <p>It lived in the ModelBuilder frame's Load instances button, and the first half of it —
  * reading the snapshot onto the current construct inventory — was written a second time in

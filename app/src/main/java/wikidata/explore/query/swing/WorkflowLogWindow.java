@@ -247,6 +247,45 @@ public class WorkflowLogWindow implements LogListener {
         f.setVisible(true);
     }
 
+    /**
+     * Closes this project's log window and forgets every log/save destination owned by
+     * it. A project switch is a context boundary: leaving the frame closed but retaining
+     * its rows would make the next project's "Query Logs" reopen the previous project.
+     */
+    public void resetForProjectSwitch() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            try {
+                SwingUtilities.invokeAndWait(this::resetForProjectSwitch);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while closing query logs",
+                        interrupted);
+            } catch (java.lang.reflect.InvocationTargetException failed) {
+                throw new IllegalStateException("Could not close query logs",
+                        failed.getCause());
+            }
+            return;
+        }
+
+        // Clear queued old-project roots before the already-scheduled delivery timer
+        // gets its turn on the EDT. A later log entry can share that timer safely: it
+        // sees only the new project's pending roots.
+        pendingUpdates.clear();
+        workflows.clear();
+        synchronized (this) {
+            pipelines.clear();
+            saveContext = null;
+        }
+        deferredUpdates = false;
+
+        CardListView oldView = view;
+        JFrame oldFrame = frame;
+        view = null;
+        frame = null;
+        if (oldView != null) oldView.dispose();
+        if (oldFrame != null) oldFrame.dispose();
+    }
+
     /** The query log's search owns the same disclosure state as its cards. Without
      *  this wiring the index could find a request under steps.steps.steps, but the
      *  navigator could neither open that route before rendering nor highlight its

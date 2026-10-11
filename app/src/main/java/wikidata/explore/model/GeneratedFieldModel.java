@@ -351,7 +351,7 @@ public class GeneratedFieldModel {
                     case STRING -> "String";
                     case IMAGE -> "Image";
                     case ENTITY -> entityClassName == null || entityClassName.isBlank()
-                            ? "Object"
+                            ? (renderAsReference() ? "Viewable" : "Object")
                             : entityClassName;
                     case NUMBER -> "Number";
                     case DATE -> "Date";

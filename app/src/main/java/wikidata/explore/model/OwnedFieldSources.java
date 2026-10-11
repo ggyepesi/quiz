@@ -48,6 +48,9 @@ public final class OwnedFieldSources {
         GeneratedFieldModel ownership = ownershipField(project, site);
         List<GeneratedFieldModel> result = new ArrayList<>();
         for (GeneratedFieldModel field : target.effectiveFields(project)) {
+            // The owner link is filled by component construction itself. It has no
+            // datasource default and no per-production-site acquisition override.
+            if (OwnedClassSemantics.isOwnerReferenceField(target, field)) continue;
             if (field != null) result.add(resolve(field, field.name(), ownership));
         }
         return List.copyOf(result);

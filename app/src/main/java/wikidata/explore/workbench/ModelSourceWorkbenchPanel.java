@@ -455,8 +455,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             // configuration owned by the model the class comes from. Set on every
             // selection so moving to this project's own field restores editing.
             GeneratedClassModel fieldOwner = owningClassOf(field);
+            boolean derivedOwner = wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(fieldOwner, field);
             EditableComponents.setEditable(fieldSourcePanel,
-                    editingEnabled && (fieldOwner == null || !fieldOwner.isImported()));
+                    editingEnabled && !derivedOwner
+                            && (fieldOwner == null || !fieldOwner.isImported()));
             showImportedNotice(fieldOwner);
             layout.show(cardPanel, "field");
         } else if (selected instanceof wikidata.explore.model.Selection selection
@@ -1313,7 +1316,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 // project's classes — so switching a class to a statement class in
                 // History silently declared Person its subject population, purely
                 // because Person is declared first. An arbitrary pick presented as a
-                // decision is exactly what directive 10 forbids: the UI is the
+                // decision is exactly what directive 11 forbids: the UI is the
                 // authority for authored configuration, and a blank is honest.
                 String sourceClass = "";
 

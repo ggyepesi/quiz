@@ -288,6 +288,11 @@ class ReferentFieldLoadTest {
         model.rootClass(person);
         model.addClass(organisation);
         model.addClass(name);
+        // Owners of two kinds: the reference targets the authored Owner role.
+        GeneratedClassModel owner = new GeneratedClassModel(
+                wikidata.explore.model.OwnedClassSemantics.OWNER_ROLE);
+        model.addClass(owner);
+        model.representationClasses(owner, List.of("Person", "Organisation"));
 
         ReferentFieldLoad.AcquisitionManifest manifest =
                 ReferentFieldLoad.compileManifest(model);

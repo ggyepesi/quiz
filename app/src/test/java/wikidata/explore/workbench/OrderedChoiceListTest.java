@@ -22,7 +22,7 @@ class OrderedChoiceListTest {
     /**
      * Clicking a row is inspection, and inspection changes nothing.
      *
-     * <p>Directive 9. In the copies this control replaces, a plain click in a
+     * <p>Directive 10. In the copies this control replaces, a plain click in a
      * multi-select list replaced the selection, and applying then wrote only what was
      * still selected — so reading one row deleted the rest.
      */

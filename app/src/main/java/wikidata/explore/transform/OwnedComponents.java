@@ -145,6 +145,14 @@ public final class OwnedComponents {
                         WikidataDynamicObject prior = evidence.get(identity);
                         if (prior != null) copyTargetFields(target, prior, component, project);
 
+                        // Ownership is a declared field on every owned class, not a
+                        // Discovery- or Name-specific rendering convention. Keep the
+                        // actual producer instance as the value: its complete
+                        // ⟨typeKey, identifier⟩ identity lets a shared multi-instance
+                        // view resolve this reference to the owner's generated card.
+                        component.put(
+                                OwnedClassSemantics.OWNER_FIELD,
+                                owner);
                         owner.put(field.name(), component);
                         // The same site/component may be encountered from more than one
                         // reachable owner copy or fixed-point round. Result is a set-like

@@ -68,7 +68,7 @@ one that exists.
 
 ## A kind, a mode or a role is stored
 
-See directive 12. `classKind` was stored for two of its four values and recomputed for the
+See directive 13. `classKind` was stored for two of its four values and recomputed for the
 other two, so a class could not be a statement class until it had a property — and the
 editor that picks the property is the one you reach by being a statement class.
 `ClassKindIsStoredNotDerivedTest` holds it, including that the shipped models say which
@@ -111,3 +111,11 @@ subject restate itself and makes a query-only object look like a stored field.
 members may also be useful as a displayed or grouping field, but that is a separate,
 explicit field choice. Applying a population triple must never silently add `type`,
 `target`, or any other field to the class.
+
+## Auxiliary windows belong to one open project
+
+Generated instances, statements, graphs, admission evidence, explorer/guide views,
+collision inspection and query logs describe the domain or model that opened them. Replacing
+that project closes all of those windows through one project-replacement boundary. Query-log
+rows and their save destination are cleared too; reopening a tool in the new project must
+never reveal or save the previous project's data.

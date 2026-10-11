@@ -316,6 +316,9 @@ public class SingleRootClassModelPanel extends JPanel {
                 ? c
                 : selected instanceof GeneratedFieldModel f ? owningClassOf(f) : null;
         boolean imported = owningClass != null && owningClass.isImported();
+        boolean derivedOwner = selected instanceof GeneratedFieldModel field
+                && wikidata.explore.model.OwnedClassSemantics
+                        .isOwnerReferenceField(owningClass, field);
         if (selected instanceof wikidata.explore.model.Selection selection) {
             imported = selection.isImported();
         }
@@ -330,6 +333,7 @@ public class SingleRootClassModelPanel extends JPanel {
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !imported);
         removeButton.setEnabled(editingEnabled && (classContext || selectionContext)
+                && !derivedOwner
                 && !(imported && (selected instanceof GeneratedFieldModel
                         || selected instanceof wikidata.explore.model.Selection)));
     }
@@ -595,10 +599,14 @@ public class SingleRootClassModelPanel extends JPanel {
         }
 
         if (selected instanceof GeneratedFieldModel f) {
+            GeneratedClassModel owner = owningClassOf(f);
+            if (wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(owner, f)) {
+                return;
+            }
             // The `name` field is vestigial now (identity/display comes from the
             // CanonicalSpec + the generated @Hidden name), so it's freely
             // removable — and won't be re-added (ensureNameField is gone).
-            GeneratedClassModel owner = owningClassOf(f);
             if (owner != null) {
                 owner.fields().remove(f);
             }

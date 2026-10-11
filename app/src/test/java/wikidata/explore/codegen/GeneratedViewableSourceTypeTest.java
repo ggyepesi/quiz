@@ -338,4 +338,35 @@ class GeneratedViewableSourceTypeTest {
             assertTrue(referenced == mapped.get(1), "field and Person tab share one instance");
         }
     }
+
+    @Test void roleWithProducerAdmittedRepresentationsUsesAPolymorphicCarrier() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel constellation = project.rootClass();
+        constellation.className("Constellation");
+        var discoveryField = constellation.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        discoveryField.entityClassName("Discovery");
+        discoveryField.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel celestialBody = new GeneratedClassModel("CelestialBody");
+        var bodyDiscovery = celestialBody.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        bodyDiscovery.entityClassName("Discovery");
+        bodyDiscovery.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel owner = new GeneratedClassModel("Owner");
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        project.addClass(celestialBody);
+        project.addClass(owner);
+        project.addClass(discovery);
+        wikidata.explore.model.OwnedClassSemantics.synchronizeOwnerReferences(project);
+        project.representationClasses(owner, java.util.List.of("Constellation"));
+
+        String source = generator.sourceFor(discovery, project);
+
+        assertTrue(source.contains("public objectview.Viewable owner"),
+                "Owner remains the semantic field type while its Java carrier accepts "
+                        + "the configured concrete owner cards");
+    }
 }

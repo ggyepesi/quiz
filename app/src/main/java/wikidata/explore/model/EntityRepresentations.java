@@ -27,6 +27,16 @@ public final class EntityRepresentations {
                                 rule.representationClassName()) == target);
     }
 
+    /** Whether this class is a contextual role with at least one final representation. */
+    public static boolean hasRepresentations(
+            GeneratedProjectModel model, GeneratedClassModel role) {
+        if (model == null || role == null) return false;
+        return model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(rule -> model.resolveClass(
+                        rule.roleClassId(), rule.roleClassName()) == role);
+    }
+
     /**
      * Whether an entity configured as {@code configuredClassNames} may be stored in a
      * field declared as {@code expectedClassName}.

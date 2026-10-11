@@ -20,6 +20,10 @@ class ClassNameSourcePlanTest {
         GeneratedClassModel person = new GeneratedClassModel("Person");
         GeneratedClassModel name = new GeneratedClassModel("Name");
         name.classKind(ClassKind.OWNED);
+        GeneratedFieldModel structuredName = person.addField(
+                "structuredName", datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
+        structuredName.entityClassName("Name");
+        structuredName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         model.rootClass(person);
         model.addClass(name);
 

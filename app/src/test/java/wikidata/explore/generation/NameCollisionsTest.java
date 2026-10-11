@@ -143,6 +143,28 @@ class NameCollisionsTest {
                 "the same identifier appearing twice in the pool is not two instances");
     }
 
+    @Test void oneOwnerQidAtTwoOwnedProductionSitesRemainsTwoInstances() {
+        WikidataDynamicObject personName = part(
+                "Q1", "Gladii Electorales Saxonici", "Name@Person.structuredName");
+        WikidataDynamicObject organisationName = part(
+                "Q1", "Gladii Electorales Saxonici", "Name@Organisation.legalName");
+
+        NameCollisions.Collision collision = NameCollisions.detect(
+                List.of(personName, organisationName), DECLARED)
+                .getFirst().collisions().getFirst();
+
+        assertEquals(2, collision.size(),
+                "owned identity includes the production site, not only the owner QID");
+        assertEquals(List.of(
+                        new NameCollisions.InstanceIdentity(
+                                "Name@Person.structuredName", "Q1"),
+                        new NameCollisions.InstanceIdentity(
+                                "Name@Organisation.legalName", "Q1")),
+                collision.identities());
+        assertEquals(List.of("Q1", "Q1"), collision.ids(),
+                "the ID-only summary must not be mistaken for collision identity");
+    }
+
     @Test void anythingWithoutBothALabelAndAnIdIsSkippedRatherThanGrouped() {
         assertTrue(NameCollisions.detect(Arrays.asList(
                 instance("Q1", null, "Planet"), instance("Q2", null, "Planet"),
@@ -173,9 +195,14 @@ class NameCollisionsTest {
     }
 
     private static WikidataDynamicObject part(String ownerId, String name) {
+        return part(ownerId, name, "Name@Person.structuredName");
+    }
+
+    private static WikidataDynamicObject part(
+            String ownerId, String name, String typeKey) {
         WikidataDynamicObject o = new WikidataDynamicObject(ownerId, name);
         o.type("Name");
-        o.typeKey("Name@Person.structuredName");
+        o.typeKey(typeKey);
         o.part(true);
         return o;
     }

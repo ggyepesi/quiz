@@ -8,10 +8,10 @@ import wikidata.explore.model.MembershipPattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The class declares only its owned KIND; producing sites belong to fields. */
+/** Producing sites belong to owner fields; the owned schema declares its back-link. */
 class OwnedComponentSourcePanelTest {
 
-    @Test void ownedClassRemainsConfiguredWithoutInventingAnOwner() {
+    @Test void ownedClassDeclaresItsReadOnlyPolymorphicOwnerReference() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel name = new GeneratedClassModel("Name");
         name.ownedClass(true);
@@ -25,6 +25,11 @@ class OwnedComponentSourcePanelTest {
         assertEquals(MembershipPattern.OWNED_COMPONENT,
                 MembershipPattern.of(name, project));
         assertTrue(MembershipPattern.ownedBy(name, project).isEmpty(),
-                "the owned-class editor must not create an owner field");
+                "a back-reference is not a production site");
+        var owner = name.fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow();
+        assertTrue(wikidata.explore.model.OwnedClassSemantics
+                .isOwnerReferenceField(name, owner));
     }
 }

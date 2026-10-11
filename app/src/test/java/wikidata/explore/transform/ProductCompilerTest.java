@@ -152,6 +152,35 @@ class ProductCompilerTest {
                 "collapsed String retains its entity-field provenance");
     }
 
+    @Test void ownedClassOwnerRemainsAPolymorphicReference() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel discoveryField = person.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        discoveryField.entityClassName("Discovery");
+        discoveryField.mapping().productionKind(
+                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        model.rootClass(person);
+        model.addClass(discovery);
+        WikidataDynamicObject owner = substantive("Q1", "Discovered body");
+        owner.type("Person");
+        OwnedComponents.Result composed = OwnedComponents.apply(
+                model, List.of(owner), null, null);
+        WikidataDynamicObject component = composed.components().get(0);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(owner, component));
+
+        ProductDomain domain = ProductCompiler.compile(model, pool);
+
+        assertSame(owner, component.get("owner"));
+        assertTrue(field(domain, "Discovery", "owner").reference());
+        assertEquals(wikidata.explore.model.OwnedClassSemantics.OWNER_ROLE,
+                domain.fieldTypes("Discovery").field("owner").typeLabel(),
+                "the named owner role, never the Java Viewable interface");
+    }
+
     /**
      * The panel is never handed the compiled domain directly — the workbench wraps it in
      * a WorkingDomain (base + derived classes). A wrapper that does not FORWARD this

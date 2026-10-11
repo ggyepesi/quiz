@@ -316,6 +316,7 @@ class GeneratedProjectModelValidatorTest {
                 .mapping().propertyPid("P735");
         project.addClass(person);
         project.addClass(name);
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
 
         ValidationResult result = GeneratedProjectModelValidator.validate(project);
 
@@ -370,6 +371,7 @@ class GeneratedProjectModelValidatorTest {
         GeneratedClassModel name = new GeneratedClassModel("Name");
         name.ownedClass(true);
         project.addClass(name);
+        project.addClass(new GeneratedClassModel("Owner"));
 
         ValidationResult result = GeneratedProjectModelValidator.validate(project);
 
@@ -402,8 +404,10 @@ class GeneratedProjectModelValidatorTest {
         name.ownedClass(true);
         project.addClass(base);
         project.addClass(name);
+        project.addClass(new GeneratedClassModel("Owner"));
 
-        assertEquals(1, name.effectiveFields(project).size());
+        assertEquals(2, name.effectiveFields(project).size(),
+                "the inherited language field and the owned class's owner reference");
         assertTrue(name.effectiveInstanceMapping(project).sourceQid().isBlank());
         assertTrue(GeneratedProjectModelValidator.validate(project).valid());
     }
@@ -427,6 +431,88 @@ class GeneratedProjectModelValidatorTest {
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(problem ->
                 problem.message().contains("only another Owned class")), result.format());
+    }
+
+    /** The owner reference is recognised by its stored production kind. A field the
+     *  author named {@code owner} is theirs: never rewritten, locked or replaced, and
+     *  the collision is reported so it is renamed where it was written. */
+    @Test void anAuthoredFieldNamedOwnerIsNeverTakenForTheOwnerReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel produced = person.addField(
+                "name", FieldType.ENTITY, FieldCardinality.SINGLE);
+        produced.entityClassName("Name");
+        produced.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedFieldModel authored = name.addField(
+                "owner", FieldType.ENTITY, FieldCardinality.SINGLE);
+        authored.entityClassName("Organisation");
+        authored.renderMode(FieldRenderMode.REFERENCE);
+        name.ownedClass(true);
+        project.rootClass(person);
+        project.addClass(name);
+
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertEquals(List.of(authored), name.fields());
+        assertEquals("Organisation", authored.entityClassName());
+        assertEquals(FieldProductionKind.AUTO, authored.mapping().productionKind());
+        assertFalse(OwnedClassSemantics.isOwnerReferenceField(name, authored));
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("is reserved")), result.format());
+    }
+
+    @Test void everyProducerMustBeAcceptedByTheNamedOwnerRole() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
+        GeneratedClassModel celestialBody = new GeneratedClassModel("CelestialBody");
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        for (GeneratedClassModel producer : List.of(constellation, celestialBody)) {
+            GeneratedFieldModel site = producer.addField(
+                    "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+            site.entityClassName("Discovery");
+            site.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+            project.addClass(producer);
+        }
+        project.addClass(discovery);
+        project.addClass(new GeneratedClassModel("Owner"));
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
+        project.representationClasses(project.findClass("Owner"),
+                List.of("Constellation"));
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Owner → CelestialBody")), result.format());
+        assertFalse(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Owner → Constellation")), result.format());
+    }
+
+    @Test void anImportedConcreteOwnerTargetRejectsANewUnrelatedProducer() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        name.importedFrom("People");
+        name.fields().stream()
+                .filter(field -> OwnedClassSemantics.isOwnerReferenceField(name, field))
+                .findFirst().orElseThrow().entityClassName("Person");
+        for (GeneratedClassModel producer : List.of(person, organisation)) {
+            GeneratedFieldModel site = producer.addField(
+                    "name", FieldType.ENTITY, FieldCardinality.SINGLE);
+            site.entityClassName("Name");
+            site.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+            project.addClass(producer);
+        }
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Person → Organisation")), result.format());
     }
 
     @Test void ownedClassCannotExtendASourceClass() {

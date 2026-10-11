@@ -11,16 +11,42 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
-/** Datasource-declared instance fields implied by a class's stored source config. */
+/**
+ * Non-authored datasource instance fields implied by a class's stored configuration.
+ *
+ * <p>Model fields, including structural derived fields, belong to the class's real
+ * field list. This separate path is only for fields a configured datasource declares
+ * on every instance, such as provenance.</p>
+ */
 public final class ConfiguredInstanceFields {
     private ConfiguredInstanceFields() { }
 
-    public record Field(String providerId, DatasourceInstanceField declaration) { }
+    public record Field(
+            String origin,
+            String name,
+            String label,
+            datasource.api.SourceValueSchema valueSchema,
+            objectview.field.FieldRole role,
+            Function<Object, Object> reader) {
 
-    public static objectview.field.FieldRef toFieldRef(
-            DatasourceInstanceField declaration) {
-        datasource.api.SourceValueSchema schema = declaration.valueSchema();
+        public Field {
+            origin = origin == null ? "" : origin;
+            name = name == null ? "" : name;
+            label = label == null ? "" : label;
+            valueSchema = java.util.Objects.requireNonNull(valueSchema, "valueSchema");
+            role = role == null ? objectview.field.FieldRole.NONE : role;
+            reader = java.util.Objects.requireNonNull(reader, "reader");
+        }
+
+        public Object value(Object source) {
+            return reader.apply(source);
+        }
+    }
+
+    public static objectview.field.FieldRef toFieldRef(Field field) {
+        datasource.api.SourceValueSchema schema = field.valueSchema();
         boolean reference = schema.kind()
                 == datasource.api.SourceValueKind.ENTITY_REFERENCE;
         objectview.field.FieldKind valueKind = switch (schema.kind()) {
@@ -39,8 +65,7 @@ public final class ConfiguredInstanceFields {
                     default -> "String";
                 }) + (schema.collection() ? ">" : "");
         return objectview.field.FieldRef.described(
-                declaration.name(), declaration.label(),
-                objectview.field.FieldRole.PROVENANCE,
+                field.name(), field.label(), field.role(),
                 kind, valueKind, typeLabel, reference, schema.collection(),
                 reference ? "Viewable" : null, false, false,
                 false, false, "", reference);
@@ -50,9 +75,11 @@ public final class ConfiguredInstanceFields {
             GeneratedClassModel model,
             GeneratedProjectModel project,
             DatasourceRegistry registry) {
-        if (model == null || registry == null) return List.of();
+        if (model == null) return List.of();
         LinkedHashSet<String> providers = new LinkedHashSet<>();
-        collectProviders(model, project, providers, new LinkedHashSet<>());
+        if (registry != null) {
+            collectProviders(model, project, providers, new LinkedHashSet<>());
+        }
         LinkedHashMap<String, Field> fields = new LinkedHashMap<>();
         for (String providerId : providers) {
             DatasourceProvider provider = registry.provider(providerId).orElseThrow(
@@ -61,19 +88,28 @@ public final class ConfiguredInstanceFields {
             for (DatasourceInstanceField declaration : provider.instanceFields()) {
                 if (declaration == null || declaration.name() == null
                         || declaration.name().isBlank()) continue;
-                Field configured = new Field(providerId, declaration);
+                Field configured = datasourceField(providerId, declaration);
                 Field previous = fields.putIfAbsent(declaration.name(), configured);
-                if (previous != null && !previous.providerId().equals(providerId)) {
+                if (previous != null && !previous.origin().equals(providerId)) {
                     throw new IllegalArgumentException(
                             "Datasource instance field '" + declaration.name()
                                     + "' is declared by both "
-                                    + previous.providerId() + " and " + providerId);
+                                    + previous.origin() + " and " + providerId);
                 }
             }
         }
-        collectConfiguredFields(model, project, registry, fields,
-                new LinkedHashSet<>());
+        if (registry != null) {
+            collectConfiguredFields(model, project, registry, fields,
+                    new LinkedHashSet<>());
+        }
         return List.copyOf(fields.values());
+    }
+
+    private static Field datasourceField(
+            String providerId, DatasourceInstanceField declaration) {
+        return new Field(providerId, declaration.name(), declaration.label(),
+                declaration.valueSchema(), objectview.field.FieldRole.PROVENANCE,
+                declaration::value);
     }
 
     private static void collectConfiguredFields(
@@ -89,7 +125,7 @@ public final class ConfiguredInstanceFields {
                     new IllegalStateException("No datasource provider '"
                             + binding.recipe().providerId() + "'"));
             for (DatasourceInstanceField declaration : provider.instanceFields(binding)) {
-                put(fields, binding.recipe().providerId(), declaration);
+                put(fields, datasourceField(binding.recipe().providerId(), declaration));
             }
         }
         if (project != null && model.hasBase()) {
@@ -98,17 +134,14 @@ public final class ConfiguredInstanceFields {
         }
     }
 
-    private static void put(LinkedHashMap<String, Field> fields, String providerId,
-            DatasourceInstanceField declaration) {
-        if (declaration == null || declaration.name() == null
-                || declaration.name().isBlank()) return;
-        Field configured = new Field(providerId, declaration);
-        Field previous = fields.putIfAbsent(declaration.name(), configured);
-        if (previous != null && !previous.providerId().equals(providerId)) {
+    private static void put(LinkedHashMap<String, Field> fields, Field configured) {
+        if (configured == null || configured.name().isBlank()) return;
+        Field previous = fields.putIfAbsent(configured.name(), configured);
+        if (previous != null && !previous.origin().equals(configured.origin())) {
             throw new IllegalArgumentException(
-                    "Datasource instance field '" + declaration.name()
-                            + "' is declared by both " + previous.providerId()
-                            + " and " + providerId);
+                    "Configured instance field '" + configured.name()
+                            + "' is declared by both " + previous.origin()
+                            + " and " + configured.origin());
         }
     }
 

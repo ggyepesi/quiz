@@ -293,6 +293,11 @@ public final class ClassImportPlan {
                     candidate.addImport(new ModelImport(owner, names)));
         }
 
+        // Import/copy is an explicit topology change. Refresh the derived, read-only
+        // owner target before validating the candidate, just as load/save do; never
+        // invent the Owner vocabulary class here.
+        OwnedClassSemantics.synchronizeOwnerReferences(candidate);
+
         List<GeneratedProjectModelValidator.Problem> introduced =
                 GeneratedProjectModelValidator.validate(candidate).errors().stream()
                         .filter(problem -> !existingErrors.contains(problem.toString()))

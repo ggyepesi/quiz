@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A saved build runs without a window, reusing what is current and saying why each step
- * runs (directive 22). These cases reach no network: every output a step would fetch is
+ * runs (directive 23). These cases reach no network: every output a step would fetch is
  * either current, so it is reused, or the build stops before reaching it.
  */
 class ProjectBuildTest {

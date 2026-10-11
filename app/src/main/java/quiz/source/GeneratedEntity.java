@@ -17,6 +17,8 @@ public abstract class GeneratedEntity extends ViewableAdapter {
     @Hidden
     private String identifier = "";
     @Hidden
+    private String identityTypeName = "";
+    @Hidden
     private String label = "";
     @Hidden
     private boolean part;
@@ -27,12 +29,24 @@ public abstract class GeneratedEntity extends ViewableAdapter {
 
     @Override public String getIdentifier() { return identifier; }
 
+    /** Stable logical identity type. Owned instances use their production-site type
+     * key (for example {@code Name@Person.structuredName}), while ordinary generated
+     * instances fall back to their generated class name. */
+    @Override public String identityTypeName() {
+        return identityTypeName == null || identityTypeName.isBlank()
+                ? typeName() : identityTypeName;
+    }
+
     @Override public String getDisplayName() {
         return label == null || label.isBlank() ? identifier : label;
     }
 
     public void identifier(String identifier) {
         this.identifier = identifier == null ? "" : identifier;
+    }
+
+    public void identityTypeName(String identityTypeName) {
+        this.identityTypeName = identityTypeName == null ? "" : identityTypeName;
     }
 
     public void label(String label) { this.label = label == null ? "" : label; }

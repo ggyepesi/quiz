@@ -82,7 +82,14 @@ class OwningEntityClassTest {
                 MembershipPattern.owningEntityClasses(name, project).stream()
                         .map(GeneratedClassModel::className).toList());
         assertNull(MembershipPattern.owningEntityClass(name, project));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                GeneratedProjectModelValidator.validate(project).valid(),
+                "owners of two kinds need the authored Owner role; nothing adds it");
 
+        project.addClass(new GeneratedClassModel(OwnedClassSemantics.OWNER_ROLE));
+        project.representationClasses(
+                project.findClass(OwnedClassSemantics.OWNER_ROLE),
+                List.of("Person", "Organisation"));
         GeneratedProjectModelValidator.ValidationResult result =
                 GeneratedProjectModelValidator.validate(project);
         org.junit.jupiter.api.Assertions.assertTrue(result.valid(), result.format());

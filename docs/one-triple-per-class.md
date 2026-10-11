@@ -131,7 +131,7 @@ if (pid.isBlank() || pid.equals("P31")) …             // "is this the ordinary
 
 The component concentrates the first three. **The fourth is not a literal problem** and
 must not be treated as one: `equals("P31")` standing for *"is this the plain membership
-case"* is directive 12 — a decision read off a value that merely correlates with it. That
+case"* is directive 13 — a decision read off a value that merely correlates with it. That
 question gets a name of its own, or one constant will be compared in eight places to mean
 eight things.
 

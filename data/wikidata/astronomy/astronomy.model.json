@@ -1267,6 +1267,11 @@
   ],
   "entityRepresentationRules": [
     "java.util.ArrayList",
-    []
+    [
+      {
+        "roleClassName": "Owner",
+        "representationClassName": "CelestialBody"
+      }
+    ]
   ]
 }

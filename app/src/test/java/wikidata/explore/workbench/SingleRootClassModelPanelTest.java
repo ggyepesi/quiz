@@ -300,6 +300,24 @@ class SingleRootClassModelPanelTest {
         assertTrue(remove.isEnabled());
     }
 
+    @Test void theDerivedOwnerReferenceCannotBeRemoved() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(person);
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        project.addClass(discovery);
+        GeneratedFieldModel owner = discovery.fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow();
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectField(owner);
+
+        assertFalse(button(panel, "Remove").isEnabled(),
+                "the class kind owns the derived owner-reference declaration");
+    }
+
     /**
      * The name is how an imported class names its owner, so the importing project cannot
      * change it — not through the tree, and not by typing in the class editor.

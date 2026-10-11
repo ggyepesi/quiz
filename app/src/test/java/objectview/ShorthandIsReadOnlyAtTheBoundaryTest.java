@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Directive 24: "all fields" and "all minor fields" are rewritten into plain ticks
+ * Directive 25: "all fields" and "all minor fields" are rewritten into plain ticks
  * once, where a config enters, by {@code ViewConfigDesugar}. They used to be read by
  * the editor, Card, ValueRenderer, the table, the search and sort collectors, the web
  * serializer and quiz extraction, each with its own fallback, so one config rendered

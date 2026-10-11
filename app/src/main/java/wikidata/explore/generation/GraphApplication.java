@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 /**
  * Applying a graph result to the project's instances, as an operation that runs without a
- * window (directive 22, the design's APPLY_GRAPH_DECISIONS).
+ * window (directive 23, the design's APPLY_GRAPH_DECISIONS).
  *
  * <p>A graph decides WHICH entities belong to its output class, never what they contain.
  * Narrowing keeps the project's own generated instances that were accepted; adding stamps

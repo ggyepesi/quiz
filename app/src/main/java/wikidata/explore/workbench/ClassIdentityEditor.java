@@ -160,6 +160,8 @@ final class ClassIdentityEditor extends JPanel {
         List<String> addable = new java.util.ArrayList<>();
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.name() == null || field.name().isBlank()) continue;
+            if (wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(clazz, field)) continue;
             addable.add(field.name());
         }
         key.show(chosen, addable);

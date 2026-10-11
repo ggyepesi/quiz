@@ -78,6 +78,7 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
+        OwnedClassSemantics.synchronizeOwnerReferences(model);
         model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);
@@ -120,6 +121,7 @@ public final class GeneratedProjectModelStore {
                     "model must not be null");
         }
 
+        OwnedClassSemantics.synchronizeOwnerReferences(model);
         model.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(model);

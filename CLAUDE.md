@@ -82,6 +82,9 @@ construct per thing produced:
 3. **One discovery path per concept.** The same fact must be derived one way. Two paths are a
    latent bug even while they agree. *(Trigger: "the schema comes from here, the rendering from
    there.")*
+   A correspondence to another source (for example a Wikidata entity's English Wikipedia
+   article) is class-level source configuration and renders as provenance; it is not a
+   domain field and must not be rediscovered separately by each field or application.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*
@@ -99,20 +102,17 @@ construct per thing produced:
    same class, a subclass, or an explicit contextual representation. Merely occurring in a
    field must never retype an incompatible entity; incompatible values are absent from both
    the saved dynamic pool and its rendered materialization. *(Trigger: "the QID is the same".)*
-   A correspondence to another source (for example a Wikidata entity's English Wikipedia
-   article) is class-level source configuration and renders as provenance; it is not a
-   domain field and must not be rediscovered separately by each field or application.
-9. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
+10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
    inspection state only; it must not silently configure another tool, mutate the model, or
    start expensive work. A mutation is an explicit, verb-labelled command that names its target
    (for example, “Use selected property as edge”), and every command produces an immediate
    visible result or explains why it had no effect. *(Trigger: a selection listener writes state
    outside the view that owns the selection.)*
-10. **The UI is the authority for user-authored configuration.** If a change can be made through
+11. **The UI is the authority for user-authored configuration.** If a change can be made through
    the UI, an agent or background process must not make it on the user's behalf without explicit
    approval of that exact change. Inspection, validation and preview may not mutate.
    *(Trigger: "the user could configure this, but I can save them the step.")*
-11. **Follow the design; a shortcut is a discussion, not a decision.** If a doc, a rule
+12. **Follow the design; a shortcut is a discussion, not a decision.** If a doc, a rule
    file or an explaining comment states how something works, read it before changing what
    it governs. Diverging is allowed and sometimes right — but it is raised explicitly and
    agreed, never taken quietly in the implementation. Every one of a recent run of UI
@@ -123,22 +123,22 @@ construct per thing produced:
    phases; `bounding-an-entity-end.md` says that construct carries population and never
    structure. *(Trigger: about to change something that has a design note or a comment
    explaining why it is as it is.)*
-12. **Store the fact; do not derive it from something that merely agrees with it.** An
+13. **Store the fact; do not derive it from something that merely agrees with it.** An
    implementation dependency the design does not state is a latent bug while it still
    agrees, and an unrepresentable state is its symptom — a class could not be a statement
    class until it had a property, because the kind was read off the property. If a
    decision can be made before its configuration is complete, it is stored. This sits
-   beside rule 3 rather than replacing it: 3 forbids two routes to one fact, 12 forbids
+   beside rule 3 rather than replacing it: 3 forbids two routes to one fact, 13 forbids
    inventing a route where the fact should simply be kept. *(Trigger: "X is true whenever
    Y is", where nothing says X MEANS Y.)*
-13. **Find the existing construct first — for small things too.** Not only classes and
+14. **Find the existing construct first — for small things too.** Not only classes and
    mechanisms: how a selection is handled, how a list and its chooser are built, which
    word the codebase already uses for the concept. Sharpens directive 8, which fires on
    new *mechanisms* and so let three hand-written copies of one list control through.
    *(Trigger: about to write a control, a phrase, or a name.)*
 
-14. **When in the slightest doubt about what was agreed, ask — do not let the
-   implementation settle it.** Directive 11 governs a design that is written down; this
+15. **When in the slightest doubt about what was agreed, ask — do not let the
+   implementation settle it.** Directive 12 governs a design that is written down; this
    governs the gap where one is not. Reconstructing an agreement from memory and building
    it is how a design drifts without anyone deciding to change it, and the drift is
    invisible in review because each step looks reasonable on its own. Name the doubt,
@@ -153,7 +153,7 @@ construct per thing produced:
    panels ended in four different orders. No step of that was a decision; every one was a
    gap filled quietly.
 
-15. **Give every kind of change an artifact that can see it, and look at the artifact.**
+16. **Give every kind of change an artifact that can see it, and look at the artifact.**
    A change is finished when something outside your own intent has confirmed it: for
    generated data the counts (`counts.tsv`), for an editor its rendered structure
    (`docs/panel-layout.txt`, enforced by `PanelLayoutIsCheckedInTest`). If no such
@@ -168,7 +168,7 @@ construct per thing produced:
    throughout, because no test could see that the triple had landed seventh on one
    editor and last on another.
 
-16. **Tell the user straight what is happening and what will happen next.** Do not
+17. **Tell the user straight what is happening and what will happen next.** Do not
    reformulate, euphemize or substitute a more general description for the actual
    operation. Before work starts, name the work that will be done; while it runs,
    continuously name the work being done now and the work that follows. Loading and
@@ -183,7 +183,7 @@ construct per thing produced:
    event thread so that state can actually be painted, and every success or failure path
    restores the action state.
 
-17. **Same concept means the same processing and the same UI.** A preview, saved
+18. **Same concept means the same processing and the same UI.** A preview, saved
    result and subsequently loaded domain are not three representations that may merely
    resemble one another: they use the same instances and the same declared model through
    the normal domain workflow. A result is applied to project state; **Save model/domain**
@@ -207,7 +207,7 @@ construct per thing produced:
    TransformApp can still load it; changing a domain to a model stops serving it without
    removing those local instances. Every save writes that one registry state.
 
-18. **A reusable instance population is a `PopulationSelection`.** It stores one class
+19. **A reusable instance population is a `PopulationSelection`.** It stores one class
    name and the stable datasource identities of explicitly chosen instances, never copies
    of their mutable objects. Sampling and highlighting only edit the draft; saving is an
    explicit action that names the selection, count and model file. Graphs consume this same
@@ -248,7 +248,7 @@ construct per thing produced:
    outside one saved `PopulationSelection`. It is local, idempotent classification over the
    generated object graph, not a second population query and not a special graph run.
 
-19. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
+20. **A graph constraint is a class of kind `GRAPH`; only its pipeline differs.** Its
    identity, its name, rename propagation, its place in the classes list, its editor and its
    persistence all come from the class construct, and its instances are its annotation set.
    Its configuration is a `GraphClassSource` — start node, next nodes, evidence condition —
@@ -305,7 +305,7 @@ construct per thing produced:
    itself GraphConstraint with nothing able to notice. Refusing a silent default treated the
    symptom; the cause was a construct with no identity apart from its name.)*
 
-20. **Model reuse and local execution are independent.** `MODEL` means its declarations
+21. **Model reuse and local execution are independent.** `MODEL` means its declarations
    and relevant selections may be imported; it does not mean the project cannot generate.
    A model whose acquisition configuration is complete may generate, load and save its own
    local instances for curation and graph work. Graph constraints are likewise runnable
@@ -314,14 +314,14 @@ construct per thing produced:
    or other run results. An imported selection stays owned by its model and is read-only in
    the importer, just like an imported class; edit it in the model that owns it.
 
-21. **Persist an expensive graph before fallible local materialization.** Once generation
+22. **Persist an expensive graph before fallible local materialization.** Once generation
    has finalized its shared object graph, write that exact graph to the named recovery file
    before mapping generated Java instances. Remove it only after mapping succeeds. A later
    Generate action explicitly offers to load that file and resume materialization without
    repeating remote acquisition, and rejects it when the model fingerprint differs.
    *(Trigger: a local mapping/rendering defect would otherwise require another Wikidata run.)*
 
-22. **A delivered project is a headlessly executable artifact build.** ModelBuilder and
+23. **A delivered project is a headlessly executable artifact build.** ModelBuilder and
    TransformApp edit and inspect declarations; neither application is the execution boundary.
    Generation, graph run, graph-decision application, transformation, population publication
    and project save are elementary operations accepting compiled configuration and explicit
@@ -334,7 +334,7 @@ construct per thing produced:
    *(Trigger: a complete domain can only be reproduced by manually switching applications or
    by replaying UI actions.)*
 
-23. **The current construct inventory owns every instance artifact.** Class, graph,
+24. **The current construct inventory owns every instance artifact.** Class, graph,
    population and vocabulary selection are one lifecycle concept: a construct with a
    stable declaration id. Load instances, Show instances and Save domain/model all use
    the same current in-memory inventory to project the object pool; no editor maintains a
@@ -346,7 +346,7 @@ construct per thing produced:
    *(Trigger: a class/graph/selection/population has its own load, show, removal or save
    rule, or a configuration edit deletes instance files before Save domain/model.)*
 
-24. **Modularity: express a construct in simpler existing ones, immediately.** When a
+25. **Modularity: express a construct in simpler existing ones, immediately.** When a
    construct can be written in terms of simpler constructs that already exist, rewrite it
    into them once, at the boundary where it enters (creation, load, edit), and let every
    consumer see only the simpler form. A shorthand that survives past that boundary forces
@@ -356,16 +356,39 @@ construct per thing produced:
    same config looked like a plain list of ticks to the person who wrote it. *(Trigger: a
    flag, alias or "absent means …" that more than one consumer branches on.)*
 
-25. **An owned class has one schema and any number of production sites.** The owned
+26. **An owned class has one schema and any number of production sites.** The owned
    class declares field type, cardinality and rendering once. Each owner field is a
    production site and may override only how those shared fields are acquired (for
    example, the same logical field may read `P1` from one owner kind and `P2` from
    another). Runtime identity is component class + production site + owner identity.
+   Every owned class visibly declares the same derived, read-only, singular `owner`
+   reference in that shared schema. Every owned instance stores the instance that
+   produced it there. The reference value carries the
+   concrete owner's logical type; multi-instance navigation resolves it only by the
+   complete ⟨logical type, identifier⟩ identity, never by identifier alone.
    Sampling asks for one explicitly selected owner site or all sites; property discovery
    names the site it inspects. Never introduce an artificial subclass merely to give the
    same component schema a second owner, and never let a site override change schema or
    derivation semantics.
    *(Trigger: an owned component is useful on a second owner class.)*
+
+27. **Polymorphic entity populations use one base-and-extension pattern.** A named base
+   class supplies shared schema and the fallback representation. Population may be
+   produced directly for a known extension, in which case ordinary inheritance makes it
+   a base instance too, or it may enter through the base via an ordinary membership
+   construct such as occurrence as an entity-field value or `item P31 type`. Explicit
+   ordered contextual-representation rules refine only those base candidates whose
+   extension was not already known. Representation never depends on which membership
+   construct supplied the population. This is the same construct for source classes,
+   ordinary fields, statement participants and the derived owner reference of an owned
+   class. A reusable model may declare the base before it knows the consuming project's
+   extensions; the importer adds them explicitly. Never expose the Java/ObjectView
+   `Viewable` interface as the semantic class, and never create a second renderer-only or
+   runtime-type-only polymorphism path. A derived field may select that authored base as
+   its target, but normalization must never create or remove the base class: missing
+   vocabulary is a validation error, not configuration performed on the user's behalf.
+   *(Trigger: an entity population is described as “any class”, `Viewable`, or “the
+   runtime object decides”.)*
 
 ## Working agreements
 

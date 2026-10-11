@@ -156,6 +156,12 @@ public record PipelineRequest(
         return acquisition != Acquisition.NONE;
     }
 
+    /** The same settled request over the compiler's normalized model snapshot. */
+    public PipelineRequest withModel(GeneratedProjectModel snapshot) {
+        return new PipelineRequest(snapshot, input, scope, acquisition, limits, output,
+                supplementalPopulations);
+    }
+
     @Override public String toString() {
         return "from " + input + " over " + scope + ", acquiring " + acquisition
                 + ", " + limits + ", as " + output;

@@ -9,8 +9,9 @@ import datasource.schema.FieldType;
 import wikidata.WikidataIds;
 
 import aux.SplitPaneUtils;
-import objectview.render.CardListView;
+import objectview.render.GroupMembersView;
 import objectview.render.RenderContext;
+import objectview.view.SearchableView;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -94,9 +95,9 @@ public class ModelBuilderFrame extends JFrame {
     // Name collisions from the last run (names mapping to >1 entity), shown on
     // demand in their own panel from the instances window.
     private java.util.List<NameCollision> lastCollisions = java.util.List.of();
-    // Retained so its window is reused: the view owns the window, so keeping the view
-    // is what keeps one window instead of one per press.
-    private CardListView nameCollisionsView;
+    private JFrame nameCollisionsWindow;
+    /** The currently selected collision's ordinary instance browser. */
+    private SearchableView nameCollisionMembersView;
 
     private final JButton nameCollisionsButton =
             new JButton("Name collisions");
@@ -309,10 +310,51 @@ public class ModelBuilderFrame extends JFrame {
     @Override
     public void dispose() {
         rememberCurrentDomain();
+        closeProjectWindows();
         replaceGenerationRun(null);
         queryFactory.close();
         sourceWorkbench.close();
         super.dispose();
+    }
+
+    /**
+     * The one boundary for replacing the open domain/model. Generated instances,
+     * graph annotations and every auxiliary window belong to that exact project;
+     * none may survive into the replacement merely because it is held by this frame.
+     */
+    private void replaceOpenProject(
+            GeneratedProjectModel replacement,
+            datasource.graph.GraphDiscoveryState replacementLedger) {
+        closeProjectWindows();
+        sourceWorkbench.abandonEdits();
+        projectModel.copyContentsFrom(replacement);
+        graphResultsFollowLoadedModel();
+        replaceGenerationRun(null);
+        graphDiscoveryLedger = replacementLedger == null
+                ? datasource.graph.GraphDiscoveryState.EMPTY : replacementLedger;
+        instancesPanel.clear();
+    }
+
+    /** Close every non-modal window whose contents describe the open project. */
+    private void closeProjectWindows() {
+        // Plan/running/results workflows are modeless JDialogs owned by this frame.
+        // They are intentionally not held as one field per action, so ownership is
+        // their common lifecycle handle.
+        for (Window owned : getOwnedWindows()) closeWindow(owned);
+        closeWindow(instancesWindow);
+        closeWindow(statementsWindow);
+        closeWindow(explorerWindow);
+        closeWindow(entityKindsWindow);
+        closeWindow(graphWindow);
+        closeWindow(guideWindow);
+        discardNameCollisionInspection();
+        lastCollisions = java.util.List.of();
+        updateNameCollisionsButton();
+        logWindow.resetForProjectSwitch();
+    }
+
+    private static void closeWindow(Window window) {
+        if (window != null) window.dispose();
     }
 
     private void buildUi() {
@@ -472,7 +514,7 @@ public class ModelBuilderFrame extends JFrame {
             JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
             nameCollisionsButton.setToolTipText(
                     "Names shared by several distinct entities (ambiguous quiz "
-                            + "answers) — shown as name + List<Source>");
+                            + "answers) — select a name to inspect the actual instances");
             nameCollisionsButton.addActionListener(e -> showNameCollisions());
             updateNameCollisionsButton();
             toolbar.add(nameCollisionsButton);
@@ -2022,6 +2064,9 @@ public class ModelBuilderFrame extends JFrame {
     // name (5 Agenors, 5 Lycuses, …). Make that explicit after a run: list the
     // names that map to >1 QID, so the user can disambiguate or exclude.
     private void reportNameCollisions(GenerationRun run) {
+        // A collision window is a view of one concrete run. Never leave the previous
+        // run's instances visible under the current run's button/count.
+        discardNameCollisionInspection();
         lastCollisions = java.util.List.of();
         updateNameCollisionsButton();
         if (run == null || run.dynamicObjects() == null) {
@@ -2040,9 +2085,6 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<wikidata.explore.generation.NameCollisions.ClassCollisions>
                 entityClasses = wikidata.explore.generation.NameCollisions.classes(
                         byClass, ambiguity);
-        java.util.List<wikidata.explore.generation.NameCollisions.Collision> collisions =
-                wikidata.explore.generation.NameCollisions.flatten(entityClasses);
-
         // Structured, collapsible entry — one row per colliding name (name ×count),
         // biggest first — instead of one blob listing every QID (which buried the
         // rest of the log). The QIDs themselves are inspectable, clickable, via the
@@ -2066,29 +2108,65 @@ public class ModelBuilderFrame extends JFrame {
                 "owned parts whose display name is inherited from their owner",
                 "owned parts", false);
 
-        // Map each generated instance by its QID, so a colliding entry links to
-        // the actual entity used in the instances (click through), falling back
-        // to a Source (QID + wiki link) for QIDs that weren't materialized.
-        java.util.Map<String, objectview.Viewable> byQid = new java.util.HashMap<>();
-        if (run.instances() != null) {
-            for (objectview.Viewable q : run.instances()) {
-                if (q != null && q.getIdentifier() != null) {
-                    byQid.putIfAbsent(q.getIdentifier(), q);
+        // Resolve by the complete dynamic identity. A bare QID is not enough: the
+        // same datasource entity may legitimately occur at several owned production
+        // sites. Prefer the materialized typed instance, but retain the exact dynamic
+        // object as the lossless fallback rather than replacing it with a QID shell.
+        java.util.Map<wikidata.explore.generation.NameCollisions.InstanceIdentity,
+                objectview.Viewable> participants = collisionParticipants(run);
+        java.util.List<NameCollision> groups = new java.util.ArrayList<>();
+        for (var classCollisions : entityClasses) {
+            for (var collision : classCollisions.collisions()) {
+                java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
+                for (var identity : collision.identities()) {
+                    objectview.Viewable used = participants.get(identity);
+                    if (used != null) entities.add(used);
+                }
+                if (!entities.isEmpty()) {
+                    groups.add(new NameCollision(
+                            classCollisions.className(), collision.name(), entities));
                 }
             }
         }
-
-        java.util.List<NameCollision> cards = new java.util.ArrayList<>();
-        for (var collision : collisions) {
-            java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
-            for (String qid : collision.ids()) {
-                objectview.Viewable used = byQid.get(qid);
-                entities.add(used != null ? used : new quiz.source.WikidataSource(qid));
-            }
-            cards.add(new NameCollision(collision.name(), entities));
-        }
-        lastCollisions = cards;
+        lastCollisions = java.util.List.copyOf(groups);
         updateNameCollisionsButton();
+    }
+
+    /** Exact-identity lookup used by collision inspection. The typed instance wins over
+     *  its dynamic carrier; an incompatible same-QID instance is never substituted. */
+    static java.util.Map<wikidata.explore.generation.NameCollisions.InstanceIdentity,
+            objectview.Viewable> collisionParticipants(GenerationRun run) {
+        return run == null ? java.util.Map.of()
+                : collisionParticipants(run.dynamicObjects(), run.instances());
+    }
+
+    static java.util.Map<wikidata.explore.generation.NameCollisions.InstanceIdentity,
+            objectview.Viewable> collisionParticipants(
+            java.util.Collection<? extends objectview.Viewable> dynamicObjects,
+            java.util.Collection<? extends objectview.Viewable> instances) {
+        java.util.Map<wikidata.explore.generation.NameCollisions.InstanceIdentity,
+                objectview.Viewable> found = new java.util.LinkedHashMap<>();
+        if (dynamicObjects != null) {
+            for (objectview.Viewable value : dynamicObjects) {
+                putCollisionParticipant(found, value);
+            }
+        }
+        if (instances != null) {
+            for (objectview.Viewable value : instances) {
+                putCollisionParticipant(found, value);
+            }
+        }
+        return java.util.Collections.unmodifiableMap(found);
+    }
+
+    private static void putCollisionParticipant(
+            java.util.Map<wikidata.explore.generation.NameCollisions.InstanceIdentity,
+                    objectview.Viewable> into,
+            objectview.Viewable value) {
+        if (value == null || value.getIdentifier() == null
+                || value.getIdentifier().isBlank()) return;
+        into.put(new wikidata.explore.generation.NameCollisions.InstanceIdentity(
+                value.identityTypeName(), value.getIdentifier()), value);
     }
 
     private void reportSharedLabels(
@@ -2139,22 +2217,54 @@ public class ModelBuilderFrame extends JFrame {
         if (lastCollisions.isEmpty()) {
             return;
         }
-        CardListView view = nameCollisionsView == null
-                ? (nameCollisionsView = new CardListView()) : nameCollisionsView;
-        // Share the instances panel's render context so clicking a colliding
-        // entity navigates to (focuses + scrolls to) its card in the instances
-        // window instead of opening a detached copy.
-        RenderContext shared = instancesPanel.activeRenderContext();
-        if (shared != null) {
-            view.setRenderContext(shared);
-            view.setInPlaceNavigation(true);
+        if (nameCollisionsWindow != null && nameCollisionsWindow.isDisplayable()) {
+            showAndFocus(nameCollisionsWindow);
+            return;
         }
-        view.setViewables(lastCollisions);
-        view.createCardsPanel(1);
-        // The card window reuses itself, search bar and all. Rebuilding that here to
-        // gain reuse would be a second copy of it in the app, and the two would drift
-        // apart the moment the shared window gains anything.
-        view.show("Name collisions", 1);
+        if (nameCollisionMembersView != null) nameCollisionMembersView.dispose();
+        NameCollision root = NameCollision.root(lastCollisions);
+        RenderContext context = new RenderContext();
+        context.setInPlaceNavigation(true);
+        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        GroupMembersView grouped = new GroupMembersView(root, group -> {
+            if (nameCollisionMembersView != null) nameCollisionMembersView.dispose();
+            java.util.List<objectview.Viewable> members =
+                    new java.util.ArrayList<>(group.getMembers());
+            nameCollisionMembersView = SearchableView.builder(members)
+                    .sample(members.isEmpty() ? null : members.getFirst())
+                    .renderContext(context)
+                    .collapsible(true)
+                    .columns(1)
+                    .emptyMessage("Select a colliding name.")
+                    .build();
+            return nameCollisionMembersView;
+        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, false);
+        grouped.groups().setStatusText(
+                "Select a shared name to inspect its distinct instances");
+        if (!lastCollisions.isEmpty()) grouped.selectGroup(lastCollisions.getFirst(), true);
+
+        if (nameCollisionsWindow == null || !nameCollisionsWindow.isDisplayable()) {
+            nameCollisionsWindow = new JFrame("Name collisions");
+            nameCollisionsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            nameCollisionsWindow.setSize(1200, 760);
+            nameCollisionsWindow.setLocationByPlatform(true);
+        }
+        nameCollisionsWindow.getContentPane().removeAll();
+        nameCollisionsWindow.add(grouped, BorderLayout.CENTER);
+        nameCollisionsWindow.revalidate();
+        nameCollisionsWindow.repaint();
+        showAndFocus(nameCollisionsWindow);
+    }
+
+    private void discardNameCollisionInspection() {
+        if (nameCollisionMembersView != null) {
+            nameCollisionMembersView.dispose();
+            nameCollisionMembersView = null;
+        }
+        if (nameCollisionsWindow != null) {
+            nameCollisionsWindow.dispose();
+            nameCollisionsWindow = null;
+        }
     }
 
     /** Information buttons are idempotent: reveal and focus their retained window
@@ -2822,15 +2932,7 @@ public class ModelBuilderFrame extends JFrame {
             datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
             // The caller has already confirmed that pending changes may be discarded.
-            // Detach the old-domain editors BEFORE replacing the shared model; the tree
-            // refresh caused by modelChanged() must not flush those controls into the
-            // newly loaded domain.
-            sourceWorkbench.abandonEdits();
-            projectModel.copyContentsFrom(loaded);
-            graphResultsFollowLoadedModel();
-            replaceGenerationRun(null);
-            graphDiscoveryLedger = ledger;
-            instancesPanel.clear();
+            replaceOpenProject(loaded, ledger);
             modelChanged();
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
@@ -2891,11 +2993,7 @@ public class ModelBuilderFrame extends JFrame {
         // Start with one neutrally-named root class the user then configures.
         fresh.rootClass().className(
                 GeneratedViewableSourceGenerator.sanitizeClassName(name));
-        projectModel.copyContentsFrom(fresh);
-        graphResultsFollowLoadedModel();
-        replaceGenerationRun(null);
-        graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
-        instancesPanel.clear();
+        replaceOpenProject(fresh, datasource.graph.GraphDiscoveryState.EMPTY);
         modelChanged();
         classModelPanel.selectClass(projectModel.rootClass());
         syncDepthSpinnerToActiveClass();
@@ -2970,11 +3068,8 @@ public class ModelBuilderFrame extends JFrame {
         File nextFile = next == null ? null : domainModelFile(next);
         boolean switched = nextFile != null && nextFile.isFile() && doLoadDomain(nextFile);
         if (!switched) {
-            projectModel.copyContentsFrom(GeneratedProjectModel.constellationDemo());
-            graphResultsFollowLoadedModel();
-            replaceGenerationRun(null);
-            graphDiscoveryLedger = datasource.graph.GraphDiscoveryState.EMPTY;
-            instancesPanel.clear();
+            replaceOpenProject(GeneratedProjectModel.constellationDemo(),
+                    datasource.graph.GraphDiscoveryState.EMPTY);
             modelChanged();
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
@@ -2999,14 +3094,8 @@ public class ModelBuilderFrame extends JFrame {
         try {
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(f);
             datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(f);
-            // Detach the editors before the contents are replaced, exactly as
-            // doLoadDomain does. Startup is a load like any other: the editors were
-            // built against the empty starting model, and a panel still holding that
-            // must not be flushed into the domain being loaded.
-            sourceWorkbench.abandonEdits();
-            projectModel.copyContentsFrom(loaded);
-            graphResultsFollowLoadedModel();
-            graphDiscoveryLedger = ledger;
+            // Startup uses the same replacement boundary as an interactive switch.
+            replaceOpenProject(loaded, ledger);
             modelChanged();
             syncDepthSpinnerToActiveClass();
             markSaved(f);
@@ -3092,11 +3181,7 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(model);
             datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
-            projectModel.copyContentsFrom(loaded);
-            graphResultsFollowLoadedModel();
-            replaceGenerationRun(null);
-            graphDiscoveryLedger = ledger;
-            instancesPanel.clear();
+            replaceOpenProject(loaded, ledger);
             modelChanged();
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();

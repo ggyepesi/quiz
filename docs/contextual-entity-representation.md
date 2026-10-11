@@ -19,6 +19,15 @@ Admission and representation are separate declarations.
   means that a Laureate satisfying Person's admission is represented as Person. The role
   class remains the fallback when no configured alternative matches.
 
+The base does not have to produce a population of its own. A known extension may have its
+own bounded producer; ordinary inheritance already makes every such instance a base
+instance. Astronomy uses this form: `CelestialBody` supplies shared schema while `Star`,
+and the Solar System model's `Sun`, `Planet` and `Moon`, produce their own bounded
+populations. When unspecialized candidates do enter through a referring field or a normal
+source membership such as `item P31 type`, the same ordered representation rules refine
+them. These are alternative population entry points, not different specialization
+mechanisms.
+
 For Nobel this reads:
 
 ```text
@@ -31,6 +40,23 @@ Nobel domain
     Person, when Person admission matches
   otherwise Laureate
 ```
+
+The same pattern covers a derived back-reference on an owned class:
+
+```text
+Discovery.owner -> Owner
+Owner represents matching entities as:
+  Constellation, when Constellation admission matches
+  CelestialBody, when CelestialBody admission matches
+otherwise Owner
+```
+
+The reusable Discovery model can declare `Owner` before it knows which consuming classes
+will produce discoveries. A consuming model adds its explicit representation alternatives.
+`Viewable` is only the renderer's Java interface and is never a role class or a model-visible
+substitute for this declaration. `Owner` itself is authored vocabulary: synchronization may
+derive that `Discovery.owner` needs it, but never creates or removes the class. Saving is
+blocked with a direct validation error until a required role has been declared explicitly.
 
 Oscars makes its own independent choice: `Nominee -> Person`. Importing Person supplies the
 available class and its admission; it never silently opts a role into using it.

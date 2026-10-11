@@ -275,7 +275,7 @@ FieldSourceMapping.allowedQids / sourceQid    per-field allowed values
 **An override must be visible.** Once two domains bound the same imported class
 differently, *"why does this Position have 28 members and that one 400?"* is only
 answerable if the editor distinguishes the model's default from this domain's override.
-Silent divergence looks exactly like a bug. And per directive 9, showing the difference
+Silent divergence looks exactly like a bug. And per directive 10, showing the difference
 must not be what creates it.
 
 ### Neither leg has to be configured

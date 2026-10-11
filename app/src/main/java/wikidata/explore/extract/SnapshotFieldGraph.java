@@ -358,7 +358,7 @@ public final class SnapshotFieldGraph {
                         : wikidata.explore.model.ConfiguredInstanceFields.of(
                                 generatedClass, model, datasource.Datasources.standard())) {
                     FieldRef declared = wikidata.explore.model.ConfiguredInstanceFields
-                            .toFieldRef(configured.declaration());
+                            .toFieldRef(configured);
                     type.fields.computeIfAbsent(
                             declared.name(), FieldShape::new).declare(declared);
                 }

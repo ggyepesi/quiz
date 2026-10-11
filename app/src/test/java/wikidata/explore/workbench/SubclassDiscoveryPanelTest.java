@@ -55,7 +55,7 @@ class SubclassDiscoveryPanelTest {
     @Test void aClassWithNoMembershipRelationSaysWhyNothingCanBeAdded()
             throws Exception {
         // Add writes into a membership RELATION. Before a class has one the action
-        // could only have answered a click with silence, which directive 9 forbids:
+        // could only have answered a click with silence, which directive 10 forbids:
         // a command produces a visible result or explains why it had none.
         GeneratedClassModel unbounded = new GeneratedClassModel("Position");
         SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();

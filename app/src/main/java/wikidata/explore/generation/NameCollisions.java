@@ -16,12 +16,13 @@ import java.util.Map;
  * Instances of a declared class that share a display label, classified by what that
  * sharing means for the class's identity regime.
  *
- * <p>Different meaning different identifiers — a QID, or the assembled id a statement
- * class carries. That is the whole of it: information about the domain, with no further
- * automatic use. For source entities the label is the datasource's own, so a repetition
- * is genuine name ambiguity. For statement records and owned parts the label is DERIVED,
- * so a repetition describes the rule that derived it rather than the identity of what
- * carries it — a different question, reported separately rather than not at all.
+ * <p>Different means different complete instance identities: {@code <typeKey, QID>} for
+ * entities/owned parts, or {@code <typeKey, assembledId>} for a statement instance. That
+ * is the whole of it: information about the domain, with no further automatic use. For
+ * source entities the label is the datasource's own, so a repetition is genuine name
+ * ambiguity. For statement records and owned parts the label is DERIVED, so a repetition
+ * describes the rule that derived it rather than the identity of what carries it — a
+ * different question, reported separately rather than not at all.
  *
  * <p>It reports INSTANCES, so it asks what the configuration declares. A value reached
  * through a field is not an instance however it arrived: the given name behind
@@ -54,16 +55,30 @@ public final class NameCollisions {
         OWNED_REPETITION
     }
 
+    /** The complete identity of one participant in a collision. Identifier alone is
+     *  insufficient: two owned production sites may deliberately use the same owner QID. */
+    public record InstanceIdentity(String typeKey, String identifier) {
+        public InstanceIdentity {
+            typeKey = typeKey == null ? "" : typeKey;
+            identifier = identifier == null ? "" : identifier;
+        }
+    }
+
     /** One label and the distinct instances carrying it, in the order the run produced
-     *  them. Identified by identifier — a QID, or a statement class's assembled id. */
-    public record Collision(String name, List<String> ids) {
+     *  them. Identity is always the complete {@code <typeKey, identifier>} pair. */
+    public record Collision(String name, List<InstanceIdentity> identities) {
         public Collision {
             name = name == null ? "" : name;
-            ids = List.copyOf(ids);
+            identities = List.copyOf(identities);
         }
 
         public int size() {
-            return ids.size();
+            return identities.size();
+        }
+
+        /** Convenience for summaries that intentionally show only datasource IDs. */
+        public List<String> ids() {
+            return identities.stream().map(InstanceIdentity::identifier).toList();
         }
     }
 
@@ -113,7 +128,8 @@ public final class NameCollisions {
             Collection<WikidataDynamicObject> objects, Map<String, Meaning> declaredClasses) {
 
         Map<String, Meaning> declared = declaredClasses == null ? Map.of() : declaredClasses;
-        Map<String, Map<String, LinkedHashSet<String>>> byClass = new LinkedHashMap<>();
+        Map<String, Map<String, LinkedHashSet<InstanceIdentity>>> byClass =
+                new LinkedHashMap<>();
 
         for (WikidataDynamicObject object : objects == null ? List.<WikidataDynamicObject>of()
                 : objects) {
@@ -128,14 +144,16 @@ public final class NameCollisions {
             if (name == null || name.isBlank() || id == null || id.isBlank()) continue;
             byClass.computeIfAbsent(className, ignored -> new LinkedHashMap<>())
                     .computeIfAbsent(name, ignored -> new LinkedHashSet<>())
-                    .add(id);
+                    .add(new InstanceIdentity(object.typeKey(), id));
         }
 
         List<ClassCollisions> out = new ArrayList<>();
         byClass.forEach((className, byName) -> {
             List<Collision> collisions = new ArrayList<>();
-            byName.forEach((name, ids) -> {
-                if (ids.size() > 1) collisions.add(new Collision(name, List.copyOf(ids)));
+            byName.forEach((name, identities) -> {
+                if (identities.size() > 1) {
+                    collisions.add(new Collision(name, List.copyOf(identities)));
+                }
             });
             collisions.sort(Comparator.comparingInt(Collision::size).reversed());
             if (!collisions.isEmpty()) {

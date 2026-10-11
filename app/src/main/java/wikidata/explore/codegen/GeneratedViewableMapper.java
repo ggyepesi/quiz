@@ -39,7 +39,7 @@ public class GeneratedViewableMapper {
     // datasource discovery and reflection for tens of thousands of records on load.
     private final Map<String, List<ModeledFieldBinding>> modeledFieldBindings =
             new java.util.HashMap<>();
-    private final Map<String, List<DatasourceFieldBinding>> datasourceFieldBindings =
+    private final Map<String, List<ConfiguredFieldBinding>> configuredFieldBindings =
             new java.util.HashMap<>();
     /**
      * Field population is deliberately iterative. A valid domain graph can contain a
@@ -73,8 +73,9 @@ public class GeneratedViewableMapper {
         return Map.copyOf(refusedReferences);
     }
     private record ModeledFieldBinding(GeneratedFieldModel model, Field field) { }
-    private record DatasourceFieldBinding(
-            datasource.api.DatasourceInstanceField declaration, Field field) { }
+    private record ConfiguredFieldBinding(
+            wikidata.explore.model.ConfiguredInstanceFields.Field configured,
+            Field field) { }
     /** Source candidates are partitioned by the same neutral engine as statements and
      * owned components before Java objects are materialized. Indexed per modeled class,
      * because one source object may be represented through more than one class role. */
@@ -143,7 +144,7 @@ public class GeneratedViewableMapper {
     private void populate(Population population) throws Exception {
         applyFields(population.runtime(), population.target(), population.source(),
                 population.merge());
-        applyDatasourceFields(population.runtime(), population.target(), population.source(),
+        applyConfiguredInstanceFields(population.runtime(), population.target(), population.source(),
                 population.merge());
     }
 
@@ -333,6 +334,8 @@ public class GeneratedViewableMapper {
                     && !cr.model().canonical().keyFields().isEmpty();
             ge.identifier(contentKey && canonicalKey != null
                     ? canonicalKey : source.getIdentifier());
+            ge.identityTypeName(ownedComponentTypes.contains(type)
+                    ? source.identityTypeName() : type);
             ge.label(source.getDisplayName());
             ge.sourceIdentities(canonicalSourceIdentitiesByType
                     .getOrDefault(type, Map.of()).getOrDefault(originalSource,
@@ -426,23 +429,24 @@ public class GeneratedViewableMapper {
         }
     }
 
-    /** Populates the ordinary fields contributed by this class's datasource config. */
-    private void applyDatasourceFields(
+    /** Populates non-authored fields implied by datasource or model configuration. */
+    private void applyConfiguredInstanceFields(
             GeneratedViewableRuntime.ClassRuntime cr,
             Object target,
             WikidataDynamicObject source,
             boolean merge) throws IllegalAccessException {
-        for (DatasourceFieldBinding binding : datasourceFields(cr)) {
-            datasource.api.DatasourceInstanceField declaration = binding.declaration();
+        for (ConfiguredFieldBinding binding : configuredInstanceFields(cr)) {
+            wikidata.explore.model.ConfiguredInstanceFields.Field configured =
+                    binding.configured();
             Field javaField = binding.field();
-            Object value = declaration.value(source);
+            Object value = configured.value(source);
             if (value == null) continue;
-            // Provider declarations are allowed to return immutable collection
-            // values (the Wikidata source field deliberately uses List.of/copyOf).
-            // A later projection of the same QID must union its provider values into
+            // Configured declarations may return immutable collection values (the
+            // Wikidata source field deliberately uses List.of/copyOf). A later
+            // projection of the same QID must union its configured values into
             // the already materialized instance, so never install the provider's
             // collection itself as the generated field's mutable accumulator.
-            if (declaration.valueSchema().collection()
+            if (configured.valueSchema().collection()
                     && value instanceof java.util.Collection<?> values) {
                 value = new java.util.ArrayList<>(values);
             }
@@ -478,20 +482,18 @@ public class GeneratedViewableMapper {
         });
     }
 
-    private List<DatasourceFieldBinding> datasourceFields(
+    private List<ConfiguredFieldBinding> configuredInstanceFields(
             GeneratedViewableRuntime.ClassRuntime cr) {
-        return datasourceFieldBindings.computeIfAbsent(cr.model().className(), ignored -> {
-            List<DatasourceFieldBinding> bindings = new ArrayList<>();
+        return configuredFieldBindings.computeIfAbsent(cr.model().className(), ignored -> {
+            List<ConfiguredFieldBinding> bindings = new ArrayList<>();
             for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
                     : wikidata.explore.model.ConfiguredInstanceFields.of(
                             cr.model(), runtime.project(), datasourceRegistry)) {
-                datasource.api.DatasourceInstanceField declaration =
-                        configured.declaration();
                 Field field = findField(cr.generatedClass(),
                         GeneratedViewableSourceGenerator.sanitizeFieldName(
-                                declaration.name()));
+                                configured.name()));
                 if (field != null) {
-                    bindings.add(new DatasourceFieldBinding(declaration, field));
+                    bindings.add(new ConfiguredFieldBinding(configured, field));
                 }
             }
             return List.copyOf(bindings);

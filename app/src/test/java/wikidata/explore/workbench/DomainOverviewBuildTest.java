@@ -12,7 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The project's build is authored in the project overview (directive 10: the UI is the
+ * The project's build is authored in the project overview (directive 11: the UI is the
  * authority for configuration). Adding and moving steps writes the build at once; a step
  * that stays listed keeps the operation it was.
  */

@@ -1,0 +1,40 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:df2ad74a-e69f-3e14-aa3e-955b7091de5e",
+    "name" : "Constellation",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:4eab0fc8-9a56-4dd1-b173-d24d41e28767",
+    "name" : "CelestialBody",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:960e0600-84cc-4d45-879b-9e4c3462385d",
+    "name" : "Discovery",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:77dc6386-8693-4268-864a-2b2eb4bcbb44",
+    "name" : "Discoverer",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:8bc9f38d-d5bf-4c60-a752-7e70331b6613",
+    "name" : "Person",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:9bd23022-231c-30ce-b125-183ee2d31295",
+    "name" : "Name",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:7da4d7de-7261-3320-a064-c560ecaccd7f",
+    "name" : "Star",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  } ],
+  "snapshotSignature" : "model-v2:8b486066cc12a2f3d62042f4dd15b94a8c89e45daba6c771efc63faca24dc5bc"
+}

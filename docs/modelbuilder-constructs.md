@@ -233,6 +233,14 @@ are admitted automatically. If a class extends `Name`, it already inherits
 Name's fields and should not also compose a nested Name; validation rejects that
 redundant/cyclic shape.
 
+Every owned class visibly contains a derived, read-only singular **Owner** reference.
+It points to the actual instance at the production site and is not acquired from
+Wikidata. Because one owned class can have
+sites on different owner classes, the reference value carries the concrete owner's
+logical type. A multi-instance view resolves the link by the complete
+`<logical type, identifier>` identity, so equal QIDs in different domain types do
+not navigate to the wrong card.
+
 ---
 
 ### Graph classes — a population discovered by traversal

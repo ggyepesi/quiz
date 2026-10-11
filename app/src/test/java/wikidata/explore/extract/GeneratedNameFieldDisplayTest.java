@@ -15,6 +15,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A generated model's name field IS the class's display, so a generated snapshot must
@@ -65,5 +66,25 @@ class GeneratedNameFieldDisplayTest {
         assertFalse(graph.types.containsKey("__subject_Nomination"));
         assertNull(graph.types.get("Nominee").baseType,
                 "an internal base name must not survive as a second leak path");
+    }
+
+    @Test void anOwnedClassDeclaresItsDerivedOwnerAsAnOrdinaryReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        project.addClass(name);
+
+        SnapshotFieldGraph.Builder builder = SnapshotFieldGraph.builder();
+        builder.declare(project);
+        FieldRef owner = builder.build().fieldSchema("Name", Set.of()).fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow();
+
+        assertEquals(FieldRole.NONE, owner.role());
+        assertTrue(owner.annotatedReference());
+        assertEquals(wikidata.explore.model.OwnedClassSemantics.OWNER_ROLE,
+                owner.targetType(),
+                "the schema names the owner role; each value still carries its concrete "
+                        + "owner type");
     }
 }

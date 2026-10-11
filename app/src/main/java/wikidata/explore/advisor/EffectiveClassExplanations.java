@@ -76,11 +76,19 @@ public final class EffectiveClassExplanations {
                     ? (field.entityClassName().isBlank()
                     ? "Unresolved entity class" : field.entityClassName())
                     : "Scalar value";
+            boolean ownerReference = wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(owner, declaration);
+            if (ownerReference) {
+                target = "Producing instance (concrete type carried by the reference)";
+            }
             return new EffectiveFieldExplanation(
                     compiledOwner.displayClassName(), field.name(),
                     field.type() + (field.collection() ? " list" : " value"),
-                    sourceDescription(field.source()), target,
-                    field.source().roleKind().toString().toLowerCase().replace('_', ' '), "");
+                    ownerReference ? "Derived from the owned production site"
+                            : sourceDescription(field.source()), target,
+                    ownerReference ? "owner reference"
+                            : field.source().roleKind().toString().toLowerCase()
+                                    .replace('_', ' '), "");
         } catch (IllegalArgumentException | IllegalStateException invalid) {
             return unavailableField(invalid.getMessage());
         }

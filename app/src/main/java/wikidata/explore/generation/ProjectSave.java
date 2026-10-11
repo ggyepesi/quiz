@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Saving a project, as an operation that runs without a UI (directive 22, the design's
+ * Saving a project, as an operation that runs without a UI (directive 23, the design's
  * SAVE_PROJECT_RESULT).
  *
  * <p>It lived inside the ModelBuilder frame's Save button, between the dialogs it fed:

@@ -67,6 +67,11 @@ class SolarSystemSavedModelTest {
                 .mapping().propertyPid());
         assertEquals(FieldCardinality.COLLECTION,
                 field(model, "Discovery", "discoverers").cardinality());
+        GeneratedFieldModel owner = field(model, "Discovery", "owner");
+        assertEquals("Owner", owner.entityClassName());
+        assertTrue(model.entityRepresentationRules().stream().anyMatch(rule ->
+                rule.roleClassName().equals("Owner")
+                        && rule.representationClassName().equals("CelestialBody")));
         assertTrue(model.findClass("Planet").effectiveFields(model).stream()
                 .anyMatch(field -> "image".equals(field.name())));
         assertTrue(model.findClass("Moon").effectiveFields(model).stream()

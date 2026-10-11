@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Builds a saved project from the command line, with no window (directive 22):
+ * Builds a saved project from the command line, with no window (directive 23):
  *
  * <pre>
  *   build &lt;project&gt;          run the project's saved build

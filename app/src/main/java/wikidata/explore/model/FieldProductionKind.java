@@ -31,6 +31,10 @@ public enum FieldProductionKind {
      *  a P166/P1346 award-received companion to the P1411/P2453 nomination. Generic
      *  field-value match (see CompanionMatcher); the two PIDs are the only inputs. */
     COMPANION_MATCH,
+    /** DERIVED, not fetched: on an owned class, the instance at the production site
+     *  that produced this one. The system declares exactly one such field per owned
+     *  class; it is recognised by this stored kind, never by its name. */
+    OWNER_REFERENCE,
     AUTO;
 
     @Override
@@ -46,6 +50,7 @@ public enum FieldProductionKind {
             case INVERT -> "Invert (reverse of another field)";
             case UNION -> "Union of fields";
             case COMPANION_MATCH -> "Companion match (outcome flag)";
+            case OWNER_REFERENCE -> "Owner reference (producing instance)";
             case AUTO -> "Auto";
         };
     }

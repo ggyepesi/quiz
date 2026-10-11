@@ -106,28 +106,28 @@ public class GeneratedViewableSourceGenerator {
 
         for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
                 : instanceFields) {
-            datasource.api.DatasourceInstanceField field = configured.declaration();
             boolean conflicts = fields.stream().filter(java.util.Objects::nonNull)
-                    .anyMatch(modeled -> field.name().equals(
+                    .anyMatch(modeled -> configured.name().equals(
                             sanitizeFieldName(modeled.name())));
             if (conflicts) {
                 throw new IllegalArgumentException(
-                        "Datasource field conflicts with modeled field: " + field.name());
+                        "Configured instance field conflicts with modeled field: "
+                                + configured.name());
             }
             sb.append("    @objectview.annotations.Label(\"")
-              .append(escape(field.label())).append("\")\n")
+              .append(escape(configured.label())).append("\")\n")
               .append("    @objectview.annotations.Role(objectview.field.FieldRole.")
               .append(wikidata.explore.model.ConfiguredInstanceFields
-                      .toFieldRef(field).role().name()).append(")\n");
-            if (field.valueSchema().kind()
+                      .toFieldRef(configured).role().name()).append(")\n");
+            if (configured.valueSchema().kind()
                     == datasource.api.SourceValueKind.ENTITY_REFERENCE) {
                 sb.append("    @objectview.annotations.Reference\n");
             }
-            sb.append("    public ").append(javaType(field.valueSchema()))
-              .append(" ").append(sanitizeFieldName(field.name()));
-            if (field.valueSchema().collection()) {
+            sb.append("    public ").append(javaType(configured.valueSchema()))
+              .append(" ").append(sanitizeFieldName(configured.name()));
+            if (configured.valueSchema().collection()) {
                 sb.append(" = new java.util.ArrayList<>()");
-            } else if (field.valueSchema().kind().fieldType()
+            } else if (configured.valueSchema().kind().fieldType()
                     == datasource.schema.FieldType.STRING) {
                 sb.append(" = \"\"");
             }
@@ -277,14 +277,14 @@ public class GeneratedViewableSourceGenerator {
         // nested search/sort/config.
         if (project != null && type != null && !type.isBlank()) {
             GeneratedClassModel target = project.findClass(type);
-            // A referenced-only target is a semantic ROLE, not the final entity
-            // kind. Kind classification may replace Nominee with Person, Film, …;
-            // the field must therefore accept the resulting shared Viewable rather
-            // than freezing the role class into its Java signature.
-            if (target != null
-                    && wikidata.explore.model.MembershipPattern.of(target, project)
-                    == wikidata.explore.model.MembershipPattern.REFERENCED
-                    && !project.entityKindRules().isEmpty()) {
+            // A target with contextual representations is a semantic ROLE, not the
+            // final entity kind. The representation may come from type evidence
+            // (Nominee -> Person/Film) or from the declared production site of an
+            // already-known object (Owner -> Constellation/CelestialBody). Either way,
+            // the Java carrier must accept the concrete card while the model remains
+            // explicitly typed as the named role.
+            if (wikidata.explore.model.EntityRepresentations
+                    .hasRepresentations(project, target)) {
                 return "objectview.Viewable";
             }
             String sanitized = sanitizeClassName(type);

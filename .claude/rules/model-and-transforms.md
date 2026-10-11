@@ -49,6 +49,16 @@ an admission alone performs no retyping. See `docs/contextual-entity-representat
 An authored subclass inherits its base's admission, including across a model import; it does
 not duplicate that declaration merely to participate in contextual representation.
 
+This is the single pattern for a base whose members may have several typed extensions.
+Known extensions may be produced directly; inheritance makes them base instances without
+running a base query. Unspecialized candidates may instead enter through a field
+(`laureates -> Laureate`) or the base's own source membership (`item P31 type`), after
+which ordered contextual representations choose admitted extensions and leave the base as
+the fallback. It applies equally to an independently populated source class, a statement
+participant such as `Laureate`, and an owned class's derived `owner` reference. `Viewable`
+is an ObjectView implementation contract, never a semantic target class shown or stored by
+ModelBuilder.
+
 # Statement triple ownership
 
 A Statement class owns its source triple. Its property and subject/object population bounds
@@ -84,7 +94,16 @@ An owned class is produced per owning instance on the OWNER's QID; being owned i
 the CLASS, where it is produced is a property of the FIELD (the production site is part of the
 type key). A part is never a served type. Unless its class has an explicit canonical naming rule,
 its display name follows its owner. The class/field context says which component it is; that
-implementation distinction is not appended to the instance name.
+implementation distinction is not appended to the instance name. Every part also carries the
+same visibly declared, derived, read-only singular `owner` reference. Its value is the actual
+producing instance. The reference uses the same named role plus contextual-representation
+construct as every other polymorphic entity field, so different production sites may supply
+different admitted owner representations without a second unclassed-entity mechanism.
+The reference is recognised by its stored `OWNER_REFERENCE` production kind, never by the name
+`owner`; an authored field under that name is left untouched and reported as a collision.
+The named owner role is authored model vocabulary. Deriving an owned class's read-only
+`owner` target may select that role, but load, save, import and validation never create or
+delete the role; a missing required role is reported as a model error.
 
 Remap re-runs the pure transforms offline in the same order. Enrich is additive and works in
 place, checkpointed by exact covered QIDs.

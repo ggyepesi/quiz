@@ -158,17 +158,17 @@ public final class ProductCompiler {
             if (f == null || !names.add(f.name())) {
                 continue;
             }
-            fields.add(compileField(model, f));
+            fields.add(compileField(model, c, f));
         }
         // Datasource-contributed fields are ordinary declared fields here exactly as
-        // in generated ModelBuilder classes. Do not reconstruct an older synthetic
-        // Wikidata link in this second schema path.
+        // in generated ModelBuilder classes. Model-derived fields (including an owned
+        // instance's owner reference) are already in effectiveFields above.
         for (wikidata.explore.model.ConfiguredInstanceFields.Field configured
                 : wikidata.explore.model.ConfiguredInstanceFields.of(
                         c, model, datasource.Datasources.standard())) {
             objectview.field.FieldRef declaration =
                     wikidata.explore.model.ConfiguredInstanceFields.toFieldRef(
-                            configured.declaration());
+                            configured);
             if (names.add(declaration.name())) {
                 fields.add(ProductField.declared(declaration));
             }
@@ -185,12 +185,15 @@ public final class ProductCompiler {
     }
 
     private static ProductField compileField(
-            GeneratedProjectModel model, GeneratedFieldModel f) {
+            GeneratedProjectModel model, GeneratedClassModel owner,
+            GeneratedFieldModel f) {
         FieldType type = f.type();
         String target = f.entityClassName();
         boolean targetDeclared =
                 type == FieldType.ENTITY && model.findClass(target) != null;
-        boolean reference = targetDeclared;
+        boolean reference = targetDeclared
+                || wikidata.explore.model.OwnedClassSemantics
+                        .isOwnerReferenceField(owner, f);
 
         boolean collection = f.cardinality() ==
                 wikidata.explore.model.FieldCardinality.COLLECTION;
@@ -206,7 +209,8 @@ public final class ProductCompiler {
         String base;
         if (reference) {
             GeneratedClassModel tc = model.findClass(target);
-            base = tc != null ? tc.displayClassName() : target;
+            base = tc != null ? tc.displayClassName()
+                    : target == null || target.isBlank() ? "Viewable" : target;
         } else if (type == FieldType.ENTITY) {
             base = "String";   // an unmodeled / bare reference, read as its label
         } else {
@@ -241,6 +245,8 @@ public final class ProductCompiler {
             }
             for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f != null && f.type() == FieldType.ENTITY
+                        && !wikidata.explore.model.OwnedClassSemantics
+                                .isOwnerReferenceField(c, f)
                         && model.findClass(f.entityClassName()) == null) {
                     unmodeled.add(c.className() + " " + f.name());
                 }
@@ -362,9 +368,9 @@ public final class ProductCompiler {
         }
     }
 
-    /** A declared modeled entity field keeps its already type-checked references without
-     *  making those referents top-level members. References in every other field collapse
-     *  to text. */
+    /** A declared modeled entity field, and the owned class's polymorphic owner field,
+     *  keep references without making those referents top-level members. References in
+     *  every other field collapse to text. */
     private static void collapseReferencesOutsideDeclaredEntityFields(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
         Set<String> entityFields = new LinkedHashSet<>();
@@ -372,7 +378,9 @@ public final class ProductCompiler {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
                 if (field != null && field.type() == FieldType.ENTITY
-                        && model.findClass(field.entityClassName()) != null) {
+                        && (wikidata.explore.model.OwnedClassSemantics
+                                        .isOwnerReferenceField(owner, field)
+                                || model.findClass(field.entityClassName()) != null)) {
                     entityFields.add(owner.className() + "\0" + field.name());
                 }
             }

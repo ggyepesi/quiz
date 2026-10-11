@@ -54,16 +54,20 @@ public record CompiledPipelineRun(
         Map<PipelinePhase, PhaseDecision> decisions = new LinkedHashMap<>();
 
         CompiledProjectModel model = null;
+        PipelineRequest settledRequest = request;
         String refusal = "";
         try {
+            ProjectModelCompiler.Compilation compilation =
+                    ProjectModelCompiler.compileSnapshot(request.model());
+            settledRequest = request.withModel(compilation.snapshot());
             if (request.scope().discovers()) {
                 var executable = wikidata.explore.model.GeneratedProjectModelValidator
-                        .validateForAcquisition(request.model());
+                        .validateForAcquisition(compilation.snapshot());
                 if (!executable.valid()) {
                     throw new ProjectModelCompiler.ModelCompilationException(executable);
                 }
             }
-            model = ProjectModelCompiler.compile(request.model());
+            model = compilation.model();
         } catch (RuntimeException uncompilable) {
             refusal = uncompilable.getMessage() == null
                     ? "The model cannot be compiled." : uncompilable.getMessage();
@@ -77,7 +81,7 @@ public record CompiledPipelineRun(
                     decisions.put(phase, PhaseDecision.blocked(refusal));
                 }
             }
-            return new CompiledPipelineRun(request, null, decisions);
+            return new CompiledPipelineRun(settledRequest, null, decisions);
         }
 
         decisions.put(PipelinePhase.STAGE_INPUT_GRAPH, request.input().isEmpty()
@@ -108,7 +112,7 @@ public record CompiledPipelineRun(
         decisions.put(PipelinePhase.FINALIZE, PhaseDecision.run());
         decisions.put(PipelinePhase.MATERIALIZE, PhaseDecision.run());
 
-        return new CompiledPipelineRun(request, model, decisions);
+        return new CompiledPipelineRun(settledRequest, model, decisions);
     }
 
     /**

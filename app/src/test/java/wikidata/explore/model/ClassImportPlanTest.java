@@ -33,6 +33,7 @@ class ClassImportPlanTest {
         source.addSelection(new RoleSelection(
                 "Nominees", "Person", "structuredName"));
         source.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        OwnedClassSemantics.synchronizeOwnerReferences(source);
         return source;
     }
 
@@ -112,8 +113,9 @@ class ClassImportPlanTest {
 
         plan.apply(Set.of("Person"));
 
-        assertEquals("local", target.findClass("Name").fields().getFirst().name(),
-                "the class already here is untouched by a copy that did not "
+        assertTrue(target.findClass("Name").fields().stream()
+                        .anyMatch(field -> field.name().equals("local")),
+                "the class already here keeps its authored field when a copy did not "
                         + "select it");
         assertNotNull(target.findClass("Person"));
     }
@@ -158,24 +160,16 @@ class ClassImportPlanTest {
                 "copying configuration in does not turn a model into a domain");
     }
 
-    /**
-     * One class at a time works, but only in dependency order: Name first, then Person
-     * reusing it. Person first refuses, because it would land pointing at nothing.
-     */
-    @Test void oneClassAtATimeWorksInDependencyOrder() {
+    /** The derived owner reference makes an Owned class and its owner one closure. */
+    @Test void anOwnedClassCannotBeCopiedWithoutItsOwnerClass() {
         GeneratedProjectModel source = oscarPeople();
         GeneratedProjectModel model = emptyModel();
 
-        ClassImportPlan.of(source, model, "Name")
-                .apply(Set.of("Name"));
-        assertNotNull(model.findClass("Name"));
+        ClassImportPlan plan = ClassImportPlan.of(source, model, "Name");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> plan.apply(Set.of("Name")));
 
-        ClassImportPlan.of(source, model, "Person")
-                .apply(Set.of("Person"));
-
-        assertNotNull(model.findClass("Person"));
-        assertEquals("Name",
-                model.findClass("Person").fields().getFirst().entityClassName());
+        assertTrue(failure.getMessage().contains("Name → Person"));
     }
 
     /**
@@ -230,10 +224,12 @@ class ClassImportPlanTest {
                 "nickname", FieldType.STRING, FieldCardinality.SINGLE);
         assertTrue(model.renameClass("Name", "PersonName"));
 
-        assertEquals(2, model.findClass("PersonName").fields().size(),
-                "a copy is edited like any class this project wrote itself");
-        assertEquals(1, oscarPeople().findClass("Name").fields().size(),
-                "and the project it was copied from is untouched");
+        assertEquals(3, model.findClass("PersonName").fields().size(),
+                "a copy keeps its automatic owner reference and is edited like any "
+                        + "class this project wrote itself");
+        assertEquals(2, oscarPeople().findClass("Name").fields().size(),
+                "and the source retains its owner and givenName fields without the "
+                        + "copy's nickname");
     }
 
     /**
@@ -328,15 +324,15 @@ class ClassImportPlanTest {
     @Test void copyingAnImportedClassYieldsAnOrdinaryOne() {
         GeneratedProjectModel relay = emptyModel();
         relay.name("Relay");
-        ClassImportPlan.of(oscarPeople(), relay, "Name")
-                .apply(Set.of("Name"),
+        ClassImportPlan.of(oscarPeople(), relay, "Person")
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
         assertTrue(relay.findClass("Name").isImported());
 
         GeneratedProjectModel destination = emptyModel();
         destination.name("Nobel");
-        ClassImportPlan.of(relay, destination, "Name")
-                .apply(Set.of("Name"));
+        ClassImportPlan.of(relay, destination, "Person")
+                .apply(Set.of("Person", "Name"));
 
         assertFalse(destination.findClass("Name").isImported(),
                 "a copy claims nothing, whatever it was copied from");
@@ -346,8 +342,8 @@ class ClassImportPlanTest {
     @Test void theOwningModelStillEditsWhatOthersImport() {
         GeneratedProjectModel source = oscarPeople();
         GeneratedProjectModel importer = emptyModel();
-        ClassImportPlan.of(source, importer, "Name")
-                .apply(Set.of("Name"),
+        ClassImportPlan.of(source, importer, "Person")
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(importer.findClass("Name").isImported());
@@ -381,8 +377,8 @@ class ClassImportPlanTest {
      */
     @Test void savingAnImportedClassUnchangedIsNotARenameFailure() {
         GeneratedProjectModel model = emptyModel();
-        ClassImportPlan.of(oscarPeople(), model, "Name")
-                .apply(Set.of("Name"),
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"),
                         ClassImportPlan.Ownership.IMPORT);
 
         assertTrue(model.renameClass("Name", "Name"),

@@ -35,7 +35,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * Runs a project's saved build without a window (directive 22): the thin coordinator over
+ * Runs a project's saved build without a window (directive 23): the thin coordinator over
  * the elementary operations. It holds no generation, graph or persistence semantics of its
  * own; each step is the same operation the desktop runs.
  *

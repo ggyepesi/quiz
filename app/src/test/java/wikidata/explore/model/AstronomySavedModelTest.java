@@ -28,6 +28,10 @@ class AstronomySavedModelTest {
         assertEquals("P1215", field(star, "apparentMagnitude")
                 .mapping().propertyPid());
         assertEquals("Discovery", model.findClass("Discovery").importedFrom());
+        EntityRepresentationRule owner = model.entityRepresentationRules().stream()
+                .filter(rule -> rule.roleClassName().equals("Owner"))
+                .findFirst().orElseThrow();
+        assertEquals("CelestialBody", owner.representationClassName());
         assertNotNull(ClassSourceBindings.articleCorrespondence(body));
         assertTrue(GeneratedProjectModelValidator.validate(model).valid());
     }

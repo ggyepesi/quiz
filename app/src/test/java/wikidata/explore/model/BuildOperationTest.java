@@ -11,7 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A project's build is stored configuration (directive 22): saved with the model, copied
+ * A project's build is stored configuration (directive 23): saved with the model, copied
  * with it, and attached to its graphs by declaration id. It says how the project is run,
  * not what it generates, so it never makes generated instances stale.
  */

@@ -125,12 +125,16 @@ public class FieldSourcePanel extends JPanel {
     // values" keeps just id+label references that resolve within the set.
     /** Says what fills a field that acquisition does not. */
     private final javax.swing.JLabel producedBy = new javax.swing.JLabel(" ");
+    // OWNER_REFERENCE is declared by the system on every owned class, never chosen:
+    // it is offered only while that one field is shown (see showProductionKind).
     private final JComboBox<FieldProductionKind> productionBox =
-            new JComboBox<>(FieldProductionKind.values());
+            new JComboBox<>(java.util.Arrays.stream(FieldProductionKind.values())
+                    .filter(kind -> kind != FieldProductionKind.OWNER_REFERENCE)
+                    .toArray(FieldProductionKind[]::new));
     private final JComboBox<String> inverseFieldBox = new JComboBox<>();
     // A union's sources are picked from the owning class's declared field tree with
     // the finite field picker the quiz key uses; a typed path is how a model drifts
-    // from what it names (directive 13).
+    // from what it names (directive 14).
     private final JPanel unionSourcesHolder = new JPanel(new BorderLayout());
     private objectview.viewconfig.ViewConfigEditor unionSourcesPicker;
     private GeneratedFieldModel unionPickerField;
@@ -170,9 +174,6 @@ public class FieldSourcePanel extends JPanel {
     // REFERENCE (default) = a pointer to another entity (forWork, edition).
     private final JComboBox<wikidata.explore.model.RoleKind> roleKindBox =
             new JComboBox<>(wikidata.explore.model.RoleKind.values());
-
-    private final JSpinner limitSpinner =
-            new JSpinner(new SpinnerNumberModel(50, 1, 10000, 10));
 
     private final JLabel recommendationLabel =
             new JLabel("Load method: Auto");
@@ -670,7 +671,7 @@ public class FieldSourcePanel extends JPanel {
                 field.hasSort() ? field.sortFieldName() : NO_SORT);
         sortDirBox.setSelectedItem(
                 field.sortDescending() ? "descending" : "ascending");
-        productionBox.setSelectedItem(m.productionKind());
+        showProductionKind(m.productionKind());
         refreshUnionSourcePicker();
         refreshInverseFieldChoices();
         graphExpansionBox.setSelectedItem(field.graphExpansionPolicy());
@@ -689,6 +690,19 @@ public class FieldSourcePanel extends JPanel {
         updateRecommendation();
         refreshOwnedComponentControls();
         refreshGraphExpansionControl();
+    }
+
+    private void showProductionKind(FieldProductionKind kind) {
+        boolean ownerReference = kind == FieldProductionKind.OWNER_REFERENCE;
+        DefaultComboBoxModel<FieldProductionKind> choices =
+                (DefaultComboBoxModel<FieldProductionKind>) productionBox.getModel();
+        int offered = choices.getIndexOf(FieldProductionKind.OWNER_REFERENCE);
+        if (ownerReference && offered < 0) {
+            choices.addElement(FieldProductionKind.OWNER_REFERENCE);
+        } else if (!ownerReference && offered >= 0) {
+            choices.removeElementAt(offered);
+        }
+        productionBox.setSelectedItem(kind);
     }
 
     private void refreshSourceContexts(OwnedComponentSite selectedSite) {
@@ -726,7 +740,6 @@ public class FieldSourcePanel extends JPanel {
         valueLanguageField.setText(mapping.valueLanguage());
         qualifierDateModeBox.setSelectedItem(mapping.qualifierDateMode());
         propertyLabel.setText(mapping.propertyLabel());
-        limitSpinner.setValue(Math.max(1, mapping.limit()));
         refreshFallbackLabel();
         refreshCategoryLabel();
         updateRecommendation();
@@ -1502,6 +1515,10 @@ public class FieldSourcePanel extends JPanel {
                     + "combine the values already present at the configured field paths, "
                     + "preserving their order and removing duplicates.<br><i>Example:</i> "
                     + "allMoons = moons + moonKinds.moons.</html>";
+            case OWNER_REFERENCE -> "<html><b>Owner reference</b> — <b>derived</b>, "
+                    + "not fetched: the instance at the production site that produced "
+                    + "this owned instance. Declared once on every Owned class; it is "
+                    + "not authored.</html>";
             case COMPANION_MATCH -> "<html><b>Companion match</b> — a <b>Boolean</b> "
                     + "that is true iff a companion statement "
                     + "(<i>Companion&nbsp;property</i>[value, <i>Role&nbsp;qualifier</i>]) "

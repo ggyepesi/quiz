@@ -72,7 +72,7 @@ connected them, which is a candidate missing statement rather than a fact about 
 
 This slice does not save a transformation, create a class, or change the domain. Those are
 later pipeline operations if a discovered structure proves worth keeping — and when one is,
-a family is a `PopulationSelection` or a produced group, the constructs directives 18 and 23
+a family is a `PopulationSelection` or a produced group, the constructs directives 19 and 24
 already define for a reusable set of instances. It must not become a third. Representative
 selection currently has one rule—most distinct shared entities, then label and identifier
 for a stable tie-break. Making that rule configurable should be forced by a second concrete

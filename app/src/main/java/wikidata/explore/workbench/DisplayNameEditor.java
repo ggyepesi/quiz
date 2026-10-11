@@ -170,6 +170,8 @@ final class DisplayNameEditor extends JPanel {
         if (clazz == null) return names;
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.isNameField()) continue;
+            if (wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(clazz, field)) continue;
             names.add(field.name());
         }
         return names;

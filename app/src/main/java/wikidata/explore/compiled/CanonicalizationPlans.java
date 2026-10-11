@@ -41,6 +41,11 @@ public final class CanonicalizationPlans {
 
         for (GeneratedFieldModel field : clazz.fields()) {
             if (field == null || field.name() == null || field.name().isBlank()) continue;
+            // Owned identity already contains owner + production site. The declared
+            // owner link exposes that structural fact; it is not another value to
+            // reduce when candidates sharing that identity are combined.
+            if (wikidata.explore.model.OwnedClassSemantics
+                    .isOwnerReferenceField(clazz, field)) continue;
             // A key component is not reduced: its value formed the partition, so every
             // candidate in that partition already agrees on it.
             if (keyFieldPaths.contains(field.name())) continue;

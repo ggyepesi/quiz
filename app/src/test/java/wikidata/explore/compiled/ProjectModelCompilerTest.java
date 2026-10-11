@@ -39,6 +39,30 @@ class ProjectModelCompilerTest {
         return fields.stream().map(CompiledField::name).toList();
     }
 
+    /** An unsaved model has had no load or save to derive its owner targets; compile
+     *  derives them on its own copy, so one producer needs no Owner role and the
+     *  editable model is left exactly as it was. */
+    @Test
+    void anUnsavedOwnedClassCompilesWithItsOwnerTargetDerivedFromItsOneProducer() {
+        GeneratedProjectModel p = project("owned");
+        p.rootClass().addField("part", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Part");
+        p.rootClass().fields().getFirst().mapping()
+                .productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel part = new GeneratedClassModel("Part");
+        part.classKind(ClassKind.OWNED);
+        p.addClass(part);
+        String stored = part.fields().getFirst().entityClassName();
+
+        CompiledProjectModel compiled = ProjectModelCompiler.compile(p);
+
+        assertEquals("Root", compiled.findClass("Part").orElseThrow().ownFields()
+                .stream().filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow().configuredEntityClassName());
+        assertEquals(stored, part.fields().getFirst().entityClassName(),
+                "compiling never rewrites the model the editor holds");
+    }
+
     @Test
     void compiledClassesCarryTheirAuthoritativeConstructionKind() {
         GeneratedProjectModel p = project("kinds");
@@ -60,6 +84,8 @@ class ProjectModelCompilerTest {
         GeneratedClassModel owned = new GeneratedClassModel("Part");
         owned.classKind(ClassKind.OWNED);
         p.addClass(owned);
+        // Nothing produces Part here, so its owner reference targets the authored role.
+        p.addClass(new GeneratedClassModel(wikidata.explore.model.OwnedClassSemantics.OWNER_ROLE));
 
         CompiledProjectModel compiled = ProjectModelCompiler.compile(p);
 

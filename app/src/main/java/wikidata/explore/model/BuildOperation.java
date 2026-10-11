@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * One step of a project's build: run, apply or save something the model declares
- * (directive 22). A declaration says WHAT; an operation says to run it.
+ * (directive 23). A declaration says WHAT; an operation says to run it.
  *
  * <p>A project's operations are an ordered list, and the order is the stored sequence a
  * build follows. The design's named prerequisites between operations — one output feeding

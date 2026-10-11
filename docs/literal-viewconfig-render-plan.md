@@ -28,7 +28,7 @@ Mercia). It found two things.
   established as a separate defect; phase 6 checks it with the editor on the same
   harness.
 
-The cure is directive 24 (modularity): rewrite every shorthand into plain ticks
+The cure is directive 25 (modularity): rewrite every shorthand into plain ticks
 once, where it enters, and give every other decision exactly one owner.
 
 ## 2. The rules (unchanged, from CLAUDE.md)
@@ -249,7 +249,7 @@ their current paths. Each migrated consumer has no fallback.
 ## 6. Open
 
 - `typeConfigReference` (a child that means "this type's config"), set aside in a git
-  stash on 2026-10-06, is a new shorthand. Under directive 24 it must either be desugared at the boundary
+  stash on 2026-10-06, is a new shorthand. Under directive 25 it must either be desugared at the boundary
   or not exist. For a recursive type it cannot be desugared finitely. Literal configs
   need no recursion, because of rule 9, so the plan does not adopt it.
 - The uncommitted `CLAUDE.md` text says that navigation versus inline is a per-field

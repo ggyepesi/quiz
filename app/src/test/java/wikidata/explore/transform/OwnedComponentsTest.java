@@ -46,6 +46,9 @@ class OwnedComponentsTest {
         assertEquals("Q42", name.getIdentifier());
         assertEquals("Name", name.typeName());
         assertEquals("Name@Person.structuredName", name.typeKey());
+        assertSame(person, name.get(
+                        wikidata.explore.model.OwnedClassSemantics.OWNER_FIELD),
+                "the owned instance points back to the instance that produced it");
         assertSame(name, result.components().get(0));
         assertEquals(MembershipPattern.OWNED_COMPONENT,
                 MembershipPattern.of(project.findClass("Name"), project));
@@ -64,6 +67,29 @@ class OwnedComponentsTest {
         assertEquals(1, result.components().size());
         assertEquals("Name@Person.structuredName",
                 ((WikidataDynamicObject) value.get("structuredName")).typeKey());
+    }
+
+    @Test void oneOwnedClassKeepsTheConcreteOwnerAtEachProductionSite() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel organization = new GeneratedClassModel("Organization");
+        GeneratedFieldModel officialName = organization.addField(
+                "officialName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        officialName.entityClassName("Name");
+        officialName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(organization);
+        WikidataDynamicObject person = entity("Q1", "Ada", "Person");
+        WikidataDynamicObject company = entity("Q2", "Example Ltd", "Organization");
+
+        OwnedComponents.apply(project, List.of(person, company), null, null);
+
+        WikidataDynamicObject personalName =
+                (WikidataDynamicObject) person.get("structuredName");
+        WikidataDynamicObject organizationName =
+                (WikidataDynamicObject) company.get("officialName");
+        assertSame(person, personalName.get("owner"));
+        assertSame(company, organizationName.get("owner"));
+        assertEquals("Name@Person.structuredName", personalName.typeKey());
+        assertEquals("Name@Organization.officialName", organizationName.typeKey());
     }
 
     @Test void remapCopiesPreviouslyLoadedComponentFields() {

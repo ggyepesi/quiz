@@ -619,7 +619,7 @@ public class StatementSourcePanel extends JPanel {
         //
         // No "Refresh derived view" either. It called applyEdits() and then a refresh
         // that applyEdits() already ends with — an Apply button wearing an inspection
-        // label, which is directive 9 inverted.
+        // label, which is directive 10 inverted.
         GridBagUtils.wideRow(form, row++, canonical);
 
         JPanel derived =

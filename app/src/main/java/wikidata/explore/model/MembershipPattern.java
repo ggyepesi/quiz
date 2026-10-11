@@ -264,8 +264,11 @@ public enum MembershipPattern {
         for (GeneratedClassModel owner : project.classes()) {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.fields()) {
+                GeneratedClassModel fieldTarget = field == null ? null
+                        : project.resolveClass(
+                                field.entityDeclarationId(), field.entityClassName());
                 if (OwnedClassSemantics.isOwnerQidField(field, project)
-                        && target.equals(clean(field.entityClassName()))) {
+                        && fieldTarget == clazz) {
                     sites.add(new OwnedBy(owner.className(), field.name()));
                 }
             }

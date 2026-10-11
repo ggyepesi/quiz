@@ -13,6 +13,16 @@ import java.util.*;
  */
 public final class ProjectModelCompiler {
 
+    /** The one normalized snapshot and the immutable runtime view compiled from it. */
+    public record Compilation(
+            GeneratedProjectModel snapshot,
+            CompiledProjectModel model) {
+        public Compilation {
+            Objects.requireNonNull(snapshot, "snapshot");
+            Objects.requireNonNull(model, "model");
+        }
+    }
+
     private ProjectModelCompiler() {
     }
 
@@ -39,6 +49,17 @@ public final class ProjectModelCompiler {
     public static CompiledProjectModel compile(
             GeneratedProjectModel editable) {
 
+        return compileSnapshot(editable).model();
+    }
+
+    /**
+     * Compiles once and retains the exact normalized snapshot the compiled values
+     * describe. Execution must use this snapshot rather than returning to the mutable
+     * editor model after validation.
+     */
+    public static Compilation compileSnapshot(
+            GeneratedProjectModel editable) {
+
         if (editable == null) {
             throw new IllegalArgumentException(
                     "editable project must not be null");
@@ -46,6 +67,9 @@ public final class ProjectModelCompiler {
 
         // Never normalize the object currently owned by Swing controls.
         GeneratedProjectModel snapshot = editable.copy();
+        // The owner reference's target is derived from the production sites. Derive it on
+        // the snapshot, so an unsaved model never compiles against a stale target.
+        wikidata.explore.model.OwnedClassSemantics.synchronizeOwnerReferences(snapshot);
         snapshot.ensureDeclarationIdentities();
         GeneratedProjectModelValidator.ValidationResult validation =
                 GeneratedProjectModelValidator.validate(snapshot);
@@ -58,7 +82,7 @@ public final class ProjectModelCompiler {
             classes.add(compileClass(snapshot, clazz));
         }
 
-        return new CompiledProjectModel(
+        CompiledProjectModel compiled = new CompiledProjectModel(
                 snapshot.name(),
                 snapshot.generationDepth(),
                 snapshot.rootClass().declarationId(),
@@ -66,6 +90,7 @@ public final class ProjectModelCompiler {
                 classes,
                 snapshot.selections(),
                 snapshot.entityRepresentationRules());
+        return new Compilation(snapshot, compiled);
     }
 
     private static CompiledClass compileClass(

@@ -28,6 +28,12 @@ class ConstellationsSavedModelTest {
         assertEquals("Astronomy", model.findClass("CelestialBody").importedFrom());
         assertEquals("Astronomy", model.findClass("Star").importedFrom());
         assertEquals("CelestialBody", model.findClass("Star").baseClassName());
+        assertTrue(model.entityRepresentationRules().stream().anyMatch(rule ->
+                rule.roleClassName().equals("Owner")
+                        && rule.representationClassName().equals("Constellation")));
+        assertTrue(model.entityRepresentationRules().stream().anyMatch(rule ->
+                rule.roleClassName().equals("Owner")
+                        && rule.representationClassName().equals("CelestialBody")));
         assertNotNull(ClassSourceBindings.articleCorrespondence(
                 model.findClass("Constellation")));
         assertTrue(ArticleCorrespondencePlan.classes(model,

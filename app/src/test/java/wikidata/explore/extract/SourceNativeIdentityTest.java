@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A SOURCE class means source identity, not specifically Wikidata identity.
@@ -61,5 +62,17 @@ class SourceNativeIdentityTest {
         store.save(List.of(sun), snapshot.toFile());
 
         assertEquals("Sun", store.loadAll(snapshot.toFile()).getFirst().enwikiTitle());
+    }
+
+    @Test void anAbsentWikipediaCorrespondenceIsAbsentFromTheSnapshot(
+            @TempDir Path directory) throws Exception {
+        WikidataDynamicObject sun = new WikidataDynamicObject("Q525", "Sun");
+        sun.type("CelestialBody");
+
+        Path snapshot = directory.resolve("solar.snapshot.json");
+        new WikidataDynamicObjectJsonStore().save(List.of(sun), snapshot.toFile());
+
+        assertFalse(java.nio.file.Files.readString(snapshot).contains("\"enwikiTitle\""),
+                "no correspondence is no JSON member, not an empty value on every entity");
     }
 }

@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,16 @@ class DiscoverySavedModelTest {
         assertEquals(GeneratedProjectModel.ProjectKind.MODEL, model.projectKind());
         GeneratedClassModel discovery = model.findClass("Discovery");
         assertEquals(ClassKind.OWNED, discovery.classKind());
+        GeneratedFieldModel owner = field(discovery, "owner");
+        assertTrue(OwnedClassSemantics.isOwnerReferenceField(discovery, owner));
+        assertEquals("Owner", owner.entityClassName());
+        assertFalse(owner.unclassedEntity(),
+                "Viewable is not a semantic model class");
+        GeneratedClassModel ownerRole = model.findClass("Owner");
+        assertNotNull(ownerRole);
+        assertFalse(ownerRole.declarationId().isBlank(),
+                "the authored Owner class is a complete persisted declaration");
+        assertEquals(ownerRole.declarationId(), owner.entityDeclarationId());
         assertEquals("P575", field(discovery, "date").mapping().propertyPid());
         assertEquals("P61", field(discovery, "discoverers").mapping().propertyPid());
         assertEquals("Discoverer", field(discovery, "discoverers").entityClassName());

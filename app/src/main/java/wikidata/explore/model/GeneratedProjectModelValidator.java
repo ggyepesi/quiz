@@ -562,7 +562,61 @@ public final class GeneratedProjectModelValidator {
     private static void validateOwnedClass(
             GeneratedProjectModel project, GeneratedClassModel clazz,
             List<Problem> problems) {
-        if (!clazz.ownedClass()) return;
+        if (!clazz.ownedClass()) {
+            for (GeneratedFieldModel field : clazz.fields()) {
+                if (field != null && field.mapping().productionKind()
+                        == FieldProductionKind.OWNER_REFERENCE) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "An owner reference belongs only to an Owned class."));
+                }
+            }
+            return;
+        }
+        GeneratedFieldModel reserved = OwnedClassSemantics.authoredOwnerNameCollision(clazz);
+        if (reserved != null) {
+            problems.add(Problem.error(path(clazz, reserved),
+                    "'" + OwnedClassSemantics.OWNER_FIELD + "' is reserved on an Owned "
+                            + "class for the reference to the instance that produced it. "
+                            + "Rename this field."));
+        }
+        long ownerReferences = clazz.fields().stream()
+                .filter(field -> OwnedClassSemantics.isOwnerReferenceField(clazz, field))
+                .count();
+        if (reserved == null && ownerReferences != 1) {
+            problems.add(Problem.error(clazz.className(),
+                    "Owned class '" + clazz.className() + "' declares " + ownerReferences
+                            + " owner references; it has exactly one."));
+        }
+        String ownerTarget = OwnedClassSemantics.ownerTargetClassName(project, clazz);
+        boolean requiresOwnerRole = OwnedClassSemantics.requiresOwnerRole(project, clazz);
+        GeneratedClassModel target = project.findClass(ownerTarget);
+        if (requiresOwnerRole && target == null) {
+            problems.add(Problem.error(clazz.className(),
+                    "Owned class '" + clazz.className() + "' declares '"
+                            + OwnedClassSemantics.OWNER_ROLE
+                            + "' as its owner-reference target, but that class does not "
+                            + "exist. Add the '" + OwnedClassSemantics.OWNER_ROLE
+                            + "' class explicitly."));
+        } else if (!ownerTarget.isBlank() && target == null) {
+            problems.add(Problem.error(clazz.className(),
+                    "Owned class '" + clazz.className()
+                            + "' has an owner-reference target '" + ownerTarget
+                            + "' that does not exist."));
+        } else if (target != null) {
+            for (GeneratedClassModel producer
+                    : OwnedClassSemantics.ownerClasses(project, clazz)) {
+                if (project.isSameOrSubclass(producer.className(), target.className())
+                        || EntityRepresentations.mayRepresent(
+                                project, target.className(), producer.className())) {
+                    continue;
+                }
+                problems.add(Problem.error(clazz.className(),
+                        "Owner reference target '" + target.className()
+                                + "' cannot hold instances produced by '"
+                                + producer.className() + "'. Add the contextual representation '"
+                                + target.className() + " → " + producer.className() + "'."));
+            }
+        }
         if (clazz.hasBase()) {
             GeneratedClassModel base = project.findClass(clazz.baseClassName());
             if (base != null && !ClassExtensionRules.mayExtend(clazz, base)) {
@@ -722,7 +776,9 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error("Entity representations",
                         "Representation class '" + rule.representationClassName()
                                 + "' does not exist."));
-            } else if (MembershipPattern.kindRule(target, project) == null) {
+            } else if (MembershipPattern.kindRule(target, project) == null
+                    && !OwnedClassSemantics.isOwnerRepresentation(
+                            project, role, target)) {
                 problems.add(Problem.error("Entity representations",
                         "Representation class '" + target.className()
                                 + "' has no configured admission rule."));

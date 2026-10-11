@@ -219,7 +219,11 @@ public class GeneratedClassModel {
      * kind it used to be.
      */
     public void classKind(ClassKind value) {
+        ClassKind previous = classKind();
         classKind = value == null ? ClassKind.SOURCE : value;
+        if (previous == ClassKind.OWNED && classKind != ClassKind.OWNED) {
+            OwnedClassSemantics.removeOwnerReference(this);
+        }
         switch (classKind) {
             case SOURCE -> {
                 aggregateSource = null;
@@ -233,6 +237,7 @@ public class GeneratedClassModel {
                 aggregateSource = null;
                 graphSource = null;
                 clearIndependentPopulation();
+                OwnedClassSemantics.ensureOwnerReference(this);
             }
             case AGGREGATE -> {
                 graphSource = null;
