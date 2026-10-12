@@ -136,5 +136,9 @@ class DateValueNodeQueryTest {
                 "ordering recovers the time from the selected packed value: " + sparql);
         // A non-date field keeps plain SAMPLE over its truthy value.
         assertTrue(sparql.contains("SAMPLE(?house_1_s)"), sparql);
+        // Equal sort values at the limit are broken by the entity, so the kept set
+        // does not depend on evaluation order (#390).
+        assertTrue(sparql.matches("(?s).*ORDER BY ASC\\(xsd:dateTime\\(STRBEFORE\\(\\?born_0, \"\\|\"\\)\\)\\)\\s+ASC\\(STR\\(\\?value\\)\\).*"),
+                sparql);
     }
 }

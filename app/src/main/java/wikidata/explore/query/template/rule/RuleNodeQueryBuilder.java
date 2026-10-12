@@ -960,6 +960,12 @@ public final class RuleNodeQueryBuilder {
         q.groupBy("value");
         if (sortExpression != null) {
             q.orderByRaw((sortDesc ? "DESC(" : "ASC(") + sortExpression + ")");
+            // Entities sharing the sort value at the limit would otherwise be chosen by
+            // WDQS evaluation order (five constellations tie between their 6th and 7th
+            // brightest star). The entity's IRI text breaks the tie: STR, because
+            // Blazegraph orders a bare IRI by internal term id, which differs between
+            // WDQS servers. The kept set is then stable across runs (#390).
+            q.orderByRaw("ASC(STR(?value))");
         }
         if (limit > 0) {
             q.limit(limit);
