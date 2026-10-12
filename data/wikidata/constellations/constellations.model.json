@@ -463,7 +463,7 @@
       "filterOperator" : null,
       "filterValue" : null,
       "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
+      "sortFieldName" : "apparentMagnitude",
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
@@ -1145,7 +1145,7 @@
       "filterOperator" : null,
       "filterValue" : null,
       "edgeMembership" : "INHERIT",
-      "sortFieldName" : "",
+      "sortFieldName" : "apparentMagnitude",
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
