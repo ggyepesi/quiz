@@ -384,9 +384,14 @@ construct per thing produced:
    class. A reusable model may declare the base before it knows the consuming project's
    extensions; the importer adds them explicitly. Never expose the Java/ObjectView
    `Viewable` interface as the semantic class, and never create a second renderer-only or
-   runtime-type-only polymorphism path. A derived field may select that authored base as
-   its target, but normalization must never create or remove the base class: missing
-   vocabulary is a validation error, not configuration performed on the user's behalf.
+   runtime-type-only polymorphism path. A field that directly targets an evidence-defined
+   class may nominate its values for that class, but a self-reference cannot produce more
+   members of its own class: it links members supplied by another population construct.
+   Recursive population growth is an explicit graph/generation construct with a visible
+   boundary, never a side effect of semantic field completion. A derived field may select
+   that authored base as its target, but normalization must never create or remove the base
+   class: missing vocabulary is a validation error, not configuration performed on the
+   user's behalf.
    *(Trigger: an entity population is described as “any class”, `Viewable`, or “the
    runtime object decides”.)*
 

@@ -19,6 +19,31 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentKindClassifierTest {
+    @Test void aSelfReferenceDoesNotProduceMoreMembersOfItsOwnEvidenceKind() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("spouse", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Person");
+        model.rootClass(person);
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject spouse = new WikidataDynamicObject("Q2", "a spouse");
+        WikidataDynamicObject existingPerson =
+                new WikidataDynamicObject("Q1", "an existing person");
+        existingPerson.type("Person");
+        existingPerson.put("spouse", List.of(spouse));
+        var api = new FakeWikidataApiClient()
+                .entity("Q2", "a spouse", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(
+                model, List.of(existingPerson), api, null);
+
+        assertEquals(0, result.classified());
+        assertTrue(!spouse.directClassNames().contains("Person"),
+                "a Person self-reference links members; it does not recursively "
+                        + "grow the Person population");
+    }
+
     @Test void aDirectEvidenceKindFieldNeedsEvidenceWithoutARepresentationRule() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");

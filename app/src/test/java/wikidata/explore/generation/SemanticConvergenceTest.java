@@ -16,6 +16,42 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SemanticConvergenceTest {
 
+    @Test void aSelfReferenceIsLoadedButDoesNotDriveAnImplicitPopulationClosure() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var spouse = person.addField(
+                "spouse", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        spouse.entityClassName("Person");
+        spouse.mapping().propertyPid("P26");
+        model.rootClass(person);
+        model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
+                "Person", List.of("Q5")));
+
+        WikidataDynamicObject existingPerson =
+                new WikidataDynamicObject("Q1", "an existing person");
+        existingPerson.type("Person");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "an existing person", java.util.Map.of(
+                        "P31", List.of("Q5"), "P26", List.of("Q2")))
+                .entity("Q2", "their spouse", java.util.Map.of(
+                        "P31", List.of("Q5"), "P26", List.of("Q3")))
+                .entity("Q3", "the next spouse", java.util.Map.of(
+                        "P31", List.of("Q5")));
+
+        SemanticConvergence.Result result = SemanticConvergence.apply(
+                model, new java.util.ArrayList<>(List.of(existingPerson)),
+                api, null, List.of(), new GenerationQualityTracker());
+
+        assertEquals(1, result.iterations(),
+                "loading the configured edge takes one productive pass; its target "
+                        + "must not start another population wave");
+        Object loaded = ((java.util.List<?>) existingPerson.get("spouse")).getFirst();
+        assertTrue(loaded instanceof WikidataDynamicObject);
+        assertFalse(((WikidataDynamicObject) loaded).directClassNames().contains("Person"),
+                "the spouse remains a reference unless another population construct "
+                        + "already supplied it as Person");
+    }
+
     @Test void reportsProductivePassesRatherThanTheFinalNoOpProbe() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel recordClass = new GeneratedClassModel("Record");

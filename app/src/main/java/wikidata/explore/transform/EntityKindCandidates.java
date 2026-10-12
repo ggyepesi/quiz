@@ -83,7 +83,11 @@ final class EntityKindCandidates {
         // A field that names an admitted kind directly — a predecessor typed Person — is
         // a population on which that admission is meaningful too. Its values become the
         // kind by evidence, as a role's do, never by the field's declaration: a qualifier
-        // pointing at the office "Taoiseach" must not make it a person.
+        // pointing at the office "Taoiseach" must not make it a person. A self-reference
+        // is deliberately excluded: Person.spouse presupposes an existing Person
+        // population and must not turn semantic completion into an implicit transitive
+        // spouse traversal. Recursive population growth belongs to an explicit graph
+        // construct, where its boundary is visible and configurable.
         for (Map.Entry<String, Set<String>> direct
                 : directKindReferents(model, pool, admittedClasses).entrySet()) {
             byKind.computeIfAbsent(direct.getKey(), ignored -> new LinkedHashSet<>())
@@ -109,7 +113,8 @@ final class EntityKindCandidates {
             if (clazz == null) continue;
             for (wikidata.explore.model.GeneratedFieldModel field : clazz.fields()) {
                 if (field != null && field.type() == datasource.schema.FieldType.ENTITY
-                        && admittedClasses.contains(field.entityClassName())) {
+                        && admittedClasses.contains(field.entityClassName())
+                        && !clazz.className().equals(field.entityClassName())) {
                     kindFields.computeIfAbsent(clazz.className(), ignored -> new LinkedHashMap<>())
                             .put(field.name(), field.entityClassName());
                 }
