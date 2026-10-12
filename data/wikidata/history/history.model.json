@@ -10,7 +10,8 @@
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
-      "kind" : "NONE"
+      "kind" : "NONE",
+      "includeDescendants" : false
     },
     "alias" : "",
     "importedFrom" : "",
@@ -144,7 +145,10 @@
           "className" : "Person",
           "fieldPath" : "birthName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -207,7 +211,10 @@
           "className" : "Person",
           "fieldPath" : "nativeName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -270,7 +277,10 @@
           "className" : "Person",
           "fieldPath" : "pseudonyms",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -333,7 +343,10 @@
           "className" : "Person",
           "fieldPath" : "dateOfBirth",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -440,7 +453,10 @@
           "className" : "Person",
           "fieldPath" : "dateOfDeath",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -504,7 +520,10 @@
           "className" : "Person",
           "fieldPath" : "type",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -568,7 +587,10 @@
           "className" : "Person",
           "fieldPath" : "spouse",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -631,7 +653,10 @@
           "className" : "Person",
           "fieldPath" : "image",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -654,7 +679,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -669,7 +697,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -684,7 +715,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -718,7 +752,8 @@
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
-      "kind" : "NONE"
+      "kind" : "NONE",
+      "includeDescendants" : false
     },
     "alias" : "",
     "importedFrom" : "",
@@ -852,7 +887,10 @@
           "className" : "Person",
           "fieldPath" : "birthName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -915,7 +953,10 @@
           "className" : "Person",
           "fieldPath" : "nativeName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -978,7 +1019,10 @@
           "className" : "Person",
           "fieldPath" : "pseudonyms",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1041,7 +1085,10 @@
           "className" : "Person",
           "fieldPath" : "dateOfBirth",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1148,7 +1195,10 @@
           "className" : "Person",
           "fieldPath" : "dateOfDeath",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1212,7 +1262,10 @@
           "className" : "Person",
           "fieldPath" : "type",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1276,7 +1329,10 @@
           "className" : "Person",
           "fieldPath" : "spouse",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1339,7 +1395,10 @@
           "className" : "Person",
           "fieldPath" : "image",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+          "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1362,7 +1421,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1377,7 +1439,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1392,7 +1457,10 @@
         "className" : "Person",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c"
+        "classDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1424,7 +1492,8 @@
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
-      "kind" : "NONE"
+      "kind" : "NONE",
+      "includeDescendants" : false
     },
     "alias" : "",
     "importedFrom" : "",
@@ -1467,6 +1536,50 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "owner",
+      "type" : "ENTITY",
+      "entityClassName" : "Person",
+      "entityDeclarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "OWNER_REFERENCE",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "familyName",
       "type" : "ENTITY",
@@ -1514,7 +1627,10 @@
           "className" : "Name",
           "fieldPath" : "familyName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335"
+          "classDeclarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1577,7 +1693,10 @@
           "className" : "Name",
           "fieldPath" : "givenName",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335"
+          "classDeclarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1616,7 +1735,8 @@
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
-      "kind" : "NONE"
+      "kind" : "NONE",
+      "includeDescendants" : false
     },
     "alias" : "",
     "importedFrom" : "",
@@ -1666,7 +1786,10 @@
         "className" : "PositionHolder",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874"
+        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1681,7 +1804,10 @@
         "className" : "PositionHolder",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874"
+        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1696,7 +1822,10 @@
         "className" : "PositionHolder",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874"
+        "classDeclarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1728,7 +1857,8 @@
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
-      "kind" : "NONE"
+      "kind" : "NONE",
+      "includeDescendants" : false
     },
     "alias" : "",
     "importedFrom" : "",
@@ -2089,6 +2219,7 @@
     "discriminatorQid" : "",
     "subclassCondition" : {
       "kind" : "OUTSIDE_POPULATION",
+      "includeDescendants" : false,
       "selectionName" : "PositionWithHoldersPopulation",
       "selectionId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393"
     },
@@ -2140,7 +2271,10 @@
         "className" : "ReachablePosition",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51"
+        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -2155,7 +2289,10 @@
         "className" : "ReachablePosition",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51"
+        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -2170,7 +2307,10 @@
         "className" : "ReachablePosition",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51"
+        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -2185,7 +2325,10 @@
         "className" : "ReachablePosition",
         "fieldPath" : "",
         "slot" : "CLASS_POPULATION",
-        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51"
+        "classDeclarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",

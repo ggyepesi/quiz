@@ -16,6 +16,7 @@
     "membershipIncludesDescendants" : false,
     "membershipPid" : "",
     "membershipQid" : "",
+    "membershipFilterIncludesDescendants" : false,
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
       "requireLabel" : true,
