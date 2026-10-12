@@ -194,17 +194,13 @@ public class ModelBuilderFrame extends JFrame {
     private JFrame graphWindow;
     private final ModelGraphPanel graphPanel = new ModelGraphPanel();
 
-    // Domain = the whole project (name + its classes), keyed by name. The combo
-    // lists every domain in the dataset registry; New/Rename/Delete manage them.
-    private final JComboBox<String> domainBox = new JComboBox<>();
-    private final JComboBox<String> modelBox = new JComboBox<>();
+    // Domain/Model are two ways to open one project. The picker owns their shared
+    // selection state so the UI never appears to claim that two projects are open.
+    private final ProjectPicker projectPicker = new ProjectPicker();
     private final JButton newDomainButton = new JButton("New domain");
     private final JButton renameDomainButton = new JButton("Rename domain");
     private final JButton deleteDomainButton = new JButton("Delete domain");
     private JPanel runSection;
-    // Guards the combo's listener while we repopulate/select it programmatically.
-    private boolean updatingDomainBox = false;
-
     /**
      * The model's fingerprint when it was last loaded or saved — what "unchanged" means.
      *
@@ -289,7 +285,7 @@ public class ModelBuilderFrame extends JFrame {
 
         buildUi();
         wireActions();
-        refreshDomainBox();
+        refreshProjectPicker();
 
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -381,18 +377,12 @@ public class ModelBuilderFrame extends JFrame {
 
     // LEFT panel: the selected domain, its classes, and the run controls.
     private JPanel buildDomainClassPanel() {
-        // Domain section (top): selector + domain-level actions.
-        domainBox.setToolTipText("Saved domains. Selecting one opens it.");
-        modelBox.setToolTipText("Saved models. Selecting one opens it.");
-
-        JPanel domainPick = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        domainPick.add(new JLabel("Domain:"));
-        domainPick.add(domainBox);
-        domainPick.add(new JLabel("Model:"));
-        domainPick.add(modelBox);
-        domainPick.add(newDomainButton);
-        domainPick.add(renameDomainButton);
-        domainPick.add(deleteDomainButton);
+        // Project selectors each get their own full-width row; keeping them beside the
+        // action buttons made the Model selector collapse to an ellipsis.
+        JPanel projectActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        projectActions.add(newDomainButton);
+        projectActions.add(renameDomainButton);
+        projectActions.add(deleteDomainButton);
 
         JPanel domainFiles = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         domainFiles.add(saveEverythingButton);
@@ -402,8 +392,13 @@ public class ModelBuilderFrame extends JFrame {
                         + "Which folder that is follows from the open project.");
         domainFiles.add(loadSavedButton);
 
-        JPanel domainSection = new JPanel(new GridLayout(0, 1, 0, 0));
-        domainSection.add(domainPick);
+        JPanel domainSection = new JPanel();
+        domainSection.setLayout(new BoxLayout(domainSection, BoxLayout.Y_AXIS));
+        projectPicker.setAlignmentX(Component.LEFT_ALIGNMENT);
+        projectActions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        domainFiles.setAlignmentX(Component.LEFT_ALIGNMENT);
+        domainSection.add(projectPicker);
+        domainSection.add(projectActions);
         domainSection.add(domainFiles);
         // Generation, Explorer and sampling share the process/query runners. Their
         // activity controls stay visible for both project kinds, above the class tree.
@@ -412,6 +407,7 @@ public class ModelBuilderFrame extends JFrame {
         activity.add(cancelButton);
         activity.add(showQueryLogsButton);
         activity.add(openSavedRunButton);
+        activity.setAlignmentX(Component.LEFT_ALIGNMENT);
         domainSection.add(activity);
 
         // Domain-only run section (bottom): generate, reuse and inspect instances.
@@ -1373,20 +1369,7 @@ public class ModelBuilderFrame extends JFrame {
         cat.onReplaceSeedQids(qids -> addSeedQids(qids, true));
 
 
-        domainBox.addActionListener(e -> {
-            if (updatingDomainBox) return;
-            Object sel = domainBox.getSelectedItem();
-            if (sel != null && !sel.toString().equals(projectModel.name())) {
-                switchToDomain(sel.toString());
-            }
-        });
-        modelBox.addActionListener(e -> {
-            if (updatingDomainBox) return;
-            Object sel = modelBox.getSelectedItem();
-            if (sel != null && !sel.toString().equals(projectModel.name())) {
-                switchToDomain(sel.toString());
-            }
-        });
+        projectPicker.onOpen(this::switchToDomain);
         newDomainButton.addActionListener(e -> newProject());
         renameDomainButton.addActionListener(e -> renameDomain());
         deleteDomainButton.addActionListener(e -> deleteDomain());
@@ -2617,8 +2600,7 @@ public class ModelBuilderFrame extends JFrame {
         configurationLocked = locked;
         configurationLockLabel.setVisible(locked);
 
-        domainBox.setEnabled(!locked);
-        modelBox.setEnabled(!locked);
+        projectPicker.setEditingEnabled(!locked);
         newDomainButton.setEnabled(!locked);
         renameDomainButton.setEnabled(!locked);
         deleteDomainButton.setEnabled(!locked);
@@ -2757,40 +2739,16 @@ public class ModelBuilderFrame extends JFrame {
     // ------------------------------------------------------------------
 
     // Repopulate the separate domain/model selectors from storage plus the current
-    // (possibly unsaved) project. Guarded so neither selector fires a switch while
-    // both are being rebuilt.
-    private void refreshDomainBox() {
-        updatingDomainBox = true;
-        try {
-            Object previousDomain = domainBox.getSelectedItem();
-            Object previousModel = modelBox.getSelectedItem();
-            java.util.LinkedHashSet<String> domains =
-                    new java.util.LinkedHashSet<>(storage.domainKindNames());
-            java.util.LinkedHashSet<String> models =
-                    new java.util.LinkedHashSet<>(storage.modelKindNames());
-            (projectModel.isModel() ? models : domains).add(projectModel.name());
-            domainBox.removeAllItems();
-            modelBox.removeAllItems();
-            domains.forEach(domainBox::addItem);
-            models.forEach(modelBox::addItem);
-            // Rebuilding a JComboBox selects its first entry. Keep that meaningful
-            // choice in the other-kind selector rather than blanking it: Domain and
-            // Model are two usable project pickers, not one active picker plus an empty
-            // category. The currently open project is selected in its own picker.
-            if (projectModel.isModel()) {
-                modelBox.setSelectedItem(projectModel.name());
-                if (previousDomain != null && domains.contains(previousDomain.toString())) {
-                    domainBox.setSelectedItem(previousDomain);
-                }
-            } else {
-                domainBox.setSelectedItem(projectModel.name());
-                if (previousModel != null && models.contains(previousModel.toString())) {
-                    modelBox.setSelectedItem(previousModel);
-                }
-            }
-        } finally {
-            updatingDomainBox = false;
-        }
+    // (possibly unsaved) project. ProjectPicker owns the rebuild guard and makes the
+    // current project the only selected entry across the two lists.
+    private void refreshProjectPicker() {
+        java.util.LinkedHashSet<String> domains =
+                new java.util.LinkedHashSet<>(storage.domainKindNames());
+        java.util.LinkedHashSet<String> models =
+                new java.util.LinkedHashSet<>(storage.modelKindNames());
+        (projectModel.isModel() ? models : domains).add(projectModel.name());
+        projectPicker.showProjects(
+                domains, models, projectModel.name(), projectModel.isModel());
         logWindow.saveContext(projectModel.name(), projectDataDir().toPath());
     }
 
@@ -2913,15 +2871,15 @@ public class ModelBuilderFrame extends JFrame {
                                           "No saved model for domain \"" + name + "\" at\n"
                                                   + (model == null ? "(unknown)" : model.getPath()),
                                           "Cannot switch domain", JOptionPane.WARNING_MESSAGE);
-            refreshDomainBox();
+            refreshProjectPicker();
             return;
         }
         if (!confirmDiscardChanges("Switch domain")) {
-            refreshDomainBox();
+            refreshProjectPicker();
             return;
         }
         doLoadDomain(model);
-        refreshDomainBox();
+        refreshProjectPicker();
     }
 
     // Loads a domain's model in place (no confirm); shared by switch and the
@@ -2978,12 +2936,12 @@ public class ModelBuilderFrame extends JFrame {
             if (c == JOptionPane.OK_OPTION) {
                 switchToDomain(existingName);
             } else {
-                refreshDomainBox();
+                refreshProjectPicker();
             }
             return;
         }
         if (!confirmDiscardChanges("New project")) {
-            refreshDomainBox();
+            refreshProjectPicker();
             return;
         }
 
@@ -2997,7 +2955,7 @@ public class ModelBuilderFrame extends JFrame {
         modelChanged();
         classModelPanel.selectClass(projectModel.rootClass());
         syncDepthSpinnerToActiveClass();
-        refreshDomainBox();
+        refreshProjectPicker();
         refreshProjectKindUi();
         logWindow.info("Created new " + (fresh.isModel() ? "model" : "domain")
                 + " \"" + name + "\". Configure its classes, then save it.");
@@ -3031,7 +2989,7 @@ public class ModelBuilderFrame extends JFrame {
                 projectModel.name(done.name()); // file paths now use the new key
                 rememberCurrentDomain();
                 modelChanged();
-                refreshDomainBox();
+                refreshProjectPicker();
                 logWindow.info("Renamed " + kind + " \"" + oldName + "\" -> \""
                         + done.name() + "\".");
             }
@@ -3049,7 +3007,7 @@ public class ModelBuilderFrame extends JFrame {
                                               "Delete " + kind,
                                               JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         if (c != JOptionPane.OK_OPTION) {
-            refreshDomainBox();
+            refreshProjectPicker();
             return;
         }
         try {
@@ -3077,7 +3035,7 @@ public class ModelBuilderFrame extends JFrame {
             // control labelled by it.
             refreshProjectKindUi();
         }
-        refreshDomainBox();
+        refreshProjectPicker();
     }
 
     private void loadSavedModelIfPresent() {
@@ -3185,7 +3143,7 @@ public class ModelBuilderFrame extends JFrame {
             modelChanged();
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
-            refreshDomainBox();
+            refreshProjectPicker();
             refreshProjectKindUi();
             markSaved(model);
             logWindow.info("Loaded project configuration from " + model.getName());
