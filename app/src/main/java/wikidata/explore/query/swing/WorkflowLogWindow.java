@@ -34,6 +34,17 @@ public class WorkflowLogWindow implements LogListener {
 
     private CardListView view;
     private JFrame frame;
+    private RenderContext context;
+    private final RunningStepFollower follower = new RunningStepFollower();
+    private boolean followRunning;
+
+    /** The log window's own disclosure setting (#398): opening a run shows its step
+     *  list, so the steps are one click away rather than two. Deeper lists still open
+     *  one level per click. */
+    public static void applyLogDisclosure(RenderContext context) {
+        context.setCollapsibleCards(true);
+        context.setOpensWithOwner(List.of(objectview.field.FieldPath.of("steps")));
+    }
 
     /**
      * Worker-side log events can arrive much faster than a card can be rebuilt. Queue
@@ -104,9 +115,14 @@ public class WorkflowLogWindow implements LogListener {
         boolean atBottom = bar == null
                 || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 48;
 
+        // Following the running step changes what is open, so the card is rebuilt
+        // once for it, and only when the running path actually moved.
+        boolean followed = followRunning && context != null
+                && follower.follow(root, context);
+
         // Only refresh the cards while tailing. Terminal state is still shown even
         // while scrolled up; all intermediate mutations are already present on root.
-        if (update.added() || refreshFully(root.status())) {
+        if (update.added() || followed || refreshFully(root.status())) {
             view.upsertViewable(root);
             if (atBottom && bar != null) {
                 deferredUpdates = false;
@@ -180,7 +196,7 @@ public class WorkflowLogWindow implements LogListener {
         // collision list) stays scannable. Context must be set before the cards
         // build so they pick it up; shared, so streamed new entries collapse too.
         RenderContext ctx = new RenderContext();
-        ctx.setCollapsibleCards(true);
+        applyLogDisclosure(ctx);
         v.setRenderContext(ctx);
 
         for (LogNode workflow : workflows) {
@@ -206,9 +222,16 @@ public class WorkflowLogWindow implements LogListener {
         JButton saveButton = new JButton("Save query log + run…");
         saveButton.setToolTipText("Save the readable query log and its restorable pipeline run");
         saveButton.addActionListener(e -> saveLog(f));
+        JCheckBox follow = new JCheckBox("Follow running step", followRunning);
+        follow.setToolTipText("Keep the path to every running step open while a run "
+                + "goes on; what this opened folds again when the step finishes");
+        follow.addActionListener(e -> setFollowRunning(follow.isSelected()));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        actions.add(follow);
+        actions.add(saveButton);
         JPanel north = new JPanel(new BorderLayout(6, 6));
         north.add(search, BorderLayout.CENTER);
-        north.add(saveButton, BorderLayout.EAST);
+        north.add(actions, BorderLayout.EAST);
         f.add(north, BorderLayout.NORTH);
         f.add(v.getCardsScrollPane(), BorderLayout.CENTER);
         f.setSize(1000, 700);
@@ -216,6 +239,7 @@ public class WorkflowLogWindow implements LogListener {
 
         frame = f;
         view = v;
+        context = ctx;
 
         // Catch up on updates deferred while scrolled up, once the user returns to
         // the bottom (e.g. a run that finished while they were reading/selecting).
@@ -241,6 +265,7 @@ public class WorkflowLogWindow implements LogListener {
             public void windowClosed(java.awt.event.WindowEvent e) {
                 frame = null;
                 view = null;
+                context = null;
             }
         });
 
@@ -282,8 +307,27 @@ public class WorkflowLogWindow implements LogListener {
         JFrame oldFrame = frame;
         view = null;
         frame = null;
+        context = null;
+        follower.forget();
         if (oldView != null) oldView.dispose();
         if (oldFrame != null) oldFrame.dispose();
+    }
+
+    /** Switches "Follow running step"; switching it off folds what it opened. */
+    private void setFollowRunning(boolean on) {
+        followRunning = on;
+        if (view == null || context == null) return;
+        boolean changed = false;
+        if (on) {
+            for (LogNode workflow : new ArrayList<>(workflows)) {
+                changed |= follower.follow(workflow, context);
+            }
+        } else {
+            changed = follower.stop(context);
+        }
+        if (changed) {
+            for (LogNode workflow : new ArrayList<>(workflows)) view.upsertViewable(workflow);
+        }
     }
 
     /** The query log's search owns the same disclosure state as its cards. Without

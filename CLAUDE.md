@@ -444,9 +444,9 @@ construct per thing produced:
   field selection's default (search, sort, quiz key) ticks nothing below an object.
   A field whose declared type is already on its config path — the editor's ↩, the root
   included — has no config of its own: it inherits the nearest ancestor's of that type
-  (`ConfigChain`), written into the config where it is made. An inherited occurrence,
-  object or collection, starts folded, so each expand opens exactly one level and only the
-  reader's clicks set the depth; an object already on the path ends it. Search and sort
+  (`ConfigChain`), written into the config where it is made. Like every occurrence, an
+  inherited one starts folded, so only the reader's clicks set the depth; an object already
+  on the path ends it. Search and sort
   read through the same inheritance, each object once per level from a root; a quiz key
   never inherits. A sort compares a path's values one by one in the order it reads them
   (#368). A finite field selection records that fact on its `ViewConfig`; a renderer must
@@ -454,9 +454,17 @@ construct per thing produced:
   for both quiz projection and presentation without reinterpreting its selected paths.
   Unticked means absent for every field and field role. A ticked collection
   always renders `field name (size)` immediately, including size zero, and renders its members
-  lazily only when expanded; each member recursively follows the same config. Whether it starts
-  expanded is a presentation policy independent of selection: singleton media and explicitly
-  inline workflow content remain immediately visible, while ordinary collections start folded.
+  lazily only when expanded; each member recursively follows the same config. What starts open
+  is a presentation policy independent of selection, and it is one rule (`Disclosure.initiallyOpen`,
+  #398): **each expand opens exactly one level.** An open object shows its plain values; every
+  object and collection inside it starts folded under its caption or field name. Opening a
+  collection shows its members folded under their captions — a member with no caption has
+  nothing to fold under and shows itself. Singleton media starts open: it is content, not
+  structure. `@Inline` decides placement (in place rather than a reference chip), never this;
+  a renderer paints the executor's open/folded decision and makes none of its own. A view
+  may name config paths that open with their owner (`RenderContext.setOpensWithOwner`; the
+  query log opens a run's `steps`) — an input to the rule, never an exception inside it.
+  `docs/disclosure-layout.txt` is the checked-in first render (`DisclosureIsCheckedInTest`).
   Render hints, backing type and card/table layout may change presentation, never these selection
   semantics. A scalar reference whose target already has a top-level card is navigation only and
   never repeats that target's configured fields inline; with its DISPLAY unticked the

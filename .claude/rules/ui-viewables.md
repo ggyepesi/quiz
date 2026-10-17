@@ -64,8 +64,12 @@ Discovery's results had no search box, because they were a `JTable` rather than 
   field has one painted occurrence: the object's caption, carrying that DISPLAY field's path
   and value for search/highlighting; it is never repeated as a body row. Every selected
   collection contributes `field name (size)` immediately and builds its configured members only
-  after expansion. Initial expansion is independent presentation policy: singleton media and
-  explicitly inline workflow content remain visible, while ordinary collections start folded.
+  after expansion. Initial expansion is independent presentation policy, one rule for every
+  layout (`Disclosure.initiallyOpen`, #398): each expand opens exactly one level — nested
+  objects and collections start folded under their caption or field name, a caption-less
+  collection member shows itself, singleton media stays open. A view may name paths that
+  open with their owner (`RenderContext.setOpensWithOwner`, e.g. the query log's `steps`);
+  that is the rule's input, not an exception in it, and no renderer decides it alone.
   A scalar reference to an object already shown as a top-level card is navigation only.
   Members of an explicitly expanded object collection remain that collection's configured
   projection: top-level registration must not suppress their selected child fields. A

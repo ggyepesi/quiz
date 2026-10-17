@@ -103,7 +103,12 @@ class WebFollowsTheMockTraceTest {
                 }
             } else if (child instanceof MockSink.MockObject object) {
                 List<MockSink.Mock> body = visible(object.children());
-                if (body.isEmpty()) {
+                if (!object.expanded()) {
+                    // Folded (#398): a chip named by its caption, else its field name.
+                    assertEquals(object.caption() != null ? object.caption()
+                                    : fieldName(object),
+                            field.ref() == null ? null : field.ref().name(), "folded object chip");
+                } else if (body.isEmpty()) {
                     assertEquals(Objects.toString(object.caption(), ""),
                             Objects.toString(field.value(), field.label()), "object value");
                 } else {

@@ -1,0 +1,65 @@
+== Query log - a generation run ==
+OBJECT <root> caption="Generate Constellations · OK" open
+  COLLECTION messages (0) folded
+  TEXT summary "1224 objects"
+  COLLECTION steps (2) folded
+    DEFER steps COLLAPSED
+
+== Query log window - a run, once opened ==
+OBJECT <root> caption="Generate Constellations · OK" open
+  COLLECTION messages (0) folded
+  TEXT summary "1224 objects"
+  COLLECTION steps (2) open
+    OBJECT steps[0] caption="Load edge stars · SPARQL · OK" folded
+      DEFER steps[0] COLLAPSED
+    OBJECT steps[1] caption="Final label hydration · API · OK" folded
+      DEFER steps[1] COLLAPSED
+
+== Query log - after opening steps ==
+OBJECT <root> caption="Generate Constellations · OK" open
+  COLLECTION messages (0) folded
+  TEXT summary "1224 objects"
+  COLLECTION steps (2) open
+    OBJECT steps[0] caption="Load edge stars · SPARQL · OK" folded
+      DEFER steps[0] COLLAPSED
+    OBJECT steps[1] caption="Final label hydration · API · OK" folded
+      DEFER steps[1] COLLAPSED
+
+== Query log - after opening steps, then the first step ==
+OBJECT <root> caption="Generate Constellations · OK" open
+  COLLECTION messages (0) folded
+  TEXT summary "1224 objects"
+  COLLECTION steps (2) open
+    OBJECT steps[0] caption="Load edge stars · SPARQL · OK" open
+      TEXT steps[0].request "SELECT ?value WHERE { ?value wdt:P59 ?parent }"
+      COLLECTION steps[0].messages (2) folded
+        DEFER steps[0].messages COLLAPSED
+      TEXT steps[0].summary "507 child objects"
+      COLLECTION steps[0].steps (2) folded
+        DEFER steps[0].steps COLLAPSED
+    OBJECT steps[1] caption="Final label hydration · API · OK" folded
+      DEFER steps[1] COLLAPSED
+
+== Card - a film with a director, cast, poster and inline details ==
+OBJECT <root> caption="Metropolis" open
+  OBJECT director caption="Fritz Lang" open
+  COLLECTION cast (2) folded
+    DEFER cast COLLAPSED
+  COLLECTION posters (1) open
+    MEDIA posters[0] "poster"
+  LINK website "https://example.org/metropolis"
+  OBJECT details caption="Restoration" folded
+    DEFER details COLLAPSED
+
+== Card - after opening cast and details ==
+OBJECT <root> caption="Metropolis" open
+  OBJECT director caption="Fritz Lang" open
+  COLLECTION cast (2) open
+    OBJECT cast[0] caption="Brigitte Helm" open
+    OBJECT cast[1] caption="Fritz Lang" open
+  COLLECTION posters (1) open
+    MEDIA posters[0] "poster"
+  LINK website "https://example.org/metropolis"
+  OBJECT details caption="Restoration" open
+    TEXT details.year "2010"
+

@@ -77,10 +77,18 @@ class OscarsSavedNameRenderingTest {
             Card[] collapsed = new Card[1];
             javax.swing.SwingUtilities.invokeAndWait(() -> collapsed[0] = new Card(
                     mapped, personOnly, context, false));
-            assertFalse(containsComponent(collapsed[0], objectview.render.ReferenceRow.class),
-                    "without its Display field, the structured value has no label chip");
-            assertTrue(containsField(collapsed[0], "familyName")
-                            || containsField(collapsed[0], "givenName"),
+            // Each expand opens one level (#398): without its Display field the owned
+            // name folds under its field name, never under a caption it does not tick.
+            assertTrue(oneChipReading(collapsed[0], "structuredName"),
+                    "the folded structured value is named by its field, not a label");
+            context.setExpanded(mappedName, true);
+            Card[] opened = new Card[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> opened[0] = new Card(
+                    mapped, personOnly, context, false));
+            assertTrue(oneChipReading(opened[0], "structuredName"),
+                    "opened, it still has no label chip of its own");
+            assertTrue(containsField(opened[0], "familyName")
+                            || containsField(opened[0], "givenName"),
                     "structuredName rendered no nested name fields");
 
             MultiView multi = new MultiView();
@@ -117,6 +125,22 @@ class OscarsSavedNameRenderingTest {
             }
         }
         return text.toString();
+    }
+
+    /** Every reference chip, in paint order. */
+    private static List<objectview.render.ReferenceRow> chips(Component component) {
+        List<objectview.render.ReferenceRow> out = new java.util.ArrayList<>();
+        if (component instanceof objectview.render.ReferenceRow row) out.add(row);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) out.addAll(chips(child));
+        }
+        return out;
+    }
+
+    /** Whether {@code card} paints exactly one chip, reading {@code text}. */
+    private static boolean oneChipReading(Component card, String text) {
+        List<objectview.render.ReferenceRow> chips = chips(card);
+        return chips.size() == 1 && chips.get(0).matchesRenderedText(List.of(text), true);
     }
 
     private static boolean containsComponent(Component component, Class<?> type) {

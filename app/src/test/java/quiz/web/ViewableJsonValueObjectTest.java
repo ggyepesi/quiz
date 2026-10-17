@@ -90,14 +90,18 @@ class ViewableJsonValueObjectTest {
 
     /** Rule 6: an object opens in place, showing its ticked fields. */
     @Test
-    void aCaptionlessObjectWithTickedFieldsOpensInPlace() {
+    void aCaptionlessObjectWithTickedFieldsFoldsUnderItsFieldName() {
         ViewableView view = ViewableJson.of(new Owner(new AnonymousDetail()), detail("text"));
 
+        // Each expand opens one level (#398): the object is a chip named by its field,
+        // carrying the body the client paints when it is opened.
         ViewableView.Field detail = view.fields().get(0);
-        assertEquals("inline", detail.kind());
-        assertEquals("AnonymousDetail", detail.nodes().get(0).type());
-        assertEquals("", detail.nodes().get(0).name());
-        assertEquals("detail", detail.nodes().get(0).fields().get(0).value());
+        assertEquals("ref", detail.kind());
+        assertEquals("detail", detail.ref().name());
+        ViewableView body = detail.ref().inline();
+        assertEquals("AnonymousDetail", body.type());
+        assertEquals("", body.name());
+        assertEquals("detail", body.fields().get(0).value());
     }
 
     /** The default ticks a nested object's DISPLAY and nothing deeper, so a value is
@@ -110,11 +114,12 @@ class ViewableJsonValueObjectTest {
 
         ViewableView ticked = ViewableJson.of(new Owner(new NamedValue()),
                 detail("@view:display", "text"));
+        // With a field under it, it folds under that caption (#398) and carries the body.
         ViewableView.Field detail = ticked.fields().get(0);
-        assertEquals("inline", detail.kind());
-        assertEquals("Named value", detail.nodes().get(0).name());
-        assertEquals(List.of("text"),
-                detail.nodes().get(0).fields().stream().map(ViewableView.Field::name).toList());
+        assertEquals("ref", detail.kind());
+        assertEquals("Named value", detail.ref().name());
+        assertEquals(List.of("text"), detail.ref().inline().fields().stream()
+                .map(ViewableView.Field::name).toList());
     }
 
     /** An entity without a card of its own on the web is not a navigation chip; it
