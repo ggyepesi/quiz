@@ -42,8 +42,12 @@ class DisclosureIsCheckedInTest {
         StringBuilder actual = new StringBuilder();
         LogNode log = queryLog();
         describe(actual, "Query log - a generation run", log, context -> { });
-        describe(actual, "Query log window - a run, once opened", log,
+        describe(actual, "Query log window - first render", log,
                 wikidata.explore.query.swing.WorkflowLogWindow::applyLogDisclosure);
+        describe(actual, "Query log window - a run, once opened", log, context -> {
+            wikidata.explore.query.swing.WorkflowLogWindow.applyLogDisclosure(context);
+            context.toggleCardExpanded(log);
+        });
         describe(actual, "Query log - after opening steps", log,
                 context -> context.setCollectionExpanded(log.steps(), true));
         LogNode first = log.steps().iterator().next();

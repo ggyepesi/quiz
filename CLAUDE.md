@@ -464,6 +464,12 @@ construct per thing produced:
   a renderer paints the executor's open/folded decision and makes none of its own. A view
   may name config paths that open with their owner (`RenderContext.setOpensWithOwner`; the
   query log opens a run's `steps`) — an input to the rule, never an exception inside it.
+  A card is the root occurrence of the same rule and the same choice store: a view that
+  folds its roots (`setCollapsibleCards`) starts them folded under their caption, one that
+  does not never folds them. Opening more than one level at once is an explicit command on
+  one node — **Expand all below** / **Collapse all below** on a chip or a card title — which
+  writes the same choices a click writes; collapsing forgets the choices below, so reopening
+  opens one level again. There is no panel-wide expand mode.
   `docs/disclosure-layout.txt` is the checked-in first render (`DisclosureIsCheckedInTest`).
   Render hints, backing type and card/table layout may change presentation, never these selection
   semantics. A scalar reference whose target already has a top-level card is navigation only and

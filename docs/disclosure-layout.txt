@@ -5,6 +5,10 @@ OBJECT <root> caption="Generate Constellations · OK" open
   COLLECTION steps (2) folded
     DEFER steps COLLAPSED
 
+== Query log window - first render ==
+OBJECT <root> caption="Generate Constellations · OK" folded
+  DEFER <root> COLLAPSED
+
 == Query log window - a run, once opened ==
 OBJECT <root> caption="Generate Constellations · OK" open
   COLLECTION messages (0) folded

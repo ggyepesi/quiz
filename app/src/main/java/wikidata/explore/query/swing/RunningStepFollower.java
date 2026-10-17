@@ -39,7 +39,7 @@ final class RunningStepFollower {
                 | fold(openedNodes, nodes, context::clearChoice)
                 | fold(openedLists, lists, context::clearChoice);
         for (Object card : cards) {
-            if (!context.isCardExpanded(card) && context.setCardExpanded(card, true)) {
+            if (!context.isCardExpanded(card) && context.setExpanded(card, true)) {
                 openedCards.add(card);
                 changed = true;
             }

@@ -25,7 +25,7 @@ class RunningStepFollowerTest {
         recorder.start();
         LogNode stars = recorder.beginQuery("Load edge stars", "SPARQL", "", Map.of());
         LogNode auriga = recorder.beginSubquery(stars, "stars <- Q10476", "SPARQL", "SELECT 1");
-        RenderContext context = new RenderContext();
+        RenderContext context = logContext();
         RunningStepFollower follower = new RunningStepFollower();
 
         assertTrue(follower.follow(run, context));
@@ -53,8 +53,7 @@ class RunningStepFollowerTest {
         WorkflowRecorder recorder = new WorkflowRecorder(run);
         recorder.start();
         LogNode step = recorder.beginQuery("Load", "SPARQL", "", Map.of());
-        RenderContext context = new RenderContext();
-        WorkflowLogWindow.applyLogDisclosure(context);
+        RenderContext context = logContext();
         RunningStepFollower follower = new RunningStepFollower();
 
         follower.follow(run, context);
@@ -71,7 +70,7 @@ class RunningStepFollowerTest {
         WorkflowRecorder recorder = new WorkflowRecorder(run);
         recorder.start();
         LogNode step = recorder.beginQuery("Load", "SPARQL", "", Map.of());
-        RenderContext context = new RenderContext();
+        RenderContext context = logContext();
         context.setExpanded(step, true);
         RunningStepFollower follower = new RunningStepFollower();
 
@@ -80,5 +79,12 @@ class RunningStepFollowerTest {
 
         assertTrue(context.isExpanded(step, false), "the reader opened it; it stays open");
         assertFalse(context.isCardExpanded(run), "switching off folds what following opened");
+    }
+
+    /** The log window's own disclosure: runs fold to their title, steps open with them. */
+    private static RenderContext logContext() {
+        RenderContext context = new RenderContext();
+        WorkflowLogWindow.applyLogDisclosure(context);
+        return context;
     }
 }
