@@ -1088,13 +1088,16 @@ public class RuleTreeExtractor {
             boolean any = false;
             for (RuleIncludedField f : outgoingFields) {
                 String pid = RuleNode.cleanPid(f.propertyPid());
-                for (String raw : e.values(pid)) {
+                for (String raw : e.valuesWhere(pid, f.qualifierCondition())) {
                     member.merge(f.fieldName(), toFieldValue(f, raw, null));
                     any = true;
                 }
                 // The source SAID this field is unknown / none rather than staying
                 // silent. Recorded so curation stops offering a gap nothing can fill.
-                String valueless = e.valuelessClaim(pid);
+                // That answer is about every statement of the property, so it says
+                // nothing about a field that reads only some of them.
+                String valueless = f.qualifierCondition() == null
+                        ? e.valuelessClaim(pid) : null;
                 if (valueless != null) {
                     member.fieldStatus(f.fieldName(), "novalue".equals(valueless)
                             ? FieldStatus.ASSERTED_NONE : FieldStatus.ASSERTED_UNKNOWN);

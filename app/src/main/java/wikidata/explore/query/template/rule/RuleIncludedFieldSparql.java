@@ -88,16 +88,38 @@ public final class RuleIncludedFieldSparql {
      *               variable on the direct path, its {@code _s} source on the
      *               aggregating one.
      */
-    public static String datePattern(String pid, String var, String bindTo) {
-        return "?value p:" + pid + " ?" + var + "_statement .\n"
-             + "?" + var + "_statement a wikibase:BestRank ;"
-             + " psv:" + pid + " ?" + var + "_n .\n"
+    public static String datePattern(RuleIncludedField field, String var, String bindTo) {
+        String pid = wikidata.explore.rule.RuleNode.cleanPid(field.propertyPid());
+        return wikidata.query.StatementPatterns.statement("?value", pid,
+                        "?" + var + "_statement", field.qualifierCondition()) + "\n"
+             + "?" + var + "_statement psv:" + pid + " ?" + var + "_n .\n"
              + "?" + var + "_n wikibase:timeValue ?" + var + "_t ;"
              + " wikibase:timePrecision ?" + var + "_p ;"
              + " wikibase:timeCalendarModel ?" + var + "_c .\n"
              + "BIND(CONCAT(STR(?" + var + "_t), "
              + wikidata.CalendarModelCodec.calendarMarkExpression(var + "_c") + ", "
              + "\" [precision=\", STR(?" + var + "_p), \"]\") AS ?" + bindTo + ")\n";
+    }
+
+    /**
+     * Binds {@code object} to the field's value on {@code entity}, in the field's
+     * direction, reading only the statements its qualifier condition admits. THE one
+     * spelling of "this field's value" for every query that reads one, so a filter,
+     * a ranking and a stored value cannot disagree about which statements count.
+     */
+    public static String valuePattern(
+            RuleIncludedField field, String entity, String object) {
+        return valuePattern(field.propertyPid(), field.direction(),
+                field.qualifierCondition(), entity, object);
+    }
+
+    public static String valuePattern(String propertyPid,
+            wikidata.explore.model.RuleDirection direction,
+            wikidata.QualifierCondition condition, String entity, String object) {
+        String pid = wikidata.explore.rule.RuleNode.cleanPid(propertyPid);
+        return direction == wikidata.explore.model.RuleDirection.ITEM_TO_ROOT
+                ? wikidata.query.StatementPatterns.value(object, pid, entity, condition, object)
+                : wikidata.query.StatementPatterns.value(entity, pid, object, condition, object);
     }
 
     /** Typed time expression recovered from the packed field value itself. */
@@ -169,11 +191,8 @@ public final class RuleIncludedFieldSparql {
             // A date is always outgoing (the compiler forces it), and is read from
             // the statement's value node so its calendar and precision survive.
             String triple = readsValueNode(field)
-                    ? datePattern(
-                            wikidata.explore.rule.RuleNode.cleanPid(field.propertyPid()),
-                            var, var)
-                    : field.direction()
-                            .triplePattern("?value", "?" + var, field.propertyPid());
+                    ? datePattern(field, var, var)
+                    : valuePattern(field, "?value", "?" + var);
             // Constrain the value to the referenced class's type, if requested.
             String typeConstraint = field.hasMembership()
                     ? "?" + var + " wdt:" + field.membershipPid()

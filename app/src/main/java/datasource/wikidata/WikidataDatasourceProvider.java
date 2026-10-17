@@ -123,7 +123,16 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                             new ParameterDescriptor("valueLanguage", "Value language",
                                     ParameterDescriptor.Kind.TEXT, false, "", List.of(),
                                     "Optional language code for values constrained by "
-                                            + "a P407 qualifier. Blank preserves all."))),
+                                            + "a P407 qualifier. Blank preserves all."),
+                            ParameterDescriptor.reference("conditionQualifier",
+                                    "Only statements with qualifier", false, "",
+                                    "Read only the statements carrying this qualifier "
+                                            + "with one of the allowed values.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            new ParameterDescriptor("conditionValues", "Allowed qualifier values",
+                                    ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                                    "Space-separated QIDs the qualifier must have."))),
             new ComputedFieldOffering(SITELINK_COUNT, "Sitelink count", List.of()),
             new ComputedFieldOffering(INCOMING_RELATION_COUNT,
                     "Incoming relation count", List.of(

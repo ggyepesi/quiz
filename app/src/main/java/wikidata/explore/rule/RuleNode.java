@@ -100,6 +100,7 @@ public class RuleNode {
         RuleNode s = sampleCopy(limit);
         s.rankBySitelinks(rankBySitelinks());
         s.rankPropertyPid(rankPropertyPid());
+        s.rankCondition(rankCondition());
         s.rankDescending(rankDescending());
         s.rankBand(rankFrom(), rankUntil());
         for (RuleIncludedField f : includedFields()) {
@@ -233,6 +234,11 @@ public class RuleNode {
     public boolean rankDescending() { return rankDescending; }
     public void    rankDescending(boolean d) { this.rankDescending = d; }
     public boolean hasRank() { return rankBySitelinks || !rankPropertyPid().isBlank(); }
+    // The ranking field's qualifier condition, so the measure ranks by the statements
+    // the field reads. Null = every statement.
+    private wikidata.QualifierCondition rankCondition;
+    public wikidata.QualifierCondition rankCondition() { return rankCondition; }
+    public void rankCondition(wikidata.QualifierCondition c) { rankCondition = c; }
 
     // A half-open band [rankFrom, rankUntil) on the ranking measure, used to partition a
     // membership scan the endpoint will not complete in one request. UNBOUNDED = absent.

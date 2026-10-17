@@ -1056,6 +1056,15 @@
                 "propertyLabel": "apparent magnitude",
                 "qualifierPid": "",
                 "qualifierLabel": "",
+                "qualifierCondition": {
+                  "qualifierPid": "P1227",
+                  "allowedQids": [
+                    "java.util.ImmutableCollections$List12",
+                    [
+                      "Q4892529"
+                    ]
+                  ]
+                },
                 "subjectField": "",
                 "matchValueField": "",
                 "matchRoleField": "",
@@ -1103,6 +1112,8 @@
                       "operationId": "property-value",
                       "parameters": {
                         "@class": "java.util.ImmutableCollections$MapN",
+                        "conditionQualifier": "P1227",
+                        "conditionValues": "Q4892529",
                         "label": "apparent magnitude",
                         "property": "P1215",
                         "sourceType": "SPARQL",

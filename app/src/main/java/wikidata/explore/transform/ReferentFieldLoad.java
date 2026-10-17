@@ -97,11 +97,19 @@ public final class ReferentFieldLoad {
         }
     }
 
+    /** {@code ranked}: the statements are every non-deprecated one, not yet reduced to
+     *  the truthy ones, because some field of the batch reads them under a qualifier
+     *  condition — each field then selects its own (QualifierCondition.select). */
     private record LiteralFieldBatch(
             Map<String, Map<String, List<WikidataApiClient.ApiStatement>>> statements,
-            Set<String> unavailable) {
+            Set<String> unavailable, boolean ranked) {
         LiteralFieldBatch {
             unavailable = unavailable == null ? Set.of() : Set.copyOf(unavailable);
+        }
+        LiteralFieldBatch(
+                Map<String, Map<String, List<WikidataApiClient.ApiStatement>>> statements,
+                Set<String> unavailable) {
+            this(statements, unavailable, false);
         }
         static LiteralFieldBatch unreached(Collection<String> qids) {
             return new LiteralFieldBatch(Map.of(), new LinkedHashSet<>(qids));
@@ -845,10 +853,12 @@ public final class ReferentFieldLoad {
             WikidataApiClient api, GenerationLog log) {
         Set<String> qids = new LinkedHashSet<>();
         Set<String> pids = new LinkedHashSet<>();
+        boolean ranked = false;
         for (GeneratedFieldModel field : fields) {
             if (field.type() != FieldType.DATE && field.type() != FieldType.STRING
                     && field.type() != FieldType.TEXT
                     && field.type() != FieldType.IMAGE) continue;
+            ranked |= field.mapping().qualifierCondition() != null;
             String pid = clean(field.mapping().propertyPid());
             wikidata.explore.extract.LoadedDeclaration done = known.get(
                     wikidata.explore.extract.LoadedDeclaration.key(
@@ -877,8 +887,12 @@ public final class ReferentFieldLoad {
             // Partial, for the same reason as the entity batch above: the entities a
             // reachable batch answered for are loaded and covered; only unreached ones
             // stay unresolved.
-            WikidataApiClient.PartialStatements partial =
-                    api.getStatementsByPropertyPartial(
+            WikidataApiClient.PartialStatements partial = ranked
+                    ? api.getStatementsByPropertyPartial(
+                            new ArrayList<>(qids), new ArrayList<>(pids), group.batchSink(),
+                            WikidataApiClient.StatementBatchCommitter.NONE,
+                            WikidataApiClient.StatementDetail.RANKED)
+                    : api.getStatementsByPropertyPartial(
                             new ArrayList<>(qids), new ArrayList<>(pids), group.batchSink());
             if (!partial.unavailableQids().isEmpty()) {
                 log.message("Referent literal fields on " + className + ": "
@@ -887,7 +901,7 @@ public final class ReferentFieldLoad {
                         + " batch(es); the rest were loaded.\n");
             }
             return new LiteralFieldBatch(partial.statements(),
-                    new LinkedHashSet<>(partial.unavailableQids()));
+                    new LinkedHashSet<>(partial.unavailableQids()), ranked);
         } catch (Exception ex) {
             if (Thread.currentThread().isInterrupted()) {
                 Thread.currentThread().interrupt();
@@ -958,6 +972,12 @@ public final class ReferentFieldLoad {
                 continue;
             }
             List<WikidataApiClient.ApiStatement> ss = stmts.get(o.qid());
+            if (ss != null && batch.ranked()) {
+                ss = wikidata.QualifierCondition.select(ss,
+                        field.mapping().qualifierCondition(),
+                        WikidataApiClient.ApiStatement::rank,
+                        WikidataApiClient.ApiStatement::qualifiers);
+            }
             if (ss == null || ss.isEmpty()) {
                 continue;
             }
@@ -1038,9 +1058,10 @@ public final class ReferentFieldLoad {
                 continue;   // no data, or already populated
             }
             List<WikidataDynamicObject> values = new ArrayList<>();
-            List<String> projected = languageQid.isBlank()
+            wikidata.QualifierCondition condition = field.mapping().qualifierCondition();
+            List<String> projected = languageQid.isBlank() && condition == null
                     ? e.entityQids(pid)
-                    : e.entityQidsInLanguage(pid, languageQid);
+                    : e.entityQidsInLanguage(pid, languageQid, condition);
             for (String vq : projected) {
                 WikidataApiClient.ApiEntity le = batch.labels().get(vq);
                 String label = le == null || le.label() == null || le.label().isBlank()

@@ -52,6 +52,7 @@ public final class GeneratedProjectModelValidator {
             validateCanonical(project, clazz, problems);
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
+            validateQualifierConditions(clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
             if (clazz.reifiesStatements()) {
@@ -281,6 +282,53 @@ public final class GeneratedProjectModelValidator {
                 }
             } catch (IllegalArgumentException invalid) {
                 problems.add(Problem.error(path(owner, field), invalid.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * A qualifier condition selects which of a property's statements a field reads. It
+     * is honoured by the readers of a field's own value — the rule-tree queries, their
+     * value filter and ranking, and the wbgetentities claims — so it is refused where
+     * no such reader runs, rather than accepted and silently ignored.
+     */
+    private static void validateQualifierConditions(
+            GeneratedClassModel owner, List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            FieldSourceMapping mapping = field.mapping();
+            wikidata.QualifierCondition condition = mapping.qualifierCondition();
+            if (condition == null) continue;
+            String where = path(owner, field);
+            if (!condition.complete()) {
+                problems.add(Problem.error(where, "A qualifier condition needs a "
+                        + "qualifier property (Pxx) and at least one allowed value "
+                        + "(Qxx); it has " + condition.display() + "."));
+            }
+            if (mapping.sourceType() != FieldSourceType.SPARQL
+                    && mapping.sourceType() != FieldSourceType.WIKIDATA_API) {
+                problems.add(Problem.error(where, "A qualifier condition applies to a "
+                        + "Wikidata property; this field is read from "
+                        + mapping.sourceType() + "."));
+            }
+            FieldProductionKind kind = mapping.productionKind();
+            boolean childObjects = kind == FieldProductionKind.CHILD_OBJECTS
+                    || kind == FieldProductionKind.AUTO && !field.fields().isEmpty();
+            boolean ownValue = kind == FieldProductionKind.AUTO
+                    || kind == FieldProductionKind.INLINE_VALUE
+                    || kind == FieldProductionKind.DELAYED_ENTITY_FIELD;
+            if (owner.reifiesStatements() || mapping.isQualifier()) {
+                problems.add(Problem.error(where, "A qualifier condition selects the "
+                        + "statements an ordinary field reads; a statement class "
+                        + "represents each statement, so it does not apply here."));
+            } else if (childObjects) {
+                problems.add(Problem.error(where, "A qualifier condition is not "
+                        + "supported on a field loaded as related objects; it applies "
+                        + "to a field read as a value or an entity reference."));
+            } else if (!ownValue) {
+                problems.add(Problem.error(where, "A qualifier condition applies to a "
+                        + "field read from a property; this field is "
+                        + kind + "."));
             }
         }
     }

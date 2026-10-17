@@ -35,6 +35,12 @@ public class FieldSourceMapping {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private QualifierDateMode qualifierDateMode;
 
+    // Which of the property's statements this field reads: only those whose qualifier
+    // has one of the allowed values (e.g. P1215 apparent magnitude in the V band,
+    // P1227 = Q4892529). Null = every statement, by the truthy rule.
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private wikidata.QualifierCondition qualifierCondition;
+
     // COMPANION_MATCH only: which of THIS record's fields form the match key. The
     // outcome is true iff a companion statement (subject propertyPid [ps=value,
     // qualifierPid=role]) exists with the same (subject, value, role). The companion
@@ -161,6 +167,17 @@ public class FieldSourceMapping {
     public void qualifierDateMode(QualifierDateMode value) {
         qualifierDateMode = value == null || value == QualifierDateMode.YEAR
                 ? null : value;
+    }
+
+    /** Null when the field reads every statement of its property. */
+    public wikidata.QualifierCondition qualifierCondition() {
+        return qualifierCondition;
+    }
+
+    public void qualifierCondition(wikidata.QualifierCondition value) {
+        qualifierCondition = value == null
+                ? null : wikidata.QualifierCondition.of(
+                        value.qualifierPid(), value.allowedQids());
     }
 
     public String subjectField() {
@@ -335,6 +352,7 @@ public class FieldSourceMapping {
         qualifierPid = other.qualifierPid;
         qualifierLabel = other.qualifierLabel;
         qualifierDateMode = other.qualifierDateMode;
+        qualifierCondition = other.qualifierCondition;
 
         subjectField = other.subjectField;
         matchValueField = other.matchValueField;
@@ -385,6 +403,7 @@ public class FieldSourceMapping {
         qualifierPid = other.qualifierPid;
         qualifierLabel = other.qualifierLabel;
         qualifierDateMode = other.qualifierDateMode;
+        qualifierCondition = other.qualifierCondition;
         direction = other.direction;
         requireLabel = other.requireLabel;
         requireSitelink = other.requireSitelink;

@@ -27,6 +27,8 @@ public final class FieldSourceBindings {
     public static final String LABEL = "label";
     public static final String SOURCE_TYPE = "sourceType";
     public static final String VALUE_LANGUAGE = "valueLanguage";
+    public static final String CONDITION_QUALIFIER = "conditionQualifier";
+    public static final String CONDITION_VALUES = "conditionValues";
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
 
@@ -204,13 +206,20 @@ public final class FieldSourceBindings {
         if (clean(mapping.propertyPid()).isBlank()) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null) return null;
-        return binding(target,
-                source.provider(), source.operation(),
-                Map.of(PROPERTY, clean(mapping.propertyPid()),
-                        LABEL, clean(mapping.propertyLabel()),
-                        VALUE_LANGUAGE, clean(mapping.valueLanguage()),
-                        SOURCE_TYPE, (mapping.sourceType() == null
-                                ? FieldSourceType.SPARQL : mapping.sourceType()).name()));
+        Map<String, String> parameters = new java.util.LinkedHashMap<>(Map.of(
+                PROPERTY, clean(mapping.propertyPid()),
+                LABEL, clean(mapping.propertyLabel()),
+                VALUE_LANGUAGE, clean(mapping.valueLanguage()),
+                SOURCE_TYPE, (mapping.sourceType() == null
+                        ? FieldSourceType.SPARQL : mapping.sourceType()).name()));
+        // Written only when set: an always-present blank pair would rewrite every
+        // binding of every model on its next save, and with it the model's signature.
+        wikidata.QualifierCondition condition = mapping.qualifierCondition();
+        if (condition != null) {
+            parameters.put(CONDITION_QUALIFIER, condition.qualifierPid());
+            parameters.put(CONDITION_VALUES, String.join(" ", condition.allowedQids()));
+        }
+        return binding(target, source.provider(), source.operation(), parameters);
     }
 
     private static SourceBinding fallback(
@@ -307,6 +316,14 @@ public final class FieldSourceBindings {
             // mapping-side value during migration. An explicit blank still clears it.
             if (recipe.parameters().containsKey(VALUE_LANGUAGE)) {
                 primary.valueLanguage(recipe.parameter(VALUE_LANGUAGE));
+            }
+            // The qualifier condition is written only when set, so an absent pair says
+            // nothing and leaves the mapping's own persisted value standing.
+            if (recipe.parameters().containsKey(CONDITION_QUALIFIER)) {
+                primary.qualifierCondition(wikidata.QualifierCondition.of(
+                        recipe.parameter(CONDITION_QUALIFIER),
+                        List.of(recipe.parameter(CONDITION_VALUES).trim()
+                                .split("\\s+"))));
             }
         }
     }

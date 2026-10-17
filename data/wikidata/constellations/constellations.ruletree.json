@@ -32,7 +32,8 @@
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "area",
@@ -43,7 +44,8 @@
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "chart",
@@ -54,7 +56,8 @@
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "hemisphere",
@@ -65,7 +68,8 @@
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "namedAfter",
@@ -76,7 +80,8 @@
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "sharesBorderWith",
@@ -87,7 +92,8 @@
       "collection" : true,
       "direction" : "ITEM_TO_ROOT",
       "membershipPid" : "P31",
-      "membershipQid" : "Q8928"
+      "membershipQid" : "Q8928",
+      "qualifierCondition" : null
     } ] ],
     "limit" : 200,
     "sortFieldName" : "",
@@ -128,7 +134,8 @@
           "collection" : true,
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
-          "membershipQid" : ""
+          "membershipQid" : "",
+          "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
           "fieldName" : "radius",
@@ -139,7 +146,8 @@
           "collection" : true,
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
-          "membershipQid" : ""
+          "membershipQid" : "",
+          "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
           "fieldName" : "diameter",
@@ -150,7 +158,8 @@
           "collection" : false,
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
-          "membershipQid" : ""
+          "membershipQid" : "",
+          "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
           "fieldName" : "apparentMagnitude",
@@ -161,10 +170,14 @@
           "collection" : false,
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
-          "membershipQid" : ""
+          "membershipQid" : "",
+          "qualifierCondition" : {
+            "qualifierPid" : "P1227",
+            "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
+          }
         } ] ],
         "limit" : 6,
-        "sortFieldName" : "",
+        "sortFieldName" : "apparentMagnitude",
         "sortDescending" : false,
         "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
@@ -176,13 +189,18 @@
           "propertyLabel" : "apparent magnitude",
           "operator" : "LE",
           "numericValue" : 6.0,
-          "required" : true
+          "required" : true,
+          "qualifierCondition" : {
+            "qualifierPid" : "P1227",
+            "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
+          }
         } ] ],
         "edges" : [ "java.util.ArrayList", [ ] ],
         "requireSitelink" : false,
         "rankBySitelinks" : false,
         "rankPropertyPid" : "",
         "rankDescending" : true,
+        "rankCondition" : null,
         "rankFrom" : -1,
         "rankUntil" : -1,
         "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
@@ -193,6 +211,7 @@
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
     "rankDescending" : true,
+    "rankCondition" : null,
     "rankFrom" : -1,
     "rankUntil" : -1,
     "membershipConstraints" : [ "java.util.ArrayList", [ ] ]

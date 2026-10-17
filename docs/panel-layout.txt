@@ -311,6 +311,11 @@
   label: date of birth
   label: Value language:
   text: []
+  label: Only statements where:
+  label: qualifier
+  text: []
+  label: is one of
+  text: []
   label: Wikipedia fallback:
   label: none
   button: Set Wikipedia fallback…

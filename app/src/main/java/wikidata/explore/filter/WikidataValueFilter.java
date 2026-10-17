@@ -25,6 +25,9 @@ public class WikidataValueFilter {
             WikidataValueFilterOperator.LE;
     private double numericValue;
     private boolean required = true;
+    // The filtered field's own qualifier condition: the filter must test the same
+    // statements the field reads, or it admits by one value and stores another.
+    private wikidata.QualifierCondition qualifierCondition;
 
     public WikidataValueFilter() {
     }
@@ -95,6 +98,14 @@ public class WikidataValueFilter {
 
     public void required(boolean required) {
         this.required = required;
+    }
+
+    public wikidata.QualifierCondition qualifierCondition() {
+        return qualifierCondition;
+    }
+
+    public void qualifierCondition(wikidata.QualifierCondition qualifierCondition) {
+        this.qualifierCondition = qualifierCondition;
     }
 
     public String variableName() {

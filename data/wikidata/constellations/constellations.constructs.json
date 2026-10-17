@@ -16,6 +16,11 @@
     "kind" : "CLASS",
     "artifact" : "constellations.snapshot.json"
   }, {
+    "declarationId" : "decl:403f9ae2-4696-3cac-9507-9b962b5bc3cd",
+    "name" : "Owner",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
     "declarationId" : "decl:77dc6386-8693-4268-864a-2b2eb4bcbb44",
     "name" : "Discoverer",
     "kind" : "CLASS",
@@ -35,6 +40,11 @@
     "name" : "Star",
     "kind" : "CLASS",
     "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:d2bd177a-5df3-4adb-9649-1ac9996c4d3d",
+    "name" : "CountryOfCitizenship",
+    "kind" : "SELECTION",
+    "artifact" : "constellations.model.json"
   } ],
-  "snapshotSignature" : "model-v2:8b486066cc12a2f3d62042f4dd15b94a8c89e45daba6c771efc63faca24dc5bc"
+  "snapshotSignature" : "model-v2:6592c95c1ef6bef96d90d6077d00d17ce79a7b21780beeb599c239b3b2c489d5"
 }

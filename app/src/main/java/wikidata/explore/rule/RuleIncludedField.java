@@ -59,6 +59,15 @@ public class RuleIncludedField {
         return !membershipQid().isBlank() && WikidataIds.isQid(membershipQid());
     }
 
+    // Which statements of propertyPid the field reads (see QualifierCondition).
+    // Null = every statement, truthy — the plain wdt: triple.
+    private wikidata.QualifierCondition qualifierCondition;
+    public wikidata.QualifierCondition qualifierCondition() { return qualifierCondition; }
+    public void qualifierCondition(wikidata.QualifierCondition c) { qualifierCondition = c; }
+    public boolean hasQualifierCondition() {
+        return qualifierCondition != null && qualifierCondition.complete();
+    }
+
     public RuleIncludedField() {
     }
 

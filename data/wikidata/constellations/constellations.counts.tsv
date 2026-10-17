@@ -3,3 +3,4 @@
 # counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
 2026-08-24T10:22:52	total=635	Star=540	Constellation=95
 2026-10-10T15:32	total=1234	Discovery=608	Star=513	Constellation=95	Name=9	Person=9
+2026-10-17T12:57:34	total=1224	Discovery=602	Star=507	Constellation=95	Name=10	Person=10

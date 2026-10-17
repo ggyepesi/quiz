@@ -67,6 +67,7 @@ public class FieldSourcePanel extends JPanel {
     private FormRow missingQualifierRow;
     private FormRow reifyRoleRow;
     private FormRow sourceContextRow;
+    private FormRow qualifierConditionRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -146,6 +147,10 @@ public class FieldSourcePanel extends JPanel {
     // draws from (e.g. P585 → year). Blank = a direct/value field.
     private final JTextField qualifierPidField = new JTextField(6);
     private final JTextField valueLanguageField = new JTextField(6);
+    // Which statements of the property this field reads (QualifierCondition): only
+    // those whose qualifier has one of the allowed values. Both blank = all of them.
+    private final JTextField conditionQualifierField = new JTextField(6);
+    private final JTextField conditionValuesField = new JTextField(14);
     private final JComboBox<QualifierDateMode> qualifierDateModeBox =
             new JComboBox<>(QualifierDateMode.values());
     private final JLabel propertyLabel = new JLabel("(not selected)");
@@ -382,6 +387,9 @@ public class FieldSourcePanel extends JPanel {
                 || productionBox.getSelectedItem()
                 == FieldProductionKind.STATEMENT_OBJECT;
         boolean acquired = acquiredFromOwnProperty();
+        GeneratedClassModel conditionOwner = ownerClass();
+        applicable(qualifierConditionRow, acquired
+                && (conditionOwner == null || !conditionOwner.reifiesStatements()));
         propertyPidField.setEnabled(acquired);
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
@@ -738,6 +746,10 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setText(mapping.propertyPid());
         qualifierPidField.setText(mapping.qualifierPid());
         valueLanguageField.setText(mapping.valueLanguage());
+        wikidata.QualifierCondition condition = mapping.qualifierCondition();
+        conditionQualifierField.setText(condition == null ? "" : condition.qualifierPid());
+        conditionValuesField.setText(condition == null
+                ? "" : String.join(" ", condition.allowedQids()));
         qualifierDateModeBox.setSelectedItem(mapping.qualifierDateMode());
         propertyLabel.setText(mapping.propertyLabel());
         refreshFallbackLabel();
@@ -816,6 +828,8 @@ public class FieldSourcePanel extends JPanel {
                 || !mapping.qualifierPid().equals(
                         RuleNode.cleanPid(qualifierPidField.getText()))
                 || !mapping.valueLanguage().equals(valueLanguageField.getText().trim())
+                || !java.util.Objects.equals(mapping.qualifierCondition(),
+                        editedQualifierCondition())
                 || mapping.qualifierDateMode() != qualifierDateModeBox.getSelectedItem()
                 || mapping.direction() != directionBox.getSelectedItem();
     }
@@ -885,6 +899,15 @@ public class FieldSourcePanel extends JPanel {
     }
 
     /** Rows are held only after buildUi has run; before that there is nothing to hide. */
+    /** The condition as edited; null when both of its controls are blank. Tokens are
+     *  kept as typed, so a malformed one reaches validation rather than vanishing. */
+    private wikidata.QualifierCondition editedQualifierCondition() {
+        return wikidata.QualifierCondition.of(
+                RuleNode.cleanPid(conditionQualifierField.getText()),
+                java.util.Arrays.asList(
+                        conditionValuesField.getText().trim().split("[,;\\s]+")));
+    }
+
     private static void applicable(FormRow row, boolean applicable) {
         if (row != null) row.applicable(applicable);
     }
@@ -996,6 +1019,21 @@ public class FieldSourcePanel extends JPanel {
                 + "every value. Untagged text is used only when no exact-language "
                 + "wording exists.");
         GridBagUtils.labeledRow(form, c, y++, "Value language:", valueLanguageField);
+        String conditionTip = "<html>Read only the statements of this property whose "
+                + "<b>qualifier</b> has one of the allowed values — e.g. apparent "
+                + "magnitude (P1215) only in the V band: qualifier <b>P1227</b>, one of "
+                + "<b>Q4892529</b>.<br>The filter, the ranking and the stored value all "
+                + "read those statements. Of them, the preferred ones are used when "
+                + "any match. Blank = every statement.</html>";
+        conditionQualifierField.setToolTipText(conditionTip);
+        conditionValuesField.setToolTipText(conditionTip);
+        JPanel conditionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        conditionPanel.add(new JLabel("qualifier"));
+        conditionPanel.add(conditionQualifierField);
+        conditionPanel.add(new JLabel("is one of"));
+        conditionPanel.add(conditionValuesField);
+        qualifierConditionRow = FormRow.add(
+                form, c, y++, "Only statements where:", conditionPanel);
 
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
@@ -1260,6 +1298,7 @@ public class FieldSourcePanel extends JPanel {
             source.propertyPid(propertyPidField.getText());
             source.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
             source.valueLanguage(valueLanguageField.getText());
+            source.qualifierCondition(editedQualifierCondition());
             source.qualifierDateMode(
                     (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
             source.direction((RuleDirection) directionBox.getSelectedItem());
@@ -1279,6 +1318,7 @@ public class FieldSourcePanel extends JPanel {
             m.propertyLabel("");
             m.qualifierPid("");
             m.valueLanguage("");
+            m.qualifierCondition(null);
             m.qualifierDateMode(QualifierDateMode.YEAR);
             if (statementSubject || statementObject) {
                 // Every OTHER producer goes with it. Clearing only the bindings left
@@ -2019,6 +2059,8 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setText("");
         qualifierPidField.setText("");
         valueLanguageField.setText("");
+        conditionQualifierField.setText("");
+        conditionValuesField.setText("");
         // A blank form is a field about to be created, and a new field keeps what
         // the source states; an existing field's own value replaces this on load.
         qualifierDateModeBox.setSelectedItem(QualifierDateMode.DATE);

@@ -2,6 +2,7 @@ package wikidata.explore.query.template.rule;
 
 import wikidata.WikidataIds;
 
+import wikidata.explore.model.RuleDirection;
 import wikidata.explore.rule.RuleLabelConfig;
 import wikidata.explore.rule.RuleIncludedField;
 import wikidata.explore.rule.RuleEdge;
@@ -228,6 +229,8 @@ public final class RuleNodeQueryBuilder {
     private static boolean membershipEquivalent(RuleNode node, RuleIncludedField field) {
         if (field == null) return false;
         if (!field.isEntityField() || !field.collection()) return false;   // (1)
+        // A field reading only some statements is not the membership relation.
+        if (field.hasQualifierCondition()) return false;
         String pid = RuleNode.cleanPid(node.propertyPid());
         if (!RuleNode.cleanPid(field.propertyPid()).equals(pid)) return false;   // (2)
         String memberTriple = node.direction().triplePattern("?root", "?value", pid);
@@ -260,8 +263,8 @@ public final class RuleNodeQueryBuilder {
         // out even for a 250-QID batch (R-rule; same hint as stratifiedSampleQuery).
         sb.append("  hint:Query hint:optimizer \"None\" .\n");
         sb.append("  VALUES ?value { ").append(vals.toString().trim()).append(" }\n");
-        sb.append("  ").append(field.direction()
-                .triplePattern("?value", "?fieldValue", pid)).append("\n");
+        sb.append("  ").append(RuleIncludedFieldSparql
+                .valuePattern(field, "?value", "?fieldValue")).append("\n");
         if (field.hasMembership()) {
             sb.append("  ?fieldValue wdt:")
                     .append(RuleNode.cleanPid(field.membershipPid()))
@@ -673,7 +676,7 @@ public final class RuleNodeQueryBuilder {
     // (Mirrors the reuseRoot check in appendInlinedFieldPatterns, but keyed off the
     // named set, not a bound ?root.)
     private static boolean reusesMembership(RuleIncludedField field, String memberTriple) {
-        if (field == null) {
+        if (field == null || field.hasQualifierCondition()) {
             return false;
         }
         String pid = RuleNode.cleanPid(field.propertyPid());
@@ -918,10 +921,11 @@ public final class RuleNodeQueryBuilder {
                 // field's own binding too.
                 if (!sharedVars.containsKey(f.fieldName())) {
                     String triple = dated
-                            ? RuleIncludedFieldSparql.datePattern(
-                                    RuleNode.cleanPid(f.propertyPid()), var, var + "_s")
-                            : "  ?value wdt:" + RuleNode.cleanPid(f.propertyPid())
-                                    + " ?" + var + "_s .\n";
+                            ? RuleIncludedFieldSparql.datePattern(f, var, var + "_s")
+                            : "  " + RuleIncludedFieldSparql.valuePattern(
+                                    f.propertyPid(), RuleDirection.ROOT_TO_ITEM,
+                                    f.qualifierCondition(), "?value", "?" + var + "_s")
+                                    + "\n";
                     includedPatterns.append(
                             f.optional() ? "  OPTIONAL {\n  " + triple + "  }\n" : triple);
                 }
@@ -1020,9 +1024,9 @@ public final class RuleNodeQueryBuilder {
         if (node.rankBySitelinks()) {
             q.rawWhere("?value wikibase:sitelinks ?rankMeasure .");
         } else {
-            q.rawWhere("OPTIONAL { ?value wdt:"
-                    + RuleNode.cleanPid(node.rankPropertyPid())
-                    + " ?rankMeasure . }");
+            q.rawWhere("OPTIONAL { " + RuleIncludedFieldSparql.valuePattern(
+                    node.rankPropertyPid(), RuleDirection.ROOT_TO_ITEM,
+                    node.rankCondition(), "?value", "?rankMeasure") + " }");
         }
         appendRankBand(q, node);
         q.groupByNonAggregateSelects();
@@ -1063,7 +1067,7 @@ public final class RuleNodeQueryBuilder {
             if (f == null) continue;
             String pid = RuleNode.cleanPid(f.propertyPid());
             if (!WikidataIds.isPid(pid)) continue;
-            q.rawWhere(f.direction().triplePattern("?value", "?required" + i, pid));
+            q.rawWhere(RuleIncludedFieldSparql.valuePattern(f, "?value", "?required" + i));
             i++;
         }
     }
@@ -1133,6 +1137,7 @@ public final class RuleNodeQueryBuilder {
             // object variable is interchangeable with ?root.
             boolean reuseRoot = rootBound
                     && !field.hasMembership()
+                    && !field.hasQualifierCondition()
                     && memberTriple.equals(
                             field.direction().triplePattern("?value", "?root", pid));
             if (reuseRoot) {
@@ -1150,7 +1155,7 @@ public final class RuleNodeQueryBuilder {
 
             // ROOT_TO_ITEM: ?value wdt:P ?x_gc ; ITEM_TO_ROOT: ?x_gc wdt:P ?value
             // (incoming, e.g. "episode in"/"facet of" pointing AT this entity).
-            String triple = field.direction().triplePattern("?value", valueVar, pid);
+            String triple = RuleIncludedFieldSparql.valuePattern(field, "?value", valueVar);
             // Constrain the value to the referenced class's type, if requested
             // (e.g. keep only P31=Episode, dropping videogames/novels).
             String typeConstraint = field.hasMembership()
@@ -1308,10 +1313,8 @@ public final class RuleNodeQueryBuilder {
             String var = baseVar + "_s";
             boolean label = withLabels && !field.isMediaField();
             String triple = RuleIncludedFieldSparql.readsValueNode(field)
-                    ? RuleIncludedFieldSparql.datePattern(
-                            RuleNode.cleanPid(field.propertyPid()), baseVar, var)
-                    : field.direction()
-                            .triplePattern("?value", "?" + var, field.propertyPid());
+                    ? RuleIncludedFieldSparql.datePattern(field, baseVar, var)
+                    : RuleIncludedFieldSparql.valuePattern(field, "?value", "?" + var);
             StringBuilder sb = new StringBuilder();
             sb.append("  OPTIONAL {\n    ").append(triple).append("\n");
             if (field.hasMembership()) {

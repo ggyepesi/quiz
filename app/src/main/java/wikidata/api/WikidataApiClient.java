@@ -463,11 +463,17 @@ public class WikidataApiClient {
             String enwikiTitle,
             Map<String, List<ApiClaimValue>> claimDetails) {
 
-        /** One truthy claim value together with the qualifiers that constrain it. */
+        /** One non-deprecated claim: its value (null when it states none), the
+         *  qualifiers that constrain it, and its rank. */
         public record ApiClaimValue(
-                String value, Map<String, List<String>> qualifiers) {
+                String value, Map<String, List<String>> qualifiers, String rank) {
             public ApiClaimValue {
                 qualifiers = qualifiers == null ? Map.of() : Map.copyOf(qualifiers);
+                rank = rank == null || rank.isBlank() ? "normal" : rank;
+            }
+
+            public ApiClaimValue(String value, Map<String, List<String>> qualifiers) {
+                this(value, qualifiers, "normal");
             }
 
             public List<String> qualifier(String pid) {
@@ -544,7 +550,23 @@ public class WikidataApiClient {
 
         /** Lossless truthy values for field projection policies that need qualifiers. */
         public List<ApiClaimValue> claims(String pid) {
-            return claimDetails.getOrDefault(pid, List.of());
+            return claimsWhere(pid, null);
+        }
+
+        /** The valued claims a field reads under {@code condition} (null = every
+         *  statement): see {@link wikidata.QualifierCondition#select}. */
+        public List<ApiClaimValue> claimsWhere(
+                String pid, wikidata.QualifierCondition condition) {
+            return wikidata.QualifierCondition.select(
+                            claimDetails.getOrDefault(pid, List.of()), condition,
+                            ApiClaimValue::rank, ApiClaimValue::qualifiers)
+                    .stream().filter(claim -> claim.value() != null).toList();
+        }
+
+        /** {@link #values} under a qualifier condition; null means {@link #values}. */
+        public List<String> valuesWhere(String pid, wikidata.QualifierCondition condition) {
+            if (condition == null) return values(pid);
+            return claimsWhere(pid, condition).stream().map(ApiClaimValue::value).toList();
         }
 
         /**
@@ -553,9 +575,15 @@ public class WikidataApiClient {
          * lossless—this policy is invoked by an explicitly configured field.
          */
         public List<String> valuesInLanguage(String pid, String languageQid) {
-            List<ApiClaimValue> details = claims(pid);
+            return valuesInLanguage(pid, languageQid, null);
+        }
+
+        /** {@link #valuesInLanguage} over the claims a qualifier condition admits. */
+        public List<String> valuesInLanguage(
+                String pid, String languageQid, wikidata.QualifierCondition condition) {
+            List<ApiClaimValue> details = claimsWhere(pid, condition);
             if (details.isEmpty() || languageQid == null || languageQid.isBlank()) {
-                return values(pid);
+                return valuesWhere(pid, condition);
             }
             List<String> matched = new ArrayList<>();
             List<String> unqualified = new ArrayList<>();
@@ -570,7 +598,12 @@ public class WikidataApiClient {
         }
 
         public List<String> entityQidsInLanguage(String pid, String languageQid) {
-            return valuesInLanguage(pid, languageQid).stream()
+            return entityQidsInLanguage(pid, languageQid, null);
+        }
+
+        public List<String> entityQidsInLanguage(
+                String pid, String languageQid, wikidata.QualifierCondition condition) {
+            return valuesInLanguage(pid, languageQid, condition).stream()
                     .filter(WikidataIds::isQid).toList();
         }
     }
@@ -945,7 +978,8 @@ public class WikidataApiClient {
                 new ArrayList<>();
         for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids,
+                    StatementDetail.VALUE_ONLY));
         }
         BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
@@ -1005,6 +1039,15 @@ public class WikidataApiClient {
     public PartialStatements getStatementsByPropertyPartial(
             List<String> entityQids, List<String> statementPids,
             BatchLog batchLog, StatementBatchCommitter batchCommitter) throws Exception {
+        return getStatementsByPropertyPartial(entityQids, statementPids, batchLog,
+                batchCommitter, StatementDetail.VALUE_ONLY);
+    }
+
+    /** As above, retaining {@code detail} of each statement. */
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids,
+            BatchLog batchLog, StatementBatchCommitter batchCommitter,
+            StatementDetail detail) throws Exception {
         Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
         if (entityQids == null || statementPids == null) {
             return new PartialStatements(out, 0, List.of());
@@ -1018,7 +1061,7 @@ public class WikidataApiClient {
                 new ArrayList<>();
         for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementGroupUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), pids, detail));
         }
         BatchExecutor<Map<String, Map<String, List<ApiStatement>>>> executor =
                 new BatchExecutor<>(BatchPolicy.defaults().withResume(false),
@@ -1045,7 +1088,7 @@ public class WikidataApiClient {
     }
 
     private WorkUnit<Map<String, Map<String, List<ApiStatement>>>> statementGroupUnit(
-            List<String> qids, List<String> statementPids) {
+            List<String> qids, List<String> statementPids, StatementDetail detail) {
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {
                 String ids = String.join(",", qids);
@@ -1063,7 +1106,7 @@ public class WikidataApiClient {
                 Map<String, Map<String, List<ApiStatement>>> result = new LinkedHashMap<>();
                 for (String pid : statementPids) {
                     Map<String, List<ApiStatement>> byQid = new LinkedHashMap<>();
-                    parseStatements(root, pid, StatementDetail.VALUE_ONLY, byQid);
+                    parseStatements(root, pid, detail, byQid);
                     result.put(pid, byQid);
                 }
                 return result;
@@ -1072,8 +1115,10 @@ public class WikidataApiClient {
                     List<ApiStatement>>>>> split() {
                 if (qids.size() < 2) return List.of();
                 int middle = qids.size() / 2;
-                return List.of(statementGroupUnit(qids.subList(0, middle), statementPids),
-                        statementGroupUnit(qids.subList(middle, qids.size()), statementPids));
+                return List.of(statementGroupUnit(qids.subList(0, middle), statementPids,
+                                detail),
+                        statementGroupUnit(qids.subList(middle, qids.size()), statementPids,
+                                detail));
             }
         };
     }
@@ -1389,12 +1434,16 @@ public class WikidataApiClient {
                         entity.path("claims").path(pid);
                 List<ApiEntity.ApiClaimValue> claimDetails = claimValues(statements);
                 if (!claimDetails.isEmpty()) details.put(pid, claimDetails);
-                List<String> vals = claimDetails.stream().map(ApiEntity.ApiClaimValue::value)
+                List<ApiEntity.ApiClaimValue> truthy = wikidata.QualifierCondition.select(
+                                claimDetails, null, ApiEntity.ApiClaimValue::rank,
+                                ApiEntity.ApiClaimValue::qualifiers)
+                        .stream().filter(claim -> claim.value() != null).toList();
+                List<String> vals = truthy.stream().map(ApiEntity.ApiClaimValue::value)
                         .filter(WikidataIds::isQid).toList();
                 if (!vals.isEmpty()) {
                     claims.put(pid, vals);
                 }
-                List<String> rawValues = claimDetails.stream()
+                List<String> rawValues = truthy.stream()
                         .map(ApiEntity.ApiClaimValue::value).toList();
                 if (!rawValues.isEmpty()) values.put(pid, rawValues);
                 if (!rawValues.isEmpty()) continue;
@@ -1430,13 +1479,20 @@ public class WikidataApiClient {
         return seen;
     }
 
-    /** Every truthy mainsnak with the qualifiers that constrain that statement. */
+    /**
+     * Every non-deprecated claim with its rank and the qualifiers that constrain it —
+     * valueless ones included (value null), since a preferred "no value" still decides
+     * which statements are truthy. Which of them a field reads is decided afterwards by
+     * {@link wikidata.QualifierCondition#select}, because a qualifier condition has to
+     * apply BEFORE the truthy rule.
+     */
     private static List<ApiEntity.ApiClaimValue> claimValues(JsonNode claimsArray) {
         if (!claimsArray.isArray()) return List.of();
         List<ApiEntity.ApiClaimValue> out = new ArrayList<>();
-        for (JsonNode claim : truthy(claimsArray)) {
+        for (JsonNode claim : claimsArray) {
+            String rank = claim.path("rank").asText("normal");
+            if ("deprecated".equals(rank)) continue;
             String value = snakValue(claim.path("mainsnak").path("datavalue"));
-            if (value == null) continue;
             Map<String, List<String>> qualifiers = new LinkedHashMap<>();
             claim.path("qualifiers").fields().forEachRemaining(entry -> {
                 List<String> decoded = new ArrayList<>();
@@ -1446,9 +1502,9 @@ public class WikidataApiClient {
                 }
                 if (!decoded.isEmpty()) qualifiers.put(entry.getKey(), List.copyOf(decoded));
             });
-            out.add(new ApiEntity.ApiClaimValue(value, qualifiers));
+            out.add(new ApiEntity.ApiClaimValue(value, qualifiers, rank));
         }
-        return List.copyOf(out);
+        return java.util.Collections.unmodifiableList(out);
     }
 
     /**
@@ -1524,11 +1580,13 @@ public class WikidataApiClient {
     }
 
     /** How much of an already-downloaded claim the consumer needs to retain. */
-    enum StatementDetail { VALUE_ONLY, FULL }
+    public enum StatementDetail { VALUE_ONLY, RANKED, FULL }
 
     // Visible for WbGetEntitiesParseTest. VALUE_ONLY follows wdt: truthy rank;
-    // FULL retains every non-deprecated statement for reification. Returns the number
-    // of entities for which that selection contained at least one valued statement.
+    // RANKED retains every non-deprecated statement — valueless ones with a blank
+    // value — with its rank and qualifiers, for a reader that selects them itself
+    // (QualifierCondition.select); FULL also retains references, for reification.
+    // Returns the number of entities for which the selection contained a statement.
     static int parseStatements(
             JsonNode root, String statementPid,
             StatementDetail detail,
@@ -1548,13 +1606,13 @@ public class WikidataApiClient {
             Iterable<JsonNode> selected = requested == StatementDetail.VALUE_ONLY
                     ? truthy(claims) : claims;
             for (JsonNode claim : selected) {
-                if (requested == StatementDetail.FULL
+                if (requested != StatementDetail.VALUE_ONLY
                         && "deprecated".equals(claim.path("rank").asText())) continue;
                 JsonNode datavalue = claim.path("mainsnak").path("datavalue");
                 String value = snakValue(datavalue);
-                if (value == null) continue;
+                if (value == null && requested != StatementDetail.RANKED) continue;
 
-                Map<String, List<String>> quals = requested == StatementDetail.FULL
+                Map<String, List<String>> quals = requested != StatementDetail.VALUE_ONLY
                         ? parseSnaks(claim.path("qualifiers")) : Map.of();
                 List<ApiReference> references = new ArrayList<>();
                 JsonNode referenceNodes = requested == StatementDetail.FULL

@@ -119,6 +119,7 @@ public final class RuleTreeCompiler {
                 if (rf != null && rankBy.equals(rf.name())
                         && !rf.mapping().propertyPid().isBlank()) {
                     node.rankPropertyPid(rf.mapping().propertyPid());
+                    node.rankCondition(rf.mapping().qualifierCondition());
                     break;
                 }
             }
@@ -154,6 +155,7 @@ public final class RuleTreeCompiler {
                 !field.required());
 
         included.collection(field.collection());
+        included.qualifierCondition(m.qualifierCondition());
         // A literal property (string/number/date) is ALWAYS outgoing — the value is
         // the object of the triple (?entity wdt:P ?literal). An "incoming" literal
         // is nonsensical and silently matches nothing (a date field left at the
@@ -199,13 +201,16 @@ public final class RuleTreeCompiler {
         // A numeric filter on this field (e.g. apparentMagnitude <= 3) constrains
         // the owning class's instances to those that satisfy it.
         if (field.hasValueFilter()) {
-            parent.valueFilters().add(new wikidata.explore.filter.WikidataValueFilter(
-                    field.name(),
-                    m.propertyPid(),
-                    m.propertyLabel(),
-                    field.filterOperator(),
-                    field.filterValue(),
-                    true));
+            wikidata.explore.filter.WikidataValueFilter filter =
+                    new wikidata.explore.filter.WikidataValueFilter(
+                            field.name(),
+                            m.propertyPid(),
+                            m.propertyLabel(),
+                            field.filterOperator(),
+                            field.filterValue(),
+                            true);
+            filter.qualifierCondition(m.qualifierCondition());
+            parent.valueFilters().add(filter);
         }
 
         if (kind == FieldProductionKind.CHILD_OBJECTS) {
@@ -416,6 +421,7 @@ public final class RuleTreeCompiler {
                 if (rf != null && rankBy.equals(rf.name())
                         && !rf.source().propertyPid().isBlank()) {
                     node.rankPropertyPid(rf.source().propertyPid());
+                    node.rankCondition(rf.source().qualifierCondition());
                     break;
                 }
             }
@@ -445,6 +451,7 @@ public final class RuleTreeCompiler {
                 !field.required());
 
         included.collection(field.collection());
+        included.qualifierCondition(m.qualifierCondition());
         included.direction(FieldSemantics.effectiveDirection(
                 field.type(), field.cardinality(), m.direction()));
 
@@ -476,13 +483,16 @@ public final class RuleTreeCompiler {
         if (field.source().propertyPid().isBlank()) return;
 
         if (field.hasValueFilter()) {
-            parent.valueFilters().add(new wikidata.explore.filter.WikidataValueFilter(
-                    field.name(),
-                    m.propertyPid(),
-                    m.propertyLabel(),
-                    field.filterOperator(),
-                    field.filterValue(),
-                    true));
+            wikidata.explore.filter.WikidataValueFilter filter =
+                    new wikidata.explore.filter.WikidataValueFilter(
+                            field.name(),
+                            m.propertyPid(),
+                            m.propertyLabel(),
+                            field.filterOperator(),
+                            field.filterValue(),
+                            true);
+            filter.qualifierCondition(m.qualifierCondition());
+            parent.valueFilters().add(filter);
         }
 
         if (kind == FieldProductionKind.CHILD_OBJECTS) {

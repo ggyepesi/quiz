@@ -252,10 +252,8 @@ public final class RuleTreeQueries {
             String parentVar,
             String valueVar) {
 
-        q.where(field.direction().triplePattern(
-                "?" + parentVar,
-                "?" + valueVar,
-                RuleNode.cleanPid(field.propertyPid())));
+        q.where(RuleIncludedFieldSparql.valuePattern(
+                field, "?" + parentVar, "?" + valueVar));
         if (field.hasMembership()) {
             q.where("?" + valueVar + " wdt:" + field.membershipPid()
                     + " wd:" + field.membershipQid() + " .");
@@ -350,14 +348,13 @@ public final class RuleTreeQueries {
 
             q.select(var);
 
+            String binding = RuleIncludedFieldSparql.valuePattern(
+                    field.propertyPid(), wikidata.explore.model.RuleDirection.ROOT_TO_ITEM,
+                    field.qualifierCondition(), "?value", "?" + var);
             if (field.optional()) {
-                q.optional("?value wdt:"
-                        + field.propertyPid()
-                        + " ?"
-                        + var
-                        + " .");
+                q.optional(binding);
             } else {
-                q.truthy("value", field.propertyPid(), var);
+                q.where(binding);
             }
 
             if (!field.isMediaField()) {

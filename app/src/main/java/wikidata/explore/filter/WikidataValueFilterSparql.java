@@ -50,17 +50,9 @@ public final class WikidataValueFilterSparql {
                     "?" + f.variableName();
 
             if (f.required()) {
-                sb.append("  ?value wdt:")
-                  .append(f.propertyPid())
-                  .append(" ")
-                  .append(var)
-                  .append(" .\n");
+                sb.append("  ").append(binding(f, var)).append("\n");
             } else {
-                sb.append("  OPTIONAL { ?value wdt:")
-                  .append(f.propertyPid())
-                  .append(" ")
-                  .append(var)
-                  .append(" . }\n");
+                sb.append("  OPTIONAL { ").append(binding(f, var)).append(" }\n");
             }
 
             sb.append("  FILTER(");
@@ -96,11 +88,16 @@ public final class WikidataValueFilterSparql {
         if (!isValid(f)) {
             return;
         }
-        sb.append("  ?value wdt:").append(f.propertyPid())
-          .append(" ?").append(var).append(" .\n")
+        sb.append("  ").append(binding(f, "?" + var)).append("\n")
           .append("  FILTER(xsd:decimal(?").append(var).append(") ")
           .append(f.operator().sparql()).append(" ")
           .append(formatNumber(f.numericValue())).append(")\n");
+    }
+
+    /** The filtered field's value, read from the statements its condition admits. */
+    private static String binding(WikidataValueFilter f, String var) {
+        return wikidata.query.StatementPatterns.value(
+                "?value", f.propertyPid(), var, f.qualifierCondition(), var);
     }
 
     public static boolean valid(WikidataValueFilter f) {

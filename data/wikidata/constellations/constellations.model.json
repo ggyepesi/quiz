@@ -1365,18 +1365,25 @@
       "primaryListField" : ""
     }
   } ] ],
-  "selections" : [ "java.util.ArrayList", [ ] ],
+  "selections" : [ "java.util.ArrayList", [ {
+    "@class" : "wikidata.explore.model.VocabularySelection",
+    "name" : "CountryOfCitizenship",
+    "declarationId" : "decl:d2bd177a-5df3-4adb-9649-1ac9996c4d3d",
+    "kind" : "VOCABULARY"
+  } ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ {
     "roleClassName" : "Owner",
-    "representationClassName" : "Constellation"
+    "roleClassId" : "decl:403f9ae2-4696-3cac-9507-9b962b5bc3cd",
+    "representationClassName" : "Constellation",
+    "representationClassId" : "decl:df2ad74a-e69f-3e14-aa3e-955b7091de5e"
   } ] ],
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Astronomy",
     "classNames" : [ "java.util.ArrayList", [ "CelestialBody", "Star" ] ]
   }, {
     "modelName" : "Discovery",
-    "classNames" : [ "java.util.ArrayList", [ "Discovery", "Discoverer" ] ]
+    "classNames" : [ "java.util.ArrayList", [ "Discovery", "Discoverer", "Owner" ] ]
   }, {
     "modelName" : "Person",
     "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]
