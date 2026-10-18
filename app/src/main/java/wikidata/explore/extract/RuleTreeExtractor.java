@@ -504,12 +504,25 @@ public class RuleTreeExtractor {
         if (remainingDepth <= 0) return;
         for (RuleEdge edge : edges) {
             RuleNode child = edge.childNode();
+            // The same phases the run executes: a membership that includes subclasses
+            // lists them once, and each parent's query tests against that list.
+            java.util.List<String> types = java.util.List.of();
+            if (child.hasMembershipFilter() && child.membershipFilterIncludesDescendants()) {
+                String classQid = RuleNode.cleanQid(child.membershipQid());
+                queries.add("# Once, before edge \"" + edge.fieldName() + "\": the subclasses "
+                        + "of " + classQid + " it admits:\n"
+                        + RuleNodeQueryBuilder.descendantTypesQuery(classQid));
+                types = java.util.List.of(classQid);
+            }
             queries.add("# For each " + parentNode.name()
                                 + " result, load complex edge \""
                                 + edge.fieldName() + "\" (one query per parent, limit "
-                                + child.limit() + "):\n"
+                                + child.limit() + (types.isEmpty() ? ""
+                                        : "; the type list is the subclasses listed above")
+                                + "):\n"
                                 + RuleNodeQueryBuilder.childQueryForParent(
-                                                              child, "Q_PARENT", child.limit())
+                                                              child, "Q_PARENT", child.limit(),
+                                                              types)
                                                       .replace("wd:Q_PARENT", "wd:<parent>"));
             appendChildPreviewQueries(
                     queries, child, complexEdges(child),
@@ -1309,6 +1322,49 @@ public class RuleTreeExtractor {
         }
     }
 
+    /** The types of each class whose membership includes subclasses, listed once per
+     *  extraction (#399). */
+    private final Map<String, java.util.List<String>> descendantTypes =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * The types an edge admits when its class includes subclasses: the class and every
+     * class below it, listed once as a step of its own and reused for every parent. If
+     * they cannot be listed, the edge falls back to the subclass path and says so — that
+     * form is correct but may time out per parent (#399). Empty for any other edge.
+     */
+    java.util.List<String> membershipTypes(RuleNode childNode, GenerationLog progress)
+            throws Exception {
+        if (!childNode.hasMembershipFilter() || !childNode.membershipFilterIncludesDescendants()) {
+            return java.util.List.of();
+        }
+        String classQid = RuleNode.cleanQid(childNode.membershipQid());
+        java.util.List<String> known = descendantTypes.get(classQid);
+        if (known != null) return known;
+        String sparql = RuleNodeQueryBuilder.descendantTypesQuery(classQid);
+        GenerationLog.Running lookup =
+                progress.subqueryStarted("Subclasses of " + classQid, sparql);
+        try {
+            java.util.List<String> types = new ArrayList<>();
+            for (WikidataBinding b : client.query(sparql)) {
+                String type = b.qid("t");
+                if (type != null && WikidataIds.isQid(type)) types.add(type);
+            }
+            lookup.done(types.size() + " type(s)");
+            java.util.List<String> resolved = java.util.List.copyOf(types);
+            descendantTypes.put(classQid, resolved);
+            return resolved;
+        } catch (InterruptedException interrupted) {
+            throw interrupted;
+        } catch (Exception failed) {
+            lookup.failed(failed.getMessage());
+            progress.message("WARNING: the subclasses of " + classQid + " could not be "
+                    + "listed; edge \"" + childNode.name() + "\" uses the subclass path "
+                    + "instead, which may time out per parent.\n");
+            return java.util.List.of();
+        }
+    }
+
     private EdgeResult loadEdgeBatched(
             RuleEdge edge,
             List<WikidataDynamicObject> parentObjects,
@@ -1323,6 +1379,7 @@ public class RuleTreeExtractor {
         }
 
         int limit = childNode.limit();
+        java.util.List<String> membershipTypes = membershipTypes(childNode, progress);
 
         progress.message("\nLoading edge \"" + edge.fieldName()
                                  + "\" for " + parentQids.size()
@@ -1345,7 +1402,7 @@ public class RuleTreeExtractor {
             for (String parentQid : parentQids) {
                 futures.add(pool.submit(() -> {
                     String sparql = RuleNodeQueryBuilder.childQueryForParent(
-                            childNode, parentQid, limit);
+                            childNode, parentQid, limit, membershipTypes);
                     long t0 = System.currentTimeMillis();
                     String title = edge.fieldName() + " <- " + parentQid;
                     // Show the per-parent query while it runs (parents run in

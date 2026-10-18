@@ -852,6 +852,35 @@ public final class RuleNodeQueryBuilder {
      */
     public static String childQueryForParent(
             RuleNode node, String parentQid, int limit) {
+        return childQueryForParent(node, parentQid, limit, java.util.List.of());
+    }
+
+    /**
+     * The types a membership that includes subclasses admits: the class itself and
+     * every class below it. One small walk down the class hierarchy (341 types under
+     * "star" in 1.4 s), run once per edge rather than per parent (#399).
+     */
+    public static String descendantTypesQuery(String classQid) {
+        return "SELECT DISTINCT ?t WHERE { ?t wdt:P279* wd:"
+                + RuleNode.cleanQid(classQid) + " . }";
+    }
+
+    /**
+     * {@link #childQueryForParent} with the types of a membership that includes
+     * subclasses already resolved ({@link #descendantTypesQuery}). Written as a P279*
+     * path, that membership times out per parent: the endpoint walks the whole tree
+     * below the class. Written as "type is one of these" it is an index lookup, but the
+     * endpoint then starts from every instance of those types, so the query keeps its
+     * written order — the parent's members, then the value filters that keep a few of
+     * them, then the type test on those few (measured on #399: 9–22 s where the path
+     * form timed out). Empty {@code membershipTypes} means unresolved: the path form.
+     */
+    public static String childQueryForParent(
+            RuleNode node, String parentQid, int limit,
+            java.util.Collection<String> membershipTypes) {
+        boolean resolvedTypes = node.hasMembershipFilter()
+                && node.membershipFilterIncludesDescendants()
+                && membershipTypes != null && !membershipTypes.isEmpty();
 
         String pid = RuleNode.cleanPid(node.propertyPid());
         String parentTerm = "wd:" + RuleNode.cleanQid(parentQid);
@@ -933,13 +962,15 @@ public final class RuleNodeQueryBuilder {
             index++;
         }
 
+        if (resolvedTypes) q.rawWhere("hint:Query hint:optimizer \"None\" .");
         q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
-        appendMembershipFilter(q, node);
+        if (!resolvedTypes) appendMembershipFilter(q, node);
         appendSitelinkRequirement(q, node);
         appendAllowedQids(q, node);
         appendExcludedQids(q, node);
         appendPredicateObjectExclusions(q, node);
         appendValueFilterPatterns(q, node, sharedVars);   // shared -> bind ?<var>_s
+        if (resolvedTypes) appendMembershipTypes(q, node, membershipTypes);
         if (includedPatterns.length() > 0) {
             q.rawWhere(includedPatterns.toString());
         }
@@ -993,6 +1024,16 @@ public final class RuleNodeQueryBuilder {
                         + " wd:" + node.membershipQid() + " .");
             }
         }
+    }
+
+    // The resolved form of a membership that includes subclasses: "type is one of
+    // these", tested on the members still standing after the value filters.
+    private static void appendMembershipTypes(WikidataQueryBuilder q, RuleNode node,
+                                              java.util.Collection<String> types) {
+        q.rawWhere("?value wdt:" + node.membershipPid() + " ?membershipFilterValue .");
+        q.rawWhere("FILTER(?membershipFilterValue IN (" + String.join(", ", types.stream()
+                .map(RuleNode::cleanQid).filter(WikidataIds::isQid)
+                .map(qid -> "wd:" + qid).toList()) + "))");
     }
 
     // "Notable only": require an English Wikipedia article. A selective entry

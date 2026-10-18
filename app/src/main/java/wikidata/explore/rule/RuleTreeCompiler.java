@@ -261,6 +261,11 @@ public final class RuleTreeCompiler {
                                                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                                 : childMembership.relationPid());
                     child.membershipQid(childMembership.qids().get(0));
+                    // The edge keeps exactly the class's members: when the class
+                    // includes subclasses (a star typed "G-type subgiant star"), so
+                    // does the edge (#399).
+                    child.membershipFilterIncludesDescendants(
+                            childMembership.includeDescendants());
                 }
                 // "Notable only" is a notability axis (independent of membership):
                 // carry it onto the edge so children are restricted to notable
@@ -522,6 +527,11 @@ public final class RuleTreeCompiler {
                                                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                                 : childMembership.relationPid());
                     child.membershipQid(childMembership.qids().get(0));
+                    // The edge keeps exactly the class's members: when the class
+                    // includes subclasses (a star typed "G-type subgiant star"), so
+                    // does the edge (#399).
+                    child.membershipFilterIncludesDescendants(
+                            childMembership.includeDescendants());
                 }
                 child.requireSitelink(cm.requireSitelink());
 

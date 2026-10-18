@@ -1028,7 +1028,7 @@
           "relationPid": "P31",
           "selectionName": "",
           "selectionId": "",
-          "includeDescendants": false
+          "includeDescendants": true
         },
         "fields": [
           "java.util.ArrayList",
@@ -1139,7 +1139,7 @@
           "operationId": "statement-membership",
           "parameters": {
             "@class": "java.util.ImmutableCollections$MapN",
-            "includeSubclasses": "false",
+            "includeSubclasses": "true",
             "property": "P31",
             "values": "Q523"
           }
@@ -1208,7 +1208,7 @@
                 "operationId": "statement-membership",
                 "parameters": {
                   "@class": "java.util.ImmutableCollections$MapN",
-                  "includeSubclasses": "false",
+                  "includeSubclasses": "true",
                   "property": "P31",
                   "values": "Q523"
                 }
