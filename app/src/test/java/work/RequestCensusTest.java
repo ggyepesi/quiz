@@ -44,6 +44,22 @@ class RequestCensusTest {
                 "the run's own result says it");
     }
 
+    /** The reported shape: a workbench generation is a process run, which ends in
+     *  finishProcess, and its result carried no census at all. */
+    @Test void aProcessRunsResultCountsItsFailedRequestsToo() {
+        LogNode run = new LogNode(LogKind.WORKFLOW, "Generate domain");
+        WorkflowRecorder recorder = new WorkflowRecorder(run);
+        recorder.start();
+        LogNode stars = recorder.beginSubquery(run, "stars <- Q8844", "SPARQL", STARS);
+        attempt(recorder, stars, "[WIKIDATA] SPARQL 25 POST", STARS, LogStatus.FAILED);
+        recorder.completeSubquery(stars, "request timed out", LogStatus.FAILED);
+
+        recorder.finishProcess(LogStatus.PARTIAL, "1295 objects — incomplete", null);
+
+        assertEquals("1295 objects — incomplete\nREQUESTS\t1 request(s) failed: "
+                + "0 recovered by retry or split; 1 gave up (stars <- Q8844)", run.summary());
+    }
+
     @Test void aRunWhoseRequestsAllSucceededSaysNothingMore() {
         LogNode run = new LogNode(LogKind.WORKFLOW, "Generate");
         WorkflowRecorder recorder = new WorkflowRecorder(run);

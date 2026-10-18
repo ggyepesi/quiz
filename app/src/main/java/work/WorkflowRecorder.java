@@ -211,7 +211,9 @@ public class WorkflowRecorder {
     public void finishProcess(
             LogStatus status, String summary, Throwable error) {
         finishTree(root, status, describeError(error));
-        root.complete(status, summary, describeError(error));
+        // A process run (generation from the workbench) ends here, not in finish(), so
+        // its result needs the same census of failed requests (#397).
+        root.complete(status, withRequestCensus(summary), describeError(error));
         fireCompletion(root);
     }
 
