@@ -128,20 +128,36 @@ public final class WikidataAccess implements CancellableWork {
     }
 
     private static final class StructuredRequestLog
-            implements java.util.function.Consumer<String> {
+            implements wikidata.WikidataSparqlClient.CapturableRequestLog {
         private static final java.util.regex.Pattern EVENT = java.util.regex.Pattern.compile(
                 "^(?:\\[([^]]+)])?\\s*\\[(SPARQL|API)\\s+(\\d+)]\\s+"
                         + "(START|GET|OK|ERROR|CANCELLED)(?:\\s*\\n|\\s+)?(.*)$",
                 java.util.regex.Pattern.DOTALL);
+        private static final java.util.regex.Pattern METHOD = java.util.regex.Pattern.compile(
+                "^(GET|POST)\\s*\\n(.*)$", java.util.regex.Pattern.DOTALL);
         private final Datasource fallback;
         private final wikidata.explore.extract.GenerationLog log;
+        private final wikidata.explore.extract.GenerationLog.RequestOwner capturedOwner;
         private final java.util.Map<String, wikidata.explore.extract.GenerationLog.Running>
                 running = new java.util.concurrent.ConcurrentHashMap<>();
 
         private StructuredRequestLog(
                 Datasource fallback, wikidata.explore.extract.GenerationLog log) {
+            this(fallback, log, null);
+        }
+
+        private StructuredRequestLog(
+                Datasource fallback,
+                wikidata.explore.extract.GenerationLog log,
+                wikidata.explore.extract.GenerationLog.RequestOwner capturedOwner) {
             this.fallback = fallback;
             this.log = log == null ? wikidata.explore.extract.GenerationLog.NOOP : log;
+            this.capturedOwner = capturedOwner;
+        }
+
+        /** SPARQL retries may start on a completion thread; keep their original owner. */
+        @Override public java.util.function.Consumer<String> capture() {
+            return new StructuredRequestLog(fallback, log, log.currentRequestOwner());
         }
 
         @Override public void accept(String text) {
@@ -163,7 +179,17 @@ public final class WikidataAccess implements CancellableWork {
             String status = event.group(4);
             String detail = event.group(5) == null ? "" : event.group(5).strip();
             if ("START".equals(status) || "GET".equals(status)) {
-                running.put(key, log.subqueryStarted(title, detail));
+                // The client opens a request with its HTTP method on the first line;
+                // the request itself is the query that follows, the same text the step
+                // it serves carries, so an attempt and its retries read as one request.
+                java.util.regex.Matcher method = METHOD.matcher(detail);
+                if (method.matches()) {
+                    title = title + " " + method.group(1);
+                    detail = method.group(2).strip();
+                }
+                wikidata.explore.extract.GenerationLog.RequestOwner owner =
+                        capturedOwner == null ? log.currentRequestOwner() : capturedOwner;
+                running.put(key, owner.start(title, detail));
                 return;
             }
             wikidata.explore.extract.GenerationLog.Running request = running.remove(key);

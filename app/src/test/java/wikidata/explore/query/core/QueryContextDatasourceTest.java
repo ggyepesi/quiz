@@ -111,6 +111,37 @@ class QueryContextDatasourceTest {
                 "the request remains inspectable without becoming raw top-level text");
     }
 
+    /** The client opens a request with its method on the first line. The log records
+     *  it as an attempt (#397), with the query alone as its request — the same text the
+     *  step it serves carries — and the method in the title. */
+    @Test void anEndpointRequestIsRecordedAsAnAttemptAtItsQuery() {
+        List<String> events = new ArrayList<>();
+        wikidata.explore.extract.GenerationLog log =
+                new wikidata.explore.extract.GenerationLog() {
+                    @Override public void message(String text) {
+                        events.add("MESSAGE " + text);
+                    }
+                    @Override public void subquery(String title, String request,
+                            String summary) {
+                        events.add(title + " REQUEST=" + request + " RESULT=" + summary);
+                    }
+                    @Override public Running requestStarted(String title, String request) {
+                        events.add("ATTEMPT " + title + " REQUEST=" + request);
+                        return subqueryStarted(title, request);
+                    }
+                };
+        java.util.function.Consumer<String> sink = WikidataAccess.structuredRequestLog(
+                Datasource.WIKIDATA, log);
+
+        sink.accept("\n[SPARQL 5] START GET\nSELECT ?s WHERE { }\n");
+        sink.accept("[SPARQL 5] OK rows=1 timeMs=3");
+
+        assertEquals(List.of(
+                "ATTEMPT [WIKIDATA] SPARQL 5 GET REQUEST=SELECT ?s WHERE { }",
+                "[WIKIDATA] SPARQL 5 GET REQUEST=SELECT ?s WHERE { } RESULT=rows=1 timeMs=3"),
+                events);
+    }
+
     @Test void actionApiUrlsBecomeStructuredRequestsRatherThanMessages() {
         List<String> events = new ArrayList<>();
         wikidata.explore.extract.GenerationLog log =

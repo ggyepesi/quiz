@@ -215,13 +215,30 @@ public class WorkflowRecorder {
         fireCompletion(root);
     }
 
-    private void finishTree(LogNode parent, LogStatus status, String error) {
+    private boolean finishTree(LogNode parent, LogStatus status, String error) {
+        boolean abandonedBelow = false;
         for (LogNode child : parent.steps()) {
-            finishTree(child, status, error);
+            boolean childHasAbandonedRequest = finishTree(child, status, error);
+            boolean abandonedRequest = !child.status().isTerminal()
+                    && child.kind() == LogKind.REQUEST && status == LogStatus.OK;
             if (!child.status().isTerminal()) {
-                child.complete(status, null, error);
+                LogStatus childStatus = abandonedRequest
+                        ? LogStatus.FAILED
+                        : status == LogStatus.OK && childHasAbandonedRequest
+                                ? LogStatus.PARTIAL : status;
+                child.complete(childStatus, null, abandonedRequest
+                        ? "Endpoint request ended without OK, ERROR or CANCELLED"
+                        : childHasAbandonedRequest
+                                ? "A child endpoint request ended without a terminal event"
+                                : error);
+            } else if (status == LogStatus.OK && childHasAbandonedRequest
+                    && child.status() == LogStatus.OK) {
+                child.complete(LogStatus.PARTIAL, null,
+                        "A child endpoint request ended without a terminal event");
             }
+            abandonedBelow |= abandonedRequest || childHasAbandonedRequest;
         }
+        return abandonedBelow;
     }
 
     public void complete(
@@ -264,11 +281,24 @@ public class WorkflowRecorder {
                     error);
         }
 
+        // REQUEST nodes are not query-stack entries. Close any whose endpoint never
+        // emitted a terminal event before taking the request census.
+        finishTree(root, terminal, error);
+
         root.complete(
                 terminal,
-                terminal == LogStatus.OK ? summary : null,
+                withRequestCensus(terminal == LogStatus.OK ? summary : error),
                 error);
         fireCompletion(root);
+    }
+
+    /** The run's result names what became of every failed request (#397): a run with
+     *  nine failures used to read exactly like a clean one. */
+    private String withRequestCensus(String result) {
+        String census = RequestCensus.of(root).describe();
+        if (census == null) return result;
+        return (result == null || result.isBlank() ? "" : result + "\n")
+                + "REQUESTS\t" + census;
     }
 
     /**
@@ -309,11 +339,23 @@ public class WorkflowRecorder {
      */
     public LogNode beginSubquery(
             LogNode parent, String title, String queryType, String request) {
+        return begin(LogKind.QUERY, parent, title, queryType, request);
+    }
+
+    /** Like {@link #beginSubquery}, for one attempt at an endpoint ({@link
+     *  LogKind#REQUEST}); finished with {@link #completeSubquery} the same way. */
+    public LogNode beginRequest(
+            LogNode parent, String title, String queryType, String request) {
+        return begin(LogKind.REQUEST, parent, title, queryType, request);
+    }
+
+    private LogNode begin(LogKind kind,
+            LogNode parent, String title, String queryType, String request) {
 
         if (parent == null) {
             return null;
         }
-        LogNode child = new LogNode(LogKind.QUERY, title);
+        LogNode child = new LogNode(kind, title);
         child.queryType(queryType);
         if (request != null && !request.isBlank()) {
             child.appendRequest(request);

@@ -5,7 +5,10 @@ import work.QueryContext;
 import work.LogNode;
 import work.LogStep;
 
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import work.LogStatus;
 
@@ -33,6 +36,12 @@ public final class StepGenerationLog {
     /** With {@code echoPrefix}, every message is also printed to stdout with a
      *  timestamp — for a run whose progress must be readable outside the app. */
     public static GenerationLog of(QueryContext context, LogStep step, String echoPrefix) {
+        // Each thread's stack of the logical work it is running, innermost first. Work
+        // may finish on another thread than the one that started it (the batch executor
+        // commits on its coordinator), so a stack is thread-safe and work is removed
+        // from the stack it was pushed onto, never from the finishing thread's.
+        ThreadLocal<Deque<LogNode>> requestOwners =
+                ThreadLocal.withInitial(ConcurrentLinkedDeque::new);
         return new GenerationLog() {
             @Override public void message(String text) {
                 context.message(text);
@@ -48,7 +57,16 @@ public final class StepGenerationLog {
             }
             @Override public Running subqueryStarted(String title, String request) {
                 echo(echoPrefix, title + "  started");
-                return running(step, title, request, echoPrefix);
+                return logicalWork(step, title, request, echoPrefix, requestOwners);
+            }
+            @Override public Running requestStarted(String title, String request) {
+                echo(echoPrefix, title + "  started");
+                return request(step, currentOwner(requestOwners), title, request, echoPrefix);
+            }
+            @Override public RequestOwner currentRequestOwner() {
+                LogNode owner = currentOwner(requestOwners);
+                return (title, request) -> request(
+                        step, owner, title, request, echoPrefix);
             }
             @Override public Group group(String title) {
                 echo(echoPrefix, title);
@@ -75,12 +93,28 @@ public final class StepGenerationLog {
                         echo(echoPrefix, ti + "  FAILED " + e);
                     }
                     @Override public Running subqueryStarted(String ti, String r) {
+                        return started(ti, r);
+                    }
+                    @Override public Running requestStarted(String ti, String r) {
                         n.incrementAndGet();
                         echo(echoPrefix, ti + "  started");
-                        Running child = running(sub, ti, r, echoPrefix);
+                        return request(sub, currentOwner(requestOwners), ti, r, echoPrefix);
+                    }
+                    @Override public RequestOwner currentRequestOwner() {
+                        LogNode owner = currentOwner(requestOwners);
+                        return (ti, r) -> request(sub, owner, ti, r, echoPrefix);
+                    }
+                    private Running started(String ti, String r) {
+                        n.incrementAndGet();
+                        echo(echoPrefix, ti + "  started");
+                        Running child = logicalWork(
+                                sub, ti, r, echoPrefix, requestOwners);
                         return new Running() {
                             @Override public void done(String summary) {
                                 child.done(summary);
+                            }
+                            @Override public void adapted(String summary) {
+                                child.adapted(summary);
                             }
                             @Override public void failed(String error) {
                                 recordFailure(error);
@@ -106,9 +140,37 @@ public final class StepGenerationLog {
         };
     }
 
-    private static GenerationLog.Running running(
-            LogStep step, String title, String request, String echoPrefix) {
+    private static GenerationLog.Running logicalWork(
+            LogStep step, String title, String request, String echoPrefix,
+            ThreadLocal<Deque<LogNode>> requestOwners) {
         LogNode child = step.beginSubquery(title, request);
+        Deque<LogNode> owners = requestOwners.get();
+        if (child != null) owners.push(child);
+        AtomicBoolean finished = new AtomicBoolean();
+        return new GenerationLog.Running() {
+            @Override public void done(String summary) {
+                finish(() -> step.completeSubquery(child, summary), summary);
+            }
+            @Override public void adapted(String summary) {
+                finish(() -> step.adaptSubquery(child, summary), summary);
+            }
+            @Override public void failed(String error) {
+                finish(() -> step.failSubquery(child, error), "FAILED " + error);
+            }
+            private void finish(Runnable completion, String outcome) {
+                if (!finished.compareAndSet(false, true)) return;
+                completion.run();
+                if (child != null) owners.removeFirstOccurrence(child);
+                echo(echoPrefix, title + "  " + outcome);
+            }
+        };
+    }
+
+    private static GenerationLog.Running request(
+            LogStep step, LogNode owner, String title, String request, String echoPrefix) {
+        LogNode child = owner == null
+                ? step.beginRequest(title, request)
+                : step.beginRequestUnder(owner, title, request);
         return new GenerationLog.Running() {
             @Override public void done(String summary) {
                 step.completeSubquery(child, summary);
@@ -119,6 +181,10 @@ public final class StepGenerationLog {
                 echo(echoPrefix, title + "  FAILED " + error);
             }
         };
+    }
+
+    private static LogNode currentOwner(ThreadLocal<Deque<LogNode>> requestOwners) {
+        return requestOwners.get().peek();
     }
 
     private static void echo(String prefix, String text) {

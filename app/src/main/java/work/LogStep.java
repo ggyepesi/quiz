@@ -75,6 +75,18 @@ public final class LogStep {
                 : null;
     }
 
+    /** {@link #beginSubquery} for one attempt at an endpoint (#397). */
+    public LogNode beginRequest(String title, String request) {
+        return beginRequestUnder(node, title, request);
+    }
+
+    /** Opens an endpoint attempt beneath the logical work that issued it. */
+    public LogNode beginRequestUnder(LogNode parent, String title, String request) {
+        return recorder != null && node != null
+                ? recorder.beginRequest(parent, title, "SPARQL", request)
+                : null;
+    }
+
     public void completeSubquery(LogNode child, String summary) {
         if (recorder != null) {
             recorder.completeSubquery(child, summary, LogStatus.OK);
@@ -86,6 +98,13 @@ public final class LogStep {
             recorder.completeSubquery(child,
                     error == null || error.isBlank() ? "FAILED" : "FAILED: " + error,
                     LogStatus.FAILED);
+        }
+    }
+
+    /** Marks logical work as replaced by smaller work rather than failed. */
+    public void adaptSubquery(LogNode child, String summary) {
+        if (recorder != null) {
+            recorder.completeSubquery(child, summary, LogStatus.ADAPTED);
         }
     }
 

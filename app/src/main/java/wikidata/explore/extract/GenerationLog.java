@@ -26,7 +26,24 @@ public interface GenerationLog {
      *  finish it. Returned by {@link #subqueryStarted}. */
     interface Running {
         void done(String summary);
+        /** The original work was replaced by smaller work and therefore recovered. */
+        default void adapted(String summary) { done(summary); }
         void failed(String error);
+    }
+
+    /**
+     * The request owner active on the calling thread. A transport captures this before
+     * it goes asynchronous, so retries remain children of the work that issued them
+     * without reconstructing ownership from equal query text.
+     */
+    @FunctionalInterface
+    interface RequestOwner {
+        Running start(String title, String request);
+    }
+
+    /** Captures the current logical work as the owner of endpoint attempts. */
+    default RequestOwner currentRequestOwner() {
+        return this::requestStarted;
     }
 
     /**
@@ -45,6 +62,16 @@ public interface GenerationLog {
                 subqueryFailed(title, request, error);
             }
         };
+    }
+
+    /**
+     * {@link #subqueryStarted} for one attempt at an endpoint, as the client reports it
+     * (#397). A step may make several attempts at one request — a retry — so the log
+     * stores which entries are attempts rather than leaving a reader to infer it from a
+     * title. Default: an ordinary sub-query, for sinks that do not tell them apart.
+     */
+    default Running requestStarted(String title, String request) {
+        return subqueryStarted(title, request);
     }
 
     /**
@@ -95,7 +122,7 @@ public interface GenerationLog {
                 return new batch.BatchProgress.Running() {
                     @Override public void detail(String text) { details.add(text); }
                     @Override public void adapted(String summary) {
-                        visible.done(wikidata.api.WikidataApiClient.BatchLog
+                        visible.adapted(wikidata.api.WikidataApiClient.BatchLog
                                 .withDetails(details, summary));
                     }
                     @Override public void done(String summary) {
@@ -152,6 +179,12 @@ public interface GenerationLog {
             }
             @Override public Running subqueryStarted(String ti, String r) {
                 return self.subqueryStarted(ti, r);
+            }
+            @Override public Running requestStarted(String ti, String r) {
+                return self.requestStarted(ti, r);
+            }
+            @Override public RequestOwner currentRequestOwner() {
+                return self.currentRequestOwner();
             }
             @Override public void close() {}
         };

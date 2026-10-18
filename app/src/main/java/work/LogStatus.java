@@ -7,6 +7,7 @@ public enum LogStatus {
     PENDING(""),
     RUNNING("Running..."),
     OK("Done"),
+    ADAPTED("Adapted into smaller work"),
     PARTIAL("Partial results preserved"),
     FAILED("Failed"),
     CANCELLED("Cancelled");
@@ -22,7 +23,8 @@ public enum LogStatus {
     }
 
     public boolean isTerminal() {
-        return this == OK || this == PARTIAL || this == FAILED || this == CANCELLED;
+        return this == OK || this == ADAPTED || this == PARTIAL
+                || this == FAILED || this == CANCELLED;
     }
 
     public static LogStatus from(QueryStatus status) {

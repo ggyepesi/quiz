@@ -17,6 +17,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class WikidataSparqlClient implements AutoCloseable {
+    /** A request log that captures the logical work active when a query is issued. */
+    public interface CapturableRequestLog extends Consumer<String> {
+        Consumer<String> capture();
+    }
+
     public static final String WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
     public static final String DBPEDIA_ENDPOINT  = "https://dbpedia.org/sparql";
     // Stay below the common 8 KiB request-line ceiling. The query itself may be
@@ -172,6 +177,9 @@ public class WikidataSparqlClient implements AutoCloseable {
         System.out.println("SPARQL " + sparql);
         Consumer<String> capturedLog = requestLog;
         if (capturedLog == null) capturedLog = log;
+        if (capturedLog instanceof CapturableRequestLog scoped) {
+            capturedLog = scoped.capture();
+        }
         return queryAsyncWithRetry(sparql, 3, capturedLog);
     }
 

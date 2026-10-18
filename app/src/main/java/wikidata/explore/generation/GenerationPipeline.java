@@ -205,22 +205,22 @@ public class GenerationPipeline {
                         + " ?value p:" + pid + "/psv:" + pid + "/wikibase:quantityUnit ?u ."
                         + " ?u wdt:P5061 ?sym . FILTER(LANG(?sym) = \"en\") }"
                         + " GROUP BY ?sym ORDER BY DESC(?n) LIMIT 1";
+                // A step of its own carrying its query, so its requests are named by
+                // the work they serve and a lookup that gives up says what was not
+                // checked (#397).
+                GenerationLog.Running lookup = (log == null ? GenerationLog.NOOP : log)
+                        .subqueryStarted("Unit of " + cls.className() + "." + f.name(), q);
                 try {
                     List<WikidataBinding> rows = client.query(q);
-                    if (!rows.isEmpty()) {
-                        String sym = rows.get(0).value("sym");
-                        if (sym != null && !sym.isBlank()) {
-                            f.unit(sym);
-                            if (log != null) {
-                                log.message("Unit " + f.name() + " = " + sym + "\n");
-                            }
-                        }
+                    String sym = rows.isEmpty() ? null : rows.get(0).value("sym");
+                    if (sym != null && !sym.isBlank()) {
+                        f.unit(sym);
+                        lookup.done("unit " + sym);
+                    } else {
+                        lookup.done("no unit stated");
                     }
                 } catch (Exception e) {
-                    if (log != null) {
-                        log.message("Unit lookup failed for " + f.name()
-                                + ": " + e.getMessage() + "\n");
-                    }
+                    lookup.failed("unit not checked for " + f.name() + ": " + e.getMessage());
                 }
             }
         }
