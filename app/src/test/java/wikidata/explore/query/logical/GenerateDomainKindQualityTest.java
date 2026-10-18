@@ -7,11 +7,36 @@ import java.util.Set;
 
 import wikidata.explore.generation.GenerationPipeline;
 import wikidata.explore.generation.PopulationSourceExecution;
+import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedProjectModel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GenerateDomainKindQualityTest {
+
+    /** The old summary called this a served-type count and promised that it matched
+     * reload, although it omits statement records and extra class memberships that Save
+     * domain writes. The label must state the narrower fact it actually computes. */
+    @Test void generationSummaryNamesExactlyWhatItCounts() {
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "One");
+        person.type("Person");
+        person.assignClass("Politician");
+        WikidataDynamicObject duplicate = new WikidataDynamicObject("Q1", "One again");
+        duplicate.type("Person");
+        WikidataDynamicObject position = new WikidataDynamicObject("Q2", "Position");
+        position.type("Position");
+        WikidataDynamicObject statement = new WikidataDynamicObject("Q1$P39$1", "Holding");
+        statement.type("OfficeHolding");
+
+        assertEquals("""
+                Generated QID entities by primary class (statement records and additional class memberships are not included):
+                Person\t1
+                Position\t1
+                TOTAL\t2 QID entities across 2 primary class(es); 1 root class query(ies)
+                This is not the saved snapshot census. Save domain writes the complete referenced object graph and reports its class-membership counts in the domain's .counts.tsv file.""",
+                GenerateDomainQuery.generatedQidSummary(
+                        List.of(person, duplicate, position, statement), 1));
+    }
 
     @Test void reconcilesUnavailableKindEvidenceByIdentityNotPopulationCounts() {
         Set<String> unresolved = GenerateDomainQuery.unresolvedKindEvidenceQids(

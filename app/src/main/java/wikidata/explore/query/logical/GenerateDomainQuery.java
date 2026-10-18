@@ -541,35 +541,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                 + "\n");
                     }
 
-                    // Parent summary = a copy-pasteable per-class breakdown of the
-                    // SERVED pool, counted by DISTINCT qid (what the save keeps), so
-                    // two runs diff cleanly and the number matches the reload.
-                    java.util.Map<String, java.util.Set<String>> servedByType =
-                            new java.util.LinkedHashMap<>();
-                    for (WikidataDynamicObject o : pool) {
-                        if (o == null || o.typeName() == null || o.typeName().isBlank()
-                                || "WikidataDynamicObject".equals(o.typeName())) {
-                            continue;
-                        }
-                        String qid = o.qid();
-                        if (qid == null || !WikidataIds.isQid(qid)) {
-                            continue;
-                        }
-                        servedByType.computeIfAbsent(
-                                o.typeName(), k -> new java.util.HashSet<>()).add(qid);
-                    }
-                    int servedTotal = servedByType.values().stream()
-                            .mapToInt(java.util.Set::size).sum();
-                    StringBuilder summary = new StringBuilder();
-                    servedByType.entrySet().stream()
-                            .sorted((a, b) -> Integer.compare(
-                                    b.getValue().size(), a.getValue().size()))
-                            .forEach(e -> summary.append(e.getKey()).append('\t')
-                                    .append(e.getValue().size()).append('\n'));
-                    summary.append("TOTAL\t").append(servedTotal)
-                            .append(" distinct across ").append(servedByType.size())
-                            .append(" served type(s); ").append(classesRun)
-                            .append(" root class query(ies)");
+                    StringBuilder summary = new StringBuilder(
+                            generatedQidSummary(pool, classesRun));
                     java.util.List<String> qualityWarnings = new java.util.ArrayList<>();
                     java.util.Set<String> unavailableQids = new java.util.LinkedHashSet<>();
                     GenerationRun.Quality trackedQuality = qualityTracker.quality();
@@ -652,6 +625,50 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     transformed.projectionChangedInstances()));
                     }
                 });
+    }
+
+    /**
+     * Describes exactly the narrow census shown at the end of generation. It is not the
+     * saved-snapshot census: statements have non-QID identities, and one referenced entity
+     * may claim classes in addition to its primary runtime class. Save domain traverses that
+     * complete field graph and writes its class-membership census to {@code *.counts.tsv}.
+     */
+    static String generatedQidSummary(
+            java.util.Collection<WikidataDynamicObject> pool, int rootClassQueries) {
+        java.util.Map<String, java.util.Set<String>> byPrimaryClass =
+                new java.util.LinkedHashMap<>();
+        if (pool != null) {
+            for (WikidataDynamicObject o : pool) {
+                if (o == null || o.typeName() == null
+                        || o.typeName().isBlank()
+                        || "WikidataDynamicObject".equals(o.typeName())) {
+                    continue;
+                }
+                String qid = o.qid();
+                if (qid == null || !WikidataIds.isQid(qid)) continue;
+                byPrimaryClass.computeIfAbsent(o.typeName(), ignored ->
+                        new java.util.HashSet<>()).add(qid);
+            }
+        }
+
+        int total = byPrimaryClass.values().stream()
+                .mapToInt(java.util.Set::size).sum();
+        StringBuilder summary = new StringBuilder(
+                "Generated QID entities by primary class "
+                        + "(statement records and additional class memberships are not "
+                        + "included):\n");
+        byPrimaryClass.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                .forEach(entry -> summary.append(entry.getKey()).append('\t')
+                        .append(entry.getValue().size()).append('\n'));
+        summary.append("TOTAL\t").append(total)
+                .append(" QID entities across ").append(byPrimaryClass.size())
+                .append(" primary class(es); ").append(rootClassQueries)
+                .append(" root class query(ies)\n")
+                .append("This is not the saved snapshot census. Save domain writes the "
+                        + "complete referenced object graph and reports its class-membership "
+                        + "counts in the domain's .counts.tsv file.");
+        return summary.toString();
     }
 
     /** The configured population and graph-discovered additions are a union, not one
