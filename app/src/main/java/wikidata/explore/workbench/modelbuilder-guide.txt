@@ -139,7 +139,8 @@ Direction (only used for related-object / entity edges)
                 Add Field    creates a NEW field for that property (always new;
                              never overwrites the selected field). Incoming
                              properties get "incoming" direction.
-                Allow/Exclude  NOT wired into generation yet (see GOTCHAS).
+                Allow/Exclude  adds an exact class-population QID bound; generated
+                               queries enforce it.
   WikiProject resolves a Wikipedia/WikiProject category to seed QIDs.
               NOT wired into generation yet (see GOTCHAS).
   Properties  browse the cached Wikidata property store; picking one adds a
@@ -184,26 +185,23 @@ Add child objects with their own fields (e.g. stars)
   3. Generate at Depth >= 1 -> each constellation gets its stars with fields.
 
 Membership filter (e.g. the canonical 88 constellations)
-  P31 = Q8928 membership returns ~92; the 4 extras lack an IAU abbreviation
-  (P1813). Select the abbreviation field -> tick Required -> Apply -> regenerate
-  -> 88.
+  Use P31 into Q8928 or Q4193029, require the IAU abbreviation P1813, and
+  exclude historical Pomum Q4158896. The generated query then returns the 88
+  modern IAU constellations.
 
 
 --------------------------------------------------------------------------------
  GOTCHAS / CURRENT LIMITATIONS
 --------------------------------------------------------------------------------
 
-  - Allow/Exclude QIDs and WikiProject seeds are NOT yet wired into the
-    generated SPARQL (RuleTreeCompiler.compileClass doesn't propagate the
-    model's allowedQids/excludedQids into the rule node). Use Required fields
-    for membership filtering for now.
   - Required on an inlined collection (a "Related entity values" field) is a
     no-op — required filtering only applies to scalar / non-inlined fields.
   - Save everything keys by the PROJECT name. Generating a non-root class and
     then Save everything writes the instances under the project's snapshot name
     (a mismatch for non-root classes).
-  - "Brightest star" (a sort-and-pick) isn't supported — child queries don't
-    ORDER BY ... LIMIT 1. Fetch member stars and sort in the UI, or approximate.
+  - A related-object collection can sort by a child field before applying its
+    per-parent limit. Constellations uses apparentMagnitude ascending before
+    keeping six stars per constellation.
   - The default model loaded on startup is the hard-coded constellationDemo();
     it is NOT loaded from constellations.model.json.
 

@@ -9,14 +9,16 @@
     "itemVar" : "constellation",
     "sourceQid" : "Q8928",
     "sourceLabel" : "constellation",
-    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ "Q4193029" ] ],
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
     "membershipIncludesDescendants" : false,
+    "membershipQualifierCondition" : null,
     "membershipPid" : "",
     "membershipQid" : "",
     "membershipFilterIncludesDescendants" : false,
+    "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
       "requireLabel" : true,
@@ -28,11 +30,12 @@
       "propertyPid" : "P1813",
       "propertyLabel" : "IAU abbreviation",
       "kind" : "AUTO",
-      "optional" : true,
+      "optional" : false,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : "",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -45,6 +48,7 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : "",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -57,6 +61,7 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : "",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -69,6 +74,7 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : "",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -81,6 +87,7 @@
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
       "membershipQid" : "",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -93,13 +100,14 @@
       "direction" : "ITEM_TO_ROOT",
       "membershipPid" : "P31",
       "membershipQid" : "Q8928",
+      "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     } ] ],
     "limit" : 200,
     "sortFieldName" : "",
     "sortDescending" : false,
     "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
-    "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+    "excludedQids" : [ "java.util.LinkedHashSet", [ "Q4158896" ] ],
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
     "valueFilters" : [ "java.util.ArrayList", [ ] ],
     "edges" : [ "java.util.ArrayList", [ {
@@ -116,9 +124,14 @@
         "propertyLabel" : "constellation",
         "direction" : "ITEM_TO_ROOT",
         "membershipIncludesDescendants" : false,
-        "membershipPid" : "P31",
-        "membershipQid" : "Q523",
+        "membershipQualifierCondition" : null,
+        "membershipPid" : "P528",
+        "membershipQid" : "",
         "membershipFilterIncludesDescendants" : false,
+        "membershipFilterQualifierCondition" : {
+          "qualifierPid" : "P972",
+          "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q499138" ] ]
+        },
         "labelConfig" : {
           "@class" : "wikidata.explore.rule.RuleLabelConfig",
           "requireLabel" : true,
@@ -135,6 +148,7 @@
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
           "membershipQid" : "",
+          "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -147,6 +161,7 @@
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
           "membershipQid" : "",
+          "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -159,6 +174,7 @@
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
           "membershipQid" : "",
+          "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
@@ -171,6 +187,7 @@
           "direction" : "ROOT_TO_ITEM",
           "membershipPid" : "",
           "membershipQid" : "",
+          "membershipQualifierCondition" : null,
           "qualifierCondition" : {
             "qualifierPid" : "P1227",
             "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]

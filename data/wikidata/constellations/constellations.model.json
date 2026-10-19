@@ -40,14 +40,14 @@
       "rankDescending" : true,
       "productionKind" : "AUTO",
       "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ "Q4158896" ] ],
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
     },
     "membership" : {
       "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q8928" ] ],
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q8928", "Q4193029" ] ],
       "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
@@ -61,7 +61,7 @@
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
-      "required" : false,
+      "required" : true,
       "filterOperator" : null,
       "filterValue" : null,
       "edgeMembership" : "INHERIT",
@@ -570,7 +570,7 @@
         "@class" : "java.util.ImmutableCollections$MapN",
         "includeSubclasses" : "false",
         "property" : "P31",
-        "values" : "Q8928"
+        "values" : "Q8928,Q4193029"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -664,7 +664,7 @@
           "@class" : "java.util.ImmutableCollections$MapN",
           "includeSubclasses" : "false",
           "property" : "P31",
-          "values" : "Q8928"
+          "values" : "Q8928,Q4193029"
         }
       }
     } ] ],
@@ -722,14 +722,14 @@
       "rankDescending" : true,
       "productionKind" : "AUTO",
       "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
-      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ "Q4158896" ] ],
       "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
       "sourceType" : "SPARQL"
     },
     "membership" : {
       "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q8928" ] ],
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q8928", "Q4193029" ] ],
       "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
@@ -743,7 +743,7 @@
       "unclassedEntity" : false,
       "cardinality" : "SINGLE",
       "renderMode" : "INLINE",
-      "required" : false,
+      "required" : true,
       "filterOperator" : null,
       "filterValue" : null,
       "edgeMembership" : "INHERIT",
@@ -1252,7 +1252,7 @@
         "@class" : "java.util.ImmutableCollections$MapN",
         "includeSubclasses" : "false",
         "property" : "P31",
-        "values" : "Q8928"
+        "values" : "Q8928,Q4193029"
       }
     },
     "sourceBindings" : [ "java.util.ArrayList", [ {
@@ -1346,7 +1346,7 @@
           "@class" : "java.util.ImmutableCollections$MapN",
           "includeSubclasses" : "false",
           "property" : "P31",
-          "values" : "Q8928"
+          "values" : "Q8928,Q4193029"
         }
       }
     } ] ],
@@ -1388,5 +1388,11 @@
     "modelName" : "Person",
     "classNames" : [ "java.util.ArrayList", [ "Person", "Name" ] ]
   } ] ],
-  "buildOperations" : [ "java.util.ArrayList", [ ] ]
+  "buildOperations" : [ "java.util.ArrayList", [ {
+    "declarationId" : "decl:da961f22-ffda-4836-b15c-399288cf1267",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:85284f81-fdbc-4ed2-be1a-6e7f770e70a3",
+    "kind" : "SAVE_PROJECT_RESULT"
+  } ] ]
 }

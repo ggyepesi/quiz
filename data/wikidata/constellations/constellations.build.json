@@ -1,0 +1,21 @@
+{
+  "project" : "Constellations",
+  "builtAt" : "2026-10-19T12:00:53",
+  "outcome" : "CURRENT",
+  "steps" : [ {
+    "operation" : "decl:da961f22-ffda-4836-b15c-399288cf1267",
+    "step" : "Generate project",
+    "state" : "STALE",
+    "because" : [ "the model changed since the snapshot was generated" ],
+    "action" : "RAN",
+    "detail" : "1327 objects"
+  }, {
+    "operation" : "decl:85284f81-fdbc-4ed2-be1a-6e7f770e70a3",
+    "step" : "Save project",
+    "state" : "STALE",
+    "because" : [ "Generate project runs" ],
+    "action" : "RAN",
+    "detail" : "616 instances saved"
+  } ],
+  "files" : [ "Config:    data/wikidata/constellations/constellations.model.json", "Rule tree: data/wikidata/constellations/constellations.ruletree.json", "Instances: 616 -> data/wikidata/constellations/constellations.snapshot.json", "Registry:  data/wikidata/datasets.json", "Counts:    data/wikidata/constellations/constellations.counts.tsv", "Construct inventory: data/wikidata/constellations/constellations.constructs.json" ]
+}

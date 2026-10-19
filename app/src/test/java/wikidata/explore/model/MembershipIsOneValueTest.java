@@ -40,7 +40,8 @@ class MembershipIsOneValueTest {
     }
 
     @Test void aShippedMembershipIsTheOneTheModelAlwaysHad() throws Exception {
-        assertEquals(EntityBound.relation("P31", List.of("Q8928"), false),
+        assertEquals(EntityBound.relation(
+                        "P31", List.of("Q8928", "Q4193029"), false),
                 model("constellations").findClass("Constellation").membership());
         assertEquals(
                 EntityBound.relation("P31", List.of("Q22988604", "Q22989102",
