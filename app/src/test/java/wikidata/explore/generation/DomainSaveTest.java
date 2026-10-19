@@ -111,6 +111,20 @@ class DomainSaveTest {
                 "classification happens after acquisition, outside the rule tree");
     }
 
+    @Test void aDisplayUnitDoesNotMakeRawInstancesStale() {
+        GeneratedProjectModel plain = movies("P840");
+        GeneratedFieldModel measure = plain.rootClass()
+                .addField("length", FieldType.NUMBER, FieldCardinality.SINGLE);
+        measure.mapping().propertyPid("P2043");
+        GeneratedProjectModel labelled = plain.copy();
+        labelled.rootClass().fields().stream()
+                .filter(field -> field.name().equals("length"))
+                .findFirst().orElseThrow().unit("km");
+
+        assertEquals(DomainSave.signature(plain), DomainSave.signature(labelled),
+                "the snapshot stores the number; the current model supplies its suffix");
+    }
+
     @Test void refreshedDescriptiveValuesDoNotChangeTheSignature() {
         GeneratedProjectModel one = modelWithDescriptiveVocabulary("NomineeType", "Q5");
         GeneratedProjectModel refreshed =

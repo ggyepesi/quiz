@@ -1054,7 +1054,7 @@
               "edgeMembership": "INHERIT",
               "sortFieldName": "",
               "sortDescending": false,
-              "unit": "",
+              "unit": "mag",
               "mapping": {
                 "@class": "wikidata.explore.model.FieldSourceMapping",
                 "sourceQid": "",

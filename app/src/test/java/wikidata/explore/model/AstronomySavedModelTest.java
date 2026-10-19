@@ -25,8 +25,13 @@ class AstronomySavedModelTest {
         assertEquals("P18", field(body, "image").mapping().propertyPid());
         assertEquals("P2120", field(body, "radius").mapping().propertyPid());
         assertEquals("P2386", field(body, "diameter").mapping().propertyPid());
-        assertEquals("P1215", field(star, "apparentMagnitude")
-                .mapping().propertyPid());
+        GeneratedFieldModel magnitude = field(star, "apparentMagnitude");
+        assertEquals("P1215", magnitude.mapping().propertyPid());
+        assertEquals("mag", magnitude.unit());
+        assertEquals("P528", star.membership().relationPid());
+        assertTrue(star.membership().qids().isEmpty());
+        assertEquals(new wikidata.QualifierCondition("P972", java.util.List.of("Q499138")),
+                star.membership().qualifierCondition());
         assertEquals("Discovery", model.findClass("Discovery").importedFrom());
         EntityRepresentationRule owner = model.entityRepresentationRules().stream()
                 .filter(rule -> rule.roleClassName().equals("Owner"))

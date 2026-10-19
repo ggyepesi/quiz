@@ -99,6 +99,14 @@ public final class DomainSave {
     private static final java.util.Set<String> OUTSIDE_GENERATION =
             java.util.Set.of("graphSource", "buildOperations");
 
+    /**
+     * Values used while mapping raw snapshot data, but not while acquiring or storing it.
+     * Normalize instead of removing them so models whose persisted value is already the
+     * default keep their existing v2 signature.
+     */
+    private static final java.util.Set<String> MAPPING_ONLY_VALUES =
+            java.util.Set.of("unit");
+
     /** The excluded names, so a guard test can hold this list complete. */
     public static java.util.Set<String> declarationIdentityFields() {
         return DECLARATION_IDENTITY_FIELDS;
@@ -131,6 +139,9 @@ public final class DomainSave {
         if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
             object.remove(DECLARATION_IDENTITY_FIELDS);
             object.remove(OUTSIDE_GENERATION);
+            for (String field : MAPPING_ONLY_VALUES) {
+                if (object.has(field)) object.put(field, "");
+            }
         }
         node.forEach(DomainSave::strip);
     }
