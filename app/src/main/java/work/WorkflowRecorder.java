@@ -210,10 +210,12 @@ public class WorkflowRecorder {
     /** Terminally closes all descendants, including entries abandoned by third-party code. */
     public void finishProcess(
             LogStatus status, String summary, Throwable error) {
-        finishTree(root, status, describeError(error));
+        boolean abandoned = finishTree(root, status, describeError(error));
+        LogStatus terminal = status == LogStatus.OK && abandoned
+                ? LogStatus.PARTIAL : status;
         // A process run (generation from the workbench) ends here, not in finish(), so
         // its result needs the same census of failed requests (#397).
-        root.complete(status, withRequestCensus(summary), describeError(error));
+        root.complete(terminal, withRequestCensus(summary), describeError(error));
         fireCompletion(root);
     }
 
@@ -285,7 +287,8 @@ public class WorkflowRecorder {
 
         // REQUEST nodes are not query-stack entries. Close any whose endpoint never
         // emitted a terminal event before taking the request census.
-        finishTree(root, terminal, error);
+        boolean abandoned = finishTree(root, terminal, error);
+        if (terminal == LogStatus.OK && abandoned) terminal = LogStatus.PARTIAL;
 
         root.complete(
                 terminal,

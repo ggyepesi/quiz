@@ -134,6 +134,21 @@ class RequestCensusTest {
         LogNode request = work.steps().iterator().next();
         assertEquals(LogStatus.FAILED, request.status());
         assertEquals(LogStatus.PARTIAL, work.status());
+        assertEquals(LogStatus.PARTIAL, run.status(),
+                "a workflow that abandoned an endpoint request is not OK");
+        assertTrue(run.summary().contains("1 gave up (Load stars)"), run.summary());
+    }
+
+    @Test void aProcessRunWithAnAbandonedRequestIsPartialToo() {
+        LogNode run = new LogNode(LogKind.WORKFLOW, "Generate");
+        WorkflowRecorder recorder = new WorkflowRecorder(run);
+        recorder.start();
+        LogNode work = recorder.beginQuery("Load stars", "SPARQL", STARS, Map.of());
+        recorder.beginRequest(work, "[WIKIDATA] SPARQL 1 GET", "SPARQL", STARS);
+
+        recorder.finishProcess(LogStatus.OK, "92 objects", null);
+
+        assertEquals(LogStatus.PARTIAL, run.status());
         assertTrue(run.summary().contains("1 gave up (Load stars)"), run.summary());
     }
 
