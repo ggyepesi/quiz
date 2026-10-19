@@ -101,7 +101,7 @@ public final class ReferentClassStamp {
             for (Map.Entry<String, String> e : byField.entrySet()) {
                 if (admittedKinds.contains(e.getValue())) continue;
                 stamped += stamp(o.get(e.getKey()), e.getValue(), model, roleClasses,
-                        originallyTyped);
+                        originallyTyped, e.getValue().equals(o.typeName()));
             }
         }
         // Unrelated role classes have no "most specific" winner. Normalize their
@@ -112,7 +112,7 @@ public final class ReferentClassStamp {
         // still wins — otherwise the in-memory carrier and the persisted type would
         // disagree the moment the model grows a hierarchy.
         originallyTyped.forEach((referent, hadType) -> {
-            if (hadType) return;
+            if (hadType || !referent.hasTypeStamp()) return;
             List<String> classes = referent.directClassNames().stream().sorted().toList();
             if (classes.isEmpty()) return;
             String carrier = mostSpecific(classes, model);
@@ -150,10 +150,20 @@ public final class ReferentClassStamp {
     private static int stamp(Object value, String className,
                              GeneratedProjectModel model,
                              java.util.Set<String> roleClasses,
-                             Map<WikidataDynamicObject, Boolean> originallyTyped) {
+                             Map<WikidataDynamicObject, Boolean> originallyTyped,
+                             boolean selfReference) {
         if (value instanceof WikidataDynamicObject w) {
             if (w.qid() != null && WikidataIds.isQid(w.qid())) {
                 originallyTyped.putIfAbsent(w, w.hasTypeStamp());
+            }
+            // A same-class relation links members; it is not another membership
+            // producer. Otherwise one root constellation plus P47 neighbours (or one
+            // Person plus spouse) closes transitively over everything reachable and
+            // silently changes the authored population. Existing members are already
+            // stamped, so leaving a new bare referent bare preserves the link without
+            // admitting it as another class instance.
+            if (selfReference && !originallyTyped.getOrDefault(w, false)) {
+                return 0;
             }
             // A field declaration constrains its value; it does not reclassify an
             // entity already configured as an unrelated class. In particular, a
@@ -185,7 +195,8 @@ public final class ReferentClassStamp {
         if (value instanceof List<?> list) {
             int n = 0;
             for (Object item : list) {
-                n += stamp(item, className, model, roleClasses, originallyTyped);
+                n += stamp(item, className, model, roleClasses, originallyTyped,
+                        selfReference);
             }
             return n;
         }

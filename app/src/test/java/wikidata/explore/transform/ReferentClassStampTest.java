@@ -96,6 +96,30 @@ class ReferentClassStampTest {
         assertEquals("Nominee", b.typeName());
     }
 
+    @Test void aSameClassReferenceLinksExistingMembersButDoesNotCreateMembers() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
+        entityField(constellation, "sharesBorderWith", "Constellation");
+        model.rootClass(constellation);
+
+        WikidataDynamicObject aquarius =
+                new WikidataDynamicObject("Q10576", "Aquarius");
+        aquarius.type("Constellation");
+        WikidataDynamicObject aquila = new WikidataDynamicObject("Q10519", "Aquila");
+        aquila.type("Constellation");
+        WikidataDynamicObject pomum =
+                new WikidataDynamicObject("Q4158896", "Pomum Imperiale");
+        aquarius.put("sharesBorderWith", List.of(aquila, pomum));
+
+        assertFalse(pomum.hasTypeStamp());
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(aquarius, aquila)));
+        assertTrue(aquila.directClassNames().contains("Constellation"),
+                "an already admitted member remains a resolvable reference");
+        assertFalse(pomum.hasTypeStamp(),
+                "a relation to a nonmember must not expand the class population: "
+                        + pomum.typeName() + " " + pomum.directClassNames());
+    }
+
     @Test void doesNotPutALegacyRoleBackOntoAClassifiedKind() {
         GeneratedProjectModel model = model();
 
