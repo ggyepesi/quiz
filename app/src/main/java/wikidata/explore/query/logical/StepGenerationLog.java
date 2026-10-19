@@ -60,13 +60,18 @@ public final class StepGenerationLog {
                 return logicalWork(step, title, request, echoPrefix, requestOwners);
             }
             @Override public Running requestStarted(String title, String request) {
+                return requestStarted(title, request, null);
+            }
+            @Override public Running requestStarted(
+                    String title, String request, String chain) {
                 echo(echoPrefix, title + "  started");
-                return request(step, currentOwner(requestOwners), title, request, echoPrefix);
+                return request(step, currentOwner(requestOwners), title, request,
+                        echoPrefix, chain);
             }
             @Override public RequestOwner currentRequestOwner() {
                 LogNode owner = currentOwner(requestOwners);
-                return (title, request) -> request(
-                        step, owner, title, request, echoPrefix);
+                return (title, request, chain) -> request(
+                        step, owner, title, request, echoPrefix, chain);
             }
             @Override public Group group(String title) {
                 echo(echoPrefix, title);
@@ -96,13 +101,19 @@ public final class StepGenerationLog {
                         return started(ti, r);
                     }
                     @Override public Running requestStarted(String ti, String r) {
+                        return requestStarted(ti, r, null);
+                    }
+                    @Override public Running requestStarted(
+                            String ti, String r, String chain) {
                         n.incrementAndGet();
                         echo(echoPrefix, ti + "  started");
-                        return request(sub, currentOwner(requestOwners), ti, r, echoPrefix);
+                        return request(sub, currentOwner(requestOwners), ti, r,
+                                echoPrefix, chain);
                     }
                     @Override public RequestOwner currentRequestOwner() {
                         LogNode owner = currentOwner(requestOwners);
-                        return (ti, r) -> request(sub, owner, ti, r, echoPrefix);
+                        return (ti, r, chain) -> request(sub, owner, ti, r, echoPrefix,
+                                chain);
                     }
                     private Running started(String ti, String r) {
                         n.incrementAndGet();
@@ -167,10 +178,11 @@ public final class StepGenerationLog {
     }
 
     private static GenerationLog.Running request(
-            LogStep step, LogNode owner, String title, String request, String echoPrefix) {
+            LogStep step, LogNode owner, String title, String request, String echoPrefix,
+            String retryChain) {
         LogNode child = owner == null
-                ? step.beginRequest(title, request)
-                : step.beginRequestUnder(owner, title, request);
+                ? step.beginRequest(title, request, retryChain)
+                : step.beginRequestUnder(owner, title, request, retryChain);
         return new GenerationLog.Running() {
             @Override public void done(String summary) {
                 step.completeSubquery(child, summary);

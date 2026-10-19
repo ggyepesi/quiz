@@ -351,7 +351,20 @@ public class WorkflowRecorder {
      *  LogKind#REQUEST}); finished with {@link #completeSubquery} the same way. */
     public LogNode beginRequest(
             LogNode parent, String title, String queryType, String request) {
-        return begin(LogKind.REQUEST, parent, title, queryType, request);
+        return beginRequest(parent, title, queryType, request, null, true);
+    }
+
+    /**
+     * An attempt with what the census needs to judge it: {@code retryChain} names the
+     * request it is an attempt at (shared by its retries), and {@code ownedByWork} says
+     * whether {@code parent} is the logical work that issued it rather than a step it was
+     * merely filed under.
+     */
+    public LogNode beginRequest(LogNode parent, String title, String queryType,
+                                String request, String retryChain, boolean ownedByWork) {
+        LogNode node = begin(LogKind.REQUEST, parent, title, queryType, request);
+        if (node != null) node.attempt(retryChain, ownedByWork);
+        return node;
     }
 
     private LogNode begin(LogKind kind,

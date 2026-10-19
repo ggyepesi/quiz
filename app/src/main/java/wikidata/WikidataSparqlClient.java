@@ -180,15 +180,23 @@ public class WikidataSparqlClient implements AutoCloseable {
         if (capturedLog instanceof CapturableRequestLog scoped) {
             capturedLog = scoped.capture();
         }
-        return queryAsyncWithRetry(sparql, 3, capturedLog);
+        return queryAsyncWithRetry(sparql, 3, capturedLog, 0);
     }
 
+    /**
+     * @param chain the attempt number of this request's first attempt, or 0 for the first
+     *              attempt itself. A retry logs it ("retry-of=14"), so the log can tell
+     *              which attempts are one request (#397) without comparing query text.
+     */
     private CompletableFuture<List<WikidataBinding>> queryAsyncWithRetry(
             String sparql,
             int attemptsLeft,
-            Consumer<String> capturedLog) {
+            Consumer<String> capturedLog,
+            long chain) {
 
-        return sendOnceAsync(sparql, capturedLog).handle((result, error) -> {
+        long id = querySeq.incrementAndGet();
+        long first = chain == 0 ? id : chain;
+        return sendOnceAsync(sparql, capturedLog, id, first).handle((result, error) -> {
             if (error == null) {
                 return CompletableFuture.completedFuture(result);
             }
@@ -213,17 +221,17 @@ public class WikidataSparqlClient implements AutoCloseable {
                 Thread.currentThread().interrupt();
             }
 
-            return queryAsyncWithRetry(sparql, attemptsLeft - 1, capturedLog);
+            return queryAsyncWithRetry(sparql, attemptsLeft - 1, capturedLog, first);
         }).thenCompose(f -> f);
     }
 
     private CompletableFuture<List<WikidataBinding>> sendOnceAsync(
-            String sparql, Consumer<String> capturedLog) {
-        long id = querySeq.incrementAndGet();
+            String sparql, Consumer<String> capturedLog, long id, long first) {
         long started = System.nanoTime();
         HttpRequest req = request(endpoint, userAgent, sparql);
 
-        capturedLog.accept("\n[SPARQL " + id + "] START " + req.method() + "\n"
+        capturedLog.accept("\n[SPARQL " + id + "] START " + req.method()
+                           + (first == id ? "" : " retry-of=" + first) + "\n"
                            + sparql
                            + "\n");
 

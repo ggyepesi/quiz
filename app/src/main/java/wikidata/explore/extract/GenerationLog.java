@@ -38,7 +38,13 @@ public interface GenerationLog {
      */
     @FunctionalInterface
     interface RequestOwner {
-        Running start(String title, String request);
+        /** @param retryChain the identity of the request this is an attempt at, shared by
+         *  its retries; null when the transport does not say. */
+        Running start(String title, String request, String retryChain);
+
+        default Running start(String title, String request) {
+            return start(title, request, null);
+        }
     }
 
     /** Captures the current logical work as the owner of endpoint attempts. */
@@ -72,6 +78,11 @@ public interface GenerationLog {
      */
     default Running requestStarted(String title, String request) {
         return subqueryStarted(title, request);
+    }
+
+    /** {@link #requestStarted} with the identity of the request it is an attempt at. */
+    default Running requestStarted(String title, String request, String retryChain) {
+        return requestStarted(title, request);
     }
 
     /**
@@ -182,6 +193,9 @@ public interface GenerationLog {
             }
             @Override public Running requestStarted(String ti, String r) {
                 return self.requestStarted(ti, r);
+            }
+            @Override public Running requestStarted(String ti, String r, String chain) {
+                return self.requestStarted(ti, r, chain);
             }
             @Override public RequestOwner currentRequestOwner() {
                 return self.currentRequestOwner();

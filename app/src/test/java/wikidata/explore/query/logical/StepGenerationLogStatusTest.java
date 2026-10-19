@@ -13,6 +13,7 @@ import work.WorkflowRecorder;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StepGenerationLogStatusTest {
@@ -86,6 +87,8 @@ class StepGenerationLogStatusTest {
         assertEquals("Unit of Star.apparentMagnitude", work.title());
         assertEquals(LogKind.REQUEST, request.kind());
         assertEquals(LogStatus.FAILED, request.status());
+        assertTrue(request.ownedByWork(), "issued by the unit lookup, which owns its outcome");
+        assertEquals("WIKIDATA:SPARQL:1", request.retryChain());
     }
 
     /** The batch executor starts a unit on a worker and finishes it on its coordinator.
@@ -118,6 +121,9 @@ class StepGenerationLogStatusTest {
         assertEquals("wbgetentities 50 entities", batch.title());
         assertTrue(batch.steps().isEmpty(), "the finished batch owns no later request");
         assertEquals(2, query.steps().size(), "the request is the step's own");
+        LogNode unowned = new java.util.ArrayList<>(query.steps()).get(1);
+        assertFalse(unowned.ownedByWork(),
+                "filed under the step, which does not own its outcome (#397)");
     }
 
     @Test void anAdaptiveBatchKeepsItsTerminalOutcome() throws Exception {

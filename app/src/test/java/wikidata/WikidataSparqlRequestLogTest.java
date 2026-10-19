@@ -90,6 +90,27 @@ class WikidataSparqlRequestLogTest {
                 retries.getFirst());
     }
 
+    /** A retry names the attempt that started its request, so the log can tell which
+     *  attempts are one request without comparing query text (#397). */
+    @Test void aRetryNamesTheAttemptThatStartedItsRequest() throws Exception {
+        List<String> lines = Collections.synchronizedList(new ArrayList<>());
+        try (WikidataSparqlClient client = unreachable()) {
+            try (AutoCloseable scope = client.requestLog(lines::add)) {
+                try { client.query("SELECT ?chained"); } catch (Exception ignored) { }
+            }
+        }
+
+        List<String> starts = lines.stream().filter(line -> line.contains("] START "))
+                .toList();
+        assertTrue(starts.size() >= 2, "the unreachable request is retried: " + lines);
+        java.util.regex.Matcher first = java.util.regex.Pattern
+                .compile("(?s).*\\[SPARQL (\\d+)\\] START (GET|POST)\\n.*")
+                .matcher(starts.get(0));
+        assertTrue(first.matches(), "the first attempt names no chain: " + starts.get(0));
+        assertTrue(starts.get(1).contains("retry-of=" + first.group(1) + "\n"),
+                "the retry names the first attempt: " + starts.get(1));
+    }
+
     private static WikidataSparqlClient unreachable() {
         return new WikidataSparqlClient("test", 1, "https://example.invalid/sparql");
     }

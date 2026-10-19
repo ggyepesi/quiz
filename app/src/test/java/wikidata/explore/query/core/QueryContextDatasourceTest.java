@@ -142,6 +142,34 @@ class QueryContextDatasourceTest {
                 events);
     }
 
+    /** Every attempt at one request carries the identity of its first attempt (#397). */
+    @Test void aRetryCarriesTheChainOfTheAttemptItRetries() {
+        List<String> chains = new ArrayList<>();
+        wikidata.explore.extract.GenerationLog log =
+                new wikidata.explore.extract.GenerationLog() {
+                    @Override public void message(String text) { }
+                    @Override public void subquery(String title, String request,
+                            String summary) { }
+                    @Override public Running requestStarted(
+                            String title, String request, String chain) {
+                        chains.add(title + " " + chain + " REQUEST=" + request);
+                        return subqueryStarted(title, request);
+                    }
+                };
+        java.util.function.Consumer<String> sink = WikidataAccess.structuredRequestLog(
+                Datasource.WIKIDATA, log);
+
+        sink.accept("\n[SPARQL 14] START GET\nSELECT ?s WHERE { }\n");
+        sink.accept("[SPARQL 14] ERROR timeout");
+        sink.accept("\n[SPARQL 15] START GET retry-of=14\nSELECT ?s WHERE { }\n");
+        sink.accept("[SPARQL 15] OK rows=1 timeMs=3");
+
+        assertEquals(List.of(
+                "[WIKIDATA] SPARQL 14 GET WIKIDATA:SPARQL:14 REQUEST=SELECT ?s WHERE { }",
+                "[WIKIDATA] SPARQL 15 GET WIKIDATA:SPARQL:14 REQUEST=SELECT ?s WHERE { }"),
+                chains);
+    }
+
     @Test void actionApiUrlsBecomeStructuredRequestsRatherThanMessages() {
         List<String> events = new ArrayList<>();
         wikidata.explore.extract.GenerationLog log =

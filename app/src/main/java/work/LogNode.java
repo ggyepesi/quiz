@@ -256,6 +256,25 @@ public class LogNode extends ViewableAdapter {
     // --- accessors ---
 
     public LogKind kind() { return kind; }
+
+    // For an endpoint attempt (LogKind.REQUEST, #397): the identity of the request it is
+    // an attempt at — its client's first attempt — shared by every retry; and whether
+    // logical work issued it. An attempt filed straight under a step has no owner whose
+    // outcome could say it was recovered.
+    @Hidden
+    private String retryChain;
+
+    @Hidden
+    private boolean ownedByWork;
+
+    public String retryChain() { return retryChain; }
+
+    public boolean ownedByWork() { return ownedByWork; }
+
+    void attempt(String retryChain, boolean ownedByWork) {
+        this.retryChain = retryChain == null || retryChain.isBlank() ? null : retryChain;
+        this.ownedByWork = ownedByWork;
+    }
     public String title() { return title; }
     public String queryType() { return queryType; }
     public String description() { return description; }

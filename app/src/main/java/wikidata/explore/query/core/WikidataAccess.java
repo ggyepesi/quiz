@@ -134,7 +134,8 @@ public final class WikidataAccess implements CancellableWork {
                         + "(START|GET|OK|ERROR|CANCELLED)(?:\\s*\\n|\\s+)?(.*)$",
                 java.util.regex.Pattern.DOTALL);
         private static final java.util.regex.Pattern METHOD = java.util.regex.Pattern.compile(
-                "^(GET|POST)\\s*\\n(.*)$", java.util.regex.Pattern.DOTALL);
+                "^(GET|POST)(?:\\s+retry-of=(\\d+))?\\s*\\n(.*)$",
+                java.util.regex.Pattern.DOTALL);
         private final Datasource fallback;
         private final wikidata.explore.extract.GenerationLog log;
         private final wikidata.explore.extract.GenerationLog.RequestOwner capturedOwner;
@@ -182,14 +183,22 @@ public final class WikidataAccess implements CancellableWork {
                 // The client opens a request with its HTTP method on the first line;
                 // the request itself is the query that follows, the same text the step
                 // it serves carries, so an attempt and its retries read as one request.
+                // A retry names the attempt that started its request ("retry-of=14"):
+                // every attempt at one request carries the same chain identity, so a
+                // failure followed by a successful retry reads as recovered (#397).
+                String chain = key;
                 java.util.regex.Matcher method = METHOD.matcher(detail);
                 if (method.matches()) {
                     title = title + " " + method.group(1);
-                    detail = method.group(2).strip();
+                    if (method.group(2) != null) {
+                        chain = (source == null ? "" : source) + ":" + event.group(2)
+                                + ":" + method.group(2);
+                    }
+                    detail = method.group(3).strip();
                 }
                 wikidata.explore.extract.GenerationLog.RequestOwner owner =
                         capturedOwner == null ? log.currentRequestOwner() : capturedOwner;
-                running.put(key, owner.start(title, detail));
+                running.put(key, owner.start(title, detail, chain));
                 return;
             }
             wikidata.explore.extract.GenerationLog.Running request = running.remove(key);

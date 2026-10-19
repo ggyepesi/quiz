@@ -75,15 +75,27 @@ public final class LogStep {
                 : null;
     }
 
-    /** {@link #beginSubquery} for one attempt at an endpoint (#397). */
+    /** {@link #beginSubquery} for one attempt at an endpoint that no logical work
+     *  issued (#397): it is filed under this step, which does not own its outcome. */
     public LogNode beginRequest(String title, String request) {
-        return beginRequestUnder(node, title, request);
+        return beginRequest(title, request, null);
+    }
+
+    public LogNode beginRequest(String title, String request, String retryChain) {
+        return recorder != null && node != null
+                ? recorder.beginRequest(node, title, "SPARQL", request, retryChain, false)
+                : null;
     }
 
     /** Opens an endpoint attempt beneath the logical work that issued it. */
     public LogNode beginRequestUnder(LogNode parent, String title, String request) {
+        return beginRequestUnder(parent, title, request, null);
+    }
+
+    public LogNode beginRequestUnder(LogNode parent, String title, String request,
+                                     String retryChain) {
         return recorder != null && node != null
-                ? recorder.beginRequest(parent, title, "SPARQL", request)
+                ? recorder.beginRequest(parent, title, "SPARQL", request, retryChain, true)
                 : null;
     }
 

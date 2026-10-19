@@ -152,6 +152,61 @@ class RequestCensusTest {
         assertTrue(run.summary().contains("1 gave up (Load stars)"), run.summary());
     }
 
+    /** The reported shape: a request issued directly inside a step, by code that swallows
+     *  its error, with no logical work of its own. The step ends OK; that says nothing
+     *  about the request, which nothing retried. */
+    @Test void anUnownedFailureIsNotRecoveredByItsStepEndingOk() {
+        LogNode run = new LogNode(LogKind.WORKFLOW, "Generate");
+        WorkflowRecorder recorder = new WorkflowRecorder(run);
+        recorder.start();
+        LogNode step = recorder.beginQuery("Resolve units", "SPARQL", "", Map.of());
+        unowned(recorder, step, "[WIKIDATA] SPARQL 2 GET", UNIT, "WIKIDATA:SPARQL:2",
+                LogStatus.FAILED);
+        recorder.complete(step, LogStatus.OK, "done", null);
+
+        assertEquals("1 request(s) failed: 0 recovered by retry or split; 1 gave up "
+                + "([WIKIDATA] SPARQL 2 GET)", RequestCensus.of(run).describe());
+    }
+
+    /** The same unowned request, retried by its transport: the chain says it is one
+     *  request, and its later attempt succeeded. */
+    @Test void anUnownedFailureIsRecoveredByItsOwnRetry() {
+        LogNode run = new LogNode(LogKind.WORKFLOW, "Generate");
+        WorkflowRecorder recorder = new WorkflowRecorder(run);
+        recorder.start();
+        LogNode step = recorder.beginQuery("Resolve units", "SPARQL", "", Map.of());
+        unowned(recorder, step, "[WIKIDATA] SPARQL 2 GET", UNIT, "WIKIDATA:SPARQL:2",
+                LogStatus.FAILED);
+        unowned(recorder, step, "[WIKIDATA] SPARQL 3 GET", UNIT, "WIKIDATA:SPARQL:2",
+                LogStatus.OK);
+        recorder.complete(step, LogStatus.OK, "done", null);
+
+        assertEquals("1 request(s) failed: 1 recovered by retry or split "
+                + "([WIKIDATA] SPARQL 2 GET)", RequestCensus.of(run).describe());
+    }
+
+    /** A success of a DIFFERENT request with the same text is not a retry. */
+    @Test void anotherRequestWithTheSameTextIsNotItsRetry() {
+        LogNode run = new LogNode(LogKind.WORKFLOW, "Generate");
+        WorkflowRecorder recorder = new WorkflowRecorder(run);
+        recorder.start();
+        LogNode step = recorder.beginQuery("Resolve units", "SPARQL", "", Map.of());
+        unowned(recorder, step, "[WIKIDATA] SPARQL 2 GET", UNIT, "WIKIDATA:SPARQL:2",
+                LogStatus.FAILED);
+        unowned(recorder, step, "[WIKIDATA] SPARQL 7 GET", UNIT, "WIKIDATA:SPARQL:7",
+                LogStatus.OK);
+        recorder.complete(step, LogStatus.OK, "done", null);
+
+        assertTrue(RequestCensus.of(run).describe().endsWith("1 gave up "
+                + "([WIKIDATA] SPARQL 2 GET)"), RequestCensus.of(run).describe());
+    }
+
+    private static void unowned(WorkflowRecorder recorder, LogNode step, String title,
+                                String request, String chain, LogStatus status) {
+        LogNode node = recorder.beginRequest(step, title, "SPARQL", request, chain, false);
+        recorder.completeSubquery(node, status == LogStatus.OK ? "OK" : "FAILED", status);
+    }
+
     private static void attempt(WorkflowRecorder recorder, LogNode parent, String title,
                                 String request, LogStatus status) {
         LogNode node = recorder.beginRequest(parent, title, "SPARQL", request);
