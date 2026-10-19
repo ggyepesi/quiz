@@ -2288,7 +2288,8 @@ public class ModelBuilderFrame extends JFrame {
                     + ". Use Generate domain; it has no independent query.";
         }
         EntityBound membership = c.effectiveMembership(projectModel);
-        if (!membership.qids().isEmpty() || !c.seedQids().isEmpty()) {
+        if (!membership.qids().isEmpty() || membership.qualifierCondition() != null
+                || !c.seedQids().isEmpty()) {
             return null;
         }
         String rel = membership.relationPid();
@@ -3224,10 +3225,11 @@ public class ModelBuilderFrame extends JFrame {
         c.membership().qids().stream().skip(1)
                 .filter(existing -> !existing.equals(qid)).forEach(targets::add);
         String pid = c.membership().relationPid();
-        c.membership(EntityBound.relation(
+        c.membership(EntityBound.qualifiedRelation(
                 pid.isBlank()
                         ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid,
-                targets, c.membership().includeDescendants()));
+                targets, c.membership().includeDescendants(),
+                c.membership().qualifierCondition()));
         c.instanceMapping().sourceLabel(label == null ? "" : label);
         sourceWorkbench.edit(c);
         modelChanged();
@@ -3274,8 +3276,9 @@ public class ModelBuilderFrame extends JFrame {
         String pid = c.membership().relationPid();
         pid = pid.isBlank()
                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid;
-        c.membership(EntityBound.relation(
-                pid, targets, c.membership().includeDescendants()));
+        c.membership(EntityBound.qualifiedRelation(
+                pid, targets, c.membership().includeDescendants(),
+                c.membership().qualifierCondition()));
         sourceWorkbench.edit(c);
         modelChanged();
         logWindow.info("Added " + added + " relation target(s) to \""

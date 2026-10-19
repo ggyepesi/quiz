@@ -176,6 +176,14 @@ public final class ModelExplanationFactory {
             EntityBound membership,
             RuleDirection direction) {
         String entity = "?" + variable(clazz.className());
+        if (membership.qualifierCondition() != null) {
+            wikidata.QualifierCondition condition = membership.qualifierCondition();
+            return entity + " p:" + membership.relationPid() + " [ pq:"
+                    + condition.qualifierPid() + " "
+                    + condition.allowedQids().stream().map(qid -> "wd:" + qid)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                    + " ]";
+        }
         // Every target it may point into, which is what a bound naming several means.
         String target = membership.qids().isEmpty()
                 ? "?membershipTarget"

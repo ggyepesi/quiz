@@ -77,6 +77,22 @@ class EntityBoundTest {
                 "P279 closure the single-QID type filter could not express at all");
     }
 
+    @Test void aQualifiedStatementCanBoundMembershipWithoutAConfiguredMainValue() {
+        wikidata.QualifierCondition catalogue =
+                new wikidata.QualifierCondition("P972", List.of("Q499138"));
+        EntityBound bound = EntityBound.qualifiedRelation(
+                "P528", List.of(), false, catalogue);
+
+        assertTrue(bound.bounded());
+        assertEquals(List.of(), bound.qids());
+        assertEquals(catalogue, bound.qualifierCondition());
+        var request = bound.toRequest("wikidata").orElseThrow();
+        assertEquals("P528", request.relationId());
+        assertEquals(new datasource.api.acquisition.RelationCondition("P972",
+                        List.of(datasource.EntityRef.wikidata("Q499138"))),
+                request.relationCondition());
+    }
+
     /**
      * A vocabulary bound is a REFERENCE. Resolving it to its members here would freeze
      * them, so editing the vocabulary would stop reaching the ends bounded by it — the

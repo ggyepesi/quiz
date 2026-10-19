@@ -255,8 +255,8 @@ public final class RuleTreeQueries {
         q.where(RuleIncludedFieldSparql.valuePattern(
                 field, "?" + parentVar, "?" + valueVar));
         if (field.hasMembership()) {
-            q.where("?" + valueVar + " wdt:" + field.membershipPid()
-                    + " wd:" + field.membershipQid() + " .");
+            q.where(RuleIncludedFieldSparql.membershipPattern(
+                    field, "?" + valueVar, valueVar));
         }
     }
 

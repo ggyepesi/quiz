@@ -121,10 +121,18 @@ public final class RuleTreeExplainer {
         String inner = indent + "    ";
 
         if (child.hasMembershipFilter()) {
-            sb.append(inner).append("• only where ")
-              .append(child.membershipPid()).append(" = ")
-              .append(child.membershipQid())
-              .append("  (must be a ").append(lower(childName)).append(")\n");
+            sb.append(inner).append("• only where ");
+            if (child.hasQualifiedMembershipFilter()) {
+                wikidata.QualifierCondition condition =
+                        child.membershipFilterQualifierCondition();
+                sb.append("statement ").append(child.membershipPid())
+                        .append(" has qualifier ").append(condition.qualifierPid())
+                        .append(" = ").append(String.join(", ", condition.allowedQids()));
+            } else {
+                sb.append(child.membershipPid()).append(" = ")
+                        .append(child.membershipQid());
+            }
+            sb.append("  (must be a ").append(lower(childName)).append(")\n");
         }
 
         sb.append(inner).append("• up to ").append(child.limit())
@@ -138,6 +146,12 @@ public final class RuleTreeExplainer {
     // ------------------------------------------------------------------
 
     private static String membershipPhrase(RuleNode node) {
+        if (node.hasQualifiedMembership()) {
+            wikidata.QualifierCondition condition = node.membershipQualifierCondition();
+            return "statement " + node.propertyPid() + " with "
+                    + condition.qualifierPid() + " = "
+                    + String.join(", ", condition.allowedQids());
+        }
         String prop = labelPid(node.propertyLabel(), node.propertyPid());
         String src  = labelQid(node.sourceLabel(), node.sourceQid());
         if (prop.isBlank() && src.isBlank()) {

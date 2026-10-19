@@ -55,6 +55,8 @@ public final class RuleTreeCompiler {
                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY : pid);
         node.membershipIncludesDescendants(
                 membership != null && membership.includeDescendants());
+        node.membershipQualifierCondition(
+                membership == null ? null : membership.qualifierCondition());
     }
 
     private static RuleNode compileClass(
@@ -265,11 +267,15 @@ public final class RuleTreeCompiler {
                 // sourceQid and the rest were the additional types.
                 EntityBound childMembership = childClass.effectiveMembership(project);
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
-                        && !childMembership.qids().isEmpty()) {
+                        && (!childMembership.qids().isEmpty()
+                                || childMembership.qualifierCondition() != null)) {
                     child.membershipPid(childMembership.relationPid().isBlank()
                                                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                                 : childMembership.relationPid());
-                    child.membershipQid(childMembership.qids().get(0));
+                    child.membershipQid(childMembership.qids().isEmpty()
+                            ? "" : childMembership.qids().get(0));
+                    child.membershipFilterQualifierCondition(
+                            childMembership.qualifierCondition());
                     // The edge keeps exactly the class's members: when the class
                     // includes subclasses (a star typed "G-type subgiant star"), so
                     // does the edge (#399).
@@ -313,11 +319,13 @@ public final class RuleTreeCompiler {
                 GeneratedClassModel refClass = project.findClass(field.entityClassName());
                 if (refClass != null) {
                     EntityBound bound = refClass.effectiveMembership(project);
-                    if (!bound.qids().isEmpty()) {
+                    if (!bound.qids().isEmpty() || bound.qualifierCondition() != null) {
                         included.membershipPid(bound.relationPid().isBlank()
                                                        ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                           : bound.relationPid());
-                        included.membershipQid(bound.qids().get(0));
+                        included.membershipQid(bound.qids().isEmpty()
+                                ? "" : bound.qids().get(0));
+                        included.membershipQualifierCondition(bound.qualifierCondition());
                     }
                 }
             }
@@ -537,11 +545,15 @@ public final class RuleTreeCompiler {
                 CompiledFieldSource cm = childClass.sourceMapping();
                 EntityBound childMembership = childClass.membership();
                 if (field.edgeMembership() == EdgeMembershipMode.INHERIT
-                        && !childMembership.qids().isEmpty()) {
+                        && (!childMembership.qids().isEmpty()
+                                || childMembership.qualifierCondition() != null)) {
                     child.membershipPid(childMembership.relationPid().isBlank()
                                                 ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                                 : childMembership.relationPid());
-                    child.membershipQid(childMembership.qids().get(0));
+                    child.membershipQid(childMembership.qids().isEmpty()
+                            ? "" : childMembership.qids().get(0));
+                    child.membershipFilterQualifierCondition(
+                            childMembership.qualifierCondition());
                     // The edge keeps exactly the class's members: when the class
                     // includes subclasses (a star typed "G-type subgiant star"), so
                     // does the edge (#399).
@@ -573,11 +585,13 @@ public final class RuleTreeCompiler {
                         field.configuredEntityClassName()).orElse(null);
                 if (refClass != null) {
                     EntityBound bound = refClass.membership();
-                    if (!bound.qids().isEmpty()) {
+                    if (!bound.qids().isEmpty() || bound.qualifierCondition() != null) {
                         included.membershipPid(bound.relationPid().isBlank()
                                                        ? wikidata.explore.model.MembershipPattern.DEFAULT_PROPERTY
                                           : bound.relationPid());
-                        included.membershipQid(bound.qids().get(0));
+                        included.membershipQid(bound.qids().isEmpty()
+                                ? "" : bound.qids().get(0));
+                        included.membershipQualifierCondition(bound.qualifierCondition());
                     }
                 }
             }

@@ -61,15 +61,21 @@ final class PopulationSourceBindings {
             for (String qid : binding.parameter("values").split("[,\\s|]+")) {
                 addQid(values, qid);
             }
-            if (!WikidataIds.isPid(pid) || values.isEmpty()) {
+            wikidata.QualifierCondition condition = wikidata.QualifierCondition.of(
+                    clean(binding.parameter("conditionProperty")).toUpperCase(),
+                    parseQids(binding.parameter("conditionValues")));
+            if (!WikidataIds.isPid(pid)
+                    || (values.isEmpty() && condition == null)
+                    || (condition != null && !condition.complete())) {
                 throw new IllegalArgumentException(
-                        "A statement-membership binding requires a PID and value QIDs");
+                        "A statement-membership binding requires a PID and either value "
+                                + "QIDs or a complete qualifier condition");
             }
             clazz.seedQids().clear();
             clazz.instanceMapping().sourceLabel("");
             clazz.instanceMapping().propertyLabel("");
-            clazz.membership(EntityBound.relation(pid, values,
-                    Boolean.parseBoolean(binding.parameter("includeSubclasses"))));
+            clazz.membership(EntityBound.qualifiedRelation(pid, values,
+                    Boolean.parseBoolean(binding.parameter("includeSubclasses")), condition));
         } else {
             throw new IllegalArgumentException(
                     "Unsupported Wikidata class-population operation: "
@@ -106,12 +112,17 @@ final class PopulationSourceBindings {
             return null;
         }
 
-        if (WikidataIds.isPid(pid) && !targets.isEmpty()) {
+        wikidata.QualifierCondition condition = membership.qualifierCondition();
+        if (WikidataIds.isPid(pid) && (!targets.isEmpty() || condition != null)) {
             LinkedHashMap<String, String> parameters = new LinkedHashMap<>();
             parameters.put("property", pid);
             parameters.put("values", String.join(",", targets));
             parameters.put("includeSubclasses",
                     String.valueOf(membership.includeDescendants()));
+            if (condition != null) {
+                parameters.put("conditionProperty", condition.qualifierPid());
+                parameters.put("conditionValues", String.join(",", condition.allowedQids()));
+            }
             return new SourceRecipe(WikidataDatasourceProvider.ID,
                     WikidataDatasourceProvider.STATEMENT_MEMBERSHIP, parameters);
         }
@@ -143,6 +154,13 @@ final class PopulationSourceBindings {
     private static void addQid(List<String> result, String value) {
         String qid = clean(value).toUpperCase();
         if (WikidataIds.isQid(qid) && !result.contains(qid)) result.add(qid);
+    }
+
+    private static List<String> parseQids(String text) {
+        List<String> result = new ArrayList<>();
+        if (text == null) return result;
+        for (String value : text.split("[,\\s|]+")) addQid(result, value);
+        return result;
     }
 
     private static void clearMembership(GeneratedClassModel clazz) {

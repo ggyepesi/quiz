@@ -51,6 +51,24 @@ class PopulationSourceBindingTest {
         assertEquals(MembershipPattern.MULTI_TYPE, MembershipPattern.of(clazz));
     }
 
+    @Test void qualifiedStatementMembershipRoundTripsThroughTheSameSourceRecipe() {
+        GeneratedClassModel clazz = new GeneratedClassModel("Star");
+        clazz.populationSource(new SourceRecipe("wikidata", "statement-membership",
+                java.util.Map.of("property", "P528", "values", "",
+                        "includeSubclasses", "false",
+                        "conditionProperty", "P972",
+                        "conditionValues", "Q499138")));
+
+        assertEquals(MembershipPattern.QUALIFIED_STATEMENT, MembershipPattern.of(clazz));
+        assertEquals(List.of(), clazz.membership().qids());
+        assertEquals(new wikidata.QualifierCondition("P972", List.of("Q499138")),
+                clazz.membership().qualifierCondition());
+        SourceRecipe projected = clazz.populationSource();
+        assertEquals("P528", projected.parameter("property"));
+        assertEquals("P972", projected.parameter("conditionProperty"));
+        assertEquals("Q499138", projected.parameter("conditionValues"));
+    }
+
     @Test void clearingAClassPopulationDoesNotEraseStatementProduction() {
         GeneratedClassModel clazz = new GeneratedClassModel("Nomination");
         StatementClassSource statement = new StatementClassSource();

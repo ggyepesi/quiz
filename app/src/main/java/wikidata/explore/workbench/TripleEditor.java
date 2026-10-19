@@ -68,6 +68,11 @@ final class TripleEditor extends JPanel {
                     + "object values are retained on those subjects.");
     private final JTextField property = new JTextField(6);
     private final JLabel propertyLabel = new JLabel(" ");
+    private final JTextField membershipQualifierProperty = new JTextField(6);
+    private final JTextField membershipQualifierValues = new JTextField(14);
+    private final JPanel membershipQualifierSection = new JPanel(new GridBagLayout());
+    private final JPanel membershipQualifierRow = new JPanel(
+            new FlowLayout(FlowLayout.LEFT, 4, 0));
     private final JComboBox<String> population = new JComboBox<>();
     private final JPanel propertyActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
     private final JPanel objectActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -120,6 +125,24 @@ final class TripleEditor extends JPanel {
         propertyRow.add(propertyLabel);
         GridBagUtils.labeledRow(propertyColumn, c, 0,
                 "Wikidata property:", propertyRow);
+
+        membershipQualifierProperty.setToolTipText(
+                "Optional qualifier property that the membership statement must carry.");
+        membershipQualifierValues.setToolTipText(
+                "Allowed qualifier-value QIDs, separated by spaces or commas.");
+        membershipQualifierRow.add(new JLabel("Property:"));
+        membershipQualifierRow.add(membershipQualifierProperty);
+        membershipQualifierRow.add(new JLabel("Allowed values:"));
+        membershipQualifierRow.add(membershipQualifierValues);
+        GridBagUtils.labeledRow(membershipQualifierSection, c, 0,
+                "Statement qualifier (optional):", membershipQualifierRow);
+        GridBagConstraints qualifierCell = (GridBagConstraints) c.clone();
+        qualifierCell.gridx = 0;
+        qualifierCell.gridy = 1;
+        qualifierCell.gridwidth = 2;
+        qualifierCell.fill = GridBagConstraints.HORIZONTAL;
+        qualifierCell.weightx = 1;
+        propertyColumn.add(membershipQualifierSection, qualifierCell);
 
         JPanel objectRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         objectRow.add(object);
@@ -188,6 +211,7 @@ final class TripleEditor extends JPanel {
         discoveryObject.selections(() -> selections);
         object.descendantOptionForExplicitQids(false);
         discoveryObject.setVisible(false);
+        membershipQualifierSection.setVisible(false);
         subject.consequence(null);
         object.consequence(null);
         if (clazz.ownedClass()) {
@@ -213,6 +237,7 @@ final class TripleEditor extends JPanel {
     // ---- Statement: every element authored ----
 
     private void showStatement(GeneratedClassModel clazz, GeneratedProjectModel project) {
+        membershipQualifierSection.setVisible(false);
         StatementClassSource source = clazz.statementSource();
         sourceSubject.setVisible(false);
         subject.setVisible(true);
@@ -271,6 +296,12 @@ final class TripleEditor extends JPanel {
 
     private void showMembership(GeneratedClassModel clazz) {
         EntityBound membership = clazz.membership();
+        membershipQualifierSection.setVisible(true);
+        wikidata.QualifierCondition condition = membership.qualifierCondition();
+        membershipQualifierProperty.setText(
+                condition == null ? "" : condition.qualifierPid());
+        membershipQualifierValues.setText(condition == null ? ""
+                : String.join(" ", condition.allowedQids()));
 
         subject.setVisible(false);
         discoveryObject.setVisible(false);
@@ -309,14 +340,28 @@ final class TripleEditor extends JPanel {
         String pid = RuleNode.cleanPid(property.getText());
         if (!WikidataIds.isPid(pid)) pid = MembershipPattern.DEFAULT_PROPERTY;
         List<String> targets = objectQids();
-        unappliedDetail = targets.isEmpty()
-                && !MembershipPattern.DEFAULT_PROPERTY.equals(pid)
-                ? "property " + pid + " was not saved — add an object"
-                : "";
-        clazz.membership(targets.isEmpty()
+        List<String> qualifierValues = parseQids(membershipQualifierValues.getText());
+        wikidata.QualifierCondition condition = wikidata.QualifierCondition.of(
+                RuleNode.cleanPid(membershipQualifierProperty.getText()), qualifierValues);
+        boolean invalidCondition = condition != null && !condition.complete();
+        if (invalidCondition) condition = null;
+        boolean incompatibleClosure = condition != null && object.includesDescendants();
+        if (incompatibleClosure) {
+            unappliedDetail = "membership was not saved — a statement qualifier cannot "
+                    + "be combined with subclass expansion";
+            return;
+        }
+        unappliedDetail = invalidCondition
+                ? "qualifier condition was not saved — enter one property and at least one QID"
+                : targets.isEmpty() && condition == null
+                        && !MembershipPattern.DEFAULT_PROPERTY.equals(pid)
+                        ? "property " + pid
+                                + " was not saved — add an object or qualifier condition"
+                        : "";
+        clazz.membership(targets.isEmpty() && condition == null
                 ? EntityBound.unbounded()
-                : EntityBound.relation(pid, targets,
-                        object.includesDescendants()));
+                : EntityBound.qualifiedRelation(pid, targets,
+                        !targets.isEmpty() && object.includesDescendants(), condition));
         // The property's label travels with the property. A plain membership has the
         // one named default; anything else keeps what "Find…" or a load resolved.
         clazz.instanceMapping().propertyLabel(
@@ -328,6 +373,7 @@ final class TripleEditor extends JPanel {
     // ---- Owned: every element given, by the field that produces it ----
 
     private void showProduced(GeneratedClassModel clazz, GeneratedProjectModel project) {
+        membershipQualifierSection.setVisible(false);
         List<MembershipPattern.OwnedBy> sites =
                 MembershipPattern.ownedBy(clazz, project);
         population.removeAllItems();
@@ -382,6 +428,19 @@ final class TripleEditor extends JPanel {
         discoveryObject.show(null);
         given.setText(" ");
         configurationStatus.setText(" ");
+        membershipQualifierProperty.setText("");
+        membershipQualifierValues.setText("");
+        membershipQualifierSection.setVisible(false);
+    }
+
+    private static List<String> parseQids(String text) {
+        List<String> qids = new ArrayList<>();
+        if (text == null) return qids;
+        for (String token : text.trim().split("[,;\\s]+")) {
+            String qid = RuleNode.cleanQid(token);
+            if (WikidataIds.isQid(qid) && !qids.contains(qid)) qids.add(qid);
+        }
+        return qids;
     }
 
     /**
@@ -417,10 +476,11 @@ final class TripleEditor extends JPanel {
             boolean represented = !representedRoles.isEmpty();
             ready = seeds || relation || represented;
             if (seeds && relation) {
-                detail = "property + object, restricted to " + clazz.seedQids().size()
+                detail = membershipDetail(clazz.membership()) + ", restricted to "
+                        + clazz.seedQids().size()
                         + " explicit QID" + (clazz.seedQids().size() == 1 ? "" : "s");
             } else if (relation) {
-                detail = "property + object";
+                detail = membershipDetail(clazz.membership());
             } else if (seeds) {
                 detail = clazz.seedQids().size() + " explicit QID"
                         + (clazz.seedQids().size() == 1 ? "" : "s");
@@ -445,6 +505,19 @@ final class TripleEditor extends JPanel {
                 : new java.awt.Color(0xB0, 0x00, 0x20));
     }
 
+    private static String membershipDetail(EntityBound membership) {
+        wikidata.QualifierCondition condition = membership.qualifierCondition();
+        if (condition != null) {
+            String mainValues = membership.qids().isEmpty() ? ""
+                    : ", main value in " + String.join(", ", membership.qids());
+            return "statement " + membership.relationPid() + " where qualifier "
+                    + condition.qualifierPid() + " is one of "
+                    + String.join(", ", condition.allowedQids()) + mainValues;
+        }
+        return "property " + membership.relationPid() + " points to "
+                + String.join(", ", membership.qids());
+    }
+
     /** The property as typed — blank is blank, because blank means something here. */
     String propertyPid() {
         return RuleNode.cleanPid(property.getText());
@@ -453,6 +526,12 @@ final class TripleEditor extends JPanel {
     void propertyPid(String pid, String label) {
         property.setText(pid == null ? "" : pid);
         propertyLabel.setText(label == null || label.isBlank() ? " " : label);
+    }
+
+    void membershipQualifier(String pid, List<String> values) {
+        membershipQualifierProperty.setText(pid == null ? "" : pid);
+        membershipQualifierValues.setText(
+                values == null ? "" : String.join(" ", values));
     }
 
     String propertyLabelText() {

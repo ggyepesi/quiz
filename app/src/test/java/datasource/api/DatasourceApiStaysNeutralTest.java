@@ -26,6 +26,8 @@ class DatasourceApiStaysNeutralTest {
             "(?i)(?:https?://|(?:^|[^a-z])"
                     + "(?:wikidata|wikipedia|dbpedia|wikisource|commons)"
                     + "|(?:^|[^a-z])wdt?:)");
+    private static final Pattern PROVIDER_QUALIFIED_TYPE = Pattern.compile(
+            "\\b(?:wikidata|wikipedia|dbpedia)\\.[A-Za-z_$]");
     /**
      * {@code canonical} is allowed as the CONTRACT a provider hands off to — a candidate
      * and the kinds of identity production can supply. It is not allowed as an ENGINE:
@@ -73,6 +75,21 @@ class DatasourceApiStaysNeutralTest {
         }
         assertEquals(List.of(), offenders,
                 "provider ids, native identifiers and URLs belong in provider adapters");
+    }
+
+    @Test void apiContainsNoProviderTypesHiddenBehindQualifiedNames() throws Exception {
+        List<String> offenders = new ArrayList<>();
+        for (Path file : sources()) {
+            String source = code(Files.readString(file));
+            Matcher qualified = PROVIDER_QUALIFIED_TYPE.matcher(source);
+            while (qualified.find()) {
+                int line = 1 + (int) source.substring(0, qualified.start()).chars()
+                        .filter(ch -> ch == '\n').count();
+                offenders.add(file.getFileName() + ":" + line);
+            }
+        }
+        assertEquals(List.of(), offenders,
+                "fully-qualified names must not bypass the provider-neutral import boundary");
     }
 
     private static String code(String source) {

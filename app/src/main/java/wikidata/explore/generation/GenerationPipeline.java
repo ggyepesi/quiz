@@ -229,10 +229,26 @@ public class GenerationPipeline {
     private String membershipPattern(
             GeneratedClassModel cls, GeneratedProjectModel project) {
         wikidata.explore.model.EntityBound membership = cls.effectiveMembership(project);
-        if (membership.qids().isEmpty() || membership.relationPid().isBlank()) {
+        if ((membership.qids().isEmpty() && membership.qualifierCondition() == null)
+                || membership.relationPid().isBlank()) {
             return null;
         }
         String pid = RuleNode.cleanPid(membership.relationPid());
+        if (membership.qualifierCondition() != null) {
+            if (membership.qids().isEmpty()) {
+                return wikidata.query.StatementPatterns.qualifiedMembershipExists(
+                        "?value", pid, "?membershipStatement",
+                        membership.qualifierCondition());
+            }
+            String pattern = wikidata.query.StatementPatterns.qualifiedMembership(
+                    "?value", pid, "?membershipStatement",
+                    membership.qualifierCondition());
+            String values = membership.qids().stream()
+                    .map(qid -> "wd:" + qid)
+                    .collect(java.util.stream.Collectors.joining(" "));
+            return "VALUES ?membershipRoot { " + values + " } " + pattern
+                    + " ?membershipStatement ps:" + pid + " ?membershipRoot .";
+        }
         if (membership.qids().size() == 1) {
             return "?value wdt:" + pid + " wd:" + membership.qids().get(0) + " .";
         }

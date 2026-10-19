@@ -367,6 +367,12 @@ public class ModelGraphPanel extends JPanel {
                     : "membership: " + clazz.seedQids().size() + " seed QID"
                       + (clazz.seedQids().size() == 1 ? "" : "s");
         }
+        if (membership.qualifierCondition() != null) {
+            wikidata.QualifierCondition condition = membership.qualifierCondition();
+            return "members: statement " + membership.relationPid() + " with "
+                    + condition.qualifierPid() + " = "
+                    + String.join(", ", condition.allowedQids());
+        }
         String target = membership.qids().isEmpty()
                 ? "?" : String.join(", ", membership.qids());
         String direction = mapping.direction()

@@ -122,6 +122,33 @@ public final class RuleIncludedFieldSparql {
                 : wikidata.query.StatementPatterns.value(entity, pid, object, condition, object);
     }
 
+    /**
+     * The referenced class's membership applied to one field value. This is the same
+     * rule whether the field is loaded inline, in a member batch, or while sampling.
+     */
+    public static String membershipPattern(
+            RuleIncludedField field, String value, String name) {
+        if (field == null || !field.hasMembership()) return "";
+        String pid = wikidata.explore.rule.RuleNode.cleanPid(field.membershipPid());
+        wikidata.QualifierCondition condition = field.membershipQualifierCondition();
+        if (condition != null && condition.complete()) {
+            String statement = "?" + name.replace("?", "")
+                    .replaceAll("[^A-Za-z0-9_]", "_") + "_membershipStatement";
+            boolean capturesMainValue = !field.membershipQid().isBlank();
+            String pattern = capturesMainValue
+                    ? wikidata.query.StatementPatterns.qualifiedMembership(
+                            value, pid, statement, condition)
+                    : wikidata.query.StatementPatterns.qualifiedMembershipExists(
+                            value, pid, statement, condition);
+            if (capturesMainValue) {
+                pattern += "\n" + statement + " ps:" + pid
+                        + " wd:" + field.membershipQid() + " .";
+            }
+            return pattern;
+        }
+        return value + " wdt:" + pid + " wd:" + field.membershipQid() + " .";
+    }
+
     /** Typed time expression recovered from the packed field value itself. */
     public static String packedTimeExpression(String packedVar) {
         return "xsd:dateTime(STRBEFORE(?" + packedVar + ", \"|\"))";
@@ -194,10 +221,8 @@ public final class RuleIncludedFieldSparql {
                     ? datePattern(field, var, var)
                     : valuePattern(field, "?value", "?" + var);
             // Constrain the value to the referenced class's type, if requested.
-            String typeConstraint = field.hasMembership()
-                    ? "?" + var + " wdt:" + field.membershipPid()
-                            + " wd:" + field.membershipQid() + " .\n"
-                    : "";
+            String typeConstraint = membershipPattern(field, "?" + var, var);
+            if (!typeConstraint.isEmpty()) typeConstraint += "\n";
 
             if (field.optional()) {
                 sb.append("  OPTIONAL {\n")

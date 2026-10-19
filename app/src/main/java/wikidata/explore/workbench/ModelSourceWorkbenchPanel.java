@@ -647,8 +647,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         if (membership.kind() != wikidata.explore.model.EntityBound.Kind.RELATION) return;
         java.util.List<String> targets = new java.util.ArrayList<>(membership.qids());
         if (!targets.contains(qid)) targets.add(qid);
-        clazz.membership(wikidata.explore.model.EntityBound.relation(
-                membership.relationPid(), targets, membership.includeDescendants()));
+        clazz.membership(wikidata.explore.model.EntityBound.qualifiedRelation(
+                membership.relationPid(), targets, membership.includeDescendants(),
+                membership.qualifierCondition()));
         classSourcePanel.edit(clazz);
         subclassDiscoveryPanel.showClass(clazz);
         afterChange.accept(null);
@@ -1184,7 +1185,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         RuleNode preview = temporaryRuleNodeForSelected();
         if (preview == null || preview.sourceQid().isBlank()
                 && preview.additionalSourceQids().isEmpty()
-                && preview.includedQids().isEmpty()) return null;
+                && preview.includedQids().isEmpty()
+                && !preview.hasQualifiedMembership()) return null;
         return new SampleEffectiveClassQuery(projectModel, requested.className(),
                 sampled.className(), MembershipPattern.describe(requested, projectModel),
                 NodeSamplePanel.SAMPLE_LIMIT);

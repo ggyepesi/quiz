@@ -130,4 +130,22 @@ class WikidataOfferingsTest {
         assertEquals(List.of("Q4164871"), subclassesOfPosition.values().stream()
                 .map(datasource.EntityRef::id).toList());
     }
+
+    @Test void statementMembershipCanBeBoundOnlyByAQualifier() {
+        ClassPopulationOperation membership = (ClassPopulationOperation)
+                offering(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP);
+
+        PopulationRequest catalogue = membership.selection(new SourceRecipe(
+                "wikidata", "statement-membership",
+                Map.of("property", "P528", "conditionProperty", "P972",
+                        "conditionValues", "Q499138")));
+
+        assertEquals(PopulationRequest.Kind.RELATION, catalogue.kind());
+        assertEquals("P528", catalogue.relationId());
+        assertTrue(catalogue.values().isEmpty(),
+                "the catalogue code itself is not a configured QID");
+        assertEquals(new datasource.api.acquisition.RelationCondition("P972",
+                        List.of(datasource.EntityRef.wikidata("Q499138"))),
+                catalogue.relationCondition());
+    }
 }

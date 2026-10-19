@@ -124,11 +124,14 @@ class OneTriplePerClassTest {
                 "the statement has its two retained ends and the separate object "
                         + "input used only to discover subjects");
 
-        long propertyFields = java.util.Arrays.stream(
+        List<String> relationFields = java.util.Arrays.stream(
                         TripleEditor.class.getDeclaredFields())
                 .filter(field -> field.getType() == JTextField.class)
-                .count();
-        assertEquals(1, propertyFields, "one property row");
+                .map(java.lang.reflect.Field::getName)
+                .toList();
+        assertEquals(List.of("property", "membershipQualifierProperty",
+                        "membershipQualifierValues"), relationFields,
+                "one main property, plus the two authored parts of its optional qualifier");
 
         assertFalse(new TripleEditor().getLayout() instanceof java.awt.CardLayout,
                 "a card per caller is a component per caller");
@@ -207,7 +210,8 @@ class OneTriplePerClassTest {
         position.membership(EntityBound.relation("P279", List.of("Q4164871"), false));
         triple.show(position, project);
         assertTrue(labels(triple).stream().anyMatch(text -> text.contains(
-                        "Ready — property + object, restricted to 1 explicit QID")),
+                        "Ready — property P279 points to Q4164871, restricted to "
+                                + "1 explicit QID")),
                 "the same indicator explains the combined semantics");
     }
 
@@ -399,6 +403,25 @@ class OneTriplePerClassTest {
         panel.applyEdits();
 
         assertTrue(position.membership().includeDescendants());
+    }
+
+    @Test void sourceTripleOffersAndStoresQualifiedStatementMembership() {
+        GeneratedClassModel star = new GeneratedClassModel("Star");
+        star.membership(EntityBound.qualifiedRelation("P528", List.of(), false,
+                new wikidata.QualifierCondition("P972", List.of("Q499138"))));
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(star);
+
+        ClassSourcePanel panel = new ClassSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(star);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        assertTrue(labels(triple).contains("Statement qualifier (optional):"));
+        panel.applyEdits();
+
+        assertEquals(EntityBound.qualifiedRelation("P528", List.of(), false,
+                new wikidata.QualifierCondition("P972", List.of("Q499138"))),
+                star.membership());
     }
 
     private static JTextField property(TripleEditor triple) {

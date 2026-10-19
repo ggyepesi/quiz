@@ -32,6 +32,7 @@ public class RuleNode {
     private String propertyLabel = "";
     private RuleDirection direction = RuleDirection.ITEM_TO_ROOT;
     private boolean membershipIncludesDescendants;
+    private wikidata.QualifierCondition membershipQualifierCondition;
 
     // Membership constraint on the node's values: ?value <membershipPid>
     // <membershipQid> (e.g. P31 Q523 = "instance of star"). Used by a
@@ -41,6 +42,7 @@ public class RuleNode {
     private String membershipPid = "";
     private String membershipQid = "";
     private boolean membershipFilterIncludesDescendants;
+    private wikidata.QualifierCondition membershipFilterQualifierCondition;
 
     // -----------------------------------------------------------------
     // Label config
@@ -122,10 +124,12 @@ public class RuleNode {
         // so Discover/Sample find nothing for a multi-target class.
         additionalSourceQids().forEach(s::addAdditionalSourceQid);
         s.membershipIncludesDescendants(membershipIncludesDescendants());
+        s.membershipQualifierCondition(membershipQualifierCondition());
         s.membershipPid(membershipPid());
         s.membershipQid(membershipQid());
         s.membershipFilterIncludesDescendants(
                 membershipFilterIncludesDescendants());
+        s.membershipFilterQualifierCondition(membershipFilterQualifierCondition());
         s.requireSitelink(requireSitelink());
         s.propertyPid(propertyPid);
         s.propertyLabel(propertyLabel);
@@ -198,6 +202,18 @@ public class RuleNode {
         membershipIncludesDescendants = value;
     }
 
+    public wikidata.QualifierCondition membershipQualifierCondition() {
+        return membershipQualifierCondition;
+    }
+
+    public void membershipQualifierCondition(wikidata.QualifierCondition value) {
+        membershipQualifierCondition = value;
+    }
+
+    public boolean hasQualifiedMembership() {
+        return membershipQualifierCondition != null && membershipQualifierCondition.complete();
+    }
+
     public String membershipPid() { return membershipPid; }
     public void   membershipPid(String pid) { this.membershipPid = cleanPid(pid); }
 
@@ -213,6 +229,19 @@ public class RuleNode {
 
     public void membershipFilterIncludesDescendants(boolean value) {
         membershipFilterIncludesDescendants = value;
+    }
+
+    public wikidata.QualifierCondition membershipFilterQualifierCondition() {
+        return membershipFilterQualifierCondition;
+    }
+
+    public void membershipFilterQualifierCondition(wikidata.QualifierCondition value) {
+        membershipFilterQualifierCondition = value;
+    }
+
+    public boolean hasQualifiedMembershipFilter() {
+        return membershipFilterQualifierCondition != null
+                && membershipFilterQualifierCondition.complete();
     }
 
     // "Notable only": require an English Wikipedia article (sitelink). A
@@ -265,7 +294,8 @@ public class RuleNode {
 
     public boolean hasMembershipFilter() {
         return membershipPid != null && !membershipPid.isBlank()
-                && membershipQid != null && !membershipQid.isBlank();
+                && ((membershipQid != null && !membershipQid.isBlank())
+                        || hasQualifiedMembershipFilter());
     }
 
     public RuleDirection direction() { return direction; }

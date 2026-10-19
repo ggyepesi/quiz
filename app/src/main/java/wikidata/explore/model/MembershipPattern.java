@@ -53,6 +53,9 @@ public enum MembershipPattern {
     SINGLE_TARGET_RELATION("Single-target relation"),
     /** {@code <relation> → {target set}} (e.g. P1411 → award categories). */
     MULTI_TARGET_RELATION("Multi-target relation"),
+    /** Members carry a statement admitted by a qualifier condition; its main value
+     * may be unrestricted (P528 with P972 = Bright Star Catalogue). */
+    QUALIFIED_STATEMENT("Qualified-statement membership"),
     /** Members are an explicit curated QID list (seed QIDs). */
     SEEDED("Seeded");
 
@@ -98,7 +101,8 @@ public enum MembershipPattern {
 
     /** Whether THIS pattern relates its members to something other than their type. */
     public boolean relational() {
-        return this == SINGLE_TARGET_RELATION || this == MULTI_TARGET_RELATION;
+        return this == SINGLE_TARGET_RELATION || this == MULTI_TARGET_RELATION
+                || this == QUALIFIED_STATEMENT;
     }
 
     private final String label;
@@ -396,6 +400,9 @@ public enum MembershipPattern {
         // ADDITIONAL type" and "two types" are the same question, and only the second
         // survives a value that does not know which of its QIDs came first.
         int targets = targetCount(membership);
+        if (membership.qualifierCondition() != null) {
+            return QUALIFIED_STATEMENT;
+        }
         if (!relational(pid)) {
             if (targets > 1) {
                 return MULTI_TYPE;
@@ -475,6 +482,12 @@ public enum MembershipPattern {
                     + (targetCount(membership) - 1) + ")";
             case SINGLE_TARGET_RELATION, MULTI_TARGET_RELATION ->
                     p.label + " (" + pid + " → " + targetCount(membership) + ")";
+            case QUALIFIED_STATEMENT -> {
+                wikidata.QualifierCondition condition = membership.qualifierCondition();
+                yield p.label + " (" + pid + " qualified by "
+                        + (condition == null ? "?" : condition.qualifierPid() + " = "
+                        + String.join(", ", condition.allowedQids())) + ")";
+            }
             case SEEDED -> p.label + " (" + clazz.seedQids().size() + ")";
             case AGGREGATED -> {
                 AggregateClassSource a = clazz.aggregateSource();

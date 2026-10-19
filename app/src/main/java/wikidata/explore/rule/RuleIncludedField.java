@@ -51,12 +51,22 @@ public class RuleIncludedField {
     // (membershipQid). Blank = no constraint.
     private String membershipPid = "";
     private String membershipQid = "";
+    private wikidata.QualifierCondition membershipQualifierCondition;
     public String membershipPid() { return membershipPid == null ? "" : membershipPid; }
     public void   membershipPid(String p) { this.membershipPid = cleanPid(p); }
     public String membershipQid() { return membershipQid == null ? "" : membershipQid; }
     public void   membershipQid(String q) { this.membershipQid = q == null ? "" : q.trim(); }
+    public wikidata.QualifierCondition membershipQualifierCondition() {
+        return membershipQualifierCondition;
+    }
+    public void membershipQualifierCondition(wikidata.QualifierCondition condition) {
+        membershipQualifierCondition = condition;
+    }
     public boolean hasMembership() {
-        return !membershipQid().isBlank() && WikidataIds.isQid(membershipQid());
+        return WikidataIds.isPid(membershipPid())
+                && ((!membershipQid().isBlank() && WikidataIds.isQid(membershipQid()))
+                        || (membershipQualifierCondition != null
+                                && membershipQualifierCondition.complete()));
     }
 
     // Which statements of propertyPid the field reads (see QualifierCondition).

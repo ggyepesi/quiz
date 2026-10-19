@@ -46,6 +46,11 @@
       label: Wikidata property:
       text: [P31]
       button: Find…
+      label: Statement qualifier (optional):
+      label: Property:
+      text: []
+      label: Allowed values:
+      text: []
     piece: EntityEndEditor  [Object]
       label: Entities allowed:
       combo: 1 item(s)  (disabled)
@@ -54,7 +59,7 @@
       label: Bounding the object restricts WHICH entities become instances of this class.
     button: Find related objects…  (disabled)
     label: Matching subjects become instances of this class.
-    label: ✓ Ready — property + object
+    label: ✓ Ready — property P31 points to Q5
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList

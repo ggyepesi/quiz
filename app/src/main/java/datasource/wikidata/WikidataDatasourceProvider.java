@@ -159,16 +159,28 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                                             + "for a type; any property for a relation.",
                                     new SourceReferenceSchema(ID,
                                             SourceReferenceSchema.Kind.PROPERTY, false)),
-                            ParameterDescriptor.reference("values", "Values", true, "",
+                            ParameterDescriptor.reference("values", "Values", false, "",
                                     "The QIDs the property must point at. Several means "
-                                            + "membership by any of them.",
+                                            + "membership by any of them. May be blank when "
+                                            + "a qualifier condition selects the statement.",
                                     new SourceReferenceSchema(ID,
                                             SourceReferenceSchema.Kind.ENTITY, true)),
                             new ParameterDescriptor("includeSubclasses",
                                     "Include subclasses", ParameterDescriptor.Kind.BOOLEAN,
                                     false, "false", List.of(),
                                     "Follow P279 down from each value. Meaningful for a "
-                                            + "type; not for a relation."))),
+                                            + "type; not for a relation."),
+                            ParameterDescriptor.reference("conditionProperty",
+                                    "Qualifier property", false, "",
+                                    "Keep only statements whose qualifier has one of the "
+                                            + "allowed values.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            ParameterDescriptor.reference("conditionValues",
+                                    "Allowed qualifier values", false, "",
+                                    "Space-separated QIDs the qualifier must have.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.ENTITY, true)))),
             new SeedListOffering(BindingScope.CLASS_POPULATION,
                     SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
                     List.of(ParameterDescriptor.reference("ids", "Ids", true, "",
@@ -298,9 +310,17 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             String property = safe.parameter("property").trim().toUpperCase();
             List<String> values = qids(safe.parameter("values"));
             boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
-            validateMembership(property, values, subclasses);
-            return PopulationRequest.relation(EntityRef.WIKIDATA, property,
-                    values.stream().map(EntityRef::wikidata).toList(), subclasses);
+            wikidata.QualifierCondition condition = wikidata.QualifierCondition.of(
+                    safe.parameter("conditionProperty"),
+                    qids(safe.parameter("conditionValues")));
+            validateMembership(property, values, subclasses, condition);
+            datasource.api.acquisition.RelationCondition relationCondition = condition == null
+                    ? null : new datasource.api.acquisition.RelationCondition(
+                            condition.qualifierPid(), condition.allowedQids().stream()
+                                    .map(EntityRef::wikidata).toList());
+            return PopulationRequest.qualifiedRelation(EntityRef.WIKIDATA, property,
+                    values.stream().map(EntityRef::wikidata).toList(), subclasses,
+                    relationCondition);
         }
 
     }
@@ -345,13 +365,22 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
      * refusing it kept "the subclasses of position" (P279 into Q4164871) from being
      * a population a class could have.
      */
-    private static void validateMembership(
-            String property, List<String> values, boolean subclasses) {
+    private static void validateMembership(String property, List<String> values,
+            boolean subclasses, wikidata.QualifierCondition condition) {
         if (!WikidataIds.isPid(property)) {
             throw new IllegalArgumentException("Invalid Wikidata property: " + property);
         }
-        if (values == null || values.isEmpty()) {
-            throw new IllegalArgumentException("At least one Wikidata value QID is required");
+        if ((values == null || values.isEmpty()) && condition == null) {
+            throw new IllegalArgumentException("At least one Wikidata value QID or a "
+                    + "complete qualifier condition is required");
+        }
+        if (subclasses && (values == null || values.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "Include subclasses needs at least one Wikidata value QID");
+        }
+        if (subclasses && condition != null) {
+            throw new IllegalArgumentException(
+                    "Include subclasses cannot be combined with a qualifier condition");
         }
     }
 

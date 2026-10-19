@@ -64,15 +64,25 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
 - **Why:** `magnitude<=6` fills `LIMIT 200` faster than `<=4` (fewer qualify).
 - **Hook:** guidance/recipe text, not codegen.
 
-## R7 — Membership exactness drops subclass-typed entities
+## R7 — Membership is the narrowest statement evidence that defines the class
 - **Trigger:** `?e wdt:P31 wd:Qx` membership.
 - **Rule:** prefer **specific** additional type QIDs (multi-QID `VALUES`) over a
-  recursive `P31/P279*`. Drop membership entirely on an edge when another
-  constraint (relation + magnitude + label) already implies the type.
+  recursive `P31/P279*`. When membership is really a statement carrying a
+  qualifier (for example `P528` catalog code qualified by `P972 = Bright Star
+  Catalogue`), configure that statement evidence directly; do not approximate it
+  with a broad entity type. Root generation and referenced-class edges compile the
+  same membership. Bind allowed qualifier values with `VALUES` before the qualifier
+  triple; a later `FILTER(... IN ...)` defeats the indexed lookup when the optimizer
+  is disabled. A boolean membership test only asks whether one non-deprecated
+  matching statement exists; apply preferred-over-normal rank selection only when
+  the statement's main value is retained. Drop membership entirely on an edge only
+  when another explicit constraint already defines the intended population.
 - **Why:** `P31=Q8928` misses Aries (= *zodiacal constellation*); `P31=Q523`
   misses Alpha Antliae (= *variable star*). `P279*` is **over-broad** (Q8928 → 284,
   incl. Chinese/former/gamma-ray) AND **times out** over big classes (stars).
-- **Hook:** `additionalSourceQids` (root), `EdgeMembershipMode.NONE` (edge).
+- **Hook:** `EntityBound` / `PopulationRequest` relation plus optional
+  `QualifierCondition`, `additionalSourceQids` (root), `EdgeMembershipMode.NONE`
+  (edge).
 - **Explicit exception:** the datasource catalogue may offer an opt-in subclass
   closure. `RuleNode` cannot express it because its source QIDs are explicit
   alternatives, not roots to expand. That query therefore has its own

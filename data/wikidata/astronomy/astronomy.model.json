@@ -1020,15 +1020,22 @@
         "membership": {
           "kind": "RELATION",
           "qids": [
-            "java.util.ImmutableCollections$List12",
-            [
-              "Q523"
-            ]
+            "java.util.ImmutableCollections$ListN",
+            []
           ],
-          "relationPid": "P31",
+          "relationPid": "P528",
           "selectionName": "",
           "selectionId": "",
-          "includeDescendants": true
+          "includeDescendants": false,
+          "qualifierCondition": {
+            "qualifierPid": "P972",
+            "allowedQids": [
+              "java.util.ImmutableCollections$List12",
+              [
+                "Q499138"
+              ]
+            ]
+          }
         },
         "fields": [
           "java.util.ArrayList",
@@ -1139,9 +1146,11 @@
           "operationId": "statement-membership",
           "parameters": {
             "@class": "java.util.ImmutableCollections$MapN",
-            "includeSubclasses": "true",
-            "property": "P31",
-            "values": "Q523"
+            "conditionProperty": "P972",
+            "conditionValues": "Q499138",
+            "includeSubclasses": "false",
+            "property": "P528",
+            "values": ""
           }
         },
         "sourceBindings": [
@@ -1208,9 +1217,11 @@
                 "operationId": "statement-membership",
                 "parameters": {
                   "@class": "java.util.ImmutableCollections$MapN",
-                  "includeSubclasses": "true",
-                  "property": "P31",
-                  "values": "Q523"
+                  "conditionProperty": "P972",
+                  "conditionValues": "Q499138",
+                  "includeSubclasses": "false",
+                  "property": "P528",
+                  "values": ""
                 }
               }
             }

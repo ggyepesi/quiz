@@ -28,7 +28,10 @@ public record EntityBound(
         String relationPid,
         String selectionName,
         String selectionId,
-        boolean includeDescendants) {
+        boolean includeDescendants,
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        wikidata.QualifierCondition qualifierCondition) {
 
     public enum Kind {
         /** No bound: any entity may occupy this end. */
@@ -54,6 +57,9 @@ public record EntityBound(
         relationPid = relationPid == null ? "" : relationPid.trim();
         selectionName = selectionName == null ? "" : selectionName.trim();
         selectionId = DeclarationIds.clean(selectionId);
+        qualifierCondition = qualifierCondition == null ? null
+                : wikidata.QualifierCondition.of(qualifierCondition.qualifierPid(),
+                        qualifierCondition.allowedQids());
         if (kind == Kind.UNBOUNDED
                 && (!qids.isEmpty() || !relationPid.isBlank()
                         || !selectionName.isBlank() || !selectionId.isBlank())) {
@@ -69,7 +75,7 @@ public record EntityBound(
             if (selectionName.isBlank()) {
                 throw new IllegalArgumentException("A vocabulary bound needs a name");
             }
-            if (!qids.isEmpty() || !relationPid.isBlank()) {
+            if (!qids.isEmpty() || !relationPid.isBlank() || qualifierCondition != null) {
                 throw new IllegalArgumentException(
                         "A vocabulary bound is a reference, not a copy of its values");
             }
@@ -77,26 +83,44 @@ public record EntityBound(
         if (kind == Kind.EXPLICIT && !relationPid.isBlank()) {
             throw new IllegalArgumentException("An explicit bound has no relation");
         }
+        if (kind != Kind.RELATION && qualifierCondition != null) {
+            throw new IllegalArgumentException(
+                    "Only a relation bound has a qualifier condition");
+        }
         if (kind == Kind.RELATION && !relationPid.matches("(?i)P\\d+")) {
             throw new IllegalArgumentException("A relation bound needs a property");
         }
         if (kind == Kind.EXPLICIT || kind == Kind.RELATION) {
-            if (qids.isEmpty()) {
+            if (qids.isEmpty() && qualifierCondition == null) {
                 throw new IllegalArgumentException(
                         "A bounded end needs at least one entity");
             }
         }
+        if (includeDescendants && qids.isEmpty()) {
+            throw new IllegalArgumentException("Subclass expansion needs a relation value");
+        }
+        if (includeDescendants && qualifierCondition != null) {
+            throw new IllegalArgumentException(
+                    "Qualified statement membership does not combine with subclass expansion");
+        }
+    }
+
+    /** Source-compatible constructor for bounds without a qualifier condition. */
+    public EntityBound(Kind kind, List<String> qids, String relationPid,
+            String selectionName, String selectionId, boolean includeDescendants) {
+        this(kind, qids, relationPid, selectionName, selectionId,
+                includeDescendants, null);
     }
 
     public static EntityBound unbounded() {
-        return new EntityBound(Kind.UNBOUNDED, List.of(), "", "", "", false);
+        return new EntityBound(Kind.UNBOUNDED, List.of(), "", "", "", false, null);
     }
 
     /** Exactly these entities; {@link #unbounded()} when none of them is a QID. */
     public static EntityBound explicit(List<String> qids) {
         List<String> clean = onlyQids(qids);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.EXPLICIT, clean, "", "", "", false);
+                : new EntityBound(Kind.EXPLICIT, clean, "", "", "", false, null);
     }
 
     /** The entities carrying {@code relationPid} into {@code targets}. */
@@ -104,7 +128,21 @@ public record EntityBound(
             String relationPid, List<String> targets, boolean includeDescendants) {
         List<String> clean = onlyQids(targets);
         return clean.isEmpty() ? unbounded()
-                : new EntityBound(Kind.RELATION, clean, relationPid, "", "", includeDescendants);
+                : new EntityBound(Kind.RELATION, clean, relationPid, "", "", includeDescendants,
+                        null);
+    }
+
+    /** Entities carrying a statement admitted by its qualifier; its main value may be
+     * unconstrained, or additionally restricted to {@code targets}. */
+    public static EntityBound qualifiedRelation(String relationPid, List<String> targets,
+            boolean includeDescendants, wikidata.QualifierCondition condition) {
+        List<String> clean = onlyQids(targets);
+        wikidata.QualifierCondition usable = condition == null ? null
+                : wikidata.QualifierCondition.of(
+                        condition.qualifierPid(), condition.allowedQids());
+        if (clean.isEmpty() && usable == null) return unbounded();
+        return new EntityBound(Kind.RELATION, clean, relationPid, "", "",
+                includeDescendants, usable);
     }
 
     /**
@@ -127,7 +165,7 @@ public record EntityBound(
         String name = selectionName == null ? "" : selectionName.trim();
         return name.isEmpty() ? unbounded()
                 : new EntityBound(Kind.VOCABULARY, List.of(), "", name,
-                        DeclarationIds.clean(selectionId), false);
+                        DeclarationIds.clean(selectionId), false, null);
     }
 
     /**
@@ -181,8 +219,14 @@ public record EntityBound(
         if (!bounded() || kind == Kind.VOCABULARY) return java.util.Optional.empty();
         List<EntityRef> refs = new ArrayList<>();
         for (String qid : qids) refs.add(new EntityRef(namespace, qid));
+        datasource.api.acquisition.RelationCondition condition = qualifierCondition == null
+                ? null : new datasource.api.acquisition.RelationCondition(
+                        qualifierCondition.qualifierPid(),
+                        qualifierCondition.allowedQids().stream()
+                                .map(qid -> new EntityRef(namespace, qid)).toList());
         return java.util.Optional.of(kind == Kind.RELATION
-                ? PopulationRequest.relation(namespace, relationPid, refs, includeDescendants)
+                ? PopulationRequest.qualifiedRelation(namespace, relationPid, refs,
+                        includeDescendants, condition)
                 : PopulationRequest.explicit(namespace, refs));
     }
 

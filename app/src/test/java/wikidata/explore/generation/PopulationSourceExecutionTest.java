@@ -50,6 +50,19 @@ class PopulationSourceExecutionTest {
                 "an independent configured restriction is not part of membership");
     }
 
+    @Test void qualifiedStatementBindingNeedsNoMainValueQid() {
+        RuleNode node = new RuleNode("Star", "star");
+        PopulationSourceExecution.apply(node, step(new SourceRecipe(
+                "wikidata", "statement-membership",
+                Map.of("property", "P528", "conditionProperty", "P972",
+                        "conditionValues", "Q499138"))));
+
+        assertEquals("P528", node.propertyPid());
+        assertTrue(node.allSourceQids().isEmpty());
+        assertEquals(new wikidata.QualifierCondition("P972", List.of("Q499138")),
+                node.membershipQualifierCondition());
+    }
+
     @Test void explicitPopulationReplacesMembershipAndItsOldSeedProjection() {
         RuleNode node = new RuleNode("Movie", "movie");
         node.sourceQid("Q11424");

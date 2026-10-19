@@ -124,6 +124,7 @@ public final class PopulationSourceExecution {
         root.sourceQid("");
         root.additionalSourceQids().clear();
         root.membershipIncludesDescendants(false);
+        root.membershipQualifierCondition(null);
         if (selection.kind() == PopulationRequest.Kind.RELATION) {
             String pid = selection.relationId().toUpperCase();
             if (!WikidataIds.isPid(pid)) {
@@ -131,10 +132,18 @@ public final class PopulationSourceExecution {
             }
             root.propertyPid(pid);
             root.direction(RuleDirection.ITEM_TO_ROOT);
-            root.sourceQid(selection.values().getFirst().id());
-            selection.values().stream().skip(1)
-                    .map(datasource.EntityRef::id).forEach(root::addAdditionalSourceQid);
+            if (!selection.values().isEmpty()) {
+                root.sourceQid(selection.values().getFirst().id());
+                selection.values().stream().skip(1)
+                        .map(datasource.EntityRef::id).forEach(root::addAdditionalSourceQid);
+            }
             root.membershipIncludesDescendants(selection.includeDescendants());
+            datasource.api.acquisition.RelationCondition condition =
+                    selection.relationCondition();
+            root.membershipQualifierCondition(condition == null ? null
+                    : new wikidata.QualifierCondition(condition.relationId(),
+                            condition.values().stream()
+                                    .map(datasource.EntityRef::id).toList()));
             // includedQids remain: with a relation they are an independent restriction
             // over the selected population, not the population recipe itself.
         } else {
@@ -170,8 +179,10 @@ public final class PopulationSourceExecution {
         root.additionalSourceQids().clear();
         root.propertyPid("");
         root.membershipIncludesDescendants(false);
+        root.membershipQualifierCondition(null);
         root.membershipPid("");
         root.membershipQid("");
+        root.membershipFilterQualifierCondition(null);
         root.membershipConstraints().clear();
         root.includedFields().forEach(field -> field.optional(true));
         root.labelConfig().requireLabel(false);

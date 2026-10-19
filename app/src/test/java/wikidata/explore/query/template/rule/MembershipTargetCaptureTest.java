@@ -115,6 +115,39 @@ class MembershipTargetCaptureTest {
     }
 
     @Test
+    void memberFieldQueryUsesTheReferencedClassQualifiedMembership() {
+        RuleIncludedField constrained =
+                field("star", "P59", RuleDirection.ITEM_TO_ROOT, null);
+        constrained.membershipPid("P528");
+        constrained.membershipQualifierCondition(
+                new wikidata.QualifierCondition("P972", List.of("Q499138")));
+
+        String q = RuleNodeQueryBuilder.memberFieldBatchQuery(
+                constrained, List.of("Q8928"));
+
+        assertTrue(q.contains("?fieldValue_membershipStatement pq:P972"), q);
+        assertTrue(q.contains("?fieldValue p:P528 ?fieldValue_membershipStatement"), q);
+        assertFalse(q.contains("wikibase:PreferredRank"),
+                "existence-only membership must not rank matching statements: " + q);
+        assertFalse(q.contains("wdt:P528 wd:"), q);
+    }
+
+    @Test
+    void qualifiedMembershipThatReadsTheMainValueKeepsTruthyRankSelection() {
+        RuleIncludedField constrained =
+                field("member", "P527", RuleDirection.ROOT_TO_ITEM, "Q5");
+        constrained.membershipPid("P31");
+        constrained.membershipQualifierCondition(
+                new wikidata.QualifierCondition("P642", List.of("Q123")));
+
+        String q = RuleNodeQueryBuilder.memberFieldBatchQuery(
+                constrained, List.of("Q8928"));
+
+        assertTrue(q.contains("wikibase:PreferredRank"), q);
+        assertTrue(q.contains("?fieldValue_membershipStatement ps:P31 wd:Q5"), q);
+    }
+
+    @Test
     void backboneQueryCapturesTheRootAndTheValuesQueryDoesNot() {
         RuleNode node = oscarNode();
         String backbone = RuleNodeQueryBuilder.membershipBackboneQuery(node);

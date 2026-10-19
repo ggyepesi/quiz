@@ -71,6 +71,18 @@ public final class RuleNodeQueryBuilder {
         java.util.Map<String, String> sharedVars = sharedFilterVars(node, List.of(), "");
         appendValueFilterSelects(q, node, sharedVars.keySet());
         q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        if (node.hasQualifiedMembership()) {
+            appendQualifiedMembership(q, node, captureRoot);
+            appendMembershipFilter(q, node);
+            appendSitelinkRequirement(q, node);
+            appendMembershipConstraints(q, node);
+            appendAllowedQids(q, node);
+            appendExcludedQids(q, node);
+            appendPredicateObjectExclusions(q, node);
+            appendValueFilterPatterns(q, node, sharedVars);
+            if (!appendRankAndLimit(q, node)) q.limit(node.limit());
+            return q.build();
+        }
         String configuredRoot = node.membershipIncludesDescendants()
                 ? "membershipRoot" : "root";
         q.valuesQids(configuredRoot, node.allSourceQids());
@@ -115,15 +127,17 @@ public final class RuleNodeQueryBuilder {
                 targets.add(q);
             }
         }
-        if (targets.size() < 2 || !WikidataIds.isPid(pid)) {
+        // A qualified membership is a statement test, not "property into these
+        // targets"; the plain values query states it, so there is no stratified form.
+        if (targets.size() < 2 || !WikidataIds.isPid(pid) || node.hasQualifiedMembership()) {
             return null;
         }
         // direction: ITEM_TO_ROOT -> ?inst wdt:pid ?target ; ROOT_TO_ITEM -> reverse
         String triple = node.direction().triplePattern("?target", "?inst", pid);
-        String memberFilter = node.hasMembershipFilter()
-                ? "      ?inst wdt:" + node.membershipPid()
-                        + " wd:" + node.membershipQid() + " .\n"
-                : "";
+        StringBuilder memberFilter = new StringBuilder();
+        for (String pattern : membershipFilterPatterns(node, "?inst")) {
+            memberFilter.append("      ").append(pattern.replace("\n", "\n      ")).append("\n");
+        }
         // hint:optimizer "None" forces the written join order so the VALUES
         // binds ?target FIRST, then the predicate is looked up per bound target.
         // Without it the planner may scan every statement of a generic membership
@@ -266,10 +280,9 @@ public final class RuleNodeQueryBuilder {
         sb.append("  ").append(RuleIncludedFieldSparql
                 .valuePattern(field, "?value", "?fieldValue")).append("\n");
         if (field.hasMembership()) {
-            sb.append("  ?fieldValue wdt:")
-                    .append(RuleNode.cleanPid(field.membershipPid()))
-                    .append(" wd:").append(RuleNode.cleanQid(field.membershipQid()))
-                    .append(" .\n");
+            sb.append("  ").append(RuleIncludedFieldSparql.membershipPattern(
+                    field, "?fieldValue", "fieldValue").replace("\n", "\n  "))
+                    .append("\n");
         }
         sb.append("}\n");
         return sb.toString();
@@ -379,6 +392,7 @@ public final class RuleNodeQueryBuilder {
         boolean blankMembership = !isVariable
                 && node.additionalSourceQids().isEmpty()
                 && RuleNode.cleanQid(node.sourceQid()).isBlank()
+                && !node.hasQualifiedMembership()
                 && !parentAnchored;
 
         // No membership AND no seed QIDs: there's nothing to populate the class
@@ -391,7 +405,10 @@ public final class RuleNodeQueryBuilder {
         // generated directly; it'll come from the Transform, not this query.)
         boolean emptyResult = blankMembership && node.includedQids().isEmpty();
 
-        if (blankMembership) {
+        if (node.hasQualifiedMembership()) {
+            q.rawWhere("hint:Query hint:optimizer \"None\" .");
+            appendQualifiedMembership(q, node, selectMembershipRoot);
+        } else if (blankMembership) {
             // No class membership: the instances ARE the seed QIDs, bound by the
             // VALUES ?value {…} that appendAllowedQids emits below. Emit no
             // membership triple (which would be a broken "wd: ?value …").
@@ -445,6 +462,7 @@ public final class RuleNodeQueryBuilder {
         // ?root is a bound variable only in the multi-QID / template branch
         // above (not the single-constant case, which emits wd:Qxxx directly).
         boolean rootBound = !blankMembership
+                && !node.hasQualifiedMembership()
                 && (isVariable || !node.additionalSourceQids().isEmpty()
                     || node.membershipIncludesDescendants());
         appendInlinedFieldPatterns(q, inlinedFields, node, rootBound);
@@ -525,9 +543,12 @@ public final class RuleNodeQueryBuilder {
 
         boolean parentAnchored = !isVariable
                 && WikidataIds.isQid(RuleNode.cleanQid(rootQidOrVar));
+        // A qualified-statement membership is a membership even with no target, exactly
+        // as in valuesQueryForNode; treating it as blank emptied the population.
         boolean blankMembership = !isVariable
                 && node.additionalSourceQids().isEmpty()
                 && RuleNode.cleanQid(node.sourceQid()).isBlank()
+                && !node.hasQualifiedMembership()
                 && !parentAnchored;
         boolean emptyResult = blankMembership && node.includedQids().isEmpty();
 
@@ -537,7 +558,10 @@ public final class RuleNodeQueryBuilder {
         // membership set. E.g. Oscars `target` = the categories a value was
         // nominated for = the roots, so it joins the known ~59-QID set instead of a
         // self-join + `?t wdt:P31 <awardType>` re-filter per target.
+        // The reuse rests on membership being "property into these roots"; a qualified
+        // membership is a statement test, so it never reuses the root set.
         boolean multiQid = !isVariable && !blankMembership
+                && !node.hasQualifiedMembership()
                 && !node.additionalSourceQids().isEmpty();
         String memberTriple = node.direction().triplePattern("?root", "?value", pid);
         List<RuleIncludedField> reuseFields = new ArrayList<>();
@@ -556,7 +580,10 @@ public final class RuleNodeQueryBuilder {
         appendValueFilterSelects(base, node, sharedVars.keySet());
         appendGroupedScalarSelects(base, node, selectSkip, true);
 
-        if (blankMembership) {
+        if (node.hasQualifiedMembership()) {
+            base.rawWhere("hint:Query hint:optimizer \"None\" .");
+            appendQualifiedMembership(base, node, false);
+        } else if (blankMembership) {
             if (node.includedQids().isEmpty()) {
                 base.rawWhere("# no membership and no seed QIDs — empty result\n"
                         + "  VALUES ?value { }");
@@ -962,9 +989,20 @@ public final class RuleNodeQueryBuilder {
             index++;
         }
 
-        if (resolvedTypes) q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        if (resolvedTypes || node.hasQualifiedMembershipFilter()) {
+            q.rawWhere("hint:Query hint:optimizer \"None\" .");
+        }
+        if (node.hasQualifiedMembershipFilter()) {
+            // A selective qualified-statement membership (for example a catalogue
+            // marker) is the edge's entry point. Its qualifier values are bound by
+            // VALUES before lookup, so the written order is an indexed restriction,
+            // not a scan followed by a FILTER.
+            appendMembershipFilter(q, node);
+        }
         q.rawWhere(node.direction().triplePattern(parentTerm, "?value", pid));
-        if (!resolvedTypes) appendMembershipFilter(q, node);
+        if (!resolvedTypes && !node.hasQualifiedMembershipFilter()) {
+            appendMembershipFilter(q, node);
+        }
         appendSitelinkRequirement(q, node);
         appendAllowedQids(q, node);
         appendExcludedQids(q, node);
@@ -1013,17 +1051,61 @@ public final class RuleNodeQueryBuilder {
     // wd:Q523 = "instance of star"), so a child edge keeps only the referenced
     // class's instances.
     private static void appendMembershipFilter(WikidataQueryBuilder q, RuleNode node) {
-        if (node.hasMembershipFilter()) {
-            if (node.membershipFilterIncludesDescendants()) {
-                q.rawWhere("?value wdt:" + node.membershipPid()
-                        + " ?membershipFilterValue .");
-                q.rawWhere("?membershipFilterValue wdt:P279* wd:"
-                        + node.membershipQid() + " .");
-            } else {
-                q.rawWhere("?value wdt:" + node.membershipPid()
-                        + " wd:" + node.membershipQid() + " .");
+        for (String pattern : membershipFilterPatterns(node, "?value")) q.rawWhere(pattern);
+    }
+
+    /** The node's membership filter on {@code subject}, as WHERE patterns: THE one
+     *  spelling, shared by every query that constrains a node's values to its class. */
+    private static List<String> membershipFilterPatterns(RuleNode node, String subject) {
+        List<String> out = new ArrayList<>();
+        if (!node.hasMembershipFilter()) return out;
+        if (node.hasQualifiedMembershipFilter()) {
+            boolean capturesMainValue = !RuleNode.cleanQid(node.membershipQid()).isBlank();
+            out.add(capturesMainValue
+                    ? wikidata.query.StatementPatterns.qualifiedMembership(
+                            subject, node.membershipPid(), "?membershipFilterStatement",
+                            node.membershipFilterQualifierCondition())
+                    : wikidata.query.StatementPatterns.qualifiedMembershipExists(
+                            subject, node.membershipPid(), "?membershipFilterStatement",
+                            node.membershipFilterQualifierCondition()));
+            if (capturesMainValue) {
+                if (node.membershipFilterIncludesDescendants()) {
+                    out.add("?membershipFilterStatement ps:" + node.membershipPid()
+                            + " ?membershipFilterValue .");
+                    out.add("?membershipFilterValue wdt:P279* wd:"
+                            + node.membershipQid() + " .");
+                } else {
+                    out.add("?membershipFilterStatement ps:" + node.membershipPid()
+                            + " wd:" + node.membershipQid() + " .");
+                }
             }
+        } else if (node.membershipFilterIncludesDescendants()) {
+            out.add(subject + " wdt:" + node.membershipPid() + " ?membershipFilterValue .");
+            out.add("?membershipFilterValue wdt:P279* wd:" + node.membershipQid() + " .");
+        } else {
+            out.add(subject + " wdt:" + node.membershipPid()
+                    + " wd:" + node.membershipQid() + " .");
         }
+        return out;
+    }
+
+    private static void appendQualifiedMembership(
+            WikidataQueryBuilder q, RuleNode node, boolean captureRoot) {
+        List<String> roots = node.allSourceQids();
+        q.rawWhere(roots.isEmpty()
+                ? wikidata.query.StatementPatterns.qualifiedMembershipExists(
+                        "?value", RuleNode.cleanPid(node.propertyPid()),
+                        "?membershipStatement", node.membershipQualifierCondition())
+                : wikidata.query.StatementPatterns.qualifiedMembership(
+                        "?value", RuleNode.cleanPid(node.propertyPid()),
+                        "?membershipStatement", node.membershipQualifierCondition()));
+        if (roots.isEmpty()) return;
+        q.valuesQids(node.membershipIncludesDescendants() ? "membershipRoot" : "root", roots);
+        if (node.membershipIncludesDescendants()) {
+            q.rawWhere("?root wdt:P279* ?membershipRoot .");
+        }
+        q.rawWhere("?membershipStatement ps:" + RuleNode.cleanPid(node.propertyPid())
+                + " ?root .");
     }
 
     // The resolved form of a membership that includes subclasses: "type is one of
@@ -1199,10 +1281,11 @@ public final class RuleNodeQueryBuilder {
             String triple = RuleIncludedFieldSparql.valuePattern(field, "?value", valueVar);
             // Constrain the value to the referenced class's type, if requested
             // (e.g. keep only P31=Episode, dropping videogames/novels).
-            String typeConstraint = field.hasMembership()
-                    ? "  " + valueVar + " wdt:" + field.membershipPid()
-                            + " wd:" + field.membershipQid() + " .\n"
-                    : "";
+            String typeConstraint = RuleIncludedFieldSparql.membershipPattern(
+                    field, valueVar, pairVar);
+            if (!typeConstraint.isEmpty()) {
+                typeConstraint = "  " + typeConstraint.replace("\n", "\n  ") + "\n";
+            }
 
             q.rawWhere("""
                 OPTIONAL {
@@ -1359,9 +1442,10 @@ public final class RuleNodeQueryBuilder {
             StringBuilder sb = new StringBuilder();
             sb.append("  OPTIONAL {\n    ").append(triple).append("\n");
             if (field.hasMembership()) {
-                sb.append("    ?").append(var).append(" wdt:")
-                  .append(field.membershipPid()).append(" wd:")
-                  .append(field.membershipQid()).append(" .\n");
+                sb.append("    ").append(RuleIncludedFieldSparql.membershipPattern(
+                                field, "?" + var, var)
+                                .replace("\n", "\n    "))
+                        .append("\n");
             }
             if (label) {
                 sb.append("    OPTIONAL { ?").append(var)
