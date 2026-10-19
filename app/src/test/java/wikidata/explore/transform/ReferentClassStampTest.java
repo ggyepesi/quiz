@@ -120,6 +120,64 @@ class ReferentClassStampTest {
                         + pomum.typeName() + " " + pomum.directClassNames());
     }
 
+    @Test void everyEdgeOfATwoClassCycleLinksButDoesNotCreateMembers() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel characterClass = new GeneratedClassModel("Character");
+        entityField(characterClass, "episodes", "Episode");
+        model.rootClass(characterClass);
+        GeneratedClassModel episodeClass = new GeneratedClassModel("Episode");
+        entityField(episodeClass, "characters", "Character");
+        model.addClass(episodeClass);
+
+        WikidataDynamicObject existingCharacter =
+                new WikidataDynamicObject("Q1", "an existing character");
+        existingCharacter.type("Character");
+        WikidataDynamicObject reachedEpisode =
+                new WikidataDynamicObject("Q2", "a reached episode");
+        existingCharacter.put("episodes", List.of(reachedEpisode));
+
+        WikidataDynamicObject existingEpisode =
+                new WikidataDynamicObject("Q3", "an existing episode");
+        existingEpisode.type("Episode");
+        WikidataDynamicObject reachedCharacter =
+                new WikidataDynamicObject("Q4", "a reached character");
+        existingEpisode.put("characters", List.of(reachedCharacter));
+
+        assertEquals(0, ReferentClassStamp.apply(
+                model, List.of(existingCharacter, existingEpisode)));
+        assertFalse(reachedEpisode.hasTypeStamp());
+        assertFalse(reachedCharacter.hasTypeStamp());
+
+        assertEquals(0, ReferentClassStamp.apply(
+                model, List.of(existingEpisode, existingCharacter)),
+                "reversing traversal order cannot choose a population-producing edge");
+        assertFalse(reachedEpisode.hasTypeStamp());
+        assertFalse(reachedCharacter.hasTypeStamp());
+    }
+
+    @Test void aSubclassMemberDoesNotReceiveARedundantBaseStamp() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("Holding");
+        entityField(holding, "position", "Position");
+        model.rootClass(holding);
+        model.addClass(new GeneratedClassModel("Position"));
+        GeneratedClassModel withHolders = new GeneratedClassModel("PositionWithHolders");
+        withHolders.baseClassName("Position");
+        model.addClass(withHolders);
+
+        WikidataDynamicObject position =
+                new WikidataDynamicObject("Q1", "a position with holders");
+        position.type("PositionWithHolders");
+        WikidataDynamicObject statement =
+                new WikidataDynamicObject("Q1$holding", "a holding");
+        statement.type("Holding");
+        statement.put("position", position);
+
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(statement, position)));
+        assertEquals(java.util.Set.of("PositionWithHolders"),
+                position.directClassNames());
+    }
+
     @Test void doesNotPutALegacyRoleBackOntoAClassifiedKind() {
         GeneratedProjectModel model = model();
 
@@ -222,17 +280,14 @@ class ReferentClassStampTest {
         assertTrue(shared.hasTypeStamp());
     }
 
-    /**
-     * Alphabetical order only breaks ties. A role that IS a subclass of another still
-     * wins, because the save path picks the deepest class — and an in-memory carrier
-     * chosen by a different rule than the persisted type is a difference nobody would
-     * notice until the two disagreed.
-     */
+    /** A field naming a base adds no second direct class after another field has already
+     *  supplied its subclass. Inheritance answers base membership; storing both would
+     *  make counts and persistence depend on field traversal order. */
     @Test void aSubclassRoleOutranksItsBaseWhateverTheirNames() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel nominationClass = new GeneratedClassModel("Nomination");
-        entityField(nominationClass, "nominee", "Zeta");
         entityField(nominationClass, "director", "Alpha");
+        entityField(nominationClass, "nominee", "Zeta");
         model.addClass(nominationClass);
         model.addClass(new GeneratedClassModel("Alpha"));
         GeneratedClassModel zeta = new GeneratedClassModel("Zeta");
@@ -243,13 +298,14 @@ class ReferentClassStampTest {
         WikidataDynamicObject shared = new WikidataDynamicObject("Q42", "Shared entity");
         WikidataDynamicObject nomination = new WikidataDynamicObject("Q1", "Nomination");
         nomination.type("Nomination");
-        nomination.put("nominee", shared);
         nomination.put("director", shared);
+        nomination.put("nominee", shared);
 
-        ReferentClassStamp.apply(model, List.of(nomination));
+        assertTrue(ReferentClassStamp.apply(model, List.of(nomination)) > 0);
 
         assertEquals("Zeta", shared.typeName(), "the deeper class carries, not the earlier name");
         assertEquals("Zeta", shared.typeKey());
-        assertEquals(java.util.Set.of("Alpha", "Zeta"), shared.directClassNames());
+        assertEquals(java.util.Set.of("Zeta"), shared.directClassNames(),
+                "base membership is inherited rather than stored as another direct stamp");
     }
 }

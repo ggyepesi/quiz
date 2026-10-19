@@ -55,14 +55,19 @@ public final class ReferentClassStamp {
         }
 
         // className -> (fieldName -> declared entityClassName), only for ENTITY
-        // fields whose declared target is a real class in the model.
+        // fields whose declared target is a real class in the model. Effective fields:
+        // an inherited field stamps for a subclass's members exactly as for the base's.
         Map<String, Map<String, String>> fieldClasses = new LinkedHashMap<>();
+        // className -> the fields that lie on a reference cycle (#394).
+        Map<String, java.util.Set<String>> cyclicFields = new LinkedHashMap<>();
+        wikidata.explore.model.ReferenceCycles cycles =
+                wikidata.explore.model.ReferenceCycles.of(model);
         for (GeneratedClassModel c : model.classes()) {
             if (c == null) {
                 continue;
             }
             Map<String, String> byField = new LinkedHashMap<>();
-            for (GeneratedFieldModel f : c.fields()) {
+            for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f == null || f.type() != FieldType.ENTITY) {
                     continue;
                 }
@@ -73,6 +78,10 @@ public final class ReferentClassStamp {
                     continue;
                 }
                 byField.put(f.name(), target);
+                if (cycles.onCycle(c.className(), f)) {
+                    cyclicFields.computeIfAbsent(c.className(),
+                            ignored -> new java.util.HashSet<>()).add(f.name());
+                }
             }
             if (!byField.isEmpty()) {
                 fieldClasses.put(c.className(), byField);
@@ -101,7 +110,8 @@ public final class ReferentClassStamp {
             for (Map.Entry<String, String> e : byField.entrySet()) {
                 if (admittedKinds.contains(e.getValue())) continue;
                 stamped += stamp(o.get(e.getKey()), e.getValue(), model, roleClasses,
-                        originallyTyped, e.getValue().equals(o.typeName()));
+                        originallyTyped, cyclicFields.getOrDefault(o.typeName(),
+                                java.util.Set.of()).contains(e.getKey()));
             }
         }
         // Unrelated role classes have no "most specific" winner. Normalize their
@@ -151,18 +161,19 @@ public final class ReferentClassStamp {
                              GeneratedProjectModel model,
                              java.util.Set<String> roleClasses,
                              Map<WikidataDynamicObject, Boolean> originallyTyped,
-                             boolean selfReference) {
+                             boolean onCycle) {
         if (value instanceof WikidataDynamicObject w) {
             if (w.qid() != null && WikidataIds.isQid(w.qid())) {
                 originallyTyped.putIfAbsent(w, w.hasTypeStamp());
             }
-            // A same-class relation links members; it is not another membership
-            // producer. Otherwise one root constellation plus P47 neighbours (or one
-            // Person plus spouse) closes transitively over everything reachable and
-            // silently changes the authored population. Existing members are already
-            // stamped, so leaving a new bare referent bare preserves the link without
-            // admitting it as another class instance.
-            if (selfReference && !originallyTyped.getOrDefault(w, false)) {
+            // A field on a reference cycle links members; it is not another membership
+            // producer. Otherwise one root constellation plus P47 neighbours, one Person
+            // plus spouse, or a Character's episodes and their characters close
+            // transitively over everything reachable and silently change the authored
+            // population (ReferenceCycles, #394). Existing members are already stamped,
+            // so leaving a new bare referent bare preserves the link without admitting
+            // it as another class instance.
+            if (onCycle && !originallyTyped.getOrDefault(w, false)) {
                 return 0;
             }
             // A field declaration constrains its value; it does not reclassify an
@@ -185,8 +196,22 @@ public final class ReferentClassStamp {
                     && w.directClassNames().stream().anyMatch(c -> !roleClasses.contains(c))) {
                 return 0;
             }
-            if (w.qid() != null && WikidataIds.isQid(w.qid())
-                    && !w.directClassNames().contains(className)) {
+            // Already a member: the class itself, or a subclass of it — a
+            // PositionWithHolders IS a Position, so a Position-typed field adds nothing.
+            // Assigning the base as a second direct class would only change what the
+            // entity is counted as.
+            if (w.directClassNames().stream()
+                    .anyMatch(existing -> model.isSameOrSubclass(existing, className))) {
+                return 0;
+            }
+            if (w.qid() != null && WikidataIds.isQid(w.qid())) {
+                // The reverse order is the same fact: when the base was encountered
+                // first, replace that direct claim with the more-specific class rather
+                // than keeping both. Otherwise declaration order decides whether an
+                // object carries {Base, Subclass} or only {Subclass}.
+                w.directClassNames().stream()
+                        .filter(existing -> model.isSameOrSubclass(className, existing))
+                        .toList().forEach(w::removeClass);
                 w.assignClass(className);
                 return 1;
             }
@@ -196,7 +221,7 @@ public final class ReferentClassStamp {
             int n = 0;
             for (Object item : list) {
                 n += stamp(item, className, model, roleClasses, originallyTyped,
-                        selfReference);
+                        onCycle);
             }
             return n;
         }

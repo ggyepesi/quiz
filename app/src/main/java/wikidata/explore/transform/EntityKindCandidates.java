@@ -83,11 +83,12 @@ final class EntityKindCandidates {
         // A field that names an admitted kind directly — a predecessor typed Person — is
         // a population on which that admission is meaningful too. Its values become the
         // kind by evidence, as a role's do, never by the field's declaration: a qualifier
-        // pointing at the office "Taoiseach" must not make it a person. A self-reference
-        // is deliberately excluded: Person.spouse presupposes an existing Person
+        // pointing at the office "Taoiseach" must not make it a person. A field on a
+        // reference cycle is deliberately excluded (ReferenceCycles, #394): Person.spouse,
+        // or Character.episodes with Episode.characters, presupposes an existing
         // population and must not turn semantic completion into an implicit transitive
-        // spouse traversal. Recursive population growth belongs to an explicit graph
-        // construct, where its boundary is visible and configurable.
+        // traversal. Recursive population growth belongs to an explicit graph construct,
+        // where its boundary is visible and configurable.
         for (Map.Entry<String, Set<String>> direct
                 : directKindReferents(model, pool, admittedClasses).entrySet()) {
             byKind.computeIfAbsent(direct.getKey(), ignored -> new LinkedHashSet<>())
@@ -109,12 +110,17 @@ final class EntityKindCandidates {
             GeneratedProjectModel model, Collection<WikidataDynamicObject> pool,
             Set<String> admittedClasses) {
         Map<String, Map<String, String>> kindFields = new LinkedHashMap<>();
+        wikidata.explore.model.ReferenceCycles cycles =
+                wikidata.explore.model.ReferenceCycles.of(model);
         for (wikidata.explore.model.GeneratedClassModel clazz : model.classes()) {
             if (clazz == null) continue;
-            for (wikidata.explore.model.GeneratedFieldModel field : clazz.fields()) {
+            // Effective fields: an inherited field nominates for a subclass's members
+            // exactly as it does for the base's.
+            for (wikidata.explore.model.GeneratedFieldModel field
+                    : clazz.effectiveFields(model)) {
                 if (field != null && field.type() == datasource.schema.FieldType.ENTITY
                         && admittedClasses.contains(field.entityClassName())
-                        && !clazz.className().equals(field.entityClassName())) {
+                        && !cycles.onCycle(clazz.className(), field)) {
                     kindFields.computeIfAbsent(clazz.className(), ignored -> new LinkedHashMap<>())
                             .put(field.name(), field.entityClassName());
                 }

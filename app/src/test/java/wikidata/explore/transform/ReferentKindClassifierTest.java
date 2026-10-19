@@ -44,6 +44,35 @@ class ReferentKindClassifierTest {
                         + "grow the Person population");
     }
 
+    @Test void aTwoClassCycleDoesNotNominateEitherPopulationForEvidenceKinds() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel characterClass = new GeneratedClassModel("Character");
+        characterClass.addField("episodes", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Episode");
+        model.rootClass(characterClass);
+        GeneratedClassModel episodeClass = new GeneratedClassModel("Episode");
+        episodeClass.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Character");
+        model.addClass(episodeClass);
+        model.addEntityKindRule(new EntityKindRule("Character", List.of("Q95074")));
+        model.addEntityKindRule(new EntityKindRule("Episode", List.of("Q21191270")));
+
+        WikidataDynamicObject episode = new WikidataDynamicObject("Q2", "an episode");
+        WikidataDynamicObject character = new WikidataDynamicObject("Q1", "a character");
+        character.type("Character");
+        character.put("episodes", List.of(episode));
+        episode.put("characters", List.of(character));
+        var api = new FakeWikidataApiClient()
+                .entity("Q2", "an episode", Map.of("P31", List.of("Q21191270")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(character), api, null);
+
+        assertEquals(0, result.classified());
+        assertTrue(!episode.hasTypeStamp(),
+                "evidence does not matter until an explicit population construct "
+                        + "nominates the cyclic referent");
+    }
+
     @Test void aDirectEvidenceKindFieldNeedsEvidenceWithoutARepresentationRule() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");

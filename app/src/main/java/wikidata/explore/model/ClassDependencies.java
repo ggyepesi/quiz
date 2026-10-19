@@ -80,7 +80,8 @@ public final class ClassDependencies {
     /**
      * {@code dependent} cannot be produced until {@code dependency} has been.
      *
-     * @param site what carries the dependency — a field name for OWNED, blank otherwise
+     * @param site what carries the dependency — a field name for OWNED, the complete
+     *             field path for REFERENCES, blank otherwise
      */
     public record Edge(GeneratedClassModel dependent, GeneratedClassModel dependency,
                        Kind kind, String site) {
@@ -132,7 +133,7 @@ public final class ClassDependencies {
             edges.add(new Edge(clazz, clazz, Kind.EXTENDS, ""));
         }
 
-        referenceEdges(clazz, project, clazz.fields(), edges);
+        referenceEdges(clazz, project, clazz.fields(), "", edges);
 
         return List.copyOf(edges);
     }
@@ -140,16 +141,17 @@ public final class ClassDependencies {
     /** An ENTITY field's target, at any depth — nested fields target classes too. */
     private static void referenceEdges(GeneratedClassModel clazz,
             GeneratedProjectModel project, List<GeneratedFieldModel> fields,
-            List<Edge> edges) {
+            String prefix, List<Edge> edges) {
         if (fields == null) return;
         for (GeneratedFieldModel field : fields) {
             if (field == null) continue;
+            String path = prefix.isEmpty() ? field.name() : prefix + "." + field.name();
             GeneratedClassModel target = project.findClass(field.entityClassName());
             if (target != null) {
-                Edge edge = new Edge(clazz, target, Kind.REFERENCES, field.name());
+                Edge edge = new Edge(clazz, target, Kind.REFERENCES, path);
                 if (!edges.contains(edge)) edges.add(edge);
             }
-            referenceEdges(clazz, project, field.fields(), edges);
+            referenceEdges(clazz, project, field.fields(), path, edges);
         }
     }
 
