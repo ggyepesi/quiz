@@ -14,18 +14,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * An edge whose class includes subclasses lists them once, as a step of its own, and
- * reuses the list for every parent (#399). If they cannot be listed, the edge says so
- * and falls back to the subclass path.
+ * reuses the list for every parent (#399). If they cannot be listed, the edge fails
+ * closed instead of fanning the failure out into one doomed request per parent.
  */
 class EdgeSubclassTypesTest {
 
     private static final class CountingClient extends WikidataSparqlClient {
         int queries;
         boolean fail;
+        boolean slow;
         CountingClient() { super("test", 1, "https://example.test/sparql"); }
-        @Override public List<WikidataBinding> query(String sparql) {
+        @Override public synchronized List<WikidataBinding> query(String sparql) {
             queries++;
             if (fail) throw new IllegalStateException("timeout");
+            if (slow) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                }
+            }
             return List.of(new WikidataBinding(Map.of("t", "http://www.wikidata.org/entity/Q523")),
                     new WikidataBinding(Map.of("t", "http://www.wikidata.org/entity/Q5871")));
         }
@@ -61,17 +70,14 @@ class EdgeSubclassTypesTest {
         assertEquals(List.of("Subclasses of Q523 -> 2 type(s)"), log.lines);
     }
 
-    @Test void anEdgeWhoseSubclassesCannotBeListedSaysItFallsBack() throws Exception {
+    @Test void anEdgeWhoseSubclassesCannotBeListedFailsClosed() {
         CountingClient client = new CountingClient();
         client.fail = true;
         RecordingLog log = new RecordingLog();
 
-        List<String> types = new RuleTreeExtractor(client).membershipTypes(starEdge(), log);
-
-        assertTrue(types.isEmpty());
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> new RuleTreeExtractor(client).membershipTypes(starEdge(), log));
         assertTrue(log.lines.stream().anyMatch(l -> l.startsWith("Subclasses of Q523 -> FAILED")),
-                log.lines.toString());
-        assertTrue(log.lines.stream().anyMatch(l -> l.contains("uses the subclass path")),
                 log.lines.toString());
     }
 
@@ -83,5 +89,22 @@ class EdgeSubclassTypesTest {
         assertTrue(new RuleTreeExtractor(client).membershipTypes(exact, new RecordingLog())
                 .isEmpty());
         assertEquals(0, client.queries);
+    }
+
+    @Test void parallelEdgesShareOneSubclassLookup() throws Exception {
+        CountingClient client = new CountingClient();
+        client.slow = true;
+        RuleTreeExtractor extractor = new RuleTreeExtractor(client);
+        RecordingLog log = new RecordingLog();
+        java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var first = pool.submit(() -> extractor.membershipTypes(starEdge(), log));
+            var second = pool.submit(() -> extractor.membershipTypes(starEdge(), log));
+            assertEquals(first.get(), second.get());
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, client.queries, "the hierarchy lookup is single-flight");
     }
 }

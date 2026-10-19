@@ -96,4 +96,67 @@ class SubclassMembershipEdgeQueryTest {
         assertEquals("SELECT DISTINCT ?t WHERE { ?t wdt:P279* wd:Q523 . }",
                 RuleNodeQueryBuilder.descendantTypesQuery("Q523"));
     }
+
+    @Test void previewNamesTheDependentTypeListInsteadOfPretendingItIsBaseOnly() {
+        RuleNode parent = new RuleNode("Constellation", "constellation");
+        parent.sourceQid("Q8928");
+        parent.propertyPid("P31");
+        parent.addEdge(new RuleEdge("stars", stars(true), true));
+
+        String preview = String.join("\n",
+                new wikidata.explore.extract.RuleTreeExtractor(null)
+                        .previewQueries(parent, 1));
+
+        assertTrue(preview.contains("<subclass QIDs returned above>"), preview);
+        assertFalse(preview.contains(
+                "FILTER(?membershipFilterValue IN (wd:Q523))"), preview);
+    }
+
+
+    @Test void qualifiedStatementMembershipIsTheSameRootAndEdgeConstraint() {
+        GeneratedClassModel star = new GeneratedClassModel("Star");
+        star.membership(EntityBound.qualifiedRelation("P528", List.of(), false,
+                new QualifierCondition("P972", List.of("Q499138"))));
+        GeneratedFieldModel magnitude =
+                star.addField("apparentMagnitude", FieldType.NUMBER, FieldCardinality.SINGLE);
+        magnitude.mapping().propertyPid("P1215");
+        magnitude.required(true);
+        magnitude.filterOperator(wikidata.explore.filter.WikidataValueFilterOperator.LE);
+        magnitude.filterValue(6.0);
+
+        GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
+        constellation.membership(EntityBound.instancesOf("Q8928"));
+        GeneratedFieldModel stars = constellation.addField(
+                "stars", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        stars.entityClassName("Star");
+        stars.mapping().propertyPid("P59");
+        stars.mapping().direction(RuleDirection.ITEM_TO_ROOT);
+        stars.mapping().productionKind(FieldProductionKind.CHILD_OBJECTS);
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(star);
+        project.rootClass(constellation);
+
+        RuleNode root = RuleTreeCompiler.compileClass(star, project);
+        RuleNode edge = RuleTreeCompiler.compileClass(constellation, project)
+                .edges().getFirst().childNode();
+        String rootQuery = RuleNodeQueryBuilder.valuesQuery(root);
+        String edgeQuery = RuleNodeQueryBuilder.childQueryForParent(edge, "Q886", 6);
+
+        for (String query : List.of(rootQuery, edgeQuery)) {
+            assertTrue(query.contains("pq:P972 ?membership"), query);
+            assertTrue(query.contains("wd:Q499138"), query);
+            assertTrue(query.contains("p:P528 ?membership"), query);
+            assertTrue(query.contains("wikibase:DeprecatedRank"), query);
+            assertFalse(query.contains("wikibase:PreferredRank"),
+                    "boolean membership must not rank matching statements:\n" + query);
+            assertFalse(query.contains("P279"), query);
+        }
+        assertTrue(edgeQuery.indexOf("VALUES ?membershipFilterStatement_qv")
+                        < edgeQuery.indexOf("pq:P972"),
+                "qualifier values must be bound before their indexed lookup:\n" + edgeQuery);
+        assertTrue(edgeQuery.indexOf("pq:P972") < edgeQuery.indexOf("wdt:P59 wd:Q886"),
+                "selective catalogue membership precedes the broad constellation edge:\n"
+                        + edgeQuery);
+    }
 }

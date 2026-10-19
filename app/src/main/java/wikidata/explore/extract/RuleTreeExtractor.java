@@ -514,16 +514,22 @@ public class RuleTreeExtractor {
                         + RuleNodeQueryBuilder.descendantTypesQuery(classQid));
                 types = java.util.List.of(classQid);
             }
+            String childPreview = RuleNodeQueryBuilder.childQueryForParent(
+                    child, "Q_PARENT", child.limit(), types)
+                    .replace("wd:Q_PARENT", "wd:<parent>");
+            if (!types.isEmpty()) {
+                childPreview = childPreview.replace(
+                        "FILTER(?membershipFilterValue IN (wd:"
+                                + RuleNode.cleanQid(child.membershipQid()) + "))",
+                        "FILTER(?membershipFilterValue IN (<subclass QIDs returned above>))");
+            }
             queries.add("# For each " + parentNode.name()
                                 + " result, load complex edge \""
                                 + edge.fieldName() + "\" (one query per parent, limit "
                                 + child.limit() + (types.isEmpty() ? ""
                                         : "; the type list is the subclasses listed above")
                                 + "):\n"
-                                + RuleNodeQueryBuilder.childQueryForParent(
-                                                              child, "Q_PARENT", child.limit(),
-                                                              types)
-                                                      .replace("wd:Q_PARENT", "wd:<parent>"));
+                                + childPreview);
             appendChildPreviewQueries(
                     queries, child, complexEdges(child),
                     remainingDepth - 1, "?each_" + child.itemVar());
@@ -1324,14 +1330,15 @@ public class RuleTreeExtractor {
 
     /** The types of each class whose membership includes subclasses, listed once per
      *  extraction (#399). */
-    private final Map<String, java.util.List<String>> descendantTypes =
+    private final Map<String, java.util.concurrent.CompletableFuture<java.util.List<String>>>
+            descendantTypes =
             new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * The types an edge admits when its class includes subclasses: the class and every
      * class below it, listed once as a step of its own and reused for every parent. If
-     * they cannot be listed, the edge falls back to the subclass path and says so — that
-     * form is correct but may time out per parent (#399). Empty for any other edge.
+     * they cannot be listed, the edge fails closed before any per-parent request starts.
+     * Empty is reserved for an edge that does not request subclass expansion.
      */
     java.util.List<String> membershipTypes(RuleNode childNode, GenerationLog progress)
             throws Exception {
@@ -1339,8 +1346,19 @@ public class RuleTreeExtractor {
             return java.util.List.of();
         }
         String classQid = RuleNode.cleanQid(childNode.membershipQid());
-        java.util.List<String> known = descendantTypes.get(classQid);
-        if (known != null) return known;
+        java.util.concurrent.CompletableFuture<java.util.List<String>> mine =
+                new java.util.concurrent.CompletableFuture<>();
+        java.util.concurrent.CompletableFuture<java.util.List<String>> shared =
+                descendantTypes.putIfAbsent(classQid, mine);
+        if (shared != null) {
+            try {
+                return shared.get();
+            } catch (java.util.concurrent.ExecutionException failed) {
+                Throwable cause = failed.getCause();
+                if (cause instanceof Exception e) throw e;
+                throw new IllegalStateException(cause);
+            }
+        }
         String sparql = RuleNodeQueryBuilder.descendantTypesQuery(classQid);
         GenerationLog.Running lookup =
                 progress.subqueryStarted("Subclasses of " + classQid, sparql);
@@ -1352,16 +1370,18 @@ public class RuleTreeExtractor {
             }
             lookup.done(types.size() + " type(s)");
             java.util.List<String> resolved = java.util.List.copyOf(types);
-            descendantTypes.put(classQid, resolved);
+            mine.complete(resolved);
             return resolved;
         } catch (InterruptedException interrupted) {
+            mine.completeExceptionally(interrupted);
             throw interrupted;
         } catch (Exception failed) {
             lookup.failed(failed.getMessage());
-            progress.message("WARNING: the subclasses of " + classQid + " could not be "
-                    + "listed; edge \"" + childNode.name() + "\" uses the subclass path "
-                    + "instead, which may time out per parent.\n");
-            return java.util.List.of();
+            mine.completeExceptionally(failed);
+            throw new IllegalStateException("The subclasses of " + classQid
+                    + " could not be listed; edge \"" + childNode.name()
+                    + "\" was not queried because its membership could not be prepared",
+                    failed);
         }
     }
 
@@ -1379,7 +1399,17 @@ public class RuleTreeExtractor {
         }
 
         int limit = childNode.limit();
-        java.util.List<String> membershipTypes = membershipTypes(childNode, progress);
+        java.util.List<String> membershipTypes;
+        try {
+            membershipTypes = membershipTypes(childNode, progress);
+        } catch (InterruptedException interrupted) {
+            throw interrupted;
+        } catch (Exception failed) {
+            childQueryFailures.incrementAndGet();
+            progress.message("WARNING: edge \"" + edge.fieldName() + "\" was skipped: "
+                    + failed.getMessage() + ". No per-parent queries were started.\n");
+            return new EdgeResult(edge, java.util.Map.of());
+        }
 
         progress.message("\nLoading edge \"" + edge.fieldName()
                                  + "\" for " + parentQids.size()
