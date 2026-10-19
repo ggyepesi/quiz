@@ -107,6 +107,15 @@ public final class RuleTreeCompiler {
         for (String qid : clazz.seedQids()) {
             node.addIncludedQid(qid);
         }
+        // Explicit allow/exclude lists are authored population bounds too. Keeping
+        // them only on the mapping made the editor and saved model claim a boundary
+        // the generated query did not enforce (Constellations admitted Pomum).
+        for (String qid : m.allowedQids()) {
+            node.addIncludedQid(qid);
+        }
+        for (String qid : m.excludedQids()) {
+            node.addExcludedQid(qid);
+        }
 
         // Class-level ranking: keep the top `limit` by notability (sitelinks)
         // or a sortable field's property.
@@ -415,6 +424,12 @@ public final class RuleTreeCompiler {
 
         for (String qid : clazz.seedQids()) {
             node.addIncludedQid(qid);
+        }
+        for (String qid : m.allowedQids()) {
+            node.addIncludedQid(qid);
+        }
+        for (String qid : m.excludedQids()) {
+            node.addExcludedQid(qid);
         }
 
         node.rankDescending(m.rankDescending());

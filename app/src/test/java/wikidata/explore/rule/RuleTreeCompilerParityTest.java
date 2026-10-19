@@ -34,6 +34,8 @@ class RuleTreeCompilerParityTest {
         GeneratedClassModel root = new GeneratedClassModel("Constellation");
         root.membership(EntityBound.relation("P31", List.of("Q8928", "Q1053464"), false));
         root.instanceMapping().excludedTypeQids().add("Q19478619");
+        root.instanceMapping().allowedQids().add("Q8832");
+        root.instanceMapping().excludedQids().add("Q4158896");
         root.seedQids().add("Q8832");
 
         GeneratedFieldModel area =
@@ -106,5 +108,8 @@ class RuleTreeCompilerParityTest {
         assertFalse(RuleNodeQueryBuilder.valuesQuery(fromEditable).contains("P999"),
                 "a derived union never becomes a datasource query even if stale source "
                         + "configuration remains on the field");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                RuleNodeQueryBuilder.valuesQuery(fromEditable).contains("Q4158896"),
+                "editable and compiled rules both carry class-level exclusions");
     }
 }
