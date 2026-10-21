@@ -5,6 +5,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.FieldProductionKind;
 import wikidata.explore.model.OwnedClassSemantics;
 
 import java.util.ArrayList;
@@ -344,6 +345,57 @@ public final class OwnedComponents {
             if (!owned) orphans.add(part);
         }
         return List.copyOf(orphans);
+    }
+
+    /**
+     * Removes owned components for which acquisition populated no configured,
+     * non-owner field, and unlinks them from their owners.
+     *
+     * <p>Composition deliberately creates a component before acquisition: without the
+     * component there is nowhere to load fields such as {@code Discovery.date}. The
+     * derived owner reference is therefore construction context, not evidence that the
+     * component exists. Once acquisition and the other semantic work have settled, a
+     * component survives only when one of its other configured fields has a value.
+     *
+     * <p>Nested owned components are evaluated as one graph. A component containing
+     * only another valueless component is valueless too; a cycle of components with no
+     * terminal value does not keep itself alive. Conversely, a populated nested
+     * component keeps every configured owning component on the path to it.
+     *
+     * @return the removed components, in pool order
+     */
+    public static List<WikidataDynamicObject> pruneValuelessParts(
+            GeneratedProjectModel project, Collection<WikidataDynamicObject> pool) {
+        if (project == null || pool == null || pool.isEmpty()) return List.of();
+
+        Map<String, GeneratedClassModel> targetBySite = new LinkedHashMap<>();
+        for (GeneratedClassModel ownerClass : project.classes()) {
+            if (ownerClass == null) continue;
+            for (GeneratedFieldModel field : ownerClass.fields()) {
+                if (!isSite(field, project)) continue;
+                GeneratedClassModel target = project.findClass(field.entityClassName());
+                if (target != null) {
+                    targetBySite.put(siteKey(target.className(), ownerClass.className(),
+                            field.name()), target);
+                }
+            }
+        }
+        if (targetBySite.isEmpty()) return List.of();
+
+        Map<WikidataDynamicObject, Collection<String>> candidates =
+                new IdentityHashMap<>();
+        for (WikidataDynamicObject value : pool) {
+            if (value == null || !value.isPart()) continue;
+            GeneratedClassModel target = targetBySite.get(value.typeKey());
+            if (target != null) {
+                candidates.put(value, target.effectiveFields(project).stream()
+                        .filter(field -> field != null && field.mapping().productionKind()
+                                != FieldProductionKind.OWNER_REFERENCE)
+                        .map(GeneratedFieldModel::name)
+                        .toList());
+            }
+        }
+        return ConstructedInstanceContent.prune(pool, candidates);
     }
 
     private static boolean isSite(

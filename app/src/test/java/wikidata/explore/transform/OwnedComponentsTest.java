@@ -324,6 +324,40 @@ class OwnedComponentsTest {
                 "one part per owner, however many passes ran");
     }
 
+    /** Gamma Scuti has neither P575 nor P61. Discovery still has to exist during
+     * acquisition so those fields can be asked for, but the owner reference alone must
+     * not turn that loading shell into a saved Discovery instance. */
+    @Test void aPartWithNoConfiguredNonOwnerValueIsRemovedAfterAcquisition() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.Result composed =
+                OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(person));
+        composed.addTo(pool);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+
+        assertEquals(List.of(part), OwnedComponents.pruneValuelessParts(project, pool));
+        org.junit.jupiter.api.Assertions.assertNull(person.get("structuredName"));
+        assertEquals(List.of(person), pool);
+    }
+
+    @Test void aPartWithAConfiguredValueSurvivesFinalization() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.Result composed =
+                OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(person));
+        composed.addTo(pool);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        part.put("givenName", entity("Q1", "Douglas", "GivenName"));
+
+        assertEquals(List.of(), OwnedComponents.pruneValuelessParts(project, pool));
+        assertSame(part, person.get("structuredName"));
+        assertEquals(2, pool.size());
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("people");

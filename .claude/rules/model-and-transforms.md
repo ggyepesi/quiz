@@ -89,6 +89,15 @@ The pipeline's order encodes real dependencies. Changing it means checking these
    one entity replace another.
 5. Canonicalize and prune dead stubs **after** acquisition, so "not fetched yet" is never
    mistaken for "dead".
+6. After acquisition, an owned part survives only when one of its configured fields other than
+   the derived owner reference is populated: the part is made before acquisition so its fields
+   have somewhere to load, so the owner link alone is construction context, not content. A
+   reference to another owned part counts only when that part survives, so empty chains and
+   cycles disappear together, and removing a part also clears the field that produced it
+   (`OwnedComponents.pruneValuelessParts`). Source entities are not subject to this, since their
+   source identity and admission are evidence of existence, and statements keep their stricter
+   declared-end rule. `ConstructedInstanceContent` states the rule generally; another constructed
+   kind joins it only when something forces it.
 
 An owned class is produced per owning instance on the OWNER's QID; being owned is a property of
 the CLASS, where it is produced is a property of the FIELD (the production site is part of the

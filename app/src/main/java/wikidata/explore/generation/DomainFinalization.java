@@ -12,7 +12,7 @@ import java.util.List;
 /** Shared post-convergence stages for Generate, Enrich and Remap. */
 public final class DomainFinalization {
     public record Result(int dead, int disambiguation, int orphans, int requiredDropped,
-                         int ownedRenamed, int ownerlessParts,
+                         int ownedRenamed, int ownerlessParts, int valuelessParts,
                          List<wikidata.explore.transform.FieldExpectations.FieldCoverage>
                                  coverage,
                          List<WikidataDynamicObject> suspectedSelfReferences) {
@@ -22,9 +22,20 @@ public final class DomainFinalization {
                     ? List.of() : suspectedSelfReferences);
         }
 
+        /** What finalization did to owned parts, for the FINALIZE phase line: ", 3 owned
+         *  part(s) renamed, 5 owned part(s) dropped without values". Silent when nothing
+         *  moved — a permanent "0" reads as a stage doing nothing. */
+        public String ownedPartsSummary() {
+            return (ownedRenamed == 0 ? "" : ", " + ownedRenamed + " owned part(s) renamed")
+                    + (ownerlessParts == 0 ? ""
+                            : ", " + ownerlessParts + " owned part(s) dropped as ownerless")
+                    + (valuelessParts == 0 ? ""
+                            : ", " + valuelessParts + " owned part(s) dropped without values");
+        }
+
         /** Back-compat: a result with no coverage report. */
         public Result(int dead, int disambiguation, int orphans, int requiredDropped) {
-            this(dead, disambiguation, orphans, requiredDropped, 0, 0,
+            this(dead, disambiguation, orphans, requiredDropped, 0, 0, 0,
                     List.of(), List.of());
         }
     }
@@ -49,7 +60,7 @@ public final class DomainFinalization {
             Collection<WikidataDynamicObject> vocabularyEvidence,
             WikidataApiClient api,
             GenerationLog log) throws Exception {
-        int[] counts = new int[6];
+        int[] counts = new int[7];
         // What EXPECTED found is the point of declaring it, so it leaves this stage as
         // a value rather than only a log line (#96).
         List<wikidata.explore.transform.FieldExpectations.FieldCoverage> coverage =
@@ -96,9 +107,24 @@ public final class DomainFinalization {
                     expectationResult[0] = expectations;
                     counts[3] = expectations.dropped().size();
                 }),
+                // Components have to exist before acquisition so their fields can be
+                // loaded. Only now can absence mean absence: the derived owner link by
+                // itself is construction context, not a populated Discovery/Name/etc.
+                // Run before statement integrity because removing a component can also
+                // remove a declared statement end.
+                stage("owned-part-values", "Drop owned parts with no values", () -> {
+                    var valueless = wikidata.explore.transform.OwnedComponents
+                            .pruneValuelessParts(model, pool);
+                    counts[6] = valueless.size();
+                    if (log != null && !valueless.isEmpty()) {
+                        log.message("Dropped " + valueless.size()
+                                + " owned part(s) with no populated configured "
+                                + "non-owner field; cleared their producing fields.\n");
+                    }
+                }),
                 // AFTER every prune above, because each of them can remove a statement's
-                // subject or object and leave the statement behind. Before the owned-part
-                // rule, so a part of a dropped statement goes with it.
+                // subject or object and leave the statement behind. Before the
+                // owner-presence rule, so a part of a dropped statement goes with it.
                 stage("statement-ends", "Drop statements missing a declared end", () -> {
                     var incomplete = wikidata.explore.transform.IncompleteStatements
                             .find(model, pool);
@@ -159,7 +185,7 @@ public final class DomainFinalization {
                 }));
         for (GenerationStage stage : stages) stage.execute();
         return new Result(counts[0], counts[1], counts[2], counts[3], counts[4],
-                counts[5], coverage, suspectedSelfReferences);
+                counts[5], counts[6], coverage, suspectedSelfReferences);
     }
 
     private static GenerationStage stage(String id, String title, Checked action) {

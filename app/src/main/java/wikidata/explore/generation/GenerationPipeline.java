@@ -516,7 +516,7 @@ public class GenerationPipeline {
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 restricted + " dropped (required-field)"
-                        + ownedRenamed(finalization));
+                        + finalization.ownedPartsSummary());
         if (log != null) {
             log.message("Remap (idempotent transforms only): "
                     + pool.size() + " objects re-materialized, "
@@ -733,7 +733,7 @@ public class GenerationPipeline {
 
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 finalization.requiredDropped() + " dropped (required-field)"
-                        + ownedRenamed(finalization));
+                        + finalization.ownedPartsSummary());
         sink.message("Enrich: " + convergence.ownedCreated() + " component(s) materialized, "
                 + loaded + " declared field value(s) loaded over "
                 + pool.size() + " objects, " + external.summary()
@@ -918,7 +918,7 @@ public class GenerationPipeline {
         int restricted = finalization.requiredDropped();
         steps.completed(GenerateDomainPipeline.FINALIZE,
                 restricted + " dropped (required-field)"
-                        + ownedRenamed(finalization));
+                        + finalization.ownedPartsSummary());
 
         if (log != null) {
             log.message("Remap (retransform): " + pool.size()
@@ -979,17 +979,6 @@ public class GenerationPipeline {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /** A part is named for its owner, and an owner's name can settle after the part was
-     *  made. Silent when nothing moved — a permanent "0" reads as a stage doing nothing,
-     *  and the number is only interesting when it is not zero. */
-    private static String ownedRenamed(DomainFinalization.Result finalization) {
-        int renamed = finalization.ownedRenamed();
-        int ownerless = finalization.ownerlessParts();
-        return (renamed == 0 ? "" : ", " + renamed + " owned part(s) renamed")
-                + (ownerless == 0 ? ""
-                        : ", " + ownerless + " owned part(s) dropped as ownerless");
     }
 
 }

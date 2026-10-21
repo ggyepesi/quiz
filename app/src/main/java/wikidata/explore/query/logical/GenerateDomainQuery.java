@@ -487,12 +487,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     }
                     completePhase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
                             pool.size() + " final object(s)"
-                                    + (finalization.ownedRenamed() == 0 ? ""
-                                            : ", " + finalization.ownedRenamed()
-                                                    + " owned part(s) renamed")
-                                    + (finalization.ownerlessParts() == 0 ? ""
-                                            : ", " + finalization.ownerlessParts()
-                                            + " owned part(s) dropped as ownerless"));
+                                    + finalization.ownedPartsSummary());
 
                     // Acquisition and semantic processing are complete. Persist this
                     // exact final graph before generated-code mapping, so a local
