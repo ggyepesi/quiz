@@ -163,8 +163,10 @@ final class EntityEndEditor extends JPanel {
         mode.removeAllItems();
         for (String allowed : modes) mode.addItem(allowed);
         if (modes.contains(selected)) mode.setSelectedItem(selected);
-        // One way of being bounded is not a choice; offering it as one invites a click
-        // that can do nothing.
+        // One way of being bounded is not a choice. A disabled "These QIDs" selector
+        // beside the actual QID list was a remnant of the old text-field editor and
+        // looked like a second setting, so do not paint it at all.
+        mode.setVisible(modes.size() > 1);
         mode.setEnabled(wasEnabled && modes.size() > 1);
         showValueForMode();
     }

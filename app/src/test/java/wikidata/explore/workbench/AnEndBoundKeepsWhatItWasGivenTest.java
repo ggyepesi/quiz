@@ -3,6 +3,9 @@ package wikidata.explore.workbench;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.EntityBound;
 
+import javax.swing.JComboBox;
+import java.awt.Component;
+import java.awt.Container;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,5 +74,25 @@ class AnEndBoundKeepsWhatItWasGivenTest {
 
         assertEquals(EntityBound.Kind.EXPLICIT, editor.bound().kind(),
                 "these QIDs, with no property, are just these QIDs");
+    }
+
+    @Test void anExplicitOnlyEndDoesNotShowAOneItemModeSelector() {
+        EntityEndEditor editor = new EntityEndEditor("Object", "what it restricts");
+
+        editor.allowedModes(EntityEndEditor.explicitOnly());
+
+        assertEquals(0, visible(editor, JComboBox.class),
+                "the QID list already says what can be entered; one disabled choice is noise");
+    }
+
+    private static int visible(Container root, Class<? extends Component> type) {
+        int found = 0;
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child) && child.isVisible()) found++;
+            if (child instanceof Container container && child.isVisible()) {
+                found += visible(container, type);
+            }
+        }
+        return found;
     }
 }
