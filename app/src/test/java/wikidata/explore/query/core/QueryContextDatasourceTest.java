@@ -2,10 +2,19 @@ package wikidata.explore.query.core;
 
 import org.junit.jupiter.api.Test;
 import wikidata.WikidataSparqlClient;
+import wikidata.explore.extract.GenerationLog;
+import wikidata.explore.query.logical.StepGenerationLog;
+import work.LogKind;
+import work.LogNode;
+import work.LogStatus;
 import work.QueryContext;
+import work.RequestCensus;
+import work.WorkflowRecorder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -61,6 +70,58 @@ class QueryContextDatasourceTest {
             assertTrue(wikidata.closed && dbpedia.closed,
                     "a finished run detaches both endpoint sinks");
         }
+    }
+
+    /**
+     * The endpoint-label wrapper used to erase {@link
+     * WikidataSparqlClient.CapturableRequestLog}. A retry therefore looked up its
+     * owner on the HTTP completion thread, where no logical work was active. The
+     * Constellations run then said two requests "gave up" although both parent-star
+     * loads completed with six results. Labelling must preserve the captured owner
+     * through the asynchronous retry.
+     */
+    @Test void anAsynchronousRetryKeepsTheLogicalWorkCapturedBeforeEndpointLabelling()
+            throws Exception {
+        LogNode root = new LogNode(LogKind.WORKFLOW, "Generate Constellations");
+        WorkflowRecorder recorder = new WorkflowRecorder(root);
+        recorder.start();
+        try (RecordingClient wikidata = new RecordingClient(Datasource.WIKIDATA.endpoint())) {
+            QueryContext context = WikidataAccess.of(wikidata, null)
+                    .bindTo(new QueryContext().withRecorder(recorder));
+
+            context.step("Generate", "Domain", null, Map.of(), step -> {
+                GenerationLog log = StepGenerationLog.of(context, step);
+                try (WikidataAccess.RequestLogs ignored =
+                             WikidataAccess.logRequests(context, log)) {
+                    GenerationLog.Running stars = log.subqueryStarted(
+                            "stars <- Q10515", "SELECT ?star WHERE { }");
+                    assertTrue(wikidata.sink
+                                    instanceof WikidataSparqlClient.CapturableRequestLog,
+                            "adding [WIKIDATA] must preserve owner capture");
+                    Consumer<String> captured =
+                            ((WikidataSparqlClient.CapturableRequestLog) wikidata.sink)
+                                    .capture();
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        captured.accept("[SPARQL 36] START GET\nSELECT ?star WHERE { }");
+                        captured.accept("[SPARQL 36] ERROR timeout");
+                        captured.accept("[SPARQL 45] START GET retry-of=36\n"
+                                + "SELECT ?star WHERE { }");
+                        captured.accept("[SPARQL 45] OK rows=6 timeMs=8");
+                    }).join();
+                    stars.done("6 (retry)");
+                }
+                return null;
+            });
+        }
+
+        LogNode step = root.steps().iterator().next();
+        LogNode stars = step.steps().iterator().next();
+        assertEquals("stars <- Q10515", stars.title());
+        assertEquals(2, stars.steps().size(), "both attempts belong to the parent load");
+        assertTrue(stars.steps().stream().allMatch(LogNode::ownedByWork));
+        assertEquals(LogStatus.OK, stars.status());
+        assertEquals("1 request(s) failed: 1 recovered by retry or split "
+                + "(stars <- Q10515)", RequestCensus.of(root).describe());
     }
 
     /**

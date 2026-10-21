@@ -110,8 +110,7 @@ public final class WikidataAccess implements CancellableWork {
         java.util.function.Consumer<String> target = sink == null ? ignored -> {} : sink;
         java.util.List<AutoCloseable> scopes = new java.util.ArrayList<>();
         of(context).sparqlClients.forEach((datasource, client) -> scopes.add(
-                client.requestLog(message ->
-                        target.accept(labelled(datasource, message)))));
+                client.requestLog(labelled(datasource, target))));
         return new RequestLogs(scopes);
     }
 
@@ -227,6 +226,30 @@ public final class WikidataAccess implements CancellableWork {
         // No trailing newline: the log splits a message into lines itself, and one
         // added here became a blank line under every event.
         return "[" + datasource.name() + "] " + body;
+    }
+
+    /**
+     * Adds the endpoint label without hiding a capturable request log behind a lambda.
+     * The SPARQL client captures the logical work at query submission and carries that
+     * sink through asynchronous retries. Losing this interface here made a retry start
+     * on the HTTP completion thread with no owner, so the request census reported it as
+     * "gave up" even when the enclosing per-parent query later succeeded.
+     */
+    private static java.util.function.Consumer<String> labelled(
+            Datasource datasource, java.util.function.Consumer<String> target) {
+        if (target instanceof wikidata.WikidataSparqlClient.CapturableRequestLog capturable) {
+            return new wikidata.WikidataSparqlClient.CapturableRequestLog() {
+                @Override public void accept(String message) {
+                    capturable.accept(labelled(datasource, message));
+                }
+
+                @Override public java.util.function.Consumer<String> capture() {
+                    java.util.function.Consumer<String> captured = capturable.capture();
+                    return message -> captured.accept(labelled(datasource, message));
+                }
+            };
+        }
+        return message -> target.accept(labelled(datasource, message));
     }
 
     /** The per-run endpoint log registrations; closing restores the worker thread's
