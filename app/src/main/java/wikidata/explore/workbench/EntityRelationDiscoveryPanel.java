@@ -47,7 +47,7 @@ final class EntityRelationDiscoveryPanel extends JPanel implements AutoCloseable
         propertyRow.add(property, BorderLayout.CENTER);
         propertyPid.setToolTipText("A PID such as P279, or use Selections to hand one over.");
         GridBagUtils.labeledRow(controls,c,0,"Edge property:",propertyRow);
-        GridBagUtils.labeledRow(controls,c,1,"Starting QID:",startingQid);
+        GridBagUtils.labeledRow(controls,c,1,"Starting QID:",WikidataIdLines.qid(startingQid));
         GridBagUtils.labeledRow(controls,c,2,"Direction:",direction);
         GridBagUtils.labeledRow(controls,c,3,"Maximum depth:",depth);
         GridBagUtils.labeledRow(controls,c,4,"Maximum QIDs:",nodes);

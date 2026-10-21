@@ -95,6 +95,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             "QuizProject/1.0 (ggyepesi@gmail.com)");
     private final SwingQuerySession queries =
             new SwingQuerySession(queryFactory.newContext());
+    {
+        workbench.WikidataLabelLookup.install(queries.runner());
+    }
     private final JButton cancelQueryButton = new JButton("Cancel request");
     private final JButton cancelIdentityButton = new JButton("Cancel identity process");
     // Runs the identity-resolution process (off-EDT, with a review pause). Shares the

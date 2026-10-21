@@ -1586,6 +1586,11 @@ class GraphConstraintsPanelTest {
     private static <T extends Component> T named(Container root, String name, Class<T> type) {
         for (Component child : root.getComponents()) {
             if (type.isInstance(child) && name.equals(child.getName())) return type.cast(child);
+            // An id editor holds its configuration in a text it does not paint (#404).
+            if (child instanceof TextBackedEditor backed && type.isInstance(backed.storage())
+                    && name.equals(backed.storage().getName())) {
+                return type.cast(backed.storage());
+            }
             if (child instanceof Container nested) {
                 try { return named(nested, name, type); }
                 catch (AssertionError ignored) { }

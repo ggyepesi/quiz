@@ -80,11 +80,11 @@ final class EntityEndEditor extends JPanel {
         qc.insets = new Insets(0, 0, 0, 4);
         relationPid.setToolTipText("The property that must point into those QIDs — P31 "
                 + "for instances, P279 for subclasses, or any other.");
-        qidRow.add(relationPid, qc);
+        qidRow.add(WikidataIdLines.pid(relationPid), qc);
         qc.gridx = 1;
         qc.weightx = 1;
         qc.fill = GridBagConstraints.HORIZONTAL;
-        qidRow.add(qids, qc);
+        qidRow.add(WikidataIdLines.qidList(qids), qc);
         qc.gridx = 2;
         qc.weightx = 0;
         qc.fill = GridBagConstraints.NONE;

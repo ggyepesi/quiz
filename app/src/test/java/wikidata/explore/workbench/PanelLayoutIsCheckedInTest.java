@@ -150,6 +150,18 @@ class PanelLayoutIsCheckedInTest {
         }
         String box = titledBorder(component);
         if (box != null) return "box: " + box;
+        // An id editor paints its ids as rows; what it holds is its storage (#404).
+        if (component instanceof TextBackedEditor backed) {
+            return "ids: [" + plain(backed.storage().getText()) + "]"
+                    + (backed.storage().isEditable() ? "" : "  (read-only)");
+        }
+        // Ids render as links reading "label (Q5)" (#404); the dump shows what a reader
+        // sees. Offline there are no labels, so it shows the ids themselves.
+        if (component instanceof wikidata.ui.WikidataIdText links) {
+            String text = links.shownText().strip();
+            return text.isBlank() ? null
+                    : (links.followsField() ? "links: " : "label: ") + text;
+        }
         if (component instanceof JLabel label) {
             String text = plain(label.getText());
             return text.isBlank() ? null : "label: " + text;

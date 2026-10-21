@@ -83,7 +83,7 @@ final class TripleEditor extends JPanel {
     /** Says which elements are given, and by what. Blank when the kind authors them. */
     private final JLabel given = new JLabel(" ");
     /** One visible answer to whether this triple can produce instances. */
-    private final JLabel configurationStatus = new JLabel(" ");
+    private final wikidata.ui.WikidataIdText configurationStatus = WikidataIdLines.text();
     /** Invalid text remains an editor draft, but Apply must say that it was not
      * written to the valid model instead of leaving the loss invisible. */
     private String unappliedDetail = "";
@@ -131,9 +131,9 @@ final class TripleEditor extends JPanel {
         membershipQualifierValues.setToolTipText(
                 "Allowed qualifier-value QIDs, separated by spaces or commas.");
         membershipQualifierRow.add(new JLabel("Property:"));
-        membershipQualifierRow.add(membershipQualifierProperty);
+        membershipQualifierRow.add(WikidataIdLines.pid(membershipQualifierProperty));
         membershipQualifierRow.add(new JLabel("Allowed values:"));
-        membershipQualifierRow.add(membershipQualifierValues);
+        membershipQualifierRow.add(WikidataIdLines.qidList(membershipQualifierValues));
         GridBagUtils.labeledRow(membershipQualifierSection, c, 0,
                 "Statement qualifier (optional):", membershipQualifierRow);
         GridBagConstraints qualifierCell = (GridBagConstraints) c.clone();
@@ -427,7 +427,7 @@ final class TripleEditor extends JPanel {
         object.show(null);
         discoveryObject.show(null);
         given.setText(" ");
-        configurationStatus.setText(" ");
+        configurationStatus.setPlainText(" ");
         membershipQualifierProperty.setText("");
         membershipQualifierValues.setText("");
         membershipQualifierSection.setVisible(false);
@@ -450,7 +450,7 @@ final class TripleEditor extends JPanel {
     void refreshConfigurationStatus(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null) {
-            configurationStatus.setText(" ");
+            configurationStatus.setPlainText(" ");
             return;
         }
 
@@ -499,7 +499,7 @@ final class TripleEditor extends JPanel {
             }
         }
 
-        configurationStatus.setText((ready ? "✓ Ready — " : "⚠ Incomplete — ") + detail);
+        configurationStatus.setPlainText((ready ? "✓ Ready — " : "⚠ Incomplete — ") + detail);
         configurationStatus.setForeground(ready
                 ? new java.awt.Color(0x18, 0x65, 0x2A)
                 : new java.awt.Color(0xB0, 0x00, 0x20));

@@ -67,7 +67,6 @@ public class ClassSourcePanel extends JPanel {
     private final JComboBox<String> subclassConditionMode = new JComboBox<>(new String[] {
             CONDITION_PROPERTY, CONDITION_IN_POPULATION, CONDITION_OUTSIDE_POPULATION});
     private final JComboBox<String> subclassPopulation = new JComboBox<>();
-    private final JLabel discriminatorLabel = new JLabel(" ");
     private final JLabel inheritedPopulationFilterLabel =
             new JLabel("Inherited population filter:");
     private final JPanel inheritedPopulationFilter =
@@ -103,7 +102,6 @@ public class ClassSourcePanel extends JPanel {
     // Explicit instance QIDs (curated set, e.g. seeded from a WikiProject /
     // category). With no type above, these alone are the class's instances.
     private final JTextArea seedQidsArea = new JTextArea(3, 18);
-    private final JScrollPane seedQidsScroll = new JScrollPane(seedQidsArea);
 
     private final JTextField searchTextField = new JTextField(18);
     private final JButton searchTypeButton = new JButton("Search");
@@ -270,7 +268,6 @@ public class ClassSourcePanel extends JPanel {
         discriminatorPidField.setVisible(property);
         discriminatorEquals.setVisible(property);
         discriminatorQidField.setVisible(property);
-        discriminatorLabel.setVisible(property);
         discriminatorIncludesDescendants.setVisible(property);
         subclassPopulation.setVisible(!property);
         inheritedPopulationFilter.revalidate();
@@ -351,7 +348,15 @@ public class ClassSourcePanel extends JPanel {
 
     /** Navigation must not rewrite a declaration merely because its editor was shown. */
     private void watchConfiguration(Component component) {
-        if (component instanceof javax.swing.text.JTextComponent text) {
+        if (component instanceof TextBackedEditor backed) {
+            // Its configuration is the text it writes; a draft being typed is not.
+            watchConfiguration(backed.storage());
+            return;
+        } else if (component instanceof javax.swing.text.JTextComponent text
+                && EditableComponents.isInformational(text)) {
+            // Text nobody can type into — a class name shown, an id's links re-rendered
+            // as its label arrives — changes nothing that a flush should write.
+        } else if (component instanceof javax.swing.text.JTextComponent text) {
             text.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
                 @Override public void insertUpdate(javax.swing.event.DocumentEvent e) {
                     configurationDirty = true;
@@ -417,13 +422,10 @@ public class ClassSourcePanel extends JPanel {
                 + "Extends.</html>");
         discriminatorIncludesDescendants.setToolTipText(
                 "Also accept values whose class is below this QID through P279.");
-        WikidataLinks.linkify(discriminatorLabel,
-                () -> RuleNode.cleanQid(discriminatorQidField.getText()));
         inheritedPopulationFilter.add(subclassConditionMode);
-        inheritedPopulationFilter.add(discriminatorPidField);
+        inheritedPopulationFilter.add(WikidataIdLines.pid(discriminatorPidField));
         inheritedPopulationFilter.add(discriminatorEquals);
-        inheritedPopulationFilter.add(discriminatorQidField);
-        inheritedPopulationFilter.add(discriminatorLabel);
+        inheritedPopulationFilter.add(WikidataIdLines.qid(discriminatorQidField));
         inheritedPopulationFilter.add(discriminatorIncludesDescendants);
         inheritedPopulationFilter.add(subclassPopulation);
         subclassConditionMode.addActionListener(event -> updateSubclassConditionControls());
@@ -443,7 +445,8 @@ public class ClassSourcePanel extends JPanel {
                 + "even if it matched membership.<br>e.g. add Q11688446 (Roman "
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Exclude instances of:", excludeTypesField);
+        GridBagUtils.labeledRow(form, c, y++, "Exclude instances of:",
+                WikidataIdLines.qidList(excludeTypesField));
 
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -487,8 +490,8 @@ public class ClassSourcePanel extends JPanel {
                 + "curated set. Leave the Wikidata type empty to use ONLY these "
                 + "(e.g. the 12 Olympians); or set a type too, to restrict it. "
                 + "The WikiProject tab's \"Add selected\" fills this.</html>");
-        seedQidsScroll.setPreferredSize(new Dimension(260, 56));
-        triple.sourceSubjectControl("Restrict to these subject QIDs:", seedQidsScroll);
+        triple.sourceSubjectControl("Restrict to these subject QIDs:",
+                WikidataIdLines.qidList(seedQidsArea));
 
 
         fromPartsButton.setToolTipText("<html>Read the values of a property on an entity "
@@ -593,14 +596,14 @@ public class ClassSourcePanel extends JPanel {
         JTextField pidField = new JTextField("P527", 6);
         JPanel form = new JPanel(new java.awt.GridLayout(0, 2, 4, 4));
         form.add(new JLabel("Source entity QID:"));
-        form.add(parentField);
+        form.add(WikidataIdLines.qid(parentField));
         // Not "(P527 = has part)": the field takes any property and the query uses
         // what it is given, so a label naming one asserts a constraint that is not
         // there. The example belongs in the tooltip, which is where it is.
         pidField.setToolTipText("The property whose values become the members — "
                 + "P527 (has part) is the usual one, but any property works.");
         form.add(new JLabel("Relation property:"));
-        form.add(pidField);
+        form.add(WikidataIdLines.pid(pidField));
         int ok = JOptionPane.showConfirmDialog(this, form,
                 "Find related objects",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);

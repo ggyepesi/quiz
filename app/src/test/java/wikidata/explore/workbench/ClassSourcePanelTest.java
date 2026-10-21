@@ -111,7 +111,9 @@ class ClassSourcePanelTest {
         GeneratedClassModel position = new GeneratedClassModel("Position");
         ClassSourcePanel panel = panelFor(position);
         panel.edit(position);
-        find(panel, JTextArea.class).setText("Q4164871");
+        WikidataIdListEditor qids = findQidListBackedByTextArea(panel);
+        qids.draftField().setText("Q4164871");
+        qids.addButton().doClick();
 
         panel.applyEdits();
 
@@ -294,6 +296,18 @@ class ClassSourcePanelTest {
         return null;
     }
 
+    private static WikidataIdListEditor findQidListBackedByTextArea(Component component) {
+        if (component instanceof WikidataIdListEditor ids
+                && ids.storage() instanceof JTextArea) return ids;
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                WikidataIdListEditor found = findQidListBackedByTextArea(child);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     private static List<String> labels(Component component) {
         List<String> labels = new java.util.ArrayList<>();
         collectLabels(component, labels);
@@ -303,6 +317,10 @@ class ClassSourcePanelTest {
     private static void collectLabels(Component component, List<String> labels) {
         if (component instanceof JLabel label && label.getText() != null) {
             labels.add(label.getText().replaceAll("<[^>]+>", ""));
+        }
+        // Read-only text whose ids are links (#404) — a status line reads as its words.
+        if (component instanceof wikidata.ui.WikidataIdText text) {
+            labels.add(text.shownText());
         }
         if (component instanceof Container container) {
             for (Component child : container.getComponents()) collectLabels(child, labels);

@@ -97,8 +97,8 @@ public class StatementSourcePanel extends JPanel {
             new JLabel(" ");
     private final JLabel dedupValue = new JLabel(" ");
 
-    private final JTextArea qualifiersArea =
-            new JTextArea(5, 30);
+    private final wikidata.ui.WikidataIdText qualifiersArea =
+            WikidataIdLines.text();
 
     public StatementSourcePanel() {
         buildUi();
@@ -384,7 +384,7 @@ public class StatementSourcePanel extends JPanel {
             subjectFallbackValue.setText("—");
             statementValueFallbackValue.setText("—");
             dedupValue.setText("—");
-            qualifiersArea.setText(
+            qualifiersArea.setPlainText(
                     " (not a reifying class yet — set "
                             + "\"Reify from\" and a statement property, "
                             + "then add qualifier fields)");
@@ -470,7 +470,7 @@ public class StatementSourcePanel extends JPanel {
             qualifiers.append('\n');
         }
 
-        qualifiersArea.setText(
+        qualifiersArea.setPlainText(
                 qualifiers.length() == 0
                         ? " (no qualifier fields yet)"
                         : qualifiers.toString());
@@ -521,7 +521,7 @@ public class StatementSourcePanel extends JPanel {
         subjectFallbackValue.setText(" ");
         statementValueFallbackValue.setText(" ");
         dedupValue.setText(" ");
-        qualifiersArea.setText("");
+        qualifiersArea.setPlainText("");
     }
 
     private void buildUi() {
@@ -658,10 +658,10 @@ public class StatementSourcePanel extends JPanel {
             "Canonical key:",
             dedupValue);
 
-        qualifiersArea.setEditable(false);
         qualifiersArea.setBorder(
                 BorderFactory.createTitledBorder(
                         "Qualifier fields"));
+        qualifiersArea.setPreferredSize(new java.awt.Dimension(360, 96));
 
         GridBagUtils.wideRow(derived, derivedRow++,
              qualifiersArea);

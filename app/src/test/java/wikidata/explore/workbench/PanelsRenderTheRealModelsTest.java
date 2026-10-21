@@ -70,7 +70,8 @@ class PanelsRenderTheRealModelsTest {
         GeneratedProjectModel project = model("nobelprizes");
         GeneratedClassModel award = project.findClass("LaureatesWithMotivation");
 
-        JList<?> keyList = find(editorFor(project, award), JList.class);
+        JList<?> keyList = find(find(editorFor(project, award), ClassIdentityEditor.class),
+                JList.class);
         List<String> shown = new ArrayList<>();
         for (int i = 0; i < keyList.getModel().getSize(); i++) {
             shown.add(String.valueOf(keyList.getModel().getElementAt(i)));

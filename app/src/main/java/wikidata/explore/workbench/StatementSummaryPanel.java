@@ -45,7 +45,7 @@ public final class StatementSummaryPanel extends JPanel {
 
         JPanel input = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         input.add(new JLabel("Sample QIDs:"));
-        input.add(qidsField);
+        input.add(WikidataIdLines.qidList(qidsField));
         JButton load = new JButton("Load");
         load.addActionListener(e -> load(parseQids(qidsField.getText())));
         input.add(load);

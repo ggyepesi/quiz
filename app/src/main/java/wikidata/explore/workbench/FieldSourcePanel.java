@@ -1008,6 +1008,8 @@ public class FieldSourcePanel extends JPanel {
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
+        wikidata.ui.WikidataLinks.linkify(propertyLabel,
+                () -> RuleNode.cleanPid(propertyPidField.getText()));
         propRow.add(propertyLabel);
         discoverExternalButton.setVisible(false);
         propRow.add(discoverExternalButton);
@@ -1029,9 +1031,9 @@ public class FieldSourcePanel extends JPanel {
         conditionValuesField.setToolTipText(conditionTip);
         JPanel conditionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         conditionPanel.add(new JLabel("qualifier"));
-        conditionPanel.add(conditionQualifierField);
+        conditionPanel.add(WikidataIdLines.pid(conditionQualifierField));
         conditionPanel.add(new JLabel("is one of"));
-        conditionPanel.add(conditionValuesField);
+        conditionPanel.add(WikidataIdLines.qidList(conditionValuesField));
         qualifierConditionRow = FormRow.add(
                 form, c, y++, "Only statements where:", conditionPanel);
 
@@ -1076,7 +1078,8 @@ public class FieldSourcePanel extends JPanel {
                                                  + "another): the <b>qualifier</b> PID this field draws from "
                                                  + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
                                                  + "Blank = a direct/value field.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Qualifier of:", qualifierPidField);
+        GridBagUtils.labeledRow(form, c, y++, "Qualifier of:",
+                WikidataIdLines.pid(qualifierPidField));
         qualifierDateModeBox.setToolTipText("YEAR keeps the legacy year-only "
                 + "projection; DATE retains Wikidata's stated precision and calendar.");
         qualifierTimeRow = FormRow.add(

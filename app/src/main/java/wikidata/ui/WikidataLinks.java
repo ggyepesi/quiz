@@ -118,7 +118,7 @@ public final class WikidataLinks {
     //     id (we never have a label whose qid/pid we don't already hold), so we
     //     link the (id, label) PAIR directly — no fuzzy phrase matching. ---
 
-    private static final Pattern ID = Pattern.compile("\\b[PQ]\\d+\\b");
+    static final Pattern ID = Pattern.compile("\\b[PQ]\\d+\\b");
 
     /**
      * A labelled Wikidata entity kept together with its id — the unit of linking.
@@ -153,6 +153,42 @@ public final class WikidataLinks {
         }
         out.append(escape(text.substring(cursor)));
         return out.toString();
+    }
+
+    /** {@link #html} with every id reading {@code label (Q5)} once its label is known
+     *  ({@link WikidataLabels}). */
+    public static String labelledHtml(String text) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder out = new StringBuilder();
+        Matcher m = ID.matcher(text);
+        int cursor = 0;
+        while (m.find()) {
+            out.append(escape(text.substring(cursor, m.start())));
+            out.append(labelledLink(m.group()));
+            cursor = m.end();
+        }
+        return out.append(escape(text.substring(cursor))).toString();
+    }
+
+    /** {@link #labelledHtml} without markup — what a reader sees. */
+    public static String labelledPlain(String text) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder out = new StringBuilder();
+        Matcher m = ID.matcher(text);
+        int cursor = 0;
+        while (m.find()) {
+            String label = WikidataLabels.label(m.group());
+            out.append(text, cursor, m.start())
+                    .append(label == null ? m.group() : label + " (" + m.group() + ")");
+            cursor = m.end();
+        }
+        return out.append(text.substring(cursor)).toString();
+    }
+
+    /** One id as a link reading {@code label (Q5)}, or the bare id while unlabelled. */
+    public static String labelledLink(String id) {
+        String label = WikidataLabels.label(id);
+        return linkHtml(id, label == null ? id : label + " (" + id + ")");
     }
 
     /**

@@ -438,7 +438,13 @@ class OneTriplePerClassTest {
     private static List<String> labels(Container root) {
         List<JLabel> found = new ArrayList<>();
         collect(root, JLabel.class, found);
-        return found.stream().map(JLabel::getText).filter(t -> t != null).toList();
+        List<String> text = new ArrayList<>(
+                found.stream().map(JLabel::getText).filter(t -> t != null).toList());
+        // Read-only text whose ids are links (#404) — a status line reads as its words.
+        List<wikidata.ui.WikidataIdText> linked = new ArrayList<>();
+        collect(root, wikidata.ui.WikidataIdText.class, linked);
+        linked.forEach(line -> text.add(line.shownText()));
+        return text;
     }
 
     private static <T> T find(Container root, Class<T> type) {

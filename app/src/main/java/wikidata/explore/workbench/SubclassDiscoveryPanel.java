@@ -47,7 +47,7 @@ final class SubclassDiscoveryPanel extends JPanel {
         super(new BorderLayout(4, 4));
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         controls.add(new JLabel("Superclass QID:"));
-        controls.add(rootQid);
+        controls.add(WikidataIdLines.qid(rootQid));
         controls.add(run);
         controls.add(cancel);
         controls.add(status);

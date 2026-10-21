@@ -50,8 +50,19 @@ public final class EditableComponents {
         text.setEditable(false);
     }
 
+    /** Whether {@code text} was declared informational by {@link #keepReadOnly}: it shows,
+     *  and nothing typed or rendered into it is configuration. */
+    public static boolean isInformational(JTextComponent text) {
+        return text != null && Boolean.TRUE.equals(text.getClientProperty(ALWAYS_READ_ONLY));
+    }
+
     public static void setEditable(Component component, boolean editable) {
         if (component == null) return;
+
+        if (component instanceof TextBackedEditor backed) {
+            backed.setEditorEditable(editable);
+            return;
+        }
 
         if (component instanceof JTextComponent text) {
             // Some look-and-feels change the background from inside setEditable(false).

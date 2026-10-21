@@ -260,6 +260,7 @@ public class ModelBuilderFrame extends JFrame {
         QueryContext queryContext = queryFactory.newContext(
                 java.nio.file.Path.of(aux.Constants.wikidataDataDirectory));
         this.querySession = new SwingQuerySession(queryContext);
+        workbench.WikidataLabelLookup.install(querySession.runner());
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(
                 queryContext, logWindow, new SwingProcessInputHandler(this));

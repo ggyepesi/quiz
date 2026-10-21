@@ -3,7 +3,6 @@ package wikidata.explore.workbench;
 import wikidata.WikidataIds;
 
 import wikidata.explore.query.logical.DiscoverClassPropertiesQuery;
-import wikidata.explore.query.logical.EntityLabelQuery;
 import wikidata.explore.query.result.DiscoveredProperty;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.rule.RuleNode;
@@ -12,8 +11,6 @@ import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +52,6 @@ public class PropertyDiscoveryPanel extends JPanel {
     // --- UI ---
     private final JLabel     nodeLabel       = new JLabel("No node selected");
     private final JTextField customQidField  = new JTextField(8);
-    private final JLabel     customQidLabel  = new JLabel(" ");
     private final JSpinner   sampleSpinner   = new JSpinner(new SpinnerNumberModel(DEFAULT_SAMPLE, 1, 50, 5));
     private final JButton    runButton       = new JButton("Run");
     private final JButton    byTargetButton  = new JButton("By target…");
@@ -86,7 +82,6 @@ public class PropertyDiscoveryPanel extends JPanel {
     // so they are carried across instead of resetting to the default on every Run.
     private objectview.search.SearchPanel.ConfigState resultConfig;
 
-    private Timer qidResolveTimer;
 
     public PropertyDiscoveryPanel() {
         super(new BorderLayout(4, 4));
@@ -202,8 +197,7 @@ public class PropertyDiscoveryPanel extends JPanel {
         controls.add(new JLabel("Class:"));
         controls.add(nodeLabel);
         controls.add(new JLabel("  Override QID:"));
-        controls.add(customQidField);
-        controls.add(customQidLabel);
+        controls.add(WikidataIdLines.qid(customQidField));
         controls.add(new JLabel("N:"));
         controls.add(sampleSpinner);
         controls.add(runButton);
@@ -267,34 +261,6 @@ public class PropertyDiscoveryPanel extends JPanel {
         showResults();
 
         cancelButton.setEnabled(false);
-
-        customQidField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e)  { scheduleQidResolve(); }
-            public void removeUpdate(DocumentEvent e)  { scheduleQidResolve(); }
-            public void changedUpdate(DocumentEvent e) {}
-        });
-    }
-
-    private void scheduleQidResolve() {
-        customQidLabel.setText(" ");
-        if (qidResolveTimer != null) qidResolveTimer.stop();
-        String raw = customQidField.getText().trim();
-        if (!WikidataIds.isQid(raw)) return;
-        qidResolveTimer = new Timer(600, e -> resolveQidLabel(raw));
-        qidResolveTimer.setRepeats(false);
-        qidResolveTimer.start();
-    }
-
-    private void resolveQidLabel(String qid) {
-        if (queryRunner == null) return;
-
-        queryRunner.runQuiet(
-                new EntityLabelQuery(qid),
-                label -> SwingUtilities.invokeLater(() ->
-                        customQidLabel.setText(label != null
-                                ? qid + " · " + label
-                                : qid + " (no label)")),
-                ignored -> {});
     }
 
     // --- Discovery ---

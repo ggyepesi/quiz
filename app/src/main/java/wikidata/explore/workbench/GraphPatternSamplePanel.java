@@ -88,7 +88,7 @@ final class GraphPatternSamplePanel extends JPanel {
                 "Pattern:", patterns);
         seeds.setToolTipText("One or more configured target-node QIDs, separated by spaces.");
         objectview.utils.swing.GridBagUtils.labeledRow(controls, c, 1,
-                "Expansion nodes:", seeds);
+                "Expansion nodes:", WikidataIdLines.qidList(seeds));
         objectview.utils.swing.GridBagUtils.labeledRow(controls, c, 2,
                 "Maximum statements:", limit);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));

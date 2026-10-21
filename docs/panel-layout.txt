@@ -41,20 +41,38 @@
   piece: TripleEditor  [Triple — subject · property · object]
     label: Instances produced: Person
     label: Restrict to these subject QIDs:
-    textarea
+    ids: []
+      text: []
+      button: Add  (disabled)
+      list
+      button: Remove  (disabled)
+      button: Open  (disabled)
     box: Property
       label: Wikidata property:
       text: [P31]
       button: Find…
       label: Statement qualifier (optional):
       label: Property:
-      text: []
+      ids: []
+        text: []
+        button: Set  (disabled)
+        button: Cancel  (disabled)
       label: Allowed values:
-      text: []
+      ids: []
+        text: []
+        button: Add  (disabled)
+        list
+        button: Remove  (disabled)
+        button: Open  (disabled)
     piece: EntityEndEditor  [Object]
       label: Entities allowed:
       combo: 1 item(s)  (disabled)
-      text: [Q5]
+      ids: [Q5]
+        text: []
+        button: Add  (disabled)
+        list
+        button: Remove  (disabled)
+        button: Open  (disabled)
       check: include subclasses of these QIDs (P279*)
       label: Bounding the object restricts WHICH entities become instances of this class.
     button: Find related objects…  (disabled)
@@ -96,7 +114,12 @@
     label: Available:
     combo: 1 item(s)
   label: Exclude instances of:
-  text: []
+  ids: []
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
   label: Own population limit:
   text: [200]
   check: Require label
@@ -145,7 +168,12 @@
     piece: EntityEndEditor  [Object]
       label: Entities allowed:
       combo: 4 item(s)
-      text: [Q35637]
+      ids: [Q35637]
+        text: []
+        button: Add  (disabled)
+        list
+        button: Remove  (disabled)
+        button: Open  (disabled)
       label: Bounding the object restricts WHICH statements are collected.
     piece: EntityEndEditor  [Find subjects using objects from]
       label: Entities allowed:
@@ -318,9 +346,17 @@
   text: []
   label: Only statements where:
   label: qualifier
-  text: []
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
   label: is one of
-  text: []
+  ids: []
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
   label: Wikipedia fallback:
   label: none
   button: Set Wikipedia fallback…
@@ -330,7 +366,10 @@
   button: Configure…
   button: Clear  (disabled)
   label: Qualifier of:
-  text: []  (disabled)
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
   label: Subject field:
   combo: 2 item(s)
   label: Match value field:
@@ -369,12 +408,18 @@
   box: Incoming edge of next node
     label: ── property out ──▶
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     label: Direction from previous node:
     combo: 2 item(s)
     label: Equivalent alternative edges (optional; each is followed too)
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     combo: 2 item(s)
     button: Add alternative edge
     list
@@ -441,12 +486,18 @@
   box: Incoming edge of next node
     label: ── property out ──▶
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     label: Direction from previous node:
     combo: 2 item(s)
     label: Equivalent alternative edges (optional; each is followed too)
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     combo: 2 item(s)
     button: Add alternative edge
     list
@@ -459,7 +510,10 @@
     button: Remove selected node
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     combo: 2 item(s)
     button: Add evidence relation
     list
@@ -467,10 +521,16 @@
     button: Remove selected evidence relation
     label: Tests on reached evidence entities (one or more may match)
     label: Property:
-    text: []
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     combo: 2 item(s)
     combo: 4 item(s)
-    text: []  (disabled)
+    ids: []
+      text: []
+      button: Set  (disabled)
+      button: Cancel  (disabled)
     label: via
     text: []  (disabled)
     button: Add evidence test

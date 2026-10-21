@@ -617,11 +617,11 @@ final class GraphConstraintsPanel extends JPanel {
         JPanel panel = nodePanel("Incoming edge of next node");
         arrowLabel.setFont(arrowLabel.getFont().deriveFont(Font.BOLD, 15f));
         panel.add(arrowLabel);
-        addLine(panel, "Property:", edgePidField);
+        addLine(panel, "Property:", WikidataIdLines.pid(edgePidField));
         addLine(panel, "Direction from previous node:", directionBox);
         panel.add(new JLabel("Equivalent alternative edges (optional; each is followed too)"));
         JPanel alternativeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
-        alternativeRow.add(new JLabel("Property:")); alternativeRow.add(alternativePidField);
+        alternativeRow.add(new JLabel("Property:")); alternativeRow.add(WikidataIdLines.pid(alternativePidField));
         alternativeRow.add(alternativeDirectionBox);
         JButton addAlternative = new JButton("Add alternative edge");
         addAlternative.addActionListener(e -> addAlternativeEdge());
@@ -672,7 +672,7 @@ final class GraphConstraintsPanel extends JPanel {
         evidencePanel.add(new JLabel(
                 "Evidence relations from this node (one or more may reach evidence)"));
         JPanel evidenceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
-        evidenceRow.add(new JLabel("Property:")); evidenceRow.add(evidencePidField);
+        evidenceRow.add(new JLabel("Property:")); evidenceRow.add(WikidataIdLines.pid(evidencePidField));
         evidenceRow.add(evidenceDirectionBox);
         JButton addEvidence = new JButton("Add evidence relation");
         evidenceRow.add(addEvidence); evidencePanel.add(evidenceRow);
@@ -688,8 +688,8 @@ final class GraphConstraintsPanel extends JPanel {
 
         evidencePanel.add(new JLabel("Tests on reached evidence entities (one or more may match)"));
         JPanel testRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
-        testRow.add(new JLabel("Property:")); testRow.add(testPidField);
-        testRow.add(testDirectionBox); testRow.add(testKindBox); testRow.add(testQidField);
+        testRow.add(new JLabel("Property:")); testRow.add(WikidataIdLines.pid(testPidField));
+        testRow.add(testDirectionBox); testRow.add(testKindBox); testRow.add(WikidataIdLines.qid(testQidField));
         testRow.add(new JLabel("via")); testRow.add(testViaField);
         JButton addTest = new JButton("Add evidence test"); testRow.add(addTest);
         evidencePanel.add(testRow);
