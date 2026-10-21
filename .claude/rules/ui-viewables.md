@@ -71,8 +71,8 @@ Discovery's results had no search box, because they were a `JTable` rather than 
   open with their owner (`RenderContext.setOpensWithOwner`, e.g. the query log's `steps`);
   that is the rule's input, not an exception in it, and no renderer decides it alone.
   A root card is that rule's root occurrence, in the same choice store; whether roots start
-  open or as captions only is the view config's `rootsFolded`, set by the bar's
-  **Captions only** (#407). More than one level at once is the explicit
+  open or as captions only is the view config's `rootsFolded`, set by View Config's
+  **Top-level cards: captions only** (#407). More than one level at once is the explicit
   **Expand all below** / **Collapse all below** on one node.
   A scalar reference to an object already shown as a top-level card is navigation only.
   Members of an explicitly expanded object collection remain that collection's configured

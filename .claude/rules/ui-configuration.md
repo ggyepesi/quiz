@@ -90,7 +90,7 @@ collections may be endpoints.
 
 Unticking an owner suppresses its configured subtree rather than deleting it. The saved
 descendant checks remain visible, disabled and persisted, and reticking the owner restores
-them. Removing individual descendant checks or pressing **Clear fields** is the explicit
+them. Removing individual descendant checks or pressing **Clear nested config** is the explicit
 forget operation. A checked descendant behind an unchecked owner must never look active or
 silently enter the effective configuration.
 

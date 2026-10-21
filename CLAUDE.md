@@ -468,8 +468,8 @@ construct per thing produced:
   A card is the root occurrence of the same rule and the same choice store. In a view with
   the search bar every captioned root can fold, and whether roots start **open** or as
   **captions only** is the reader's setting: a presentation flag on the view's root
-  `ViewConfig` (`rootsFolded`), toggled by **Captions only** on the bar without opening
-  View Config, and persisted with the config (#407). The view's code
+  `ViewConfig` (`rootsFolded`), chosen by **Top-level cards: captions only** in View Config
+  and persisted with the config (#407). The view's code
   (`setCollapsibleCards`) only supplies its default, filled in where the config enters the
   view; switching forgets the open/closed choices already made. Opening more than one level at once is an explicit command on
   one node — **Expand all below** / **Collapse all below** on a chip or a card title — which
@@ -492,7 +492,7 @@ construct per thing produced:
   activated without a selected nested field. Unticking an owner suppresses its whole
   configured branch without erasing it: remembered descendant ticks stay visible but
   disabled, are persisted, and return when the owner is reticked. Removing individual
-  descendants, or the explicit **Clear fields** action, is what forgets them. Search
+  descendants, or the explicit **Clear nested config** action, is what forgets them. Search
   may still find a field hidden by View; navigating to the current hit temporarily
   reveals that path without changing the saved View configuration.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
