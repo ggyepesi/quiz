@@ -1,0 +1,15 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+    "name" : "Character",
+    "kind" : "CLASS",
+    "artifact" : "mythology.snapshot.json"
+  }, {
+    "declarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+    "name" : "Episode",
+    "kind" : "CLASS",
+    "artifact" : "mythology.snapshot.json"
+  } ],
+  "snapshotSignature" : "model-v2:3941959336cc0112473516f87b6f89e2f8fef8231fc665cfdeb702ecec629352"
+}

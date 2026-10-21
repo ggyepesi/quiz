@@ -1,2 +1,6 @@
 # Mythology — per-class distinct-qid counts, one row per save
 2026-08-09T10:13:47	total=557	Character=542	Episode=15
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-10-20T19:03:21	total=515	Character=500	Episode=15
+2026-10-21T10:20:24	total=515	Character=500	Episode=15
+2026-10-21T14:57:43	total=2217	Character=2202	Episode=15

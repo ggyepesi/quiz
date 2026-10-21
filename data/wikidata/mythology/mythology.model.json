@@ -7,11 +7,16 @@
     "declarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
     "className" : "Character",
     "baseClassName" : "",
-    "discriminatorPid" : "P31",
+    "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 0,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -30,7 +35,7 @@
       "labelLanguage" : "en",
       "valueLanguage" : "",
       "requireSitelink" : true,
-      "limit" : 500,
+      "limit" : 5000,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -97,7 +102,10 @@
           "className" : "Character",
           "fieldPath" : "father",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -161,7 +169,10 @@
           "className" : "Character",
           "fieldPath" : "mother",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -225,7 +236,10 @@
           "className" : "Character",
           "fieldPath" : "child",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -289,7 +303,10 @@
           "className" : "Character",
           "fieldPath" : "episodes",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -352,7 +369,10 @@
           "className" : "Character",
           "fieldPath" : "type",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -385,7 +405,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -400,7 +423,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -415,7 +441,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -430,7 +459,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_POPULATION",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -464,11 +496,16 @@
     "declarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
     "className" : "Character",
     "baseClassName" : "",
-    "discriminatorPid" : "P31",
+    "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 0,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -487,7 +524,7 @@
       "labelLanguage" : "en",
       "valueLanguage" : "",
       "requireSitelink" : true,
-      "limit" : 500,
+      "limit" : 5000,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -554,7 +591,10 @@
           "className" : "Character",
           "fieldPath" : "father",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -618,7 +658,10 @@
           "className" : "Character",
           "fieldPath" : "mother",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -682,7 +725,10 @@
           "className" : "Character",
           "fieldPath" : "child",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -746,7 +792,10 @@
           "className" : "Character",
           "fieldPath" : "episodes",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -809,7 +858,10 @@
           "className" : "Character",
           "fieldPath" : "type",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+          "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -842,7 +894,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -857,7 +912,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -872,7 +930,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -887,7 +948,10 @@
         "className" : "Character",
         "fieldPath" : "",
         "slot" : "CLASS_POPULATION",
-        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a"
+        "classDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -921,9 +985,14 @@
     "baseClassName" : "",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
@@ -1009,7 +1078,10 @@
           "className" : "Episode",
           "fieldPath" : "characters",
           "slot" : "PRIMARY_FIELD_VALUE",
-          "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54"
+          "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
         },
         "recipe" : {
           "providerId" : "wikidata",
@@ -1042,7 +1114,10 @@
         "className" : "Episode",
         "fieldPath" : "",
         "slot" : "CLASS_IDENTITY",
-        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54"
+        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1057,7 +1132,10 @@
         "className" : "Episode",
         "fieldPath" : "",
         "slot" : "CLASS_LABEL",
-        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54"
+        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1072,7 +1150,10 @@
         "className" : "Episode",
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
-        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54"
+        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1087,7 +1168,10 @@
         "className" : "Episode",
         "fieldPath" : "",
         "slot" : "CLASS_POPULATION",
-        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54"
+        "classDeclarationId" : "decl:20f1fe62-f245-341b-9d2c-515d5891dc54",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
       },
       "recipe" : {
         "providerId" : "wikidata",
@@ -1118,5 +1202,6 @@
   "selections" : [ "java.util.ArrayList", [ ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
-  "imports" : [ "java.util.ArrayList", [ ] ]
+  "imports" : [ "java.util.ArrayList", [ ] ],
+  "buildOperations" : [ "java.util.ArrayList", [ ] ]
 }

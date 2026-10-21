@@ -13,8 +13,12 @@
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
+    "membershipIncludesDescendants" : false,
+    "membershipQualifierCondition" : null,
     "membershipPid" : "",
     "membershipQid" : "",
+    "membershipFilterIncludesDescendants" : false,
+    "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
       "requireLabel" : true,
@@ -30,18 +34,22 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q22988604"
+      "membershipQid" : "Q22988604",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "mother",
       "propertyPid" : "P25",
-      "propertyLabel" : "",
+      "propertyLabel" : "mother",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q22988604"
+      "membershipQid" : "Q22988604",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "child",
@@ -52,31 +60,37 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q22988604"
+      "membershipQid" : "Q22988604",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "episodes",
       "propertyPid" : "P674",
-      "propertyLabel" : "",
+      "propertyLabel" : "characters",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : true,
       "direction" : "ITEM_TO_ROOT",
       "membershipPid" : "P31",
-      "membershipQid" : "Q63143903"
+      "membershipQid" : "Q63143903",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "type",
       "propertyPid" : "P31",
-      "propertyLabel" : "",
+      "propertyLabel" : "instance of",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     } ] ],
-    "limit" : 500,
+    "limit" : 5000,
     "sortFieldName" : "",
     "sortDescending" : false,
     "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
@@ -87,6 +101,10 @@
     "requireSitelink" : true,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
-    "rankDescending" : true
+    "rankDescending" : true,
+    "rankCondition" : null,
+    "rankFrom" : -1,
+    "rankUntil" : -1,
+    "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
   }
 }
