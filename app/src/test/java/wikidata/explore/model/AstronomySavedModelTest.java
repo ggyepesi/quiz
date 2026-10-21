@@ -36,19 +36,21 @@ class AstronomySavedModelTest {
         assertEquals("P18", field(body, "image").mapping().propertyPid());
         assertEquals("P2120", field(body, "radius").mapping().propertyPid());
         assertEquals("P2386", field(body, "diameter").mapping().propertyPid());
-        // One declaration, inherited by every body: three identical copies on the
-        // concrete classes could drift apart (a unit changed on one of them).
-        GeneratedFieldModel magnitude = field(body, "apparentMagnitude");
+        // Each concrete class declares its own magnitude, because they do not mean the
+        // same population: only BrightStar keeps the naked-eye bound (≤ 6). Declared once
+        // on CelestialBody, that bound kept 8 of 440 galaxies.
+        GeneratedFieldModel magnitude = field(brightStar, "apparentMagnitude");
         assertEquals("P1215", magnitude.mapping().propertyPid());
         assertEquals("mag", magnitude.unit());
-        for (GeneratedClassModel extension : java.util.List.of(
-                star, brightStar, namedGalaxyStar, galaxy)) {
-            assertTrue(extension.fields().stream()
-                            .noneMatch(f -> f.name().equals("apparentMagnitude")),
-                    extension.className() + " inherits apparentMagnitude, never redeclares it");
-            assertTrue(extension.effectiveFields(model).stream()
-                    .anyMatch(f -> f.name().equals("apparentMagnitude")));
+        assertEquals(6.0, magnitude.filterValue());
+        for (GeneratedClassModel unbounded : java.util.List.of(namedGalaxyStar, galaxy)) {
+            GeneratedFieldModel own = field(unbounded, "apparentMagnitude");
+            assertEquals("P1215", own.mapping().propertyPid());
+            assertEquals(null, own.filterValue(),
+                    unbounded.className() + " keeps every magnitude");
         }
+        assertTrue(body.fields().stream().noneMatch(f -> f.name().equals("apparentMagnitude")),
+                "a bound on the base would bound every body");
         assertEquals("P528", brightStar.membership().relationPid());
         assertTrue(brightStar.membership().qids().isEmpty());
         assertEquals(new wikidata.QualifierCondition("P972", java.util.List.of("Q499138")),

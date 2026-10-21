@@ -325,101 +325,6 @@
         },
         {
           "@class": "wikidata.explore.model.GeneratedFieldModel",
-          "name": "apparentMagnitude",
-          "type": "NUMBER",
-          "entityClassName": "",
-          "unclassedEntity": false,
-          "cardinality": "SINGLE",
-          "renderMode": "AUTO",
-          "required": true,
-          "filterOperator": "LE",
-          "filterValue": 6.0,
-          "edgeMembership": "INHERIT",
-          "sortFieldName": "",
-          "sortDescending": false,
-          "unit": "mag",
-          "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
-            "sourceQid": "",
-            "sourceLabel": "",
-            "propertyPid": "P1215",
-            "propertyLabel": "apparent magnitude",
-            "qualifierPid": "",
-            "qualifierLabel": "",
-            "qualifierCondition": {
-              "qualifierPid": "P1227",
-              "allowedQids": [
-                "java.util.ImmutableCollections$List12",
-                [
-                  "Q4892529"
-                ]
-              ]
-            },
-            "subjectField": "",
-            "matchValueField": "",
-            "matchRoleField": "",
-            "inverseField": "",
-            "direction": "ROOT_TO_ITEM",
-            "requireLabel": true,
-            "labelLanguage": "en",
-            "valueLanguage": "",
-            "requireSitelink": false,
-            "limit": 10,
-            "rankBy": "",
-            "rankDescending": true,
-            "productionKind": "AUTO",
-            "allowedQids": [
-              "java.util.LinkedHashSet",
-              []
-            ],
-            "excludedQids": [
-              "java.util.LinkedHashSet",
-              []
-            ],
-            "additionalTypeQids": [
-              "java.util.LinkedHashSet",
-              []
-            ],
-            "excludedTypeQids": [
-              "java.util.LinkedHashSet",
-              []
-            ],
-            "sourceType": "SPARQL"
-          },
-          "sourceBindings": [
-            "java.util.ArrayList",
-            [
-              {
-                "target": {
-                  "scope": "FIELD_VALUE",
-                  "className": "BrightStar",
-                  "fieldPath": "apparentMagnitude",
-                  "slot": "PRIMARY_FIELD_VALUE",
-                  "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
-                },
-                "recipe": {
-                  "providerId": "wikidata",
-                  "operationId": "property-value",
-                  "parameters": {
-                    "@class": "java.util.ImmutableCollections$MapN",
-                    "conditionQualifier": "P1227",
-                    "conditionValues": "Q4892529",
-                    "label": "apparent magnitude",
-                    "property": "P1215",
-                    "sourceType": "SPARQL",
-                    "valueLanguage": ""
-                  }
-                }
-              }
-            ]
-          ],
-          "fields": [
-            "java.util.ArrayList",
-            []
-          ]
-        },
-        {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
           "name": "discovery",
           "type": "ENTITY",
           "entityClassName": "Discovery",
@@ -902,101 +807,6 @@
             },
             {
               "@class": "wikidata.explore.model.GeneratedFieldModel",
-              "name": "apparentMagnitude",
-              "type": "NUMBER",
-              "entityClassName": "",
-              "unclassedEntity": false,
-              "cardinality": "SINGLE",
-              "renderMode": "AUTO",
-              "required": true,
-              "filterOperator": "LE",
-              "filterValue": 6.0,
-              "edgeMembership": "INHERIT",
-              "sortFieldName": "",
-              "sortDescending": false,
-              "unit": "mag",
-              "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
-                "sourceQid": "",
-                "sourceLabel": "",
-                "propertyPid": "P1215",
-                "propertyLabel": "apparent magnitude",
-                "qualifierPid": "",
-                "qualifierLabel": "",
-                "qualifierCondition": {
-                  "qualifierPid": "P1227",
-                  "allowedQids": [
-                    "java.util.ImmutableCollections$List12",
-                    [
-                      "Q4892529"
-                    ]
-                  ]
-                },
-                "subjectField": "",
-                "matchValueField": "",
-                "matchRoleField": "",
-                "inverseField": "",
-                "direction": "ROOT_TO_ITEM",
-                "requireLabel": true,
-                "labelLanguage": "en",
-                "valueLanguage": "",
-                "requireSitelink": false,
-                "limit": 10,
-                "rankBy": "",
-                "rankDescending": true,
-                "productionKind": "AUTO",
-                "allowedQids": [
-                  "java.util.LinkedHashSet",
-                  []
-                ],
-                "excludedQids": [
-                  "java.util.LinkedHashSet",
-                  []
-                ],
-                "additionalTypeQids": [
-                  "java.util.LinkedHashSet",
-                  []
-                ],
-                "excludedTypeQids": [
-                  "java.util.LinkedHashSet",
-                  []
-                ],
-                "sourceType": "SPARQL"
-              },
-              "sourceBindings": [
-                "java.util.ArrayList",
-                [
-                  {
-                    "target": {
-                      "scope": "FIELD_VALUE",
-                      "className": "BrightStar",
-                      "fieldPath": "apparentMagnitude",
-                      "slot": "PRIMARY_FIELD_VALUE",
-                      "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
-                    },
-                    "recipe": {
-                      "providerId": "wikidata",
-                      "operationId": "property-value",
-                      "parameters": {
-                        "@class": "java.util.ImmutableCollections$MapN",
-                        "conditionQualifier": "P1227",
-                        "conditionValues": "Q4892529",
-                        "label": "apparent magnitude",
-                        "property": "P1215",
-                        "sourceType": "SPARQL",
-                        "valueLanguage": ""
-                      }
-                    }
-                  }
-                ]
-              ],
-              "fields": [
-                "java.util.ArrayList",
-                []
-              ]
-            },
-            {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
               "name": "discovery",
               "type": "ENTITY",
               "entityClassName": "Discovery",
@@ -1377,7 +1187,103 @@
         },
         "fields": [
           "java.util.ArrayList",
-          []
+          [
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "apparentMagnitude",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "AUTO",
+              "required": true,
+              "filterOperator": "LE",
+              "filterValue": 6.0,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "mag",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P1215",
+                "propertyLabel": "apparent magnitude",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "qualifierCondition": {
+                  "qualifierPid": "P1227",
+                  "allowedQids": [
+                    "java.util.ImmutableCollections$List12",
+                    [
+                      "Q4892529"
+                    ]
+                  ]
+                },
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "BrightStar",
+                      "fieldPath": "apparentMagnitude",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "conditionQualifier": "P1227",
+                        "conditionValues": "Q4892529",
+                        "label": "apparent magnitude",
+                        "property": "P1215",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            }
+          ]
         ],
         "seedQids": [
           "java.util.ArrayList",
@@ -1560,7 +1466,103 @@
         },
         "fields": [
           "java.util.ArrayList",
-          []
+          [
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "apparentMagnitude",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "AUTO",
+              "required": true,
+              "filterOperator": null,
+              "filterValue": null,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "mag",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P1215",
+                "propertyLabel": "apparent magnitude",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "qualifierCondition": {
+                  "qualifierPid": "P1227",
+                  "allowedQids": [
+                    "java.util.ImmutableCollections$List12",
+                    [
+                      "Q4892529"
+                    ]
+                  ]
+                },
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "NamedGalaxyStar",
+                      "fieldPath": "apparentMagnitude",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "conditionQualifier": "P1227",
+                        "conditionValues": "Q4892529",
+                        "label": "apparent magnitude",
+                        "property": "P1215",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            }
+          ]
         ],
         "seedQids": [
           "java.util.ArrayList",
@@ -1980,6 +1982,101 @@
                         "@class": "java.util.ImmutableCollections$MapN",
                         "label": "distance from Earth",
                         "property": "P2583",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            },
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "apparentMagnitude",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "AUTO",
+              "required": true,
+              "filterOperator": null,
+              "filterValue": null,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "mag",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P1215",
+                "propertyLabel": "apparent magnitude",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "qualifierCondition": {
+                  "qualifierPid": "P1227",
+                  "allowedQids": [
+                    "java.util.ImmutableCollections$List12",
+                    [
+                      "Q4892529"
+                    ]
+                  ]
+                },
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "Galaxy",
+                      "fieldPath": "apparentMagnitude",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "conditionQualifier": "P1227",
+                        "conditionValues": "Q4892529",
+                        "label": "apparent magnitude",
+                        "property": "P1215",
                         "sourceType": "SPARQL",
                         "valueLanguage": ""
                       }
