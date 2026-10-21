@@ -67,3 +67,29 @@ OBJECT <root> caption="Metropolis" open
   OBJECT details caption="Restoration" open
     TEXT details.year "2010"
 
+== Card - in a view set to Captions only ==
+OBJECT <root> caption="Metropolis" folded
+  DEFER <root> COLLAPSED
+
+== Card - Captions only, after opening the card ==
+OBJECT <root> caption="Metropolis" open
+  OBJECT director caption="Fritz Lang" open
+  COLLECTION cast (2) folded
+    DEFER cast COLLAPSED
+  COLLECTION posters (1) open
+    MEDIA posters[0] "poster"
+  LINK website "https://example.org/metropolis"
+  OBJECT details caption="Restoration" folded
+    DEFER details COLLAPSED
+
+== Card - back to open, after folding it and opening cast ==
+OBJECT <root> caption="Metropolis" open
+  OBJECT director caption="Fritz Lang" open
+  COLLECTION cast (2) folded
+    DEFER cast COLLAPSED
+  COLLECTION posters (1) open
+    MEDIA posters[0] "poster"
+  LINK website "https://example.org/metropolis"
+  OBJECT details caption="Restoration" folded
+    DEFER details COLLAPSED
+

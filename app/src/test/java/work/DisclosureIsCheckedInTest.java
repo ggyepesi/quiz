@@ -63,6 +63,23 @@ class DisclosureIsCheckedInTest {
             context.setCollectionExpanded(film.cast, true);
             context.setExpanded(film.details, true);
         });
+        // The reader's setting on the search bar (#407): every top-level card starts as
+        // its caption; opening one opens one level, as everywhere else.
+        describe(actual, "Card - in a view set to Captions only", film,
+                context -> context.setRootsStartFolded(true));
+        describe(actual, "Card - Captions only, after opening the card", film, context -> {
+            context.setRootsStartFolded(true);
+            context.toggleCardExpanded(film);
+        });
+        // Switching back forgets the choices made under the other setting.
+        describe(actual, "Card - back to open, after folding it and opening cast", film,
+                context -> {
+                    context.setRootsStartFolded(false);
+                    context.toggleCardExpanded(film);
+                    context.setCollectionExpanded(film.cast, true);
+                    context.setRootsStartFolded(true);
+                    context.setRootsStartFolded(false);
+                });
 
         Path actualFile = GOLDEN.resolveSibling("disclosure-layout.actual.txt");
         if (Boolean.getBoolean("disclosure.layout.write")) {

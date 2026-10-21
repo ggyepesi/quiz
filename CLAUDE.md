@@ -465,9 +465,13 @@ construct per thing produced:
   a renderer paints the executor's open/folded decision and makes none of its own. A view
   may name config paths that open with their owner (`RenderContext.setOpensWithOwner`; the
   query log opens a run's `steps`) — an input to the rule, never an exception inside it.
-  A card is the root occurrence of the same rule and the same choice store: a view that
-  folds its roots (`setCollapsibleCards`) starts them folded under their caption, one that
-  does not never folds them. Opening more than one level at once is an explicit command on
+  A card is the root occurrence of the same rule and the same choice store. In a view with
+  the search bar every captioned root can fold, and whether roots start **open** or as
+  **captions only** is the reader's setting: a presentation flag on the view's root
+  `ViewConfig` (`rootsFolded`), toggled by **Captions only** on the bar without opening
+  View Config, and persisted with the config (#407). The view's code
+  (`setCollapsibleCards`) only supplies its default, filled in where the config enters the
+  view; switching forgets the open/closed choices already made. Opening more than one level at once is an explicit command on
   one node — **Expand all below** / **Collapse all below** on a chip or a card title — which
   writes the same choices a click writes; collapsing forgets the choices below, so reopening
   opens one level again. There is no panel-wide expand mode.
