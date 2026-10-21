@@ -325,6 +325,101 @@
         },
         {
           "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "name": "apparentMagnitude",
+          "type": "NUMBER",
+          "entityClassName": "",
+          "unclassedEntity": false,
+          "cardinality": "SINGLE",
+          "renderMode": "AUTO",
+          "required": true,
+          "filterOperator": "LE",
+          "filterValue": 6.0,
+          "edgeMembership": "INHERIT",
+          "sortFieldName": "",
+          "sortDescending": false,
+          "unit": "mag",
+          "mapping": {
+            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "sourceQid": "",
+            "sourceLabel": "",
+            "propertyPid": "P1215",
+            "propertyLabel": "apparent magnitude",
+            "qualifierPid": "",
+            "qualifierLabel": "",
+            "qualifierCondition": {
+              "qualifierPid": "P1227",
+              "allowedQids": [
+                "java.util.ImmutableCollections$List12",
+                [
+                  "Q4892529"
+                ]
+              ]
+            },
+            "subjectField": "",
+            "matchValueField": "",
+            "matchRoleField": "",
+            "inverseField": "",
+            "direction": "ROOT_TO_ITEM",
+            "requireLabel": true,
+            "labelLanguage": "en",
+            "valueLanguage": "",
+            "requireSitelink": false,
+            "limit": 10,
+            "rankBy": "",
+            "rankDescending": true,
+            "productionKind": "AUTO",
+            "allowedQids": [
+              "java.util.LinkedHashSet",
+              []
+            ],
+            "excludedQids": [
+              "java.util.LinkedHashSet",
+              []
+            ],
+            "additionalTypeQids": [
+              "java.util.LinkedHashSet",
+              []
+            ],
+            "excludedTypeQids": [
+              "java.util.LinkedHashSet",
+              []
+            ],
+            "sourceType": "SPARQL"
+          },
+          "sourceBindings": [
+            "java.util.ArrayList",
+            [
+              {
+                "target": {
+                  "scope": "FIELD_VALUE",
+                  "className": "BrightStar",
+                  "fieldPath": "apparentMagnitude",
+                  "slot": "PRIMARY_FIELD_VALUE",
+                  "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+                },
+                "recipe": {
+                  "providerId": "wikidata",
+                  "operationId": "property-value",
+                  "parameters": {
+                    "@class": "java.util.ImmutableCollections$MapN",
+                    "conditionQualifier": "P1227",
+                    "conditionValues": "Q4892529",
+                    "label": "apparent magnitude",
+                    "property": "P1215",
+                    "sourceType": "SPARQL",
+                    "valueLanguage": ""
+                  }
+                }
+              }
+            ]
+          ],
+          "fields": [
+            "java.util.ArrayList",
+            []
+          ]
+        },
+        {
+          "@class": "wikidata.explore.model.GeneratedFieldModel",
           "name": "discovery",
           "type": "ENTITY",
           "entityClassName": "Discovery",
@@ -807,6 +902,101 @@
             },
             {
               "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "apparentMagnitude",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "AUTO",
+              "required": true,
+              "filterOperator": "LE",
+              "filterValue": 6.0,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "mag",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P1215",
+                "propertyLabel": "apparent magnitude",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "qualifierCondition": {
+                  "qualifierPid": "P1227",
+                  "allowedQids": [
+                    "java.util.ImmutableCollections$List12",
+                    [
+                      "Q4892529"
+                    ]
+                  ]
+                },
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "BrightStar",
+                      "fieldPath": "apparentMagnitude",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "conditionQualifier": "P1227",
+                        "conditionValues": "Q4892529",
+                        "label": "apparent magnitude",
+                        "property": "P1215",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            },
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
               "name": "discovery",
               "type": "ENTITY",
               "entityClassName": "Discovery",
@@ -981,6 +1171,154 @@
         "instanceMapping": {
           "@class": "wikidata.explore.model.FieldSourceMapping",
           "sourceQid": "",
+          "sourceLabel": "",
+          "propertyPid": "",
+          "propertyLabel": "",
+          "qualifierPid": "",
+          "qualifierLabel": "",
+          "subjectField": "",
+          "matchValueField": "",
+          "matchRoleField": "",
+          "inverseField": "",
+          "direction": "ITEM_TO_ROOT",
+          "requireLabel": true,
+          "labelLanguage": "en",
+          "valueLanguage": "",
+          "requireSitelink": false,
+          "limit": 200,
+          "rankBy": "",
+          "rankDescending": true,
+          "productionKind": "AUTO",
+          "allowedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "additionalTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "sourceType": "SPARQL"
+        },
+        "membership": {
+          "kind": "UNBOUNDED",
+          "qids": [
+            "java.util.ImmutableCollections$ListN",
+            []
+          ],
+          "relationPid": "",
+          "selectionName": "",
+          "selectionId": "",
+          "includeDescendants": false
+        },
+        "fields": [
+          "java.util.ArrayList",
+          []
+        ],
+        "seedQids": [
+          "java.util.ArrayList",
+          []
+        ],
+        "sourceBindings": [
+          "java.util.ArrayList",
+          [
+            {
+              "target": {
+                "scope": "CLASS_IDENTITY",
+                "className": "Star",
+                "fieldPath": "",
+                "slot": "CLASS_IDENTITY",
+                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "identifier",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "Star",
+                "fieldPath": "",
+                "slot": "CLASS_LABEL",
+                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "label",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "Star",
+                "fieldPath": "",
+                "slot": "CLASS_ALIASES",
+                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "aliases",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            }
+          ]
+        ],
+        "canonical": {
+          "@class": "wikidata.explore.model.CanonicalSpec",
+          "keyFields": [
+            "java.util.ArrayList",
+            []
+          ],
+          "reductions": {
+            "@class": "java.util.LinkedHashMap"
+          },
+          "missingKeyPolicy": "INCOMPLETE_GROUP",
+          "duplicatePolicy": [
+            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "KEEP_ONE"
+          ],
+          "displayNameMode": "LABEL",
+          "displayNameField": "",
+          "displayNameTemplate": "",
+          "labelLanguage": "en",
+          "primaryListField": ""
+        }
+      },
+      {
+        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "declarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740",
+        "className": "BrightStar",
+        "baseClassName": "Star",
+        "discriminatorPid": "P31",
+        "discriminatorQid": "",
+        "subclassCondition": {
+          "kind": "NONE",
+          "includeDescendants": false
+        },
+        "alias": "",
+        "importedFrom": "",
+        "classKind": "SOURCE",
+        "graphSource": null,
+        "generationDepth": 0,
+        "instanceMapping": {
+          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "sourceQid": "",
           "sourceLabel": "star",
           "propertyPid": "",
           "propertyLabel": "instance of",
@@ -1039,39 +1377,392 @@
         },
         "fields": [
           "java.util.ArrayList",
+          []
+        ],
+        "seedQids": [
+          "java.util.ArrayList",
+          []
+        ],
+        "populationSource": {
+          "providerId": "wikidata",
+          "operationId": "statement-membership",
+          "parameters": {
+            "@class": "java.util.ImmutableCollections$MapN",
+            "conditionProperty": "P972",
+            "conditionValues": "Q499138",
+            "includeSubclasses": "false",
+            "property": "P528",
+            "values": ""
+          }
+        },
+        "sourceBindings": [
+          "java.util.ArrayList",
+          [
+            {
+              "target": {
+                "scope": "CLASS_IDENTITY",
+                "className": "BrightStar",
+                "fieldPath": "",
+                "slot": "CLASS_IDENTITY",
+                "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "identifier",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "BrightStar",
+                "fieldPath": "",
+                "slot": "CLASS_LABEL",
+                "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "label",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "BrightStar",
+                "fieldPath": "",
+                "slot": "CLASS_ALIASES",
+                "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "aliases",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_POPULATION",
+                "className": "BrightStar",
+                "fieldPath": "",
+                "slot": "CLASS_POPULATION",
+                "classDeclarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "statement-membership",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN",
+                  "conditionProperty": "P972",
+                  "conditionValues": "Q499138",
+                  "includeSubclasses": "false",
+                  "property": "P528",
+                  "values": ""
+                }
+              }
+            }
+          ]
+        ],
+        "canonical": {
+          "@class": "wikidata.explore.model.CanonicalSpec",
+          "keyFields": [
+            "java.util.ArrayList",
+            []
+          ],
+          "reductions": {
+            "@class": "java.util.LinkedHashMap"
+          },
+          "missingKeyPolicy": "INCOMPLETE_GROUP",
+          "duplicatePolicy": [
+            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "KEEP_ONE"
+          ],
+          "displayNameMode": "LABEL",
+          "displayNameField": "",
+          "displayNameTemplate": "",
+          "labelLanguage": "en",
+          "primaryListField": ""
+        }
+      },
+      {
+        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "declarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac",
+        "className": "NamedGalaxyStar",
+        "baseClassName": "Star",
+        "discriminatorPid": "P31",
+        "discriminatorQid": "",
+        "subclassCondition": {
+          "kind": "NONE",
+          "includeDescendants": false
+        },
+        "alias": "",
+        "importedFrom": "",
+        "classKind": "SOURCE",
+        "graphSource": null,
+        "generationDepth": 0,
+        "instanceMapping": {
+          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "sourceQid": "",
+          "sourceLabel": "star",
+          "propertyPid": "",
+          "propertyLabel": "instance of",
+          "qualifierPid": "",
+          "qualifierLabel": "",
+          "subjectField": "",
+          "matchValueField": "",
+          "matchRoleField": "",
+          "inverseField": "",
+          "direction": "ITEM_TO_ROOT",
+          "requireLabel": true,
+          "labelLanguage": "en",
+          "valueLanguage": "",
+          "requireSitelink": true,
+          "limit": 200,
+          "rankBy": "",
+          "rankDescending": true,
+          "productionKind": "AUTO",
+          "allowedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "additionalTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "sourceType": "SPARQL"
+        },
+        "membership": {
+          "kind": "RELATION",
+          "qids": [
+            "java.util.ImmutableCollections$List12",
+            [
+              "Q523"
+            ]
+          ],
+          "relationPid": "P31",
+          "selectionName": "",
+          "selectionId": "",
+          "includeDescendants": true
+        },
+        "fields": [
+          "java.util.ArrayList",
+          []
+        ],
+        "seedQids": [
+          "java.util.ArrayList",
+          []
+        ],
+        "populationSource": {
+          "providerId": "wikidata",
+          "operationId": "statement-membership",
+          "parameters": {
+            "@class": "java.util.ImmutableCollections$MapN",
+            "includeSubclasses": "true",
+            "property": "P31",
+            "values": "Q523"
+          }
+        },
+        "sourceBindings": [
+          "java.util.ArrayList",
+          [
+            {
+              "target": {
+                "scope": "CLASS_IDENTITY",
+                "className": "NamedGalaxyStar",
+                "fieldPath": "",
+                "slot": "CLASS_IDENTITY",
+                "classDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "identifier",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "NamedGalaxyStar",
+                "fieldPath": "",
+                "slot": "CLASS_LABEL",
+                "classDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "label",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_NAMES",
+                "className": "NamedGalaxyStar",
+                "fieldPath": "",
+                "slot": "CLASS_ALIASES",
+                "classDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "aliases",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN"
+                }
+              }
+            },
+            {
+              "target": {
+                "scope": "CLASS_POPULATION",
+                "className": "NamedGalaxyStar",
+                "fieldPath": "",
+                "slot": "CLASS_POPULATION",
+                "classDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac"
+              },
+              "recipe": {
+                "providerId": "wikidata",
+                "operationId": "statement-membership",
+                "parameters": {
+                  "@class": "java.util.ImmutableCollections$MapN",
+                  "includeSubclasses": "true",
+                  "property": "P31",
+                  "values": "Q523"
+                }
+              }
+            }
+          ]
+        ],
+        "canonical": {
+          "@class": "wikidata.explore.model.CanonicalSpec",
+          "keyFields": [
+            "java.util.ArrayList",
+            []
+          ],
+          "reductions": {
+            "@class": "java.util.LinkedHashMap"
+          },
+          "missingKeyPolicy": "INCOMPLETE_GROUP",
+          "duplicatePolicy": [
+            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "KEEP_ONE"
+          ],
+          "displayNameMode": "LABEL",
+          "displayNameField": "",
+          "displayNameTemplate": "",
+          "labelLanguage": "en",
+          "primaryListField": ""
+        }
+      },
+      {
+        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "declarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
+        "className": "Galaxy",
+        "baseClassName": "CelestialBody",
+        "discriminatorPid": "P31",
+        "discriminatorQid": "",
+        "subclassCondition": {
+          "kind": "NONE",
+          "includeDescendants": false
+        },
+        "alias": "",
+        "importedFrom": "",
+        "classKind": "SOURCE",
+        "graphSource": null,
+        "generationDepth": 0,
+        "instanceMapping": {
+          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "sourceQid": "",
+          "sourceLabel": "galaxy",
+          "propertyPid": "",
+          "propertyLabel": "instance of",
+          "qualifierPid": "",
+          "qualifierLabel": "",
+          "subjectField": "",
+          "matchValueField": "",
+          "matchRoleField": "",
+          "inverseField": "",
+          "direction": "ITEM_TO_ROOT",
+          "requireLabel": true,
+          "labelLanguage": "en",
+          "valueLanguage": "",
+          "requireSitelink": true,
+          "limit": 200,
+          "rankBy": "",
+          "rankDescending": true,
+          "productionKind": "AUTO",
+          "allowedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "additionalTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "excludedTypeQids": [
+            "java.util.LinkedHashSet",
+            []
+          ],
+          "sourceType": "SPARQL"
+        },
+        "membership": {
+          "kind": "RELATION",
+          "qids": [
+            "java.util.ImmutableCollections$List12",
+            [
+              "Q318"
+            ]
+          ],
+          "relationPid": "P31",
+          "selectionName": "",
+          "selectionId": "",
+          "includeDescendants": true
+        },
+        "fields": [
+          "java.util.ArrayList",
           [
             {
               "@class": "wikidata.explore.model.GeneratedFieldModel",
-              "name": "apparentMagnitude",
-              "type": "NUMBER",
+              "name": "morphologicalType",
+              "type": "STRING",
               "entityClassName": "",
               "unclassedEntity": false,
               "cardinality": "SINGLE",
-              "renderMode": "AUTO",
-              "required": true,
-              "filterOperator": "LE",
-              "filterValue": 6.0,
+              "renderMode": "INLINE",
+              "required": false,
+              "filterOperator": null,
+              "filterValue": null,
               "edgeMembership": "INHERIT",
               "sortFieldName": "",
               "sortDescending": false,
-              "unit": "mag",
+              "unit": "",
               "mapping": {
                 "@class": "wikidata.explore.model.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
-                "propertyPid": "P1215",
-                "propertyLabel": "apparent magnitude",
+                "propertyPid": "P223",
+                "propertyLabel": "galaxy morphological type",
                 "qualifierPid": "",
                 "qualifierLabel": "",
-                "qualifierCondition": {
-                  "qualifierPid": "P1227",
-                  "allowedQids": [
-                    "java.util.ImmutableCollections$List12",
-                    [
-                      "Q4892529"
-                    ]
-                  ]
-                },
                 "subjectField": "",
                 "matchValueField": "",
                 "matchRoleField": "",
@@ -1109,20 +1800,274 @@
                   {
                     "target": {
                       "scope": "FIELD_VALUE",
-                      "className": "Star",
-                      "fieldPath": "apparentMagnitude",
+                      "className": "Galaxy",
+                      "fieldPath": "morphologicalType",
                       "slot": "PRIMARY_FIELD_VALUE",
-                      "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+                      "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
                     },
                     "recipe": {
                       "providerId": "wikidata",
                       "operationId": "property-value",
                       "parameters": {
                         "@class": "java.util.ImmutableCollections$MapN",
-                        "conditionQualifier": "P1227",
-                        "conditionValues": "Q4892529",
-                        "label": "apparent magnitude",
-                        "property": "P1215",
+                        "label": "galaxy morphological type",
+                        "property": "P223",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            },
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "redshift",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "INLINE",
+              "required": false,
+              "filterOperator": null,
+              "filterValue": null,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P1090",
+                "propertyLabel": "redshift",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "Galaxy",
+                      "fieldPath": "redshift",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "label": "redshift",
+                        "property": "P1090",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            },
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "distanceFromEarth",
+              "type": "NUMBER",
+              "entityClassName": "",
+              "unclassedEntity": false,
+              "cardinality": "SINGLE",
+              "renderMode": "INLINE",
+              "required": false,
+              "filterOperator": null,
+              "filterValue": null,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "",
+              "sortDescending": false,
+              "unit": "",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P2583",
+                "propertyLabel": "distance from Earth",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ROOT_TO_ITEM",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 10,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "AUTO",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "Galaxy",
+                      "fieldPath": "distanceFromEarth",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "label": "distance from Earth",
+                        "property": "P2583",
+                        "sourceType": "SPARQL",
+                        "valueLanguage": ""
+                      }
+                    }
+                  }
+                ]
+              ],
+              "fields": [
+                "java.util.ArrayList",
+                []
+              ]
+            },
+            {
+              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "name": "stars",
+              "type": "ENTITY",
+              "entityClassName": "NamedGalaxyStar",
+              "entityDeclarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac",
+              "unclassedEntity": false,
+              "cardinality": "COLLECTION",
+              "renderMode": "REFERENCE",
+              "required": false,
+              "filterOperator": null,
+              "filterValue": null,
+              "edgeMembership": "INHERIT",
+              "sortFieldName": "apparentMagnitude",
+              "sortDescending": false,
+              "unit": "",
+              "mapping": {
+                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "sourceQid": "",
+                "sourceLabel": "",
+                "propertyPid": "P361",
+                "propertyLabel": "part of",
+                "qualifierPid": "",
+                "qualifierLabel": "",
+                "subjectField": "",
+                "matchValueField": "",
+                "matchRoleField": "",
+                "inverseField": "",
+                "direction": "ITEM_TO_ROOT",
+                "requireLabel": true,
+                "labelLanguage": "en",
+                "valueLanguage": "",
+                "requireSitelink": false,
+                "limit": 6,
+                "rankBy": "",
+                "rankDescending": true,
+                "productionKind": "CHILD_OBJECTS",
+                "allowedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "additionalTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "excludedTypeQids": [
+                  "java.util.LinkedHashSet",
+                  []
+                ],
+                "sourceType": "SPARQL"
+              },
+              "sourceBindings": [
+                "java.util.ArrayList",
+                [
+                  {
+                    "target": {
+                      "scope": "FIELD_VALUE",
+                      "className": "Galaxy",
+                      "fieldPath": "stars",
+                      "slot": "PRIMARY_FIELD_VALUE",
+                      "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
+                      "contextClassName": "",
+                      "contextFieldPath": "",
+                      "contextClassDeclarationId": ""
+                    },
+                    "recipe": {
+                      "providerId": "wikidata",
+                      "operationId": "property-value",
+                      "parameters": {
+                        "@class": "java.util.ImmutableCollections$MapN",
+                        "label": "part of",
+                        "property": "P361",
                         "sourceType": "SPARQL",
                         "valueLanguage": ""
                       }
@@ -1146,11 +2091,9 @@
           "operationId": "statement-membership",
           "parameters": {
             "@class": "java.util.ImmutableCollections$MapN",
-            "conditionProperty": "P972",
-            "conditionValues": "Q499138",
-            "includeSubclasses": "false",
-            "property": "P528",
-            "values": ""
+            "includeSubclasses": "true",
+            "property": "P31",
+            "values": "Q318"
           }
         },
         "sourceBindings": [
@@ -1159,10 +2102,10 @@
             {
               "target": {
                 "scope": "CLASS_IDENTITY",
-                "className": "Star",
+                "className": "Galaxy",
                 "fieldPath": "",
                 "slot": "CLASS_IDENTITY",
-                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+                "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
               },
               "recipe": {
                 "providerId": "wikidata",
@@ -1175,10 +2118,10 @@
             {
               "target": {
                 "scope": "CLASS_NAMES",
-                "className": "Star",
+                "className": "Galaxy",
                 "fieldPath": "",
                 "slot": "CLASS_LABEL",
-                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+                "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
               },
               "recipe": {
                 "providerId": "wikidata",
@@ -1191,10 +2134,10 @@
             {
               "target": {
                 "scope": "CLASS_NAMES",
-                "className": "Star",
+                "className": "Galaxy",
                 "fieldPath": "",
                 "slot": "CLASS_ALIASES",
-                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+                "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
               },
               "recipe": {
                 "providerId": "wikidata",
@@ -1207,21 +2150,19 @@
             {
               "target": {
                 "scope": "CLASS_POPULATION",
-                "className": "Star",
+                "className": "Galaxy",
                 "fieldPath": "",
                 "slot": "CLASS_POPULATION",
-                "classDeclarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f"
+                "classDeclarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79"
               },
               "recipe": {
                 "providerId": "wikidata",
                 "operationId": "statement-membership",
                 "parameters": {
                   "@class": "java.util.ImmutableCollections$MapN",
-                  "conditionProperty": "P972",
-                  "conditionValues": "Q499138",
-                  "includeSubclasses": "false",
-                  "property": "P528",
-                  "values": ""
+                  "includeSubclasses": "true",
+                  "property": "P31",
+                  "values": "Q318"
                 }
               }
             }

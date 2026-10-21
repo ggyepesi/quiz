@@ -41,10 +41,25 @@
     "kind" : "CLASS",
     "artifact" : "constellations.snapshot.json"
   }, {
+    "declarationId" : "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740",
+    "name" : "BrightStar",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:93631a37-6e08-457f-a706-b834a0521eac",
+    "name" : "NamedGalaxyStar",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
+    "declarationId" : "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
+    "name" : "Galaxy",
+    "kind" : "CLASS",
+    "artifact" : "constellations.snapshot.json"
+  }, {
     "declarationId" : "decl:d2bd177a-5df3-4adb-9649-1ac9996c4d3d",
     "name" : "CountryOfCitizenship",
     "kind" : "SELECTION",
     "artifact" : "constellations.model.json"
   } ],
-  "snapshotSignature" : "model-v2:756d544d76c6d0bd1666b6e81e6ae32f22aa422836396cc9c3434b91797c445d"
+  "snapshotSignature" : "model-v2:e96898e51ccfd60e5708da1891d2c4545f0e40a79fa3bdcd7f4bb202647d275c"
 }

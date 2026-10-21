@@ -17,7 +17,7 @@
     "importedFrom" : "",
     "classKind" : "SOURCE",
     "graphSource" : null,
-    "generationDepth" : 1,
+    "generationDepth" : 2,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
@@ -454,8 +454,8 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "stars",
       "type" : "ENTITY",
-      "entityClassName" : "Star",
-      "entityDeclarationId" : "decl:7da4d7de-7261-3320-a064-c560ecaccd7f",
+      "entityClassName" : "BrightStar",
+      "entityDeclarationId" : "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -560,6 +560,73 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "galaxies",
+      "type" : "ENTITY",
+      "entityClassName" : "Galaxy",
+      "entityDeclarationId" : "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "apparentMagnitude",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P59",
+        "propertyLabel" : "constellation",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 6,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "CHILD_OBJECTS",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "galaxies",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:df2ad74a-e69f-3e14-aa3e-955b7091de5e",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "constellation",
+            "property" : "P59",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
@@ -683,7 +750,7 @@
       "primaryListField" : ""
     }
   },
-  "generationDepth" : 1,
+  "generationDepth" : 2,
   "classes" : [ "java.util.ArrayList", [ {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "declarationId" : "decl:df2ad74a-e69f-3e14-aa3e-955b7091de5e",
@@ -699,7 +766,7 @@
     "importedFrom" : "",
     "classKind" : "SOURCE",
     "graphSource" : null,
-    "generationDepth" : 1,
+    "generationDepth" : 2,
     "instanceMapping" : {
       "@class" : "wikidata.explore.model.FieldSourceMapping",
       "sourceQid" : "",
@@ -1136,8 +1203,8 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "stars",
       "type" : "ENTITY",
-      "entityClassName" : "Star",
-      "entityDeclarationId" : "decl:7da4d7de-7261-3320-a064-c560ecaccd7f",
+      "entityClassName" : "BrightStar",
+      "entityDeclarationId" : "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -1242,6 +1309,73 @@
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "sourceType" : "SPARQL"
       },
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "galaxies",
+      "type" : "ENTITY",
+      "entityClassName" : "Galaxy",
+      "entityDeclarationId" : "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "apparentMagnitude",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P59",
+        "propertyLabel" : "constellation",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 6,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "CHILD_OBJECTS",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "Constellation",
+          "fieldPath" : "galaxies",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:df2ad74a-e69f-3e14-aa3e-955b7091de5e",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "constellation",
+            "property" : "P59",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
@@ -1380,7 +1514,7 @@
   } ] ],
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Astronomy",
-    "classNames" : [ "java.util.ArrayList", [ "CelestialBody", "Star" ] ]
+    "classNames" : [ "java.util.ArrayList", [ "CelestialBody", "Star", "BrightStar", "NamedGalaxyStar", "Galaxy" ] ]
   }, {
     "modelName" : "Discovery",
     "classNames" : [ "java.util.ArrayList", [ "Discovery", "Discoverer", "Owner" ] ]
