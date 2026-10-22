@@ -443,9 +443,11 @@ construct per thing produced:
   lead to (nothing deeper), and an `@Inline` object's own fields one level deep, since it
   is part of its owner — all as ordinary ticks a reader can untick (`ViewDefaults`). A
   field selection's default (search, sort, quiz key) ticks nothing below an object.
-  A field whose declared type is already on its config path — the editor's ↩, the root
-  included — has no config of its own: it inherits the nearest ancestor's of that type
-  (`ConfigChain`), written into the config where it is made. Like every occurrence, an
+  An automatically created default may express a recursive projection by inheriting the
+  nearest ancestor config of the same declared type (`ConfigChain`). An explicitly authored
+  child config always wins and may continue to any finite depth along a cycle; disclosures
+  materialize the next editor level lazily, and merely opening one never changes the config.
+  Like every occurrence, an
   inherited one starts folded, so only the reader's clicks set the depth; an object already
   on the path ends it. Search and sort
   read through the same inheritance, each object once per level from a root; a quiz key
@@ -471,7 +473,9 @@ construct per thing produced:
   `ViewConfig` (`rootsFolded`), chosen by **Top-level cards: captions only** in View Config
   and persisted with the config (#407). The view's code
   (`setCollapsibleCards`) only supplies its default, filled in where the config enters the
-  view; switching forgets the open/closed choices already made. Opening more than one level at once is an explicit command on
+  view. Each card reads its own view config, so the sections of a coordinated view
+  keep their own setting; switching forgets the open/closed choices made by hand on that
+  view's cards. Opening more than one level at once is an explicit command on
   one node — **Expand all below** / **Collapse all below** on a chip or a card title — which
   writes the same choices a click writes; collapsing forgets the choices below, so reopening
   opens one level again. There is no panel-wide expand mode.
@@ -485,14 +489,18 @@ construct per thing produced:
   member of a reference collection whose target has a top-level card keeps that projection
   and its caption navigates to the card; its separate disclosure glyph still expands or
   collapses the projection. DISPLAY selection controls neither navigation nor whether those
-  collection-member fields render.
+  collection-member fields render. In Search, Sort and View configuration a scalar reference
+  is consequently one terminal navigation value and has no disclosure control; an object
+  collection still discloses the projection of each member.
   **The Search, Sort and View editors admit only connected nested selections.** A raw
   value or collection of raw values may be a terminal tick. Ticking a nested value
   activates every object/collection owner on its path; an object owner cannot be
   activated without a selected nested field. Unticking an owner suppresses its whole
   configured branch without erasing it: remembered descendant ticks stay visible but
-  disabled, are persisted, and return when the owner is reticked. Removing individual
-  descendants, or the explicit **Clear nested config** action, is what forgets them. Search
+  light grey, remain editable, are persisted, and return when the owner is reticked. Editing
+  those descendants does not retick the owner; removing individual descendant ticks is what
+  forgets them. A manual configuration may continue through any recursive object/collection
+  branch to any requested depth; only an untouched automatic default inherits. Search
   may still find a field hidden by View; navigating to the current hit temporarily
   reveals that path without changing the saved View configuration.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice

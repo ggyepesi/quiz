@@ -3,6 +3,7 @@ package quiz.source;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
+import objectview.annotations.DisplayField;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 
@@ -32,7 +33,7 @@ public final class WikidataSource extends ViewableAdapter implements Source {
     private final String name;
     @Hidden
     private final String wikidataUrl;
-    @Link
+    @DisplayField @Link
     private final String identity;
 
     @JsonCreator

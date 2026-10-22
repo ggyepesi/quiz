@@ -92,11 +92,15 @@ class ViewableJsonFollowsTheTicksTest {
         assertEquals(List.of("birthDate"), names(fetched));
     }
 
-    @Test void aTickedObjectWithNothingUnderItIsNotShown() {
+    @Test void aTickedScalarReferenceWithNothingUnderItShowsItsFieldName() {
         ViewConfig alone = ViewConfig.leaf();
         alone.addField("director", ViewConfig.leaf());
-        assertEquals(List.of(), names(ViewableJson.of(film, alone)),
-                "a field-name caption alone is not a View state");
+        ViewableView aloneView = ViewableJson.of(film, alone);
+        assertEquals(List.of("director"), names(aloneView));
+        assertEquals("ref", field(aloneView, "director").kind());
+        assertEquals(ReferenceRow.NAVIGATION_LABEL,
+                field(aloneView, "director").ref().name(),
+                "without DISPLAY the terminal reference keeps navigation but leaks no value");
 
         ViewConfig birthDate = ViewConfig.leaf();
         birthDate.addField("birthDate", ViewConfig.leaf());

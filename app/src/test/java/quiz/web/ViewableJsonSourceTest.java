@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ViewableJsonSourceTest {
 
@@ -46,7 +47,7 @@ class ViewableJsonSourceTest {
         assertEquals(exact.url(), guid.url());
     }
 
-    @Test void entitySourceRemainsVisibleAsAQidLink() {
+    @Test void entitySourceDisplayIsAQidLinkWithoutADuplicateBodyRow() {
         var person = new wikidata.explore.extract.WikidataDynamicObject(
                 "Q42", "Douglas Adams");
 
@@ -54,12 +55,11 @@ class ViewableJsonSourceTest {
                 sourceTicks("@view:display", "identity")));
 
         assertEquals("refs", source.kind());
-        assertEquals("Q42", source.refs().getFirst().name());
-        ViewableView.Field identity = source.refs().getFirst().inline().fields().stream()
-                .filter(field -> "identity".equals(field.name()))
-                .findFirst().orElseThrow();
-        assertEquals("Q42", identity.label());
+        ViewableView.Ref identity = source.refs().getFirst();
+        assertEquals("Q42", identity.name());
         assertEquals("https://www.wikidata.org/wiki/Q42", identity.url());
+        assertNull(identity.inline(),
+                "DISPLAY is painted once as the linked caption, not repeated in a body");
     }
 
     @Test void defaultEntitySourceCaptionIsTheSameQidLink() {

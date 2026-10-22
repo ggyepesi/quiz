@@ -2,6 +2,7 @@ package quiz.source;
 
 import objectview.field.FieldKind;
 import objectview.field.FieldRef;
+import objectview.field.FieldRole;
 import objectview.field.FieldSet;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,8 @@ class WikidataSourceFieldsTest {
                 assertInstanceOf(List.class, fields.read("wikidataSource")).getFirst();
         assertEquals("Q42", value.getDisplayName());
         assertTrue(FieldSet.of(value).field("identity").link());
+        assertEquals(FieldRole.DISPLAY,
+                FieldSet.of(value).field("identity").role());
     }
 
     @Test void aStatementRecordPublishesItsWholeSourceAsAReferenceField() {
@@ -114,6 +117,47 @@ class WikidataSourceFieldsTest {
                 rendered[0], objectview.render.LinkRow.class);
         assertNotNull(link);
         assertEquals("https://www.wikidata.org/wiki/Q42", link.url());
+    }
+
+    @Test void aWikipediaSourceUsesItsArticleAsALinkedDisplayField() throws Exception {
+        WikipediaSource source = new WikipediaSource("Douglas Adams");
+        FieldSet fields = FieldSet.of(source);
+
+        assertEquals("article", fields.displayField().name());
+        assertEquals(FieldRole.DISPLAY, fields.field("article").role());
+        assertTrue(fields.field("article").link());
+
+        ArticleOwner owner = new ArticleOwner(source);
+        objectview.viewconfig.ViewConfig article =
+                objectview.viewconfig.ViewConfig.of(WikipediaSource.class);
+        article.setAllFields(false);
+        article.addField("article", objectview.viewconfig.ViewConfig.leaf());
+        objectview.viewconfig.ViewConfig ownerView =
+                objectview.viewconfig.ViewConfig.of(ArticleOwner.class);
+        ownerView.setAllFields(false);
+        ownerView.addField("wikipediaSource", article);
+
+        objectview.render.Card[] rendered = new objectview.render.Card[1];
+        javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
+                new objectview.render.Card(owner, ownerView, false));
+
+        objectview.render.LinkRow link = find(
+                rendered[0], objectview.render.LinkRow.class);
+        assertNotNull(link);
+        assertEquals("https://en.wikipedia.org/wiki/Douglas_Adams", link.url());
+    }
+
+    private static final class ArticleOwner extends objectview.ViewableAdapter {
+        @objectview.annotations.DisplayField
+        private final String name = "Book";
+        private final WikipediaSource wikipediaSource;
+
+        private ArticleOwner(WikipediaSource wikipediaSource) {
+            this.wikipediaSource = wikipediaSource;
+        }
+
+        @Override public String getIdentifier() { return name; }
+        @Override public String getDisplayName() { return name; }
     }
 
     private static <T> T find(java.awt.Component root, Class<T> type) {

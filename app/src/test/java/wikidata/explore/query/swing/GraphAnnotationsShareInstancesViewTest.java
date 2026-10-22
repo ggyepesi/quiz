@@ -59,7 +59,7 @@ class GraphAnnotationsShareInstancesViewTest {
                         all, decisions)));
         SwingUtilities.invokeAndWait(() -> { });
 
-        List<JTabbedPane> tabs = descendants(panel, JTabbedPane.class);
+        List<JTabbedPane> tabs = visibleTabs(panel);
         assertEquals(2, tabs.size());
         assertEquals(List.of("Position", "PositionValidity"), titles(tabs.get(0)));
         assertEquals(List.of("All (3)", "Accepted (1)", "Review (1)", "Rejected (1)"),
@@ -76,7 +76,7 @@ class GraphAnnotationsShareInstancesViewTest {
         panel.accept(result());
         SwingUtilities.invokeAndWait(() -> { });
 
-        assertTrue(descendants(panel, JTabbedPane.class).isEmpty(),
+        assertTrue(visibleTabs(panel).isEmpty(),
                 "a result arriving on its own carries no graph annotations, so the "
                         + "ordinary classes keep their side-by-side layout");
     }
@@ -88,7 +88,7 @@ class GraphAnnotationsShareInstancesViewTest {
                 QueryObjectResultPanel.GroupedSection.of(List.of(), Map.of())));
         SwingUtilities.invokeAndWait(() -> { });
 
-        assertTrue(descendants(panel, JTabbedPane.class).isEmpty(),
+        assertTrue(visibleTabs(panel).isEmpty(),
                 "an empty peer draws no tab, so it must not move the ordinary classes "
                         + "out of the side-by-side layout to make room for one");
     }
@@ -191,6 +191,14 @@ class GraphAnnotationsShareInstancesViewTest {
     private static List<String> titles(JTabbedPane tabs) {
         return java.util.stream.IntStream.range(0, tabs.getTabCount())
                 .mapToObj(tabs::getTitleAt).toList();
+    }
+
+    /** Search hit navigation owns hidden tabs even before a query. They are controls,
+     * not the instance/decision layout this test describes. */
+    private static List<JTabbedPane> visibleTabs(Container root) {
+        return descendants(root, JTabbedPane.class).stream()
+                .filter(Component::isVisible)
+                .toList();
     }
 
     private static <T extends Component> List<T> descendants(

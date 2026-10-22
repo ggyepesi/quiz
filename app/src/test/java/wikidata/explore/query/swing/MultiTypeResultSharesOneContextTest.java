@@ -21,10 +21,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>The shared context is the point of this layout rather than a detail of it: a
  * reference highlighted in one section lights up in the other only while both render
  * through the same context, and navigation reveals a card by scrolling to it — which a
- * tabbed layout defeats, since focusing a card on an inactive tab shows nothing.
+ * tabbed instance layout defeats, since focusing a card on an inactive tab shows nothing.
  * {@code MultiView.layout} says so in as many words; this test is that comment made to
- * fail. It was written after tabs were tried here and every cross-panel highlight went
- * dead.
+ * fail. Search hit navigation has its own tabs, but those contain only hit controls,
+ * never the instance sections whose shared context this test protects.
  */
 class MultiTypeResultSharesOneContextTest {
 
@@ -74,8 +74,10 @@ class MultiTypeResultSharesOneContextTest {
 
         MultiView multi = find(panel, MultiView.class);
         assertNotNull(multi, "side by side, so a reference can be seen in both at once");
-        assertNull(find(panel, JTabbedPane.class),
-                "a card focused on an inactive tab is a card nobody is shown");
+        JTabbedPane hitNavigation = find(panel, JTabbedPane.class);
+        assertNotNull(hitNavigation, "per-class search hit navigation uses tabs");
+        assertFalse(hitNavigation.isVisible(),
+                "hit navigation stays hidden until there is a search query");
         assertSame(multi.context(), panel.activeRenderContext(),
                 "one context across the sections, or nothing relates them");
     }

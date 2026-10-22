@@ -115,9 +115,9 @@ class ViewConfigEditorTreeConfigTest {
                 "nested fields are selected only when the user checks them");
     }
 
-    /** Checking an object field selects that field alone, independently of the editor's
-     * historical name-only constructor option. */
-    @Test void checkingAReferenceLaterDoesNotSelectAnyChild() throws Exception {
+    /** A scalar reference is one terminal value. Its standard display projection
+     * supplies the link caption, but the editor offers no misleading child rows. */
+    @Test void checkingAReferenceSelectsItsCaptionWithoutExposingChildren() throws Exception {
         for (boolean nameOnly : new boolean[] {true, false}) {
             DynamicViewable nomination = nominationSample();
             nomination.put("note", "x");
@@ -125,19 +125,17 @@ class ViewConfigEditorTreeConfigTest {
             config.setAllFields(false);
             config.addField("note", ViewConfig.leaf());
             ViewConfigEditor editor = new ViewConfigEditor(config, nameOnly, nomination);
-            // Category is a declared record type: its DISPLAY row is the contract one,
-            // since the declaration names no carrier class.
             String display = objectview.field.ViewableContractFieldSet.DISPLAY_KEY;
 
-            assertFalse(ticked(editor, "category." + display), "starts unchecked");
+            assertFalse(hasRow(editor, "category." + display));
             check(editor, "category");
 
             ViewConfig category = editor.getConfig().getFieldConfig("category");
-            assertFalse(ticked(editor, "category." + display));
-            assertFalse(ticked(editor, "category.year"));
-            assertFalse(ticked(editor, "category.winner"));
+            assertFalse(hasRow(editor, "category." + display));
+            assertFalse(hasRow(editor, "category.year"));
+            assertFalse(hasRow(editor, "category.winner"));
             assertFalse(category.isAllFields());
-            assertEquals(Set.of(), category.getFields().keySet());
+            assertEquals(Set.of(display), category.getFields().keySet());
         }
     }
 
@@ -154,15 +152,11 @@ class ViewConfigEditorTreeConfigTest {
         return (FieldRow) row.get(state);
     }
 
-    private static boolean ticked(ViewConfigEditor editor, String dotted) throws Exception {
+    private static boolean hasRow(ViewConfigEditor editor, String dotted) throws Exception {
         for (Object state : rowStates(editor, "allRows")) {
-            if (rowOf(state).path().dotted().equals(dotted)) {
-                var use = state.getClass().getDeclaredField("use");
-                use.setAccessible(true);
-                return (boolean) use.get(state);
-            }
+            if (rowOf(state).path().dotted().equals(dotted)) return true;
         }
-        throw new AssertionError("no row " + dotted);
+        return false;
     }
 
     /** Checks a visible row through the table, as a click on its box does. */
@@ -253,7 +247,8 @@ class ViewConfigEditorTreeConfigTest {
                 "the checked reference must serialize after the row-source switch");
     }
 
-    @Test void distinctDynamicTypesRecursePastOneNestedLevel() {
+    @Test void dynamicCollectionsRecurseWhileScalarReferencesStayTerminal()
+            throws Exception {
         DynamicViewable motivation = new DynamicViewable("M1", "Motivation");
         motivation.type("Motivation");
         motivation.put("action", "for discovering...");
@@ -274,12 +269,14 @@ class ViewConfigEditorTreeConfigTest {
 
         ViewConfigEditor editor = new ViewConfigEditor(topConfig(), prize);
 
-        objectview.field.FieldPath motivationPath =
-                objectview.field.FieldPath.parse(
-                        "laureatesWithMotivation.motivation.action");
+        objectview.field.FieldPath motivationPath = objectview.field.FieldPath.parse(
+                "laureatesWithMotivation.motivation");
         editor.setSelectedPath(motivationPath);
         assertEquals(motivationPath, editor.selectedPath(),
-                "Motivation fields must be discovered recursively");
+                "the scalar reference itself is selectable");
+        assertFalse(hasRow(editor,
+                        "laureatesWithMotivation.motivation.action"),
+                "a scalar reference has no nested-field disclosure");
 
         objectview.field.FieldPath laureatePath =
                 objectview.field.FieldPath.parse(
@@ -288,4 +285,43 @@ class ViewConfigEditorTreeConfigTest {
         assertEquals(laureatePath, editor.selectedPath(),
                 "Laureate fields must be discovered recursively");
     }
+
+    @Test void wikidataSourceExposesItsQidLinkToFieldConfigurations()
+            throws Exception {
+        var entity = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q42", "Douglas Adams");
+        objectview.Viewable source = (objectview.Viewable) ((java.util.List<?>)
+                objectview.field.FieldSet.of(entity).read("wikidataSource")).getFirst();
+        var directRows = ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
+                ViewConfig.of(source.getClass()), source, false, false,
+                java.util.Set.of(), null));
+        assertTrue(directRows.stream().anyMatch(row -> "identity".equals(row.configName())),
+                () -> "the source itself must publish the link row; rows=" + directRows);
+        ViewConfig config = ViewConfig.of(entity.getClass());
+        config.setAllFields(false);
+        ViewConfigEditor editor = new ViewConfigEditor(config, entity);
+        editor.setConnectedFieldSelection(true);
+        objectview.field.FieldPath qidLink = objectview.field.FieldPath.parse(
+                "wikidataSource.identity");
+
+        editor.setSelectedPath(qidLink);
+
+        assertTrue(hasRow(editor, qidLink.dotted()), () ->
+                "the provenance collection's QID link is a real selectable value; rows="
+                        + rowPaths(editor));
+        assertEquals(qidLink, editor.selectedPath());
+    }
+
+    private static java.util.List<String> rowPaths(ViewConfigEditor editor) {
+        try {
+            java.util.List<String> result = new java.util.ArrayList<>();
+            for (Object state : rowStates(editor, "allRows")) {
+                result.add(rowOf(state).path().dotted());
+            }
+            return result;
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
 }

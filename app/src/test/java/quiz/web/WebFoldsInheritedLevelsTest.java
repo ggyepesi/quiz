@@ -3,6 +3,8 @@ package quiz.web;
 import objectview.ViewableAdapter;
 import objectview.annotations.DisplayField;
 import objectview.annotations.Reference;
+import objectview.plan.TypeShape;
+import objectview.plan.ViewDefaults;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 
@@ -61,16 +63,12 @@ class WebFoldsInheritedLevelsTest {
         emperor.replaces.add(king);
     }
 
-    private static ViewConfig config() {
-        ViewConfig config = ViewConfig.leaf();
-        config.addField("name", ViewConfig.leaf());
-        config.addField("country", ViewConfig.leaf());
-        config.addField("replaces", ViewConfig.leaf());
-        return config;
+    private static ViewConfig automaticConfig() {
+        return ViewDefaults.newView(TypeShape.ofClass(Office.class));
     }
 
     @Test void anOpenedInheritedMemberShowsTheAncestorsFieldsOneLevelAtATime() {
-        ViewableView card = ViewableJson.of(president, config(),
+        ViewableView card = ViewableJson.of(president, automaticConfig(),
                 (key, initiallyOpen) -> key instanceof java.util.Collection<?> || initiallyOpen);
 
         ViewableView.Field replaces = field(card, "replaces");
@@ -79,7 +77,7 @@ class WebFoldsInheritedLevelsTest {
         assertEquals("Emperor", member.name(), "the member's caption, ticked above");
         assertNotNull(member.via(), "fetched under the config at its path");
 
-        ViewableView opened = ViewableJson.member(emperor, president, config(),
+        ViewableView opened = ViewableJson.member(emperor, president, automaticConfig(),
                 member.via().path());
         assertEquals("German Empire", field(opened, "country").value(),
                 "the opened member renders by the inherited config");
@@ -87,7 +85,7 @@ class WebFoldsInheritedLevelsTest {
                 "and its own inherited list starts folded again");
     }
 
-    @Test void aFoldedNonPooledObjectKeepsItsBodyBehindAnInlineChip() {
+    @Test void aScalarReferenceWithNoSelectedDisplayIsOnlyItsFieldName() {
         LocalOffice head = new LocalOffice("Head", "Here");
         LocalOffice predecessor = new LocalOffice("Predecessor", "There");
         head.predecessor = predecessor;
@@ -97,12 +95,11 @@ class WebFoldsInheritedLevelsTest {
         config.addField("predecessor", ViewConfig.leaf());
 
         ViewableView card = ViewableJson.of(head, config);
-        ViewableView.Ref chip = field(card, "predecessor").ref();
+        ViewableView.Field predecessorField = field(card, "predecessor");
 
-        assertNotNull(chip, "the folded object remains an expandable chip");
-        assertNull(chip.id(), "a value object has no pool address");
-        assertNotNull(chip.inline(), "its configured projection travels with the chip");
-        assertEquals("There", field(chip.inline(), "country").value());
+        assertEquals("empty", predecessorField.kind(),
+                "a scalar reference is a terminal value, not a nested config branch");
+        assertNull(predecessorField.ref());
     }
 
     private static ViewableView.Field field(ViewableView card, String name) {

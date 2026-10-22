@@ -3,6 +3,7 @@ package quiz.source;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
+import objectview.annotations.DisplayField;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 
@@ -13,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 public final class WikipediaSource extends ViewableAdapter implements Source {
     @Hidden private final String title;
     @Hidden private final String url;
-    @Link private final String article;
+    @DisplayField @Link private final String article;
 
     @JsonCreator
     public WikipediaSource(@JsonProperty("title") String title) {

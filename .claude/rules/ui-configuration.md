@@ -84,15 +84,20 @@ Sampling shows values for members that carry the property; it never changes the 
 ## Nested field choices stay connected and reversible
 
 Search, Sort and View use the same nested-field editor rule. A selected value activates
-every owner on its path. An object or object collection is a branch switch, not a value
-endpoint, and cannot be active without a selected nested field; raw values and raw-value
-collections may be endpoints.
+every owner on its path. An inline object or object collection is a branch switch, not a
+value endpoint, and cannot be active without a selected nested field; raw values,
+raw-value collections and scalar navigation references may be endpoints. A scalar reference
+has no disclosure control because no configured child field renders inline. An object
+collection still discloses the projection of its members.
 
 Unticking an owner suppresses its configured subtree rather than deleting it. The saved
-descendant checks remain visible, disabled and persisted, and reticking the owner restores
-them. Removing individual descendant checks or pressing **Clear nested config** is the explicit
-forget operation. A checked descendant behind an unchecked owner must never look active or
-silently enter the effective configuration.
+descendant checks remain visible, light grey, editable and persisted, and reticking the owner
+restores them. Editing a suppressed descendant changes the remembered list without reticking
+the owner; removing individual descendant checks is the forget operation. A checked descendant
+behind an unchecked owner must never look active or silently enter the effective configuration.
+A manual configuration may continue through a cycle to any requested depth. The editor reveals
+each next level lazily; inspecting it is not a model change. Only an untouched automatic default
+may inherit an ancestor projection.
 
 ## Structure and population are different rows
 
