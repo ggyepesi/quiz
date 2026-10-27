@@ -1,0 +1,533 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ModelBuilder Configuration Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a reference manual. A sticky contents rail on wide screens, one reading column, tables in their own scroll boxes. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #1d2523;
+  --muted: #5b6763;
+  --rule: #d9dfdc;
+  --accent: #1f6f62;
+  --accent-soft: #e2efec;
+  --derived: #8a5a12;
+  --derived-soft: #f6ecda;
+  --code-bg: #eef1ef;
+  --f-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --s1: 0.8125rem; --s2: 0.9375rem; --s3: 1.0625rem; --s4: 1.375rem; --s5: 1.875rem; --s6: 2.625rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121716; --surface: #1a2120; --ink: #e3e9e6; --muted: #9aa8a3; --rule: #2e3836;
+    --accent: #6cc4b2; --accent-soft: #1d3430; --derived: #e0b066; --derived-soft: #352a17; --code-bg: #222b29;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121716; --surface: #1a2120; --ink: #e3e9e6; --muted: #9aa8a3; --rule: #2e3836;
+  --accent: #6cc4b2; --accent-soft: #1d3430; --derived: #e0b066; --derived-soft: #352a17; --code-bg: #222b29;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: var(--s2); line-height: 1.6; padding: 0 20px; }
+.shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px; padding-block: 48px 96px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: var(--s1); }
+nav.toc p { font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+nav.toc ol ol { padding-left: 14px; margin-top: 4px; }
+nav.toc a { color: var(--ink); text-decoration: none; display: block; padding: 2px 0; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+main { min-width: 0; max-width: 46rem; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+header.lead { padding-bottom: 28px; border-bottom: 1px solid var(--rule); margin-bottom: 36px; }
+.eyebrow { font-size: var(--s1); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 680; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: var(--s6); margin: 0 0 16px; }
+h2 { font-size: var(--s5); margin: 64px 0 14px; scroll-margin-top: 24px; }
+h3 { font-size: var(--s4); font-weight: 560; margin: 36px 0 8px; scroll-margin-top: 24px; }
+h4 { font-size: var(--s2); margin: 22px 0 6px; font-weight: 700; }
+p, li { max-width: 65ch; }
+.lede { font-size: var(--s3); color: var(--muted); margin: 0; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+ul, ol { padding-left: 1.25rem; }
+li { margin: 3px 0; }
+.triple { font-family: var(--f-mono); font-size: var(--s2); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; }
+.triple .pos { display: grid; gap: 2px; }
+.triple .pos small { font-family: var(--f-body); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.triple .arrow { color: var(--accent); font-weight: 600; }
+.two-q { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 20px 0; }
+.two-q div { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+.two-q b { display: block; font-family: var(--f-display); font-size: var(--s3); font-weight: 560; margin-bottom: 4px; }
+.two-q span { color: var(--muted); font-size: var(--s1); }
+.construct { border-top: 1px solid var(--rule); padding-top: 4px; }
+.construct h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.tag { font-family: var(--f-body); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.derived { background: var(--derived-soft); color: var(--derived); }
+.ui { font-style: italic; }
+.tablebox { overflow-x: auto; margin: 16px 0; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--s1); }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 700; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; background: var(--bg); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+table.matrix th, table.matrix td { text-align: center; font-variant-numeric: tabular-nums; }
+table.matrix td:first-child, table.matrix th:first-child { text-align: left; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.dot.imp { background: transparent; border: 2px solid var(--accent); }
+.legend { font-size: var(--s1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 18px; margin-top: -6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.domain { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 4px 22px 18px; margin: 22px 0; }
+.domain h3 { margin-top: 18px; }
+.uses { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.sketch { border-style: dashed; }
+.note { font-size: var(--s1); color: var(--muted); border-left: 3px solid var(--rule); padding-left: 12px; margin: 14px 0; }
+.trace { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0; margin: 16px 0 24px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); overflow: hidden; font-size: var(--s1); }
+.trace > div { padding: 8px 12px; border-bottom: 1px solid var(--rule); min-width: 0; }
+.trace > .h { font-weight: 700; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; background: var(--bg); }
+.trace > .to { color: var(--accent); font-weight: 600; text-align: center; padding-inline: 6px; }
+.trace > .last { border-bottom: 0; }
+.trace b { font-weight: 600; }
+.trace .k { font-family: var(--f-mono); font-size: 0.92em; }
+@media (max-width: 560px) {
+  .trace { grid-template-columns: minmax(0, 1fr); }
+  .trace > .to { text-align: left; border-bottom: 0; padding-block: 0; }
+  .trace > .to::before { content: "↓ "; }
+  .trace > .to { font-size: 0; }
+  .trace > .to::before { font-size: var(--s1); }
+  .trace > .h.mid { display: none; }
+}
+footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: var(--s1); color: var(--muted); }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 28px 64px; }
+  nav.toc { position: static; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+  nav.toc ol ol { display: none; }
+  h1 { font-size: var(--s5); }
+  h2 { font-size: var(--s4); margin-top: 48px; }
+  .domain { padding: 4px 16px 14px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#frame">Projects and imports</a></li>
+      <li><a href="#why">Why these constructs</a></li>
+      <li><a href="#mapping">From Wikidata to configuration</a></li>
+      <li><a href="#item-or-statement">Item or statement?</a></li>
+      <li><a href="#constructs">The five constructs</a>
+        <ol>
+          <li><a href="#source">Source class</a></li>
+          <li><a href="#statement">Statement class</a></li>
+          <li><a href="#owned">Owned class</a></li>
+          <li><a href="#aggregate">Aggregate class</a></li>
+          <li><a href="#graph">Graph class</a></li>
+        </ol>
+      </li>
+      <li><a href="#fields">Fields</a></li>
+      <li><a href="#classify">Inheritance and representation</a></li>
+      <li><a href="#selections">Selections</a></li>
+      <li><a href="#matrix">Which domain uses what</a></li>
+      <li><a href="#domains">Real domains</a>
+        <ol>
+          <li><a href="#constellations">Constellations</a></li>
+          <li><a href="#nobel">Nobel Prizes</a></li>
+          <li><a href="#oscars">Oscar nominations</a></li>
+          <li><a href="#history">History</a></li>
+          <li><a href="#solar">Solar System</a></li>
+          <li><a href="#myth">Mythology</a></li>
+          <li><a href="#periodic">Periodic Table</a></li>
+        </ol>
+      </li>
+      <li><a href="#football">Sketch: football careers</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="lead">
+      <p class="eyebrow">quiz · ModelBuilder</p>
+      <h1>ModelBuilder Configuration Guide</h1>
+      <p class="lede">What a model can say about a domain built on Wikidata, and how the checked-in domains use each option. The examples come from the model files under <code>data/wikidata/</code>; labels in italics are the editor's own wording.</p>
+    </header>
+
+    <section id="frame">
+      <h2>Projects, models and imports</h2>
+      <p>A project is either a <b>Domain</b>, a servable quiz product, or a <b>Model</b>, a reusable library of class declarations such as Person, Astronomy, Discovery or Historical Positions. A Model can still generate and save its own local instances.</p>
+      <p><b>Imports</b> are live references to another project's class configurations and selections, never its instances. An edit to Person reaches every importer the next time it loads, with nothing re-imported. An importer builds on imported classes with its own classes, subclasses and represented-as rules.</p>
+      <p>The workflow is always the same: configure, <b>Generate</b> (Wikidata acquisition into one object graph), show and curate, then <b>Save model/domain</b>, which is the only point where anything is written. A saved domain is what the quiz and the web client serve. A <b>generation depth</b> sets how far references are followed from the root class.</p>
+      <div class="two-q">
+        <div><b>Membership</b><span>How are a class's instances gathered?</span></div>
+        <div><b>Identity</b><span>How are two instances told apart?</span></div>
+        <div><b>Fields</b><span>What is loaded on each instance. Fields are attributes, separate from both.</span></div>
+      </div>
+    </section>
+
+    <section id="why">
+      <h2>Why these constructs</h2>
+      <p>Wikidata is a graph of <b>statements</b>. Each statement is a triple:</p>
+      <div class="triple" aria-label="subject, property, object">
+        <span class="pos"><small>subject</small>an item</span>
+        <span class="arrow">── property ──▶</span>
+        <span class="pos"><small>object</small>an item or a value</span>
+      </div>
+      <p>The subject is always an <b>entity</b>: an item with a QID such as Q42, or a property with a PID. The object is either another item or a plain value such as a string, a date, a quantity or a media file. An entity carries nothing but its labels, descriptions, aliases, sitelinks and the statements made about it.</p>
+      <p>A statement is not a bare triple. It may carry <b>qualifiers</b>, which are property–value pairs that give it context: a nomination's <em>for work</em>, an office's <em>start time</em> and <em>end time</em>, a prize's <em>together with</em>. It also carries references and a rank. A statement has no QID of its own, and no other statement can point at it.</p>
+      <p>Each ModelBuilder construct maps one part of that structure to a class:</p>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Construct</th><th>An instance represents</th><th>Identified by</th></tr></thead>
+          <tbody>
+            <tr><td>Source class</td><td>A Wikidata entity: a person, a constellation, a position</td><td>Its QID</td></tr>
+            <tr><td>Statement class</td><td>One Wikidata statement, a triple together with its qualifiers: a nomination, an office holding</td><td>A content key over its fields, because the statement has no QID</td></tr>
+            <tr><td>Owned class</td><td>A part of one entity grouped into an object of its own: a person's structured name, a body's discovery</td><td>The owner's QID and the field that produced it</td></tr>
+            <tr><td>Aggregate class</td><td>A group of statements or entities that Wikidata does not model as one thing: a Nobel Prize year and category with all its laureates</td><td>The values of its key fields</td></tr>
+            <tr><td>Graph class</td><td>A decision about an entity reached by walking statements across the graph: whether a position belongs in the domain</td><td>The entity it classifies and the graph class</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The owned, aggregate and graph classes have no direct counterpart in Wikidata. Owned and aggregate classes shape data that already exists into objects a quiz can use. A graph class decides which entities belong in the domain at all.</p>
+      <p><b>Fields</b> follow the same structure. On a source class, a field reads the object of one of the entity's statements, outgoing or incoming. On a statement class, fields hold the subject, the object and the statement's qualifiers. A field can also restrict which statements it reads by a qualifier's value, or come from another source altogether: a Wikipedia infobox, a category, DBpedia, a sitelink or incoming-link count. Derived fields such as inverts, unions and companion matches are computed from what has already been loaded.</p>
+    </section>
+
+    <section id="mapping">
+      <h2>From Wikidata to configuration</h2>
+      <p>Every part of a Wikidata statement has one place in the configuration. The table follows Wikidata's own structure from the outside in: entities, classes, properties and values, statements, qualifiers, then ranks and references.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>In Wikidata</th><th>In the configuration</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>Item (QID)</td><td>An instance of a source class, identified by its QID</td><td>Orion (Q8860) is one Constellation</td></tr>
+            <tr><td>Label</td><td>The default display name; <span class="ui">Require label</span> in a language</td><td>"Orion"</td></tr>
+            <tr><td>Aliases</td><td><span class="ui">Add aliases (Also known as)</span></td><td>Additional names a search can find</td></tr>
+            <tr><td>Sitelinks</td><td><span class="ui">Notable only</span>; the English Wikipedia source link; a sitelink-count field</td><td>Galaxy requires a Wikipedia article</td></tr>
+            <tr><td>Class item and P31 <em>instance of</em></td><td>A class's membership rule: P31 into one or more QIDs</td><td>Constellation: <code>P31 ∈ {Q8928, Q4193029}</code></td></tr>
+            <tr><td>P279 <em>subclass of</em></td><td><span class="ui">include subclasses of these QIDs (P279*)</span>; a subclass condition on a P31 value and its descendants</td><td>Moon's subclass condition</td></tr>
+            <tr><td>P31 as evidence of what an entity is</td><td>Entity-kind rules and represented-as rules</td><td>Laureate represented as Person when <code>P31 = Q5</code></td></tr>
+            <tr><td>Property (PID)</td><td>A field's <span class="ui">Property</span>, or the property of a statement class's triple</td><td><code>abbreviation ← P1813</code></td></tr>
+            <tr><td>Property datatype</td><td>The field's <span class="ui">Holds</span>: item → entity, string or external id → string, monolingual text → text with a value language, quantity → number with a unit label, time → date, Commons media → image</td><td><code>apparentMagnitude</code> is a number labelled mag</td></tr>
+            <tr><td>Several statements with one property</td><td>A collection field</td><td>A constellation's stars</td></tr>
+            <tr><td>A statement on the instance (instance as subject)</td><td>An outgoing field on a source class</td><td>Orion <em>IAU abbreviation</em> "Ori"</td></tr>
+            <tr><td>A statement pointing at the instance (instance as object)</td><td>An incoming field</td><td>Stars that are <em>part of</em> (P59) Orion fill <code>stars</code></td></tr>
+            <tr><td>A statement as a thing of its own</td><td>A statement class: one triple, with subject and object bounds and a content key</td><td>OfficeHolding on P39</td></tr>
+            <tr><td>Statement subject and object</td><td><span class="ui">Statement subject</span> and <span class="ui">Statement object</span> fields</td><td>OfficeHolding's <code>source</code> and <code>position</code></td></tr>
+            <tr><td>Qualifier on a statement the model reifies</td><td>A qualifier field on the statement class</td><td><code>startDate ← P580</code></td></tr>
+            <tr><td>Qualifier used to choose statements</td><td>A field's <span class="ui">Only statements where</span> qualifier … is one of …</td><td>Read only the statements valid for one context</td></tr>
+            <tr><td>Subject plus an entity qualifier, as equal parties</td><td><span class="ui">Statement participants</span></td><td>Nobel laureates via P1706 <em>together with</em></td></tr>
+            <tr><td>P805 <em>statement is subject of</em></td><td>An entity field on the statement class whose target is a source class</td><td>Nomination's <code>ceremony</code> → Ceremony</td></tr>
+            <tr><td>A second statement that confirms the first</td><td>A companion-match field</td><td>Nomination <code>won</code>: a matching P166 exists</td></tr>
+            <tr><td>Incoming link counts</td><td>An incoming-count or inherited incoming-count field</td><td>Position <code>holderCount</code> over P39</td></tr>
+            <tr><td>Rank</td><td>A fixed policy, not configured: the best-ranked statements are read and deprecated ones never are</td><td>A preferred value hides normal ones</td></tr>
+            <tr><td>References</td><td>Kept as provenance on each statement's source record, not as fields</td><td>Open the exact statement JSON</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What Wikidata does not have</h3>
+      <p>Some configuration constructs have no Wikidata counterpart, because they answer questions Wikidata leaves to its users.</p>
+      <ul>
+        <li><b>Owned class:</b> Wikidata has no notion of a part of an item. A person's given and family names are two separate statements; an owned Name groups them into one object.</li>
+        <li><b>Aggregate class:</b> Wikidata has no item for "the 1903 Nobel Prize in Physics" with its three laureates. An aggregate builds it from the statements.</li>
+        <li><b>Graph class:</b> deciding which entities belong in a domain is a modelling decision. A graph walks statements to make it and records the evidence.</li>
+        <li><b>Vocabulary and population selections:</b> a named set of items is configuration, not data. Wikidata has class items, but no saved list of chosen items.</li>
+        <li><b>Derived fields</b> (invert, union): Wikidata stores each statement once, on its subject. Reading it from the object's side is either an incoming field, which queries Wikidata, or an invert, which reuses what has already been loaded.</li>
+      </ul>
+
+      <h3>One statement, traced</h3>
+      <p>A P39 statement on Abraham Lincoln, as History's OfficeHolding class reads it:</p>
+      <div class="trace" role="table" aria-label="Wikidata statement mapped to an OfficeHolding instance">
+        <div class="h">In Wikidata</div><div class="h mid"></div><div class="h">In the model</div>
+        <div><b>Subject</b> Abraham Lincoln</div><div class="to">→</div><div><span class="k">source</span>, a PositionHolder represented as Person</div>
+        <div><b>Property</b> P39 position held</div><div class="to">→</div><div>the triple of the OfficeHolding statement class</div>
+        <div><b>Object</b> President of the United States</div><div class="to">→</div><div><span class="k">position</span>, a Position</div>
+        <div><b>Qualifier</b> P580 start time 4 March 1861</div><div class="to">→</div><div><span class="k">startDate</span></div>
+        <div><b>Qualifier</b> P582 end time 15 April 1865</div><div class="to">→</div><div><span class="k">endDate</span></div>
+        <div><b>Qualifier</b> P1365 replaces James Buchanan</div><div class="to">→</div><div><span class="k">predecessor</span>, a Person</div>
+        <div><b>Qualifier</b> P1366 replaced by Andrew Johnson</div><div class="to">→</div><div><span class="k">successor</span>, a Person</div>
+        <div class="last"><b>No QID</b> of its own</div><div class="to last">→</div><div class="last">identified by a content key over its fields; listed on the person as <span class="k">Person.offices</span>, an invert</div>
+      </div>
+    </section>
+
+    <section id="item-or-statement">
+      <h2>Item or statement?</h2>
+      <p>Whether Wikidata records a real-world thing as an item or keeps it as a statement on another item decides which construct models it here. Wikidata has no single directive for this. Three things govern it.</p>
+      <h4>Notability decides whether an item may exist</h4>
+      <p><a href="https://www.wikidata.org/wiki/Wikidata:Notability">Wikidata:Notability</a> admits an item that meets any one of three criteria: a sitelink to a Wikimedia project; a clearly identifiable entity described by serious public sources; or a <b>structural need</b>, meaning the item "is needed to make statements made in other items more useful". The structural-need criterion is the one that matters here, because it allows an item whose only purpose is to be the value of statements. How far it should reach has been debated for years (<a href="https://www.wikidata.org/wiki/Wikidata:Requests_for_comment/Notability_policy_reform">notability reform</a>, <a href="https://www.wikidata.org/wiki/Wikidata:Requests_for_comment/Wikidata:Notability_overhaul">notability overhaul</a>).</p>
+      <h4>The data model sets the technical limit</h4>
+      <p>As <a href="https://www.wikidata.org/wiki/Help:Statements">Help:Statements</a> describes, a statement can carry qualifiers, references and a rank, but it cannot be the value of another statement, and it cannot have sitelinks or statements of its own. When a fact must be pointed at by other facts, or needs more than its qualifiers can hold, it has to become an item. The qualifier P805 <em>statement is subject of</em> links a statement to such an item.</p>
+      <h4>Conventions differ by subject area</h4>
+      <ul>
+        <li><a href="https://www.wikidata.org/wiki/Help:Modelling/Other_domains">Help:Modelling/Other domains</a> recommends separate items for an institution and its building when their histories diverge.</li>
+        <li><a href="https://www.wikidata.org/wiki/Wikidata:WikiProject_Performing_arts/Data_structure/Data_modelling_issues">WikiProject Performing arts</a> creates an item for a premiere production whenever more is to be said about it.</li>
+        <li>The <a href="https://www.wikidata.org/wiki/Wikidata:WikiProject_every_politician/Political_data_model">EveryPolitician data model</a> keeps memberships as qualified P39 statements rather than items.</li>
+        <li><a href="https://www.wikidata.org/wiki/Wikidata:Events/Data_Quality_Days_2022/Modeling_data">Data Quality Days 2022</a> argued for avoiding unnecessary items and folding over-specific ones back into a property and qualifiers.</li>
+        <li><a href="https://www.wikidata.org/wiki/Wikidata:WikiProject_Ontology/Modelling">WikiProject Ontology/Modelling</a> collects these discussions.</li>
+      </ul>
+      <p>In practice a relation stays a qualified statement until something else needs to point at it or it needs facts of its own; then it becomes an item, often an edition or event item such as a ceremony, a production or an election. That is a summary of the conventions, not a rule any Wikidata page states.</p>
+      <p><b>In these models:</b> where Wikidata kept the relation as a statement, it is a statement class with a content key (Nomination on P1411, the Nobel P166 statements, OfficeHolding on P39). Where Wikidata promoted it to an item, it is an ordinary source class: Ceremony, reached through Nomination's P805 qualifier. Because the same kind of fact is sometimes an item and sometimes a statement, even within one subject area, check with Explore or Sample before choosing between the two.</p>
+    </section>
+
+    <section id="constructs">
+      <h2>The five class constructs</h2>
+      <p>Every class shares one header: <span class="ui">Class name</span>, <span class="ui">Alias</span> and <span class="ui">Extends</span>. Each also has a declaration id that a rename does not move. What differs is how instances come into being.</p>
+
+      <div class="construct" id="source">
+        <h3>Source class <span class="tag">entities</span></h3>
+        <p><span class="ui">How do we find instances of this class?</span> Instances are Wikidata entities, identified by QID unless you choose otherwise.</p>
+        <ul>
+          <li><b>Membership:</b> by relation (<code>P31 = Q8928</code> constellation, or a set of P31 values, optionally with subclasses through P279*), by any other property into a target set, by explicit seed QIDs, by a named selection, or unbounded when the class is filled by fields that point at it.</li>
+          <li><b>Population limits:</b> <span class="ui">Exclude instances of</span>, <span class="ui">Own population limit</span> with <span class="ui">Rank by</span>, <span class="ui">Require label</span> in a language, and <span class="ui">Notable only</span>, which requires an English Wikipedia article.</li>
+          <li><b>Identity:</b> the QID, or a content key over chosen fields, with a policy for when a key cannot be computed and how each field combines when the same key occurs twice.</li>
+          <li><b>Display name:</b> the Wikidata label, a field, or an ordered list of fields to try in turn.</li>
+          <li><b><span class="ui">Represent matching entities as</span>:</b> reclassify each fetched instance by evidence after acquisition.</li>
+          <li><b>Extras:</b> aliases as additional names, and an English Wikipedia source link.</li>
+        </ul>
+      </div>
+
+      <div class="construct" id="statement">
+        <h3>Statement class <span class="tag">content key</span></h3>
+        <p>Instances are Wikidata statements promoted to objects, for example one Oscar nomination. A statement class configures exactly one triple:</p>
+        <div class="triple" aria-label="subject, property, object">
+          <span class="pos"><small>subject</small>Person</span>
+          <span class="arrow">── P1411 nominated for ──▶</span>
+          <span class="pos"><small>object</small>OscarCategories</span>
+        </div>
+        <ul>
+          <li><b>Property:</b> the PID that joins the two ends, such as P1411 or P39 position held.</li>
+          <li><b>Subject bound:</b> restricts whose statements are collected. A <b>subject population</b> reads statements outward from subjects already extracted.</li>
+          <li><b>Object bound</b> (allowed objects): restricts which statements are kept. It can be a list, a relation or a vocabulary.</li>
+          <li><b><span class="ui">Find subjects using objects from</span>:</b> a separate bound that finds which subjects to load without filtering the statements kept on them.</li>
+          <li>Bounding both ends is the normal case. An end left open spans all of Wikidata for that property, and the query times out (rule R16).</li>
+          <li><b>Identity:</b> a content key over fields such as nominee, category and year, with a missing-qualifier policy and a policy for superseded duplicates.</li>
+          <li><b>Fields:</b> <span class="ui">Statement subject</span>, <span class="ui">Statement object</span>, <span class="ui">Statement participants</span> (the subject plus entity qualifiers as one collection), qualifier fields such as P585 or P580/P582, and derived fields.</li>
+        </ul>
+      </div>
+
+      <div class="construct" id="owned">
+        <h3>Owned class <span class="tag">per owner</span></h3>
+        <p>One component object per owner, created by a field on the owner: <code>Person.structuredName → Name</code> makes a Name on the person's QID and loads given and family names onto it.</p>
+        <ul>
+          <li><b>Identity:</b> class at its production site plus the owner's QID, so two fields that both target Name never collapse.</li>
+          <li>Every owned class has a derived, read-only <b>Owner</b> reference back to the instance that produced it.</li>
+          <li>One owned schema may have several production sites on different owner classes. Discovery is owned by both celestial bodies and constellations.</li>
+        </ul>
+      </div>
+
+      <div class="construct" id="aggregate">
+        <h3>Aggregate class <span class="tag">grouping</span></h3>
+        <p>Groups the instances of another class by key fields: <span class="ui">From class</span>, <span class="ui">Key fields</span> and <span class="ui">Aggregated fields</span>. It is a real class with its own identity, so it can be served, searched and quizzed like any other.</p>
+      </div>
+
+      <div class="construct" id="graph">
+        <h3>Graph class <span class="tag">traversal</span></h3>
+        <p>A population discovered by walking relations and classified by evidence.</p>
+        <ul>
+          <li><b>Start node:</b> a class or a saved population.</li>
+          <li><b>Next nodes:</b> an ordered path. Each step has a property, a direction and optional equivalent alternative edges. A step may name an admission population (<span class="ui">Admit and expand</span>).</li>
+          <li><b>Evidence:</b> relations from a node and tests on what they reach, with a policy for incomplete evidence.</li>
+          <li><b>Result:</b> All, Accepted, Review and Rejected tabs. Manual accept or reject is stored as a separate mark and never rewrites the original result.</li>
+          <li><b><span class="ui">Apply result</span>:</b> <em>narrows</em> the output class to the accepted population, or <em>adds</em> memberships to it. <span class="ui">Repeat until no new instances are found</span> computes a closure.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="fields">
+      <h2>Fields</h2>
+      <p><span class="ui">How do we fill this field?</span> A field has a definition, a source, a way of being produced and refinements.</p>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Setting</th><th>Options</th></tr></thead>
+          <tbody>
+            <tr><td>Holds</td><td>String, text, number, date, boolean, image or other media, entity</td></tr>
+            <tr><td>Of class</td><td>The target class of an entity field, or <span class="ui">no class (keep label)</span></td></tr>
+            <tr><td>Count</td><td>Single or collection</td></tr>
+            <tr><td>Direction</td><td>Outgoing from the instance, or incoming (stars that are <em>part of</em> a constellation)</td></tr>
+            <tr><td>Property</td><td>A PID, optionally a qualifier of a statement, and <span class="ui">Only statements where</span> a qualifier is one of a set</td></tr>
+            <tr><td>Source</td><td>SPARQL, Wikidata API, DBpedia, Wikipedia infobox, Wikipedia category, WikiProject, Commons, backlinks, sitelink count, incoming count, inherited incoming count, manual</td></tr>
+            <tr><td>Refine</td><td><span class="ui">Required</span> (drops entities without the field), numeric filter such as ≤ 6.0, allowed values, sort a collection by a field, unit, value language</td></tr>
+            <tr><td>Edge membership</td><td>Use the target class's own membership for this edge, or drop it</td></tr>
+            <tr><td>Display</td><td>Auto, inline, or reference</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Load as</h3>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Production</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Simple property</td><td>A plain value read from the entity</td></tr>
+            <tr><td>Related entity values</td><td>References to entities of the target class, whose own fields load afterwards</td></tr>
+            <tr><td>Related objects</td><td>Child objects of the target class, often read incoming and sorted</td></tr>
+            <tr><td>Owned component</td><td>An owned class produced on the owner's QID</td></tr>
+            <tr><td>Statement subject / object / participants</td><td>The legs of a statement class</td></tr>
+            <tr><td>Invert <span class="tag derived">derived</span></td><td>The reverse of a forward reference elsewhere, built in memory with no query</td></tr>
+            <tr><td>Union <span class="tag derived">derived</span></td><td>Several field paths merged into one collection</td></tr>
+            <tr><td>Companion match <span class="tag derived">derived</span></td><td>True when a companion statement exists, such as an Oscar <em>won</em></td></tr>
+            <tr><td>Owner reference <span class="tag derived">derived</span></td><td>An owned class's link to the instance that produced it</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Derived fields cost no queries. A field whose target is a vocabulary name builds that vocabulary from the values it loads, so declaring the field is the discovery.</p>
+    </section>
+
+    <section id="classify">
+      <h2>Inheritance, classification and representation</h2>
+      <ul>
+        <li><b>Extends:</b> ordinary single inheritance. A subclass may have its own membership rule, and its members are then base instances too.</li>
+        <li><b>Subclass condition:</b> classifies existing base instances locally, by a property value (a P31 value with its descendants), or by whether the QID is inside or outside a saved population.</li>
+        <li><b>Entity-kind rules:</b> map P31 evidence to a modelled kind, for example Person when <code>P31 = Q5</code>.</li>
+        <li><b>Represented-as rules:</b> turn a placeholder class into a concrete one per instance. A Laureate is represented as a Person when the evidence says so. An instance that fails the evidence keeps its placeholder class; it is neither dropped nor given a class it does not have.</li>
+      </ul>
+    </section>
+
+    <section id="selections">
+      <h2>Selections</h2>
+      <p>A selection is a named set that other constructs refer to. It is never served by itself.</p>
+      <ul>
+        <li><b>Vocabulary selection:</b> a named set of QIDs, used either as <em>allowed values</em> (the value is a member) or as a <em>tag set</em> (the value's P31 is a member). One vocabulary can bound both a field and a statement's object position.</li>
+        <li><b>Population selection:</b> one class plus the stable QIDs of chosen instances. You create it from loaded instances with <span class="ui">Create population selection…</span>, then reuse it as a graph start, an admission boundary, a subclass condition or a statement bound. It crosses imports.</li>
+      </ul>
+    </section>
+
+    <section id="matrix">
+      <h2>Which domain uses what</h2>
+      <div class="tablebox">
+        <table class="matrix">
+          <thead><tr><th>Option</th><th>Constellations</th><th>Nobel</th><th>Oscars</th><th>History</th><th>Solar System</th><th>Mythology</th><th>Periodic</th></tr></thead>
+          <tbody>
+            <tr><td>Source class</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td></tr>
+            <tr><td>Statement class</td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Owned class</td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td></tr>
+            <tr><td>Aggregate class</td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Graph class</td><td></td><td></td><td></td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Imports</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
+            <tr><td>Extends</td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
+            <tr><td>Subclass condition</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
+            <tr><td>Represented as</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Vocabulary selection</td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Population selection</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Invert / Union</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
+            <tr><td>Companion match</td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Required / numeric filter</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
+            <tr><td>Self-reference</td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="legend"><span><span class="dot"></span> declared in the domain</span><span><span class="dot imp"></span> used through an imported model</span></p>
+    </section>
+
+    <section id="domains">
+      <h2>Real domains, construct by construct</h2>
+
+      <article class="domain" id="constellations">
+        <h3>Constellations</h3>
+        <div class="uses"><span class="tag">imports</span><span class="tag">extends</span><span class="tag">owned</span><span class="tag">represented as</span><span class="tag">required filter</span></div>
+        <p>Assembled from three models: Astronomy, Discovery and Person.</p>
+        <ul>
+          <li><b>Constellation</b> (source): <code>P31 ∈ {Q8928, Q4193029}</code>, excluding Q4158896. <code>abbreviation</code> (P1813) is required, so anything without an IAU abbreviation drops out. <code>sharesBorderWith</code> is a self-reference collection (P47).</li>
+          <li><b>stars</b> and <b>galaxies</b> are related objects read incoming through P59 and sorted by <code>apparentMagnitude</code>.</li>
+          <li><b>Astronomy model:</b> CelestialBody is the base; Star, BrightStar, NamedGalaxyStar and Galaxy extend it. Each concrete class declares its own apparent magnitude, and only BrightStar filters it (≤ 6.0, required). NamedGalaxyStar and Galaxy also require <span class="ui">Notable only</span>.</li>
+          <li><b>discovery</b> is an owned component. The Discovery class holds <code>date</code> (P575) and <code>discoverers</code> (P61). Discoverer is represented as Person; the owner is represented as Constellation here and as CelestialBody in Astronomy.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="nobel">
+        <h3>Nobel Prizes</h3>
+        <div class="uses"><span class="tag">statement</span><span class="tag">participants</span><span class="tag">aggregate</span><span class="tag">vocabulary</span></div>
+        <ul>
+          <li><b>LaureatesWithMotivation</b> (statement): P166 award received, with allowed objects from the <code>Categories</code> vocabulary. <code>category</code> is the statement object, <code>year</code> is qualifier P585 (required) and <code>motivation</code> is qualifier P6208.</li>
+          <li><code>laureates</code> is <span class="ui">Statement participants</span>: the subject plus qualifier P1706 <em>together with</em>, so a shared prize becomes one statement with several laureates.</li>
+          <li><b>NobelPrize</b> (aggregate) groups those statements by category and year, so each prize lists all its laureates.</li>
+          <li><b>Laureate</b> is a placeholder represented as the imported Person.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="oscars">
+        <h3>Oscar nominations</h3>
+        <div class="uses"><span class="tag">statement</span><span class="tag">qualifiers</span><span class="tag derived">companion match</span><span class="tag">descriptive vocabularies</span></div>
+        <ul>
+          <li><b>Nomination</b> (statement): P1411 nominated for, bounded by the <code>OscarCategories</code> vocabulary, with a limit of 20,000. Qualifiers give <code>nominee</code> (P2453), <code>forWork</code> (P1686) and <code>ceremony</code> (P805).</li>
+          <li><code>won</code> is a companion match: true when a P166 award-received statement with the same value and role exists.</li>
+          <li><b>Nominee</b> and <b>ForWork</b> have no membership rule of their own. They are exactly the entities those fields point at.</li>
+          <li>Their fields <code>type</code> (P31 into NomineeType) and <code>genre</code> (P136 into WorkGenre) build those two vocabularies as they load.</li>
+          <li><b>Ceremony</b> is a real class with its own <code>year</code>. Nominee is represented as Person.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="history">
+        <h3>History, built on Historical Positions</h3>
+        <div class="uses"><span class="tag">graph</span><span class="tag">population selection</span><span class="tag">discovery bound</span><span class="tag">subclass condition</span><span class="tag derived">invert</span></div>
+        <h4>Historical Positions (model)</h4>
+        <ul>
+          <li><b>Position</b>: <code>P31 = Q114962596</code>, limit 200,000. Counting fields use other sources: <code>sitelinkCount</code>, <code>holderCount</code> (incoming P39) and <code>inheritedHolderCount</code>.</li>
+          <li><b>GraphConstraint</b> (graph) starts from PositionDiscoveryStart, walks P31 incoming and classifies Positions by evidence.</li>
+          <li><b>PositionReplacementExpansion</b> (graph) follows P1365 <em>replaces</em> and P1366 <em>replaced by</em> repeatedly until nothing new is reached, and adds memberships to PositionWithHolders.</li>
+          <li>Curated results become the populations <code>PositionPopulation</code> and <code>PositionWithHoldersPopulation</code>.</li>
+        </ul>
+        <h4>History (domain)</h4>
+        <ul>
+          <li>Imports Position and PositionWithHolders.</li>
+          <li><b>OfficeHolding</b> (P39 statement) finds its subjects through <code>PositionWithHoldersPopulation</code> but keeps every position those holders held, with start, end, predecessor and successor qualifiers.</li>
+          <li><b>ReachablePosition</b> is Position <em>outside</em> that population. This subclass condition marks the boundary positions.</li>
+          <li><code>Person.offices</code> inverts OfficeHolding, and <code>spouse</code> is a self-reference. PositionHolder is represented as Person.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="solar">
+        <h3>Solar System</h3>
+        <div class="uses"><span class="tag">limits</span><span class="tag">allowed values</span><span class="tag derived">invert</span><span class="tag derived">union</span><span class="tag">subclass condition</span></div>
+        <ul>
+          <li><b>Planet</b>: limit 8, <code>parentBody</code> allowed only Q525 (the Sun), <code>planetType</code> allowed only two QIDs.</li>
+          <li><b>Moon</b>: <code>P397 ∈</code> the eight planets, with a subclass condition on P31 Q109645860 and its descendants.</li>
+          <li><code>Planet.moons</code> inverts <code>Moon.parentBody</code>, and <code>allMoons</code> is a union.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="myth">
+        <h3>Mythology</h3>
+        <div class="uses"><span class="tag">self-reference</span><span class="tag">notable only</span></div>
+        <ul>
+          <li><b>Character</b>: P31 in four mythological-character classes, notable only, limit 5,000. <code>father</code>, <code>mother</code> and <code>child</code> all point back at Character.</li>
+          <li><b>Episode</b>: P31 Q63143903, with <code>characters</code> through P674.</li>
+          <li>The cyclic fields only link members that another construct supplies. They never grow the population along the cycle.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="periodic">
+        <h3>Periodic Table</h3>
+        <div class="uses"><span class="tag">source only</span></div>
+        <p>The plain case: one source class (<code>P31 = Q11344</code>) with thirteen simple properties, from symbol and atomic number to melting point and discoverer. A complete quiz domain can be built from membership and fields alone.</p>
+      </article>
+    </section>
+
+    <section id="football">
+      <h2>Sketch: football careers</h2>
+      <article class="domain sketch">
+        <p class="note">A design sketch. The PIDs and QIDs have not been checked against Wikidata.</p>
+        <ol>
+          <li>Import Person.</li>
+          <li><b>Player</b> (source): <code>P106 = Q937857</code> association football player, notable only, limited and ranked by sitelink count.</li>
+          <li><b>Spell</b> (statement): Player · P54 member of sports team · Club, with Player as subject population. Qualifiers P580/P582 give dates and P1350/P1351 give matches and goals. Identity: player, club and start date.</li>
+          <li><b>Club</b> has no membership of its own. Its <code>country</code> field (P17) builds a ClubCountry vocabulary for faceting.</li>
+          <li><code>Player.spells</code> and <code>Club.players</code> are inverts of Spell.</li>
+          <li>Optionally, a <b>CareerSpan</b> aggregate groups spells by player.</li>
+          <li>For an exact national squad, curate a population selection of players and use it as the Spell statement's subject-discovery bound. Every club those players played for is kept.</li>
+        </ol>
+        <p>Each step reuses a construct shown above, so a new domain is mostly a choice of membership, triple and production per field.</p>
+      </article>
+    </section>
+
+    <footer>
+      What is shown, searched and sorted in a view, and whether top-level cards start as captions only, is a separate View Config layer and is not covered here. Sources: <code>docs/modelbuilder-constructs.md</code>, <code>docs/panel-layout.txt</code> and the model files under <code>data/wikidata/</code>.
+    </footer>
+  </main>
+</div>
+
+</body></html>
