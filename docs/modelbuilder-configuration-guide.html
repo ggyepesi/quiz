@@ -160,7 +160,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
     <section id="frame">
       <h2>Projects, models and imports</h2>
       <p>A project is either a <b>Domain</b>, a servable quiz product, or a <b>Model</b>, a reusable library of class declarations such as Person, Astronomy, Discovery or Historical Positions. A Model can still generate and save its own local instances.</p>
-      <p><b>Imports</b> are live references to another project's class configurations and selections, never its instances. An edit to Person reaches every importer the next time it loads, with nothing re-imported. An importer builds on imported classes with its own classes, subclasses and represented-as rules.</p>
+      <p><b>Imports</b> are live references to another project's class configurations and selections, never copies of its complete generated snapshot. An imported class declaration is read-only schema, and the owner's class snapshot stays in the owning model. A referenced population selection is the explicit publication boundary. An ordinary population contributes exactly its saved QIDs and class. When that class has a materialized transformation source, the class owns one separately saved typed object graph; the referenced selection contributes only its published members from that graph, so transformed fields and links survive without exposing the owner's other instances. Unreferenced populations and imported classes contribute no instances. History uses PositionWithHoldersPopulation this way; PositionWithHolders supplies its schema and published materialized members, not the Historical Positions snapshot. An edit to Person reaches every importer the next time it loads, with nothing re-imported. An importer builds on imported classes with its own classes, subclasses and represented-as rules.</p>
       <p>The workflow is always the same: configure, <b>Generate</b> (Wikidata acquisition into one object graph), show and curate, then <b>Save model/domain</b>, which is the only point where anything is written. A saved domain is what the quiz and the web client serve. A <b>generation depth</b> sets how far references are followed from the root class.</p>
       <div class="two-q">
         <div><b>Membership</b><span>How are a class's instances gathered?</span></div>
@@ -193,7 +193,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
         </table>
       </div>
       <p>The owned, aggregate and graph classes have no direct counterpart in Wikidata. Owned and aggregate classes shape data that already exists into objects a quiz can use. A graph class decides which entities belong in the domain at all.</p>
-      <p><b>Fields</b> follow the same structure. On a source class, a field reads the object of one of the entity's statements, outgoing or incoming. On a statement class, fields hold the subject, the object and the statement's qualifiers. A field can also restrict which statements it reads by a qualifier's value, or come from another source altogether: a Wikipedia infobox, a category, DBpedia, a sitelink or incoming-link count. Derived fields such as inverts, unions and companion matches are computed from what has already been loaded.</p>
+      <p><b>Fields</b> follow the same structure. On a source class, an outgoing field reads the object of a statement whose subject is the instance; an incoming field reads the subject of a statement whose object is the instance. On a statement class, fields hold the subject, the object and the statement's qualifiers. A field can also restrict which statements it reads by a qualifier's value, or come from another source altogether: a Wikipedia infobox, DBpedia, a sitelink count or an incoming-link count. Derived fields such as inverts, unions and companion matches are computed from what has already been loaded.</p>
     </section>
 
     <section id="mapping">
@@ -304,7 +304,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
           <li><b>Subject bound:</b> restricts whose statements are collected. A <b>subject population</b> reads statements outward from subjects already extracted.</li>
           <li><b>Object bound</b> (allowed objects): restricts which statements are kept. It can be a list, a relation or a vocabulary.</li>
           <li><b><span class="ui">Find subjects using objects from</span>:</b> a separate bound that finds which subjects to load without filtering the statements kept on them.</li>
-          <li>Bounding both ends is the normal case. An end left open spans all of Wikidata for that property, and the query times out (rule R16).</li>
+          <li>Bound one end or both. An open end does not by itself cause a Wikidata-wide scan: a bounded subject population can safely read all of its outgoing values. When both the entity set and the allowed value set are known, rule R16 pins both sets in the query to avoid a broad, non-deterministic intermediate join.</li>
           <li><b>Identity:</b> a content key over fields such as nominee, category and year, with a missing-qualifier policy and a policy for superseded duplicates.</li>
           <li><b>Fields:</b> <span class="ui">Statement subject</span>, <span class="ui">Statement object</span>, <span class="ui">Statement participants</span> (the subject plus entity qualifiers as one collection), qualifier fields such as P585 or P580/P582, and derived fields.</li>
         </ul>
@@ -350,7 +350,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
             <tr><td>Count</td><td>Single or collection</td></tr>
             <tr><td>Direction</td><td>Outgoing from the instance, or incoming (stars that are <em>part of</em> a constellation)</td></tr>
             <tr><td>Property</td><td>A PID, optionally a qualifier of a statement, and <span class="ui">Only statements where</span> a qualifier is one of a set</td></tr>
-            <tr><td>Source</td><td>SPARQL, Wikidata API, DBpedia, Wikipedia infobox, Wikipedia category, WikiProject, Commons, backlinks, sitelink count, incoming count, inherited incoming count, manual</td></tr>
+            <tr><td>Source</td><td>Implemented now: SPARQL, DBpedia, Wikipedia infobox, sitelink count, incoming count and inherited incoming count. Wikidata API, Wikipedia category, WikiProject, Commons, backlinks and manual are reserved source types, not currently implemented field-acquisition choices.</td></tr>
             <tr><td>Refine</td><td><span class="ui">Required</span> (drops entities without the field), numeric filter such as ≤ 6.0, allowed values, sort a collection by a field, unit, value language</td></tr>
             <tr><td>Edge membership</td><td>Use the target class's own membership for this edge, or drop it</td></tr>
             <tr><td>Display</td><td>Auto, inline, or reference</td></tr>
@@ -482,9 +482,9 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
 
       <article class="domain" id="solar">
         <h3>Solar System</h3>
-        <div class="uses"><span class="tag">limits</span><span class="tag">allowed values</span><span class="tag derived">invert</span><span class="tag derived">union</span><span class="tag">subclass condition</span></div>
+        <div class="uses"><span class="tag">seeded</span><span class="tag">allowed values</span><span class="tag derived">invert</span><span class="tag derived">union</span><span class="tag">subclass condition</span></div>
         <ul>
-          <li><b>Planet</b>: limit 8, <code>parentBody</code> allowed only Q525 (the Sun), <code>planetType</code> allowed only two QIDs.</li>
+          <li><b>Planet</b>: the exact eight planets are an explicit seed list (Q308, Q313, Q2, Q111, Q319, Q193, Q324 and Q332); the matching limit of 8 is only a safety ceiling. <code>parentBody</code> is allowed only Q525 (the Sun), and <code>planetType</code> only two QIDs.</li>
           <li><b>Moon</b>: <code>P397 ∈</code> the eight planets, with a subclass condition on P31 Q109645860 and its descendants.</li>
           <li><code>Planet.moons</code> inverts <code>Moon.parentBody</code>, and <code>allMoons</code> is a union.</li>
         </ul>

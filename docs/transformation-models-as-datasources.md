@@ -2,9 +2,12 @@
 
 ## Status
 
-Design decision, not yet implemented. This document defines how ModelBuilder generation,
-graph constraints, transformations, curation decisions, populations, and persistence become
-one reproducible project build without automating one desktop application from the other.
+Partially implemented on 2026-10-27. Class-owned saved filter sources, materialized output classes,
+headless run/publish operations, separate typed population artifacts, build manifests, and
+typed imported-population consumption now exist. The checked-in Historical Positions model
+declares that first executable workflow. Named dependency edges, fully classified staleness,
+project-level atomic replacement, additional transformation operations, and the final
+Historical Positions → History unattended delivery test remain work described by this document.
 
 The deliverable is not merely a transformed class that another editor can open. A complete
 saved project configuration must be executable headlessly, with no desktop UI present, and
@@ -31,7 +34,7 @@ It complements [Models and Domains](models-and-domains.md),
 ## The decision
 
 A transformed class is a real class whose population is **materialized by a saved
-transformation model**. It is not:
+transformation source on that class**. It is not:
 
 - an ordinary subclass whose population is regenerated from its base class;
 - merely a `PopulationSelection` containing the output QIDs;
@@ -40,10 +43,14 @@ transformation model**. It is not:
 
 TransformApp edits and previews a provider-neutral transformation configuration. A shared,
 headless transformation executor runs it. ModelBuilder sees a named transformation output
-through a datasource adapter and may therefore request the class through the same compiled
-source-plan boundary as any other population producer.
+through the same population-input boundary generation uses for imported selections. That
+boundary injects the published typed roots directly and uses the ordinary compiled source plan
+only for any additional non-materialized population identities.
 
-The transformation configuration remains the single source of truth for the transformation.
+The output class's `TransformationClassSource` remains the single source of truth for the
+transformation. It is the population-source sibling of `GraphClassSource`,
+`StatementClassSource`, and `AggregateClassSource`: it has no separate name, declaration ID,
+or output-class reference. The containing class supplies all three.
 The project build configuration is the single source of truth for when that transformation,
 generation, graph constraint, population publication, and final save run. A datasource recipe
 contains only a stable reference to one output; it does not duplicate either configuration.
@@ -80,8 +87,8 @@ loudly, and today it fails by quietly becoming 1,317 instead.
 
 The lost fact is not “these 357 QIDs form a selection.” The lost fact is:
 
-> `PositionWithHolders` is the output class of this transformation over these modeled input
-> instances.
+> `PositionWithHolders` stores the transformation source that produces its population from
+> these modeled input instances.
 
 A population selection remains useful as an exact reusable identity set for graph starts and
 statement bounds. It does not replace a transformed class carrying schema, fields, references,
@@ -96,20 +103,12 @@ that can be re-run. Today `History.OfficeHolding` bounds its object end by
 the transformation moves the class and leaves the selection where it was saved, and nothing
 notices the disagreement — two routes to one fact, which is a latent bug while they still agree.
 
-This has to be decided rather than left to whichever the editor offers first. The two
-candidates:
-
-- **A bound may name a transformed class**, and naming its class is what a bound over that
-  population means. The selection stays for populations that are authored directly, not derived.
-  Renaming or re-running the transformation reaches the bound, because the bound references the
-  class declaration.
-- **A bound always names a selection**, and a transformed class publishes one as an output.
-  Uniform for every bound, but the published selection is a second representation that must be
-  rewritten on every run, and a bound can still be pointed at a stale hand-made copy.
-
-The first keeps one discovery path for a derived population and is the recommendation. Either
-way, a selection whose members were produced by a transformation should say so, so that editing
-it by hand is visibly editing a copy.
+The checked-in implementation keeps the existing uniform boundary: a bound names a selection,
+and a materialized class publishes one as a build output. The selection does not carry a second
+producer reference. Its `className` resolves the one class-owned producer, while the build step
+rewrites the exact published QIDs after materialization. The class says how instances are
+produced; the selection says which of those class instances cross the import/boundary. Editing
+the selection changes that published subset and never changes the producer.
 
 ## Class instance handling
 
@@ -121,56 +120,56 @@ GENERATED
     graph traversal, owned-production site, aggregate, or inherited generation rule.
 
 MATERIALIZED_TRANSFORM
-    Its population is the named output of a saved transformation model. Its base class
+    Its population is produced by the saved TransformationClassSource on the class. Its base class
     contributes schema only. Population membership is never inherited as a fallback.
 ```
 
 The complete instances do not belong inline in `model.json`. “The model owns the instances”
-means that the class declaration names its transformation output and the companion snapshot
+means that the class declaration contains its population producer and the companion snapshot
 stores the materialized object graph beneath the owning project directory.
 
-If a materialized output is missing or stale, execution fails with the transformation name,
-input class, output class, and exact missing/stale file. It must never silently generate the
-base population.
+If a materialized output is missing or stale, execution fails with the output class, input
+class, and exact missing/stale file. It must never silently generate the base population.
 
-## Saved transformation model
+## Class-owned transformation source
 
-A transformation model is immutable execution configuration plus stable declaration
-references. Conceptually:
+A transformation source is immutable execution configuration stored on its output class.
+Conceptually:
 
 ```text
-TransformationModel
+GeneratedClassModel PositionWithHolders
   declarationId
-  name
-  inputs[]
-    projectId / project name
-    classDeclarationId / class name
-    required snapshot stage
-  operations[]
-    filter
-    group
-    project/derive field
-    join/reference traversal
-    include/exclude saved selection
-    manual decision set
-  outputs[]
-    classDeclarationId / class name
-    base class reference
-    output schema
-    population handling = MATERIALIZED_TRANSFORM
+  populationMode = MATERIALIZED_TRANSFORM
+  baseClass
+  transformationSource
+    inputClassDeclarationId / inputClassName
+    steps[]
+      filter
+      group
+      project/derive field
+      join/reference traversal
+      include/exclude saved selection
+      manual decision set
 ```
+
+There is no project-level transformations list. One class has at most one population producer;
+the validator requires the source exactly when `populationMode` is `MATERIALIZED_TRANSFORM`.
+A build's `RUN_TRANSFORMATION` operation targets the output class declaration ID, and the
+materialized files are keyed by that same ID, so renaming the class neither detaches the build
+step nor orphans its artifact.
 
 Operations are ordered and typed. Their serialized form owns every parameter needed for
 re-execution. Display strings and Swing component state are not configuration.
 
-Manual work is reproducible only when it is named data. A hand-curated membership decision is
-stored as a selection or decision set referenced by an operation; it is not hidden in the
-current cards, sample, or group view.
+Manual work is reproducible only when it is named data. Creating a subclass from a hand-picked
+group creates a frozen `PopulationSelection` of the chosen QIDs and an `IN_POPULATION` subclass
+condition referencing it. A type-spec group is refused until a typed headless step can preserve
+its rule; it never silently becomes inherited base membership.
 
 ### Identity
 
-Names explain the plan to people. Stable declaration IDs connect inputs, operations, outputs,
-and imports across renames. A transformation output also retains the provider-qualified source
+Class names explain the plan to people. Stable class declaration IDs connect inputs, build
+operations, artifacts, and imports across renames. A transformation output also retains the provider-qualified source
 identities and occurrence identities of its members, using the existing canonicalization
 rules rather than inventing transformation-local identity.
 
@@ -180,7 +179,7 @@ The framework is UI-neutral and has four responsibilities:
 
 ```java
 TransformationCompilation compile(
-        TransformationModel model,
+        GeneratedClassModel outputClass,
         TransformationInputCatalog inputs);
 
 TransformationResult execute(
@@ -209,15 +208,14 @@ ObjectView-facing schema adapters must converge on this compiled plan.
 After extraction, a transformation output is exposed as a datasource capability:
 
 ```text
-provider: transformation-model
+provider: materialized-class
 operation: output-class
 parameters:
-  transformation: HistoricalPositionsTransformations
-  output: PositionWithHolders
+  classDeclarationId: PositionWithHolders declaration id
 ```
 
 The recipe does not repeat the filter, grouping, projection, or manual decisions. It resolves
-the saved transformation model and names one output.
+the class and reads that class's single saved population source.
 
 ### The population contract must carry objects
 
@@ -355,7 +353,7 @@ Staleness is explained as a dependency path, not as a generic dirty flag. For ex
 ```text
 History servable output is stale
   because PositionWithHoldersPopulation is stale
-  because PositionsWithHolders used holderCount from Position snapshot abc…
+  because the PositionWithHolders transformation used holderCount from Position snapshot abc…
   and the current Position snapshot is def…
 ```
 
@@ -409,7 +407,7 @@ apply-position
   output: curated Position instances
 
 positions-with-holders
-  RUN_TRANSFORMATION PositionsWithHolders
+  RUN_TRANSFORMATION PositionWithHolders
   requires: apply-position
   output: initial PositionWithHolders instances
 
@@ -425,9 +423,22 @@ apply-position-predecessors
   requires: discover-position-predecessors
   output: expanded PositionWithHolders instances
 
+acquire-position-predecessors
+  GENERATE_PROJECT
+  requires: apply-position-predecessors
+  input: accepted additive graph identities as supplemental PositionWithHolders roots
+  output: full modeled fields for the predecessor positions
+
+restore-transformed-and-expanded-membership
+  APPLY_GRAPH_DECISIONS PositionDiscoveryConstraint
+  then RUN_TRANSFORMATION PositionWithHolders
+  then APPLY_GRAPH_DECISIONS PositionPredecessorConstraint
+  requires: acquire-position-predecessors
+  output: filtered positions plus the accepted predecessor expansion
+
 publish-position-population
   PUBLISH_POPULATION PositionWithHoldersPopulation
-  requires: apply-position-predecessors
+  requires: restore-transformed-and-expanded-membership
   output: final exact population
 
 save-historical-positions
@@ -441,9 +452,18 @@ generate-history
   output: final servable History domain
 ```
 
-The ordered form is convenient for editing; the named requirements are authoritative. They
-prevent the current manual ModelBuilder → TransformApp → ModelBuilder sequence from becoming
-hidden application state.
+Generate replaces the whole run and carries forward only graph results that add members, so it
+discards every narrowing applied before it; a transformation rebuilds its output class and so
+discards graph memberships added to that class. That is why the restore step re-applies the
+discovery constraint before the filter and the predecessor expansion after it. The coordinator
+refuses, before running anything, a build in which a later step would read a membership such a
+step discarded (`ProjectBuild.orderProblems`, held by `BuildOrderTest`).
+
+The checked-in first implementation uses list order as the authority inside one project and an
+explicit `BUILD_DEPENDENCY` across projects. The named requirements above are the next stored
+form when the coordinator gains arbitrary same-project dependency edges. Even the ordered form
+prevents the manual ModelBuilder → TransformApp → ModelBuilder sequence from becoming hidden
+application state.
 
 ## Persistence and compatibility
 
@@ -452,15 +472,20 @@ The owning project directory contains, conceptually:
 ```text
 historicalpositions.model.json
 historicalpositions.snapshot.json
-historicalpositions.transformations.json
+decldc7e9cd5ff6d4bc38bafd1bd87e0f18e.population.snapshot.json
+decldc7e9cd5ff6d4bc38bafd1bd87e0f18e.population.json
+historicalpositions.build.json
 ```
+
+The population filenames use the normalized `PositionWithHolders.declarationId`, not the class
+name, so a rename leaves the artifact attached.
 
 The exact filenames should follow `DomainStorage`; no UI or provider constructs paths locally.
 One explicit Save model/domain operation states and writes every affected file.
 
 Each materialized output records:
 
-- transformation model signature;
+- class-owned transformation-source signature;
 - upstream model and snapshot signatures;
 - input class declaration IDs;
 - referenced selection/decision signatures;
@@ -486,8 +511,8 @@ without the snapshot containing its instances, and a failed transformation canno
 last complete output.
 
 Atomicity is per write, and says nothing about two writers. Both applications already write
-`model.json` (#244), this design adds `*.transformations.json` to the files they share, and a
-save loads the owning model, edits it and writes it back — so a session holding unsaved edits
+`model.json` (#244), which now contains transformation sources on classes, and a save loads the
+owning model, edits it and writes it back — so a session holding unsaved edits
 in the other application loses them silently, with the last writer winning. Every write to a
 file another application also owns states the signature it read and refuses when that signature
 has moved, the way a recovery graph refuses a model whose fingerprint has changed. A refusal
@@ -506,12 +531,13 @@ Class configuration and instance publication cross different boundaries:
 - unreferenced populations and imported classes contribute no instances; and
 - several referenced populations of one class contribute their identity union.
 
-This is already the bounded bridge used by ordinary generation: a referenced population's QIDs
-enter the shared acquisition and materialization pipeline, so its members receive the imported
-class schema without importing the owner's intermediate objects. The later transformation
-datasource extends the same boundary with a `MaterializedPopulation` result when transformed
-fields themselves—not only stable identities—must be published. It does not reintroduce class
-snapshot import as a second path.
+An ordinary referenced population's QIDs enter the shared acquisition and materialization
+pipeline, so its members receive the imported class schema without importing the owner's
+intermediate objects. A population over a materialized class uses the same selection boundary;
+the class also owns one separate typed `*.population.snapshot.json` artifact. The importer loads only
+the selected members of that artifact into the shared object graph: transformed fields and
+links survive, no population request is issued, and the owner's complete snapshot remains
+private. This is not class-snapshot import under another name.
 
 The UI action is therefore one concept: import/use a population. Showing the class configuration
 that follows it is explanation of its type, not a separate instance-import operation.
@@ -520,10 +546,10 @@ that follows it is explanation of its type, not a separate instance-import opera
 
 ### TransformApp
 
-- edits transformation models;
+- edits a materialized class's transformation source;
 - previews a bounded execution through the shared executor;
 - shows input/output counts and lineage;
-- saves named transformation configuration and explicit curation data;
+- saves the class-owned transformation configuration and explicit curation data;
 - runs and materializes an output when asked;
 - never owns a private execution path.
 - edits the same saved operation/configuration references used by headless builds.
@@ -555,11 +581,11 @@ For authoring Historical Positions:
 
 1. Generate and enrich `Position` in ModelBuilder.
 2. Open the project in TransformApp.
-3. Configure the holder-count/sitelink-count filter and output class
-   `PositionWithHolders`.
-4. Save `HistoricalPositionsTransformations`.
-5. Run it: the confirmation names the input snapshot, transformation file, output class,
-   output snapshot, and expected replacement behavior.
+3. Configure the holder-count/sitelink-count filter group and create the subclass
+   `PositionWithHolders` from it; the filter chain becomes that class's transformation source.
+4. Save the model: the transformation is stored on the class in `historicalpositions.model.json`.
+5. Run it: the confirmation names the input snapshot, output class, output population
+   artifact, and expected replacement behavior.
 6. Configure `PositionPredecessorConstraint` from the loaded `PositionWithHolders` class through
    incoming `P1366`, save its application policy/decisions, and publish the expanded class as
    `PositionWithHoldersPopulation`.
@@ -579,7 +605,7 @@ Examples:
 
 ```text
 Cannot produce History.OfficeHolding.
-HistoricalPositionsTransformations.PositionWithHolders requires
+Historical Positions.PositionWithHolders (saved transformation) requires
 data/wikidata/historicalpositions/historicalpositions.snapshot.json,
 but that snapshot does not exist. Generate and save Historical Positions.Position first.
 ```
@@ -587,39 +613,36 @@ but that snapshot does not exist. Generate and save Historical Positions.Positio
 ```text
 PositionWithHolders is stale.
 Its saved transformation used Position snapshot signature abc…, while the current saved
-Position snapshot is def…. Rerun HistoricalPositionsTransformations.
+Position snapshot is def…. Rerun the PositionWithHolders transformation.
 ```
 
 The system must not say only “run generation,” silently use all base instances, or hide the
 failure inside a request list.
 
-## Implementation order
+## Implementation order and current state
 
-1. **Define artifact and elementary-operation contracts.** Inventory existing generation,
+1. **Implemented: define artifact and elementary-operation contracts.** Inventory existing generation,
    graph, transform, population, apply, and save entry points. Reuse their current owners;
    do not design parallel execution or filter/group models.
-2. **Extract transformation compilation and execution.** Put a headless facade over the
+2. **Implemented for filters: extract transformation compilation and execution.** Put a headless facade over the
    existing transform engine and force preview/full runs through it.
-3. **Extract graph application and curation data.** Keep graph acquisition read-only; make
+3. **Implemented: extract graph application and curation data.** Keep graph acquisition read-only; make
    decisions and population application a separate headless operation shared with the UI.
-4. **Persist one transformation model.** Support filter-to-subclass first, including named
+4. **Implemented: persist one class-owned transformation source.** Support filter-to-subclass first, including named
    selections and deterministic output schema.
-5. **Add materialized class population mode.** Stop transformed subclasses inheriting base
-   membership; fail directly when their output is unavailable. This step carries a data
-   migration and cannot land without it: the moment inheritance stops being the fallback,
-   the shipped History model is unrunnable, because `PositionWithHolders` has no materialized
-   output and Historical Positions has no snapshot to produce one from (#273).
-   `EveryShippedModelValidatesTest` holds that line and will fail until the shipped models and
-   their snapshots are updated in the same change — which is the regenerate-or-migrate decision
-   being made explicitly rather than discovered afterwards.
-6. **Make population publication and project save operations.** They accept named typed inputs,
+5. **Implemented: add materialized class population mode.** Transformed subclasses do not
+   inherit base membership. Historical Positions now declares `PositionWithHolders` as the
+   output of its holder-count filter; its next build creates the separate artifact.
+6. **Implemented: make population publication and project save operations.** They accept named typed inputs,
    use `DomainStorage`, report exact files, and write an atomic result plus build manifest.
-7. **Add the datasource adapter.** Extend the population result to carry a typed object graph
+7. **Implemented at the generation boundary: add the typed population adapter.** Extend the population result to carry a typed object graph
    and merge it through the normal generation pool.
-8. **Resolve imported outputs.** Load a same-owner materialized class from its project snapshot;
-   do not copy or locally regenerate it.
-9. **Add the Make-style build configuration and coordinator.** First force the complete
-   Historical Positions → History build, then generalize the operation editor.
+8. **Implemented: resolve imported outputs.** Load the referenced selection's separate typed
+   population artifact; do not read the owner snapshot or locally regenerate it.
+9. **Partially implemented: add the Make-style build configuration and coordinator.** The
+   ordered operation list and coordinator exist; named dependency edges and the complete
+   Historical Positions → History forcing build remain, then generalizing the operation
+   editor.
 10. **Apply classified change consequences.** Explain precisely which upstream generation,
    transformation, graph result, or downstream snapshot is affected.
 11. **Add headless delivery entry points.** A CLI/service invocation requests a named final
@@ -634,8 +657,11 @@ failure inside a request list.
   loaded and accepts only compiled configuration plus explicit inputs.
 - Preview and full execution compile the same plan; only scope differs.
 - A materialized output preserves transformed fields and references, not only QIDs.
-- Importing a materialized class loads the owner's instances and leaves it read-only.
-- Importing its `PopulationSelection` imports only the identity set.
+- Consuming a published materialized population receives only that declared output as
+  read-only typed objects; the owner's class snapshot and intermediate instances stay in the
+  owning model.
+- Importing an ordinary `PopulationSelection` imports only the identity set; importing a
+  transformation-produced one brings exactly its selected members from the published artifact.
 - A missing/stale input names the exact model, class, transformation, and file and never falls
   back to inherited membership.
 - An unrelated model-only edit does not stale the transformation output.
