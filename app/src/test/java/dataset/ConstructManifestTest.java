@@ -9,6 +9,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.VocabularySelection;
 import wikidata.explore.model.ClassPopulationMode;
+import wikidata.explore.model.BuildOperation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -131,7 +132,7 @@ class ConstructManifestTest {
 
     @Test void removingAPublishedPopulationDeletesItsPublicationAndMetadata() throws Exception {
         DomainStorage storage = DomainStorage.in(temporary.toFile());
-        GeneratedProjectModel project = project();
+        GeneratedProjectModel project = projectWithPublishedPopulation();
         PopulationSelection population = (PopulationSelection)
                 project.findSelection("PositionsForHistory");
         Files.createDirectories(storage.directory(project.name()).toPath());
@@ -156,6 +157,38 @@ class ConstructManifestTest {
         assertFalse(Files.exists(metadata));
     }
 
+    /** A PopulationSelection owns a sidecar only while the saved build publishes it.
+     *  Keeping the selection as an ordinary QID set must not keep a publication left by
+     *  an operation that no longer exists. */
+    @Test void anOrdinaryPopulationDoesNotKeepAnObsoletePublication() throws Exception {
+        DomainStorage storage = DomainStorage.in(temporary.toFile());
+        GeneratedProjectModel project = projectWithPublishedPopulation();
+        PopulationSelection population = (PopulationSelection)
+                project.findSelection("PositionsForHistory");
+        Files.createDirectories(storage.directory(project.name()).toPath());
+        Path publication = storage.publishedPopulationFile(
+                project.name(), population.declarationId()).toPath();
+        Path metadata = storage.publishedPopulationMetadataFile(
+                project.name(), population.declarationId()).toPath();
+        Files.writeString(publication, "population");
+        Files.writeString(metadata, "metadata");
+        storage.reconcileConstructs(project.name(), ConstructInventory.of(project));
+
+        project.buildOperations(List.of());
+        List<java.io.File> removed = storage.reconcileConstructs(
+                project.name(), ConstructInventory.of(project));
+
+        assertEquals(List.of(publication.toFile(), metadata.toFile()), removed);
+        assertFalse(Files.exists(publication));
+        assertFalse(Files.exists(metadata));
+        assertEquals(storage.modelFile(project.name()).getName(),
+                storage.constructManifest(project.name()).constructs.stream()
+                        .filter(value -> value.declarationId.equals(
+                                population.declarationId()))
+                        .findFirst().orElseThrow().artifact,
+                "the still-existing selection is stored in the model, not a stale sidecar");
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("Historical Positions");
@@ -170,6 +203,20 @@ class ConstructManifestTest {
         VocabularySelection selection = new VocabularySelection("PositionKinds");
         selection.valueQids(List.of("Q4164871"));
         project.addSelection(selection);
+        return project;
+    }
+
+    private static GeneratedProjectModel projectWithPublishedPopulation() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.addClass(output);
+        PopulationSelection population = (PopulationSelection)
+                project.findSelection("PositionsForHistory");
+        population.className(output.className());
+        project.buildOperations(List.of(new BuildOperation(
+                BuildOperation.Kind.PUBLISH_POPULATION, population.declarationId())));
         return project;
     }
 }

@@ -27,6 +27,31 @@ class ConstructInventoryTest {
                 .allMatch(entry -> !entry.declarationId().isBlank()));
     }
 
+    @Test void onlyAnActiveMaterializedPublishStepGivesAPopulationASidecar() {
+        GeneratedProjectModel project = project();
+        PopulationSelection population = (PopulationSelection)
+                project.findSelection("PositionsForHistory");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.addClass(output);
+        population.className(output.className());
+        BuildOperation publish = new BuildOperation(
+                BuildOperation.Kind.PUBLISH_POPULATION, population.declarationId());
+        project.buildOperations(List.of(publish));
+
+        ConstructInventory.Entry active = ConstructInventory.of(project).entries().stream()
+                .filter(entry -> entry.declarationId().equals(population.declarationId()))
+                .findFirst().orElseThrow();
+        assertTrue(active.publishedPopulation());
+
+        project.buildOperations(List.of());
+        ConstructInventory.Entry ordinary = ConstructInventory.of(project).entries().stream()
+                .filter(entry -> entry.declarationId().equals(population.declarationId()))
+                .findFirst().orElseThrow();
+        assertFalse(ordinary.publishedPopulation());
+    }
+
     @Test void retractingRemovesOnlyClaimsWhoseConstructNoLongerExists() {
         GeneratedProjectModel project = project();
         WikidataDynamicObject retained = new WikidataDynamicObject("Q1", "Retained");

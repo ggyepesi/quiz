@@ -155,9 +155,24 @@ public final class ProjectBuild {
         Map<String, String> problems = new LinkedHashMap<>();
         Map<String, String> applied = new LinkedHashMap<>();   // graph id -> its Apply step
         Map<String, String> discarded = new LinkedHashMap<>(); // graph id -> why
+        java.util.Set<String> transformed = new java.util.HashSet<>(); // class ids run since Generate
         for (BuildOperation operation : model.buildOperations()) {
             String description = operation.describe(model);
             GeneratedClassModel target = operation.target(model);
+            if (operation.kind() == BuildOperation.Kind.GENERATE_PROJECT) transformed.clear();
+            if (operation.kind() == BuildOperation.Kind.PUBLISH_POPULATION
+                    && operation.selectionTarget(model) instanceof PopulationSelection population
+                    && model.findClass(population.className()) instanceof GeneratedClassModel output
+                    && output.materializedByTransformation()
+                    && !transformed.contains(output.declarationId())) {
+                // The publication records the class's current transformation signature, so
+                // its members must come from that transformation in this build — not from a
+                // snapshot an earlier transformation, or a Generate since, left behind.
+                problems.merge(operation.declarationId(), description + " publishes "
+                        + output.className() + " without running its transformation since the "
+                        + "last Generate; put Run transformation " + output.className()
+                        + " before this step", (first, second) -> first + "; " + second);
+            }
             switch (operation.kind()) {
                 case GENERATE_PROJECT -> applied.entrySet().removeIf(entry -> {
                     GeneratedClassModel graph = model.findClassById(entry.getKey());
@@ -187,10 +202,12 @@ public final class ProjectBuild {
                                     + " again before this step")
                             .toList();
                     if (!reasons.isEmpty()) {
-                        problems.put(operation.declarationId(), String.join("; ", reasons));
+                        problems.merge(operation.declarationId(), String.join("; ", reasons),
+                                (first, second) -> first + "; " + second);
                     }
                     if (operation.kind() == BuildOperation.Kind.RUN_TRANSFORMATION
                             && target != null) {
+                        transformed.add(target.declarationId());
                         applied.entrySet().removeIf(entry -> {
                             GeneratedClassModel graph = model.findClassById(entry.getKey());
                             if (graph == null || graph.graphSource() == null
@@ -205,6 +222,20 @@ public final class ProjectBuild {
                     }
                 }
                 case BUILD_DEPENDENCY -> { }
+            }
+        }
+        boolean savedAfter = false;
+        List<BuildOperation> operations = model.buildOperations();
+        for (int index = operations.size() - 1; index >= 0; index--) {
+            BuildOperation operation = operations.get(index);
+            if (operation.kind() == BuildOperation.Kind.SAVE_PROJECT_RESULT) {
+                savedAfter = true;
+            } else if (operation.kind() == BuildOperation.Kind.PUBLISH_POPULATION
+                    && !savedAfter) {
+                problems.merge(operation.declarationId(),
+                        "Publish population must be followed by Save project; publication "
+                                + "becomes importer-visible only at that save",
+                        (first, second) -> first + "; " + second);
             }
         }
         return problems;
@@ -429,6 +460,7 @@ public final class ProjectBuild {
         plan.forEach(step -> say.accept("Plan: " + step.explain()));
         List<Done> done = new ArrayList<>();
         List<String> files = new ArrayList<>();
+        Map<String, ProjectSave.Publication> publications = new LinkedHashMap<>();
         GenerationRun run = null;
         // A misordered build is refused before any step runs: running the steps before the
         // misordered one would spend a Wikidata generation on a result it cannot use.
@@ -518,16 +550,16 @@ public final class ProjectBuild {
                                     .filter(object -> object.directClassNames().contains(
                                             population.className()))
                                     .toList();
-                    files.addAll(MaterializedPopulationStore.publish(
-                            model, population, outputClass, published, storage,
-                            run.generatedFromSignature()));
                     List<String> qids = published.stream()
                             .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
                             .filter(java.util.Objects::nonNull).distinct().toList();
                     population.instanceQids(qids);
+                    publications.put(population.declarationId(), new ProjectSave.Publication(
+                            population.declarationId(), outputClass.declarationId(), published,
+                            run.generatedFromSignature()));
                     done.add(new Done(step, Action.RAN, qids.size() + " "
-                            + population.className() + " QIDs published as "
-                            + population.name()));
+                            + population.className() + " QIDs prepared for "
+                            + population.name() + "; Save project will publish them"));
                 }
                 case RUN_GRAPH_CONSTRAINT -> {
                     run = run != null ? run : loaded(model, storage, snapshot, say);
@@ -575,7 +607,7 @@ public final class ProjectBuild {
                                     run.loadedDeclarations(),
                                     run.selfReferenceAudit().ledger(), run.modelSnapshot(),
                                     run.generatedFromSignature()),
-                            ledger, results.all()), storage);
+                            ledger, results.all(), List.copyOf(publications.values())), storage);
                     if (!save.warnings().isEmpty()) {
                         outcome = State.FAILED;
                         done.add(new Done(step, Action.STOPPED, "save refused: "
@@ -584,6 +616,7 @@ public final class ProjectBuild {
                         continue;
                     }
                     ProjectSave.Result written = save.write();
+                    publications.clear();
                     files.addAll(written.report());
                     done.add(new Done(step, Action.RAN,
                             written.instancesWritten() + " instances saved"));

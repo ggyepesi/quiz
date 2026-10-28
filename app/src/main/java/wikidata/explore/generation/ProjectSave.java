@@ -10,8 +10,10 @@ import wikidata.explore.model.ConstructInventory;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.rule.RuleTreeCompiler;
 import wikidata.explore.rule.RuleTreeSerializer;
+import wikidata.explore.transform.MaterializedPopulationStore;
 import wikidata.explore.transform.SelfReferenceLedger;
 
 import java.io.File;
@@ -70,14 +72,37 @@ public final class ProjectSave {
         }
     }
 
-    /** What to save: the model, this session's run (nullable), the graph ledger, and every
-     *  graph annotation set the project holds. */
+    /** A population publication prepared by the build and committed by this Save. */
+    public record Publication(String selectionDeclarationId, String classDeclarationId,
+                              List<WikidataDynamicObject> members,
+                              String inputSnapshotSignature) {
+        public Publication {
+            selectionDeclarationId = selectionDeclarationId == null
+                    ? "" : selectionDeclarationId.trim();
+            classDeclarationId = classDeclarationId == null
+                    ? "" : classDeclarationId.trim();
+            members = members == null ? List.of() : List.copyOf(members);
+            inputSnapshotSignature = inputSnapshotSignature == null
+                    ? "" : inputSnapshotSignature;
+        }
+    }
+
+    /** What to save: the model, this session's run (nullable), the graph ledger, every
+     *  graph annotation set the project holds, and publications staged by this build. */
     public record Input(GeneratedProjectModel model, Run run, GraphDiscoveryState graphDiscovery,
-                        List<GraphDiscoveryResultStore.Artifact> annotationSets) {
+                        List<GraphDiscoveryResultStore.Artifact> annotationSets,
+                        List<Publication> publications) {
+        public Input(GeneratedProjectModel model, Run run,
+                     GraphDiscoveryState graphDiscovery,
+                     List<GraphDiscoveryResultStore.Artifact> annotationSets) {
+            this(model, run, graphDiscovery, annotationSets, List.of());
+        }
+
         public Input {
             Objects.requireNonNull(model, "A save needs the model it saves");
             graphDiscovery = graphDiscovery == null ? GraphDiscoveryState.EMPTY : graphDiscovery;
             annotationSets = annotationSets == null ? List.of() : List.copyOf(annotationSets);
+            publications = publications == null ? List.of() : List.copyOf(publications);
         }
     }
 
@@ -201,6 +226,16 @@ public final class ProjectSave {
                     + " -> " + GraphDiscoveryResultStore.destination(
                             storage, set.projectName(), set.type()).getPath());
         }
+        for (Publication publication : input.publications()) {
+            PopulationSelection selection = population(publication);
+            lines.add("Published population \"" + selection.name() + "\": "
+                    + publication.members().size() + " -> "
+                    + storage.publishedPopulationFile(
+                            name(), selection.declarationId()).getPath());
+            lines.add("Publication metadata: "
+                    + storage.publishedPopulationMetadataFile(
+                            name(), selection.declarationId()).getPath());
+        }
         lines.add("Construct inventory: " + storage.constructManifestFile(name()).getPath());
         for (File obsolete : removals) lines.add("Remove obsolete snapshot: " + obsolete.getPath());
         return List.copyOf(lines);
@@ -242,6 +277,21 @@ public final class ProjectSave {
             report.add(GraphDiscoveryResultStore.save(set, storage));
         }
 
+        // A build prepares publications before Save, but they cross the import boundary
+        // only here. Any warning or failure in the model/snapshot/annotation writes above
+        // therefore leaves the previous complete publication untouched. Reconciliation
+        // records the newly written artifact in the construct manifest immediately after it.
+        for (Publication publication : input.publications()) {
+            PopulationSelection selection = population(publication);
+            GeneratedClassModel outputClass = outputClass(publication);
+            List<String> written = MaterializedPopulationStore.publish(
+                    model, selection, outputClass, publication.members(), storage,
+                    publication.inputSnapshotSignature());
+            report.add("Published population \"" + selection.name() + "\": "
+                    + publication.members().size() + " -> " + written.getFirst());
+            report.add("Publication metadata: " + written.get(1));
+        }
+
         for (File removed : storage.reconcileConstructs(name(), inventory, snapshotSignature())) {
             report.add("Removed obsolete snapshot: " + removed.getPath());
         }
@@ -250,6 +300,25 @@ public final class ProjectSave {
     }
 
     private String name() { return input.model().name(); }
+
+    private PopulationSelection population(Publication publication) {
+        if (!(input.model().findSelectionById(publication.selectionDeclarationId())
+                instanceof PopulationSelection selection)) {
+            throw new IllegalStateException("The population selected for publication no longer "
+                    + "exists: " + publication.selectionDeclarationId());
+        }
+        return selection;
+    }
+
+    private GeneratedClassModel outputClass(Publication publication) {
+        GeneratedClassModel output = input.model().findClassById(
+                publication.classDeclarationId());
+        if (output == null || !output.materializedByTransformation()) {
+            throw new IllegalStateException("The materialized class selected for publication "
+                    + "no longer exists: " + publication.classDeclarationId());
+        }
+        return output;
+    }
 
     /** Which model produced the snapshot this save leaves on disk: the run's, when it
      *  writes one from a run; the previous record, when it re-saves the saved snapshot;

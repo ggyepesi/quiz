@@ -455,7 +455,8 @@ public final class DomainStorage {
                     || saved.name.isBlank()) continue;
             entries.add(new ConstructInventory.Entry(saved.declarationId, saved.name, saved.kind,
                     saved.artifact != null
-                            && saved.artifact.endsWith(".population.snapshot.json")));
+                            && saved.artifact.endsWith(".population.snapshot.json"),
+                    saved.artifact != null && saved.artifact.endsWith(PUBLICATION)));
         }
         return ConstructInventory.of(entries);
     }
@@ -496,7 +497,8 @@ public final class DomainStorage {
                 case POPULATION -> {
                     File published = publishedPopulationFile(
                             projectName, entry.declarationId());
-                    yield published.isFile() ? published.getName() : model;
+                    yield entry.publishedPopulation() && published.isFile()
+                            ? published.getName() : model;
                 }
                 case SELECTION -> model;
             };
@@ -531,7 +533,8 @@ public final class DomainStorage {
                 case GRAPH -> key(now.name()) + ".graph.snapshot.json";
                 case CLASS -> now.materializedPopulation()
                         ? key(now.declarationId()) + ".population.snapshot.json" : "";
-                case POPULATION -> key(now.declarationId()) + PUBLICATION;
+                case POPULATION -> now.publishedPopulation()
+                        ? key(now.declarationId()) + PUBLICATION : "";
                 default -> "";
             };
             if (isOwnedSidecar(was.artifact)
@@ -580,7 +583,8 @@ public final class DomainStorage {
             }
         }
         Set<String> currentPublications = current.entries().stream()
-                .filter(entry -> entry.kind() == ConstructInventory.Kind.POPULATION)
+                .filter(entry -> entry.kind() == ConstructInventory.Kind.POPULATION
+                        && entry.publishedPopulation())
                 .map(entry -> key(entry.declarationId()) + PUBLICATION)
                 .collect(java.util.stream.Collectors.toSet());
         File[] publications = directory(projectName).listFiles((dir, filename) ->

@@ -172,6 +172,53 @@ class ImportedMaterializedPopulationInputsTest {
                 refused.getMessage());
     }
 
+    /** A publication is the selection's typed payload, not a larger cache from which an
+     *  importer may silently take a subset. After a selection shrinks, the old artifact
+     *  must be refused until its owner republishes it. */
+    @Test void extraPublishedRootsAreRefusedAfterTheSelectionShrinks() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel owner = new GeneratedProjectModel();
+        owner.name("Positions");
+        owner.rootClass().className("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        owner.addClass(output);
+        TransformationClassSource transformation = new TransformationClassSource();
+        transformation.inputClassReference(owner.rootClass().declarationId(), "Position");
+        transformation.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(transformation);
+        PopulationSelection published = new PopulationSelection("PositionsForHistory");
+        published.className(output.className());
+        published.instanceQids(List.of("Q1"));
+        owner.addSelection(published);
+        new GeneratedProjectModelStore().save(owner, storage.modelFile(owner.name()));
+        storage.reconcileConstructs(owner.name(), ConstructInventory.of(owner), "input");
+        MaterializedPopulationStore.publish(owner, published, output,
+                List.of(position("Q1", 7), position("Q2", 3)), storage, "input");
+
+        GeneratedProjectModel consumer = new GeneratedProjectModel();
+        consumer.name("History");
+        consumer.rootClass().className("OfficeHolding");
+        consumer.rootClass().membership(EntityBound.vocabulary("PositionsForHistory"));
+        GeneratedClassModel imported = output.copy();
+        imported.importedFrom(owner.name());
+        consumer.addClass(imported);
+        PopulationSelection importedSelection = published.copy();
+        importedSelection.importedFrom(owner.name());
+        consumer.addSelection(importedSelection);
+
+        IllegalStateException refused = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> ImportedMaterializedPopulationInputs.resolve(consumer, storage));
+
+        assertTrue(refused.getMessage().contains("does not exactly match"),
+                refused.getMessage());
+        assertTrue(refused.getMessage().contains("extra 1 (first: Q2)"),
+                refused.getMessage());
+    }
+
     private static WikidataDynamicObject position(String qid, int holders) {
         WikidataDynamicObject value = new WikidataDynamicObject(qid, qid);
         value.assignClass("PositionWithHolders");

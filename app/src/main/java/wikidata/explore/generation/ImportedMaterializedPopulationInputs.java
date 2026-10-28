@@ -94,27 +94,42 @@ public final class ImportedMaterializedPopulationInputs {
                             + selection.name() + " is stale; rebuild " + owner.name()
                             + " before building " + consumer.name());
                 }
-                Set<String> allowed = new LinkedHashSet<>(ownerSelection.instanceQids());
-                publishedIdentities.addAll(allowed);
-                Set<String> found = new LinkedHashSet<>();
-                for (WikidataDynamicObject object : MaterializedPopulationStore.loadPublished(
-                        owner, ownerSelection, source)) {
+                List<WikidataDynamicObject> published =
+                        MaterializedPopulationStore.loadPublished(
+                                owner, ownerSelection, source);
+                List<String> publishedQids = published.stream()
+                        .map(object -> object == null ? "" : object.getIdentifier())
+                        .map(qid -> qid == null ? "" : qid)
+                        .distinct().toList();
+                List<String> selectedQids = List.copyOf(ownerSelection.instanceQids());
+                if (!selectedQids.equals(publishedQids)) {
+                    Set<String> missing = new LinkedHashSet<>(selectedQids);
+                    missing.removeAll(publishedQids);
+                    Set<String> extra = new LinkedHashSet<>(publishedQids);
+                    extra.removeAll(selectedQids);
+                    List<String> differences = new ArrayList<>();
+                    if (!missing.isEmpty()) {
+                        differences.add("missing " + missing.size() + " (first: "
+                                + missing.iterator().next() + ")");
+                    }
+                    if (!extra.isEmpty()) {
+                        differences.add("extra " + extra.size() + " (first: "
+                                + extra.iterator().next() + ")");
+                    }
+                    if (differences.isEmpty()) differences.add("the QID order differs");
+                    throw new IllegalStateException("Published population "
+                            + selection.name() + " does not exactly match its saved selection: "
+                            + String.join(", ", differences) + "; rebuild " + owner.name());
+                }
+                publishedIdentities.addAll(selectedQids);
+                for (WikidataDynamicObject object : published) {
                     String qid = object == null ? "" : object.getIdentifier();
-                    if (!allowed.contains(qid)) continue;
-                    found.add(qid);
                     if (!seen.add(qid)) continue;
                     if (!object.directClassNames().contains(clazz.className())) {
                         throw new IllegalStateException("Published " + selection.name()
                                 + " contains " + qid + " without class " + clazz.className());
                     }
                     combined.add(object);
-                }
-                Set<String> missing = new LinkedHashSet<>(allowed);
-                missing.removeAll(found);
-                if (!missing.isEmpty()) {
-                    throw new IllegalStateException("Published population "
-                            + selection.name() + " is missing " + missing.size()
-                            + " published identities (first: " + missing.iterator().next() + ")");
                 }
             }
             result.put(clazz.className(), List.copyOf(combined));

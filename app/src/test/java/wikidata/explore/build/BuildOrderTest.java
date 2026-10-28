@@ -101,6 +101,53 @@ class BuildOrderTest {
                         && step.detail().contains("GraphConstraint")));
     }
 
+    @Test void publishingWithoutASaveIsRefusedBeforeAnythingRuns() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        wikidata.explore.model.PopulationSelection population =
+                new wikidata.explore.model.PopulationSelection("Published");
+        population.className(model.rootClass().className());
+        model.addSelection(population);
+        BuildOperation publish = new BuildOperation(
+                BuildOperation.Kind.PUBLISH_POPULATION, population.declarationId());
+        model.buildOperations(List.of(publish));
+
+        ProjectBuild.Report report = ProjectBuild.run(
+                model, DomainStorage.in(root.toFile()), new QueryContext(), null);
+
+        assertEquals(ProjectBuild.State.FAILED, report.outcome());
+        assertEquals(ProjectBuild.Action.STOPPED, report.steps().getFirst().action());
+        assertTrue(report.steps().getFirst().detail().contains(
+                "must be followed by Save project"));
+    }
+
+    /**
+     * A publication is labelled with its class's current transformation signature, so its
+     * members must come from that transformation in the same build. Publishing straight from
+     * the saved snapshot after editing the filter would label the old filter's members as the
+     * new filter's output, and an importer would accept them as current.
+     */
+    @Test void publishingWithoutRunningTheTransformationSinceGenerateIsRefused() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(HISTORICAL_POSITIONS);
+        List<BuildOperation> operations = new ArrayList<>(model.buildOperations());
+        int lastGenerate = -1;
+        for (int i = 0; i < operations.size(); i++) {
+            if (operations.get(i).kind() == BuildOperation.Kind.GENERATE_PROJECT) lastGenerate = i;
+        }
+        int after = lastGenerate;
+        operations.removeIf(operation -> operation.kind()
+                == BuildOperation.Kind.RUN_TRANSFORMATION
+                && operations.indexOf(operation) > after);
+        model.buildOperations(operations);
+        BuildOperation publish = operations.stream()
+                .filter(operation -> operation.kind() == BuildOperation.Kind.PUBLISH_POPULATION)
+                .findFirst().orElseThrow();
+
+        String problem = ProjectBuild.orderProblems(model).get(publish.declarationId());
+
+        assertTrue(problem != null && problem.contains("without running its transformation"),
+                String.valueOf(problem));
+    }
+
     private static GeneratedProjectModel without(String operationId) throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(HISTORICAL_POSITIONS);
         List<BuildOperation> operations = new ArrayList<>(model.buildOperations());

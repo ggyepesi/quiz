@@ -22,9 +22,14 @@ public final class ConstructInventory {
     public enum Kind { CLASS, GRAPH, POPULATION, SELECTION }
 
     public record Entry(String declarationId, String name, Kind kind,
-                        boolean materializedPopulation) {
+                        boolean materializedPopulation, boolean publishedPopulation) {
         public Entry(String declarationId, String name, Kind kind) {
-            this(declarationId, name, kind, false);
+            this(declarationId, name, kind, false, false);
+        }
+
+        public Entry(String declarationId, String name, Kind kind,
+                     boolean materializedPopulation) {
+            this(declarationId, name, kind, materializedPopulation, false);
         }
 
         public Entry {
@@ -68,18 +73,32 @@ public final class ConstructInventory {
 
     public static ConstructInventory of(GeneratedProjectModel project) {
         if (project == null) return new ConstructInventory(List.of());
+        Set<String> publishedPopulationIds = project.buildOperations().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(operation -> operation.kind()
+                        == BuildOperation.Kind.PUBLISH_POPULATION)
+                .map(BuildOperation::targetDeclarationId)
+                .filter(id -> project.findSelectionById(id) instanceof PopulationSelection)
+                .filter(id -> {
+                    PopulationSelection population = (PopulationSelection)
+                            project.findSelectionById(id);
+                    GeneratedClassModel output = project.findClass(population.className());
+                    return output != null && output.materializedByTransformation();
+                })
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         java.util.ArrayList<Entry> entries = new java.util.ArrayList<>();
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) continue;
             entries.add(new Entry(clazz.declarationId(), clazz.className(),
                     clazz.classKind() == ClassKind.GRAPH ? Kind.GRAPH : Kind.CLASS,
-                    clazz.materializedByTransformation()));
+                    clazz.materializedByTransformation(), false));
         }
         for (Selection selection : project.selections()) {
             if (selection == null) continue;
             entries.add(new Entry(selection.declarationId(), selection.name(),
                     selection instanceof PopulationSelection
-                            ? Kind.POPULATION : Kind.SELECTION));
+                            ? Kind.POPULATION : Kind.SELECTION,
+                    false, publishedPopulationIds.contains(selection.declarationId())));
         }
         return new ConstructInventory(entries);
     }

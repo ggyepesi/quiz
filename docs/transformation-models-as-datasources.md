@@ -107,8 +107,11 @@ The checked-in implementation keeps the existing uniform boundary: a bound names
 and a materialized class publishes one as a build output. The selection does not carry a second
 producer reference. Its `className` resolves the one class-owned producer, while the build step
 rewrites the exact published QIDs after materialization. The class says how instances are
-produced; the selection says which of those class instances cross the import/boundary. Editing
-the selection changes that published subset and never changes the producer.
+produced; the selection names exactly the class instances its publication carries across the
+import boundary — no subset of a larger artifact. An importer refuses a publication whose QIDs
+are missing, extra or reordered against the saved selection, and the next build's publish step
+rewrites the selection from the class's members; editing the selection by hand never changes the
+producer and does not choose a subset.
 
 ## Class instance handling
 
@@ -482,11 +485,19 @@ historicalpositions.build.json
 Each file has exactly one producer. `RUN_TRANSFORMATION` writes the `*.population.*` pair: the
 transformation's own output, exactly the members its steps kept, keyed by the normalized
 `PositionWithHolders.declarationId` so a class rename leaves it attached. `PUBLISH_POPULATION`
-writes the `*.publication.*` pair, keyed by the population selection's declaration id: the class's
+stages the `*.publication.*` pair, keyed by the population selection's declaration id: the class's
 members at publication, which include the memberships the predecessor expansion added after the
-filter. Both metadata files record the transformation signature and input snapshot signature they
-were drawn from, so either goes stale when those change; neither stands in for the other. Save
-removes a publication together with the selection that owns it.
+filter. It crosses the import boundary only when the following `SAVE_PROJECT_RESULT` writes it, so
+a refused or failed save leaves the previous complete publication and saved selection together.
+Both metadata files record the transformation signature and input snapshot signature they were
+drawn from, so either goes stale when those change; neither stands in for the other. A population
+owns a publication only while a publish step targets it; removing that step, or the selection,
+makes Save remove the publication.
+
+The build refuses, before anything runs, a publish step with no Save after it, and one with no
+`RUN_TRANSFORMATION` of its class since the last Generate: the publication is labelled with the
+class's current transformation, so its members must come from that transformation in this build,
+not from a snapshot an earlier filter left behind.
 
 The exact filenames should follow `DomainStorage`; no UI or provider constructs paths locally.
 One explicit Save model/domain operation states and writes every affected file.
@@ -542,8 +553,8 @@ Class configuration and instance publication cross different boundaries:
 An ordinary referenced population's QIDs enter the shared acquisition and materialization
 pipeline, so its members receive the imported class schema without importing the owner's
 intermediate objects. A population over a materialized class uses the same selection boundary;
-the selection also owns one separate typed `*.publication.snapshot.json` artifact, written by
-`PUBLISH_POPULATION`. The importer loads only the selected members of that publication into the
+the selection also owns one separate typed `*.publication.snapshot.json` artifact, staged by
+`PUBLISH_POPULATION` and written by Save project. The importer loads only the selected members of that publication into the
 shared object graph: transformed fields and
 links survive, no population request is issued, and the owner's complete snapshot remains
 private. This is not class-snapshot import under another name.

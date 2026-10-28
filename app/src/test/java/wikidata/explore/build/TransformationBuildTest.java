@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.transform.FilterOperator;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
 import wikidata.explore.generation.ProjectSave;
 import wikidata.explore.model.BuildOperation;
 import wikidata.explore.model.ClassPopulationMode;
@@ -96,6 +97,65 @@ class TransformationBuildTest {
                 MaterializedPopulationStore.metadata(rebuilt,
                         rebuiltOutput, storage)
                         .transformationSignature());
+    }
+
+    /** Publishing is prepared by its build step but crosses the import boundary only when
+     *  Save project succeeds. A later save refusal must leave the previous complete
+     *  publication and saved selection together. */
+    @Test void aRefusedSaveDoesNotReplaceTheLastCompletePublication() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = model();
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(position("Q1", 2), position("Q2", 0)),
+                        List.of(), null, model.copy()), null, List.of()), storage).write();
+        assertEquals(ProjectBuild.State.CURRENT, ProjectBuild.run(
+                model, storage, new QueryContext(), null).outcome());
+        PopulationSelection population = (PopulationSelection)
+                model.findSelection("PositionWithHoldersPopulation");
+
+        List<WikidataDynamicObject> changedSnapshot = new java.util.ArrayList<>(
+                new WikidataDynamicObjectJsonStore().load(
+                        storage.snapshotFile(model.name())));
+        WikidataDynamicObject addedAfterTheLastPublication = position("Q3", 4);
+        addedAfterTheLastPublication.assignClass("PositionWithHolders");
+        changedSnapshot.add(addedAfterTheLastPublication);
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                changedSnapshot, storage.snapshotFile(model.name()), model);
+
+        model.findClass("PositionWithHolders").transformationSource().steps(List.of(
+                TransformationStep.filter(
+                        "holderCount", FilterOperator.GREATER_THAN, 1, null)));
+        model.rootClass().seedQids().add("Q99");
+        BuildOperation transform = model.buildOperations().stream()
+                .filter(operation -> operation.kind()
+                        == BuildOperation.Kind.RUN_TRANSFORMATION)
+                .findFirst().orElseThrow();
+        BuildOperation publish = model.buildOperations().stream()
+                .filter(operation -> operation.kind()
+                        == BuildOperation.Kind.PUBLISH_POPULATION)
+                .findFirst().orElseThrow();
+        BuildOperation save = model.buildOperations().stream()
+                .filter(operation -> operation.kind()
+                        == BuildOperation.Kind.SAVE_PROJECT_RESULT)
+                .findFirst().orElseThrow();
+        model.buildOperations(List.of(transform, publish, save));
+
+        ProjectBuild.Report refused = ProjectBuild.run(
+                model, storage, new QueryContext(), null);
+
+        assertEquals(ProjectBuild.State.FAILED, refused.outcome());
+        assertEquals(List.of(ProjectBuild.Action.RAN, ProjectBuild.Action.RAN,
+                        ProjectBuild.Action.STOPPED),
+                refused.steps().stream().map(ProjectBuild.Done::action).toList());
+        assertEquals(List.of("Q1"), MaterializedPopulationStore.loadPublished(
+                        model, population, storage).stream()
+                        .map(WikidataDynamicObject::getIdentifier).toList(),
+                "Q3 was only staged; the refused save did not publish it");
+        GeneratedProjectModel saved = new GeneratedProjectModelStore().load(
+                storage.modelFile(model.name()));
+        assertEquals(List.of("Q1"), ((PopulationSelection) saved.findSelection(
+                "PositionWithHoldersPopulation")).instanceQids(),
+                "the saved selection still describes the last complete publication");
     }
 
     private static GeneratedProjectModel model() {
