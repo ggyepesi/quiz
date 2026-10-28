@@ -470,7 +470,7 @@ public final class TransformController {
 
     public quiz.transform.OperationGroup addFilterGroup(
             String type, quiz.transform.EditableGroup parent,
-            String name, quiz.transform.pipeline.ui.FilterCondition condition) {
+            String name, quiz.transform.FilterCondition condition) {
         if (parent == null || condition == null) return null;
         quiz.transform.OperationGroup group = new quiz.transform.OperationGroup(
                 name, type, condition);
@@ -549,7 +549,20 @@ public final class TransformController {
             throw new IllegalArgumentException("The selected group “"
                     + source.getDisplayName() + "” has no members.");
         }
-        return domain.defineSubclass(name, baseType, source.getMembers());
+        if (source instanceof quiz.transform.OperationGroup operation) {
+            return domain.defineSubclass(name, baseType, source.getMembers(), operation);
+        }
+        if (source instanceof quiz.transform.TypeSpecGroup) {
+            throw new IllegalArgumentException("This type-spec group cannot yet be saved as "
+                    + "an executable subclass. Type-spec transformation steps are not "
+                    + "implemented.");
+        }
+        if (source instanceof quiz.transform.ProducedGroup produced) {
+            throw new IllegalArgumentException("This " + produced.ruleDescription()
+                    + " group cannot yet be saved as an executable subclass.");
+        }
+        return domain.defineManualSubclass(name, baseType, source.getMembers(),
+                name.trim() + "Population");
     }
 
     public boolean removeGroup(

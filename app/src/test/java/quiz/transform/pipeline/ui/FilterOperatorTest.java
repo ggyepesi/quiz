@@ -1,5 +1,7 @@
 package quiz.transform.pipeline.ui;
 
+import quiz.transform.FilterOperator;
+
 import org.junit.jupiter.api.Test;
 import objectview.field.FieldKind;
 

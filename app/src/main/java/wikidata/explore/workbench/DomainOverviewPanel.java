@@ -62,8 +62,7 @@ final class DomainOverviewPanel extends JPanel {
         GridBagUtils.labeledRow(this, c, row++, "Current generated objects:", generated);
         build.setName("project.build");
         build.title("Build");
-        build.describe(step -> new BuildOperation(step.kind(), step.targetDeclarationId())
-                .describe(project));
+        build.describe(this::describeStep);
         build.onChange(this::changeBuild);
         GridBagUtils.wideRow(this, row++, build);
         GridBagUtils.wideRow(this, row++, new JLabel(
@@ -73,6 +72,13 @@ final class DomainOverviewPanel extends JPanel {
         filler.weighty = 1;
         add(new JLabel(), filler);
         refresh();
+    }
+
+    private String describeStep(Step step) {
+        BuildOperation operation = step.kind() == BuildOperation.Kind.BUILD_DEPENDENCY
+                ? BuildOperation.dependency(step.targetDeclarationId())
+                : new BuildOperation(step.kind(), step.targetDeclarationId());
+        return operation.describe(project);
     }
 
     void status(Supplier<Status> supplier) {
@@ -105,7 +111,9 @@ final class DomainOverviewPanel extends JPanel {
         for (Step step : build.chosen()) {
             next.add(existing.stream().filter(operation -> stepOf(operation).equals(step))
                     .findFirst()
-                    .orElseGet(() -> new BuildOperation(step.kind(), step.targetDeclarationId())));
+                    .orElseGet(() -> step.kind() == BuildOperation.Kind.BUILD_DEPENDENCY
+                            ? BuildOperation.dependency(step.targetDeclarationId())
+                            : new BuildOperation(step.kind(), step.targetDeclarationId())));
         }
         project.buildOperations(next);
         afterChange.accept(null);
@@ -113,13 +121,36 @@ final class DomainOverviewPanel extends JPanel {
 
     private static Step stepOf(BuildOperation operation) {
         return new Step(operation.kind(),
-                operation.kind().targetsGraph() ? operation.targetDeclarationId() : "");
+                operation.kind() == BuildOperation.Kind.BUILD_DEPENDENCY
+                        ? operation.targetProjectName()
+                        : operation.kind().requiresTarget()
+                                ? operation.targetDeclarationId() : "");
     }
 
     /** Every step the project could take: generate, run and apply each graph, save. */
     private java.util.List<Step> possibleSteps() {
         java.util.List<Step> steps = new java.util.ArrayList<>();
+        for (var imported : project.imports()) {
+            if (imported != null && !imported.modelName().isBlank()) {
+                steps.add(new Step(BuildOperation.Kind.BUILD_DEPENDENCY,
+                        imported.modelName()));
+            }
+        }
         steps.add(new Step(BuildOperation.Kind.GENERATE_PROJECT, ""));
+        for (var outputClass : project.classes()) {
+            if (outputClass == null || outputClass.isImported()
+                    || !outputClass.materializedByTransformation()) continue;
+            steps.add(new Step(BuildOperation.Kind.RUN_TRANSFORMATION,
+                    outputClass.declarationId()));
+        }
+        for (var selection : project.selections()) {
+            if (!(selection instanceof wikidata.explore.model.PopulationSelection population)
+                    || population.isImported()) continue;
+            GeneratedClassModel outputClass = project.findClass(population.className());
+            if (outputClass == null || !outputClass.materializedByTransformation()) continue;
+            steps.add(new Step(BuildOperation.Kind.PUBLISH_POPULATION,
+                    population.declarationId()));
+        }
         for (GeneratedClassModel graph : project.graphClasses()) {
             if (graph == null || graph.isImported()) continue;
             steps.add(new Step(BuildOperation.Kind.RUN_GRAPH_CONSTRAINT, graph.declarationId()));

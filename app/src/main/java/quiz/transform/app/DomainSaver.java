@@ -128,16 +128,136 @@ public final class DomainSaver implements DomainWriter {
     static void addSubclasses(
             wikidata.explore.model.GeneratedProjectModel model, DomainModel schema) {
         for (String type : schema.types()) {
-            if (type == null || type.isBlank() || model.findClass(type) != null) continue;
+            if (type == null || type.isBlank()) continue;
             String base = schema.baseType(type);
             if (base == null || base.isBlank() || model.findClass(base) == null) continue;
-            wikidata.explore.model.GeneratedClassModel subclass =
-                    new wikidata.explore.model.GeneratedClassModel(type);
-            subclass.baseClassName(base);
-            subclass.clearIndependentPopulation();
-            wikidata.explore.model.ClassSourceBindings.synchronize(subclass);
-            model.addClass(subclass);
+            wikidata.explore.model.GeneratedClassModel subclass = model.findClass(type);
+            if (subclass == null) {
+                subclass = new wikidata.explore.model.GeneratedClassModel(type);
+                subclass.baseClassName(base);
+                subclass.clearIndependentPopulation();
+                wikidata.explore.model.ClassSourceBindings.synchronize(subclass);
+                model.addClass(subclass);
+            }
+            if (schema instanceof quiz.transform.ui.WorkingDomain working) {
+                var saved = working.subclassProducer(type);
+                if (saved instanceof quiz.transform.ui.WorkingDomain.SavedSubclassTransformation
+                        transformation) {
+                    saveTransformation(model, subclass, transformation);
+                } else if (saved
+                        instanceof quiz.transform.ui.WorkingDomain.SavedManualSubclass manual) {
+                    saveManualSubclass(model, subclass, manual);
+                }
+            }
         }
+    }
+
+    private static void saveTransformation(
+            wikidata.explore.model.GeneratedProjectModel model,
+            wikidata.explore.model.GeneratedClassModel output,
+            quiz.transform.ui.WorkingDomain.SavedSubclassTransformation saved) {
+        wikidata.explore.model.GeneratedClassModel input =
+                model.findClass(saved.inputClass());
+        if (input == null) throw new IllegalArgumentException(
+                "Transformation input class no longer exists: " + saved.inputClass());
+        output.populationMode(
+                wikidata.explore.model.ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        output.subclassCondition(wikidata.explore.model.SubclassCondition.none());
+        wikidata.explore.model.TransformationClassSource transformation =
+                new wikidata.explore.model.TransformationClassSource();
+        transformation.inputClassReference(input.declarationId(), input.className());
+        for (var condition : saved.conditions()) {
+            transformation.addStep(wikidata.explore.model.TransformationStep.filter(
+                    condition.field().field(), condition.operator(),
+                    condition.value(), condition.value2()));
+        }
+        output.transformationSource(transformation);
+
+        String selectionName = output.className() + "Population";
+        wikidata.explore.model.PopulationSelection population =
+                model.findSelection(selectionName)
+                        instanceof wikidata.explore.model.PopulationSelection existing
+                        ? existing : new wikidata.explore.model.PopulationSelection(selectionName);
+        population.className(output.className());
+        model.replaceSelection(population);
+        ensureBuildOperations(model, output, population);
+    }
+
+    private static void saveManualSubclass(
+            wikidata.explore.model.GeneratedProjectModel model,
+            wikidata.explore.model.GeneratedClassModel output,
+            quiz.transform.ui.WorkingDomain.SavedManualSubclass saved) {
+        wikidata.explore.model.GeneratedClassModel input = model.findClass(saved.inputClass());
+        if (input == null) throw new IllegalArgumentException(
+                "Manual subclass base class no longer exists: " + saved.inputClass());
+        wikidata.explore.model.Selection existing = model.findSelection(saved.populationName());
+        if (existing != null
+                && !(existing instanceof wikidata.explore.model.PopulationSelection)) {
+            throw new IllegalArgumentException("Selection '" + saved.populationName()
+                    + "' already exists and is not a population selection.");
+        }
+        wikidata.explore.model.PopulationSelection population =
+                new wikidata.explore.model.PopulationSelection(saved.populationName());
+        population.className(input.className());
+        population.instanceQids(saved.qids());
+        model.replaceSelection(population);
+        population = (wikidata.explore.model.PopulationSelection)
+                model.findSelection(saved.populationName());
+
+        output.populationMode(wikidata.explore.model.ClassPopulationMode.GENERATED);
+        output.subclassCondition(wikidata.explore.model.SubclassCondition.inPopulation(
+                population.name(), population.declarationId()));
+        removeMaterializedBuildOperations(model, output, population);
+    }
+
+    private static void removeMaterializedBuildOperations(
+            wikidata.explore.model.GeneratedProjectModel model,
+            wikidata.explore.model.GeneratedClassModel output,
+            wikidata.explore.model.PopulationSelection population) {
+        model.buildOperations(model.buildOperations().stream()
+                .filter(operation -> !(operation.kind()
+                        == wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION
+                        && operation.targetDeclarationId().equals(output.declarationId())))
+                .filter(operation -> !(operation.kind()
+                        == wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION
+                        && operation.targetDeclarationId().equals(population.declarationId())))
+                .toList());
+    }
+
+    private static void ensureBuildOperations(
+            wikidata.explore.model.GeneratedProjectModel model,
+            wikidata.explore.model.GeneratedClassModel output,
+            wikidata.explore.model.PopulationSelection population) {
+        java.util.List<wikidata.explore.model.BuildOperation> operations =
+                new java.util.ArrayList<>(model.buildOperations());
+        if (operations.stream().noneMatch(value -> value.kind()
+                == wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION
+                && value.targetDeclarationId().equals(output.declarationId()))) {
+            operations.add(insertionIndex(operations), new wikidata.explore.model.BuildOperation(
+                    wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION,
+                    output.declarationId()));
+        }
+        if (operations.stream().noneMatch(value -> value.kind()
+                == wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION
+                && value.targetDeclarationId().equals(population.declarationId()))) {
+            operations.add(insertionIndex(operations), new wikidata.explore.model.BuildOperation(
+                    wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION,
+                    population.declarationId()));
+        }
+        model.buildOperations(operations);
+    }
+
+    private static int insertionIndex(
+            java.util.List<wikidata.explore.model.BuildOperation> operations) {
+        for (int i = 0; i < operations.size(); i++) {
+            var kind = operations.get(i).kind();
+            if (kind == wikidata.explore.model.BuildOperation.Kind.RUN_GRAPH_CONSTRAINT
+                    || kind == wikidata.explore.model.BuildOperation.Kind.APPLY_GRAPH_DECISIONS
+                    || kind == wikidata.explore.model.BuildOperation.Kind.SAVE_PROJECT_RESULT) {
+                return i;
+            }
+        }
+        return operations.size();
     }
 
     private static String sanitize(String name) {

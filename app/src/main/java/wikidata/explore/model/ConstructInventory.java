@@ -21,7 +21,12 @@ import java.util.Set;
 public final class ConstructInventory {
     public enum Kind { CLASS, GRAPH, POPULATION, SELECTION }
 
-    public record Entry(String declarationId, String name, Kind kind) {
+    public record Entry(String declarationId, String name, Kind kind,
+                        boolean materializedPopulation) {
+        public Entry(String declarationId, String name, Kind kind) {
+            this(declarationId, name, kind, false);
+        }
+
         public Entry {
             declarationId = clean(declarationId);
             name = clean(name);
@@ -67,7 +72,8 @@ public final class ConstructInventory {
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) continue;
             entries.add(new Entry(clazz.declarationId(), clazz.className(),
-                    clazz.classKind() == ClassKind.GRAPH ? Kind.GRAPH : Kind.CLASS));
+                    clazz.classKind() == ClassKind.GRAPH ? Kind.GRAPH : Kind.CLASS,
+                    clazz.materializedByTransformation()));
         }
         for (Selection selection : project.selections()) {
             if (selection == null) continue;

@@ -91,6 +91,18 @@ public final class ImportedPopulationInputs {
         return selectionsByClass.getOrDefault(clean(className), List.of());
     }
 
+    /** The imported population declarations that this project actually references. */
+    public List<PopulationSelection> selectionsFor(
+            GeneratedProjectModel project, String className) {
+        if (project == null) return List.of();
+        Set<String> names = new LinkedHashSet<>(selectionNamesFor(className));
+        return project.selections().stream()
+                .filter(PopulationSelection.class::isInstance)
+                .map(PopulationSelection.class::cast)
+                .filter(selection -> names.contains(selection.name()))
+                .toList();
+    }
+
     private static void addBound(Set<String> names, EntityBound bound) {
         if (bound != null && bound.kind() == EntityBound.Kind.VOCABULARY
                 && !bound.selectionName().isBlank()) {

@@ -91,7 +91,8 @@ final class PopulationSourceBindings {
     /** Includes inherited membership; subclass discriminators remain separate rules. */
     static SourceRecipe fromLegacy(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
-        if (clazz == null || clazz.ownedClass() || clazz.reifiesStatements()) return null;
+        if (clazz == null || clazz.materializedByTransformation()
+                || clazz.ownedClass() || clazz.reifiesStatements()) return null;
         EntityBound membership = project == null
                 ? clazz.membership() : clazz.effectiveMembership(project);
         String pid = clean(membership.relationPid()).toUpperCase();

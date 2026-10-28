@@ -1,5 +1,8 @@
 package quiz.transform.pipeline.ui;
 
+import quiz.transform.FilterCondition;
+import quiz.transform.FilterOperator;
+
 import objectview.Viewable;
 import objectview.field.FieldPath;
 import objectview.viewconfig.FieldRow;

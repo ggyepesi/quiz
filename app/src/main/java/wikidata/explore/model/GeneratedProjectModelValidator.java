@@ -36,6 +36,7 @@ public final class GeneratedProjectModelValidator {
         validateUniqueClassNames(project, problems);
         validateUniqueDeclarationIds(project, problems);
         validateSelectionsAndKindRules(project, problems);
+        validateTransformations(project, problems);
         validateDependencyCycles(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
@@ -113,6 +114,40 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(selection.name(),
                         "Declaration identity is also used by another class or selection: "
                                 + selection.declarationId()));
+            }
+        }
+    }
+
+    private static void validateTransformations(
+            GeneratedProjectModel project, List<Problem> problems) {
+        for (GeneratedClassModel output : project.classes()) {
+            if (output == null) continue;
+            TransformationClassSource source = output.transformationSource();
+            if (!output.materializedByTransformation()) {
+                if (source != null) {
+                    problems.add(Problem.error(output.className(),
+                            "A transformation source requires Materialized transform population."));
+                }
+                continue;
+            }
+            if (source == null) {
+                problems.add(Problem.error(output.className(),
+                        "Materialized transform class has no transformation source."));
+                continue;
+            }
+            GeneratedClassModel input = project.resolveClass(
+                    source.inputClassId(), source.inputClassName());
+            if (input == null) {
+                problems.add(Problem.error(output.className(),
+                        "Transformation input class '" + source.inputClassName()
+                                + "' does not exist."));
+            } else if (!project.isSameOrSubclass(output.className(), input.className())) {
+                problems.add(Problem.error(output.className(), "Materialized class must extend "
+                        + "its transformation input class '" + input.className() + "'."));
+            }
+            if (!source.configured()) {
+                problems.add(Problem.error(output.className(),
+                        "Transformation source needs an input class and configured steps."));
             }
         }
     }

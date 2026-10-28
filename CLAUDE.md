@@ -216,20 +216,36 @@ construct per thing produced:
    require the same QIDs to be copied into a second `VocabularySelection`.
 
    A **transformed class is not a population selection and not an ordinary subclass**.
-   Its saved transformation is its population producer and its typed instances are a
-   materialized output owned by the model's companion snapshot. A base class contributes
+   Its saved `TransformationClassSource` is stored on that class, as the population-source
+   sibling of `GraphClassSource`, `StatementClassSource` and `AggregateClassSource`; there is
+   no project-level transformation construct, second name, second declaration id or output-class
+   reference to keep in agreement. `populationMode` stores the class's authored population
+   decision, while the source stores its input class and ordered steps. Build operations target
+   the output class's declaration id, and that same id owns the artifact across class renames.
+   Its typed instances are a
+   separately materialized population artifact owned by the model. A base class contributes
    schema but never fallback membership. TransformApp edits/previews the shared headless
    transformation configuration; ModelBuilder may invoke the same executor through a
    datasource adapter, but neither application owns a second execution path or automates
    the other. See `docs/transformation-models-as-datasources.md`.
 
+   Creating a subclass from a hand-picked TransformApp group stores the exact member QIDs in
+   one `PopulationSelection` and gives the subclass an `IN_POPULATION` condition referencing
+   it. The selection owns the frozen membership; the condition does not copy it. A reproducible
+   filter group instead becomes a materialized transformation source. A rule-produced group
+   whose headless step is not implemented (currently including a type-spec group) is refused
+   with that reason; it never degrades silently into inherited base membership.
+
    **Imports cross the instance boundary only through a referenced population.** An
    imported class contributes its configuration and may be used as a field type, but its
    owner's class snapshot is not imported and its original population rule is not rerun
    by the consuming project. When one of the consuming project's own constructs names an
-   imported `PopulationSelection`, generation materializes exactly those saved QIDs as
-   instances of the population's class. Unreferenced populations remain declarations,
-   and several referenced populations of the same class contribute their union.
+   ordinary imported `PopulationSelection`, generation materializes exactly those saved
+   QIDs as instances of the population's class. A transformation-produced population also
+   publishes one separate typed materialized artifact; consumers load exactly its selected
+   members from that artifact, never the owner's complete snapshot and never a reacquired
+   QID-only substitute. Unreferenced populations remain declarations, and several referenced
+   populations of the same class contribute their union.
 
    A TransformApp relation-closure group is a saved produced-group rule over the loaded
    object graph. It names a bridge class, the bridge fields leading to group members and

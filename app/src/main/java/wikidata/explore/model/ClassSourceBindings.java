@@ -107,6 +107,15 @@ public final class ClassSourceBindings {
             remove(clazz, SourceBindingSlot.CLASS_ALIASES);
             remove(clazz, SourceBindingSlot.ARTICLE_CORRESPONDENCE);
         }
+        // Synchronization removes/re-adds the population slot. Without one canonical
+        // order, a freshly authored model and that same model after load hash
+        // differently even though every binding is identical.
+        clazz.sourceBindings().sort(java.util.Comparator
+                .comparingInt((SourceBinding value) -> value.target().slot().ordinal())
+                .thenComparing(value -> value.target().scope().name())
+                .thenComparing(value -> value.target().fieldPath())
+                .thenComparing(value -> value.recipe().providerId())
+                .thenComparing(value -> value.recipe().operationId()));
     }
 
     /** Banks pending class edits and returns their bindings after storage validation. */

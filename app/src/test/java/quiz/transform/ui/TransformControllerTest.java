@@ -248,9 +248,9 @@ class TransformControllerTest {
                 facet.getChild("Europe");
         quiz.transform.OperationGroup filtered = c.addFilterGroup(
                 "City", europe, "Only Paris",
-                new quiz.transform.pipeline.ui.FilterCondition(
+                new quiz.transform.FilterCondition(
                         new DomainField("City", "population", false, false),
-                        quiz.transform.pipeline.ui.FilterOperator.EQUALS,
+                        quiz.transform.FilterOperator.EQUALS,
                         1, null));
 
         assertSame(europe, filtered.getParent());
@@ -278,5 +278,55 @@ class TransformControllerTest {
         quiz.transform.EditableGroup empty = new quiz.transform.EditableGroup("Empty");
         assertThrows(IllegalArgumentException.class,
                 () -> c.createSubclassFromGroup("X", "City", empty));
+    }
+
+    @Test void manualGroupCreatesAFrozenPopulationProducerForItsSubclass() {
+        quiz.transform.DynamicViewable paris = city("Q90", "Europe");
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(cities, null);
+        quiz.transform.EditableGroup manual = new quiz.transform.EditableGroup("Chosen");
+        manual.replaceMembers(List.of(paris));
+
+        assertEquals(1, controller.createSubclassFromGroup(
+                "ChosenCity", "City", manual));
+        var producer = ((WorkingDomain) controller.domain())
+                .subclassProducer("ChosenCity");
+        assertInstanceOf(WorkingDomain.SavedManualSubclass.class, producer);
+        assertEquals("ChosenCityPopulation",
+                ((WorkingDomain.SavedManualSubclass) producer).populationName());
+        assertEquals(List.of("Q90"),
+                ((WorkingDomain.SavedManualSubclass) producer).qids());
+    }
+
+    @Test void typeSpecGroupExplainsThatItsExecutableStepDoesNotExistYet() {
+        quiz.transform.DynamicViewable paris = city("Q90", "Europe");
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of());
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(cities, null);
+        var group = new quiz.transform.TypeSpecGroup("Typed",
+                new quiz.transform.TypeSpec("City", java.util.Map.of()), cities);
+        group.reproduce(List.of(paris));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> controller.createSubclassFromGroup("TypedCity", "City", group));
+        assertTrue(error.getMessage().contains("Type-spec transformation steps are not implemented"));
     }
 }

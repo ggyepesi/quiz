@@ -1,5 +1,7 @@
 package quiz.transform.pipeline.ui;
 
+import quiz.transform.FilterOperator;
+
 import objectview.field.FieldKind;
 import objectview.viewconfig.FieldRow;
 import objectview.field.FieldPath;

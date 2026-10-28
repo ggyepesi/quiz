@@ -1,4 +1,4 @@
-package quiz.transform.pipeline.ui;
+package quiz.transform;
 
 import objectview.field.FieldKind;
 
@@ -12,6 +12,7 @@ import static objectview.field.FieldKind.ORDERED;
 import static objectview.field.FieldKind.REFERENCE;
 import static objectview.field.FieldKind.TEXT;
 
+/** Provider-neutral predicate vocabulary shared by the editor and headless transforms. */
 public enum FilterOperator {
     EQUALS("equals", BOOLEAN, ORDERED, TEXT, REFERENCE),
     NOT_EQUALS("not equals", BOOLEAN, ORDERED, TEXT, REFERENCE),
@@ -29,8 +30,6 @@ public enum FilterOperator {
     BETWEEN("between", ORDERED),
     IS_TRUE("is true", BOOLEAN),
     IS_FALSE("is false", BOOLEAN),
-    // is empty / is not empty apply to every shape — including MEDIA, where presence
-    // IS the useful query (find members with a missing portrait / flag).
     IS_EMPTY("is empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION, MEDIA),
     IS_NOT_EMPTY("is not empty", BOOLEAN, ORDERED, TEXT, REFERENCE, COLLECTION, MEDIA);
 
@@ -43,23 +42,15 @@ public enum FilterOperator {
                 : EnumSet.copyOf(java.util.Arrays.asList(kinds));
     }
 
-    /** True if this operator makes sense for {@code kind} (UNKNOWN allows all). */
     public boolean appliesTo(FieldKind kind) {
         return kind == null || kind == FieldKind.UNKNOWN || kinds.contains(kind);
     }
 
-    /** Does this operator need no value at all (a unary predicate)? */
     public boolean isUnary() {
         return this == IS_TRUE || this == IS_FALSE || this == IS_EMPTY || this == IS_NOT_EMPTY;
     }
 
-    /** Does this operator take a second value (a range)? */
-    public boolean isBinary() {
-        return this == BETWEEN;
-    }
+    public boolean isBinary() { return this == BETWEEN; }
 
-    @Override
-    public String toString() {
-        return label;
-    }
+    @Override public String toString() { return label; }
 }

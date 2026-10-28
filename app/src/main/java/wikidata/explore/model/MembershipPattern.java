@@ -31,6 +31,7 @@ public enum MembershipPattern {
     /** Members are grouped offline from another modeled class. */
     AGGREGATED("Aggregate class"),
     GRAPH("Graph constraint"),
+    MATERIALIZED_TRANSFORM("Materialized by saved transformation"),
     POPULATION("Saved population"),
     /** A referenced-only ("identity holder") class: it has no membership rule of its
      *  own — its members are DERIVED as the range of a field that targets it (an
@@ -133,6 +134,9 @@ public enum MembershipPattern {
             return AGGREGATED;
         }
         if (clazz != null && clazz.classKind() == ClassKind.GRAPH) return GRAPH;
+        if (clazz != null && clazz.materializedByTransformation()) {
+            return MATERIALIZED_TRANSFORM;
+        }
         if (clazz != null && clazz.hasBase()
                 && clazz.subclassCondition().populationBased()
                 && clazz.subclassCondition().configured()) return POPULATION_SUBCLASS;
@@ -502,7 +506,7 @@ public enum MembershipPattern {
                         : graph.startNode().populationSelection();
                 yield "Graph constraint (" + start + " → " + graph.outputClassName() + ")";
             }
-            case POPULATION -> p.label;
+            case POPULATION, MATERIALIZED_TRANSFORM -> p.label;
             // REFERENCED needs project context to name its deriving field, so it is
             // only produced by of(clazz, project); reached here only if a caller uses
             // the single-arg path, where the bare label is the best we can say.

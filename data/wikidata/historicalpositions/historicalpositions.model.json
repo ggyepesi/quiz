@@ -2754,6 +2754,17 @@
     "alias" : "",
     "importedFrom" : "",
     "classKind" : "SOURCE",
+    "populationMode" : "MATERIALIZED_TRANSFORM",
+    "transformationSource" : {
+      "inputClassId" : "decl:def791dc-b1ec-4f34-bf28-83ce39696ab2",
+      "inputClassName" : "Position",
+      "steps" : [ "java.util.ArrayList", [ {
+        "kind" : "FILTER",
+        "fieldPath" : "holderCount",
+        "operator" : "GREATER_THAN",
+        "value" : 0
+      } ] ]
+    },
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
@@ -2997,5 +3008,46 @@
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
   "imports" : [ "java.util.ArrayList", [ ] ],
-  "buildOperations" : [ "java.util.ArrayList", [ ] ]
+  "buildOperations" : [ "java.util.ArrayList", [ {
+    "declarationId" : "decl:6397c6f9-cdcc-45fd-886a-dbdfe56f22de",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:be840e1d-66f7-40dd-9911-584df252b589",
+    "kind" : "RUN_GRAPH_CONSTRAINT",
+    "targetDeclarationId" : "decl:69c7443c-920f-418c-8d3d-a008ed58d6a0"
+  }, {
+    "declarationId" : "decl:4ff089b3-2db9-42ee-b419-c04118378b28",
+    "kind" : "APPLY_GRAPH_DECISIONS",
+    "targetDeclarationId" : "decl:69c7443c-920f-418c-8d3d-a008ed58d6a0"
+  }, {
+    "declarationId" : "decl:d316ff85-ff2f-47a3-99d5-a79c40194707",
+    "kind" : "RUN_TRANSFORMATION",
+    "targetDeclarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e"
+  }, {
+    "declarationId" : "decl:d5d2437c-bba2-459f-aa48-07a17d177b19",
+    "kind" : "RUN_GRAPH_CONSTRAINT",
+    "targetDeclarationId" : "decl:26d00df3-f413-4e0f-9da6-fa090721984c"
+  }, {
+    "declarationId" : "decl:da5505ed-ef31-47dd-861c-2a27c7318896",
+    "kind" : "APPLY_GRAPH_DECISIONS",
+    "targetDeclarationId" : "decl:26d00df3-f413-4e0f-9da6-fa090721984c"
+  }, {
+    "declarationId" : "decl:bc418615-d402-455e-adc9-019f9fcf428b",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:57ada838-1d16-40d2-bc20-07914cbd3535",
+    "kind" : "RUN_TRANSFORMATION",
+    "targetDeclarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e"
+  }, {
+    "declarationId" : "decl:29211bb5-fce1-4da0-8d4f-508b44e0042e",
+    "kind" : "APPLY_GRAPH_DECISIONS",
+    "targetDeclarationId" : "decl:26d00df3-f413-4e0f-9da6-fa090721984c"
+  }, {
+    "declarationId" : "decl:24bc4361-af75-4d5a-8d88-e61d8c41f576",
+    "kind" : "PUBLISH_POPULATION",
+    "targetDeclarationId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393"
+  }, {
+    "declarationId" : "decl:74fd863f-dac8-455c-8b79-e8c176f20bb0",
+    "kind" : "SAVE_PROJECT_RESULT"
+  } ] ]
 }

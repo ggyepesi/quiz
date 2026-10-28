@@ -22,6 +22,10 @@ import wikidata.explore.generation.ProjectSave;
 import wikidata.explore.model.BuildOperation;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.model.PopulationSelection;
+import wikidata.explore.transform.MaterializedPopulationStore;
+import wikidata.explore.transform.TransformationExecution;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 import work.CancellationToken;
 import work.QueryContext;
@@ -111,28 +115,75 @@ public final class ProjectBuild {
 
     private static List<Step> plan(GeneratedProjectModel model, DomainStorage storage,
                                    Saved saved) {
+        return plan(model, storage, saved, new java.util.LinkedHashSet<>());
+    }
+
+    private static List<Step> plan(GeneratedProjectModel model, DomainStorage storage,
+                                   Saved saved, java.util.Set<String> planning) {
         Objects.requireNonNull(model, "model");
+        planning.add(model.name());
         List<Step> steps = new ArrayList<>();
         String upstream = null;
         for (BuildOperation operation : model.buildOperations()) {
             String description = operation.describe(model);
             Step step = upstream == null
-                    ? own(operation, description, model, storage, saved)
+                    ? own(operation, description, model, storage, saved, planning)
                     : new Step(operation, description, State.STALE,
                             List.of(upstream + " runs"));
             if (upstream == null && step.runs()) upstream = description;
             steps.add(step);
         }
+        planning.remove(model.name());
         return List.copyOf(steps);
     }
 
     /** A step's state from its own saved output, as if nothing before it ran. */
     private static Step own(BuildOperation operation, String description,
-                            GeneratedProjectModel model, DomainStorage storage, Saved saved) {
+                            GeneratedProjectModel model, DomainStorage storage, Saved saved,
+                            java.util.Set<String> planning) {
         GraphResults results = saved.results();
         List<String> because = new ArrayList<>();
         State state;
         switch (operation.kind()) {
+            case BUILD_DEPENDENCY -> {
+                if (planning.contains(operation.targetProjectName())) {
+                    state = State.FAILED;
+                    because.add("build dependency cycle: " + String.join(" -> ", planning)
+                            + " -> " + operation.targetProjectName());
+                    break;
+                }
+                File dependency = storage.modelFileOf(operation.targetProjectName());
+                if (!dependency.isFile()) {
+                    state = State.FAILED;
+                    because.add("model file is missing: " + dependency.getPath());
+                    break;
+                }
+                try {
+                    GeneratedProjectModel upstream =
+                            new GeneratedProjectModelStore().load(dependency);
+                    Saved upstreamSaved = Saved.read(upstream, storage, ignored -> { });
+                    List<Step> upstreamPlan = plan(
+                            upstream, storage, upstreamSaved, planning);
+                    Step blocked = upstreamPlan.stream()
+                            .filter(item -> item.state() == State.FAILED
+                                    || item.state() == State.INCOMPLETE
+                                    || item.state() == State.AWAITING_DECISION)
+                            .findFirst().orElse(null);
+                    if (blocked != null) {
+                        state = blocked.state();
+                        because.add(upstream.name() + ": " + blocked.explain());
+                    } else if (upstreamPlan.stream().anyMatch(Step::runs)) {
+                        state = State.STALE;
+                        because.add(upstream.name() + " has missing or stale outputs");
+                    } else {
+                        state = State.CURRENT;
+                    }
+                } catch (Exception unreadable) {
+                    state = State.FAILED;
+                    because.add("cannot inspect " + operation.targetProjectName()
+                            + ": " + unreadable.getMessage());
+                }
+            }
             case GENERATE_PROJECT -> {
                 File snapshot = storage.snapshotFile(model.name());
                 String recorded = storage.savedSnapshotSignature(model.name());
@@ -153,6 +204,70 @@ public final class ProjectBuild {
                             + " accepted graph identities are not generated yet");
                 } else {
                     state = State.CURRENT;
+                }
+            }
+            case RUN_TRANSFORMATION -> {
+                GeneratedClassModel outputClass = operation.target(model);
+                if (outputClass == null || !outputClass.materializedByTransformation()
+                        || outputClass.transformationSource() == null) {
+                    state = State.FAILED;
+                    because.add("the project no longer declares that materialized class");
+                    break;
+                }
+                File output = storage.materializedPopulationFile(
+                        model.name(), outputClass.declarationId());
+                MaterializedPopulationStore.Metadata metadata =
+                        MaterializedPopulationStore.metadata(model, outputClass, storage);
+                if (!output.isFile() || metadata == null) {
+                    state = State.MISSING;
+                    because.add("no materialized population at " + output.getPath());
+                } else if (!MaterializedPopulationStore.signature(outputClass)
+                        .equals(metadata.transformationSignature())) {
+                    state = State.STALE;
+                    because.add("the saved transformation changed");
+                } else if (!storage.savedSnapshotSignature(model.name())
+                        .equals(metadata.inputSnapshotSignature())) {
+                    state = State.STALE;
+                    because.add("the generated input snapshot changed");
+                } else {
+                    state = State.CURRENT;
+                }
+            }
+            case PUBLISH_POPULATION -> {
+                if (!(operation.selectionTarget(model) instanceof PopulationSelection population)) {
+                    state = State.FAILED;
+                    because.add("the project no longer declares that population selection");
+                    break;
+                }
+                GeneratedClassModel outputClass = model.findClass(population.className());
+                if (outputClass == null || !outputClass.materializedByTransformation()
+                        || outputClass.transformationSource() == null) {
+                    state = State.FAILED;
+                    because.add("the population's class has no transformation producer");
+                    break;
+                }
+                File output = storage.materializedPopulationFile(
+                        model.name(), outputClass.declarationId());
+                if (!output.isFile()) {
+                    state = State.MISSING;
+                    because.add("no materialized output of " + outputClass.className());
+                } else {
+                    try {
+                        List<String> qids = MaterializedPopulationStore
+                                .load(model, outputClass, storage).stream()
+                                .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
+                                .filter(java.util.Objects::nonNull).distinct().toList();
+                        if (!population.instanceQids().equals(qids)) {
+                            state = State.STALE;
+                            because.add("the published QID list differs from the materialized output");
+                        } else {
+                            state = State.CURRENT;
+                        }
+                    } catch (Exception unreadable) {
+                        state = State.FAILED;
+                        because.add("the materialized output cannot be read: "
+                                + unreadable.getMessage());
+                    }
                 }
             }
             case RUN_GRAPH_CONSTRAINT -> {
@@ -208,8 +323,18 @@ public final class ProjectBuild {
      */
     public static Report run(GeneratedProjectModel model, DomainStorage storage,
                              QueryContext context, Consumer<String> log) throws Exception {
+        return run(model, storage, context, log, new java.util.LinkedHashSet<>());
+    }
+
+    private static Report run(GeneratedProjectModel model, DomainStorage storage,
+                             QueryContext context, Consumer<String> log,
+                             java.util.Set<String> building) throws Exception {
         Objects.requireNonNull(model, "model");
         Objects.requireNonNull(storage, "storage");
+        if (!building.add(model.name())) {
+            throw new IllegalStateException("Build dependency cycle: "
+                    + String.join(" -> ", building) + " -> " + model.name());
+        }
         Consumer<String> say = log == null ? ignored -> { } : log;
         File snapshot = storage.snapshotFile(model.name());
         Saved saved = Saved.read(model, storage, say);
@@ -240,6 +365,21 @@ public final class ProjectBuild {
             BuildOperation operation = step.operation();
             say.accept("Run: " + step.description());
             switch (operation.kind()) {
+                case BUILD_DEPENDENCY -> {
+                    File dependency = storage.modelFileOf(operation.targetProjectName());
+                    GeneratedProjectModel upstream =
+                            new GeneratedProjectModelStore().load(dependency);
+                    Report built = run(upstream, storage, context, say, building);
+                    files.addAll(built.files());
+                    if (built.outcome() != State.CURRENT) {
+                        outcome = built.outcome();
+                        done.add(new Done(step, Action.STOPPED, upstream.name()
+                                + " build ended " + built.outcome()));
+                        continue;
+                    }
+                    done.add(new Done(step, Action.RAN, upstream.name()
+                            + " is current; manifest " + built.manifest().getPath()));
+                }
                 case GENERATE_PROJECT -> {
                     Map<String, List<String>> additions = results.pendingPopulationAdditions(
                             run != null ? run.dynamicObjects() : saved.objects());
@@ -247,7 +387,8 @@ public final class ProjectBuild {
                             CompiledPipelineRun.compile(PipelineRequest.generateDomain(
                                     model.copy(), additions)),
                             null, new GenerationExecutionSettings(), null)
-                            .execute(new ProcessContext(context, null, null,
+                            .execute(new ProcessContext(
+                                    context.with(DomainStorage.class, storage), null, null,
                                     context.cancellation() == null
                                             ? new CancellationToken() : context.cancellation(),
                                     null));
@@ -263,6 +404,45 @@ public final class ProjectBuild {
                     run = replace(run, generated.result());
                     ledger = GenerationRuns.ledgerAfter(ledger, run);
                     done.add(new Done(step, Action.RAN, run.dynamicObjects().size() + " objects"));
+                }
+                case RUN_TRANSFORMATION -> {
+                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    GeneratedClassModel outputClass = operation.target(model);
+                    TransformationExecution.Result transformed =
+                            TransformationExecution.apply(model, outputClass, run);
+                    run = replace(run, transformed.run());
+                    List<String> written = MaterializedPopulationStore.save(
+                            model, outputClass, transformed.population(), storage,
+                            run.generatedFromSignature());
+                    files.addAll(written);
+                    done.add(new Done(step, Action.RAN, transformed.population().size()
+                            + " " + outputClass.className()
+                            + " instances -> " + written.getFirst()));
+                }
+                case PUBLISH_POPULATION -> {
+                    PopulationSelection population =
+                            (PopulationSelection) operation.selectionTarget(model);
+                    GeneratedClassModel outputClass = model.findClass(population.className());
+                    List<wikidata.explore.extract.WikidataDynamicObject> published;
+                    if (run != null) {
+                        published = run.dynamicObjects().stream()
+                                .filter(object -> object.directClassNames().contains(
+                                        population.className()))
+                                .toList();
+                        files.addAll(MaterializedPopulationStore.save(
+                                model, outputClass, published, storage,
+                                run.generatedFromSignature()));
+                    } else {
+                        published = MaterializedPopulationStore.load(
+                                model, outputClass, storage);
+                    }
+                    List<String> qids = published.stream()
+                            .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
+                            .filter(java.util.Objects::nonNull).distinct().toList();
+                    population.instanceQids(qids);
+                    done.add(new Done(step, Action.RAN, qids.size() + " "
+                            + population.className() + " QIDs published as "
+                            + population.name()));
                 }
                 case RUN_GRAPH_CONSTRAINT -> {
                     run = run != null ? run : loaded(model, storage, snapshot, say);
@@ -327,6 +507,7 @@ public final class ProjectBuild {
             }
         }
         if (run != null && run.runtime() != null) run.runtime().close();
+        building.remove(model.name());
         File manifest = writeManifest(storage, model, done, outcome, files);
         done.forEach(step -> say.accept(step.action() + ": " + step.planned().description()
                 + (step.detail().isBlank() ? "" : " — " + step.detail())));

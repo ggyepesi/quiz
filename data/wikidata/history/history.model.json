@@ -2378,5 +2378,15 @@
     "modelName" : "Historical Positions",
     "classNames" : [ "java.util.ArrayList", [ "Position", "PositionWithHolders" ] ]
   } ] ],
-  "buildOperations" : [ "java.util.ArrayList", [ ] ]
+  "buildOperations" : [ "java.util.ArrayList", [ {
+    "declarationId" : "decl:7bbc9c02-df14-49f1-9cc4-e0f78eac8a41",
+    "kind" : "BUILD_DEPENDENCY",
+    "targetProjectName" : "Historical Positions"
+  }, {
+    "declarationId" : "decl:d0188891-92aa-4ee9-9f9d-b15b24e13273",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:e7abff75-592a-4c78-b5be-5eaf39b75a74",
+    "kind" : "SAVE_PROJECT_RESULT"
+  } ] ]
 }

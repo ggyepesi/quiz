@@ -40,7 +40,7 @@ class SignatureIgnoresDeclarationIdentitiesTest {
      * the whole failure this guard exists to prevent.
      */
     private static final Pattern IDENTITY_FIELD = Pattern.compile(
-            "(?:[a-z][A-Za-z]*(?:DeclarationId|ClassId|SelectionId)"
+            "(?:[a-z][A-Za-z]*(?:DeclarationId|ClassId|SelectionId|TransformationId)"
                     + "|declarationId|classId|selectionId)");
 
     /**

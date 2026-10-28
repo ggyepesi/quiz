@@ -340,9 +340,12 @@ public class GenerationPipeline {
         // from a model nothing had refused, and the run looked like it worked.
         wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
+        ImportedMaterializedPopulationInputs materializedInputs =
+                ImportedMaterializedPopulationInputs.resolve(
+                        snapshot, dataset.DomainStorage.inDefaultLocation());
         PopulationSourceExecution.Resolution populationInput =
                 PopulationSourceExecution.resolve(
-                        snapshot, snapshot.rootClass(), sourcePlan);
+                        snapshot, snapshot.rootClass(), sourcePlan, materializedInputs);
         if (!populationInput.available()) {
             if (log != null) log.message("Preview skipped: "
                     + populationInput.reason() + ".\n");
@@ -357,8 +360,27 @@ public class GenerationPipeline {
                     + snapshot.rootClass().className() + " QIDs.\n");
         }
 
-        List<WikidataDynamicObject> dynamicObjects =
-                extract(client, plan, depth, log);
+        List<WikidataDynamicObject> dynamicObjects;
+        if (populationInput.importedMaterialized()) {
+            dynamicObjects = new java.util.ArrayList<>(
+                    wikidata.explore.transform.PoolCopy.deepCopy(
+                            populationInput.materializedObjects()));
+            if (!populationInput.qidsRequiringAcquisition().isEmpty()) {
+                dynamicObjects.addAll(extract(client, plan, depth, log));
+            }
+        } else {
+            dynamicObjects = extract(client, plan, depth, log);
+        }
+        if (populationInput.importedMaterialized() && log != null) {
+            log.message("Load published materialized population "
+                    + String.join(", ", populationInput.selectionNames()) + ": "
+                    + dynamicObjects.size() + " typed "
+                    + snapshot.rootClass().className()
+                    + " instances"
+                    + (populationInput.qidsRequiringAcquisition().isEmpty()
+                        ? "; no Wikidata population request.\n"
+                        : "; additional published QIDs were acquired.\n"));
+        }
 
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
                 snapshot, dynamicObjects, sourcePlan,

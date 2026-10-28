@@ -4,6 +4,7 @@ import java.util.List;
 import datasource.schema.FieldType;
 
 import org.junit.jupiter.api.Test;
+import quiz.transform.FilterOperator;
 import wikidata.explore.model.GeneratedProjectModelValidator.ValidationResult;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,6 +12,52 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeneratedProjectModelValidatorTest {
+
+    @Test void materializedPopulationRequiresAClassOwnedTransformationSource() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.rootClass(input);
+        project.addClass(output);
+
+        ValidationResult missing = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(missing.valid());
+        assertTrue(missing.format().contains(
+                "Materialized transform class has no transformation source"), missing.format());
+
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(input.declarationId(), input.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
+
+    @Test void generatedPopulationCannotRetainATransformationSource() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(input.declarationId(), input.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+        project.rootClass(input);
+        project.addClass(output);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.format().contains(
+                "A transformation source requires Materialized transform population"),
+                result.format());
+    }
 
     @Test void aFieldUnionNamesExistingCompatiblePathsAndACollectionTarget() {
         GeneratedProjectModel project = new GeneratedProjectModel();

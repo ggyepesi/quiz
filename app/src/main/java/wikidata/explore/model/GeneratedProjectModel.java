@@ -459,6 +459,18 @@ public class GeneratedProjectModel {
                             from, role.ownerClassName())) {
                 role.ownerReference(target.declarationId(), to);
             }
+            if (selection instanceof PopulationSelection population
+                    && population.className().equalsIgnoreCase(from)) {
+                population.className(to);
+            }
+        }
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null || clazz.transformationSource() == null) continue;
+            TransformationClassSource source = clazz.transformationSource();
+            if (references(target.declarationId(), source.inputClassId(),
+                    from, source.inputClassName())) {
+                source.inputClassReference(target.declarationId(), to);
+            }
         }
         renameGraphClassReference(from, to);
         return true;
@@ -900,6 +912,14 @@ public class GeneratedProjectModel {
         }
         for (Selection selection : selections) {
             if (selection != null) selection.ensureDeclarationId(name());
+        }
+        for (GeneratedClassModel clazz : classes) {
+            if (clazz == null || clazz.transformationSource() == null) continue;
+            TransformationClassSource source = clazz.transformationSource();
+            GeneratedClassModel input = resolveClass(
+                    source.inputClassId(), source.inputClassName());
+            if (input != null) source.inputClassReference(
+                    input.declarationId(), input.className());
         }
         for (GeneratedClassModel clazz : classes) {
             if (clazz == null) continue;

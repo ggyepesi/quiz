@@ -1,8 +1,8 @@
 package quiz.transform;
 
 import objectview.Viewable;
-import quiz.transform.pipeline.ui.FilterCondition;
-import quiz.transform.pipeline.ui.FilterPredicates;
+import quiz.transform.FilterCondition;
+import quiz.transform.FilterPredicates;
 
 import java.util.Collection;
 

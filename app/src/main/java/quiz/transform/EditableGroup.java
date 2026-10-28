@@ -132,13 +132,13 @@ public class EditableGroup extends ViewableGroupAdapter {
         } else if ("filter".equals(producer)) {
             String memberType = text(fields.read("memberType"));
             String path = text(fields.read("filterField"));
-            quiz.transform.pipeline.ui.FilterOperator operator =
-                    quiz.transform.pipeline.ui.FilterOperator.valueOf(
+            quiz.transform.FilterOperator operator =
+                    quiz.transform.FilterOperator.valueOf(
                             text(fields.read("filterOperator")));
             DomainField domainField =
                     new DomainField(memberType, path, false, false);
             copy = new OperationGroup(name, memberType,
-                    new quiz.transform.pipeline.ui.FilterCondition(
+                    new quiz.transform.FilterCondition(
                             domainField, operator,
                             fields.read("filterValue"), fields.read("filterValue2")));
         } else if ("typeSpec".equals(producer)) {

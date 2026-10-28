@@ -2,11 +2,13 @@ package wikidata.explore.model;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import dataset.DomainStorage;
 import wikidata.explore.generation.DomainSave;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import quiz.transform.FilterOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -61,6 +63,28 @@ class BuildOperationTest {
                 "a blank signature makes no claim at all, so it would pass for anything");
     }
 
+    @Test void editingAFilterTransformationStalesItsOutputNotGeneration() {
+        GeneratedProjectModel model = withGraph();
+        GeneratedClassModel output = new GeneratedClassModel("SelectedPosition");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        model.addClass(output);
+        TransformationClassSource transformation = new TransformationClassSource();
+        transformation.inputClassReference(model.rootClass().declarationId(), "Position");
+        transformation.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(transformation);
+        String before = DomainSave.signature(model);
+        assertEquals(before, DomainSave.signature(model),
+                "taking a signature twice must not mutate its own input");
+
+        output.transformationSource().steps(List.of(
+                TransformationStep.filter(
+                        "holderCount", FilterOperator.GREATER_THAN, 5, null)));
+
+        assertEquals(before, DomainSave.signature(model));
+    }
+
     @Test void aRenamedGraphKeepsItsBuildStep() {
         GeneratedProjectModel model = withGraph();
         model.buildOperations(List.of(new BuildOperation(
@@ -71,6 +95,49 @@ class BuildOperationTest {
 
         assertEquals("Apply graph decisions OfficeGraph",
                 model.buildOperations().getFirst().describe(model));
+    }
+
+    @Test void aRenamedMaterializedClassKeepsItsBuildStepPopulationAndArtifactPath() {
+        GeneratedProjectModel model = withGraph();
+        GeneratedClassModel output = new GeneratedClassModel("SelectedPosition");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(model.rootClass().declarationId(), "Position");
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+        model.addClass(output);
+        PopulationSelection population = new PopulationSelection("SelectedPositions");
+        population.className(output.className());
+        population.instanceQids(List.of("Q1"));
+        model.addSelection(population);
+        model.buildOperations(List.of(new BuildOperation(
+                BuildOperation.Kind.RUN_TRANSFORMATION, output.declarationId())));
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        File before = storage.materializedPopulationFile(
+                model.name(), output.declarationId());
+
+        model.renameClass("SelectedPosition", "CuratedPosition");
+
+        assertEquals("Run transformation CuratedPosition",
+                model.buildOperations().getFirst().describe(model));
+        assertEquals("CuratedPosition", population.className());
+        assertEquals(before, storage.materializedPopulationFile(
+                model.name(), output.declarationId()));
+    }
+
+    @Test void dependencyNamesItsOwningProjectAndSurvivesPersistence() throws Exception {
+        GeneratedProjectModel model = withGraph();
+        model.buildOperations(List.of(BuildOperation.dependency("Historical Positions")));
+        File file = root.resolve("history.model.json").toFile();
+
+        new GeneratedProjectModelStore().save(model, file);
+        BuildOperation loaded = new GeneratedProjectModelStore().load(file)
+                .buildOperations().getFirst();
+
+        assertEquals("Historical Positions", loaded.targetProjectName());
+        assertEquals("Build dependency Historical Positions", loaded.describe(model));
     }
 
     private static GeneratedProjectModel withGraph() {

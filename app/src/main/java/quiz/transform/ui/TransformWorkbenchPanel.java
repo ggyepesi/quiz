@@ -2368,6 +2368,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         try {
             String subtype = name.getText().trim();
             int total = source.getMembers().size();
+            boolean filter = source instanceof quiz.transform.OperationGroup;
+            boolean manual = !(source instanceof quiz.transform.ProducedGroup);
             int assigned = controller.createSubclassFromGroup(
                     subtype, (String) base.getSelectedItem(), source);
             selectedGroup = null;
@@ -2377,13 +2379,24 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             viewStepsPanel.refreshTypes(selectedType != null
                     ? selectedType : (String) base.getSelectedItem());
             render();
-            if (assigned < total) {
-                JOptionPane.showMessageDialog(this,
-                        assigned + " of " + total + " members are instances of "
-                                + base.getSelectedItem() + "; " + (total - assigned)
-                                + " were skipped.",
-                        "Subclass created", JOptionPane.INFORMATION_MESSAGE);
-            }
+            ProjectBacking backing = controller.domain().capability(ProjectBacking.class);
+            String saveTarget = backing == null || backing.modelFile() == null ? ""
+                    : "\nSave " + backing.projectKind().toString().toLowerCase()
+                            + " will write this configuration to\n"
+                            + backing.modelFile().getPath() + ".";
+            String created = filter
+                    ? "Created materialized subclass " + subtype
+                            + " with its saved filter producer and publication "
+                            + subtype + "Population."
+                    : manual ? "Created subclass " + subtype + " and frozen population "
+                            + subtype + "Population containing " + assigned + " QIDs."
+                    : "Created subclass " + subtype + ".";
+            String skipped = assigned < total
+                    ? "\n" + assigned + " of " + total + " members are instances of "
+                            + base.getSelectedItem() + "; " + (total - assigned)
+                            + " were skipped." : "";
+            JOptionPane.showMessageDialog(this, created + skipped + saveTarget,
+                    "Subclass created", JOptionPane.INFORMATION_MESSAGE);
         } catch (IllegalArgumentException error) {
             JOptionPane.showMessageDialog(this, error.getMessage(),
                     "Cannot create subclass", JOptionPane.ERROR_MESSAGE);
@@ -2391,7 +2404,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     quiz.transform.OperationGroup addFilterGroup(
-            String name, quiz.transform.pipeline.ui.FilterCondition condition) {
+            String name, quiz.transform.FilterCondition condition) {
         String type = controller.selectedType();
         quiz.transform.EditableGroup root =
                 (quiz.transform.EditableGroup) controller.groupRoot(type);

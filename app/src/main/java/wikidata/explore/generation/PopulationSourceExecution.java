@@ -10,6 +10,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.ImportedPopulationInputs;
 import wikidata.explore.model.MembershipPattern;
 import wikidata.explore.rule.RuleNode;
+import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.Collection;
 import java.util.List;
@@ -21,18 +22,34 @@ public final class PopulationSourceExecution {
     /** One answer to how a class receives its root instances in every run scope. */
     public record Resolution(
             Kind kind, List<String> qids, List<String> selectionNames,
-            SourceExecutionPlan.Step step, String reason) {
-        public enum Kind { LOCAL_SOURCE, IMPORTED_POPULATION, NONE }
+            SourceExecutionPlan.Step step, String reason,
+            List<WikidataDynamicObject> materializedObjects) {
+        public enum Kind { LOCAL_SOURCE, IMPORTED_POPULATION, IMPORTED_MATERIALIZED, NONE }
+
+        public Resolution(Kind kind, List<String> qids, List<String> selectionNames,
+                SourceExecutionPlan.Step step, String reason) {
+            this(kind, qids, selectionNames, step, reason, List.of());
+        }
 
         public Resolution {
             qids = List.copyOf(qids == null ? List.of() : qids);
             selectionNames = List.copyOf(
                     selectionNames == null ? List.of() : selectionNames);
             reason = reason == null ? "" : reason;
+            materializedObjects = List.copyOf(
+                    materializedObjects == null ? List.of() : materializedObjects);
         }
 
         public boolean available() { return kind != Kind.NONE; }
         public boolean importedPopulation() { return kind == Kind.IMPORTED_POPULATION; }
+        public boolean importedMaterialized() { return kind == Kind.IMPORTED_MATERIALIZED; }
+        public List<String> qidsRequiringAcquisition() {
+            if (!importedMaterialized()) return qids;
+            java.util.Set<String> materialized = materializedObjects.stream()
+                    .map(WikidataDynamicObject::getIdentifier)
+                    .collect(java.util.stream.Collectors.toSet());
+            return qids.stream().filter(qid -> !materialized.contains(qid)).toList();
+        }
 
         public RuleNode apply(RuleNode root) {
             return switch (kind) {
@@ -41,6 +58,8 @@ public final class PopulationSourceExecution {
                 case LOCAL_SOURCE -> step == null
                         ? root : PopulationSourceExecution.apply(root, step);
                 case IMPORTED_POPULATION -> PopulationSourceExecution.applyExact(root, qids);
+                case IMPORTED_MATERIALIZED -> PopulationSourceExecution.applyExact(
+                        root, qidsRequiringAcquisition());
                 case NONE -> throw new IllegalStateException(
                         reason.isBlank() ? "No class population input" : reason);
             };
@@ -60,6 +79,12 @@ public final class PopulationSourceExecution {
      */
     public static Resolution resolve(GeneratedProjectModel project,
             GeneratedClassModel clazz, SourceExecutionPlan plan) {
+        return resolve(project, clazz, plan, null);
+    }
+
+    public static Resolution resolve(GeneratedProjectModel project,
+            GeneratedClassModel clazz, SourceExecutionPlan plan,
+            ImportedMaterializedPopulationInputs materializedInputs) {
         if (clazz == null) {
             return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                     "No class selected");
@@ -74,12 +99,25 @@ public final class PopulationSourceExecution {
             ImportedPopulationInputs inputs = ImportedPopulationInputs.of(project);
             List<String> qids = inputs.qidsFor(clazz.className());
             List<String> names = inputs.selectionNamesFor(clazz.className());
+            List<WikidataDynamicObject> materialized = materializedInputs == null
+                    ? List.of() : materializedInputs.membersFor(clazz.className());
+            if (!materialized.isEmpty()) {
+                List<String> published = materializedInputs.identitiesFor(clazz.className());
+                return new Resolution(Resolution.Kind.IMPORTED_MATERIALIZED,
+                        published.isEmpty() ? qids : published,
+                        names, null, "", materialized);
+            }
             return qids.isEmpty()
                     ? new Resolution(Resolution.Kind.NONE, List.of(), names, null,
                             "Imported class contributes configuration only; no local "
                                     + "construct uses one of its saved populations")
                     : new Resolution(
                             Resolution.Kind.IMPORTED_POPULATION, qids, names, null, "");
+        }
+        if (clazz.materializedByTransformation()) {
+            return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
+                    "its members are produced by saved transformation, not by a "
+                            + "population query");
         }
         if (clazz.reifiesStatements()) {
             return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,

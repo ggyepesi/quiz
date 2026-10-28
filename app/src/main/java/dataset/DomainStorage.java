@@ -400,6 +400,19 @@ public final class DomainStorage {
         return file(name, ".build.json");
     }
 
+    /** Declared output of one saved transformation, separate from the owner's snapshot. */
+    public File materializedPopulationFile(String projectName, String classDeclarationId) {
+        return new File(directory(projectName), key(classDeclarationId)
+                + ".population.snapshot.json");
+    }
+
+    /** Inputs/signature beside a materialized population, for build staleness. */
+    public File materializedPopulationMetadataFile(
+            String projectName, String classDeclarationId) {
+        return new File(directory(projectName), key(classDeclarationId)
+                + ".population.json");
+    }
+
     public ConstructManifest constructManifest(String name) {
         File file = constructManifestFile(name);
         if (!file.isFile()) return new ConstructManifest();
@@ -421,7 +434,9 @@ public final class DomainStorage {
             if (saved == null || saved.kind == null || saved.declarationId == null
                     || saved.declarationId.isBlank() || saved.name == null
                     || saved.name.isBlank()) continue;
-            entries.add(new ConstructInventory.Entry(saved.declarationId, saved.name, saved.kind));
+            entries.add(new ConstructInventory.Entry(saved.declarationId, saved.name, saved.kind,
+                    saved.artifact != null
+                            && saved.artifact.endsWith(".population.snapshot.json")));
         }
         return ConstructInventory.of(entries);
     }
@@ -448,7 +463,12 @@ public final class DomainStorage {
         String model = modelFile(projectName).getName();
         for (ConstructInventory.Entry entry : current.entries()) {
             String artifact = switch (entry.kind()) {
-                case CLASS -> mainSnapshot;
+                case CLASS -> {
+                    File population = materializedPopulationFile(
+                            projectName, entry.declarationId());
+                    yield entry.materializedPopulation() && population.isFile()
+                            ? population.getName() : mainSnapshot;
+                }
                 case GRAPH -> {
                     File graph = new File(directory(projectName),
                             key(entry.name()) + ".graph.snapshot.json");
@@ -483,11 +503,21 @@ public final class DomainStorage {
         LinkedHashSet<File> obsolete = new LinkedHashSet<>();
         for (SavedConstruct was : previous.constructs) {
             ConstructInventory.Entry now = currentById.get(was.declarationId);
-            String currentArtifact = now != null && now.kind() == ConstructInventory.Kind.GRAPH
-                    ? key(now.name()) + ".graph.snapshot.json" : "";
+            String currentArtifact = now == null ? "" : switch (now.kind()) {
+                case GRAPH -> key(now.name()) + ".graph.snapshot.json";
+                case CLASS -> now.materializedPopulation()
+                        ? key(now.declarationId()) + ".population.snapshot.json" : "";
+                default -> "";
+            };
             if (isOwnedSidecar(was.artifact)
                     && (now == null || !was.artifact.equals(currentArtifact))) {
-                obsolete.add(new File(directory(projectName), was.artifact));
+                File artifact = new File(directory(projectName), was.artifact);
+                obsolete.add(artifact);
+                if (was.artifact.endsWith(".population.snapshot.json")) {
+                    obsolete.add(new File(directory(projectName),
+                            was.artifact.replace(".population.snapshot.json",
+                                    ".population.json")));
+                }
             }
         }
         // Legacy projects predate the manifest. The current graph declarations still
@@ -504,11 +534,28 @@ public final class DomainStorage {
                 if (!currentGraphFiles.contains(sidecar.getName())) obsolete.add(sidecar);
             }
         }
+        Set<String> currentPopulationFiles = current.entries().stream()
+                .filter(entry -> entry.kind() == ConstructInventory.Kind.CLASS
+                        && entry.materializedPopulation())
+                .map(entry -> key(entry.declarationId()) + ".population.snapshot.json")
+                .collect(java.util.stream.Collectors.toSet());
+        File[] populations = directory(projectName).listFiles((dir, filename) ->
+                filename.endsWith(".population.snapshot.json"));
+        if (populations != null) {
+            for (File sidecar : populations) {
+                if (!currentPopulationFiles.contains(sidecar.getName())) {
+                    obsolete.add(sidecar);
+                    obsolete.add(new File(directory(projectName), sidecar.getName().replace(
+                            ".population.snapshot.json", ".population.json")));
+                }
+            }
+        }
         return List.copyOf(obsolete);
     }
 
     private static boolean isOwnedSidecar(String artifact) {
-        return artifact != null && artifact.endsWith(".graph.snapshot.json")
+        return artifact != null && (artifact.endsWith(".graph.snapshot.json")
+                || artifact.endsWith(".population.snapshot.json"))
                 && !artifact.contains("/") && !artifact.contains("\\");
     }
 

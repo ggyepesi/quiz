@@ -100,6 +100,14 @@ public class GeneratedClassModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private SourceRecipe populationSource;
 
+    /** Whether this class is queried/inherited, or produced only by a saved transform. */
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private ClassPopulationMode populationMode = ClassPopulationMode.GENERATED;
+
+    /** The sole population producer when {@link #populationMode} is materialized transform. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private TransformationClassSource transformationSource;
+
     /** Explicit population, identity and naming sources for this class. */
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private final List<SourceBinding> sourceBindings = new ArrayList<>();
@@ -444,7 +452,7 @@ public class GeneratedClassModel {
      * read off whether one of three fields was blank.
      */
     public EntityBound effectiveMembership(GeneratedProjectModel project) {
-        if (ownedClass() || membership().bounded()
+        if (materializedByTransformation() || ownedClass() || membership().bounded()
                 || baseClassName.isEmpty() || project == null) {
             return membership();
         }
@@ -457,6 +465,32 @@ public class GeneratedClassModel {
 
     public List<String> seedQids() {
         return seedQids;
+    }
+
+    public ClassPopulationMode populationMode() {
+        return populationMode == null ? ClassPopulationMode.GENERATED : populationMode;
+    }
+
+    public void populationMode(ClassPopulationMode value) {
+        populationMode = value == null ? ClassPopulationMode.GENERATED : value;
+        if (populationMode == ClassPopulationMode.MATERIALIZED_TRANSFORM) {
+            clearIndependentPopulation();
+        } else {
+            transformationSource = null;
+        }
+    }
+
+    public boolean materializedByTransformation() {
+        return populationMode() == ClassPopulationMode.MATERIALIZED_TRANSFORM;
+    }
+
+    public TransformationClassSource transformationSource() {
+        return transformationSource;
+    }
+
+    /** Stores configuration only. Population mode is a separate authored decision. */
+    public void transformationSource(TransformationClassSource value) {
+        transformationSource = value == null ? null : value.copy();
     }
 
     /** The datasource offering which produces this class's population. */
@@ -529,7 +563,7 @@ public class GeneratedClassModel {
 
         // Owned classes may extend another class for its fields/schema, but their
         // population always comes from owning fields, never from the base's query.
-        if (ownedClass()
+        if (materializedByTransformation() || ownedClass()
                 || membership().bounded()
                 || baseClassName.isEmpty()
                 || project == null) {
@@ -592,6 +626,9 @@ public class GeneratedClassModel {
         // what would break this line, not this line itself.
         copy.seedQids.addAll(seedQids);
         copy.populationSource = populationSource;
+        copy.populationMode = populationMode();
+        copy.transformationSource = transformationSource == null
+                ? null : transformationSource.copy();
         copy.sourceBindings.addAll(sourceBindings);
         copy.canonical = canonical().copy();   // never null — see canonical()
 

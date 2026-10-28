@@ -1,5 +1,8 @@
 package quiz.transform.pipeline.ui;
 
+import quiz.transform.FilterCondition;
+import quiz.transform.FilterOperator;
+
 import flag.State;
 import org.junit.jupiter.api.Test;
 import quiz.curation.ScopeFilter;

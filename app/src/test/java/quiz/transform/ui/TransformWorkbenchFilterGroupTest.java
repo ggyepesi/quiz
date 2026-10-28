@@ -4,8 +4,8 @@ import domain.DomainField;
 import flag.State;
 import org.junit.jupiter.api.Test;
 import quiz.transform.OperationGroup;
-import quiz.transform.pipeline.ui.FilterCondition;
-import quiz.transform.pipeline.ui.FilterOperator;
+import quiz.transform.FilterCondition;
+import quiz.transform.FilterOperator;
 
 import javax.swing.*;
 import java.util.List;

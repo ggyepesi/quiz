@@ -28,6 +28,9 @@ public final class WorkingDomain extends DelegatingDomainModel
 
     private final Map<String, DerivedClass> derived = new LinkedHashMap<>();
     private final Map<String, String> subclassBases = new LinkedHashMap<>();
+    /** Producer retained beside an in-session subclass until Save writes the model. */
+    private final Map<String, SavedSubclassProducer> subclassProducers =
+            new LinkedHashMap<>();
     private final java.util.IdentityHashMap<Viewable, java.util.Set<String>>
             assignedClasses = new java.util.IdentityHashMap<>();
     // Empty fields DECLARED on a base or subclass (the "New field" op) — a schema act,
@@ -183,6 +186,80 @@ public final class WorkingDomain extends DelegatingDomainModel
      * The base class is mandatory; group structure is only a source of members. */
     public int defineSubclass(String name, String baseType,
                               Collection<? extends Viewable> members) {
+        return defineSubclass(name, baseType, members, (SavedSubclassProducer) null);
+    }
+
+    public int defineSubclass(String name, String baseType,
+                              Collection<? extends Viewable> members,
+                              quiz.transform.OperationGroup producer) {
+        SavedSubclassTransformation saved = producer == null ? null
+                : new SavedSubclassTransformation(baseType, filterChain(producer, baseType));
+        return defineSubclass(name, baseType, members, saved);
+    }
+
+    /**
+     * Every condition that produced {@code leaf}, root first. A filter group filters its
+     * parent's members, so the leaf's own condition alone describes a larger population
+     * than the group the author saw; saved alone, the headless run would produce it.
+     * Only a chain of filters under the class's own root group can be replayed as steps.
+     */
+    static List<quiz.transform.FilterCondition> filterChain(
+            quiz.transform.OperationGroup leaf, String baseType) {
+        java.util.ArrayDeque<quiz.transform.FilterCondition> chain =
+                new java.util.ArrayDeque<>();
+        objectview.group.ViewableGroup<?> group = leaf;
+        while (group instanceof quiz.transform.OperationGroup filter) {
+            chain.addFirst(filter.condition());
+            group = filter.getParent();
+        }
+        if (group == null || group.getParent() != null
+                || group instanceof quiz.transform.ProducedGroup) {
+            throw new IllegalArgumentException("Filter group “" + leaf.getDisplayName()
+                    + "” lies under “" + (group == null ? "no group" : group.getDisplayName())
+                    + "”, which is not a filter. Only a chain of filter groups under the "
+                    + "class's own group root can be saved as an executable subclass.");
+        }
+        String readType = leaf.memberType() == null ? "" : leaf.memberType().trim();
+        if (!readType.equals(baseType == null ? "" : baseType.trim())) {
+            throw new IllegalArgumentException("Filter group “" + leaf.getDisplayName()
+                    + "” filters " + readType + ", so its subclass must extend " + readType
+                    + ", not " + baseType + ".");
+        }
+        return List.copyOf(chain);
+    }
+
+    /** A hand-picked group is reproducible only as the exact datasource identities chosen. */
+    public int defineManualSubclass(String name, String baseType,
+                                    Collection<? extends Viewable> members,
+                                    String populationName) {
+        validateSubclassDefinition(name, baseType);
+        List<Viewable> matched = matchedMembers(name, baseType, members);
+        java.util.LinkedHashSet<String> identities = new java.util.LinkedHashSet<>();
+        int missing = 0;
+        for (Viewable member : matched) {
+            String qid = quiz.source.SourceIdentities.wikidataQid(member);
+            if (qid == null) missing++;
+            else identities.add(qid);
+        }
+        if (missing > 0) {
+            throw new IllegalArgumentException("Every member of a manual subclass needs a "
+                    + "Wikidata QID; " + missing + " of "
+                    + matched.size() + " selected members have none.");
+        }
+        return assignSubclass(name, baseType, matched,
+                new SavedManualSubclass(baseType, populationName,
+                        List.copyOf(identities)));
+    }
+
+    private int defineSubclass(String name, String baseType,
+                               Collection<? extends Viewable> members,
+                               SavedSubclassProducer producer) {
+        validateSubclassDefinition(name, baseType);
+        List<Viewable> matched = matchedMembers(name, baseType, members);
+        return assignSubclass(name, baseType, matched, producer);
+    }
+
+    private void validateSubclassDefinition(String name, String baseType) {
         if (name == null || name.isBlank() || baseType == null || baseType.isBlank()) {
             throw new IllegalArgumentException("Subclass name and base class are required");
         }
@@ -200,8 +277,35 @@ public final class WorkingDomain extends DelegatingDomainModel
             throw new IllegalArgumentException("Cyclic subclass definition "
                     + subtype + " extends " + base);
         }
-        // Validate before mutating: pick the members that actually are the base, and reject
-        // a base that matches none of them (a silent zero-member subclass otherwise).
+    }
+
+    private int assignSubclass(String name, String baseType, List<Viewable> matched,
+                               SavedSubclassProducer producer) {
+        String subtype = name.trim();
+        String base = baseType.trim();
+        subclassBases.put(subtype, base);
+        if (producer != null) {
+            subclassProducers.put(subtype, producer);
+        }
+        for (Viewable member : matched) {
+            assignedClasses.computeIfAbsent(member,
+                    ignored -> new java.util.LinkedHashSet<>()).add(subtype);
+            if (member instanceof WikidataDynamicObject dynamic) {
+                dynamic.assignSubclass(subtype, base);
+            }
+        }
+        groupRoots.remove(subtype);
+        groupRootSignatures.remove(subtype);
+        return matched.size();
+    }
+
+    private List<Viewable> matchedMembers(String name, String baseType,
+                                          Collection<? extends Viewable> members) {
+        if (name == null || name.isBlank() || baseType == null || baseType.isBlank()) {
+            throw new IllegalArgumentException("Subclass name and base class are required");
+        }
+        String subtype = name.trim();
+        String base = baseType.trim();
         List<Viewable> matched = new ArrayList<>();
         int requested = 0;
         if (members != null) {
@@ -217,17 +321,35 @@ public final class WorkingDomain extends DelegatingDomainModel
                     : "None of the " + requested
                             + " selected members are instances of " + base + ".");
         }
-        subclassBases.put(subtype, base);
-        for (Viewable member : matched) {
-            assignedClasses.computeIfAbsent(member,
-                    ignored -> new java.util.LinkedHashSet<>()).add(subtype);
-            if (member instanceof WikidataDynamicObject dynamic) {
-                dynamic.assignSubclass(subtype, base);
-            }
+        return matched;
+    }
+
+    public SavedSubclassProducer subclassProducer(String type) {
+        return subclassProducers.get(type);
+    }
+
+    public sealed interface SavedSubclassProducer
+            permits SavedSubclassTransformation, SavedManualSubclass {
+        String inputClass();
+    }
+
+    /** {@code conditions} are root first: each filters what the one before it kept. */
+    public record SavedSubclassTransformation(
+            String inputClass, List<quiz.transform.FilterCondition> conditions)
+            implements SavedSubclassProducer {
+        public SavedSubclassTransformation {
+            conditions = List.copyOf(conditions == null ? List.of() : conditions);
         }
-        groupRoots.remove(subtype);
-        groupRootSignatures.remove(subtype);
-        return matched.size();
+    }
+
+    public record SavedManualSubclass(
+            String inputClass, String populationName, List<String> qids)
+            implements SavedSubclassProducer {
+        public SavedManualSubclass {
+            inputClass = inputClass == null ? "" : inputClass.trim();
+            populationName = populationName == null ? "" : populationName.trim();
+            qids = List.copyOf(qids == null ? List.of() : qids);
+        }
     }
     public quiz.transform.EditableGroup editableGroupRoot(String type) {
         if (type == null) return null;

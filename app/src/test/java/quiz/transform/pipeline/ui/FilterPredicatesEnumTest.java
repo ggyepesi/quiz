@@ -1,5 +1,9 @@
 package quiz.transform.pipeline.ui;
 
+import quiz.transform.FilterCondition;
+import quiz.transform.FilterOperator;
+import quiz.transform.FilterPredicates;
+
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
 import domain.DomainField;

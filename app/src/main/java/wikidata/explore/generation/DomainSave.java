@@ -86,7 +86,7 @@ public final class DomainSave {
             // A build step names the graph class it acts on. Build operations are left
             // out of the fingerprint whole (see signature); the name is listed so the
             // guard holds the list complete.
-            "targetDeclarationId");
+            "targetDeclarationId", "inputClassId");
 
     /**
      * Configuration that never changes what generation produces, so editing it must not
@@ -97,7 +97,7 @@ public final class DomainSave {
      * build would have regenerated the whole project from Wikidata to answer it.
      */
     private static final java.util.Set<String> OUTSIDE_GENERATION =
-            java.util.Set.of("graphSource", "buildOperations");
+            java.util.Set.of("graphSource", "transformationSource", "buildOperations");
 
     /**
      * Values used while mapping raw snapshot data, but not while acquiring or storing it.
@@ -131,19 +131,40 @@ public final class DomainSave {
         com.fasterxml.jackson.databind.ObjectMapper mapper =
                 new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode tree = mapper.readTree(json);
-        strip(tree);
+        java.util.Set<String> materializedClasses = new java.util.LinkedHashSet<>();
+        collectMaterializedClasses(tree, materializedClasses);
+        strip(tree, materializedClasses);
         return mapper.writeValueAsString(tree);
     }
 
-    private static void strip(com.fasterxml.jackson.databind.JsonNode node) {
+    private static void collectMaterializedClasses(
+            com.fasterxml.jackson.databind.JsonNode node, java.util.Set<String> names) {
+        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object
+                && "MATERIALIZED_TRANSFORM".equals(
+                        object.path("populationMode").asText(""))) {
+            String className = object.path("className").asText("").trim();
+            if (!className.isBlank()) names.add(className);
+        }
+        node.forEach(child -> collectMaterializedClasses(child, names));
+    }
+
+    private static void strip(com.fasterxml.jackson.databind.JsonNode node,
+                              java.util.Set<String> materializedClasses) {
         if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
+            // A generated population is an OUTPUT of this project's build. Its rule and
+            // producer affect generation; the QIDs it publishes do not feed the owner
+            // back into its own upstream generation and must not make it stale forever.
+            if (object.has("instanceQids") && materializedClasses.contains(
+                    object.path("className").asText(""))) {
+                object.remove("instanceQids");
+            }
             object.remove(DECLARATION_IDENTITY_FIELDS);
             object.remove(OUTSIDE_GENERATION);
             for (String field : MAPPING_ONLY_VALUES) {
                 if (object.has(field)) object.put(field, "");
             }
         }
-        node.forEach(DomainSave::strip);
+        node.forEach(child -> strip(child, materializedClasses));
     }
 
     /**

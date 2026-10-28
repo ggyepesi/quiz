@@ -155,11 +155,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     FactDemandPlan factDemandPlan =
                             wikidata.explore.generation.GenerationFactDemandPlan.compile(
                                     project, sourcePlan);
+                    dataset.DomainStorage domainStorage = context.optional(
+                            dataset.DomainStorage.class);
+                    wikidata.explore.generation.ImportedMaterializedPopulationInputs
+                            materializedInputs =
+                            wikidata.explore.generation.ImportedMaterializedPopulationInputs
+                                    .resolve(project, domainStorage);
                     for (GeneratedClassModel cls : project.classes()) {
                         wikidata.explore.generation.PopulationSourceExecution.Resolution
                                 populationInput =
                                 wikidata.explore.generation.PopulationSourceExecution.resolve(
-                                        project, cls, sourcePlan);
+                                        project, cls, sourcePlan, materializedInputs);
                         List<String> supplemental = compiledRun.request()
                                 .supplementalPopulation(cls.className());
                         if (!populationInput.available() && supplemental.isEmpty()) {
@@ -169,6 +175,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
                         RuleNode configuredPlan = populationInput.available()
+                                && (!populationInput.importedMaterialized()
+                                    || !populationInput.qidsRequiringAcquisition().isEmpty())
                                 ? pipeline.plan(rooted) : null;
                         RuleNode supplementalPlan = supplemental.isEmpty()
                                 ? null : pipeline.plan(rooted);
@@ -181,6 +189,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     + ": " + populationInput.qids().size()
                                     + " " + cls.className() + " QIDs.\n");
                         }
+                        if (populationInput.importedMaterialized()) {
+                            populationInput.materializedObjects().forEach(shared::adoptIfAbsent);
+                            genLog.message("Load published materialized population "
+                                    + String.join(", ", populationInput.selectionNames())
+                                    + ": " + populationInput.materializedObjects().size()
+                                    + " typed " + cls.className() + " instances"
+                                    + (populationInput.qidsRequiringAcquisition().isEmpty()
+                                        ? "; no Wikidata population request.\n"
+                                        : "; " + populationInput.qidsRequiringAcquisition().size()
+                                            + " additional published QIDs will be acquired.\n"));
+                        }
                         if (!supplemental.isEmpty()) {
                             genLog.message("Load " + supplemental.size()
                                     + " pending " + cls.className()
@@ -189,7 +208,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         genLog.message("=== Class \"" + cls.className()
                                 + "\" (depth " + cls.generationDepth() + ") ===\n");
 
-                        int rootsFound = 0;
+                        int rootsFound = populationInput.materializedObjects().size();
                         for (RuleNode plan : populationPlans) {
                             GenerationPipeline.ExtractionResult extraction =
                                     pipeline.extractResult(

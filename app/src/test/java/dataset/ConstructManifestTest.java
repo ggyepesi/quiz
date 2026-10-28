@@ -8,6 +8,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.VocabularySelection;
+import wikidata.explore.model.ClassPopulationMode;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -102,6 +103,30 @@ class ConstructManifestTest {
                 ConstructInventory.Kind.SELECTION),
                 storage.constructManifest(project.name()).constructs.stream()
                         .map(value -> value.kind).toList());
+    }
+
+    @Test void removingAMaterializedClassDeletesItsTypedOutputAndMetadata() throws Exception {
+        DomainStorage storage = DomainStorage.in(temporary.toFile());
+        GeneratedProjectModel project = project();
+        GeneratedClassModel outputClass = new GeneratedClassModel("PositionWithHolders");
+        outputClass.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.addClass(outputClass);
+        Files.createDirectories(storage.directory(project.name()).toPath());
+        Path output = storage.materializedPopulationFile(
+                project.name(), outputClass.declarationId()).toPath();
+        Path metadata = storage.materializedPopulationMetadataFile(
+                project.name(), outputClass.declarationId()).toPath();
+        Files.writeString(output, "population");
+        Files.writeString(metadata, "metadata");
+        storage.reconcileConstructs(project.name(), ConstructInventory.of(project));
+
+        project.removeClass(outputClass);
+        List<java.io.File> removed = storage.reconcileConstructs(
+                project.name(), ConstructInventory.of(project));
+
+        assertEquals(List.of(output.toFile(), metadata.toFile()), removed);
+        assertFalse(Files.exists(output));
+        assertFalse(Files.exists(metadata));
     }
 
     private static GeneratedProjectModel project() {
