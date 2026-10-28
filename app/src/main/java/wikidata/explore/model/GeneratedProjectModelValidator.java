@@ -37,6 +37,7 @@ public final class GeneratedProjectModelValidator {
         validateUniqueDeclarationIds(project, problems);
         validateSelectionsAndKindRules(project, problems);
         validateTransformations(project, problems);
+        validateTransformationBuildSteps(project, problems);
         validateDependencyCycles(project, problems);
 
         for (GeneratedClassModel clazz : project.classes()) {
@@ -152,6 +153,72 @@ public final class GeneratedProjectModelValidator {
         }
     }
 
+    /**
+     * Whether the authored build runs each transformation and publishes each population
+     * drawn from one. The build list is user-authored (directive 11): saving a subclass from
+     * TransformApp used to insert and remove these steps itself, before the first graph or
+     * save step — the wrong place for Historical Positions, which re-applies a graph before
+     * its transformation. Now nothing edits the list on the user's behalf; this says what is
+     * missing or left over, and the user places it in ModelBuilder's Build list.
+     */
+    /** The build-list problems alone, for an editor that saves a transformation and must
+     *  say which steps the user still has to place. */
+    public static List<Problem> transformationBuildProblems(GeneratedProjectModel project) {
+        List<Problem> problems = new ArrayList<>();
+        if (project != null) validateTransformationBuildSteps(project, problems);
+        return List.copyOf(problems);
+    }
+
+    private static void validateTransformationBuildSteps(
+            GeneratedProjectModel project, List<Problem> problems) {
+        List<BuildOperation> operations = project.buildOperations();
+        java.util.function.BiPredicate<BuildOperation.Kind, String> has = (kind, id) ->
+                operations.stream().anyMatch(operation -> operation != null
+                        && operation.kind() == kind && id.equals(operation.targetDeclarationId()));
+        for (GeneratedClassModel output : project.classes()) {
+            if (output == null || output.isImported()
+                    || !output.materializedByTransformation()) continue;
+            if (!has.test(BuildOperation.Kind.RUN_TRANSFORMATION, output.declarationId())) {
+                problems.add(Problem.warning(output.className(), "The build has no step "
+                        + "Run transformation " + output.className() + ", so its population "
+                        + "is never materialized; add it to the Build list."));
+            }
+        }
+        for (Selection selection : project.selections()) {
+            if (!(selection instanceof PopulationSelection population)
+                    || population.isImported()) continue;
+            GeneratedClassModel output = project.findClass(population.className());
+            if (output == null || !output.materializedByTransformation()) continue;
+            if (!has.test(BuildOperation.Kind.PUBLISH_POPULATION, population.declarationId())) {
+                problems.add(Problem.warning(population.name(), "The build has no step "
+                        + "Publish population " + population.name() + ", so no importer can "
+                        + "read its " + output.className() + " members; add it to the Build "
+                        + "list."));
+            }
+        }
+        for (BuildOperation operation : operations) {
+            if (operation == null) continue;
+            String orphan = switch (operation.kind()) {
+                case RUN_TRANSFORMATION -> {
+                    GeneratedClassModel target = operation.target(project);
+                    yield target != null && target.materializedByTransformation() ? null
+                            : "its class is not a materialized transformation";
+                }
+                case PUBLISH_POPULATION -> {
+                    GeneratedClassModel target = operation.selectionTarget(project)
+                            instanceof PopulationSelection population
+                            ? project.findClass(population.className()) : null;
+                    yield target != null && target.materializedByTransformation() ? null
+                            : "its population is not drawn from a materialized transformation";
+                }
+                default -> null;
+            };
+            if (orphan != null) {
+                problems.add(Problem.warning("Build", "Step " + operation.describe(project)
+                        + " cannot run: " + orphan + "; remove it from the Build list."));
+            }
+        }
+    }
 
     /**
      * A graph class needs a start it can read QIDs from and an output class it produces.

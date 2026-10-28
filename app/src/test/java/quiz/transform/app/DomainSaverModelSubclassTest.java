@@ -148,6 +148,94 @@ class DomainSaverModelSubclassTest {
                 "PositionWithHolders"), "a refused definition records no producer");
     }
 
+    /**
+     * The build list is user-authored (directive 11). Saving a filter subclass used to insert
+     * Run transformation and Publish population before the first graph or save step, which
+     * for a Historical Positions-shaped build lands them ahead of the graph application the
+     * transformation needs. Save now leaves the list alone and names the missing steps.
+     */
+    @Test void savingAFilterSubclassLeavesTheBuildListToTheUser() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        java.util.List<wikidata.explore.model.BuildOperation> authored = List.of(
+                new wikidata.explore.model.BuildOperation(
+                        wikidata.explore.model.BuildOperation.Kind.GENERATE_PROJECT, ""),
+                new wikidata.explore.model.BuildOperation(
+                        wikidata.explore.model.BuildOperation.Kind.SAVE_PROJECT_RESULT, ""));
+        model.buildOperations(authored);
+        var held = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain working =
+                new quiz.transform.ui.WorkingDomain(positions(held));
+        var root = new quiz.transform.EditableGroup("Position");
+        root.replaceMembers(List.of(held));
+        var hasHolders = filter("Has holders", "holderCount", 0);
+        hasHolders.reproduce(root.getMembers());
+        root.addGroup(hasHolders);
+        working.defineSubclass("PositionWithHolders", "Position",
+                hasHolders.getMembers(), hasHolders);
+
+        DomainSaver.addSubclasses(model, working);
+
+        assertEquals(ids(authored), ids(model.buildOperations()), "Save added no build step");
+        assertEquals(List.of(
+                        "The build has no step Run transformation PositionWithHolders, so its "
+                                + "population is never materialized; add it to the Build list.",
+                        "The build has no step Publish population PositionWithHoldersPopulation, "
+                                + "so no importer can read its PositionWithHolders members; "
+                                + "add it to the Build list."),
+                wikidata.explore.model.GeneratedProjectModelValidator
+                        .transformationBuildProblems(model).stream()
+                        .map(wikidata.explore.model.GeneratedProjectModelValidator.Problem::message)
+                        .toList());
+    }
+
+    @Test void turningAFilterSubclassManualKeepsItsStepsAndReportsThemAsOrphaned() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        var held = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain filtered =
+                new quiz.transform.ui.WorkingDomain(positions(held));
+        var root = new quiz.transform.EditableGroup("Position");
+        root.replaceMembers(List.of(held));
+        var hasHolders = filter("Has holders", "holderCount", 0);
+        hasHolders.reproduce(root.getMembers());
+        root.addGroup(hasHolders);
+        filtered.defineSubclass("PositionWithHolders", "Position",
+                hasHolders.getMembers(), hasHolders);
+        DomainSaver.addSubclasses(model, filtered);
+        var output = model.findClass("PositionWithHolders");
+        var population = model.findSelection("PositionWithHoldersPopulation");
+        java.util.List<wikidata.explore.model.BuildOperation> authored = List.of(
+                new wikidata.explore.model.BuildOperation(
+                        wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION,
+                        output.declarationId()),
+                new wikidata.explore.model.BuildOperation(
+                        wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION,
+                        population.declarationId()));
+        model.buildOperations(authored);
+
+        var chosen = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain manual =
+                new quiz.transform.ui.WorkingDomain(positions(chosen));
+        manual.defineManualSubclass("PositionWithHolders", "Position", List.of(chosen),
+                "ChosenPositions");
+        DomainSaver.addSubclasses(model, manual);
+
+        assertEquals(ids(authored), ids(model.buildOperations()), "Save removed no build step");
+        var orphaned = wikidata.explore.model.GeneratedProjectModelValidator
+                .transformationBuildProblems(model).stream()
+                .map(wikidata.explore.model.GeneratedProjectModelValidator.Problem::message)
+                .toList();
+        assertEquals(2, orphaned.size(), orphaned.toString());
+        org.junit.jupiter.api.Assertions.assertTrue(orphaned.stream().allMatch(message ->
+                message.endsWith("remove it from the Build list.")), orphaned.toString());
+    }
+
+    private static List<String> ids(List<wikidata.explore.model.BuildOperation> operations) {
+        return operations.stream().map(operation -> operation.kind() + ":"
+                + operation.targetDeclarationId() + ":" + operation.declarationId()).toList();
+    }
+
     private static wikidata.explore.extract.WikidataDynamicObject position(
             String qid, int holders, int sitelinks) {
         var value = new wikidata.explore.extract.WikidataDynamicObject(qid, "Position");

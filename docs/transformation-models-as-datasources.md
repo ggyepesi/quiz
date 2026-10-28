@@ -570,6 +570,9 @@ that follows it is explanation of its type, not a separate instance-import opera
 - previews a bounded execution through the shared executor;
 - shows input/output counts and lineage;
 - saves the class-owned transformation configuration and explicit curation data;
+- never edits the project build list: Save names any Run transformation / Publish population
+  step the saved class still needs, or any step left targeting a class that is no longer
+  transformed, and the user places or removes it in ModelBuilder's Build list;
 - runs and materializes an output when asked;
 - never owns a private execution path.
 - edits the same saved operation/configuration references used by headless builds.

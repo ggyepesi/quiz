@@ -102,8 +102,17 @@ public final class DomainSaver implements DomainWriter {
         if (backing != null) reg.removeUnbackedNamedExcept(name, d.key());
         reg.save();
 
+        // The build list is the user's: Save never adds or removes its steps. It says which
+        // steps a saved transformation still needs, for the user to place in ModelBuilder.
+        List<String> buildSteps = owner == null ? List.of()
+                : wikidata.explore.model.GeneratedProjectModelValidator
+                        .transformationBuildProblems(owner).stream()
+                        .map(problem -> problem.message()).toList();
         return "Saved \"" + name + "\"  (" + members.size() + " members, types "
                 + types + ")\n" + file.getPath()
+                + (buildSteps.isEmpty() ? ""
+                        : "\nBuild list (edit it in ModelBuilder's project overview):\n  - "
+                                + String.join("\n  - ", buildSteps))
                 + (served
                         ? "\nRegistered — now in QuizFactory, the navigator, and the web."
                         : "\nRegistered as model working data — loadable in TransformApp, "
@@ -180,7 +189,6 @@ public final class DomainSaver implements DomainWriter {
                         ? existing : new wikidata.explore.model.PopulationSelection(selectionName);
         population.className(output.className());
         model.replaceSelection(population);
-        ensureBuildOperations(model, output, population);
     }
 
     private static void saveManualSubclass(
@@ -207,57 +215,6 @@ public final class DomainSaver implements DomainWriter {
         output.populationMode(wikidata.explore.model.ClassPopulationMode.GENERATED);
         output.subclassCondition(wikidata.explore.model.SubclassCondition.inPopulation(
                 population.name(), population.declarationId()));
-        removeMaterializedBuildOperations(model, output, population);
-    }
-
-    private static void removeMaterializedBuildOperations(
-            wikidata.explore.model.GeneratedProjectModel model,
-            wikidata.explore.model.GeneratedClassModel output,
-            wikidata.explore.model.PopulationSelection population) {
-        model.buildOperations(model.buildOperations().stream()
-                .filter(operation -> !(operation.kind()
-                        == wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION
-                        && operation.targetDeclarationId().equals(output.declarationId())))
-                .filter(operation -> !(operation.kind()
-                        == wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION
-                        && operation.targetDeclarationId().equals(population.declarationId())))
-                .toList());
-    }
-
-    private static void ensureBuildOperations(
-            wikidata.explore.model.GeneratedProjectModel model,
-            wikidata.explore.model.GeneratedClassModel output,
-            wikidata.explore.model.PopulationSelection population) {
-        java.util.List<wikidata.explore.model.BuildOperation> operations =
-                new java.util.ArrayList<>(model.buildOperations());
-        if (operations.stream().noneMatch(value -> value.kind()
-                == wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION
-                && value.targetDeclarationId().equals(output.declarationId()))) {
-            operations.add(insertionIndex(operations), new wikidata.explore.model.BuildOperation(
-                    wikidata.explore.model.BuildOperation.Kind.RUN_TRANSFORMATION,
-                    output.declarationId()));
-        }
-        if (operations.stream().noneMatch(value -> value.kind()
-                == wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION
-                && value.targetDeclarationId().equals(population.declarationId()))) {
-            operations.add(insertionIndex(operations), new wikidata.explore.model.BuildOperation(
-                    wikidata.explore.model.BuildOperation.Kind.PUBLISH_POPULATION,
-                    population.declarationId()));
-        }
-        model.buildOperations(operations);
-    }
-
-    private static int insertionIndex(
-            java.util.List<wikidata.explore.model.BuildOperation> operations) {
-        for (int i = 0; i < operations.size(); i++) {
-            var kind = operations.get(i).kind();
-            if (kind == wikidata.explore.model.BuildOperation.Kind.RUN_GRAPH_CONSTRAINT
-                    || kind == wikidata.explore.model.BuildOperation.Kind.APPLY_GRAPH_DECISIONS
-                    || kind == wikidata.explore.model.BuildOperation.Kind.SAVE_PROJECT_RESULT) {
-                return i;
-            }
-        }
-        return operations.size();
     }
 
     private static String sanitize(String name) {
