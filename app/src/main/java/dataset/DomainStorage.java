@@ -413,6 +413,25 @@ public final class DomainStorage {
                 + ".population.json");
     }
 
+    /**
+     * The members a population selection publishes across the import boundary, separate
+     * from the transformation output they were drawn from: a publication may also hold
+     * memberships a later step added, such as a graph expansion.
+     */
+    public File publishedPopulationFile(String projectName, String selectionDeclarationId) {
+        return new File(directory(projectName), key(selectionDeclarationId)
+                + PUBLICATION);
+    }
+
+    /** Inputs/signature beside a published population, for import staleness. */
+    public File publishedPopulationMetadataFile(
+            String projectName, String selectionDeclarationId) {
+        return new File(directory(projectName), key(selectionDeclarationId)
+                + ".publication.json");
+    }
+
+    private static final String PUBLICATION = ".publication.snapshot.json";
+
     public ConstructManifest constructManifest(String name) {
         File file = constructManifestFile(name);
         if (!file.isFile()) return new ConstructManifest();
@@ -474,7 +493,12 @@ public final class DomainStorage {
                             key(entry.name()) + ".graph.snapshot.json");
                     yield graph.isFile() ? graph.getName() : "";
                 }
-                case POPULATION, SELECTION -> model;
+                case POPULATION -> {
+                    File published = publishedPopulationFile(
+                            projectName, entry.declarationId());
+                    yield published.isFile() ? published.getName() : model;
+                }
+                case SELECTION -> model;
             };
             SavedConstruct saved = new SavedConstruct(entry, artifact);
             next.constructs.add(saved);
@@ -507,6 +531,7 @@ public final class DomainStorage {
                 case GRAPH -> key(now.name()) + ".graph.snapshot.json";
                 case CLASS -> now.materializedPopulation()
                         ? key(now.declarationId()) + ".population.snapshot.json" : "";
+                case POPULATION -> key(now.declarationId()) + PUBLICATION;
                 default -> "";
             };
             if (isOwnedSidecar(was.artifact)
@@ -517,6 +542,10 @@ public final class DomainStorage {
                     obsolete.add(new File(directory(projectName),
                             was.artifact.replace(".population.snapshot.json",
                                     ".population.json")));
+                }
+                if (was.artifact.endsWith(PUBLICATION)) {
+                    obsolete.add(new File(directory(projectName),
+                            was.artifact.replace(PUBLICATION, ".publication.json")));
                 }
             }
         }
@@ -550,12 +579,28 @@ public final class DomainStorage {
                 }
             }
         }
+        Set<String> currentPublications = current.entries().stream()
+                .filter(entry -> entry.kind() == ConstructInventory.Kind.POPULATION)
+                .map(entry -> key(entry.declarationId()) + PUBLICATION)
+                .collect(java.util.stream.Collectors.toSet());
+        File[] publications = directory(projectName).listFiles((dir, filename) ->
+                filename.endsWith(PUBLICATION));
+        if (publications != null) {
+            for (File sidecar : publications) {
+                if (!currentPublications.contains(sidecar.getName())) {
+                    obsolete.add(sidecar);
+                    obsolete.add(new File(directory(projectName), sidecar.getName().replace(
+                            PUBLICATION, ".publication.json")));
+                }
+            }
+        }
         return List.copyOf(obsolete);
     }
 
     private static boolean isOwnedSidecar(String artifact) {
         return artifact != null && (artifact.endsWith(".graph.snapshot.json")
-                || artifact.endsWith(".population.snapshot.json"))
+                || artifact.endsWith(".population.snapshot.json")
+                || artifact.endsWith(PUBLICATION))
                 && !artifact.contains("/") && !artifact.contains("\\");
     }
 

@@ -65,23 +65,6 @@ public final class ImportedMaterializedPopulationInputs {
                             + " names materialized class " + clazz.className()
                             + " which is not produced by " + ownerName);
                 }
-                File artifact = source.materializedPopulationFile(
-                        owner.name(), outputClass.declarationId());
-                if (!artifact.isFile()) {
-                    throw new IllegalStateException("Imported population " + selection.name()
-                            + " has no materialized output: " + artifact.getPath());
-                }
-                MaterializedPopulationStore.Metadata metadata =
-                        MaterializedPopulationStore.metadata(owner, outputClass, source);
-                if (metadata == null
-                        || !MaterializedPopulationStore.signature(outputClass)
-                                .equals(metadata.transformationSignature())
-                        || !source.savedSnapshotSignature(owner.name())
-                                .equals(metadata.inputSnapshotSignature())) {
-                    throw new IllegalStateException("Materialized output for "
-                            + selection.name() + " is stale; rebuild " + owner.name()
-                            + " before building " + consumer.name());
-                }
                 wikidata.explore.model.Selection byId = owner.findSelectionById(
                         selection.declarationId());
                 wikidata.explore.model.Selection byName = owner.findSelection(
@@ -94,11 +77,28 @@ public final class ImportedMaterializedPopulationInputs {
                     throw new IllegalStateException("Published population " + selection.name()
                             + " is no longer declared by " + owner.name());
                 }
+                File artifact = source.publishedPopulationFile(
+                        owner.name(), ownerSelection.declarationId());
+                if (!artifact.isFile()) {
+                    throw new IllegalStateException("Imported population " + selection.name()
+                            + " has not been published: " + artifact.getPath());
+                }
+                MaterializedPopulationStore.Metadata metadata =
+                        MaterializedPopulationStore.publication(owner, ownerSelection, source);
+                if (metadata == null
+                        || !MaterializedPopulationStore.signature(outputClass)
+                                .equals(metadata.transformationSignature())
+                        || !source.savedSnapshotSignature(owner.name())
+                                .equals(metadata.inputSnapshotSignature())) {
+                    throw new IllegalStateException("Published population "
+                            + selection.name() + " is stale; rebuild " + owner.name()
+                            + " before building " + consumer.name());
+                }
                 Set<String> allowed = new LinkedHashSet<>(ownerSelection.instanceQids());
                 publishedIdentities.addAll(allowed);
                 Set<String> found = new LinkedHashSet<>();
-                for (WikidataDynamicObject object : MaterializedPopulationStore.load(
-                        owner, outputClass, source)) {
+                for (WikidataDynamicObject object : MaterializedPopulationStore.loadPublished(
+                        owner, ownerSelection, source)) {
                     String qid = object == null ? "" : object.getIdentifier();
                     if (!allowed.contains(qid)) continue;
                     found.add(qid);
@@ -112,7 +112,7 @@ public final class ImportedMaterializedPopulationInputs {
                 Set<String> missing = new LinkedHashSet<>(allowed);
                 missing.removeAll(found);
                 if (!missing.isEmpty()) {
-                    throw new IllegalStateException("Materialized output for "
+                    throw new IllegalStateException("Published population "
                             + selection.name() + " is missing " + missing.size()
                             + " published identities (first: " + missing.iterator().next() + ")");
                 }

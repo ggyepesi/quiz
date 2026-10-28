@@ -47,6 +47,9 @@ class TransformationBuildTest {
         assertEquals(List.of("Q1"), published.instanceQids());
         assertTrue(storage.materializedPopulationFile(
                 model.name(), model.findClass("PositionWithHolders").declarationId()).isFile());
+        assertTrue(storage.publishedPopulationFile(
+                model.name(), published.declarationId()).isFile(),
+                "the publication is the selection's own artifact");
         GeneratedProjectModel saved = new GeneratedProjectModelStore().load(
                 storage.modelFile(model.name()));
         assertEquals(List.of("Q1"), ((PopulationSelection) saved.findSelection(

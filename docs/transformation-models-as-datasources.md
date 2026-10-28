@@ -474,11 +474,19 @@ historicalpositions.model.json
 historicalpositions.snapshot.json
 decldc7e9cd5ff6d4bc38bafd1bd87e0f18e.population.snapshot.json
 decldc7e9cd5ff6d4bc38bafd1bd87e0f18e.population.json
+declcdf5dab950474e99865ac7ada2512393.publication.snapshot.json
+declcdf5dab950474e99865ac7ada2512393.publication.json
 historicalpositions.build.json
 ```
 
-The population filenames use the normalized `PositionWithHolders.declarationId`, not the class
-name, so a rename leaves the artifact attached.
+Each file has exactly one producer. `RUN_TRANSFORMATION` writes the `*.population.*` pair: the
+transformation's own output, exactly the members its steps kept, keyed by the normalized
+`PositionWithHolders.declarationId` so a class rename leaves it attached. `PUBLISH_POPULATION`
+writes the `*.publication.*` pair, keyed by the population selection's declaration id: the class's
+members at publication, which include the memberships the predecessor expansion added after the
+filter. Both metadata files record the transformation signature and input snapshot signature they
+were drawn from, so either goes stale when those change; neither stands in for the other. Save
+removes a publication together with the selection that owns it.
 
 The exact filenames should follow `DomainStorage`; no UI or provider constructs paths locally.
 One explicit Save model/domain operation states and writes every affected file.
@@ -534,8 +542,9 @@ Class configuration and instance publication cross different boundaries:
 An ordinary referenced population's QIDs enter the shared acquisition and materialization
 pipeline, so its members receive the imported class schema without importing the owner's
 intermediate objects. A population over a materialized class uses the same selection boundary;
-the class also owns one separate typed `*.population.snapshot.json` artifact. The importer loads only
-the selected members of that artifact into the shared object graph: transformed fields and
+the selection also owns one separate typed `*.publication.snapshot.json` artifact, written by
+`PUBLISH_POPULATION`. The importer loads only the selected members of that publication into the
+shared object graph: transformed fields and
 links survive, no population request is issued, and the owner's complete snapshot remains
 private. This is not class-snapshot import under another name.
 
@@ -661,7 +670,7 @@ failure inside a request list.
   read-only typed objects; the owner's class snapshot and intermediate instances stay in the
   owning model.
 - Importing an ordinary `PopulationSelection` imports only the identity set; importing a
-  transformation-produced one brings exactly its selected members from the published artifact.
+  transformation-produced one brings exactly its selected members from that selection's publication.
 - A missing/stale input names the exact model, class, transformation, and file and never falls
   back to inherited membership.
 - An unrelated model-only edit does not stale the transformation output.

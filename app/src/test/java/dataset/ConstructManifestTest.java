@@ -129,6 +129,33 @@ class ConstructManifestTest {
         assertFalse(Files.exists(metadata));
     }
 
+    @Test void removingAPublishedPopulationDeletesItsPublicationAndMetadata() throws Exception {
+        DomainStorage storage = DomainStorage.in(temporary.toFile());
+        GeneratedProjectModel project = project();
+        PopulationSelection population = (PopulationSelection)
+                project.findSelection("PositionsForHistory");
+        Files.createDirectories(storage.directory(project.name()).toPath());
+        Path publication = storage.publishedPopulationFile(
+                project.name(), population.declarationId()).toPath();
+        Path metadata = storage.publishedPopulationMetadataFile(
+                project.name(), population.declarationId()).toPath();
+        Files.writeString(publication, "population");
+        Files.writeString(metadata, "metadata");
+        storage.reconcileConstructs(project.name(), ConstructInventory.of(project));
+        assertEquals(publication.toFile().getName(), storage.constructManifest(project.name())
+                .constructs.stream().filter(value -> value.kind
+                        == ConstructInventory.Kind.POPULATION)
+                .findFirst().orElseThrow().artifact);
+
+        project.removeSelection(population.name());
+        List<java.io.File> removed = storage.reconcileConstructs(
+                project.name(), ConstructInventory.of(project));
+
+        assertEquals(List.of(publication.toFile(), metadata.toFile()), removed);
+        assertFalse(Files.exists(publication));
+        assertFalse(Files.exists(metadata));
+    }
+
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("Historical Positions");

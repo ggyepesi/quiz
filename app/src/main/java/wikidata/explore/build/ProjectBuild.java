@@ -319,26 +319,36 @@ public final class ProjectBuild {
                     because.add("the population's class has no transformation producer");
                     break;
                 }
-                File output = storage.materializedPopulationFile(
-                        model.name(), outputClass.declarationId());
-                if (!output.isFile()) {
+                File output = storage.publishedPopulationFile(
+                        model.name(), population.declarationId());
+                MaterializedPopulationStore.Metadata metadata =
+                        MaterializedPopulationStore.publication(model, population, storage);
+                if (!output.isFile() || metadata == null) {
                     state = State.MISSING;
-                    because.add("no materialized output of " + outputClass.className());
+                    because.add("no published population at " + output.getPath());
+                } else if (!MaterializedPopulationStore.signature(outputClass)
+                        .equals(metadata.transformationSignature())) {
+                    state = State.STALE;
+                    because.add("the saved transformation changed");
+                } else if (!storage.savedSnapshotSignature(model.name())
+                        .equals(metadata.inputSnapshotSignature())) {
+                    state = State.STALE;
+                    because.add("the generated input snapshot changed");
                 } else {
                     try {
                         List<String> qids = MaterializedPopulationStore
-                                .load(model, outputClass, storage).stream()
+                                .loadPublished(model, population, storage).stream()
                                 .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
                                 .filter(java.util.Objects::nonNull).distinct().toList();
                         if (!population.instanceQids().equals(qids)) {
                             state = State.STALE;
-                            because.add("the published QID list differs from the materialized output");
+                            because.add("the selection's QID list differs from its publication");
                         } else {
                             state = State.CURRENT;
                         }
                     } catch (Exception unreadable) {
                         state = State.FAILED;
-                        because.add("the materialized output cannot be read: "
+                        because.add("the published population cannot be read: "
                                 + unreadable.getMessage());
                     }
                 }
@@ -502,19 +512,15 @@ public final class ProjectBuild {
                     PopulationSelection population =
                             (PopulationSelection) operation.selectionTarget(model);
                     GeneratedClassModel outputClass = model.findClass(population.className());
-                    List<wikidata.explore.extract.WikidataDynamicObject> published;
-                    if (run != null) {
-                        published = run.dynamicObjects().stream()
-                                .filter(object -> object.directClassNames().contains(
-                                        population.className()))
-                                .toList();
-                        files.addAll(MaterializedPopulationStore.save(
-                                model, outputClass, published, storage,
-                                run.generatedFromSignature()));
-                    } else {
-                        published = MaterializedPopulationStore.load(
-                                model, outputClass, storage);
-                    }
+                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    List<wikidata.explore.extract.WikidataDynamicObject> published =
+                            run.dynamicObjects().stream()
+                                    .filter(object -> object.directClassNames().contains(
+                                            population.className()))
+                                    .toList();
+                    files.addAll(MaterializedPopulationStore.publish(
+                            model, population, outputClass, published, storage,
+                            run.generatedFromSignature()));
                     List<String> qids = published.stream()
                             .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
                             .filter(java.util.Objects::nonNull).distinct().toList();
