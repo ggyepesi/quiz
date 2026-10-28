@@ -178,13 +178,20 @@ public final class GraphResults {
             throws Exception {
         wikidata.explore.model.GraphClassSource source = graphClass.graphSource();
         if (source == null || source.outputClassName().isBlank()) return null;
-        GraphDiscoveryConfiguration.PopulationOperation operation = source.nextNodes().stream()
+        return GraphDiscoveryResultStore.load(model.name(), graphClass.className(),
+                source.outputClassName(), populationOperation(source), storage);
+    }
+
+    /** Whether applying {@code source}'s result narrows or adds to its output class: the
+     *  operation of its last class-population node. */
+    public static GraphDiscoveryConfiguration.PopulationOperation populationOperation(
+            wikidata.explore.model.GraphClassSource source) {
+        return source == null ? GraphDiscoveryConfiguration.PopulationOperation.NARROW
+                : source.nextNodes().stream()
                 .filter(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION)
                 .map(GraphDiscoveryConfiguration.NextNode::populationOperation)
                 .reduce((first, second) -> second)
                 .orElse(GraphDiscoveryConfiguration.PopulationOperation.NARROW);
-        return GraphDiscoveryResultStore.load(model.name(), graphClass.className(),
-                source.outputClassName(), operation, storage);
     }
 
     /**

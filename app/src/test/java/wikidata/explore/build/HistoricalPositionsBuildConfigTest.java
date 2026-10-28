@@ -42,6 +42,7 @@ class HistoricalPositionsBuildConfigTest {
                         BuildOperation.Kind.RUN_GRAPH_CONSTRAINT,
                         BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
                         BuildOperation.Kind.GENERATE_PROJECT,
+                        BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
                         BuildOperation.Kind.RUN_TRANSFORMATION,
                         BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
                         BuildOperation.Kind.PUBLISH_POPULATION,

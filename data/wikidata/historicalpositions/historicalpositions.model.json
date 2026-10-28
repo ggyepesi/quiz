@@ -3035,6 +3035,10 @@
     "declarationId" : "decl:bc418615-d402-455e-adc9-019f9fcf428b",
     "kind" : "GENERATE_PROJECT"
   }, {
+    "declarationId" : "decl:7f6a2bef-7b20-4026-8f49-ef96dff1fc0f",
+    "kind" : "APPLY_GRAPH_DECISIONS",
+    "targetDeclarationId" : "decl:69c7443c-920f-418c-8d3d-a008ed58d6a0"
+  }, {
     "declarationId" : "decl:57ada838-1d16-40d2-bc20-07914cbd3535",
     "kind" : "RUN_TRANSFORMATION",
     "targetDeclarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e"

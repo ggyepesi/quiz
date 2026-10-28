@@ -124,9 +124,13 @@ public final class ProjectBuild {
         planning.add(model.name());
         List<Step> steps = new ArrayList<>();
         String upstream = null;
+        Map<String, String> misordered = orderProblems(model);
         for (BuildOperation operation : model.buildOperations()) {
             String description = operation.describe(model);
-            Step step = upstream == null
+            String problem = misordered.get(operation.declarationId());
+            Step step = problem != null
+                    ? new Step(operation, description, State.FAILED, List.of(problem))
+                    : upstream == null
                     ? own(operation, description, model, storage, saved, planning)
                     : new Step(operation, description, State.STALE,
                             List.of(upstream + " runs"));
@@ -135,6 +139,75 @@ public final class ProjectBuild {
         }
         planning.remove(model.name());
         return List.copyOf(steps);
+    }
+
+    /**
+     * Steps that would read a membership an earlier step has silently discarded, keyed by
+     * operation declaration id. Generate replaces the whole run and carries forward only
+     * graph results that ADD members (as pending generation input), so it discards every
+     * narrowing applied before it; a transformation rebuilds its output class from its
+     * input, so it discards every graph application to that class. Until the discarded
+     * application is applied again, a later transformation, graph run, publication or save
+     * reads the wrong population — Historical Positions once filtered the whole Position
+     * population because its second Generate undid GraphConstraint's narrowing.
+     */
+    static Map<String, String> orderProblems(GeneratedProjectModel model) {
+        Map<String, String> problems = new LinkedHashMap<>();
+        Map<String, String> applied = new LinkedHashMap<>();   // graph id -> its Apply step
+        Map<String, String> discarded = new LinkedHashMap<>(); // graph id -> why
+        for (BuildOperation operation : model.buildOperations()) {
+            String description = operation.describe(model);
+            GeneratedClassModel target = operation.target(model);
+            switch (operation.kind()) {
+                case GENERATE_PROJECT -> applied.entrySet().removeIf(entry -> {
+                    GeneratedClassModel graph = model.findClassById(entry.getKey());
+                    if (graph == null || GraphResults.populationOperation(graph.graphSource())
+                            != datasource.graph.GraphDiscoveryConfiguration
+                                    .PopulationOperation.NARROW) {
+                        return false;
+                    }
+                    discarded.put(entry.getKey(), description + " discards the narrowing "
+                            + "applied by " + entry.getValue());
+                    return true;
+                });
+                case APPLY_GRAPH_DECISIONS -> {
+                    if (target == null) break;
+                    applied.put(target.declarationId(), description);
+                    discarded.remove(target.declarationId());
+                }
+                case RUN_TRANSFORMATION, RUN_GRAPH_CONSTRAINT, PUBLISH_POPULATION,
+                     SAVE_PROJECT_RESULT -> {
+                    java.util.List<String> reasons = discarded.entrySet().stream()
+                            .filter(entry -> operation.kind()
+                                    != BuildOperation.Kind.RUN_GRAPH_CONSTRAINT
+                                    || target == null
+                                    || !entry.getKey().equals(target.declarationId()))
+                            .map(entry -> entry.getValue() + "; apply "
+                                    + model.findClassById(entry.getKey()).className()
+                                    + " again before this step")
+                            .toList();
+                    if (!reasons.isEmpty()) {
+                        problems.put(operation.declarationId(), String.join("; ", reasons));
+                    }
+                    if (operation.kind() == BuildOperation.Kind.RUN_TRANSFORMATION
+                            && target != null) {
+                        applied.entrySet().removeIf(entry -> {
+                            GeneratedClassModel graph = model.findClassById(entry.getKey());
+                            if (graph == null || graph.graphSource() == null
+                                    || !target.className().equalsIgnoreCase(
+                                            graph.graphSource().outputClassName())) {
+                                return false;
+                            }
+                            discarded.put(entry.getKey(), description + " rebuilds "
+                                    + target.className() + " and discards " + entry.getValue());
+                            return true;
+                        });
+                    }
+                }
+                case BUILD_DEPENDENCY -> { }
+            }
+        }
+        return problems;
     }
 
     /** A step's state from its own saved output, as if nothing before it ran. */
@@ -347,15 +420,21 @@ public final class ProjectBuild {
         List<Done> done = new ArrayList<>();
         List<String> files = new ArrayList<>();
         GenerationRun run = null;
-        State outcome = State.CURRENT;
+        // A misordered build is refused before any step runs: running the steps before the
+        // misordered one would spend a Wikidata generation on a result it cannot use.
+        State outcome = orderProblems(model).isEmpty() ? State.CURRENT : State.FAILED;
+        if (outcome == State.FAILED) {
+            say.accept("Refused: the build order discards an applied graph result; "
+                    + "nothing was run.");
+        }
         for (Step step : plan) {
-            if (outcome != State.CURRENT) {
-                done.add(new Done(step, Action.NOT_REACHED, "the build stopped before it"));
-                continue;
-            }
             if (step.state() == State.FAILED) {
                 outcome = State.FAILED;
                 done.add(new Done(step, Action.STOPPED, String.join("; ", step.because())));
+                continue;
+            }
+            if (outcome != State.CURRENT) {
+                done.add(new Done(step, Action.NOT_REACHED, "the build stopped before it"));
                 continue;
             }
             if (step.state() == State.CURRENT) {
