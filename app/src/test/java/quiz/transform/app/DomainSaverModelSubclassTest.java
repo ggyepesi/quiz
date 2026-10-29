@@ -274,6 +274,80 @@ class DomainSaverModelSubclassTest {
                 "the refused save changed nothing about the class");
     }
 
+    /** The UI gives both producers the default name {@code <Subclass>Population}. The
+     *  filter-to-manual direction must not preserve that selection's declaration id while
+     *  changing it from a published subclass population into a frozen base-class population. */
+    @Test void switchingAFilterSubclassToManualDoesNotRepurposeItsPublication() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        var held = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain filtered =
+                new quiz.transform.ui.WorkingDomain(positions(held));
+        var root = new quiz.transform.EditableGroup("Position");
+        root.replaceMembers(List.of(held));
+        var hasHolders = filter("Has holders", "holderCount", 0);
+        hasHolders.reproduce(root.getMembers());
+        root.addGroup(hasHolders);
+        filtered.defineSubclass("PositionWithHolders", "Position",
+                hasHolders.getMembers(), hasHolders);
+        DomainSaver.addSubclasses(model, filtered);
+        var before = (wikidata.explore.model.PopulationSelection)
+                model.findSelection("PositionWithHoldersPopulation");
+        String declarationId = before.declarationId();
+
+        var chosen = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain manual =
+                new quiz.transform.ui.WorkingDomain(positions(chosen));
+        manual.defineManualSubclass("PositionWithHolders", "Position", List.of(chosen),
+                "PositionWithHoldersPopulation");
+
+        IllegalArgumentException refused = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, () -> DomainSaver.addSubclasses(model, manual));
+
+        org.junit.jupiter.api.Assertions.assertTrue(refused.getMessage().contains(
+                "already exists as a population of PositionWithHolders"),
+                refused.getMessage());
+        var after = (wikidata.explore.model.PopulationSelection)
+                model.findSelection("PositionWithHoldersPopulation");
+        assertEquals(declarationId, after.declarationId());
+        assertEquals("PositionWithHolders", after.className());
+        assertEquals(List.of(), after.instanceQids());
+        assertEquals(wikidata.explore.model.ClassPopulationMode.MATERIALIZED_TRANSFORM,
+                model.findClass("PositionWithHolders").populationMode());
+    }
+
+    /** A refusal is transactional even when the subclass did not exist before Save. The
+     *  collision is discovered after the candidate class is constructed, but that candidate
+     *  must never leak into the live editor model. */
+    @Test void aLatePopulationCollisionLeavesNoNewSubclassInTheLiveModel() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        var occupied = new wikidata.explore.model.PopulationSelection(
+                "PositionWithHoldersPopulation");
+        occupied.className("Position");
+        occupied.instanceQids(List.of("Q99"));
+        model.addSelection(occupied);
+        var held = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain filtered =
+                new quiz.transform.ui.WorkingDomain(positions(held));
+        var root = new quiz.transform.EditableGroup("Position");
+        root.replaceMembers(List.of(held));
+        var hasHolders = filter("Has holders", "holderCount", 0);
+        hasHolders.reproduce(root.getMembers());
+        root.addGroup(hasHolders);
+        filtered.defineSubclass("PositionWithHolders", "Position",
+                hasHolders.getMembers(), hasHolders);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> DomainSaver.addSubclasses(model, filtered));
+
+        org.junit.jupiter.api.Assertions.assertNull(model.findClass("PositionWithHolders"));
+        var unchanged = (wikidata.explore.model.PopulationSelection)
+                model.findSelection("PositionWithHoldersPopulation");
+        assertEquals("Position", unchanged.className());
+        assertEquals(List.of("Q99"), unchanged.instanceQids());
+    }
+
     private static List<String> ids(List<wikidata.explore.model.BuildOperation> operations) {
         return operations.stream().map(operation -> operation.kind() + ":"
                 + operation.targetDeclarationId() + ":" + operation.declarationId()).toList();

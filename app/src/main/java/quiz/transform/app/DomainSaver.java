@@ -136,6 +136,17 @@ public final class DomainSaver implements DomainWriter {
     /** Persist only semantic subclasses; projected/joined result classes have no base. */
     static void addSubclasses(
             wikidata.explore.model.GeneratedProjectModel model, DomainModel schema) {
+        // A save is one model change. Validate and apply every subclass on a detached copy,
+        // then replace the live model only when the whole batch succeeds. Otherwise a late
+        // name/role collision can leave earlier subclasses — or the just-created class — in
+        // the editor even though Save reports that nothing was saved.
+        wikidata.explore.model.GeneratedProjectModel candidate = model.copy();
+        addSubclassesInPlace(candidate, schema);
+        model.copyContentsFrom(candidate);
+    }
+
+    private static void addSubclassesInPlace(
+            wikidata.explore.model.GeneratedProjectModel model, DomainModel schema) {
         for (String type : schema.types()) {
             if (type == null || type.isBlank()) continue;
             String base = schema.baseType(type);
@@ -217,6 +228,14 @@ public final class DomainSaver implements DomainWriter {
                 && !(existing instanceof wikidata.explore.model.PopulationSelection)) {
             throw new IllegalArgumentException("Selection '" + saved.populationName()
                     + "' already exists and is not a population selection.");
+        }
+        if (existing instanceof wikidata.explore.model.PopulationSelection population
+                && !population.className().equals(input.className())) {
+            throw new IllegalArgumentException("Selection '" + saved.populationName()
+                    + "' already exists as a population of " + population.className()
+                    + ", so it cannot become the frozen population of "
+                    + output.className() + ". Rename or remove it in ModelBuilder first;"
+                    + " nothing was saved.");
         }
         wikidata.explore.model.PopulationSelection population =
                 new wikidata.explore.model.PopulationSelection(saved.populationName());
