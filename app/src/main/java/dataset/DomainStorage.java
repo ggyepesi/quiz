@@ -406,6 +406,21 @@ public final class DomainStorage {
                 + ".population.snapshot.json");
     }
 
+    /**
+     * Replaces {@code to} with {@code from} in one rename where the file system allows it,
+     * so a reader sees the old file or the new one and never a half-written one.
+     */
+    public static void replaceAtomically(File from, File to) throws IOException {
+        try {
+            Files.move(from.toPath(), to.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+            Files.move(from.toPath(), to.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
     /** Inputs/signature beside a materialized population, for build staleness. */
     public File materializedPopulationMetadataFile(
             String projectName, String classDeclarationId) {

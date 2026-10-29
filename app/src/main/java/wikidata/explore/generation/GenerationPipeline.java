@@ -329,6 +329,26 @@ public class GenerationPipeline {
             work.CancellationToken cancellation,
             datasource.api.SourceExecutionPlan sourcePlan,
             WikidataSparqlClient dbpedia) throws Exception {
+        return fullRun(run, depth, client, log, entityApi, cancellation, sourcePlan, dbpedia,
+                null);
+    }
+
+    /**
+     * As above, reading imported publications from {@code storage} — the same storage a full
+     * Generate reads them from, so a preview and the run it previews see one publication.
+     * Null means the default location, by the one rule in
+     * {@link ImportedMaterializedPopulationInputs#resolve}.
+     */
+    public GenerationRun fullRun(
+            CompiledPipelineRun run,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation,
+            datasource.api.SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia,
+            dataset.DomainStorage storage) throws Exception {
 
         if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
         if (run.blocked()) throw new IllegalStateException(run.explain());
@@ -341,8 +361,7 @@ public class GenerationPipeline {
         wikidata.explore.compiled.CompiledProjectModel compiled = run.model();
         RuleNode plan = plan(snapshot);
         ImportedMaterializedPopulationInputs materializedInputs =
-                ImportedMaterializedPopulationInputs.resolve(
-                        snapshot, dataset.DomainStorage.inDefaultLocation());
+                ImportedMaterializedPopulationInputs.resolve(snapshot, storage);
         PopulationSourceExecution.Resolution populationInput =
                 PopulationSourceExecution.resolve(
                         snapshot, snapshot.rootClass(), sourcePlan, materializedInputs);

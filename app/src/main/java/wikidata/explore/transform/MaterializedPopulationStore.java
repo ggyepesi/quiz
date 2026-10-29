@@ -83,16 +83,32 @@ public final class MaterializedPopulationStore {
                         model.name(), population.declarationId()));
     }
 
+    /**
+     * Writes the members and then their metadata, each through a temporary sibling and one
+     * rename. The old metadata is removed first, so an interruption between the two leaves
+     * members without metadata — read as missing and rebuilt — never new members under the
+     * old signatures, which a reader would take for current.
+     */
     private static List<String> write(GeneratedProjectModel model,
                                       GeneratedClassModel outputClass,
                                       List<WikidataDynamicObject> members,
                                       String inputSnapshotSignature,
                                       File output, File metadata) throws Exception {
-        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(members, output, model);
-        if (metadata.getParentFile() != null) metadata.getParentFile().mkdirs();
-        JSON.writeValue(metadata, new Metadata(signature(outputClass),
-                inputSnapshotSignature == null ? "" : inputSnapshotSignature,
-                members == null ? 0 : members.size()));
+        if (output.getParentFile() != null) output.getParentFile().mkdirs();
+        File outputTemp = new File(output.getPath() + ".tmp");
+        File metadataTemp = new File(metadata.getPath() + ".tmp");
+        try {
+            new WikidataDynamicObjectJsonStore().saveWithFieldGraph(members, outputTemp, model);
+            JSON.writeValue(metadataTemp, new Metadata(signature(outputClass),
+                    inputSnapshotSignature == null ? "" : inputSnapshotSignature,
+                    members == null ? 0 : members.size()));
+            java.nio.file.Files.deleteIfExists(metadata.toPath());
+            DomainStorage.replaceAtomically(outputTemp, output);
+            DomainStorage.replaceAtomically(metadataTemp, metadata);
+        } finally {
+            java.nio.file.Files.deleteIfExists(outputTemp.toPath());
+            java.nio.file.Files.deleteIfExists(metadataTemp.toPath());
+        }
         return List.of(output.getPath(), metadata.getPath());
     }
 
@@ -110,11 +126,16 @@ public final class MaterializedPopulationStore {
                 model.name(), population.declarationId()));
     }
 
+    /** The metadata in {@code file}, or null when there is none. A file that exists but
+     *  cannot be read is reported as unreadable, naming it — never as absent, which would
+     *  send the reader to rebuild something that is present and damaged. */
     private static Metadata read(File file) {
+        if (!file.isFile()) return null;
         try {
-            return file.isFile() ? JSON.readValue(file, Metadata.class) : null;
+            return JSON.readValue(file, Metadata.class);
         } catch (Exception unreadable) {
-            return null;
+            throw new IllegalStateException("Cannot read population metadata "
+                    + file.getPath() + ": " + unreadable.getMessage(), unreadable);
         }
     }
 

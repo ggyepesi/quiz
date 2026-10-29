@@ -158,6 +158,47 @@ class TransformationBuildTest {
                 "the saved selection still describes the last complete publication");
     }
 
+    /** Damaged metadata used to read as "no materialized population", sending the user to
+     *  rebuild an output that is present. It now fails naming the file it cannot read. */
+    @Test void unreadableMetadataIsReportedAsUnreadableNotMissing() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = model();
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(position("Q1", 2)), List.of(), null, model.copy()),
+                null, List.of()), storage).write();
+        GeneratedClassModel output = model.findClass("PositionWithHolders");
+        MaterializedPopulationStore.save(model, output, List.of(position("Q1", 2)), storage,
+                storage.savedSnapshotSignature(model.name()));
+        java.io.File metadata = storage.materializedPopulationMetadataFile(
+                model.name(), output.declarationId());
+        java.nio.file.Files.writeString(metadata.toPath(), "{ not json");
+
+        ProjectBuild.Step transform = ProjectBuild.plan(model, storage).stream()
+                .filter(step -> step.operation().kind() == BuildOperation.Kind.RUN_TRANSFORMATION)
+                .findFirst().orElseThrow();
+
+        assertEquals(ProjectBuild.State.FAILED, transform.state(), transform.explain());
+        assertTrue(transform.explain().contains("Cannot read population metadata "
+                + metadata.getPath()), transform.explain());
+    }
+
+    @Test void aPopulationIsWrittenWithoutLeavingTemporaryFiles() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = model();
+        GeneratedClassModel output = model.findClass("PositionWithHolders");
+
+        List<String> written = MaterializedPopulationStore.save(
+                model, output, List.of(position("Q1", 2)), storage, "input");
+
+        assertEquals(List.of("Q1"), MaterializedPopulationStore.load(model, output, storage)
+                .stream().map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals("input", MaterializedPopulationStore.metadata(model, output, storage)
+                .inputSnapshotSignature());
+        for (String path : written) {
+            assertTrue(!new java.io.File(path + ".tmp").exists(), path + ".tmp is left behind");
+        }
+    }
+
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.name("Positions");

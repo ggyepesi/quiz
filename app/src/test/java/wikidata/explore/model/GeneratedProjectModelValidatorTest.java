@@ -38,6 +38,29 @@ class GeneratedProjectModelValidatorTest {
                 GeneratedProjectModelValidator.validate(project).format());
     }
 
+    /** isSameOrSubclass is true for a class and itself, so a transformation reading its own
+     *  output passed as "extends its input" while it could never be materialized. */
+    @Test void aTransformationCannotReadItsOwnOutputClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.rootClass(input);
+        project.addClass(output);
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(output.declarationId(), output.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.format().contains("cannot read its own output class"),
+                result.format());
+    }
+
     @Test void generatedPopulationCannotRetainATransformationSource() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel input = new GeneratedClassModel("Position");

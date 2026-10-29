@@ -8,7 +8,6 @@ import wikidata.explore.model.GeneratedProjectModel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 /**
@@ -67,8 +66,8 @@ public final class GenerationRecoveryStore {
                     selfReferences);
             JSON.writerWithDefaultPrettyPrinter().writeValue(metadataTemp,
                     new Metadata(checkpoint.modelSignature(), checkpoint.quality()));
-            move(snapshotTemp, snapshot);
-            move(metadataTemp, metadata);
+            dataset.DomainStorage.replaceAtomically(snapshotTemp, snapshot);
+            dataset.DomainStorage.replaceAtomically(metadataTemp, metadata);
         } finally {
             Files.deleteIfExists(snapshotTemp.toPath());
             Files.deleteIfExists(metadataTemp.toPath());
@@ -91,15 +90,6 @@ public final class GenerationRecoveryStore {
     public void clear() throws IOException {
         Files.deleteIfExists(snapshot.toPath());
         Files.deleteIfExists(metadata.toPath());
-    }
-
-    private static void move(File from, File to) throws IOException {
-        try {
-            Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE);
-        } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
-            Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     public record Recovered(WikidataDynamicObjectJsonStore.LoadedSnapshot snapshot,

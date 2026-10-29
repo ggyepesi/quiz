@@ -320,8 +320,14 @@ public final class ProjectBuild {
                 }
                 File output = storage.materializedPopulationFile(
                         model.name(), outputClass.declarationId());
-                MaterializedPopulationStore.Metadata metadata =
-                        MaterializedPopulationStore.metadata(model, outputClass, storage);
+                MaterializedPopulationStore.Metadata metadata;
+                try {
+                    metadata = MaterializedPopulationStore.metadata(model, outputClass, storage);
+                } catch (IllegalStateException unreadable) {
+                    state = State.FAILED;
+                    because.add(unreadable.getMessage());
+                    break;
+                }
                 if (!output.isFile() || metadata == null) {
                     state = State.MISSING;
                     because.add("no materialized population at " + output.getPath());
@@ -352,8 +358,14 @@ public final class ProjectBuild {
                 }
                 File output = storage.publishedPopulationFile(
                         model.name(), population.declarationId());
-                MaterializedPopulationStore.Metadata metadata =
-                        MaterializedPopulationStore.publication(model, population, storage);
+                MaterializedPopulationStore.Metadata metadata;
+                try {
+                    metadata = MaterializedPopulationStore.publication(model, population, storage);
+                } catch (IllegalStateException unreadable) {
+                    state = State.FAILED;
+                    because.add(unreadable.getMessage());
+                    break;
+                }
                 if (!output.isFile() || metadata == null) {
                     state = State.MISSING;
                     because.add("no published population at " + output.getPath());

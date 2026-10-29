@@ -169,6 +169,22 @@ public final class DomainSaver implements DomainWriter {
                 model.findClass(saved.inputClass());
         if (input == null) throw new IllegalArgumentException(
                 "Transformation input class no longer exists: " + saved.inputClass());
+        String selectionName = output.className() + "Population";
+        wikidata.explore.model.Selection named = model.findSelection(selectionName);
+        // The publication selection is reused only when it already publishes this class.
+        // A manual subclass's frozen population of the same name is over the BASE class;
+        // retargeting it would silently change what every graph start or bound naming it
+        // means, and keep its hand-picked QIDs until the next publish.
+        if (named != null && !(named instanceof wikidata.explore.model.PopulationSelection
+                existing && existing.className().equals(output.className()))) {
+            throw new IllegalArgumentException("Selection '" + selectionName
+                    + "' already exists" + (named instanceof wikidata.explore.model
+                            .PopulationSelection existing
+                            ? " as a population of " + existing.className() : "")
+                    + ", so it cannot become the published population of "
+                    + output.className() + ". Rename or remove it in ModelBuilder first;"
+                    + " nothing was saved.");
+        }
         output.populationMode(
                 wikidata.explore.model.ClassPopulationMode.MATERIALIZED_TRANSFORM);
         output.subclassCondition(wikidata.explore.model.SubclassCondition.none());
@@ -182,10 +198,8 @@ public final class DomainSaver implements DomainWriter {
         }
         output.transformationSource(transformation);
 
-        String selectionName = output.className() + "Population";
         wikidata.explore.model.PopulationSelection population =
-                model.findSelection(selectionName)
-                        instanceof wikidata.explore.model.PopulationSelection existing
+                named instanceof wikidata.explore.model.PopulationSelection existing
                         ? existing : new wikidata.explore.model.PopulationSelection(selectionName);
         population.className(output.className());
         model.replaceSelection(population);

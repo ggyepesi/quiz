@@ -231,6 +231,49 @@ class DomainSaverModelSubclassTest {
                 message.endsWith("remove it from the Build list.")), orphaned.toString());
     }
 
+    /**
+     * A manual subclass's frozen population and a filter subclass's publication share the
+     * name {@code <Sub>Population}. Switching manual to filter used to retarget that same
+     * selection from the base class to the subclass and keep its hand-picked QIDs, so a graph
+     * start or bound naming it silently changed meaning. The switch is now refused, naming
+     * the selection, and nothing in the model changes.
+     */
+    @Test void switchingAManualSubclassToAFilterDoesNotRepurposeItsPopulation() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Position"));
+        var chosen = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain manual =
+                new quiz.transform.ui.WorkingDomain(positions(chosen));
+        manual.defineManualSubclass("PositionWithHolders", "Position", List.of(chosen),
+                "PositionWithHoldersPopulation");
+        DomainSaver.addSubclasses(model, manual);
+
+        var held = position("Q1", 2, 9);
+        quiz.transform.ui.WorkingDomain filtered =
+                new quiz.transform.ui.WorkingDomain(positions(held));
+        var root = new quiz.transform.EditableGroup("Position");
+        root.replaceMembers(List.of(held));
+        var hasHolders = filter("Has holders", "holderCount", 0);
+        hasHolders.reproduce(root.getMembers());
+        root.addGroup(hasHolders);
+        filtered.defineSubclass("PositionWithHolders", "Position",
+                hasHolders.getMembers(), hasHolders);
+
+        IllegalArgumentException refused = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, () -> DomainSaver.addSubclasses(model, filtered));
+
+        org.junit.jupiter.api.Assertions.assertTrue(refused.getMessage().contains(
+                "'PositionWithHoldersPopulation' already exists as a population of Position"),
+                refused.getMessage());
+        var population = (wikidata.explore.model.PopulationSelection)
+                model.findSelection("PositionWithHoldersPopulation");
+        assertEquals("Position", population.className(), "the selection keeps its class");
+        assertEquals(List.of("Q1"), population.instanceQids());
+        assertEquals(wikidata.explore.model.ClassPopulationMode.GENERATED,
+                model.findClass("PositionWithHolders").populationMode(),
+                "the refused save changed nothing about the class");
+    }
+
     private static List<String> ids(List<wikidata.explore.model.BuildOperation> operations) {
         return operations.stream().map(operation -> operation.kind() + ":"
                 + operation.targetDeclarationId() + ":" + operation.declarationId()).toList();

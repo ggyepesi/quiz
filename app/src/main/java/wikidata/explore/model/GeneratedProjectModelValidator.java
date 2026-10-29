@@ -142,6 +142,9 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(output.className(),
                         "Transformation input class '" + source.inputClassName()
                                 + "' does not exist."));
+            } else if (input.declarationId().equals(output.declarationId())) {
+                problems.add(Problem.error(output.className(), "A transformation cannot read "
+                        + "its own output class; choose the class it filters as its input."));
             } else if (!project.isSameOrSubclass(output.className(), input.className())) {
                 problems.add(Problem.error(output.className(), "Materialized class must extend "
                         + "its transformation input class '" + input.className() + "'."));
