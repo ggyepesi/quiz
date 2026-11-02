@@ -462,6 +462,16 @@ discovery constraint before the filter and the predecessor expansion after it. T
 refuses, before running anything, a build in which a later step would read a membership such a
 step discarded (`ProjectBuild.orderProblems`, held by `BuildOrderTest`).
 
+A Generate acquires the pending identities only of graph results that are current at its
+place in the build: results of graphs that ran and were applied earlier in this build, or
+saved results of graphs the build does not run again. A saved result whose graph runs again
+later in the build contributes nothing to an earlier Generate. Its identities would otherwise
+already be in that graph's input, so the rerun would no longer reach them, and each build's
+output would depend on the previous build. In the build above, the first Generate therefore
+acquires only the configured population, and `acquire-position-predecessors` acquires what the
+predecessor expansion accepted in this build (`ProjectBuild.resultsAcquiredBy`, held by
+`ProjectBuildTest`).
+
 The checked-in first implementation uses list order as the authority inside one project and an
 explicit `BUILD_DEPENDENCY` across projects. The named requirements above are the next stored
 form when the coordinator gains arbitrary same-project dependency edges. Even the ordered form

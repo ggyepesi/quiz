@@ -119,6 +119,89 @@ class ProjectBuildTest {
                 "a second build has nothing to do");
     }
 
+    /**
+     * The Historical Positions shape (#423, #424): an additive graph runs between two
+     * Generates. Its saved result accepted Q3, which was never generated. The first
+     * Generate must not acquire Q3: the graph runs again after it, and Q3 in its input
+     * would keep the rerun from reaching it, so each build would depend on the last. The
+     * Generate after the graph's apply is the one that owes Q3.
+     */
+    @Test void aGenerateBeforeAGraphRunLeavesThatGraphsSavedIdentitiesToTheGenerateAfterIt()
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = additiveProject(true);
+        saveAppliedAdditiveResult(model, storage);
+
+        List<ProjectBuild.Step> plan = ProjectBuild.plan(model, storage);
+
+        assertEquals(List.of(ProjectBuild.State.CURRENT, ProjectBuild.State.CURRENT,
+                        ProjectBuild.State.CURRENT, ProjectBuild.State.STALE,
+                        ProjectBuild.State.STALE),
+                plan.stream().map(ProjectBuild.Step::state).toList());
+        assertEquals(List.of("1 accepted graph identities are not generated yet"),
+                plan.get(3).because());
+        assertTrue(ProjectBuild.resultsAcquiredBy(model, new GraphResults(model, storage),
+                        model.buildOperations().getFirst()).isEmpty(),
+                "the first Generate acquires nothing from a graph that runs after it");
+    }
+
+    /** The other side: a saved result the build does not run again is current, so its
+     *  ungenerated identities are owed by the build's Generate. */
+    @Test void aSavedResultTheBuildDoesNotRerunIsAcquiredByItsGenerate() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = additiveProject(false);
+        saveAppliedAdditiveResult(model, storage);
+
+        ProjectBuild.Step generate = ProjectBuild.plan(model, storage).getFirst();
+
+        assertEquals(ProjectBuild.State.STALE, generate.state());
+        assertEquals(List.of("1 accepted graph identities are not generated yet"),
+                generate.because());
+    }
+
+    /** Offices whose PositionGraph ADDS to Position; with {@code graphInBuild} the build is
+     *  Generate, Run graph, Apply, Generate, Save, otherwise Generate, Save. */
+    private static GeneratedProjectModel additiveProject(boolean graphInBuild) {
+        GeneratedProjectModel model = project();
+        GeneratedClassModel graph = model.findClass("PositionGraph");
+        graph.graphSource(new GraphClassSource(graph.graphSource().startNode(), List.of(
+                new datasource.graph.GraphDiscoveryConfiguration.NextNode(
+                        new datasource.graph.GraphRelation("wikidata", "P1366"),
+                        datasource.graph.GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null, List.of(),
+                        datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                        false))));
+        String graphId = graph.declarationId();
+        model.buildOperations(graphInBuild
+                ? List.of(new BuildOperation(BuildOperation.Kind.GENERATE_PROJECT, ""),
+                        new BuildOperation(BuildOperation.Kind.RUN_GRAPH_CONSTRAINT, graphId),
+                        new BuildOperation(BuildOperation.Kind.APPLY_GRAPH_DECISIONS, graphId),
+                        new BuildOperation(BuildOperation.Kind.GENERATE_PROJECT, ""),
+                        new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, ""))
+                : List.of(new BuildOperation(BuildOperation.Kind.GENERATE_PROJECT, ""),
+                        new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+        return model;
+    }
+
+    /** Saves generated Position Q1 and an applied, additive PositionGraph result that
+     *  accepted Q1 and the never-generated Q3. */
+    private static void saveAppliedAdditiveResult(GeneratedProjectModel model,
+                                                  DomainStorage storage) throws Exception {
+        GraphResults results = new GraphResults(model, storage);
+        GeneratedClassModel graph = model.findClass("PositionGraph");
+        GraphDiscoveryResultStore.Artifact plain = result(model,
+                annotation("Q1", "Accepted", null), annotation("Q3", "Accepted", null));
+        results.record(graph, GraphDiscoveryResultStore.applied(
+                new GraphDiscoveryResultStore.Artifact(plain.projectName(), plain.type(),
+                        plain.outputClass(),
+                        datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                        plain.instances(), plain.candidates(), plain.model())));
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(position("Q1")), List.of(), null, model.copy()),
+                null, results.all()), storage).write();
+    }
+
     /** Saves generated Positions Q1 and Q2 and a PositionGraph result in which Q1 is
      *  accepted and Q2 carries {@code decision}, recorded from the current configuration. */
     private static void saveWithResult(GeneratedProjectModel model, DomainStorage storage,

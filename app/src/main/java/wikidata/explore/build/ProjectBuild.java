@@ -303,8 +303,8 @@ public final class ProjectBuild {
                 File snapshot = storage.snapshotFile(model.name());
                 String recorded = storage.savedSnapshotSignature(model.name());
                 String now = DomainSave.signature(model);
-                Map<String, List<String>> pending =
-                        results.pendingPopulationAdditions(saved.objects());
+                Map<String, List<String>> pending = GraphResults.pendingPopulationAdditions(
+                        resultsAcquiredBy(model, results, operation), saved.objects());
                 if (!snapshot.isFile()) {
                     state = State.MISSING;
                     because.add("no snapshot at " + snapshot.getPath());
@@ -539,8 +539,10 @@ public final class ProjectBuild {
                             observer, model.name());
                 }
                 case GENERATE_PROJECT -> {
-                    Map<String, List<String>> additions = results.pendingPopulationAcquisitions(
-                            run != null ? run.dynamicObjects() : saved.objects());
+                    Map<String, List<String>> additions =
+                            GraphResults.pendingPopulationAcquisitions(model,
+                                    resultsAcquiredBy(model, results, operation),
+                                    run != null ? run.dynamicObjects() : saved.objects());
                     ProcessOutcome<GenerationRun> generated = new GenerateDomainProcess(
                             CompiledPipelineRun.compile(PipelineRequest.generateDomain(
                                     model.copy(), additions)),
@@ -679,6 +681,33 @@ public final class ProjectBuild {
                 + (step.detail().isBlank() ? "" : " — " + step.detail())));
         say.accept("Build " + outcome + "; manifest " + manifest.getPath());
         return new Report(List.copyOf(done), outcome, List.copyOf(files), manifest);
+    }
+
+    /**
+     * The graph results whose accepted, ungenerated identities the Generate {@code generate}
+     * acquires: those of graphs that do not run again later in this build. A graph that
+     * runs later has not given this build's answer yet. Acquiring its saved identities would
+     * put the previous build's reach into that rule's input, and it would then no longer
+     * reach them. Historical Positions' replacement chain reached 17 instead of 73 that
+     * way, and each build's output depended on the build before it (#423, #424). Planning
+     * and running both ask this, so a Generate is stale for exactly what it will acquire.
+     */
+    static List<GraphDiscoveryResultStore.Artifact> resultsAcquiredBy(
+            GeneratedProjectModel model, GraphResults results, BuildOperation generate) {
+        List<BuildOperation> operations = model.buildOperations();
+        java.util.Set<String> runLater = new java.util.HashSet<>();
+        boolean after = false;
+        for (BuildOperation operation : operations) {
+            if (after && operation.kind() == BuildOperation.Kind.RUN_GRAPH_CONSTRAINT
+                    && operation.target(model) instanceof GeneratedClassModel graph) {
+                runLater.add(graph.declarationId());
+            }
+            if (operation.declarationId().equals(generate.declarationId())) after = true;
+        }
+        return results.all().stream().filter(result -> {
+            GeneratedClassModel graph = model.findClass(result.type());
+            return graph == null || !runLater.contains(graph.declarationId());
+        }).toList();
     }
 
     private static void record(List<Done> done, Done step, State state,
