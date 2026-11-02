@@ -87,20 +87,23 @@ public final class GenerationRuns {
      * Adds accepted identities to a class without removing its existing members.
      *
      * <p>The identity alone is not enough: a graph annotation and the entity it annotates
-     * intentionally share the QID. Only the carrier class can receive the membership.
+     * intentionally share the QID. Only an object whose carrier type {@code carries} the
+     * output class can receive the membership — the carrier class or a subclass of it,
+     * including the output class itself: an identity acquired for the output class arrives
+     * typed as that class and is as much a member as a stamped carrier (directive 9).
      * Retracting it from other carriers also repairs snapshots written by the former
      * identity-only implementation.
      */
     public static NarrowedPool addedTo(
-            List<WikidataDynamicObject> pool, String outputClass, String carrierClass,
-            Set<String> accepted) {
+            List<WikidataDynamicObject> pool, String outputClass,
+            java.util.function.Predicate<String> carries, Set<String> accepted) {
         List<WikidataDynamicObject> expanded = new java.util.ArrayList<>();
         Set<String> kept = new LinkedHashSet<>();
         Set<String> population = accepted == null ? Set.of() : accepted;
         for (WikidataDynamicObject value : pool == null ? List.<WikidataDynamicObject>of() : pool) {
             if (value == null) continue;
-            boolean eligible = carrierClass != null && !carrierClass.isBlank()
-                    && carrierClass.equals(value.typeKey());
+            boolean eligible = carries != null && value.typeKey() != null
+                    && carries.test(value.typeKey());
             if (!eligible) {
                 value.removeClass(outputClass);
                 expanded.add(value);

@@ -34,7 +34,7 @@ class NarrowedPoolTest {
         WikidataDynamicObject predecessor = position("Q2", "Francia");
 
         GenerationRuns.NarrowedPool expanded = GenerationRuns.addedTo(
-                List.of(existing, predecessor), "PositionWithHolders", "Position",
+                List.of(existing, predecessor), "PositionWithHolders", "Position"::equals,
                 Set.of("Q2"));
 
         assertEquals(List.of(existing, predecessor), expanded.pool());
@@ -52,13 +52,47 @@ class NarrowedPoolTest {
         annotation.type("PositionWithHolders");
 
         GenerationRuns.NarrowedPool expanded = GenerationRuns.addedTo(
-                List.of(position, annotation), "PositionWithHolders", "Position",
+                List.of(position, annotation), "PositionWithHolders", "Position"::equals,
                 Set.of("Q1"));
 
         assertTrue(position.directClassNames().contains("PositionWithHolders"));
         assertTrue(!annotation.directClassNames().contains("PositionWithHolders"),
                 "the same QID does not make a graph annotation a position");
         assertEquals(Set.of("Q1"), expanded.kept());
+    }
+
+    /** The Historical Positions build of 2026-10-29 (#423): the second Generate acquired the
+     *  expansion's pending identities through PositionWithHolders' own pipeline, so they
+     *  arrived typed as the output class. The additive apply recognised only objects typed
+     *  exactly Position and stripped the class from the rest — 1010 transformed members
+     *  became 961, and those identities kept reading as "no generated instance yet" (#424).
+     *  A subclass of the carrier is a carrier; a graph annotation sharing the QID is not. */
+    @Test void anIdentityAcquiredAsTheOutputClassStaysAMemberOfIt() {
+        wikidata.explore.model.GeneratedProjectModel model =
+                new wikidata.explore.model.GeneratedProjectModel();
+        model.rootClass(new wikidata.explore.model.GeneratedClassModel("Position"));
+        var subclass = new wikidata.explore.model.GeneratedClassModel("PositionWithHolders");
+        subclass.baseClassName("Position");
+        model.addClass(subclass);
+        WikidataDynamicObject stamped = position("Q1", "Rome");
+        stamped.type("PositionWithHolders");
+        WikidataDynamicObject acquired = new WikidataDynamicObject("Q2", "office Q2");
+        acquired.type("PositionWithHolders");
+        acquired.typeKey("PositionWithHolders");
+        WikidataDynamicObject annotation = new WikidataDynamicObject("Q2", "Accepted");
+        annotation.type("PositionReplacementExpansion");
+        annotation.typeKey("PositionReplacementExpansion");
+
+        GenerationRuns.NarrowedPool expanded = GenerationRuns.addedTo(
+                List.of(stamped, acquired, annotation), "PositionWithHolders",
+                type -> model.isSameOrSubclass(type, "Position"), Set.of("Q2"));
+
+        assertTrue(stamped.directClassNames().contains("PositionWithHolders"));
+        assertTrue(acquired.directClassNames().contains("PositionWithHolders"),
+                "an identity acquired for the output class is a member of it");
+        assertEquals(Set.of("Q2"), expanded.kept());
+        assertEquals(Set.of(), expanded.ungenerated(), "it is generated, not pending");
+        assertTrue(!annotation.directClassNames().contains("PositionWithHolders"));
     }
 
     private static WikidataDynamicObject position(String qid, String jurisdiction) {

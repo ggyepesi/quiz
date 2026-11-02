@@ -90,9 +90,11 @@ public final class GraphApplication {
         List<WikidataDynamicObject> previousPool =
                 current == null ? List.of() : current.dynamicObjects();
         Set<String> previousMembers = membersOf(previousPool, outputClass);
+        String carrier = carrier(model, outputClass);
         GenerationRuns.NarrowedPool narrowed = result.populationOperation() == PopulationOperation.ADD
                 ? GenerationRuns.addedTo(previousPool, outputClass,
-                        carrier(model, outputClass), result.acceptedIdentities())
+                        type -> model.isSameOrSubclass(type, carrier),
+                        result.acceptedIdentities())
                 : GenerationRuns.narrowedTo(previousPool, outputClass, result.acceptedIdentities());
         List<WikidataDynamicObject> pool = new ArrayList<>(narrowed.pool());
 
@@ -129,8 +131,11 @@ public final class GraphApplication {
                 : "kept " + resultingMembers + " accepted " + outputClass
                         + " instance(s) from " + previousMembers + " existing instance(s)";
         return "Applied graph result \"" + graphName + "\": " + effect
-                + (missing == 0 ? "" : ", and " + missing + " accepted id(s) have no "
-                        + "generated instance yet — generate to acquire them")
+                + (missing == 0 ? "" : operation == PopulationOperation.ADD
+                        ? ", and " + missing + " accepted id(s) have no generated instance "
+                                + "yet — generate to acquire them"
+                        : ", and " + missing + " accepted id(s) have no generated instance;"
+                                + " narrowing keeps instances and acquires none")
                 + ". Use \"Save " + (model ? "model" : "domain")
                 + "\" to persist them.";
     }
