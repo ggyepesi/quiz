@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Project replacement is also the lifecycle boundary for every project-owned view. */
@@ -33,6 +34,23 @@ class ProjectWindowLifecycleTest {
                 "query logs must close and forget the old project's rows");
         assertEquals(1, occurrences(source, "projectModel.copyContentsFrom("),
                 "every project replacement must go through replaceOpenProject");
+
+        String synchronizedBuild = source.substring(
+                source.indexOf("private void synchronizeCompletedBuild("),
+                source.indexOf("/** The build's report as result tabs"));
+        assertTrue(source.contains("synchronizeCompletedBuild(modelFile, read)"),
+                "a successful build must synchronize without waiting for Apply");
+        assertTrue(source.contains("readBuiltProject(modelFile, context::message)"),
+                "the built files are read as the build's own last phase, in its worker");
+        assertTrue(synchronizedBuild.contains("installOpenProject(built.model(), built.ledger())"));
+        assertTrue(synchronizedBuild.contains(
+                "installSavedInstances(built.snapshot(), built.loaded(), false)"));
+        String install = synchronizedBuild.substring(
+                synchronizedBuild.indexOf("private void synchronizeCompletedBuild("));
+        assertFalse(install.contains("ProjectLoad.load(") || install.contains("Store().load("),
+                "installing on the event thread must not read the model or snapshot");
+        assertTrue(synchronizedBuild.contains("markSaved(modelFile)"),
+                "the synchronized editor must agree that it matches the saved build");
     }
 
     private static int occurrences(String value, String sought) {

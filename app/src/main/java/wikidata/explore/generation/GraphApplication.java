@@ -4,7 +4,6 @@ import datasource.graph.GraphDiscoveryConfiguration.PopulationOperation;
 import objectview.Viewable;
 import wikidata.explore.codegen.GeneratedViewableRuntime;
 import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.rule.RuleTreeCompiler;
 
@@ -142,9 +141,7 @@ public final class GraphApplication {
 
     /** The stable carrier whose entities an additive graph may classify. */
     private static String carrier(GeneratedProjectModel model, String outputClass) {
-        GeneratedClassModel output = model.findClass(outputClass);
-        if (output == null || output.baseClassName().isBlank()) return outputClass;
-        return output.baseClassName();
+        return GraphPopulationCarrier.className(model, outputClass);
     }
 
     private static Set<String> membersOf(List<WikidataDynamicObject> pool, String className) {

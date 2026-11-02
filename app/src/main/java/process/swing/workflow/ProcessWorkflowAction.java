@@ -39,6 +39,12 @@ public interface ProcessWorkflowAction<R, D> {
     default ProcessOutcome<R> preparedOutcome() { return null; }
     Process<R> process();
     ProcessWorkflowResults<D> results(ProcessOutcome<R> outcome);
+    /**
+     * Continuation for work whose successful execution has already changed durable state.
+     * It runs once, before the result page is built; inspection or closing that page must
+     * not be required to make the owning editor agree with what the process saved.
+     */
+    default void afterCompletion(ProcessOutcome<R> outcome) throws Exception { }
     void apply(List<D> decisions) throws Exception;
     /** Continuation invoked only after successful apply, confirmation, and dialog close. */
     default void afterApply() { }

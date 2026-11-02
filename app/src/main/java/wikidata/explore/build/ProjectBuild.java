@@ -85,6 +85,17 @@ public final class ProjectBuild {
      *  manifest is. */
     public record Report(List<Done> steps, State outcome, List<String> files, File manifest) { }
 
+    /** Structured build progress shared by the desktop pipeline and any later headless
+     * observer. The coordinator emits these events from the same steps it records in the
+     * manifest; observers never reconstruct build state from log text. */
+    public interface Observer {
+        Observer NONE = new Observer() { };
+
+        default void planned(String projectName, List<Step> steps) { }
+        default void started(String projectName, Step step) { }
+        default void finished(String projectName, Done step, State projectState) { }
+    }
+
     /**
      * What a build of {@code model} would do now. Reads the saved snapshot's record, the
      * saved graph results and the model; reaches no network and writes nothing.
@@ -449,12 +460,19 @@ public final class ProjectBuild {
      */
     public static Report run(GeneratedProjectModel model, DomainStorage storage,
                              QueryContext context, Consumer<String> log) throws Exception {
-        return run(model, storage, context, log, new java.util.LinkedHashSet<>());
+        return run(model, storage, context, log, Observer.NONE);
+    }
+
+    public static Report run(GeneratedProjectModel model, DomainStorage storage,
+                             QueryContext context, Consumer<String> log,
+                             Observer observer) throws Exception {
+        return run(model, storage, context, log, new java.util.LinkedHashSet<>(),
+                observer == null ? Observer.NONE : observer);
     }
 
     private static Report run(GeneratedProjectModel model, DomainStorage storage,
                              QueryContext context, Consumer<String> log,
-                             java.util.Set<String> building) throws Exception {
+                             java.util.Set<String> building, Observer observer) throws Exception {
         Objects.requireNonNull(model, "model");
         Objects.requireNonNull(storage, "storage");
         if (!building.add(model.name())) {
@@ -469,6 +487,7 @@ public final class ProjectBuild {
                 : saved.projection().graphDiscovery();
 
         List<Step> plan = plan(model, storage, saved);
+        observer.planned(model.name(), plan);
         plan.forEach(step -> say.accept("Plan: " + step.explain()));
         List<Done> done = new ArrayList<>();
         List<String> files = new ArrayList<>();
@@ -484,37 +503,43 @@ public final class ProjectBuild {
         for (Step step : plan) {
             if (step.state() == State.FAILED) {
                 outcome = State.FAILED;
-                done.add(new Done(step, Action.STOPPED, String.join("; ", step.because())));
+                record(done, new Done(step, Action.STOPPED,
+                        String.join("; ", step.because())), outcome, observer, model.name());
                 continue;
             }
             if (outcome != State.CURRENT) {
-                done.add(new Done(step, Action.NOT_REACHED, "the build stopped before it"));
+                record(done, new Done(step, Action.NOT_REACHED,
+                        "the build stopped before it"), outcome, observer, model.name());
                 continue;
             }
             if (step.state() == State.CURRENT) {
-                done.add(new Done(step, Action.REUSED, "current"));
+                record(done, new Done(step, Action.REUSED, "current"), outcome,
+                        observer, model.name());
                 continue;
             }
             BuildOperation operation = step.operation();
             say.accept("Run: " + step.description());
+            observer.started(model.name(), step);
             switch (operation.kind()) {
                 case BUILD_DEPENDENCY -> {
                     File dependency = storage.modelFileOf(operation.targetProjectName());
                     GeneratedProjectModel upstream =
                             new GeneratedProjectModelStore().load(dependency);
-                    Report built = run(upstream, storage, context, say, building);
+                    Report built = run(upstream, storage, context, say, building, observer);
                     files.addAll(built.files());
                     if (built.outcome() != State.CURRENT) {
                         outcome = built.outcome();
-                        done.add(new Done(step, Action.STOPPED, upstream.name()
-                                + " build ended " + built.outcome()));
+                        record(done, new Done(step, Action.STOPPED, upstream.name()
+                                + " build ended " + built.outcome()), outcome,
+                                observer, model.name());
                         continue;
                     }
-                    done.add(new Done(step, Action.RAN, upstream.name()
-                            + " is current; manifest " + built.manifest().getPath()));
+                    record(done, new Done(step, Action.RAN, upstream.name()
+                            + " is current; manifest " + built.manifest().getPath()), outcome,
+                            observer, model.name());
                 }
                 case GENERATE_PROJECT -> {
-                    Map<String, List<String>> additions = results.pendingPopulationAdditions(
+                    Map<String, List<String>> additions = results.pendingPopulationAcquisitions(
                             run != null ? run.dynamicObjects() : saved.objects());
                     ProcessOutcome<GenerationRun> generated = new GenerateDomainProcess(
                             CompiledPipelineRun.compile(PipelineRequest.generateDomain(
@@ -529,14 +554,17 @@ public final class ProjectBuild {
                             || generated.result() == null) {
                         outcome = generated.status() == ProcessStatus.PARTIAL
                                 ? State.INCOMPLETE : State.FAILED;
-                        done.add(new Done(step, Action.STOPPED, generated.status() + ": "
+                        record(done, new Done(step, Action.STOPPED, generated.status() + ": "
                                 + (generated.error() == null
-                                        ? generated.summary() : generated.error().getMessage())));
+                                        ? generated.summary() : generated.error().getMessage())),
+                                outcome, observer, model.name());
                         continue;
                     }
                     run = replace(run, generated.result());
                     ledger = GenerationRuns.ledgerAfter(ledger, run);
-                    done.add(new Done(step, Action.RAN, run.dynamicObjects().size() + " objects"));
+                    record(done, new Done(step, Action.RAN,
+                            run.dynamicObjects().size() + " objects"), outcome,
+                            observer, model.name());
                 }
                 case RUN_TRANSFORMATION -> {
                     run = run != null ? run : loaded(model, storage, snapshot, say);
@@ -548,9 +576,10 @@ public final class ProjectBuild {
                             model, outputClass, transformed.population(), storage,
                             run.generatedFromSignature());
                     files.addAll(written);
-                    done.add(new Done(step, Action.RAN, transformed.population().size()
+                    record(done, new Done(step, Action.RAN, transformed.population().size()
                             + " " + outputClass.className()
-                            + " instances -> " + written.getFirst()));
+                            + " instances -> " + written.getFirst()), outcome,
+                            observer, model.name());
                 }
                 case PUBLISH_POPULATION -> {
                     PopulationSelection population =
@@ -569,9 +598,10 @@ public final class ProjectBuild {
                     publications.put(population.declarationId(), new ProjectSave.Publication(
                             population.declarationId(), outputClass.declarationId(), published,
                             run.generatedFromSignature()));
-                    done.add(new Done(step, Action.RAN, qids.size() + " "
+                    record(done, new Done(step, Action.RAN, qids.size() + " "
                             + population.className() + " QIDs prepared for "
-                            + population.name() + "; Save project will publish them"));
+                            + population.name() + "; Save project will publish them"), outcome,
+                            observer, model.name());
                 }
                 case RUN_GRAPH_CONSTRAINT -> {
                     run = run != null ? run : loaded(model, storage, snapshot, say);
@@ -588,9 +618,9 @@ public final class ProjectBuild {
                     // awaiting a decision leaves them on disk to be decided, while the
                     // snapshot — the last complete output — is untouched.
                     files.add(GraphDiscoveryResultStore.save(results.of(graph), storage));
-                    done.add(new Done(step, Action.RAN, artifact.instances().size()
+                    record(done, new Done(step, Action.RAN, artifact.instances().size()
                             + " annotations, " + artifact.acceptedIdentities().size()
-                            + " accepted"));
+                            + " accepted"), outcome, observer, model.name());
                 }
                 case APPLY_GRAPH_DECISIONS -> {
                     run = run != null ? run : loaded(model, storage, snapshot, say);
@@ -598,20 +628,24 @@ public final class ProjectBuild {
                     GraphDiscoveryResultStore.Artifact result = results.of(graph);
                     if (result == null) {
                         outcome = State.FAILED;
-                        done.add(new Done(step, Action.STOPPED,
-                                "no result of " + graph.className() + " to apply"));
+                        record(done, new Done(step, Action.STOPPED,
+                                "no result of " + graph.className() + " to apply"), outcome,
+                                observer, model.name());
                         continue;
                     }
                     GraphApplication.Outcome applied = GraphApplication.apply(result, model, run);
                     if (applied instanceof GraphApplication.AwaitingDecision waiting) {
                         outcome = State.AWAITING_DECISION;
-                        done.add(new Done(step, Action.STOPPED, waiting.message()));
+                        record(done, new Done(step, Action.STOPPED, waiting.message()), outcome,
+                                observer, model.name());
                         continue;
                     }
                     var success = (GraphApplication.Applied) applied;
                     run = replace(run, success.run());
                     results.markApplied(graph, success.result());
-                    done.add(new Done(step, Action.RAN, success.message(model.isModel())));
+                    record(done, new Done(step, Action.RAN,
+                            success.message(model.isModel())), outcome,
+                            observer, model.name());
                 }
                 case SAVE_PROJECT_RESULT -> {
                     ProjectSave save = ProjectSave.plan(new ProjectSave.Input(model,
@@ -622,16 +656,18 @@ public final class ProjectBuild {
                             ledger, results.all(), List.copyOf(publications.values())), storage);
                     if (!save.warnings().isEmpty()) {
                         outcome = State.FAILED;
-                        done.add(new Done(step, Action.STOPPED, "save refused: "
+                        record(done, new Done(step, Action.STOPPED, "save refused: "
                                 + save.warnings().stream().map(ProjectSave.Warning::message)
-                                        .reduce((a, b) -> a + " " + b).orElse("")));
+                                        .reduce((a, b) -> a + " " + b).orElse("")), outcome,
+                                observer, model.name());
                         continue;
                     }
                     ProjectSave.Result written = save.write();
                     publications.clear();
                     files.addAll(written.report());
-                    done.add(new Done(step, Action.RAN,
-                            written.instancesWritten() + " instances saved"));
+                    record(done, new Done(step, Action.RAN,
+                            written.instancesWritten() + " instances saved"), outcome,
+                            observer, model.name());
                 }
                 default -> throw new IllegalStateException("Unknown operation " + operation.kind());
             }
@@ -643,6 +679,12 @@ public final class ProjectBuild {
                 + (step.detail().isBlank() ? "" : " — " + step.detail())));
         say.accept("Build " + outcome + "; manifest " + manifest.getPath());
         return new Report(List.copyOf(done), outcome, List.copyOf(files), manifest);
+    }
+
+    private static void record(List<Done> done, Done step, State state,
+                               Observer observer, String projectName) {
+        done.add(step);
+        observer.finished(projectName, step, state);
     }
 
     /** Hands over to {@code next}, closing the compiled runtime nothing will use again. */

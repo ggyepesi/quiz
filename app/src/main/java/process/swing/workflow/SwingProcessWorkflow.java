@@ -25,9 +25,12 @@ import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /** One Plan → Running → Results → Apply Swing skeleton for every curation action. */
@@ -101,7 +104,16 @@ public final class SwingProcessWorkflow {
             }
             dialog = new JDialog(SwingUtilities.getWindowAncestor(owner),
                     action.plan().title(), Dialog.ModalityType.MODELESS);
-            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+            dialog.addWindowListener(new WindowAdapter() {
+                @Override public void windowClosing(WindowEvent event) {
+                    if (closeAllowed(state.stage(), () ->
+                            SwingCancellationConfirmation.requestForVisibleRun(
+                                    dialog, runner::cancel))) {
+                        dialog.dispose();
+                    }
+                }
+            });
             dialog.setSize(new Dimension(940, 700));
             dialog.setLocationRelativeTo(owner);
         }
@@ -171,6 +183,15 @@ public final class SwingProcessWorkflow {
         void completed(ProcessOutcome<R> outcome) {
             if (pipeline != null && outcome != null) {
                 pipeline.finish(outcome.status(), outcome.summary());
+            }
+            try {
+                action.afterCompletion(outcome);
+            } catch (Exception synchronizationFailure) {
+                JOptionPane.showMessageDialog(owner,
+                        "Process completed, but its saved result could not be synchronized: "
+                                + failureMessage(synchronizationFailure),
+                        "Could not synchronize completed process",
+                        JOptionPane.ERROR_MESSAGE);
             }
             state.results();
             presentResults(outcome);
@@ -506,5 +527,12 @@ public final class SwingProcessWorkflow {
             return value == null ? "" : value.replace("&", "&amp;")
                     .replace("<", "&lt;").replace(">", "&gt;");
         }
+    }
+
+    /** A running workflow keeps its only progress window unless stopping it was explicit. */
+    static boolean closeAllowed(
+            ProcessWorkflowState.Stage stage, BooleanSupplier requestCancellation) {
+        return stage != ProcessWorkflowState.Stage.RUNNING
+                || requestCancellation.getAsBoolean();
     }
 }

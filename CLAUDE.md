@@ -302,6 +302,9 @@ construct per thing produced:
    shells. Accepted identities that have no generated instance remain pending on the applied
    annotation set; the next Generate run acquires them as a supplemental population through
    the ordinary class pipeline, unioned with rather than replacing the configured population.
+   When the output is a transformation-produced class, acquisition targets that
+   transformation's input/base carrier; the transformation and the later graph application
+   remain the only operations that can assign the produced output class.
    Closing without Apply contributes nothing. A replacement-chain expansion may declare equivalent directed edge alternatives
    (for example outgoing `replaces` and incoming `replaced by`) and repeat them until no new
    identities are reached. A next node may name a `PopulationSelection` as its admission
@@ -345,7 +348,10 @@ construct per thing produced:
    reuses compatible outputs, explains staleness, and publishes the final servable result
    without loading UI classes. Review remains explicit persisted data: an unattended build
    either has complete decisions/a declared non-interactive policy or stops at
-   `AWAITING_DECISION` without replacing the last complete output. See
+   `AWAITING_DECISION` without replacing the last complete output. A successful build has
+   already written its artifacts: an editor that launched it synchronizes the complete saved
+   project and snapshot as part of completion, before showing the inspection-only result;
+   closing or pressing Apply is never required to make memory agree with disk. See
    `docs/transformation-models-as-datasources.md`.
    *(Trigger: a complete domain can only be reproduced by manually switching applications or
    by replaying UI actions.)*

@@ -33,9 +33,38 @@ public final class SwingCancellationConfirmation {
             return;
         }
         button.addActionListener(event -> {
-            if (!running.getAsBoolean()) return;
-            if (confirmation.getAsBoolean() && running.getAsBoolean()) cancel.run();
+            request(running, confirmation, cancel);
         });
+    }
+
+    /**
+     * Requests cancellation for a window that is about to close.
+     *
+     * @return {@code true} when no process is running or cancellation was explicitly
+     * confirmed, so the caller may close; {@code false} when the safe "Keep running"
+     * choice was made and the observing window must remain open
+     */
+    public static boolean requestForVisibleRun(Component owner, Runnable cancel) {
+        // The workflow calls this only while its visible state is RUNNING. Do not ask
+        // SwingWorker whether it has already returned: done() may still be queued on the
+        // EDT, leaving the only observer visibly on the Running page in the meantime.
+        return requestForVisibleRun(() -> confirm(owner), cancel);
+    }
+
+    static boolean requestForVisibleRun(
+            BooleanSupplier confirmation, Runnable cancel) {
+        return request(() -> true, confirmation, cancel);
+    }
+
+    static boolean request(
+            BooleanSupplier running,
+            BooleanSupplier confirmation,
+            Runnable cancel) {
+        if (running == null || confirmation == null || cancel == null) return true;
+        if (!running.getAsBoolean()) return true;
+        if (!confirmation.getAsBoolean()) return false;
+        if (running.getAsBoolean()) cancel.run();
+        return true;
     }
 
     private static boolean confirm(Component owner) {

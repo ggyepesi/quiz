@@ -11,6 +11,7 @@ import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The Build action's results say what each step did and why, and how to go on from a stop. */
@@ -31,7 +32,9 @@ class BuildResultsTest {
         var results = ModelBuilderFrame.buildResults(project,
                 ProcessOutcome.partial(report, null, "stopped"));
 
-        assertEquals("Load built instances", results.applyVerb());
+        assertEquals("Build already saved", results.applyVerb());
+        assertNull(results.resultDecision(),
+                "a completed build is inspection-only; it must not need Apply to synchronize");
         var card = (DynamicViewable) results.tabs().getFirst().cards().getFirst().view();
         assertEquals("RAN", card.get("Done"));
         assertEquals("STALE", card.get("State before"));

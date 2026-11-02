@@ -323,6 +323,13 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel replacement,
             datasource.graph.GraphDiscoveryState replacementLedger) {
         closeProjectWindows();
+        installOpenProject(replacement, replacementLedger);
+    }
+
+    /** Installs one configuration after its caller has settled the windows it replaces. */
+    private void installOpenProject(
+            GeneratedProjectModel replacement,
+            datasource.graph.GraphDiscoveryState replacementLedger) {
         sourceWorkbench.abandonEdits();
         projectModel.copyContentsFrom(replacement);
         graphResultsFollowLoadedModel();
@@ -338,6 +345,13 @@ public class ModelBuilderFrame extends JFrame {
         // They are intentionally not held as one field per action, so ownership is
         // their common lifecycle handle.
         for (Window owned : getOwnedWindows()) closeWindow(owned);
+        closeProjectDataWindows();
+        logWindow.resetForProjectSwitch();
+    }
+
+    /** Close views of generated/configured data while preserving the workflow whose
+     * completed build is synchronizing this same project. */
+    private void closeProjectDataWindows() {
         closeWindow(instancesWindow);
         closeWindow(statementsWindow);
         closeWindow(explorerWindow);
@@ -347,7 +361,6 @@ public class ModelBuilderFrame extends JFrame {
         discardNameCollisionInspection();
         lastCollisions = java.util.List.of();
         updateNameCollisionsButton();
-        logWindow.resetForProjectSwitch();
     }
 
     private static void closeWindow(Window window) {
@@ -620,7 +633,7 @@ public class ModelBuilderFrame extends JFrame {
 
     /** Accepted identities of applied additive graph results not generated yet. */
     private java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions() {
-        return graphResults.pendingPopulationAdditions(
+        return graphResults.pendingPopulationAcquisitions(
                 lastRun == null ? java.util.List.of() : lastRun.dynamicObjects());
     }
 
@@ -1661,13 +1674,29 @@ public class ModelBuilderFrame extends JFrame {
                     card.put("Path", file.getPath());
                     return (objectview.Viewable) card;
                 }).toList();
-        wikidata.explore.build.BuildProcess build =
-                new wikidata.explore.build.BuildProcess(saved, storage);
+        File builtSnapshot = snapshotBesideModel(modelFile);
+        java.util.concurrent.atomic.AtomicReference<BuiltProject> built =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        wikidata.explore.build.BuildProcess build = new wikidata.explore.build.BuildProcess(
+                saved, storage, new wikidata.explore.build.BuildProcess.Completion(
+                        "Load the built project into ModelBuilder from " + modelFile.getName()
+                                + " and " + (builtSnapshot == null
+                                        ? "its snapshot" : builtSnapshot.getName()),
+                        (report, context) -> {
+                            BuiltProject read = readBuiltProject(modelFile, context::message);
+                            built.set(read);
+                            return read.loaded().run().dynamicObjects().size()
+                                    + " saved object(s) read; mapped "
+                                    + read.loaded().run().instances().size() + " instance(s)";
+                        }));
         process.swing.workflow.ProcessWorkflowAction<
                 wikidata.explore.build.ProjectBuild.Report,
                 wikidata.explore.build.ProjectBuild.Report> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return "build-project"; }
+                    @Override public process.ProcessWorkflowPipeline pipeline() {
+                        return build.pipeline();
+                    }
                     @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                         return new process.swing.workflow.ProcessWorkflowPlan(
                                 "Build " + saved.name(),
@@ -1686,8 +1715,11 @@ public class ModelBuilderFrame extends JFrame {
                     }
                     @Override public process.Process<wikidata.explore.build.ProjectBuild.Report>
                             process() { return build; }
-                    @Override public boolean applyAllowed(process.ProcessStatus status) {
-                        return true;
+                    @Override public void afterCompletion(process.ProcessOutcome<
+                            wikidata.explore.build.ProjectBuild.Report> outcome)
+                            throws Exception {
+                        BuiltProject read = built.getAndSet(null);
+                        if (read != null) synchronizeCompletedBuild(modelFile, read);
                     }
                     @Override public process.swing.workflow.ProcessWorkflowResults<
                             wikidata.explore.build.ProjectBuild.Report> results(
@@ -1696,15 +1728,63 @@ public class ModelBuilderFrame extends JFrame {
                         return buildResults(saved, outcome);
                     }
                     @Override public void apply(
-                            java.util.List<wikidata.explore.build.ProjectBuild.Report> ignored) {
-                        // The build has already written its files; applying brings them
-                        // into this session, which afterApply does once the dialog is gone.
-                    }
-                    @Override public void afterApply() {
-                        loadSavedInstances();
-                    }
+                            java.util.List<wikidata.explore.build.ProjectBuild.Report> ignored) { }
                 };
+        logWindow.registerPipeline("Build project — " + saved.name(), build.pipeline(),
+                saved.name(), storage.snapshotFile(saved.name()).getParentFile().toPath());
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
+    }
+
+    /** A completed build's saved files, read in the build's worker. */
+    private record BuiltProject(GeneratedProjectModel model,
+                                datasource.graph.GraphDiscoveryState ledger, File snapshot,
+                                wikidata.explore.generation.ProjectLoad.Loaded loaded) { }
+
+    /**
+     * Reads the configuration and snapshot a build just saved. It touches no Swing state:
+     * it runs as the build's last phase, off the event thread, so a large snapshot is
+     * read while the window names the files being read.
+     */
+    private BuiltProject readBuiltProject(File modelFile,
+                                          java.util.function.Consumer<String> say)
+            throws Exception {
+        say.accept("Reading built model " + modelFile.getPath());
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
+        File snapshot = snapshotBesideModel(modelFile);
+        if (snapshot == null || !snapshot.isFile()) {
+            throw new java.io.IOException("The completed build did not leave its snapshot at "
+                    + (snapshot == null ? "the configured project path" : snapshot.getPath()));
+        }
+        say.accept("Reading built snapshot " + snapshot.getPath());
+        datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(modelFile);
+        wikidata.explore.generation.ProjectLoad.Loaded loaded =
+                wikidata.explore.generation.ProjectLoad.load(model, storage, snapshot, say);
+        return new BuiltProject(model, ledger, snapshot, loaded);
+    }
+
+    /**
+     * A build writes the project while it runs. Install that exact saved configuration and
+     * snapshot into the editor before its result page appears, so a later Save cannot
+     * overwrite a population the build just published with the editor's older copy. The
+     * files were already read by {@link #readBuiltProject}; this only installs them.
+     */
+    private void synchronizeCompletedBuild(File modelFile, BuiltProject built) {
+        GeneratedClassModel selected = activeClass();
+        String selectedId = selected == null ? "" : selected.declarationId();
+        String selectedName = selected == null ? "" : selected.className();
+
+        closeProjectDataWindows();
+        installOpenProject(built.model(), built.ledger());
+        modelChanged();
+        GeneratedClassModel restored = projectModel.resolveClass(selectedId, selectedName);
+        classModelPanel.selectClass(restored == null ? projectModel.rootClass() : restored);
+        syncDepthSpinnerToActiveClass();
+        refreshProjectPicker();
+        refreshProjectKindUi();
+        markSaved(modelFile);
+        installSavedInstances(built.snapshot(), built.loaded(), false);
+        logWindow.info("Synchronized the completed build from " + modelFile.getPath()
+                + "; the open configuration and instances now match its saved files.\n");
     }
 
     /** The build's report as result tabs: every step as the build left it, and every file
@@ -1753,11 +1833,11 @@ public class ModelBuilderFrame extends JFrame {
         } + " Manifest: " + report.manifest().getPath();
         return new process.swing.workflow.ProcessWorkflowResults<>(
                 "Build " + project.name() + " — " + report.outcome(), summary,
-                "Load built instances",
+                "Build already saved",
                 java.util.List.of(
                         new process.swing.workflow.ProcessWorkflowResults.Tab<>("Steps", steps),
                         new process.swing.workflow.ProcessWorkflowResults.Tab<>("Files written", files)),
-                () -> report, "Close");
+                null, "Close");
     }
 
     /** Turns the pipeline explanation into a map back to the configuration that
@@ -2222,7 +2302,7 @@ public class ModelBuilderFrame extends JFrame {
                     .emptyMessage("Select a colliding name.")
                     .build();
             return nameCollisionMembersView;
-        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, false);
+        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true);
         grouped.groups().setStatusText(
                 "Select a shared name to inspect its distinct instances");
         if (!lastCollisions.isEmpty()) grouped.selectGroup(lastCollisions.getFirst(), true);
@@ -3188,24 +3268,32 @@ public class ModelBuilderFrame extends JFrame {
         }
 
         try {
-            sourceWorkbench.applyEdits();
-            wikidata.explore.generation.ProjectLoad.Loaded loaded =
-                    wikidata.explore.generation.ProjectLoad.load(
-                            projectModel, storage, file, logWindow::info);
-            graphDiscoveryLedger = loaded.projection().graphDiscovery();
-            graphResults.restore(loaded.projection().objects(), this::logInfo);
-            acceptGenerationRun(loaded.run(), true);
-            showInstancesWindow();
-            logWindow.info("Loaded " + loaded.run().dynamicObjects().size()
-                                   + " saved object(s) from " + file.getName()
-                                   + "; mapped " + loaded.run().instances().size()
-                                   + " instance(s).");
-            if (loaded.stale()) {
-                JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(loaded.staleWarning()),
-                        "Instances may be stale", JOptionPane.WARNING_MESSAGE);
-            }
+            loadSavedInstances(file);
         } catch (Exception ex) {
             reportGenerationError(ex);
+        }
+    }
+
+    private void loadSavedInstances(File file) throws Exception {
+        sourceWorkbench.applyEdits();
+        installSavedInstances(file, wikidata.explore.generation.ProjectLoad.load(
+                projectModel, storage, file, logWindow::info), true);
+    }
+
+    private void installSavedInstances(File file,
+                                       wikidata.explore.generation.ProjectLoad.Loaded loaded,
+                                       boolean revealInstances) {
+        graphDiscoveryLedger = loaded.projection().graphDiscovery();
+        graphResults.restore(loaded.projection().objects(), this::logInfo);
+        acceptGenerationRun(loaded.run(), true);
+        if (revealInstances) showInstancesWindow();
+        logWindow.info("Loaded " + loaded.run().dynamicObjects().size()
+                + " saved object(s) from " + file.getName()
+                + "; mapped " + loaded.run().instances().size()
+                + " instance(s).");
+        if (loaded.stale()) {
+            JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(loaded.staleWarning()),
+                    "Instances may be stale", JOptionPane.WARNING_MESSAGE);
         }
     }
 

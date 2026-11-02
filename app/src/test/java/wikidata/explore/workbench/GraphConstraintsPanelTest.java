@@ -100,6 +100,35 @@ class GraphConstraintsPanelTest {
                 "an identity stops being pending once that class has been generated");
     }
 
+    @Test void transformationProducedGraphOutputAcquiresItsOrdinaryInputClass() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel position = model.rootClass();
+        position.className("Position");
+        GeneratedClassModel output = model.getOrCreateClass("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(wikidata.explore.model.ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        wikidata.explore.model.TransformationClassSource source =
+                new wikidata.explore.model.TransformationClassSource();
+        source.inputClassReference(position.declarationId(), position.className());
+        source.addStep(wikidata.explore.model.TransformationStep.filter(
+                "holderCount", quiz.transform.FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+        GraphDiscoveryResultStore.Artifact raw = GraphDiscoveryResultStore.artifact(
+                model.name(), "ReplacementExpansion", resultFor("PositionWithHolders"));
+        GraphDiscoveryResultStore.Artifact additive = GraphDiscoveryResultStore.applied(
+                new GraphDiscoveryResultStore.Artifact(
+                        raw.projectName(), raw.type(), raw.outputClass(),
+                        datasource.graph.GraphDiscoveryConfiguration.PopulationOperation.ADD,
+                        raw.instances(), raw.candidates(), raw.model()));
+
+        assertEquals(List.of("Q2"), GraphResults.pendingPopulationAcquisitions(
+                model, List.of(additive), List.of()).get("Position"),
+                "generation acquires the producer's carrier; graph apply adds the output");
+        assertTrue(GraphResults.pendingPopulationAcquisitions(
+                model, List.of(additive), List.of()).getOrDefault(
+                        "PositionWithHolders", List.of()).isEmpty());
+    }
+
     @Test void savingAndLoadingAnnotationsRetainsThatTheirOutputWasApplied(
             @org.junit.jupiter.api.io.TempDir Path root) throws Exception {
         GraphDiscoveryResultStore.Artifact raw = GraphDiscoveryResultStore.artifact(

@@ -66,4 +66,29 @@ class SwingCancellationConfirmationTest {
         assertEquals(0, confirmations.get());
         assertEquals(0, cancellations.get());
     }
+
+    @Test void keepingAProcessRunningRefusesToCloseItsObserver() {
+        assertFalse(SwingCancellationConfirmation.request(
+                () -> true, () -> false, () -> { }));
+    }
+
+    @Test void confirmingCancellationAllowsItsObserverToClose() {
+        AtomicInteger cancellations = new AtomicInteger();
+
+        boolean close = SwingCancellationConfirmation.request(
+                () -> true, () -> true, cancellations::incrementAndGet);
+
+        assertTrue(close);
+        assertEquals(1, cancellations.get());
+    }
+
+    @Test void aVisiblyRunningWindowDoesNotConsultAnAlreadyFinishedWorker() {
+        AtomicInteger cancellations = new AtomicInteger();
+
+        boolean close = SwingCancellationConfirmation.requestForVisibleRun(
+                () -> false, cancellations::incrementAndGet);
+
+        assertFalse(close);
+        assertEquals(0, cancellations.get());
+    }
 }

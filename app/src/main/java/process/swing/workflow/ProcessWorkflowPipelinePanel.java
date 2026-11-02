@@ -30,6 +30,7 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
     private final Map<String, JButton> blocks = new LinkedHashMap<>();
     private final Timer elapsedClock = new Timer(1_000, e -> refresh());
     private String selectedId;
+    private boolean selectedByReader;
     private java.util.function.Consumer<PhaseExplanation.ModelReference> navigateReference =
             reference -> { };
 
@@ -79,11 +80,13 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
                 if (i + 1 < snapshot.size()) graph.add(new JLabel("→"));
             }
         }
-        if (selectedId == null && !snapshot.isEmpty()) {
-            ProcessWorkflowPipeline.PhaseState active = snapshot.stream()
-                    .filter(s -> s.status() == ProcessWorkflowPipeline.Status.RUNNING)
-                    .findFirst().orElse(snapshot.get(0));
+        ProcessWorkflowPipeline.PhaseState active = snapshot.stream()
+                .filter(s -> s.status() == ProcessWorkflowPipeline.Status.RUNNING)
+                .findFirst().orElse(null);
+        if (!selectedByReader && active != null) {
             selectedId = active.phase().id();
+        } else if (selectedId == null && !snapshot.isEmpty()) {
+            selectedId = snapshot.get(0).phase().id();
         }
         for (ProcessWorkflowPipeline.PhaseState state : snapshot) {
             JButton block = blocks.get(state.phase().id());
@@ -105,8 +108,12 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
 
     private void select(String id) {
         selectedId = id;
+        selectedByReader = true;
         refresh();
     }
+
+    /** The phase whose explanation is visible; package-private for the UI contract test. */
+    String selectedPhaseId() { return selectedId; }
 
     private static String html(ProcessWorkflowPipeline.PhaseState state) {
         String elapsed = isTimed(state) ? " · " + formatElapsed(state.elapsedMillis()) : "";

@@ -96,6 +96,18 @@ class ProcessWorkflowPipelineTest {
         assertEquals("connection reset", pipeline.snapshot().get(0).summary());
     }
 
+    @Test void aRefusedPhaseAndThePhaseItPreventsKeepDifferentVerdicts() {
+        ProcessWorkflowPipeline pipeline = pipeline();
+
+        pipeline.fail("a", "STOPPED — invalid build order");
+        pipeline.cancel("b", "NOT REACHED — the build stopped before it");
+
+        assertEquals(ProcessWorkflowPipeline.Status.FAILED,
+                pipeline.snapshot().get(0).status());
+        assertEquals(ProcessWorkflowPipeline.Status.CANCELLED,
+                pipeline.snapshot().get(1).status());
+    }
+
     @Test void elapsedTimeAdvancesWhileRunningAndFreezesWhenFinished() throws Exception {
         ProcessWorkflowPipeline pipeline = pipeline();
         pipeline.start("a", "loading");

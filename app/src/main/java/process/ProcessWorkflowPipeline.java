@@ -140,6 +140,20 @@ public final class ProcessWorkflowPipeline {
         changed();
     }
 
+    /** Ends one named phase as failed even when it was refused before it started. */
+    public synchronized void fail(String id, String summary) {
+        update(id, Status.FAILED, summary);
+        if (id.equals(activeId)) activeId = null;
+        changed();
+    }
+
+    /** Marks a configured phase as not reached because an earlier phase stopped. */
+    public synchronized void cancel(String id, String summary) {
+        update(id, Status.CANCELLED, summary);
+        if (id.equals(activeId)) activeId = null;
+        changed();
+    }
+
     /**
      * Records the run's own outcome on the phase it stopped at.
      *

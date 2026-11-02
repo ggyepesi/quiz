@@ -146,6 +146,35 @@ public final class GraphResults {
         return pendingPopulationAdditions(all(), generated);
     }
 
+    /**
+     * Missing graph-output identities keyed by the ordinary class generation must
+     * acquire. A produced subclass is not itself a datasource population: acquire its
+     * transformation input/base carrier, then let the configured transformation and
+     * graph application decide the output membership.
+     */
+    public Map<String, List<String>> pendingPopulationAcquisitions(
+            Collection<WikidataDynamicObject> generated) {
+        return pendingPopulationAcquisitions(model, all(), generated);
+    }
+
+    public static Map<String, List<String>> pendingPopulationAcquisitions(
+            GeneratedProjectModel model,
+            Collection<GraphDiscoveryResultStore.Artifact> results,
+            Collection<WikidataDynamicObject> generated) {
+        Map<String, LinkedHashSet<String>> byCarrier = new LinkedHashMap<>();
+        pendingPopulationAdditions(results, generated).forEach((outputClass, qids) ->
+                byCarrier.computeIfAbsent(
+                        GraphPopulationCarrier.className(model, outputClass),
+                        ignored -> new LinkedHashSet<>()).addAll(qids));
+        Map<String, List<String>> acquisitions = new LinkedHashMap<>();
+        byCarrier.forEach((className, qids) -> {
+            if (!className.isBlank() && !qids.isEmpty()) {
+                acquisitions.put(className, List.copyOf(qids));
+            }
+        });
+        return Map.copyOf(acquisitions);
+    }
+
     public static Map<String, List<String>> pendingPopulationAdditions(
             Collection<GraphDiscoveryResultStore.Artifact> results,
             Collection<WikidataDynamicObject> generated) {
