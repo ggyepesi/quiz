@@ -472,6 +472,15 @@ acquires only the configured population, and `acquire-position-predecessors` acq
 predecessor expansion accepted in this build (`ProjectBuild.resultsAcquiredBy`, held by
 `ProjectBuildTest`).
 
+Each Generate step keeps its own output, keyed by the step's declaration id
+(`<step>.generation.snapshot.json` with its metadata, `GenerationStepOutputStore`). The project
+snapshot is Save project's output, already narrowed, transformed and expanded by the steps after
+Generate. So a reused Generate hands the next step what it produced itself, never that
+snapshot. Its output is current while the model signature and the exact supplemental identities
+it requested match its metadata. The request is every accepted identity of the results it
+acquires, by acquiring class, with nothing subtracted for an earlier pool, because a Generate
+replaces the run.
+
 The checked-in first implementation uses list order as the authority inside one project and an
 explicit `BUILD_DEPENDENCY` across projects. The named requirements above are the next stored
 form when the coordinator gains arbitrary same-project dependency edges. Even the ordered form

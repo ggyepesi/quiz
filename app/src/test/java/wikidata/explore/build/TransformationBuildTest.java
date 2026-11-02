@@ -35,6 +35,7 @@ class TransformationBuildTest {
         ProjectSave.plan(new ProjectSave.Input(model,
                 new ProjectSave.Run(List.of(one, two), List.of(), null, model.copy()),
                 null, List.of()), storage).write();
+        generated(model, storage, one, two);
 
         ProjectBuild.Report report = ProjectBuild.run(
                 model, storage, new QueryContext(), null);
@@ -71,6 +72,7 @@ class TransformationBuildTest {
         ProjectSave.plan(new ProjectSave.Input(owner,
                 new ProjectSave.Run(List.of(position("Q1", 2), position("Q2", 0)), List.of(), null,
                         owner.copy()), null, List.of()), storage).write();
+        generated(owner, storage, position("Q1", 2), position("Q2", 0));
         ProjectBuild.run(owner, storage, new QueryContext(), null);
 
         GeneratedProjectModel changed = new GeneratedProjectModelStore().load(
@@ -108,6 +110,7 @@ class TransformationBuildTest {
         ProjectSave.plan(new ProjectSave.Input(model,
                 new ProjectSave.Run(List.of(position("Q1", 2), position("Q2", 0)),
                         List.of(), null, model.copy()), null, List.of()), storage).write();
+        generated(model, storage, position("Q1", 2), position("Q2", 0));
         assertEquals(ProjectBuild.State.CURRENT, ProjectBuild.run(
                 model, storage, new QueryContext(), null).outcome());
         PopulationSelection population = (PopulationSelection)
@@ -166,6 +169,7 @@ class TransformationBuildTest {
         ProjectSave.plan(new ProjectSave.Input(model,
                 new ProjectSave.Run(List.of(position("Q1", 2)), List.of(), null, model.copy()),
                 null, List.of()), storage).write();
+        generated(model, storage, position("Q1", 2));
         GeneratedClassModel output = model.findClass("PositionWithHolders");
         MaterializedPopulationStore.save(model, output, List.of(position("Q1", 2)), storage,
                 storage.savedSnapshotSignature(model.name()));
@@ -196,6 +200,20 @@ class TransformationBuildTest {
                 .inputSnapshotSignature());
         for (String path : written) {
             assertTrue(!new java.io.File(path + ".tmp").exists(), path + ".tmp is left behind");
+        }
+    }
+
+    /** Records the build's Generate step as having produced {@code objects} for the current
+     *  model, so the build reuses it instead of reaching Wikidata. */
+    private static void generated(GeneratedProjectModel model, DomainStorage storage,
+                                  WikidataDynamicObject... objects) throws Exception {
+        for (BuildOperation operation : model.buildOperations()) {
+            if (operation.kind() != BuildOperation.Kind.GENERATE_PROJECT) continue;
+            wikidata.explore.generation.GenerationStepOutputStore.of(
+                            storage, model.name(), operation.declarationId())
+                    .save(model, List.of(objects), List.of(),
+                            wikidata.explore.transform.SelfReferenceLedger.EMPTY,
+                            datasource.graph.GraphDiscoveryState.EMPTY, java.util.Map.of());
         }
     }
 

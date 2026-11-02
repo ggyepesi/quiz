@@ -400,6 +400,22 @@ public final class DomainStorage {
         return file(name, ".build.json");
     }
 
+    /**
+     * What one Generate step of a build produced, before any later step narrowed,
+     * transformed or expanded it. The project snapshot is Save project's output, so a
+     * reused Generate reads this file and never the snapshot later steps reshaped (#423).
+     */
+    public File generationStepFile(String projectName, String operationDeclarationId) {
+        return new File(directory(projectName), key(operationDeclarationId)
+                + ".generation.snapshot.json");
+    }
+
+    /** Model signature and requested identities beside a Generate step's output. */
+    public File generationStepMetadataFile(String projectName, String operationDeclarationId) {
+        return new File(directory(projectName), key(operationDeclarationId)
+                + ".generation.json");
+    }
+
     /** Declared output of one saved transformation, separate from the owner's snapshot. */
     public File materializedPopulationFile(String projectName, String classDeclarationId) {
         return new File(directory(projectName), key(classDeclarationId)

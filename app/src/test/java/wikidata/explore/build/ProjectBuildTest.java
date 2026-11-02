@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.explore.extract.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
+import wikidata.explore.generation.GenerationStepOutputStore;
 import wikidata.explore.generation.GraphDiscoveryResultStore;
 import wikidata.explore.generation.GraphResults;
 import wikidata.explore.generation.ProjectSave;
@@ -13,6 +14,7 @@ import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GraphClassSource;
+import wikidata.explore.transform.SelfReferenceLedger;
 import work.QueryContext;
 
 import java.nio.file.Files;
@@ -62,7 +64,7 @@ class ProjectBuildTest {
         model.rootClass().generationDepth(model.rootClass().generationDepth() + 1);
         ProjectBuild.Step generate = ProjectBuild.plan(model, storage).getFirst();
         assertEquals(ProjectBuild.State.STALE, generate.state());
-        assertEquals(List.of("the model changed since the snapshot was generated"),
+        assertEquals(List.of("the model changed since this step generated"),
                 generate.because());
     }
 
@@ -120,6 +122,31 @@ class ProjectBuildTest {
     }
 
     /**
+     * #423: a reused Generate hands on what IT produced. The project snapshot is what Save
+     * project wrote after later steps reshaped that output: here it holds only Q1, while
+     * the Generate step produced Q1, Q2 and Q3. Reading the snapshot is how Historical
+     * Positions' replacement chain started from the previous build's expansion.
+     */
+    @Test void aReusedGenerateSuppliesItsOwnOutputNotTheReshapedSnapshot() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = project();
+        saveWithResult(model, storage, "Accepted", null);
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(position("Q1")), List.of(), null, model.copy()),
+                null, new GraphResults(model, storage).all()), storage).write();
+        saveGenerateOutputs(model, storage,
+                List.of(position("Q1"), position("Q2"), position("Q3")));
+
+        ProjectBuild.Report report = ProjectBuild.run(model, storage, new QueryContext(), null);
+
+        assertEquals(ProjectBuild.State.CURRENT, report.outcome());
+        assertEquals(ProjectBuild.Action.REUSED, report.steps().getFirst().action());
+        assertTrue(report.steps().get(2).detail().contains(
+                        "kept 2 accepted Position instance(s) from 3 existing instance(s)"),
+                report.steps().get(2).detail());
+    }
+
+    /**
      * The Historical Positions shape (#423, #424): an additive graph runs between two
      * Generates. Its saved result accepted Q3, which was never generated. The first
      * Generate must not acquire Q3: the graph runs again after it, and Q3 in its input
@@ -138,9 +165,11 @@ class ProjectBuildTest {
                         ProjectBuild.State.CURRENT, ProjectBuild.State.STALE,
                         ProjectBuild.State.STALE),
                 plan.stream().map(ProjectBuild.Step::state).toList());
-        assertEquals(List.of("1 accepted graph identities are not generated yet"),
-                plan.get(3).because());
-        assertTrue(ProjectBuild.resultsAcquiredBy(model, new GraphResults(model, storage),
+        assertEquals(List.of("it now acquires 2 accepted graph identities, "
+                        + "its output acquired 0"), plan.get(3).because());
+        GraphResults saved = new GraphResults(model, storage);
+        saved.restore(List.of(), ignored -> { });
+        assertTrue(ProjectBuild.acquisitionsOf(model, saved,
                         model.buildOperations().getFirst()).isEmpty(),
                 "the first Generate acquires nothing from a graph that runs after it");
     }
@@ -155,8 +184,8 @@ class ProjectBuildTest {
         ProjectBuild.Step generate = ProjectBuild.plan(model, storage).getFirst();
 
         assertEquals(ProjectBuild.State.STALE, generate.state());
-        assertEquals(List.of("1 accepted graph identities are not generated yet"),
-                generate.because());
+        assertEquals(List.of("it now acquires 2 accepted graph identities, "
+                        + "its output acquired 0"), generate.because());
     }
 
     /** Offices whose PositionGraph ADDS to Position; with {@code graphInBuild} the build is
@@ -200,6 +229,20 @@ class ProjectBuildTest {
         ProjectSave.plan(new ProjectSave.Input(model,
                 new ProjectSave.Run(List.of(position("Q1")), List.of(), null, model.copy()),
                 null, results.all()), storage).write();
+        saveGenerateOutputs(model, storage, List.of(position("Q1")));
+    }
+
+    /** Records every Generate step of the build as having produced {@code objects} for the
+     *  current model, acquiring nothing extra. */
+    private static void saveGenerateOutputs(GeneratedProjectModel model, DomainStorage storage,
+                                            List<WikidataDynamicObject> objects)
+            throws Exception {
+        for (BuildOperation operation : model.buildOperations()) {
+            if (operation.kind() != BuildOperation.Kind.GENERATE_PROJECT) continue;
+            GenerationStepOutputStore.of(storage, model.name(), operation.declarationId())
+                    .save(model, objects, List.of(), SelfReferenceLedger.EMPTY,
+                            datasource.graph.GraphDiscoveryState.EMPTY, java.util.Map.of());
+        }
     }
 
     /** Saves generated Positions Q1 and Q2 and a PositionGraph result in which Q1 is
@@ -213,6 +256,7 @@ class ProjectBuildTest {
         ProjectSave.plan(new ProjectSave.Input(model,
                 new ProjectSave.Run(List.of(position("Q1"), position("Q2")), List.of(), null,
                         model.copy()), null, results.all()), storage).write();
+        saveGenerateOutputs(model, storage, List.of(position("Q1"), position("Q2")));
     }
 
     private static GeneratedProjectModel project() {

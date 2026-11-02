@@ -12,6 +12,7 @@ import wikidata.explore.generation.DomainSave;
 import wikidata.explore.generation.GenerateDomainProcess;
 import wikidata.explore.generation.GenerationExecutionSettings;
 import wikidata.explore.generation.GenerationRun;
+import wikidata.explore.generation.GenerationStepOutputStore;
 import wikidata.explore.generation.GenerationRuns;
 import wikidata.explore.generation.GraphApplication;
 import wikidata.explore.generation.GraphDiscoveryResultStore;
@@ -300,23 +301,25 @@ public final class ProjectBuild {
                 }
             }
             case GENERATE_PROJECT -> {
-                File snapshot = storage.snapshotFile(model.name());
-                String recorded = storage.savedSnapshotSignature(model.name());
-                String now = DomainSave.signature(model);
-                Map<String, List<String>> pending = GraphResults.pendingPopulationAdditions(
-                        resultsAcquiredBy(model, results, operation), saved.objects());
-                if (!snapshot.isFile()) {
+                // A Generate's output is its own artifact, never the project snapshot: the
+                // snapshot is what Save project wrote after every later step reshaped it.
+                GenerationStepOutputStore output = GenerationStepOutputStore.of(
+                        storage, model.name(), operation.declarationId());
+                GenerationStepOutputStore.Metadata recorded = output.metadata();
+                Map<String, List<String>> requested =
+                        acquisitionsOf(model, results, operation);
+                int asked = requested.values().stream().mapToInt(List::size).sum();
+                if (recorded == null) {
                     state = State.MISSING;
-                    because.add("no snapshot at " + snapshot.getPath());
-                } else if (recorded.isBlank() || !recorded.equals(now)) {
+                    because.add("no saved output of this step at "
+                            + output.snapshotFile().getPath());
+                } else if (!recorded.modelSignature.equals(DomainSave.signature(model))) {
                     state = State.STALE;
-                    because.add(recorded.isBlank()
-                            ? "the saved snapshot does not record the model it came from"
-                            : "the model changed since the snapshot was generated");
-                } else if (!pending.isEmpty()) {
+                    because.add("the model changed since this step generated");
+                } else if (!recorded.acquired(requested)) {
                     state = State.STALE;
-                    because.add(pending.values().stream().mapToInt(List::size).sum()
-                            + " accepted graph identities are not generated yet");
+                    because.add("it now acquires " + asked + " accepted graph identities, "
+                            + "its output acquired " + recorded.acquiredCount());
                 } else {
                     state = State.CURRENT;
                 }
@@ -493,6 +496,8 @@ public final class ProjectBuild {
         List<String> files = new ArrayList<>();
         Map<String, ProjectSave.Publication> publications = new LinkedHashMap<>();
         GenerationRun run = null;
+        // The last reused Generate: a later step that runs starts from its output.
+        GenerationStepOutputStore reusedGeneration = null;
         // A misordered build is refused before any step runs: running the steps before the
         // misordered one would spend a Wikidata generation on a result it cannot use.
         State outcome = orderProblems(model).isEmpty() ? State.CURRENT : State.FAILED;
@@ -513,6 +518,10 @@ public final class ProjectBuild {
                 continue;
             }
             if (step.state() == State.CURRENT) {
+                if (step.operation().kind() == BuildOperation.Kind.GENERATE_PROJECT) {
+                    reusedGeneration = GenerationStepOutputStore.of(
+                            storage, model.name(), step.operation().declarationId());
+                }
                 record(done, new Done(step, Action.REUSED, "current"), outcome,
                         observer, model.name());
                 continue;
@@ -540,9 +549,7 @@ public final class ProjectBuild {
                 }
                 case GENERATE_PROJECT -> {
                     Map<String, List<String>> additions =
-                            GraphResults.pendingPopulationAcquisitions(model,
-                                    resultsAcquiredBy(model, results, operation),
-                                    run != null ? run.dynamicObjects() : saved.objects());
+                            acquisitionsOf(model, results, operation);
                     ProcessOutcome<GenerationRun> generated = new GenerateDomainProcess(
                             CompiledPipelineRun.compile(PipelineRequest.generateDomain(
                                     model.copy(), additions)),
@@ -564,12 +571,18 @@ public final class ProjectBuild {
                     }
                     run = replace(run, generated.result());
                     ledger = GenerationRuns.ledgerAfter(ledger, run);
+                    GenerationStepOutputStore output = GenerationStepOutputStore.of(
+                            storage, model.name(), operation.declarationId());
+                    say.accept("Saving this step's output to "
+                            + output.snapshotFile().getPath());
+                    files.addAll(output.save(model, run, ledger, additions));
                     record(done, new Done(step, Action.RAN,
-                            run.dynamicObjects().size() + " objects"), outcome,
+                            run.dynamicObjects().size() + " objects -> "
+                                    + output.snapshotFile().getPath()), outcome,
                             observer, model.name());
                 }
                 case RUN_TRANSFORMATION -> {
-                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    run = run != null ? run : loaded(model, storage, snapshot, reusedGeneration, say);
                     GeneratedClassModel outputClass = operation.target(model);
                     TransformationExecution.Result transformed =
                             TransformationExecution.apply(model, outputClass, run);
@@ -587,7 +600,7 @@ public final class ProjectBuild {
                     PopulationSelection population =
                             (PopulationSelection) operation.selectionTarget(model);
                     GeneratedClassModel outputClass = model.findClass(population.className());
-                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    run = run != null ? run : loaded(model, storage, snapshot, reusedGeneration, say);
                     List<wikidata.explore.extract.WikidataDynamicObject> published =
                             run.dynamicObjects().stream()
                                     .filter(object -> object.directClassNames().contains(
@@ -606,7 +619,7 @@ public final class ProjectBuild {
                             observer, model.name());
                 }
                 case RUN_GRAPH_CONSTRAINT -> {
-                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    run = run != null ? run : loaded(model, storage, snapshot, reusedGeneration, say);
                     GeneratedClassModel graph = operation.target(model);
                     GeneratedProjectModel copy = model.copy();
                     ConfiguredGraphDiscoveryQuery.Result result = new ConfiguredGraphDiscoveryQuery(
@@ -625,7 +638,7 @@ public final class ProjectBuild {
                             + " accepted"), outcome, observer, model.name());
                 }
                 case APPLY_GRAPH_DECISIONS -> {
-                    run = run != null ? run : loaded(model, storage, snapshot, say);
+                    run = run != null ? run : loaded(model, storage, snapshot, reusedGeneration, say);
                     GeneratedClassModel graph = operation.target(model);
                     GraphDiscoveryResultStore.Artifact result = results.of(graph);
                     if (result == null) {
@@ -692,6 +705,18 @@ public final class ProjectBuild {
      * way, and each build's output depended on the build before it (#423, #424). Planning
      * and running both ask this, so a Generate is stale for exactly what it will acquire.
      */
+    /**
+     * The supplemental identities the Generate {@code generate} requests: every accepted
+     * identity of the results it acquires, keyed by the class that acquires them. Nothing
+     * is subtracted for an earlier pool: Generate replaces the run, so what it produces
+     * depends only on the model and this request, which is also its output's key.
+     */
+    static Map<String, List<String>> acquisitionsOf(
+            GeneratedProjectModel model, GraphResults results, BuildOperation generate) {
+        return GraphResults.pendingPopulationAcquisitions(model,
+                resultsAcquiredBy(model, results, generate), List.of());
+    }
+
     static List<GraphDiscoveryResultStore.Artifact> resultsAcquiredBy(
             GeneratedProjectModel model, GraphResults results, BuildOperation generate) {
         List<BuildOperation> operations = model.buildOperations();
@@ -722,7 +747,13 @@ public final class ProjectBuild {
     }
 
     private static GenerationRun loaded(GeneratedProjectModel model, DomainStorage storage,
-                                        File snapshot, Consumer<String> say) throws Exception {
+                                        File snapshot, GenerationStepOutputStore reusedGeneration,
+                                        Consumer<String> say) throws Exception {
+        if (reusedGeneration != null) {
+            say.accept("Reading the reused Generate output "
+                    + reusedGeneration.snapshotFile().getPath());
+            return reusedGeneration.load(model, storage, say);
+        }
         if (!snapshot.isFile()) {
             throw new IllegalStateException("No instances to run on: " + snapshot.getPath()
                     + " does not exist. Put Generate project before this step.");
