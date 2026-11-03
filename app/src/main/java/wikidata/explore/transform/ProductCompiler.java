@@ -78,26 +78,39 @@ public final class ProductCompiler {
         // still holds every loaded instance, so a loaded domain offers it by name
         // beside the roles; a role keeps its name if the two ever collide.
         PopulationSelections.materialize(model, pool).forEach(roleSelections::putIfAbsent);
+        // The snapshot pool also carries presentation graphs (currently saved group
+        // roots) beside the modeled instances. Product compilation owns ONLY instances
+        // of classes declared by this model. Applying reference collapse to a
+        // ViewableGroup turns its children/members into display strings, so the saved
+        // facet tree is still present in the file but empty when TransformApp opens it.
+        // Keep one explicit owner boundary and use it for every in-place normalization.
+        Set<String> modeledTypes = model.classes().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(GeneratedClassModel::className)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        List<WikidataDynamicObject> modeledPool = pool.stream()
+                .filter(value -> value != null && modeledTypes.contains(value.typeName()))
+                .toList();
         // 1. Drop Wikimedia-meta noise (e.g. "Wikimedia list article", a Wikinews
         //    article) from references before collapse — an entity's P31 `type` picks
         //    up such non-domain values, and they'd otherwise become bogus strings.
-        filterNoiseReferences(pool);
+        filterNoiseReferences(modeledPool);
         // 2. References to an unmodeled class read as their display-name string.
-        collapseUnmodeledReferences(model, pool);
+        collapseUnmodeledReferences(model, modeledPool);
         // 3. A declared entity field keeps compatible stamped references even when the
         //    referent is outside the loaded top-level population. Other raw references
         //    still collapse to labels.
-        List<String> memberList = memberClasses(model, pool);
-        collapseReferencesOutsideDeclaredEntityFields(model, pool);
+        List<String> memberList = memberClasses(model, modeledPool);
+        collapseReferencesOutsideDeclaredEntityFields(model, modeledPool);
 
         // 4. Remove legacy extraction plumbing. Datasource provenance is exposed
         //    through ConfiguredInstanceFields below, not a second dynamic field.
-        stripUndeclaredStatementSource(model, pool);
-        stripLegacyWikidata(pool);
+        stripUndeclaredStatementSource(model, modeledPool);
+        stripLegacyWikidata(modeledPool);
         // 5. Drop the reify forward list (`__Nomination`): the declared model never
         //    had it, so the relation stays one-directional (like Constellation/Star —
         //    navigate Nomination as its own member type, no auto-materialized inverse).
-        stripReifyLists(model, pool);
+        stripReifyLists(model, modeledPool);
 
         List<ProductClass> classes = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
@@ -112,7 +125,7 @@ public final class ProductCompiler {
         // Give every instance of a class the SAME field order (its ProductClass
         // order), so cards read consistently instead of each entity's raw
         // extraction-insertion order.
-        reorderInstanceFields(pool, schema);
+        reorderInstanceFields(modeledPool, schema);
         // The schema view is built lazily (only if the user opens it) and captures
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
         // ProductDomain is generic — the wikidata universe is supplied here.
