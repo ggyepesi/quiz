@@ -26,6 +26,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentFieldLoadTest {
 
+    @Test void semanticReloadDoesNotRestoreValuesOutsideTheAllowedVocabulary() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel element = new GeneratedClassModel("Element");
+        GeneratedFieldModel family = element.addField(
+                "partOf", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        family.entityClassName("ElementFamily");
+        family.mapping().propertyPid("P361");
+        family.mapping().allowedQids().add("Q19557");
+        model.rootClass(element);
+        model.addClass(new GeneratedClassModel("ElementFamily"));
+
+        WikidataDynamicObject hydrogen = new WikidataDynamicObject("Q556", "hydrogen");
+        hydrogen.type("Element");
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q556", "hydrogen", Map.of(
+                        "P361", List.of("Q10801007", "Q191936", "Q19600", "Q283")))
+                .entity("Q10801007", "group 1")
+                .entity("Q191936", "period 1")
+                .entity("Q19600", "nonmetal")
+                .entity("Q283", "water");
+
+        assertEquals(0, ReferentFieldLoad.apply(model, List.of(hydrogen), api, null));
+        assertNull(hydrogen.get("partOf"),
+                "a semantic reload must not restore values removed by allowedQids");
+        assertEquals(0, ReferentClassStamp.apply(model, List.of(hydrogen)),
+                "rejected values must never become ElementFamily instances");
+    }
+
     @Test void aConfiguredArticleLoadsForAFieldlessNestedReferent() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel body = new GeneratedClassModel("CelestialBody");

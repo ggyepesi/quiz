@@ -1051,6 +1051,7 @@ public final class ReferentFieldLoad {
         // entity-specific decision.
         String languageQid = wikidata.WikidataLanguageDefaults.entityQid(
                 field.mapping().valueLanguage());
+        Set<String> allowedQids = FieldValueRestrictions.allowedQids(field);
         int loaded = 0;
         for (WikidataDynamicObject o : objs) {
             WikidataApiClient.ApiEntity e = batch.entities().get(o.qid());
@@ -1063,6 +1064,14 @@ public final class ReferentFieldLoad {
                     ? e.entityQids(pid)
                     : e.entityQidsInLanguage(pid, languageQid, condition);
             for (String vq : projected) {
+                // Referent loading runs after the ordinary transform sequence. Apply
+                // the field's authored vocabulary here as well, before a later semantic
+                // iteration can stamp the referent as a member of its target class.
+                // Otherwise an empty restricted field is treated as missing, reloaded,
+                // and the values the restriction removed become class instances.
+                if (!allowedQids.isEmpty() && !allowedQids.contains(vq)) {
+                    continue;
+                }
                 WikidataApiClient.ApiEntity le = batch.labels().get(vq);
                 String label = le == null || le.label() == null || le.label().isBlank()
                         ? vq : le.label();

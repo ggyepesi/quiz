@@ -212,18 +212,30 @@ public class GenerationPipeline {
                         .subqueryStarted("Unit of " + cls.className() + "." + f.name(), q);
                 try {
                     List<WikidataBinding> rows = client.query(q);
-                    String sym = rows.isEmpty() ? null : rows.get(0).value("sym");
+                    String sym = rows.isEmpty() ? null : displayUnitSymbol(
+                            rows.get(0).value("sym"));
                     if (sym != null && !sym.isBlank()) {
                         f.unit(sym);
                         lookup.done("unit " + sym);
                     } else {
-                        lookup.done("no unit stated");
+                        lookup.done("dimensionless or no unit stated");
                     }
                 } catch (Exception e) {
                     lookup.failed("unit not checked for " + f.name() + ": " + e.getMessage());
                 }
             }
         }
+    }
+
+    /**
+     * Wikidata uses the symbol {@code 1} for a dimensionless quantity. It describes
+     * the number's dimension; it is not text to append to the displayed value. Thus
+     * atomic number 51 remains "51", rather than rendering as "51 1".
+     */
+    static String displayUnitSymbol(String symbol) {
+        if (symbol == null) return null;
+        String clean = symbol.trim();
+        return clean.equals("1") ? "" : clean;
     }
 
     private String membershipPattern(

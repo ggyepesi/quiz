@@ -36,7 +36,7 @@ public final class FieldValueRestrictions {
         }
         for (GeneratedClassModel clazz : project.classes()) {
             for (GeneratedFieldModel f : clazz.fields()) {
-                Set<String> allowed = clean(f.mapping().allowedQids());
+                Set<String> allowed = allowedQids(f);
                 if (allowed.isEmpty()) {
                     continue;
                 }
@@ -95,6 +95,16 @@ public final class FieldValueRestrictions {
     private static boolean allowedValue(Object v, Set<String> allowed) {
         // Only entity-valued items carry a QID; non-entity values aren't restricted.
         return !(v instanceof WikidataDynamicObject w) || allowed.contains(w.qid());
+    }
+
+    /**
+     * The normalized authored vocabulary for one field. Package-visible so every
+     * acquisition path applies the same restriction before publishing a value; a
+     * semantic reload must not restore values that this transform already removed.
+     */
+    static Set<String> allowedQids(GeneratedFieldModel field) {
+        return field == null || field.mapping() == null
+                ? Set.of() : clean(field.mapping().allowedQids());
     }
 
     private static Set<String> clean(Set<String> qids) {

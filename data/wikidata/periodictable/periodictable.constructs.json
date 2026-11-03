@@ -1,0 +1,15 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:7eedd85d-a5fb-347b-9331-12d3de9445b9",
+    "name" : "Element",
+    "kind" : "CLASS",
+    "artifact" : "periodictable.snapshot.json"
+  }, {
+    "declarationId" : "decl:847774d8-81d3-48c1-8608-370f098fd7de",
+    "name" : "ElementFamily",
+    "kind" : "CLASS",
+    "artifact" : "periodictable.snapshot.json"
+  } ],
+  "snapshotSignature" : "model-v2:b252766438f1b421a5aa492dcb9c9294870797320e0e181c81249180e72d3226"
+}

@@ -13,8 +13,12 @@
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
+    "membershipIncludesDescendants" : false,
+    "membershipQualifierCondition" : null,
     "membershipPid" : "",
     "membershipQid" : "",
+    "membershipFilterIncludesDescendants" : false,
+    "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
       "requireLabel" : true,
@@ -24,145 +28,171 @@
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "symbol",
       "propertyPid" : "P246",
-      "propertyLabel" : "",
+      "propertyLabel" : "element symbol",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "atomicNumber",
       "propertyPid" : "P1086",
-      "propertyLabel" : "",
+      "propertyLabel" : "atomic number",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "mass",
       "propertyPid" : "P2067",
-      "propertyLabel" : "",
+      "propertyLabel" : "mass",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "electronegativity",
       "propertyPid" : "P1108",
-      "propertyLabel" : "",
+      "propertyLabel" : "electronegativity",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "meltingPoint",
       "propertyPid" : "P2101",
-      "propertyLabel" : "",
+      "propertyLabel" : "melting point",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "boilingPoint",
       "propertyPid" : "P2102",
-      "propertyLabel" : "",
+      "propertyLabel" : "boiling point",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "density",
       "propertyPid" : "P2054",
-      "propertyLabel" : "",
+      "propertyLabel" : "density",
       "kind" : "AUTO",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "oxidationStates",
       "propertyPid" : "P1121",
-      "propertyLabel" : "",
+      "propertyLabel" : "oxidation state",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "discoveryDate",
       "propertyPid" : "P575",
-      "propertyLabel" : "",
-      "kind" : "AUTO",
+      "propertyLabel" : "time of discovery or invention",
+      "kind" : "DATE",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "discoverer",
       "propertyPid" : "P61",
-      "propertyLabel" : "",
+      "propertyLabel" : "discoverer or inventor",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "namedAfter",
       "propertyPid" : "P138",
-      "propertyLabel" : "",
+      "propertyLabel" : "named after",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "partOf",
       "propertyPid" : "P361",
-      "propertyLabel" : "",
+      "propertyLabel" : "part of",
       "kind" : "ENTITY",
       "optional" : true,
       "collection" : true,
-      "direction" : "ITEM_TO_ROOT",
+      "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "image",
       "propertyPid" : "P18",
-      "propertyLabel" : "",
+      "propertyLabel" : "image",
       "kind" : "MEDIA",
       "optional" : true,
       "collection" : false,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     } ] ],
     "limit" : 200,
     "sortFieldName" : "",
@@ -170,11 +200,24 @@
     "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
     "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
-    "valueFilters" : [ "java.util.ArrayList", [ ] ],
+    "valueFilters" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.filter.WikidataValueFilter",
+      "fieldName" : "atomicNumber",
+      "propertyPid" : "P1086",
+      "propertyLabel" : "atomic number",
+      "operator" : "LE",
+      "numericValue" : 118.0,
+      "required" : true,
+      "qualifierCondition" : null
+    } ] ],
     "edges" : [ "java.util.ArrayList", [ ] ],
     "requireSitelink" : false,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
-    "rankDescending" : true
+    "rankDescending" : true,
+    "rankCondition" : null,
+    "rankFrom" : -1,
+    "rankUntil" : -1,
+    "membershipConstraints" : [ "java.util.ArrayList", [ ] ]
   }
 }
