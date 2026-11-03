@@ -39,6 +39,28 @@ public final class Dialogs {
         return answer == 0;
     }
 
+    /** The matching completion for {@link #confirmPersistence}: name the operation and
+     * target first, then show the exact report produced by the writer. A list of paths
+     * under a "Saved" title was technically a result but did not actually tell the reader
+     * whether the write had completed successfully. */
+    public static void showPersistenceSuccess(
+            Component parent, String verb, String target, String report) {
+        String action = verb == null || verb.isBlank() ? "Save" : verb.trim();
+        JOptionPane.showMessageDialog(owner(parent),
+                wrapped(persistenceSuccessMessage(action, target, report)),
+                action + " succeeded", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    static String persistenceSuccessMessage(
+            String verb, String target, String report) {
+        String action = verb == null || verb.isBlank() ? "Save" : verb.trim();
+        String subject = target == null || target.isBlank()
+                ? "" : " \"" + target.trim() + "\"";
+        String details = report == null ? "" : report.trim();
+        return action + subject + " completed successfully."
+                + (details.isBlank() ? "" : "\n\n" + details);
+    }
+
     /**
      * Show a component-rich OK/Cancel prompt whose workspace can be resized.
      *

@@ -2470,8 +2470,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (!quiz.ui.Dialogs.confirmPersistence(
                 this, "Save " + kind, controller.describeSaveAsDomain(name))) return;
         try {
-            JOptionPane.showMessageDialog(this,
-                    quiz.ui.Dialogs.wrapped(controller.saveAsDomain(name)));
+            quiz.ui.Dialogs.showPersistenceSuccess(this,
+                    "Save " + kind, name, controller.saveAsDomain(name));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
                     "Save failed", JOptionPane.ERROR_MESSAGE);

@@ -3451,7 +3451,6 @@ public class ModelBuilderFrame extends JFrame {
     private boolean saveEverything(boolean closingAfterSave) {
         Window dialogOwner = quiz.ui.Dialogs.owner(this);
         String projectKind = projectModel.isModel() ? "model" : "domain";
-        String projectKindTitle = projectModel.isModel() ? "Model" : "Domain";
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
         try {
@@ -3548,11 +3547,9 @@ public class ModelBuilderFrame extends JFrame {
             if (!closingAfterSave) {
                 String hint = instanceCountHint(result.instancesWritten() == 0
                         ? -1 : result.instancesWritten());
-                JOptionPane.showMessageDialog(
-                        dialogOwner,
-                        report + (hint.isBlank() ? "" : "\n" + hint),
-                        "Saved " + projectKindTitle,
-                        JOptionPane.INFORMATION_MESSAGE);
+                quiz.ui.Dialogs.showPersistenceSuccess(dialogOwner,
+                        "Save " + projectKind, projectModel.name(),
+                        report + (hint.isBlank() ? "" : "\n" + hint));
             }
             return true;
         } catch (Exception ex) {

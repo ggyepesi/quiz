@@ -11,6 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DialogsTest {
+
+    @Test void aSuccessfulSaveSaysSoBeforeListingItsFiles() {
+        assertEquals("Save domain \"Periodic Table\" completed successfully.\n\n"
+                        + "Config: data/wikidata/periodictable/periodictable.model.json",
+                Dialogs.persistenceSuccessMessage("Save domain", "Periodic Table",
+                        "Config: data/wikidata/periodictable/periodictable.model.json\n"));
+    }
     @Test void resizableDialogNeverStartsSmallerThanItsUsableMinimum() {
         assertEquals(new Dimension(720, 560), Dialogs.dialogSize(
                 new Dimension(600, 400), new Dimension(720, 560)));

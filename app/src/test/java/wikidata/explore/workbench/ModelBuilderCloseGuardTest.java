@@ -46,7 +46,7 @@ class ModelBuilderCloseGuardTest {
 
         assertTrue(saveBody.contains("Window dialogOwner = quiz.ui.Dialogs.owner(this);"));
         assertTrue(saveBody.contains("JOptionPane.showConfirmDialog(dialogOwner"));
-        assertTrue(saveBody.contains("JOptionPane.showMessageDialog(\n                        dialogOwner"));
+        assertTrue(saveBody.contains("quiz.ui.Dialogs.showPersistenceSuccess(dialogOwner"));
         assertFalse(saveBody.contains("JOptionPane.showConfirmDialog(this"));
         assertFalse(saveBody.contains("JOptionPane.showMessageDialog(this"));
     }
