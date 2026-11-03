@@ -10,14 +10,33 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-/** Versioned native infobox parameters read from one source page. */
+/**
+ * Versioned native infobox evidence read from one source page.
+ *
+ * <p>{@code parameters} are what the article's source template says. Some infoboxes are
+ * wrapper templates, however, and calculate user-visible facts while rendering. Those facts
+ * live in {@code renderedFields}; keeping both beneath one evidence object lets a configured
+ * field say which representation it reads without inventing a second Wikipedia source.</p>
+ */
 public record InfoboxParameters(String template, Map<String, String> parameters,
+                                Map<String, String> renderedFields,
                                 SourceDocument document) {
+    /** Source-only construction retained for callers whose response has no rendered HTML. */
+    public InfoboxParameters(String template, Map<String, String> parameters,
+                             SourceDocument document) {
+        this(template, parameters, Map.of(), document);
+    }
+
     public InfoboxParameters {
         template = template == null ? "" : template.trim();
         parameters = Map.copyOf(new LinkedHashMap<>(parameters == null ? Map.of() : parameters));
+        renderedFields = Map.copyOf(new LinkedHashMap<>(
+                renderedFields == null ? Map.of() : renderedFields));
         document = Objects.requireNonNull(document, "Infobox source document is required");
-        if (template.isBlank()) throw new IllegalArgumentException("Infobox template is required");
+        if (template.isBlank() && renderedFields.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "An infobox template or rendered field is required");
+        }
     }
 
     /** The value of one parameter, or null; the template must match for it to mean anything. */
@@ -31,7 +50,7 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
 
     /**
      * One construction rule for this fact on both the single-page and bulk paths. The
-     * digest follows the retained parameters, not unrelated article prose, so the same
+     * digest follows the retained structured values, not unrelated article prose, so the same
      * infobox read either way has the same content identity.
      *
      * <p>The article URL is derived here rather than passed in. It was the last part of
@@ -49,17 +68,27 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
      */
     public static InfoboxParameters fromEnglishWikipedia(String template,
             Map<String, String> parameters, String title, String revision) {
+        return fromEnglishWikipedia(template, parameters, Map.of(), title, revision);
+    }
+
+    public static InfoboxParameters fromEnglishWikipedia(String template,
+            Map<String, String> parameters, Map<String, String> renderedFields,
+            String title, String revision) {
         String cleanTemplate = template == null ? "" : template.trim();
         Map<String, String> cleanParameters = parameters == null ? Map.of() : parameters;
+        Map<String, String> cleanRendered = renderedFields == null
+                ? Map.of() : renderedFields;
         String cleanTitle = title == null ? "" : title.trim();
         StringBuilder material = new StringBuilder(cleanTemplate);
         new TreeMap<>(cleanParameters).forEach((name, value) ->
                 material.append('\n').append(name).append('=').append(value));
+        new TreeMap<>(cleanRendered).forEach((name, value) ->
+                material.append("\n@rendered:").append(name).append('=').append(value));
         SourceDocument document = new SourceDocument("Wikipedia (English)",
                 cleanTitle, cleanTitle, articleUrl(cleanTitle), revision,
                 new ContentDigest("sha256", sha256(material.toString())),
                 Instant.now().toString());
-        return new InfoboxParameters(cleanTemplate, cleanParameters, document);
+        return new InfoboxParameters(cleanTemplate, cleanParameters, cleanRendered, document);
     }
 
     private static String articleUrl(String title) {
@@ -79,11 +108,18 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
     /** What this page said for a declared key, or null when it says nothing — including
      *  when the page's infobox is a different template than the key names. */
     public String valueOf(Key key) {
-        return key != null && isTemplate(key.template()) ? parameters.get(key.parameter()) : null;
+        if (key == null) return null;
+        if (key.rendered()) {
+            return renderedFields.entrySet().stream()
+                    .filter(entry -> entry.getKey().equalsIgnoreCase(key.parameter()))
+                    .map(Map.Entry::getValue).findFirst().orElse(null);
+        }
+        return isTemplate(key.template()) ? parameters.get(key.parameter()) : null;
     }
 
     /**
-     * How a field names one infobox parameter: {@code Infobox film.country}.
+     * How a field names one infobox value: {@code Infobox film.country} for a source
+     * parameter, or {@code Rendered.Group} for a user-visible row.
      *
      * <p>The grammar is owned HERE because three places read it — the acquisition, the
      * per-instance provider and the discovery card — and they had begun to disagree: two
@@ -112,6 +148,9 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
             return template.isBlank() || parameter.isBlank()
                     ? null : new Key(template, parameter);
         }
+
+        /** Rendered infobox rows use the durable {@code Rendered.<label>} namespace. */
+        public boolean rendered() { return template.equalsIgnoreCase("Rendered"); }
 
         @Override public String toString() { return template + "." + parameter; }
     }

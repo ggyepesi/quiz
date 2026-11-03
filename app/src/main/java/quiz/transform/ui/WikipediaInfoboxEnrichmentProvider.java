@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Fills a field directly from a versioned native Wikipedia Infobox parameter. */
+/** Fills a field directly from one versioned native Wikipedia Infobox value. */
 final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
     private final String key;
     private final String label;
@@ -37,10 +37,12 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
         if (!supports(request)) throw new IllegalArgumentException(
-                "Wikipedia infobox discovery needs a QID and Template.parameter key");
+                "Wikipedia infobox discovery needs a QID and an infobox value key");
         return new Query<>() {
             @Override public String purpose() { return "Read a native Wikipedia infobox value"; }
-            @Override public String skeleton() { return "QID -> Wikipedia article -> Infobox parameter"; }
+            @Override public String skeleton() {
+                return "QID -> Wikipedia article -> Infobox value";
+            }
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() { return key; }
             @Override public Map<String, String> parameters() {

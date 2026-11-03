@@ -22,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Domain-scale native Infobox acquisition: one revision request per 50 articles. */
+/** Domain-scale native Infobox acquisition through the shared batch executor. */
 public final class WikipediaInfoboxAcquisition {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final int BATCH = 50;
@@ -37,7 +37,7 @@ public final class WikipediaInfoboxAcquisition {
 
     /**
      * Plan-driven entry point. The resolved binding, rather than the legacy mapping
-     * projected from it, decides which fields consume Wikipedia infobox parameters.
+     * projected from it, decides which fields consume Wikipedia infobox values.
      * The old overload remains for callers outside a model execution workflow.
      */
     public static Result apply(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
@@ -64,8 +64,8 @@ public final class WikipediaInfoboxAcquisition {
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
             if (object != null && WikidataIds.isQid(object.qid())
-                    && !object.infoboxAnswered()
                     && declarations.stream().anyMatch(d -> applies(model, object, d)
+                    && !answered(object, d)
                     && object.get(d.field().name()) == null)) {
                 targets.computeIfAbsent(object.qid(), ignored -> new ArrayList<>()).add(object);
             }
@@ -83,24 +83,35 @@ public final class WikipediaInfoboxAcquisition {
         var values = new java.util.concurrent.atomic.AtomicInteger();
         var batches = new java.util.concurrent.atomic.AtomicInteger();
         List<String> titles = List.copyOf(titleToQid.keySet());
+        boolean needsRendered = declarations.stream().anyMatch(Declaration::rendered);
         try (GenerationLog.Group group = log.group("Acquire native Wikipedia infoboxes — "
-                + titles.size() + " article(s) in batches of " + BATCH)) {
-            List<batch.WorkUnit<Map<String, InfoboxParameters>>> units = new ArrayList<>();
-            for (int from = 0; from < titles.size(); from += BATCH) {
-                units.add(unit(List.copyOf(titles.subList(from,
-                        Math.min(titles.size(), from + BATCH))), group, fetcher));
+                + titles.size() + " article(s) — " + (needsRendered
+                ? titles.size() + " rendered request(s)"
+                : ((titles.size() + BATCH - 1) / BATCH) + " batch request(s)"))) {
+            List<batch.WorkUnit<Map<String, Acquired>>> units = new ArrayList<>();
+            if (needsRendered) {
+                for (String title : titles) units.add(renderedUnit(title, fetcher));
+                group.message("Rendered infobox fields require one MediaWiki parse request "
+                        + "per article; " + titles.size() + " request(s) are queued.\n");
+            } else {
+                for (int from = 0; from < titles.size(); from += BATCH) {
+                    units.add(unit(List.copyOf(titles.subList(from,
+                            Math.min(titles.size(), from + BATCH))), group, fetcher));
+                }
             }
-            new batch.BatchExecutor<Map<String, InfoboxParameters>>(
+            new batch.BatchExecutor<Map<String, Acquired>>(
                     batch.BatchPolicy.defaults().withResume(false), batchProgress(group),
                     wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
                     // How hard a run may work is one policy; Wikipedia is not exempt
                     // from the network profile the reader chose for Wikidata.
                     batch.BatchCheckpointStore.NONE, api.entityConcurrency())
                     .run(units, (descriptor, result) -> {
-                        result.forEach((title, acquired) -> {
+                        result.forEach((title, answer) -> {
                             List<WikidataDynamicObject> copies =
                                     targets.get(titleToQid.get(title));
                             if (copies == null || copies.isEmpty()) return;
+                            InfoboxParameters acquired = answer == null
+                                    ? null : answer.evidence();
                             if (acquired != null) pages.incrementAndGet();
                             // What this page SUPPLIED, counted once however many in-memory
                             // views of the entity received it. Adding up the copies made a
@@ -111,7 +122,9 @@ public final class WikipediaInfoboxAcquisition {
                                 // One source document belongs to every in-memory view of
                                 // this entity. Keeping it on only the first QID copy made
                                 // provenance depend on registry/carrier history.
-                                object.infoboxParameters(acquired);
+                                object.infoboxEvidence(acquired,
+                                        answer != null && answer.parametersAnswered(),
+                                        answer != null && answer.renderedAnswered());
                                 if (acquired != null) {
                                     supplied.addAll(fill(model, object, declarations, acquired));
                                 }
@@ -145,7 +158,7 @@ public final class WikipediaInfoboxAcquisition {
         return filled;
     }
 
-    private static batch.WorkUnit<Map<String, InfoboxParameters>> unit(
+    private static batch.WorkUnit<Map<String, Acquired>> unit(
             List<String> titles, GenerationLog log, Fetcher fetcher) {
         return new batch.WorkUnit<>() {
             @Override public batch.WorkDescriptor descriptor() {
@@ -155,7 +168,7 @@ public final class WikipediaInfoboxAcquisition {
                         Map.of("titles", names));
             }
             @Override public String request() { return url(titles); }
-            @Override public Map<String, InfoboxParameters> execute() throws Exception {
+            @Override public Map<String, Acquired> execute() throws Exception {
                 JsonNode root = JSON.readTree(fetcher.fetch(URI.create(url(titles))));
                 Map<String, String> aliases = new LinkedHashMap<>();
                 for (JsonNode value : root.path("query").path("normalized"))
@@ -176,18 +189,18 @@ public final class WikipediaInfoboxAcquisition {
                             box.template(), box.parameters(), title,
                             revisions.get(0).path("revid").asText("")));
                 }
-                Map<String, InfoboxParameters> out = new LinkedHashMap<>();
+                Map<String, Acquired> out = new LinkedHashMap<>();
                 for (String requested : titles) {
                     String actual = requested;
                     for (int i = 0; i < 4 && aliases.containsKey(actual); i++)
                         actual = aliases.get(actual);
                     // A requested article with no infobox is still ANSWERED: null records
                     // that this page was read and had none, so it is not read again.
-                    out.put(requested, parsed.get(actual));
+                    out.put(requested, new Acquired(parsed.get(actual), true, false));
                 }
                 return out;
             }
-            @Override public List<? extends batch.WorkUnit<Map<String, InfoboxParameters>>>
+            @Override public List<? extends batch.WorkUnit<Map<String, Acquired>>>
                     split() {
                 if (titles.size() < 2) return List.of();
                 int middle = titles.size() / 2;
@@ -197,10 +210,40 @@ public final class WikipediaInfoboxAcquisition {
         };
     }
 
+    /** Rendered rows are calculated by MediaWiki, so unlike source revisions they cannot
+     * be retrieved for fifty titles in one action=query request. They still use the shared
+     * batch executor for concurrency, progress, cancellation and 429 handling. */
+    private static batch.WorkUnit<Map<String, Acquired>> renderedUnit(
+            String title, Fetcher fetcher) {
+        return new batch.WorkUnit<>() {
+            @Override public batch.WorkDescriptor descriptor() {
+                return new batch.WorkDescriptor("wikipedia-rendered-infobox",
+                        "rendered-infobox:" + title, "Wikipedia infobox for " + title,
+                        Map.of("title", title));
+            }
+            @Override public String request() { return renderedUrl(title); }
+            @Override public Map<String, Acquired> execute() throws Exception {
+                JsonNode root = JSON.readTree(fetcher.fetch(URI.create(renderedUrl(title))));
+                InfoboxParameters evidence = wikipedia.WikipediaInfoboxClient
+                        .parseResponse(root);
+                return Map.of(title, new Acquired(evidence, true, true));
+            }
+            @Override public List<? extends batch.WorkUnit<Map<String, Acquired>>> split() {
+                return List.of();
+            }
+        };
+    }
+
     private static String url(List<String> titles) {
         return "https://en.wikipedia.org/w/api.php?action=query&prop=revisions"
                 + "&rvprop=ids%7Ccontent&rvslots=main&redirects=1&format=json"
                 + "&formatversion=2&titles=" + encode(String.join("|", titles));
+    }
+
+    private static String renderedUrl(String title) {
+        return "https://en.wikipedia.org/w/api.php?action=parse"
+                + "&prop=wikitext%7Ctext%7Crevid&redirects=1&format=json&formatversion=2&page="
+                + encode(title);
     }
 
     private static String fetchRemote(URI uri) throws Exception {
@@ -257,7 +300,7 @@ public final class WikipediaInfoboxAcquisition {
                         + step.target().className() + "." + step.target().fieldPath());
             }
             if (InfoboxParameters.Key.parse(parameter) == null) {
-                throw new IllegalArgumentException("Invalid Wikipedia infobox parameter for "
+                throw new IllegalArgumentException("Invalid Wikipedia infobox value for "
                         + step.target().className() + "." + step.target().fieldPath()
                         + ": " + parameter);
             }
@@ -280,7 +323,7 @@ public final class WikipediaInfoboxAcquisition {
         return found;
     }
 
-    /** Which of a field's mappings names an infobox parameter, for the pre-binding
+    /** Which of a field's mappings names an infobox value, for the pre-binding
      *  path only. A model execution workflow asks
      *  {@link WikipediaDatasourceProvider#infoboxParameter} of the BINDING instead —
      *  that is the one answer the message, the explanation and this acquisition share. */
@@ -317,6 +360,11 @@ public final class WikipediaInfoboxAcquisition {
         }
         return false;
     }
+
+    private static boolean answered(WikidataDynamicObject object, Declaration declaration) {
+        return declaration.rendered()
+                ? object.renderedInfoboxAnswered() : object.infoboxAnswered();
+    }
     private static String encode(String text) {
         return URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20");
     }
@@ -327,6 +375,13 @@ public final class WikipediaInfoboxAcquisition {
                 String parameter) {
             this(owner, field, parameter, null);
         }
+
+        private boolean rendered() {
+            InfoboxParameters.Key key = InfoboxParameters.Key.parse(parameter);
+            return key != null && key.rendered();
+        }
     }
+    private record Acquired(InfoboxParameters evidence, boolean parametersAnswered,
+                            boolean renderedAnswered) { }
     public record Result(int pages, int values, int batches) { }
 }

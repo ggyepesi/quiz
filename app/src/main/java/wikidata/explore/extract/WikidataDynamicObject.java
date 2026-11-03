@@ -60,6 +60,8 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     private datasource.evidence.InfoboxParameters infoboxParameters;
     @Hidden
     private boolean infoboxAnswered;
+    @Hidden
+    private boolean renderedInfoboxAnswered;
 
     /** The configured English Wikipedia correspondence retained from wbgetentities. */
     @Hidden
@@ -196,11 +198,38 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     /** Records what the article's infobox said, including that it said nothing: an
      *  article without an infobox has been asked and must not be asked again. */
     public void infoboxParameters(datasource.evidence.InfoboxParameters value) {
-        infoboxParameters = value;
-        infoboxAnswered = true;
+        infoboxEvidence(value, true,
+                value != null && !value.renderedFields().isEmpty());
     }
 
     public boolean infoboxAnswered() { return infoboxAnswered; }
+
+    /** Records which two representations the request actually read. */
+    public void infoboxEvidence(datasource.evidence.InfoboxParameters value,
+            boolean parametersAnswered, boolean renderedAnswered) {
+        infoboxParameters = mergeInfobox(infoboxParameters, value);
+        infoboxAnswered |= parametersAnswered;
+        renderedInfoboxAnswered |= renderedAnswered;
+    }
+
+    public boolean renderedInfoboxAnswered() { return renderedInfoboxAnswered; }
+
+    private static datasource.evidence.InfoboxParameters mergeInfobox(
+            datasource.evidence.InfoboxParameters existing,
+            datasource.evidence.InfoboxParameters acquired) {
+        if (existing == null) return acquired;
+        if (acquired == null) return existing;
+        java.util.Map<String, String> parameters = new java.util.LinkedHashMap<>(
+                existing.parameters());
+        parameters.putAll(acquired.parameters());
+        java.util.Map<String, String> rendered = new java.util.LinkedHashMap<>(
+                existing.renderedFields());
+        rendered.putAll(acquired.renderedFields());
+        String template = acquired.template().isBlank()
+                ? existing.template() : acquired.template();
+        return new datasource.evidence.InfoboxParameters(
+                template, parameters, rendered, acquired.document());
+    }
 
     public String enwikiTitle() {
         return enwikiTitle == null ? "" : enwikiTitle;
@@ -520,6 +549,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         copy.categoryMembershipsAnswered = categoryMembershipsAnswered;
         copy.infoboxParameters = infoboxParameters;
         copy.infoboxAnswered = infoboxAnswered;
+        copy.renderedInfoboxAnswered = renderedInfoboxAnswered;
         copy.enwikiTitle = enwikiTitle;
         // Provenance is a declared field, but unlike domain references its values are
         // immutable source descriptors. Carry the exact values here; PoolCopy only

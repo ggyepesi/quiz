@@ -8,7 +8,7 @@ import java.awt.Component;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** Shared Transform/ModelBuilder picker for native Wikipedia Infobox parameters. */
+/** Shared Transform/ModelBuilder picker for native Wikipedia Infobox values. */
 public final class WikipediaInfoboxPicker {
     private WikipediaInfoboxPicker() { }
 
@@ -24,9 +24,9 @@ public final class WikipediaInfoboxPicker {
             DiscoverWikipediaInfoboxQuery query, Consumer<String> selected) {
         SourceDiscoveryPicker.run(parent, runner, query,
                 new SourceDiscoveryPicker.Spec<TableQueryResult>(
-                        "Observed Wikipedia infobox parameters",
+                        "Observed Wikipedia infobox values",
                         query.singleArticle()
-                                ? "Parameters actually found in the selected article. Choose "
+                                ? "Values actually found in the selected article. Choose "
                                 + "the one that supplies this field; <b>Examples</b> is what it "
                                 + "held there."
                                 // Categories rank least-shared first and parameters rank the
@@ -35,13 +35,13 @@ public final class WikipediaInfoboxPicker {
                                 // be naming something that varies — while a parameter is a
                                 // SLOT whose value varies, so the slot every article fills is
                                 // the one worth reading.
-                                : "Parameters actually found in the sampled articles, <b>most "
-                                + "widely filled first</b>: a parameter is a slot, so one that "
+                                : "Values actually found in the sampled articles, <b>most "
+                                + "widely filled first</b>: an infobox value is a slot, so one that "
                                 + "every article fills is the one most likely to supply this "
                                 + "field for every member. <b>Have</b> is how many carry it. "
-                                + "Choose the parameter that supplies this field.",
-                        "No native Wikipedia infobox parameters were found for this sample.",
-                        "Use selected parameter",
+                                + "Choose the value that supplies this field.",
+                        "No native Wikipedia infobox values were found for this sample.",
+                        "Use selected value",
                         result -> SourceDiscoveryPicker.infoboxRows(result == null
                                 ? List.of() : result.rows())),
                 choice -> { if (selected != null) selected.accept(choice.value()); },

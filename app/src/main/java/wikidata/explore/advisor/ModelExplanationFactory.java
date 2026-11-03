@@ -210,9 +210,12 @@ public final class ModelExplanationFactory {
             // queried for a value no SPARQL query will ever ask about.
             var key = datasource.evidence.InfoboxParameters.Key.parse(source.propertyPid());
             return key == null
-                    ? entity + " → " + value + " (infobox parameter not configured)"
-                    : entity + " enwiki {{" + key.template() + "}} | "
-                            + key.parameter() + " = " + value;
+                    ? entity + " → " + value + " (infobox value not configured)"
+                    : key.rendered()
+                            ? entity + " enwiki infobox row \"" + key.parameter()
+                                    + "\" = " + value
+                            : entity + " enwiki {{" + key.template() + "}} | "
+                                    + key.parameter() + " = " + value;
         }
         return direction.triplePattern(entity, value, source.propertyPid());
     }

@@ -41,7 +41,7 @@ public enum FieldSourceType {
         return switch (this) {
             case SPARQL -> "SPARQL (Wikidata)";
             case DBPEDIA -> "DBpedia (Wikipedia infobox)";
-            case WIKIPEDIA_INFOBOX -> "Wikipedia infobox parameter";
+            case WIKIPEDIA_INFOBOX -> "Wikipedia infobox value";
             case WIKIDATA_SITELINK_COUNT -> "Wikidata sitelink count";
             case WIKIDATA_INCOMING_COUNT -> "Wikidata incoming relation count";
             case WIKIDATA_INHERITED_INCOMING_COUNT ->

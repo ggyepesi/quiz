@@ -3,6 +3,8 @@ package wikipedia;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import datasource.evidence.InfoboxParameters;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import work.Query;
 import work.QueryContext;
 
@@ -14,7 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Reads the first native Wikipedia Infobox template and its named parameters. */
+/** Reads source parameters and user-visible rows from the first Wikipedia infobox. */
 public final class WikipediaInfoboxClient {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final WikipediaArticleClient.Fetcher fetcher;
@@ -37,7 +39,9 @@ public final class WikipediaInfoboxClient {
         URI uri = api(requested);
         return new Query<>() {
             @Override public String purpose() { return "Read native Wikipedia infobox"; }
-            @Override public String skeleton() { return "article wikitext -> first Infobox -> named parameters"; }
+            @Override public String skeleton() {
+                return "article -> first Infobox -> source parameters + rendered rows";
+            }
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() { return "Versioned native template values"; }
             @Override public Map<String, String> parameters() { return Map.of("title", requested); }
@@ -48,27 +52,74 @@ public final class WikipediaInfoboxClient {
                             InfoboxParameters result =
                                     parseResponse(JSON.readTree(fetcher.fetch(uri)));
                             step.summary(result == null ? "No infobox"
-                                    : result.template() + ": " + result.parameters().size()
-                                    + " parameter(s)");
+                                    : result.parameters().size() + " source parameter(s), "
+                                    + result.renderedFields().size() + " rendered row(s)");
                             return result;
                         });
             }
             @Override public int rowCount(InfoboxParameters result) {
-                return result == null ? 0 : result.parameters().size();
+                return result == null ? 0
+                        : result.parameters().size() + result.renderedFields().size();
             }
         };
     }
 
-    static InfoboxParameters parseResponse(JsonNode root) {
+    public static InfoboxParameters parseResponse(JsonNode root) {
         JsonNode parse = root.path("parse");
         String title = parse.path("title").asText("");
         String revision = parse.path("revid").asText("");
         JsonNode node = parse.path("wikitext");
         String text = node.isTextual() ? node.asText() : node.path("*").asText("");
         Parsed parsed = parseWikitext(text);
-        if (title.isBlank() || revision.isBlank() || parsed == null) return null;
-        return InfoboxParameters.fromEnglishWikipedia(parsed.template(), parsed.parameters(),
-                title, revision);
+        JsonNode renderedNode = parse.path("text");
+        String rendered = renderedNode.isTextual()
+                ? renderedNode.asText() : renderedNode.path("*").asText("");
+        Map<String, String> fields = parseRenderedFields(rendered);
+        if (title.isBlank() || revision.isBlank()
+                || (parsed == null && fields.isEmpty())) return null;
+        return InfoboxParameters.fromEnglishWikipedia(
+                parsed == null ? "" : parsed.template(),
+                parsed == null ? Map.of() : parsed.parameters(), fields, title, revision);
+    }
+
+    /**
+     * Reads the user-visible label/value rows of the first rendered infobox.
+     *
+     * <p>Rows of nested tables are ignored: only a row's direct label and data cells count.
+     * This matters for element infoboxes, whose miniature periodic table contains hundreds of
+     * nested rows that are presentation, not fields.</p>
+     */
+    public static Map<String, String> parseRenderedFields(String html) {
+        if (html == null || html.isBlank()) return Map.of();
+        Element table = Jsoup.parse(html).selectFirst("table.infobox");
+        if (table == null) return Map.of();
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Element row : table.select("tr")) {
+            if (enclosingTable(row) != table) continue;
+            Element label = directChild(row, "th", "infobox-label");
+            Element data = directChild(row, "td", "infobox-data");
+            if (label == null || data == null) continue;
+            String name = label.text().trim();
+            String value = data.text().trim();
+            if (name.isBlank() || value.isBlank()) continue;
+            result.merge(name, value, (left, right) -> left.equals(right)
+                    || left.contains("; " + right) ? left : left + "; " + right);
+        }
+        return Map.copyOf(result);
+    }
+
+    private static Element enclosingTable(Element element) {
+        for (Element current = element.parent(); current != null; current = current.parent()) {
+            if (current.tagName().equals("table")) return current;
+        }
+        return null;
+    }
+
+    private static Element directChild(Element parent, String tag, String className) {
+        for (Element child : parent.children()) {
+            if (child.tagName().equals(tag) && child.hasClass(className)) return child;
+        }
+        return null;
     }
 
     /** Balanced parsing keeps pipes and equals signs inside links/templates in the value. */
@@ -152,7 +203,7 @@ public final class WikipediaInfoboxClient {
         // parseResponse deliberately refuses an unversioned document. Ask for the
         // revision in the SAME request; action=parse does not include it merely because
         // wikitext was requested (the live Blood Diamond response exposed this gap).
-        return URI.create("https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext%7Crevid"
+        return URI.create("https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext%7Ctext%7Crevid"
                 + "&redirects=1&format=json&formatversion=2&page=" + encode(title));
     }
     private static String encode(String value) {

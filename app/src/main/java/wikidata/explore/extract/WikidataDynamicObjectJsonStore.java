@@ -470,6 +470,8 @@ public class WikidataDynamicObjectJsonStore {
             if (o.infoboxParameters() != null) { writeInfobox(e, o.infoboxParameters()); break; }
         }
         e.infoboxAnswered = instances.stream().anyMatch(WikidataDynamicObject::infoboxAnswered);
+        e.renderedInfoboxAnswered = instances.stream()
+                .anyMatch(WikidataDynamicObject::renderedInfoboxAnswered);
         for (WikidataDynamicObject o : instances) {
             String label = o.getReferenceLabel();
             if (label != null && !label.isBlank()
@@ -887,8 +889,10 @@ public class WikidataDynamicObjectJsonStore {
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             object.categoryMemberships(categoryMemberships(e));
         }
-        if (e.infoboxAnswered || e.wikipediaInfoboxDocument != null) {
-            object.infoboxParameters(infoboxParameters(e));
+        if (e.infoboxAnswered || e.renderedInfoboxAnswered
+                || e.wikipediaInfoboxDocument != null) {
+            object.infoboxEvidence(infoboxParameters(e), e.infoboxAnswered,
+                    e.renderedInfoboxAnswered);
         }
         e.fieldStatus.forEach((field, token) -> {
             FieldStatus status = FieldStatus.fromStored(token);
@@ -931,16 +935,20 @@ public class WikidataDynamicObjectJsonStore {
         e.wikipediaInfoboxDocument = acquired.document();
         e.wikipediaInfoboxTemplate = acquired.template();
         e.wikipediaInfoboxParameters.putAll(acquired.parameters());
+        e.wikipediaInfoboxRenderedFields.putAll(acquired.renderedFields());
     }
 
     /** Null when the page was read and carried no infobox: answered, with nothing to say. */
     private static datasource.evidence.InfoboxParameters infoboxParameters(Entity e) {
         if (e == null || e.wikipediaInfoboxDocument == null
-                || e.wikipediaInfoboxTemplate == null || e.wikipediaInfoboxTemplate.isBlank()) {
+                || ((e.wikipediaInfoboxTemplate == null
+                        || e.wikipediaInfoboxTemplate.isBlank())
+                    && e.wikipediaInfoboxRenderedFields.isEmpty())) {
             return null;
         }
         return new datasource.evidence.InfoboxParameters(e.wikipediaInfoboxTemplate,
-                e.wikipediaInfoboxParameters, e.wikipediaInfoboxDocument);
+                e.wikipediaInfoboxParameters, e.wikipediaInfoboxRenderedFields,
+                e.wikipediaInfoboxDocument);
     }
 
     /** Map each qid to its entity only when that qid has a single entity. This resolves
@@ -1034,6 +1042,7 @@ public class WikidataDynamicObjectJsonStore {
         e.categoryMembershipsAnswered = w.categoryMembershipsAnswered();
         writeInfobox(e, w.infoboxParameters());
         e.infoboxAnswered = w.infoboxAnswered();
+        e.renderedInfoboxAnswered = w.renderedInfoboxAnswered();
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
                 && !referenceLabel.equals(w.getDisplayName())) {
@@ -1064,8 +1073,10 @@ public class WikidataDynamicObjectJsonStore {
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             o.categoryMemberships(categoryMemberships(e));
         }
-        if (e.infoboxAnswered || e.wikipediaInfoboxDocument != null) {
-            o.infoboxParameters(infoboxParameters(e));
+        if (e.infoboxAnswered || e.renderedInfoboxAnswered
+                || e.wikipediaInfoboxDocument != null) {
+            o.infoboxEvidence(infoboxParameters(e), e.infoboxAnswered,
+                    e.renderedInfoboxAnswered);
         }
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
@@ -1134,8 +1145,14 @@ public class WikidataDynamicObjectJsonStore {
         public String wikipediaInfoboxTemplate;
         public Map<String, String> wikipediaInfoboxParameters = new LinkedHashMap<>();
         @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+        public Map<String, String> wikipediaInfoboxRenderedFields = new LinkedHashMap<>();
+        @com.fasterxml.jackson.annotation.JsonInclude(
                 com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
         public boolean infoboxAnswered;
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
+        public boolean renderedInfoboxAnswered;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

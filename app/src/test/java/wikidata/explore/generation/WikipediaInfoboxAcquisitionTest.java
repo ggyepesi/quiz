@@ -253,6 +253,27 @@ class WikipediaInfoboxAcquisitionTest {
         assertEquals("7", objects.getFirst().infoboxParameters().document().revision());
     }
 
+    @Test void renderedInfoboxRowFillsAFieldThroughTheSameConfiguredSource()
+            throws Exception {
+        GeneratedProjectModel model = model("Rendered.Group");
+        List<WikidataDynamicObject> objects = films(1);
+
+        var result = WikipediaInfoboxAcquisition.apply(model, objects,
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
+                uri -> renderedResponse("Film 1", 7, "{{Infobox iron}}", """
+                        <table class="infobox"><tbody><tr>
+                          <th class="infobox-label">Group</th>
+                          <td class="infobox-data">group 8</td>
+                        </tr></tbody></table>
+                        """));
+
+        assertEquals(1, result.values());
+        assertEquals("group 8", objects.getFirst().get("country"));
+        assertTrue(objects.getFirst().renderedInfoboxAnswered());
+        assertEquals("group 8", objects.getFirst().infoboxParameters()
+                .renderedFields().get("Group"));
+    }
+
     private static String digestOf(String wikitext) throws Exception {
         List<WikidataDynamicObject> objects = films(1);
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,
@@ -295,6 +316,14 @@ class WikipediaInfoboxAcquisitionTest {
                 + revid + ",\"slots\":{\"main\":{\"content\":"
                 + new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(wikitext)
                 + "}}}]}]}}";
+    }
+
+    private static String renderedResponse(String title, int revid, String wikitext,
+            String html) {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        return "{\"parse\":{\"title\":" + json.valueToTree(title) + ",\"revid\":"
+                + revid + ",\"wikitext\":" + json.valueToTree(wikitext)
+                + ",\"text\":" + json.valueToTree(html) + "}}";
     }
 
     /** The article title comes from the entity documents the run already fetches. */

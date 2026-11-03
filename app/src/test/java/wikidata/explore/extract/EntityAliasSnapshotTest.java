@@ -68,7 +68,8 @@ class EntityAliasSnapshotTest {
                 new datasource.evidence.ContentDigest("sha256", "abc"),
                 "2026-08-21T12:00:00Z");
         movie.infoboxParameters(new datasource.evidence.InfoboxParameters(
-                "Infobox film", java.util.Map.of("country", "Sierra Leone"), document));
+                "Infobox film", java.util.Map.of("country", "Sierra Leone"),
+                java.util.Map.of("Group", "group 8"), document));
 
         var file = dir.resolve("infobox-snapshot.json").toFile();
         WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
@@ -76,6 +77,8 @@ class EntityAliasSnapshotTest {
         WikidataDynamicObject loaded = store.load(file).getFirst();
 
         assertEquals("Sierra Leone", loaded.infoboxParameters().value("country"));
+        assertEquals("group 8", loaded.infoboxParameters().renderedFields().get("Group"));
+        org.junit.jupiter.api.Assertions.assertTrue(loaded.renderedInfoboxAnswered());
         assertEquals("987654", loaded.infoboxParameters().document().revision());
         assertEquals(null, loaded.get("infoboxParameters"),
                 "source facts stay outside the rendered field graph");

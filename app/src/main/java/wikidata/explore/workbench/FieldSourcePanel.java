@@ -478,7 +478,7 @@ public class FieldSourcePanel extends JPanel {
                     key -> {
                         if (key == null || key.isBlank()) return;
                         propertyPidField.setText(key);
-                        propertyLabel.setText("(native Wikipedia infobox parameter)");
+                        propertyLabel.setText("(native Wikipedia infobox value)");
                     });
             return;
         }
@@ -1040,7 +1040,7 @@ public class FieldSourcePanel extends JPanel {
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
         fallbackRow.add(fallbackLabel);
-        fallbackButton.setToolTipText("Discover either a native Wikipedia Infobox parameter "
+        fallbackButton.setToolTipText("Discover either a native Wikipedia Infobox value "
                 + "or its DBpedia projection, used only when the primary has no value.");
         fallbackButton.addActionListener(e -> chooseFallback());
         clearFallbackButton.addActionListener(e -> {

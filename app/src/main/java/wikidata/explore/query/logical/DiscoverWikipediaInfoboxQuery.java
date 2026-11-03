@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import wikidata.explore.query.core.WikidataAccess;
 
-/** Discovers native Wikipedia Infobox template parameters from selected/sample articles. */
+/** Discovers native Wikipedia Infobox source and rendered values from articles. */
 public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResult> {
     private final List<String> qids;
     private final String typeQid;
@@ -41,12 +41,14 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
 
     public boolean singleArticle() { return seedCount() == 1; }
 
-    @Override public String purpose() { return "Discover Wikipedia infobox parameters"; }
+    @Override public String purpose() { return "Discover Wikipedia infobox values"; }
     @Override public String skeleton() {
-        return "selected/sample entities -> Wikipedia sitelinks -> native Infobox parameters";
+        return "selected/sample entities -> Wikipedia sitelinks -> native Infobox values";
     }
     @Override public String queryType() { return "Wikipedia API"; }
-    @Override public String description() { return "List observed template parameters without guessing"; }
+    @Override public String description() {
+        return "List observed source parameters and rendered rows without guessing";
+    }
     @Override public Map<String, String> parameters() {
         return Map.of("entities", Integer.toString(qids.size()), "typeQid", typeQid,
                 "sampleSize", Integer.toString(sampleSize));
@@ -66,11 +68,11 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
             if (infobox == null) continue;
             for (var entry : infobox.parameters().entrySet()) {
                 String key = infobox.template() + "." + entry.getKey();
-                Seen value = seen.computeIfAbsent(key, ignored -> new Seen());
-                value.articles.add(infobox.document().title());
-                if (value.examples.size() < 3 && !entry.getValue().isBlank()) {
-                    value.examples.add(entry.getValue());
-                }
+                observe(seen, key, entry.getValue(), infobox.document().title());
+            }
+            for (var entry : infobox.renderedFields().entrySet()) {
+                observe(seen, "Rendered." + entry.getKey(), entry.getValue(),
+                        infobox.document().title());
             }
         }
         List<List<Object>> rows = new ArrayList<>();
@@ -82,7 +84,16 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
             return coverage != 0 ? coverage
                     : String.valueOf(a.get(0)).compareToIgnoreCase(String.valueOf(b.get(0)));
         });
-        return new TableQueryResult(List.of("Template parameter", "Have", "Examples"), rows);
+        return new TableQueryResult(List.of("Infobox value", "Have", "Examples"), rows);
+    }
+
+    private static void observe(Map<String, Seen> seen, String key, String example,
+            String article) {
+        Seen value = seen.computeIfAbsent(key, ignored -> new Seen());
+        value.articles.add(article);
+        if (value.examples.size() < 3 && example != null && !example.isBlank()) {
+            value.examples.add(example);
+        }
     }
 
     private List<String> sample(QueryContext context) throws Exception {
