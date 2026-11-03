@@ -18,19 +18,31 @@ import wikidata.explore.query.core.WikidataAccess;
 
 /** Discovers native Wikipedia Infobox source and rendered values from articles. */
 public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResult> {
+    /** Discovery samples articles; each one may cost its own parse request. */
+    public static final int MAX_ARTICLES = 12;
+
     private final List<String> qids;
+    private final int selected;
     private final String typeQid;
     private final int sampleSize;
 
     public DiscoverWikipediaInfoboxQuery(List<String> qids) {
-        this.qids = qids == null ? List.of() : qids.stream()
-                .filter(WikidataIds::isQid).distinct().limit(12).toList();
+        List<String> distinct = qids == null ? List.of() : qids.stream()
+                .filter(WikidataIds::isQid).distinct().toList();
+        this.qids = distinct.stream().limit(MAX_ARTICLES).toList();
+        selected = distinct.size();
         typeQid = ""; sampleSize = 0;
     }
     public DiscoverWikipediaInfoboxQuery(String typeQid, int sampleSize) {
-        qids = List.of(); this.typeQid = typeQid == null ? "" : typeQid.trim();
-        this.sampleSize = Math.max(1, Math.min(12, sampleSize));
+        qids = List.of(); selected = 0;
+        this.typeQid = typeQid == null ? "" : typeQid.trim();
+        this.sampleSize = Math.max(1, Math.min(MAX_ARTICLES, sampleSize));
     }
+
+    /** The entities this discovery reads, after the cap; empty when it samples a type. */
+    public List<String> seeds() { return qids; }
+    public String typeQid() { return typeQid; }
+    public int sampleSize() { return sampleSize; }
 
     /** How many articles this discovery will read. The seed rule lives HERE, so a
      *  caller wording its explanation cannot describe a different sample than the one
@@ -55,6 +67,11 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
     }
 
     @Override public TableQueryResult execute(QueryContext context) throws Exception {
+        if (selected > qids.size()) {
+            context.message("Reading the first " + qids.size() + " of " + selected
+                    + " selected entities: infobox discovery samples at most "
+                    + MAX_ARTICLES + " articles.\n");
+        }
         List<String> subjects = qids.isEmpty() ? sample(context) : qids;
         Map<String, WikimediaEntityLookup.EntityRecord> entities =
                 new WikimediaEntityLookup().byQids(subjects).execute(context);
