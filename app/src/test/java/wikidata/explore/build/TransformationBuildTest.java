@@ -4,14 +4,19 @@ import dataset.DomainStorage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import quiz.transform.FilterOperator;
+import wikidata.explore.extract.SnapshotDomain;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import wikidata.explore.generation.GraphDiscoveryResultStore;
+import wikidata.explore.generation.GraphResults;
 import wikidata.explore.generation.ProjectSave;
 import wikidata.explore.model.BuildOperation;
+import wikidata.explore.model.ClassKind;
 import wikidata.explore.model.ClassPopulationMode;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelStore;
+import wikidata.explore.model.GraphClassSource;
 import wikidata.explore.model.PopulationSelection;
 import wikidata.explore.model.TransformationClassSource;
 import wikidata.explore.model.TransformationStep;
@@ -203,6 +208,81 @@ class TransformationBuildTest {
         }
     }
 
+    /**
+     * #432: Historical Positions reused a Generate, narrowing Apply and transformation,
+     * then reran only the final additive Apply. Reuse treated the two state changes as
+     * no-ops, so Save replaced 961 PositionWithHolders with the graph's 71 identities.
+     * A missing transformation member makes the last transformation stale, and rebuilding
+     * it replays every current state mutation after the Generate checkpoint.
+     */
+    @Test void aLaterRepairReplaysCurrentMutationsAfterTheReusedGenerate() throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = model();
+        GeneratedClassModel output = model.findClass("PositionWithHolders");
+        GeneratedClassModel graph = model.getOrCreateClass("PositionGraph");
+        graph.classKind(ClassKind.GRAPH);
+        graph.graphSource(new GraphClassSource(
+                new datasource.graph.GraphDiscoveryConfiguration.StartNode(
+                        "Position", "",
+                        datasource.graph.GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new datasource.graph.GraphDiscoveryConfiguration.NextNode(
+                        new datasource.graph.GraphRelation("wikidata", "P31"),
+                        datasource.graph.GraphTraversalDirection.OUTGOING,
+                        datasource.graph.GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null))));
+        BuildOperation generate = model.buildOperations().getFirst();
+        BuildOperation apply = new BuildOperation(
+                BuildOperation.Kind.APPLY_GRAPH_DECISIONS, graph.declarationId());
+        BuildOperation transform = new BuildOperation(
+                BuildOperation.Kind.RUN_TRANSFORMATION, output.declarationId());
+        model.buildOperations(List.of(generate, apply, transform,
+                new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+
+        WikidataDynamicObject accepted = position("Q1", 2);
+        WikidataDynamicObject rejected = position("Q2", 2);
+        GraphResults results = appliedNarrowing(model, storage, graph, accepted, rejected);
+        WikidataDynamicObject incompleteSavedOutput = position("Q3", 2);
+        incompleteSavedOutput.assignSubclass(output.className(), "Position");
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(incompleteSavedOutput), List.of(), null, model.copy()),
+                null, results.all()), storage).write();
+        generated(model, storage, accepted, rejected);
+        WikidataDynamicObject materialized = position("Q1", 2);
+        materialized.assignSubclass(output.className(), "Position");
+        MaterializedPopulationStore.save(model, output, List.of(materialized), storage,
+                storage.savedSnapshotSignature(model.name()));
+
+        List<ProjectBuild.Step> plan = ProjectBuild.plan(model, storage);
+
+        assertEquals(List.of(ProjectBuild.State.CURRENT, ProjectBuild.State.STALE,
+                        ProjectBuild.State.STALE, ProjectBuild.State.STALE),
+                plan.stream().map(ProjectBuild.Step::state).toList(),
+                plan.stream().map(ProjectBuild.Step::explain).toList().toString());
+        assertTrue(plan.get(1).because().getFirst().contains(
+                wikidata.explore.generation.GenerationStepOutputStore.of(
+                        storage, model.name(), generate.declarationId())
+                        .snapshotFile().getPath()), plan.get(1).explain());
+        assertTrue(plan.get(2).because().stream().anyMatch(reason -> reason.contains(
+                "1 materialized PositionWithHolders identity is not a member")),
+                plan.get(2).explain());
+
+        ProjectBuild.Report repaired = ProjectBuild.run(
+                model, storage, new QueryContext(), null);
+
+        assertEquals(ProjectBuild.State.CURRENT, repaired.outcome(),
+                repaired.steps().toString());
+        assertEquals(List.of(ProjectBuild.Action.REUSED, ProjectBuild.Action.RAN,
+                        ProjectBuild.Action.RAN, ProjectBuild.Action.RAN),
+                repaired.steps().stream().map(ProjectBuild.Done::action).toList());
+        List<WikidataDynamicObject> saved = new WikidataDynamicObjectJsonStore().load(
+                storage.snapshotFile(model.name()));
+        assertTrue(saved.stream().anyMatch(value -> "Q1".equals(value.getIdentifier())
+                && value.directClassNames().contains("PositionWithHolders")));
+        assertTrue(saved.stream().noneMatch(value -> "Q2".equals(value.getIdentifier())
+                && value.directClassNames().contains("PositionWithHolders")),
+                "the replayed narrowing, not the unfiltered Generate output, feeds the transform");
+    }
+
     /** Records the build's Generate step as having produced {@code objects} for the current
      *  model, so the build reuses it instead of reaching Wikidata. */
     private static void generated(GeneratedProjectModel model, DomainStorage storage,
@@ -250,5 +330,32 @@ class TransformationBuildTest {
         value.type("Position");
         value.put("holderCount", holders);
         return value;
+    }
+
+    private static GraphResults appliedNarrowing(
+            GeneratedProjectModel model, DomainStorage storage, GeneratedClassModel graph,
+            WikidataDynamicObject accepted, WikidataDynamicObject rejected) throws Exception {
+        WikidataDynamicObject yes = annotation(graph.className(), accepted, "Accepted");
+        WikidataDynamicObject no = annotation(graph.className(), rejected, "Rejected");
+        List<WikidataDynamicObject> annotations = List.of(yes, no);
+        GraphDiscoveryResultStore.Artifact plain =
+                new GraphDiscoveryResultStore.Artifact(model.name(), graph.className(),
+                        "Position", annotations, List.of(accepted, rejected),
+                        new SnapshotDomain(annotations,
+                                GraphDiscoveryResultStore.fieldGraph(
+                                        graph.className(), "Position", annotations)));
+        GraphResults results = new GraphResults(model, storage);
+        results.record(graph, GraphDiscoveryResultStore.applied(plain));
+        return results;
+    }
+
+    private static WikidataDynamicObject annotation(
+            String graphClass, WikidataDynamicObject value, String decision) {
+        WikidataDynamicObject annotation = new WikidataDynamicObject(
+                value.getIdentifier(), value.getDisplayName());
+        annotation.type(graphClass);
+        annotation.put(GraphDiscoveryResultStore.GRAPH_DECISION, decision);
+        annotation.put(GraphDiscoveryResultStore.ANNOTATED_INSTANCE, value);
+        return annotation;
     }
 }

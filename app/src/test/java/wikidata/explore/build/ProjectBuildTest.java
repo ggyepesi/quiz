@@ -122,6 +122,42 @@ class ProjectBuildTest {
     }
 
     /**
+     * #430: Historical Positions' final replacement apply said 63 accepted identities
+     * were still ungenerated, then Publish and Save ran and the manifest said CURRENT.
+     * A final additive apply is not a complete output until all of its accepted identities
+     * are members; only a later Generate is allowed to defer that obligation.
+     */
+    @Test void aFinalAdditiveApplyWithMissingIdentitiesStopsBeforePublishOrSave()
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = additiveProject(false);
+        GeneratedClassModel graph = model.findClass("PositionGraph");
+        model.buildOperations(List.of(
+                new BuildOperation(BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
+                        graph.declarationId()),
+                new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+        saveAppliedAdditiveResult(model, storage);
+        String before = Files.readString(storage.snapshotFile(model.name()).toPath());
+
+        List<ProjectBuild.Step> plan = ProjectBuild.plan(model, storage);
+        assertEquals(ProjectBuild.State.STALE, plan.getFirst().state());
+        assertEquals(List.of("1 accepted PositionGraph identity is not a member of Position"),
+                plan.getFirst().because());
+
+        ProjectBuild.Report report = ProjectBuild.run(model, storage, new QueryContext(), null);
+
+        assertEquals(ProjectBuild.State.INCOMPLETE, report.outcome());
+        assertEquals(List.of(ProjectBuild.Action.STOPPED, ProjectBuild.Action.NOT_REACHED),
+                report.steps().stream().map(ProjectBuild.Done::action).toList());
+        assertTrue(report.steps().getFirst().detail().contains(
+                "no later Generate project step will acquire the 1 missing accepted identity"),
+                report.steps().getFirst().detail());
+        assertEquals(before, Files.readString(storage.snapshotFile(model.name()).toPath()),
+                "the last complete snapshot is not replaced");
+        assertTrue(Files.readString(report.manifest().toPath()).contains("INCOMPLETE"));
+    }
+
+    /**
      * #423: a reused Generate hands on what IT produced. The project snapshot is what Save
      * project wrote after later steps reshaped that output: here it holds only Q1, while
      * the Generate step produced Q1, Q2 and Q3. Reading the snapshot is how Historical
@@ -172,6 +208,9 @@ class ProjectBuildTest {
         assertTrue(ProjectBuild.acquisitionsOf(model, saved,
                         model.buildOperations().getFirst()).isEmpty(),
                 "the first Generate acquires nothing from a graph that runs after it");
+        assertTrue(ProjectBuild.laterGenerateAcquires(model, saved,
+                        model.buildOperations().get(2), model.findClass("PositionGraph")),
+                "the applied result is explicitly owed by the later Generate");
     }
 
     /** The other side: a saved result the build does not run again is current, so its

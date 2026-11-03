@@ -58,6 +58,11 @@ public final class GenerationRuns {
      * gave them — and an id with no instance behind it stays an id. Building a stand-in
      * object for it would put something in the pool that is indistinguishable from an
      * instance whose acquisition failed, and no later pass can tell the two apart.
+     *
+     * <p>An instance outside the population leaves that class but stays in the pool as
+     * the entity it was generated as (same identity type), so a later additive graph can
+     * still classify it. Any other class memberships remain untouched; Save writes an
+     * otherwise unclassed entity only while something references it.
      */
     public static NarrowedPool narrowedTo(
             List<WikidataDynamicObject> pool, String outputClass, Set<String> accepted) {
@@ -73,9 +78,15 @@ public final class GenerationRuns {
             }
             String id = value.getIdentifier();
             if (id != null && population.contains(id)) {
-                narrowed.add(value);
                 kept.add(id);
+            } else {
+                // Narrowing changes membership, never the pool: a member outside the
+                // accepted population stays the entity it was generated as. Deleting it
+                // threw away what a Generate had just acquired for an additive graph
+                // applied later in the same build (#423).
+                value.retractClassMembership(className);
             }
+            narrowed.add(value);
         }
         Set<String> ungenerated = new LinkedHashSet<>(population);
         ungenerated.removeAll(kept);

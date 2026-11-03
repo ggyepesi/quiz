@@ -458,9 +458,25 @@ generate-history
 Generate replaces the whole run and carries forward only graph results that add members, so it
 discards every narrowing applied before it; a transformation rebuilds its output class and so
 discards graph memberships added to that class. That is why the restore step re-applies the
-discovery constraint before the filter and the predecessor expansion after it. The coordinator
+discovery constraint before the filter and the predecessor expansion after it. Narrowing changes
+one class membership, never the pool: a Position the discovery constraint does not accept leaves
+that output class, keeps any other class memberships, and stays the generated Position entity it
+is. That is what lets the predecessor expansion,
+applied after the filter, still find the predecessors the second Generate acquired; while
+narrowing deleted them, that apply found 8 of 71 (#423). Save writes such an unclassed entity
+only while something references it. An additive Apply with accepted identities still missing may
+continue only when a later Generate step will acquire that graph result; otherwise the build stops
+`INCOMPLETE` before publication and Save. The coordinator
 refuses, before running anything, a build in which a later step would read a membership such a
 step discarded (`ProjectBuild.orderProblems`, held by `BuildOrderTest`).
+
+`CURRENT` means that an operation's durable result can be reused; it does not mean that the
+operation's mutation of the run can be omitted. If any later operation must run from a saved
+Generate checkpoint, the coordinator replays every intervening Apply and transformation in
+order before it. The last transformation of a class is also current only when every identity in
+its materialized population is a member of that class in the final project snapshot. These two
+checks prevent a repair from loading a Generate artifact, skipping the current narrowing and
+transformation, and saving only a later additive graph's members (#432).
 
 A Generate acquires the pending identities only of graph results that are current at its
 place in the build: results of graphs that ran and were applied earlier in this build, or

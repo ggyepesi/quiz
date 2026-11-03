@@ -302,6 +302,9 @@ construct per thing produced:
    shells. Accepted identities that have no generated instance remain pending on the applied
    annotation set; the next Generate run acquires them as a supplemental population through
    the ordinary class pipeline, unioned with rather than replacing the configured population.
+   A build may continue past pending additive identities only when a later Generate step is
+   configured to acquire that graph result; otherwise it stops `INCOMPLETE` before publication
+   and Save and names the missing count.
    When the output is a transformation-produced class, acquisition targets that
    transformation's input/base carrier; the transformation and the later graph application
    remain the only operations that can assign the produced output class.
@@ -353,6 +356,11 @@ construct per thing produced:
    project and snapshot as part of completion, before showing the inspection-only result;
    closing or pressing Apply is never required to make memory agree with disk. See
    `docs/transformation-models-as-datasources.md`.
+   Reusing an operation's durable artifact does not skip its contribution to the in-memory
+   run. When a later step runs from a reused Generate checkpoint, every intervening graph Apply
+   and transformation is replayed in order (or equivalently composed from its artifact) before
+   that step. Planning also verifies that the final snapshot contains the last materialized
+   transformation output; a compatible side artifact beside an incomplete snapshot is stale.
    *(Trigger: a complete domain can only be reproduced by manually switching applications or
    by replaying UI actions.)*
 

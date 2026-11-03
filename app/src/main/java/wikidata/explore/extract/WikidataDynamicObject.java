@@ -400,14 +400,25 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     /**
-     * Retract a class claim.
+     * Retracts one class claim without changing this entity's stable identity type.
      *
-     * <p>{@link #type(String)} only ever ADDS to {@code directClasses}, so {@code type(null)}
-     * clears the carrier while leaving the name behind as a membership — which is how an
-     * internal load type stamped for a reify survived into saved pools. Retracting the
-     * carrier falls back to the remaining classes (kept in sorted order by the referent
-     * stamp, so the choice is deterministic), or to no type at all.</p>
+     * <p>{@link #removeClass(String)} is the ordinary representation change: when it removes
+     * the identity class, the identity follows the remaining representation. Narrowing is
+     * different. It answers only whether this entity belongs to one output population, while
+     * a later additive graph still has to recognise the entity it was acquired as. Other
+     * direct class memberships therefore remain, and ⟨typeKey, id⟩, equality and hash stay
+     * unchanged.</p>
      */
+    public void retractClassMembership(String className) {
+        if (className == null || className.isBlank()) return;
+        String identity = typeKey();
+        directClasses.remove(className);
+        if (type == null || type.isBlank() || className.equals(type)) {
+            type = directClasses.isEmpty() ? null : directClasses.iterator().next();
+        }
+        typeKey = identity;
+    }
+
     public void removeClass(String className) {
         if (className == null || className.isBlank()) {
             return;

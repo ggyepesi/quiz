@@ -149,8 +149,75 @@ public final class ProjectBuild {
             if (upstream == null && step.runs()) upstream = description;
             steps.add(step);
         }
+        replayCurrentMutations(model, storage, steps, misordered);
         planning.remove(model.name());
         return List.copyOf(steps);
+    }
+
+    /**
+     * A current Generate artifact is a checkpoint, but a current Apply or transformation
+     * after it is not: those operations changed the in-memory run and their separate
+     * artifacts do not replace that run. If a later operation has to run, replay every
+     * intervening mutation from the Generate output before it. Skipping those mutations
+     * made Historical Positions load its second Generate output, bypass a narrowing and a
+     * 953-member transformation, then save only the final graph's 71 members (#432).
+     */
+    private static void replayCurrentMutations(
+            GeneratedProjectModel model, DomainStorage storage, List<Step> steps,
+            Map<String, String> misordered) {
+        int firstRun = firstRunnable(steps);
+        if (firstRun < 0) return;
+        // A Generate replaces the run; no state before it contributes to its input.
+        if (steps.get(firstRun).operation().kind()
+                == BuildOperation.Kind.GENERATE_PROJECT) return;
+
+        int checkpoint = -1;
+        for (int i = firstRun - 1; i >= 0; i--) {
+            if (steps.get(i).operation().kind() == BuildOperation.Kind.GENERATE_PROJECT) {
+                checkpoint = i;
+                break;
+            }
+        }
+        if (checkpoint < 0 || steps.get(checkpoint).state() != State.CURRENT) return;
+
+        String neededBy = steps.get(firstRun).description();
+        File checkpointFile = GenerationStepOutputStore.of(
+                storage, model.name(), steps.get(checkpoint).operation().declarationId())
+                .snapshotFile();
+        for (int i = checkpoint + 1; i < firstRun; i++) {
+            Step current = steps.get(i);
+            if (current.state() != State.CURRENT || !mutatesRun(current.operation())) continue;
+            steps.set(i, new Step(current.operation(), current.description(), State.STALE,
+                    List.of("this state change must be replayed after loading "
+                            + checkpointFile.getPath() + " before " + neededBy)));
+        }
+
+        int replay = firstRunnable(steps);
+        if (replay < 0 || replay == firstRun) return;
+        String upstream = steps.get(replay).description();
+        for (int i = replay + 1; i < steps.size(); i++) {
+            Step step = steps.get(i);
+            String problem = misordered.get(step.operation().declarationId());
+            if (problem != null) {
+                steps.set(i, new Step(step.operation(), step.description(), State.FAILED,
+                        List.of(problem)));
+                continue;
+            }
+            List<String> reasons = new ArrayList<>();
+            reasons.add(upstream + " runs");
+            if (i == firstRun) reasons.addAll(step.because());
+            steps.set(i, new Step(step.operation(), step.description(), State.STALE, reasons));
+        }
+    }
+
+    private static int firstRunnable(List<Step> steps) {
+        for (int i = 0; i < steps.size(); i++) if (steps.get(i).runs()) return i;
+        return -1;
+    }
+
+    private static boolean mutatesRun(BuildOperation operation) {
+        return operation.kind() == BuildOperation.Kind.APPLY_GRAPH_DECISIONS
+                || operation.kind() == BuildOperation.Kind.RUN_TRANSFORMATION;
     }
 
     /**
@@ -353,6 +420,38 @@ public final class ProjectBuild {
                         .equals(metadata.inputSnapshotSignature())) {
                     state = State.STALE;
                     because.add("the generated input snapshot changed");
+                } else if (lastTransformationOf(model, operation)) {
+                    try {
+                        java.util.Set<String> finalMembers = saved.objects().stream()
+                                .filter(value -> value.directClassNames().contains(
+                                        outputClass.className()))
+                                .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
+                                .filter(java.util.Objects::nonNull)
+                                .collect(java.util.stream.Collectors.toSet());
+                        List<String> missing = MaterializedPopulationStore
+                                .load(model, outputClass, storage).stream()
+                                .map(wikidata.explore.extract.WikidataDynamicObject::getIdentifier)
+                                .filter(java.util.Objects::nonNull)
+                                .distinct()
+                                .filter(id -> !finalMembers.contains(id))
+                                .toList();
+                        if (missing.isEmpty()) {
+                            state = State.CURRENT;
+                        } else {
+                            state = State.STALE;
+                            because.add(missing.size() + " materialized "
+                                    + outputClass.className() + " "
+                                    + (missing.size() == 1
+                                            ? "identity is not a member"
+                                            : "identities are not members")
+                                    + " of " + outputClass.className() + " in "
+                                    + storage.snapshotFile(model.name()).getPath());
+                        }
+                    } catch (Exception unreadable) {
+                        state = State.FAILED;
+                        because.add("the materialized population cannot be read: "
+                                + unreadable.getMessage());
+                    }
                 } else {
                     state = State.CURRENT;
                 }
@@ -447,13 +546,42 @@ public final class ProjectBuild {
                     state = State.MISSING;
                     because.add("the result of " + graph.className() + " is not applied");
                 } else {
-                    state = State.CURRENT;
+                    List<String> pending = GraphResults.pendingPopulationAdditions(
+                                    List.of(result), saved.objects())
+                            .getOrDefault(result.outputClass(), List.of());
+                    if (pending.isEmpty()
+                            || laterGenerateAcquires(model, results, operation, graph)) {
+                        state = State.CURRENT;
+                    } else {
+                        state = State.STALE;
+                        because.add(pending.size() + " accepted " + graph.className() + " "
+                                + (pending.size() == 1 ? "identity is not a member" :
+                                        "identities are not members")
+                                + " of " + result.outputClass());
+                    }
                 }
             }
             case SAVE_PROJECT_RESULT -> state = State.CURRENT;
             default -> throw new IllegalStateException("Unknown operation " + operation.kind());
         }
         return new Step(operation, description, state, because);
+    }
+
+    /** Only the last transformation of a class contributes that class to the final saved
+     * run. An earlier occurrence is deliberately superseded by a later Generate and replay. */
+    private static boolean lastTransformationOf(
+            GeneratedProjectModel model, BuildOperation operation) {
+        boolean after = false;
+        for (BuildOperation candidate : model.buildOperations()) {
+            if (!after) {
+                after = candidate.declarationId().equals(operation.declarationId());
+                continue;
+            }
+            if (candidate.kind() == BuildOperation.Kind.RUN_TRANSFORMATION
+                    && candidate.targetDeclarationId().equals(
+                            operation.targetDeclarationId())) return false;
+        }
+        return true;
     }
 
     /**
@@ -658,6 +786,23 @@ public final class ProjectBuild {
                     var success = (GraphApplication.Applied) applied;
                     run = replace(run, success.run());
                     results.markApplied(graph, success.result());
+                    if (success.operation()
+                                    == datasource.graph.GraphDiscoveryConfiguration
+                                            .PopulationOperation.ADD
+                            && success.ungenerated() > 0
+                            && !laterGenerateAcquires(model, results, operation, graph)) {
+                        outcome = State.INCOMPLETE;
+                        record(done, new Done(step, Action.STOPPED,
+                                success.message(model.isModel())
+                                        + " Build stopped INCOMPLETE: no later Generate project "
+                                        + "step will acquire the " + success.ungenerated()
+                                        + " missing accepted "
+                                        + (success.ungenerated() == 1 ? "identity" : "identities")
+                                        + "; Publish population and Save "
+                                        + "project were not run."), outcome,
+                                observer, model.name());
+                        continue;
+                    }
                     record(done, new Done(step, Action.RAN,
                             success.message(model.isModel())), outcome,
                             observer, model.name());
@@ -715,6 +860,27 @@ public final class ProjectBuild {
             GeneratedProjectModel model, GraphResults results, BuildOperation generate) {
         return GraphResults.pendingPopulationAcquisitions(model,
                 resultsAcquiredBy(model, results, generate), List.of());
+    }
+
+    /** Whether a later Generate step will acquire this just-applied graph result under the
+     * same rule {@link #acquisitionsOf} uses. A graph that runs again after that Generate is
+     * deliberately excluded: the later run, not its old result, owns those identities. */
+    static boolean laterGenerateAcquires(
+            GeneratedProjectModel model, GraphResults results,
+            BuildOperation apply, GeneratedClassModel graph) {
+        if (model == null || results == null || apply == null || graph == null) return false;
+        boolean afterApply = false;
+        for (BuildOperation operation : model.buildOperations()) {
+            if (!afterApply) {
+                afterApply = operation.declarationId().equals(apply.declarationId());
+                continue;
+            }
+            if (operation.kind() != BuildOperation.Kind.GENERATE_PROJECT) continue;
+            boolean acquired = resultsAcquiredBy(model, results, operation).stream()
+                    .anyMatch(result -> graph.className().equals(result.type()));
+            if (acquired) return true;
+        }
+        return false;
     }
 
     static List<GraphDiscoveryResultStore.Artifact> resultsAcquiredBy(
