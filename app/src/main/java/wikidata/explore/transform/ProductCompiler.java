@@ -88,8 +88,12 @@ public final class ProductCompiler {
                 .filter(java.util.Objects::nonNull)
                 .map(GeneratedClassModel::className)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        // Ownership is membership: an object belongs here when it is stamped and one of
+        // its direct classes is declared, whichever class happens to be its primary
+        // carrier. typeName() alone missed members whose carrier is undeclared (#439).
         List<WikidataDynamicObject> modeledPool = pool.stream()
-                .filter(value -> value != null && modeledTypes.contains(value.typeName()))
+                .filter(value -> value != null && value.hasTypeStamp()
+                        && value.directClassNames().stream().anyMatch(modeledTypes::contains))
                 .toList();
         // 1. Drop Wikimedia-meta noise (e.g. "Wikimedia list article", a Wikinews
         //    article) from references before collapse — an entity's P31 `type` picks

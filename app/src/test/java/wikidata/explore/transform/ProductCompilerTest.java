@@ -117,6 +117,30 @@ class ProductCompilerTest {
         assertEquals(List.of("OscarNominations", "Category", "Nomination"), d.types());
     }
 
+    /** #439: which objects compilation normalizes is decided by membership, not by the
+     *  primary carrier name — a declared class's member whose carrier is undeclared is
+     *  still this model's instance, while a saved group root (no declared class) is not. */
+    @Test void aMemberWhoseCarrierIsUndeclaredIsStillNormalized() {
+        List<WikidataDynamicObject> pool = pool();
+        WikidataDynamicObject member = substantive("Q5", "Another nominee");
+        member.type("ImportedCarrier");
+        member.assignClass("OscarNominations");
+        member.put("wikidata", "http://www.wikidata.org/entity/Q5");
+        WikidataDynamicObject group = substantive("Q6", "a group root");
+        group.type("ViewableGroup");
+        group.put("wikidata", "http://www.wikidata.org/entity/Q6");
+        pool.add(member);
+        pool.add(group);
+
+        ProductCompiler.compile(model(), pool);
+
+        assertEquals("ImportedCarrier", member.typeName());
+        assertNull(member.get("wikidata"),
+                "a declared class's member is normalized whatever its carrier");
+        assertNotNull(group.get("wikidata"),
+                "an object of no declared class is left as it was saved");
+    }
+
     @Test void compiledSchemaDeclaresWhichClassesHaveIndependentEntityIdentity() {
         ProductDomain domain = ProductCompiler.compile(model(), pool());
 
