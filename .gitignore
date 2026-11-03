@@ -52,6 +52,13 @@ data/masks/needs-mask/
 data/wikidata/datasets.json
 data/query-log*.txt
 data/query-log*.run.json
+# A build's step artifacts key the snapshot beside them, which is itself untracked, so
+# committed alone they describe a file a fresh checkout does not have; the build manifest
+# records the last build run on this machine.
+data/wikidata/**/*.generation.json
+data/wikidata/**/*.population.json
+data/wikidata/**/*.publication.json
+data/wikidata/**/*.build.json
 
 ### Per-run query logs (regenerable; one pair of files per generation run)
 # A run writes a .txt transcript and a .run.json beside the domain it generated.

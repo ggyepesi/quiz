@@ -14,9 +14,11 @@
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",
     "membershipIncludesDescendants" : false,
+    "membershipQualifierCondition" : null,
     "membershipPid" : "",
     "membershipQid" : "",
     "membershipFilterIncludesDescendants" : false,
+    "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
       "@class" : "wikidata.explore.rule.RuleLabelConfig",
       "requireLabel" : false,
@@ -32,7 +34,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q114962596"
+      "membershipQid" : "Q114962596",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "jurisdiction",
@@ -43,7 +47,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "directedOrganizations",
@@ -54,7 +60,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "inception",
@@ -65,7 +73,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "abolished",
@@ -76,7 +86,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "replaces",
@@ -87,7 +99,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q114962596"
+      "membershipQid" : "Q114962596",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "replacedBy",
@@ -98,7 +112,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "P31",
-      "membershipQid" : "Q114962596"
+      "membershipQid" : "Q114962596",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "countries",
@@ -109,7 +125,9 @@
       "collection" : true,
       "direction" : "ROOT_TO_ITEM",
       "membershipPid" : "",
-      "membershipQid" : ""
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     } ] ],
     "limit" : 200000,
     "sortFieldName" : "",
@@ -123,6 +141,7 @@
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
     "rankDescending" : true,
+    "rankCondition" : null,
     "rankFrom" : -1,
     "rankUntil" : -1,
     "membershipConstraints" : [ "java.util.ArrayList", [ ] ]

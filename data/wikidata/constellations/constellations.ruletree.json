@@ -288,6 +288,22 @@
           "qualifierCondition" : null
         }, {
           "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "fieldName" : "apparentMagnitude",
+          "propertyPid" : "P1215",
+          "propertyLabel" : "apparent magnitude",
+          "kind" : "AUTO",
+          "optional" : false,
+          "collection" : false,
+          "direction" : "ROOT_TO_ITEM",
+          "membershipPid" : "",
+          "membershipQid" : "",
+          "membershipQualifierCondition" : null,
+          "qualifierCondition" : {
+            "qualifierPid" : "P1227",
+            "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
+          }
+        }, {
+          "@class" : "wikidata.explore.rule.RuleIncludedField",
           "fieldName" : "morphologicalType",
           "propertyPid" : "P223",
           "propertyLabel" : "galaxy morphological type",
@@ -325,22 +341,6 @@
           "membershipQid" : "",
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
-        }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
-          "fieldName" : "apparentMagnitude",
-          "propertyPid" : "P1215",
-          "propertyLabel" : "apparent magnitude",
-          "kind" : "AUTO",
-          "optional" : false,
-          "collection" : false,
-          "direction" : "ROOT_TO_ITEM",
-          "membershipPid" : "",
-          "membershipQid" : "",
-          "membershipQualifierCondition" : null,
-          "qualifierCondition" : {
-            "qualifierPid" : "P1227",
-            "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
-          }
         } ] ],
         "limit" : 6,
         "sortFieldName" : "apparentMagnitude",
@@ -348,7 +348,19 @@
         "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
-        "valueFilters" : [ "java.util.ArrayList", [ ] ],
+        "valueFilters" : [ "java.util.ArrayList", [ {
+          "@class" : "wikidata.explore.filter.WikidataValueFilter",
+          "fieldName" : "apparentMagnitude",
+          "propertyPid" : "P1215",
+          "propertyLabel" : "apparent magnitude",
+          "operator" : "LE",
+          "numericValue" : 6.0,
+          "required" : true,
+          "qualifierCondition" : {
+            "qualifierPid" : "P1227",
+            "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
+          }
+        } ] ],
         "edges" : [ "java.util.ArrayList", [ {
           "@class" : "wikidata.explore.rule.RuleEdge",
           "fieldName" : "stars",
@@ -435,7 +447,19 @@
             "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
             "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
             "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
-            "valueFilters" : [ "java.util.ArrayList", [ ] ],
+            "valueFilters" : [ "java.util.ArrayList", [ {
+              "@class" : "wikidata.explore.filter.WikidataValueFilter",
+              "fieldName" : "apparentMagnitude",
+              "propertyPid" : "P1215",
+              "propertyLabel" : "apparent magnitude",
+              "operator" : "LE",
+              "numericValue" : 6.0,
+              "required" : true,
+              "qualifierCondition" : {
+                "qualifierPid" : "P1227",
+                "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
+              }
+            } ] ],
             "edges" : [ "java.util.ArrayList", [ ] ],
             "requireSitelink" : true,
             "rankBySitelinks" : false,

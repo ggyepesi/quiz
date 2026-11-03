@@ -34,7 +34,7 @@
     "declarationId" : "decl:dc7e9cd5-ff6d-4bc3-8baf-d1bd87e0f18e",
     "name" : "PositionWithHolders",
     "kind" : "CLASS",
-    "artifact" : "historicalpositions.snapshot.json"
+    "artifact" : "decldc7e9cd5ff6d4bc38bafd1bd87e0f18e.population.snapshot.json"
   }, {
     "declarationId" : "decl:26d00df3-f413-4e0f-9da6-fa090721984c",
     "name" : "PositionReplacementExpansion",
@@ -49,7 +49,7 @@
     "declarationId" : "decl:cdf5dab9-5047-4e99-865a-c7ada2512393",
     "name" : "PositionWithHoldersPopulation",
     "kind" : "POPULATION",
-    "artifact" : "historicalpositions.model.json"
+    "artifact" : "declcdf5dab950474e99865ac7ada2512393.publication.snapshot.json"
   } ],
-  "snapshotSignature" : "model-v2:f6e3df8b8d799efb3548d4cb954e14a32b3876f37793f349e97069450ac51bf2"
+  "snapshotSignature" : "model-v2:57f8d742596f182b1a3c20841c8cdec84777cd1010fe8e4de2c58654a4a5c141"
 }
