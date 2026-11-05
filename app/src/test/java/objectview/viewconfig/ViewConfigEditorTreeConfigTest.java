@@ -312,6 +312,36 @@ class ViewConfigEditorTreeConfigTest {
         assertEquals(qidLink, editor.selectedPath());
     }
 
+    @Test void schemaBackedReferenceCycleCanBeConfiguredToAnyManualDepth()
+            throws Exception {
+        var amun = new wikidata.explore.extract.WikidataDynamicObject("Q1268", "Amun");
+        amun.type("EgyptianDeity");
+        amun.put("summary", "creator god");
+        var khonsu = new wikidata.explore.extract.WikidataDynamicObject("Q1050", "Khonsu");
+        khonsu.type("EgyptianDeity");
+        khonsu.put("summary", "moon god");
+        amun.put("child", List.of(khonsu));
+        khonsu.put("child", List.of(amun));
+        var domain = new wikidata.explore.extract.SnapshotDomain(
+                new java.util.ArrayList<>(List.of(amun, khonsu)));
+
+        ViewConfig config = topConfig();
+        ViewConfigEditor editor = new ViewConfigEditor(
+                config, domain.representativeSample("EgyptianDeity"));
+        editor.setConnectedFieldSelection(true);
+        editor.setInheritsRecursion(true);
+        editor.setFieldTypes(domain.fieldTypes("EgyptianDeity"));
+        objectview.field.FieldPath selected = objectview.field.FieldPath.parse(
+                "child.child.child.summary");
+
+        editor.setSelectedPath(selected);
+
+        assertTrue(hasRow(editor, selected.dotted()), () ->
+                "each manual disclosure must materialize one more schema level; rows="
+                        + rowPaths(editor));
+        assertEquals(selected, editor.selectedPath());
+    }
+
     private static java.util.List<String> rowPaths(ViewConfigEditor editor) {
         try {
             java.util.List<String> result = new java.util.ArrayList<>();

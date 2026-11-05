@@ -101,7 +101,7 @@ public final class DomainSchemas {
     /** Existing config-editor view projected from the canonical schemas. */
     public static FieldTypeSource fieldTypes(
             DomainModel domain, String type) {
-        return new SchemaFieldTypeSource(domain, type, new LinkedHashSet<>());
+        return new SchemaFieldTypeSource(domain, type);
     }
 
     /** The subtype "class branches" for {@code baseType}: one branch per subtype that
@@ -267,8 +267,7 @@ public final class DomainSchemas {
     }
 
     private record SchemaFieldTypeSource(
-            DomainModel domain, String type,
-            Set<String> ancestorTypes) implements FieldTypeSource {
+            DomainModel domain, String type) implements FieldTypeSource {
 
         @Override public FieldTypeInfo field(String name) {
             FieldSchema schema = domain.fieldSchema(type);
@@ -291,13 +290,16 @@ public final class DomainSchemas {
             String target = field.targetType();
             FieldTypeSource nested = null;
             if (!field.structural() && target != null
-                    && !target.isBlank() && !ancestorTypes.contains(target)) {
+                    && !target.isBlank()) {
                 FieldSchema targetSchema = domain.fieldSchema(target);
                 if (targetSchema != null && targetSchema.fields().stream()
                         .anyMatch(f -> !f.structural())) {
-                    Set<String> next = new LinkedHashSet<>(ancestorTypes);
-                    next.add(type);
-                    nested = new SchemaFieldTypeSource(domain, target, next);
+                    // This source describes exactly one requested level. Creating the
+                    // next source does not enumerate it, so a reference cycle is safe:
+                    // the editor asks for another level only when the user opens that
+                    // disclosure. An ancestor guard made the second occurrence look
+                    // terminal and contradicted finite, manually authored recursion.
+                    nested = new SchemaFieldTypeSource(domain, target);
                 }
             }
             return new FieldTypeInfo(field.typeLabel(), field.structural(),

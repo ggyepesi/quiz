@@ -4,12 +4,14 @@ import wikidata.explore.extract.SnapshotDomain;
 
 import org.junit.jupiter.api.Test;
 import domain.DomainField;
+import objectview.viewconfig.FieldTypeSource;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnapshotDomainUnionTest {
@@ -132,6 +134,25 @@ class SnapshotDomainUnionTest {
                 "laureatesWithMotivation.motivation.action"), fields.toString());
         assertTrue(fields.contains(
                 "laureatesWithMotivation.laureates.portrait"), fields.toString());
+    }
+
+    @Test
+    void schemaAllowsEachManuallyRequestedLevelOfAReferenceCycle() {
+        WikidataDynamicObject amun = wdo("EgyptianDeity", "Amun", "summary", "creator god");
+        WikidataDynamicObject khonsu = wdo("EgyptianDeity", "Khonsu", "summary", "moon god");
+        amun.put("child", List.of(khonsu));
+        khonsu.put("child", List.of(amun));
+        SnapshotDomain domain = new SnapshotDomain(new ArrayList<>(List.of(amun, khonsu)));
+
+        FieldTypeSource level = domain.fieldTypes("EgyptianDeity");
+        for (int depth = 1; depth <= 4; depth++) {
+            FieldTypeSource.FieldTypeInfo child = level.field("child");
+            assertNotNull(child, "child field at depth " + depth);
+            assertNotNull(child.nested(),
+                    "manual disclosure must be able to request recursive depth " + depth);
+            assertTrue(child.nested().fieldNames().contains("summary"));
+            level = child.nested();
+        }
     }
 
 }

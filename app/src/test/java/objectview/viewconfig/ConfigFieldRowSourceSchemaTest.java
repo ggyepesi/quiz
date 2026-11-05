@@ -162,4 +162,27 @@ class ConfigFieldRowSourceSchemaTest {
                         r -> "year".equals(r.path().dotted())),
                 "schema children must enumerate with no sample, was " + childRows);
     }
+
+    @Test void shallowReferenceSampleDoesNotHideItsSchemaFields() {
+        DynamicViewable category = new DynamicViewable("C1", "Category");
+        category.type("Category");
+
+        DynamicViewable nomination = new DynamicViewable("N1", "A Nomination");
+        nomination.type("Nomination");
+        nomination.put("category", List.of(category));
+
+        FieldRow categoryRow = row(ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
+                ViewConfig.of(DynamicViewable.class), nomination,
+                false, false, Set.of(), schema())), "category");
+        assertNotNull(categoryRow.nested());
+
+        NestedFieldSource nested = categoryRow.nested();
+        List<FieldRow> childRows = ConfigFieldRowSource.INSTANCE.rows(new FieldRowContext(
+                ViewConfig.of(nested.type()), nested.sample(),
+                false, false, Set.of(), nested.fieldTypes()));
+
+        assertTrue(childRows.stream().anyMatch(r -> "year".equals(r.path().dotted())),
+                "a shallow cycle-safe sample must not replace the authoritative schema; rows="
+                        + childRows);
+    }
 }
