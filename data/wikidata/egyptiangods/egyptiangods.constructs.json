@@ -1,0 +1,10 @@
+{
+  "version" : 1,
+  "constructs" : [ {
+    "declarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+    "name" : "EgyptianDeity",
+    "kind" : "CLASS",
+    "artifact" : "egyptiangods.snapshot.json"
+  } ],
+  "snapshotSignature" : "model-v2:e8c8e714dea7d6377b7e43fbd6b0ca7698d9ccc5748244f32184c9ba3425a69d"
+}

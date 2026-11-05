@@ -23,7 +23,8 @@ public final class FieldSourceRecipeCodec {
         }
         FieldSourceType sourceType = sourceType(recipe.parameter(FieldSourceRecipe.SOURCE_TYPE));
         String property = recipe.parameter(FieldSourceRecipe.PROPERTY);
-        if (sourceType == null || property.isBlank()) return null;
+        if (sourceType == null
+                || sourceType.usesPropertyInput() && property.isBlank()) return null;
         FieldSourceMapping result = new FieldSourceMapping();
         result.sourceType(sourceType);
         result.propertyPid(property);
@@ -37,7 +38,8 @@ public final class FieldSourceRecipeCodec {
             FieldSourceMapping mapping) {
         if (mapping == null || mapping.sourceType() == null
                 || !mapping.sourceType().filledAfterExtraction()
-                || mapping.propertyPid().isBlank()) {
+                || mapping.sourceType().usesPropertyInput()
+                        && mapping.propertyPid().isBlank()) {
             return null;
         }
         return FieldSourceRecipe.additionalSource(type, field,

@@ -63,6 +63,19 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private boolean renderedInfoboxAnswered;
 
+    /** The linked article's introduction, retained as versioned evidence before a
+     *  configured field recipe interprets it. */
+    @Hidden
+    private datasource.evidence.ArticleIntroduction articleIntroduction;
+    @Hidden
+    private boolean articleIntroductionAnswered;
+
+    /** The complete structured article, retained only after an explicit acquisition. */
+    @Hidden
+    private datasource.evidence.WikipediaArticle wikipediaArticle;
+    @Hidden
+    private boolean wikipediaArticleAnswered;
+
     /** The configured English Wikipedia correspondence retained from wbgetentities. */
     @Hidden
     private String enwikiTitle = "";
@@ -213,6 +226,38 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     public boolean renderedInfoboxAnswered() { return renderedInfoboxAnswered; }
+
+    public datasource.evidence.ArticleIntroduction articleIntroduction() {
+        return articleIntroduction;
+    }
+
+    public boolean articleIntroductionAnswered() { return articleIntroductionAnswered; }
+
+    /** Records both a supplied introduction and the explicit answer that an article
+     *  had no non-blank introduction. */
+    public void articleIntroductionEvidence(
+            datasource.evidence.ArticleIntroduction value, boolean answered) {
+        if (value != null) articleIntroduction = value;
+        articleIntroductionAnswered |= answered;
+    }
+
+    public datasource.evidence.WikipediaArticle wikipediaArticle() {
+        return wikipediaArticle;
+    }
+
+    public boolean wikipediaArticleAnswered() { return wikipediaArticleAnswered; }
+
+    /** Retains the one complete article artifact and derives the older introduction
+     * projection from it, so later evidence readers do not acquire the same fact twice. */
+    public void wikipediaArticleEvidence(
+            datasource.evidence.WikipediaArticle value, boolean answered) {
+        if (value != null) {
+            wikipediaArticle = value;
+            articleIntroduction = value.introduction();
+            articleIntroductionAnswered = true;
+        }
+        wikipediaArticleAnswered |= answered;
+    }
 
     private static datasource.evidence.InfoboxParameters mergeInfobox(
             datasource.evidence.InfoboxParameters existing,
@@ -550,6 +595,10 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         copy.infoboxParameters = infoboxParameters;
         copy.infoboxAnswered = infoboxAnswered;
         copy.renderedInfoboxAnswered = renderedInfoboxAnswered;
+        copy.articleIntroduction = articleIntroduction;
+        copy.articleIntroductionAnswered = articleIntroductionAnswered;
+        copy.wikipediaArticle = wikipediaArticle;
+        copy.wikipediaArticleAnswered = wikipediaArticleAnswered;
         copy.enwikiTitle = enwikiTitle;
         // Provenance is a declared field, but unlike domain references its values are
         // immutable source descriptors. Carry the exact values here; PoolCopy only

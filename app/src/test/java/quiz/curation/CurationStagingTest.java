@@ -61,4 +61,30 @@ class CurationStagingTest {
         assertEquals(1, staging.corrections().size());
         assertTrue(staging.identityLinks().isEmpty());
     }
+
+    @Test void acceptedSourceDerivedInstancesCrossOnlyTheExplicitSaveBoundary(
+            @TempDir Path dir) throws Exception {
+        ManualCuration durable = new ManualCuration(
+                dir.resolve("episodes.curation.json").toFile());
+        CurationStaging staging = CurationStaging.forCuration(durable);
+        CuratedInstance episode = new CuratedInstance(
+                "Episode", "wikipedia-passage:abc", "Achilles — Myths",
+                java.util.List.of(
+                        CuratedInstance.FieldValue.literal(
+                                "summary", "Achilles was hidden on Skyros."),
+                        CuratedInstance.FieldValue.references("characters",
+                                java.util.List.of(new CuratedInstance.Reference(
+                                        "Character", "Q41746")))),
+                null);
+
+        staging.stage(episode);
+        durable.save();
+
+        assertTrue(new ManualCuration(durable.file()).load().instances().isEmpty(),
+                "an unrelated save must not persist the staged instance");
+        staging.apply();
+        CuratedInstance saved = new ManualCuration(durable.file()).load()
+                .instances().getFirst();
+        assertEquals(episode, saved);
+    }
 }

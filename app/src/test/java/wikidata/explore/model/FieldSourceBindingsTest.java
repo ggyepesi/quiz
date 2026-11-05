@@ -65,6 +65,21 @@ class FieldSourceBindingsTest {
         assertEquals("property", primary.recipe().operationId());
     }
 
+    @Test void anArticleIntroductionNeedsNoPretendProperty() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel field = model.rootClass().fields().getFirst();
+        field.mapping().sourceType(FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION);
+        field.mapping().propertyPid("");
+
+        FieldSourceBindings.synchronizeForSave(model);
+        SourceBinding primary = FieldSourceBindings.binding(
+                field, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+
+        assertNotNull(primary);
+        assertEquals("wikipedia", primary.recipe().providerId());
+        assertEquals("article-introduction", primary.recipe().operationId());
+    }
+
     @Test void bindingsSurviveTheModelFileAndRestoreLegacyProjection(
             @TempDir Path directory) throws Exception {
         GeneratedProjectModel model = model();

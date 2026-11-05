@@ -15,6 +15,7 @@ import wikidata.explore.model.OwnedFieldSource;
 import javax.swing.JComponent;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import java.awt.Component;
 import java.awt.Container;
@@ -37,6 +38,110 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * held the label, so nothing could be hidden and there was no visible set to assert.
  */
 class FieldSourcePanelRowsTest {
+
+    @Test void aReferenceCollectionCanPersistWikipediaIntroductionMentions() {
+        GeneratedFieldModel characters = field("characters", FieldType.ENTITY,
+                FieldProductionKind.AUTO, "Character");
+        characters.cardinality(FieldCardinality.COLLECTION);
+        GeneratedProjectModel project = projectContaining(characters, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(characters);
+
+        JComboBox<?> candidates = comboContainingLabel(panel,
+                "Loaded target instances mentioned in the introduction");
+        assertTrue(candidates.isEnabled());
+        selectLabel(candidates, "Loaded target instances mentioned in the introduction");
+        button(panel, "Apply field source").doClick();
+
+        datasource.api.SourceBinding binding =
+                wikidata.explore.model.FieldSourceBindings.binding(characters,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertTrue(datasource.wikipedia.WikipediaDatasourceProvider
+                .articleIntroductionMentions(binding));
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(characters);
+        JComboBox<?> reopenedCandidates = comboContainingLabel(reopened,
+                "Loaded target instances mentioned in the introduction");
+        assertEquals("Loaded target instances mentioned in the introduction",
+                reopenedCandidates.getSelectedItem().toString());
+    }
+
+    @Test void oneTextValueCanPersistBoundedWikipediaArticlePassages() {
+        GeneratedFieldModel narrative = field("narrativeText", FieldType.TEXT,
+                FieldProductionKind.AUTO, "");
+        GeneratedProjectModel project = projectContaining(narrative, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(narrative);
+
+        JComboBox<?> evidence = comboContainingLabel(panel,
+                "Bounded passages from the full article");
+        assertTrue(evidence.isEnabled());
+        selectLabel(evidence, "Bounded passages from the full article");
+        button(panel, "Apply field source").doClick();
+
+        datasource.api.SourceBinding binding =
+                wikidata.explore.model.FieldSourceBindings.binding(narrative,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertTrue(datasource.wikipedia.WikipediaDatasourceProvider.articlePassages(binding));
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(narrative);
+        JComboBox<?> reopenedEvidence = comboContainingLabel(reopened,
+                "Bounded passages from the full article");
+        assertEquals("Bounded passages from the full article",
+                reopenedEvidence.getSelectedItem().toString());
+    }
+
+    @Test void aReferenceListMapsArticlePassagesOntoItsTargetClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        GeneratedFieldModel episodes = character.addField(
+                "episodes", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        episodes.entityClassName("Episode");
+        GeneratedClassModel episode = new GeneratedClassModel("Episode");
+        episode.addField("summary", FieldType.TEXT, FieldCardinality.SINGLE);
+        GeneratedFieldModel characters = episode.addField(
+                "characters", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        characters.entityClassName("Character");
+        project.rootClass(character);
+        project.addClass(episode);
+        episodes.entityDeclarationId(episode.declarationId());
+        characters.entityDeclarationId(character.declarationId());
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(episodes);
+
+        JComboBox<?> evidence = comboContainingLabel(panel,
+                "One target instance per bounded article passage");
+        selectLabel(evidence, "One target instance per bounded article passage");
+        panel.passageTextFieldBox().setSelectedItem("summary");
+        panel.passageSourceFieldBox().setSelectedItem("characters");
+        assertTrue(visibleRowLabels(panel).contains("Passage goes into:"));
+        assertTrue(visibleRowLabels(panel).contains("Source instance goes into:"));
+        button(panel, "Apply field source").doClick();
+
+        var binding = wikidata.explore.model.FieldSourceBindings.binding(episodes,
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var spec = datasource.wikipedia.WikipediaDatasourceProvider
+                .articlePassageInstances(binding);
+        assertEquals("summary", spec.textField());
+        assertEquals("characters", spec.sourceField());
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(episodes);
+        assertEquals("One target instance per bounded article passage",
+                comboContainingLabel(reopened,
+                        "One target instance per bounded article passage")
+                        .getSelectedItem().toString());
+        assertEquals("summary", reopened.passageTextFieldBox().getSelectedItem());
+        assertEquals("characters", reopened.passageSourceFieldBox().getSelectedItem());
+    }
 
     @Test void ownedFieldListsOwnerSitesAndOnlyApplyCreatesAnOverride() {
         GeneratedProjectModel project = new GeneratedProjectModel();
@@ -338,6 +443,25 @@ class FieldSourcePanelRowsTest {
         throw new AssertionError("No combo contains " + value);
     }
 
+    private static JComboBox<?> comboContainingLabel(Container root, String label) {
+        for (JComboBox<?> combo : components(root, JComboBox.class)) {
+            for (int i = 0; i < combo.getItemCount(); i++) {
+                if (label.equals(combo.getItemAt(i).toString())) return combo;
+            }
+        }
+        throw new AssertionError("No combo contains " + label);
+    }
+
+    private static void selectLabel(JComboBox<?> combo, String label) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (label.equals(combo.getItemAt(i).toString())) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+        throw new AssertionError("No combo item named " + label);
+    }
+
     private static JButton button(Container root, String text) {
         ArrayDeque<Container> pending = new ArrayDeque<>();
         pending.add(root);
@@ -350,6 +474,12 @@ class FieldSourcePanelRowsTest {
             }
         }
         throw new AssertionError("No button named " + text);
+    }
+
+    private static JCheckBox checkBox(Container root, String text) {
+        return components(root, JCheckBox.class).stream()
+                .filter(box -> text.equals(box.getText())).findFirst()
+                .orElseThrow(() -> new AssertionError("No checkbox named " + text));
     }
 
     private static <T extends Component> List<T> components(Container root, Class<T> type) {

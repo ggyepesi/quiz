@@ -29,7 +29,8 @@ public final class StandardExternalSourceFamilies {
 
     public static ExternalSourceFamilyRegistry create() {
         return new ExternalSourceFamilyRegistry(List.of(
-                new WikidataComputed(), new Dbpedia(), new Categories(), new Infobox()));
+                new WikidataComputed(), new Dbpedia(), new Categories(),
+                new ArticleIntroductions(), new Infobox()));
     }
 
     private record WikidataComputed() implements ExternalSourceFamily {
@@ -144,6 +145,32 @@ public final class StandardExternalSourceFamilies {
                     client, context.plan());
             return new Outcome(id(), result.values(),
                     result.values() + " infobox value(s)", summaryOrder());
+        }
+    }
+
+    private record ArticleIntroductions() implements ExternalSourceFamily {
+        @Override public String id() {
+            return datasource.wikipedia.WikipediaDatasourceProvider
+                    .FAMILY_ARTICLE_INTRODUCTION_FIELD;
+        }
+        @Override public String displayName() { return "Wikipedia article introduction"; }
+        @Override public int summaryOrder() { return 15; }
+        @Override public boolean configured(datasource.api.SourceExecutionPlan plan) {
+            return plan != null && plan.acquires(id());
+        }
+        @Override public Outcome empty() {
+            return new Outcome(id(), 0, "0 article introduction value(s)", summaryOrder());
+        }
+        @Override public Outcome acquire(Context context) throws Exception {
+            wikidata.api.WikidataApiClient client = context.services().find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.api.WikidataApiClient.class).orElse(null);
+            WikipediaArticleIntroductionAcquisition.Result result =
+                    WikipediaArticleIntroductionAcquisition.apply(
+                            context.model(), context.pool(), context.log(),
+                            context.cancellation(), client, context.plan());
+            return new Outcome(id(), result.values(),
+                    result.values() + " article introduction value(s)", summaryOrder());
         }
     }
 }

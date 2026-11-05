@@ -14,12 +14,32 @@ public record EnrichmentRequest(
         List<SourceRef> sources,
         objectview.field.FieldRef targetSchema,
         Object currentValue,
-        List<datasource.evidence.CategoryMembership> categoryMemberships) {
+        List<datasource.evidence.CategoryMembership> categoryMemberships,
+        datasource.evidence.ArticleIntroduction articleIntroduction,
+        datasource.evidence.WikipediaArticle wikipediaArticle) {
+
+    public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
+                             boolean collection, List<SourceRef> sources,
+                             objectview.field.FieldRef targetSchema, Object currentValue,
+                             List<datasource.evidence.CategoryMembership> categoryMemberships,
+                             datasource.evidence.ArticleIntroduction articleIntroduction) {
+        this(subject, targetField, collection, sources, targetSchema, currentValue,
+                categoryMemberships, articleIntroduction, null);
+    }
+
+    public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
+                             boolean collection, List<SourceRef> sources,
+                             objectview.field.FieldRef targetSchema, Object currentValue,
+                             List<datasource.evidence.CategoryMembership> categoryMemberships) {
+        this(subject, targetField, collection, sources, targetSchema, currentValue,
+                categoryMemberships, null, null);
+    }
 
     public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
                              boolean collection, List<SourceRef> sources,
                              objectview.field.FieldRef targetSchema, Object currentValue) {
-        this(subject, targetField, collection, sources, targetSchema, currentValue, List.of());
+        this(subject, targetField, collection, sources, targetSchema, currentValue,
+                List.of(), null);
     }
 
     public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,

@@ -23,6 +23,7 @@ public final class CurationStaging implements CorrectionSource {
     private final ManualCuration target;
     private final Map<CorrectionKey, Correction> corrections = new LinkedHashMap<>();
     private final Map<IdentityKey, IdentityLink> identities = new LinkedHashMap<>();
+    private final Map<InstanceKey, CuratedInstance> instances = new LinkedHashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
 
     private CurationStaging(ManualCuration target) {
@@ -48,12 +49,22 @@ public final class CurationStaging implements CorrectionSource {
         changed();
     }
 
+    public synchronized void stage(CuratedInstance instance) {
+        if (instance == null) return;
+        instances.put(new InstanceKey(instance.type(), instance.id()), instance);
+        changed();
+    }
+
     @Override public synchronized List<Correction> corrections() {
         return List.copyOf(corrections.values());
     }
 
     public synchronized List<IdentityLink> identityLinks() {
         return List.copyOf(identities.values());
+    }
+
+    public synchronized List<CuratedInstance> instances() {
+        return List.copyOf(instances.values());
     }
 
     /** Discard only pending identity work, leaving staged field corrections intact. */
@@ -65,7 +76,7 @@ public final class CurationStaging implements CorrectionSource {
     }
 
     public synchronized int size() {
-        return corrections.size() + identities.size();
+        return corrections.size() + identities.size() + instances.size();
     }
 
     public synchronized void addChangeListener(Runnable listener) {
@@ -87,6 +98,7 @@ public final class CurationStaging implements CorrectionSource {
 
         List<Correction> previousCorrections = target.corrections();
         List<IdentityLink> previousIdentities = target.identityLinks();
+        List<CuratedInstance> previousInstances = target.instances();
         try {
             for (Correction correction : corrections.values()) {
                 target.put(correction.type(), correction.qid(), correction.field(),
@@ -94,14 +106,16 @@ public final class CurationStaging implements CorrectionSource {
                         correction.policy(), correction.source());
             }
             for (IdentityLink link : identities.values()) target.putIdentityLink(link);
+            for (CuratedInstance instance : instances.values()) target.putInstance(instance);
             target.save();
         } catch (IOException | RuntimeException failure) {
-            restore(previousCorrections, previousIdentities);
+            restore(previousCorrections, previousIdentities, previousInstances);
             throw failure;
         }
 
         corrections.clear();
         identities.clear();
+        instances.clear();
         changed();
         releaseIfUnused();
     }
@@ -129,7 +143,8 @@ public final class CurationStaging implements CorrectionSource {
     }
 
     private void restore(List<Correction> previousCorrections,
-                         List<IdentityLink> previousIdentities) {
+                         List<IdentityLink> previousIdentities,
+                         List<CuratedInstance> previousInstances) {
         // Only touched keys need rollback; unrelated records may have been added by another
         // tool between staging and Apply and must not be erased.
         for (Correction pending : corrections.values()) {
@@ -145,6 +160,13 @@ public final class CurationStaging implements CorrectionSource {
                     .filter(old -> sameIdentityKey(old, pending))
                     .forEach(target::putIdentityLink);
         }
+        for (CuratedInstance pending : instances.values()) {
+            target.removeInstance(pending.type(), pending.id());
+            previousInstances.stream()
+                    .filter(old -> java.util.Objects.equals(old.type(), pending.type())
+                            && java.util.Objects.equals(old.id(), pending.id()))
+                    .forEach(target::putInstance);
+        }
     }
 
     private void changed() {
@@ -153,7 +175,8 @@ public final class CurationStaging implements CorrectionSource {
     }
 
     private void releaseIfUnused() {
-        if (!corrections.isEmpty() || !identities.isEmpty() || !listeners.isEmpty()) return;
+        if (!corrections.isEmpty() || !identities.isEmpty() || !instances.isEmpty()
+                || !listeners.isEmpty()) return;
         synchronized (CurationStaging.class) {
             SESSIONS.remove(target, this);
         }
@@ -175,4 +198,5 @@ public final class CurationStaging implements CorrectionSource {
 
     private record CorrectionKey(String type, String id, String field) { }
     private record IdentityKey(String type, String id, String sourceKind) { }
+    private record InstanceKey(String type, String id) { }
 }

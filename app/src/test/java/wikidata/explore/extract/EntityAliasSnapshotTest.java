@@ -99,6 +99,76 @@ class EntityAliasSnapshotTest {
         assertEquals(null, loaded.infoboxParameters());
     }
 
+    @Test void articleIntroductionEvidenceSurvivesWithoutBecomingADomainField(
+            @TempDir Path dir) throws Exception {
+        WikidataDynamicObject episode =
+                new WikidataDynamicObject("Q1784308", "Judgement of Paris");
+        episode.type("Episode");
+        var document = new datasource.evidence.SourceDocument(
+                "Wikipedia (English)", "Judgement of Paris", "Judgement of Paris",
+                "https://en.wikipedia.org/wiki/Judgement_of_Paris", "987654",
+                new datasource.evidence.ContentDigest("sha256", "abc"),
+                "2026-11-03T12:00:00Z");
+        var link = new datasource.evidence.ArticleIntroduction.Link(
+                "Paris", "Paris (mythology)", 0, 5);
+        episode.articleIntroductionEvidence(
+                new datasource.evidence.ArticleIntroduction(
+                        "Paris judges three goddesses.", document,
+                        java.util.List.of(link)), true);
+
+        var file = dir.resolve("article-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(episode), file);
+        WikidataDynamicObject loaded = store.load(file).getFirst();
+
+        assertEquals("Paris judges three goddesses.",
+                loaded.articleIntroduction().text());
+        assertEquals("987654",
+                loaded.articleIntroduction().document().revision());
+        assertEquals(java.util.List.of(link), loaded.articleIntroduction().links());
+        org.junit.jupiter.api.Assertions.assertTrue(loaded.articleIntroductionAnswered());
+        assertEquals(null, loaded.get("articleIntroduction"),
+                "source facts stay outside the rendered field graph");
+    }
+
+    @Test void structuredWikipediaArticleSurvivesAsOneSourceArtifact(
+            @TempDir Path dir) throws Exception {
+        WikidataDynamicObject deity = new WikidataDynamicObject("Q170471", "Maat");
+        deity.type("EgyptianDeity");
+        deity.enwikiTitle("Maat");
+        var document = new datasource.evidence.SourceDocument(
+                "Wikipedia (English)", "Maat", "Maat",
+                "https://en.wikipedia.org/wiki/Maat", "123",
+                new datasource.evidence.ContentDigest("sha256", "abc"),
+                "2026-11-05T12:00:00Z");
+        var paragraph = new datasource.evidence.WikipediaArticle.Block(
+                "Paragraph 1", datasource.evidence.WikipediaArticle.Block.Kind.PARAGRAPH,
+                "Maat represented truth and order.", java.util.List.of(), 0, 33);
+        var section = new datasource.evidence.WikipediaArticle.Section(
+                "Introduction", 0, java.util.List.of(paragraph), java.util.List.of(),
+                0, 33);
+        deity.wikipediaArticleEvidence(new datasource.evidence.WikipediaArticle(
+                document, "Maat represented truth and order.",
+                java.util.List.of("Egyptian goddesses"), java.util.List.of(section)), true);
+
+        var file = dir.resolve("structured-article-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(java.util.List.of(deity), file);
+        WikidataDynamicObject loaded = store.load(file).getFirst();
+
+        assertEquals("Maat", loaded.wikipediaArticle().getDisplayName());
+        assertEquals("Introduction",
+                loaded.wikipediaArticle().sections().getFirst().heading());
+        assertEquals("Maat represented truth and order.",
+                loaded.articleIntroduction().text());
+        org.junit.jupiter.api.Assertions.assertTrue(loaded.wikipediaArticleAnswered());
+        String json = Files.readString(file.toPath());
+        assertEquals(1, occurrences(json, "\"wikipediaArticle\""));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                json.contains("\"wikipediaArticleIntroduction\""),
+                "the introduction is derived from the retained full article");
+    }
+
     private static int occurrences(String value, String needle) {
         int count = 0;
         for (int at = 0; (at = value.indexOf(needle, at)) >= 0; at += needle.length()) {

@@ -64,25 +64,20 @@ public final class WikipediaInfoboxAcquisition {
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
             if (object != null && WikidataIds.isQid(object.qid())
-                    && declarations.stream().anyMatch(d -> applies(model, object, d)
+                    && declarations.stream().anyMatch(d -> FieldSourceTargeting.applies(
+                            model, object, d.owner(), d.target())
                     && !answered(object, d)
                     && object.get(d.field().name()) == null)) {
                 targets.computeIfAbsent(object.qid(), ignored -> new ArrayList<>()).add(object);
             }
         }
-        Map<String, wikidata.api.WikidataApiClient.ApiEntity> entities =
-                api.getEntities(List.copyOf(targets.keySet()), List.of(),
-                        java.util.Set.of(wikidata.api.FactDemand.EntityMetadata.SITELINKS),
-                        log.batchSink());
-        Map<String, String> titleToQid = new LinkedHashMap<>();
-        entities.forEach((qid, entity) -> {
-            if (entity != null && !entity.enwikiTitle().isBlank())
-                titleToQid.putIfAbsent(entity.enwikiTitle(), qid);
-        });
+        Map<String, List<WikidataDynamicObject>> titleTargets =
+                WikipediaArticleCorrespondence.byTitle(
+                        targets.values().stream().flatMap(List::stream).toList(), api, log);
         var pages = new java.util.concurrent.atomic.AtomicInteger();
         var values = new java.util.concurrent.atomic.AtomicInteger();
         var batches = new java.util.concurrent.atomic.AtomicInteger();
-        List<String> titles = List.copyOf(titleToQid.keySet());
+        List<String> titles = List.copyOf(titleTargets.keySet());
         boolean needsRendered = declarations.stream().anyMatch(Declaration::rendered);
         try (GenerationLog.Group group = log.group("Acquire native Wikipedia infoboxes — "
                 + titles.size() + " article(s) — " + (needsRendered
@@ -107,8 +102,7 @@ public final class WikipediaInfoboxAcquisition {
                     batch.BatchCheckpointStore.NONE, api.entityConcurrency())
                     .run(units, (descriptor, result) -> {
                         result.forEach((title, answer) -> {
-                            List<WikidataDynamicObject> copies =
-                                    targets.get(titleToQid.get(title));
+                            List<WikidataDynamicObject> copies = titleTargets.get(title);
                             if (copies == null || copies.isEmpty()) return;
                             InfoboxParameters acquired = answer == null
                                     ? null : answer.evidence();
@@ -146,7 +140,8 @@ public final class WikipediaInfoboxAcquisition {
             InfoboxParameters acquired) {
         List<String> filled = new ArrayList<>();
         for (Declaration declaration : declarations) {
-            if (!applies(model, object, declaration)
+            if (!FieldSourceTargeting.applies(
+                    model, object, declaration.owner(), declaration.target())
                     || object.get(declaration.field().name()) != null) continue;
             String value = acquired.valueOf(
                     InfoboxParameters.Key.parse(declaration.parameter()));
@@ -339,26 +334,6 @@ public final class WikipediaInfoboxAcquisition {
                 && field.fallbackMapping().sourceType() == FieldSourceType.WIKIPEDIA_INFOBOX
                 && !field.fallbackMapping().propertyPid().isBlank()
                 ? field.fallbackMapping() : null;
-    }
-
-    private static boolean applies(GeneratedProjectModel model, WikidataDynamicObject object,
-            Declaration declaration) {
-        if (declaration.target() != null && declaration.target().contextual()) {
-            wikidata.explore.model.OwnedComponentSite site =
-                    wikidata.explore.model.OwnedComponentSite.parse(object.typeKey());
-            return site != null
-                    && declaration.target().className().equals(site.targetClass())
-                    && declaration.target().contextClassName().equals(site.ownerClass())
-                    && declaration.target().contextFieldPath().equals(site.ownerField());
-        }
-        for (String direct : object.directClassNames()) {
-            for (GeneratedClassModel current = model.findClass(direct); current != null;
-                    current = current.baseClassName().isBlank()
-                            ? null : model.findClass(current.baseClassName())) {
-                if (current.className().equals(declaration.owner().className())) return true;
-            }
-        }
-        return false;
     }
 
     private static boolean answered(WikidataDynamicObject object, Declaration declaration) {

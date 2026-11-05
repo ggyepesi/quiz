@@ -27,10 +27,34 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     /** One configured source parameter or rendered row interpreted as a model field value. */
     public static final String INFOBOX_PARAMETER = "infobox-parameter";
     public static final String FAMILY_INFOBOX_FIELD = "wikipedia-infobox-field";
+    /** The article's lead text, without later sections. */
+    public static final String ARTICLE_INTRODUCTION = "article-introduction";
+    public static final String FAMILY_ARTICLE_INTRODUCTION_FIELD =
+            "wikipedia-article-introduction-field";
+    /** Exact mentions in a retained introduction proposed for review as references. */
+    public static final String ARTICLE_INTRODUCTION_MENTIONS =
+            "article-introduction-mentions";
+    public static final String FAMILY_ARTICLE_INTRODUCTION_MENTIONS =
+            "wikipedia-article-introduction-mentions";
+    /** Bounded, section-labelled full-article prose proposed for review as text. */
+    public static final String ARTICLE_PASSAGES = "article-passages";
+    public static final String FAMILY_ARTICLE_PASSAGES = "wikipedia-article-passages";
+    /** Reviewable target-class instances, one per bounded article passage. */
+    public static final String ARTICLE_PASSAGE_INSTANCES = "article-passage-instances";
+    public static final String FAMILY_ARTICLE_PASSAGE_INSTANCES =
+            "wikipedia-article-passage-instances";
+    public static final String PASSAGE_TEXT_FIELD = "passageTextField";
+    public static final String PASSAGE_SOURCE_FIELD = "passageSourceField";
+    public static final int MAX_ARTICLE_PASSAGES = 40;
+    public static final int MAX_ARTICLE_PASSAGE_CHARACTERS = 20_000;
 
     private final List<DatasourceOperation> operations = List.of(
             new WikipediaCategoryDiscoveryOperation(),
             new InfoboxParameter(),
+            new ArticleIntroduction(),
+            new ArticleIntroductionMentions(),
+            new ArticlePassages(),
+            new ArticlePassageInstances(),
             document(ARTICLE, "Article",
                     "Retrieve the article an entity corresponds to, with the digest that "
                             + "says which revision was read."),
@@ -76,6 +100,142 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
     }
 
+    private record ArticleIntroduction() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_INTRODUCTION; }
+        @Override public String displayName() { return "Article introduction"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+        @Override public SourceValueSchema outputSchema() {
+            return new SourceValueSchema(SourceValueKind.MODEL_VALUE, false, "");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            return new PreparedSourceOperation(FAMILY_ARTICLE_INTRODUCTION_FIELD,
+                    "Wikipedia article introduction",
+                    PreparedSourceOperation.Execution.ACQUIRE,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — English Wikipedia article introduction",
+                    java.util.Map.of(
+                            "input", "Wikipedia article linked from the entity ID",
+                            "operation", "Read the article introduction",
+                            "output", "Fill the configured text field"),
+                    ArticleIntroductionSpec.INSTANCE, articleCorrespondence());
+        }
+    }
+
+    /** Marker configuration: the operation has no user-entered parameter. */
+    public enum ArticleIntroductionSpec { INSTANCE }
+
+    /**
+     * A curation recipe, not an automatic value acquisition. The retained introduction
+     * is interpreted against instances already admitted to the field's target class;
+     * matches are review candidates and therefore remain RETAIN work in generation.
+     */
+    private record ArticleIntroductionMentions() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_INTRODUCTION_MENTIONS; }
+        @Override public String displayName() { return "Article introduction mentions"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "wikidata");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            return new PreparedSourceOperation(FAMILY_ARTICLE_INTRODUCTION_MENTIONS,
+                    "Wikipedia article introduction mentions",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review typed instances mentioned in the retained "
+                            + "Wikipedia introduction",
+                    java.util.Map.of(
+                            "input", "Retained versioned article introduction and loaded "
+                                    + "instances of the field's target class",
+                            "operation", "Find exact display-label mentions",
+                            "output", "Propose matching references for explicit review"),
+                    ArticleIntroductionMentionSpec.INSTANCE,
+                    articleCorrespondence());
+        }
+    }
+
+    /** Marker configuration: the review operation has no user-entered parameter. */
+    public enum ArticleIntroductionMentionSpec { INSTANCE }
+
+    /** Explicit curation over one bounded full article. It retains prose as prose: no
+     * entity or event is inferred merely because the article names it. */
+    private record ArticlePassages() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_PASSAGES; }
+        @Override public String displayName() { return "Bounded article passages"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+        @Override public SourceValueSchema outputSchema() {
+            return new SourceValueSchema(SourceValueKind.MODEL_VALUE, false, "");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            return new PreparedSourceOperation(FAMILY_ARTICLE_PASSAGES,
+                    "Wikipedia article passages",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review bounded text from the full article",
+                    java.util.Map.of(
+                            "input", "One versioned full Wikipedia article per selected member",
+                            "operation", "Keep at most " + MAX_ARTICLE_PASSAGES
+                                    + " content passages and "
+                                    + MAX_ARTICLE_PASSAGE_CHARACTERS + " characters",
+                            "output", "Propose section-labelled text for explicit review"),
+                    ArticlePassageSpec.INSTANCE,
+                    articleCorrespondence());
+        }
+    }
+
+    public enum ArticlePassageSpec { INSTANCE }
+
+    /**
+     * The field receives references to reviewed instances of its declared target class.
+     * The target class says where passage text and the source instance are stored; no
+     * class or field name is inferred by the provider.
+     */
+    private record ArticlePassageInstances() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_PASSAGE_INSTANCES; }
+        @Override public String displayName() { return "Article passage instances"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(
+                    new ParameterDescriptor(PASSAGE_TEXT_FIELD, "Passage text field",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Text field on the proposed target-class instance"),
+                    new ParameterDescriptor(PASSAGE_SOURCE_FIELD, "Source instance field",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Reference field on the proposed instance that receives the source"));
+        }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "model");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            ArticlePassageInstanceSpec spec = new ArticlePassageInstanceSpec(
+                    binding.recipe().parameter(PASSAGE_TEXT_FIELD),
+                    binding.recipe().parameter(PASSAGE_SOURCE_FIELD));
+            return new PreparedSourceOperation(FAMILY_ARTICLE_PASSAGE_INSTANCES,
+                    "Wikipedia article passage instances",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review one target-class instance per bounded passage",
+                    java.util.Map.of(
+                            "input", "One versioned full Wikipedia article per selected member",
+                            "operation", "Propose one instance per bounded content passage",
+                            "output", "Fill " + spec.textField() + " with the passage and "
+                                    + spec.sourceField() + " with the selected source instance"),
+                    spec, articleCorrespondence());
+        }
+    }
+
+    public record ArticlePassageInstanceSpec(String textField, String sourceField) {
+        public ArticlePassageInstanceSpec {
+            textField = textField == null ? "" : textField.trim();
+            sourceField = sourceField == null ? "" : sourceField.trim();
+        }
+        public boolean configured() {
+            return !textField.isBlank() && !sourceField.isBlank();
+        }
+    }
+
     private static List<SourceInputRequirement> articleCorrespondence() {
         return List.of(new SourceInputRequirement(datasource.EntityRef.WIKIDATA,
                 SourceInputRequirement.Kind.ARTICLE_CORRESPONDENCE));
@@ -102,6 +262,61 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                 || !INFOBOX_PARAMETER.equals(recipe.operationId())) return null;
         String parameter = recipe.parameter("property");
         return parameter == null || parameter.isBlank() ? null : parameter;
+    }
+
+    public static boolean articleIntroduction(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE) return false;
+        SourceBindingSlot slot = binding.target().slot();
+        if (slot != SourceBindingSlot.PRIMARY_FIELD_VALUE
+                && slot != SourceBindingSlot.FALLBACK_FIELD_VALUE) return false;
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_INTRODUCTION.equals(recipe.operationId());
+    }
+
+    public static boolean articleIntroductionMentions(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_INTRODUCTION_MENTIONS.equals(recipe.operationId());
+    }
+
+    public static boolean articlePassages(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_PASSAGES.equals(recipe.operationId());
+    }
+
+    public static ArticlePassageInstanceSpec articlePassageInstances(SourceBinding binding) {
+        if (!articlePassageInstanceOperation(binding)) return null;
+        SourceRecipe recipe = binding.recipe();
+        ArticlePassageInstanceSpec spec = new ArticlePassageInstanceSpec(
+                recipe.parameter(PASSAGE_TEXT_FIELD),
+                recipe.parameter(PASSAGE_SOURCE_FIELD));
+        return spec.configured() ? spec : null;
+    }
+
+    /** Whether this is the passage-instance operation, including an incomplete recipe
+     * that the editor must still be able to display and repair. */
+    public static boolean articlePassageInstanceOperation(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_PASSAGE_INSTANCES.equals(recipe.operationId());
     }
 
     /** The category interpretation declared at this field target, if any. */

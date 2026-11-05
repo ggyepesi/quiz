@@ -65,19 +65,6 @@
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
-      "fieldName" : "episodes",
-      "propertyPid" : "P674",
-      "propertyLabel" : "characters",
-      "kind" : "ENTITY",
-      "optional" : true,
-      "collection" : true,
-      "direction" : "ITEM_TO_ROOT",
-      "membershipPid" : "P31",
-      "membershipQid" : "Q63143903",
-      "membershipQualifierCondition" : null,
-      "qualifierCondition" : null
-    }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "type",
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",

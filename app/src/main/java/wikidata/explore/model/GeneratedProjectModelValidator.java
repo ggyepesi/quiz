@@ -55,6 +55,7 @@ public final class GeneratedProjectModelValidator {
             validateStatementSubjectFields(project, clazz, problems);
             validateValueLanguages(clazz, problems);
             validateQualifierConditions(clazz, problems);
+            validateArticlePassageInstances(project, clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
             if (clazz.reifiesStatements()) {
@@ -434,6 +435,60 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(where, "A qualifier condition applies to a "
                         + "field read from a property; this field is "
                         + kind + "."));
+            }
+        }
+    }
+
+    /** The passage recipe names model fields, so its strings are valid only while they
+     * still describe the declared target schema. The editor offers valid choices; this
+     * check also covers later field edits and hand-edited models. */
+    private static void validateArticlePassageInstances(
+            GeneratedProjectModel project,
+            GeneratedClassModel owner,
+            List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            datasource.api.SourceBinding binding = FieldSourceBindings.binding(
+                    field, datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+            if (!datasource.wikipedia.WikipediaDatasourceProvider
+                    .articlePassageInstanceOperation(binding)) continue;
+            String where = path(owner, field);
+            if (field.type() != FieldType.ENTITY
+                    || field.cardinality() != FieldCardinality.COLLECTION
+                    || field.entityClassName().isBlank()) {
+                problems.add(Problem.error(where, "Article passage instances require a "
+                        + "list-valued ENTITY field with a declared target class."));
+                continue;
+            }
+            GeneratedClassModel target = project.findClass(field.entityClassName());
+            if (target == null) continue; // ordinary reference validation owns this error
+            var spec = datasource.wikipedia.WikipediaDatasourceProvider
+                    .articlePassageInstances(binding);
+            if (spec == null) {
+                problems.add(Problem.error(where, "Article passage instances require both "
+                        + "a passage text field and a source instance field on "
+                        + target.className() + "."));
+                continue;
+            }
+            GeneratedFieldModel text = target.effectiveFields(project).stream()
+                    .filter(candidate -> spec.textField().equals(candidate.name()))
+                    .findFirst().orElse(null);
+            if (text == null || text.type() != FieldType.TEXT
+                    || text.cardinality() != FieldCardinality.SINGLE) {
+                problems.add(Problem.error(where, "Passage text target '"
+                        + target.className() + "." + spec.textField()
+                        + "' must be one Text value."));
+            }
+            GeneratedFieldModel source = target.effectiveFields(project).stream()
+                    .filter(candidate -> spec.sourceField().equals(candidate.name()))
+                    .findFirst().orElse(null);
+            if (source == null || source.type() != FieldType.ENTITY
+                    || source.cardinality() != FieldCardinality.COLLECTION
+                    || !project.isSameOrSubclass(
+                            owner.className(), source.entityClassName())) {
+                problems.add(Problem.error(where, "Source instance target '"
+                        + target.className() + "." + spec.sourceField()
+                        + "' must be an ENTITY list that accepts " + owner.className() + "."));
             }
         }
     }

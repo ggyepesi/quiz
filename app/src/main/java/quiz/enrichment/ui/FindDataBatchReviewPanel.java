@@ -62,8 +62,10 @@ public final class FindDataBatchReviewPanel {
         List<EnrichmentDecision> safeDefaults = new ArrayList<>();
         List<Viewable> cards = new ArrayList<>();
         int ordinal = 0;
-        for (EnrichmentProposal proposal : proposals == null
-                ? List.<EnrichmentProposal>of() : proposals) {
+        List<EnrichmentProposal> reviewProposals = (proposals == null
+                ? List.<EnrichmentProposal>of() : proposals).stream()
+                .flatMap(proposal -> splitInstanceCandidates(proposal).stream()).toList();
+        for (EnrichmentProposal proposal : reviewProposals) {
             String id = cardId(proposal, ordinal++);
             EnrichmentDecision decision = EnrichmentDecision.acceptDefault(proposal);
             boolean overwrite = overwrites(proposal);
@@ -79,7 +81,9 @@ public final class FindDataBatchReviewPanel {
             cards.add(card);
             if (decision != null) {
                 applicable.put(id, decision);
-                if (!overwrite) safeDefaults.add(decision);
+                // Creating a new instance is a semantic admission decision, never a
+                // bulk-safe fill. It remains available through Stage selected card.
+                if (!overwrite && decision.instances().isEmpty()) safeDefaults.add(decision);
             }
         }
 
@@ -90,8 +94,9 @@ public final class FindDataBatchReviewPanel {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panel.add(new JLabel("<html>" + CategorizedReviewPanel.html(prompt)
-                + "<br><br>Select a card to stage that proposed value. Overwrites are "
-                + "never included in Stage all safe results.</html>"), BorderLayout.NORTH);
+                + "<br><br>Select a card to stage that proposed value. Overwrites and "
+                + "proposed new instances are never included in Stage all safe "
+                + "results.</html>"), BorderLayout.NORTH);
         JButton close = new JButton("Close without staging");
         JButton selected = new JButton("Stage selected card");
         selected.setEnabled(false);
@@ -145,6 +150,34 @@ public final class FindDataBatchReviewPanel {
                 + '\u0000' + ordinal;
     }
 
+    /** One proposed instance is one review decision. A provider may find forty bounded
+     * passages in one article, but selecting that article must never accept all forty. */
+    static List<EnrichmentProposal> splitInstanceCandidates(EnrichmentProposal proposal) {
+        if (proposal == null || proposal.instances().size() <= 1) {
+            return proposal == null ? List.of() : List.of(proposal);
+        }
+        List<EnrichmentProposal> result = new ArrayList<>();
+        for (EnrichmentProposal.InstanceCandidate instance : proposal.instances()) {
+            List<EnrichmentProposal.FieldCandidate> fields = proposal.fields().stream()
+                    .filter(field -> proposedReferenceId(field.proposedValue())
+                            .equals(instance.id()))
+                    .toList();
+            result.add(new EnrichmentProposal(proposal.subject(), proposal.identities(),
+                    fields, List.of(), List.of(instance)));
+        }
+        return List.copyOf(result);
+    }
+
+    private static String proposedReferenceId(Object value) {
+        if (value instanceof Viewable viewable) {
+            return viewable.getIdentifier() == null ? "" : viewable.getIdentifier();
+        }
+        if (value instanceof java.util.Collection<?> values && values.size() == 1) {
+            return proposedReferenceId(values.iterator().next());
+        }
+        return "";
+    }
+
     private static boolean overwrites(EnrichmentProposal proposal) {
         EnrichmentDecision decision = EnrichmentDecision.acceptDefault(proposal);
         return decision != null && decision.fields().stream().anyMatch(
@@ -163,6 +196,11 @@ public final class FindDataBatchReviewPanel {
                     + "before applying.";
         }
         EnrichmentDecision accepted = EnrichmentDecision.acceptDefault(proposal);
+        if (accepted != null && !accepted.instances().isEmpty()) {
+            EnrichmentProposal.InstanceCandidate instance = accepted.instances().getFirst();
+            return "Create " + instance.type() + " “" + instance.displayName() + "”"
+                    + sourceSuffix(instance.source());
+        }
         if (accepted != null && !accepted.fields().isEmpty()) {
             EnrichmentProposal.FieldCandidate field = accepted.fields().get(0).candidate();
             return (field.suggestedAction() == EnrichmentProposal.ReviewAction.CORROBORATE
@@ -207,6 +245,14 @@ public final class FindDataBatchReviewPanel {
                 objectview.field.RecordTypes.value("Source URL"),
                 objectview.field.RecordTypes.records("Evidence", "Evidence"),
                 objectview.field.RecordTypes.text("Compatibility"));
+        objectview.field.RecordTypes.declare("Proposed instance",
+                objectview.field.RecordTypes.text("Class"),
+                objectview.field.RecordTypes.text("Identifier"),
+                objectview.field.RecordTypes.text("Display name"),
+                objectview.field.RecordTypes.records("Fields", "Proposed value"),
+                objectview.field.RecordTypes.text("Source"),
+                objectview.field.RecordTypes.value("Source URL"),
+                objectview.field.RecordTypes.records("Evidence", "Evidence"));
         objectview.field.RecordTypes.declare("Evidence",
                 objectview.field.RecordTypes.text("Supporting text"),
                 objectview.field.RecordTypes.text("Document"),
@@ -250,13 +296,44 @@ public final class FindDataBatchReviewPanel {
                     identity.canonicalName(), identity.source(), "LINK",
                     identity.evidence()));
         }
+        List<EnrichmentProposal.InstanceCandidate> instances = accepted == null
+                ? proposal.instances() : accepted.instances();
+        for (EnrichmentProposal.InstanceCandidate instance : instances) {
+            DynamicViewable card = new DynamicViewable(
+                    prefix + "instance-" + ordinal++, instance.displayName());
+            card.type("Proposed instance");
+            card.put("Class", instance.type());
+            card.put("Identifier", instance.id());
+            card.put("Display name", instance.displayName());
+            List<Viewable> instanceFields = new ArrayList<>();
+            int fieldOrdinal = 0;
+            for (EnrichmentProposal.InstanceField field : instance.fields()) {
+                Object value = field.references().isEmpty()
+                        ? field.value() : field.references().stream()
+                                .map(reference -> reference.type() + ":" + reference.id())
+                                .toList();
+                instanceFields.add(changeCard(
+                        prefix + "instance-field-" + fieldOrdinal++, field.field(), value,
+                        instance.source(), "SET", List.of()));
+            }
+            if (!instanceFields.isEmpty()) card.put("Fields", instanceFields);
+            card.put("Source", instance.source().kind() + " — "
+                    + instance.source().sourceId());
+            if (!instance.source().recordUrl().isBlank()) {
+                card.put("Source URL", instance.source().recordUrl());
+            }
+            List<Viewable> evidence = evidenceCards(card.getIdentifier(), instance.evidence());
+            if (!evidence.isEmpty()) card.put("Evidence", evidence);
+            result.add(card);
+        }
         return List.copyOf(result);
     }
 
     private static DynamicViewable changeCard(
             String id, String field, Object value, SourceRef source, String action,
             List<datasource.evidence.ExtractedClaim> claims) {
-        DynamicViewable card = new DynamicViewable(id, field);
+        DynamicViewable card = new DynamicViewable(
+                id, field + " → " + proposedValueCaption(value));
         card.type("Proposed value");
         card.put("Target field", field);
         card.put("Value", value);
@@ -268,6 +345,25 @@ public final class FindDataBatchReviewPanel {
         List<Viewable> evidence = evidenceCards(id, claims);
         if (!evidence.isEmpty()) card.put("Evidence", evidence);
         return card;
+    }
+
+    /** A collapsed Proposed changes collection must still say what each entry proposes.
+     *  Keep the original object in {@code Value} for ObjectView navigation; this is only
+     *  the nested change card's concise caption. */
+    private static String proposedValueCaption(Object value) {
+        if (value instanceof Viewable viewable) {
+            String display = viewable.getDisplayName();
+            return display == null || display.isBlank()
+                    ? viewable.getIdentifier() : display;
+        }
+        if (value instanceof java.util.Collection<?> values) {
+            if (values.isEmpty()) return "(empty collection)";
+            String joined = values.stream().limit(3)
+                    .map(FindDataBatchReviewPanel::proposedValueCaption)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return joined + (values.size() > 3 ? ", …" : "");
+        }
+        return value == null ? "(empty)" : String.valueOf(value);
     }
 
     private static List<Viewable> evidenceCards(

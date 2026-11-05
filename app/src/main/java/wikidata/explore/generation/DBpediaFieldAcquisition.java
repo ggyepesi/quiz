@@ -34,7 +34,8 @@ public final class DBpediaFieldAcquisition {
         for (Work work : worklist(model, sourcePlan, sink)) {
             GeneratedClassModel owner = work.owner();
             List<WikidataDynamicObject> targets = pool.stream()
-                    .filter(object -> applies(model, object, owner, work.target())).toList();
+                    .filter(object -> FieldSourceTargeting.applies(
+                            model, object, owner, work.target())).toList();
             if (targets.isEmpty()) continue;
             fields++;
             values += acquisition.enrich(
@@ -76,27 +77,6 @@ public final class DBpediaFieldAcquisition {
                             spec.fillOnlyMissing())));
         }
         return List.copyOf(result);
-    }
-
-    private static boolean applies(GeneratedProjectModel model,
-            WikidataDynamicObject object, GeneratedClassModel owner,
-            datasource.api.SourceBindingTarget target) {
-        if (object == null) return false;
-        if (target.contextual()) {
-            wikidata.explore.model.OwnedComponentSite site =
-                    wikidata.explore.model.OwnedComponentSite.parse(object.typeKey());
-            return site != null && target.className().equals(site.targetClass())
-                    && target.contextClassName().equals(site.ownerClass())
-                    && target.contextFieldPath().equals(site.ownerField());
-        }
-        for (String direct : object.directClassNames()) {
-            for (GeneratedClassModel current = model.findClass(direct); current != null;
-                    current = current.baseClassName().isBlank() ? null
-                            : model.findClass(current.baseClassName())) {
-                if (owner.className().equals(current.className())) return true;
-            }
-        }
-        return false;
     }
 
     public record Result(int fields, int values) { }

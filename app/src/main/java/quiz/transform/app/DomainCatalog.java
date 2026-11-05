@@ -129,6 +129,8 @@ public final class DomainCatalog {
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
         // fallback rule) only fill fields still absent.
         var curation = quiz.curation.ManualCuration.forSnapshot(snap);
+        List<WikidataDynamicObject> curatedInstances =
+                quiz.curation.CuratedInstances.apply(pool, curation.instances()).instances();
         var autofix = quiz.curation.CorrectionsSidecar.source(
                 quiz.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
         quiz.curation.Corrections.apply(pool, List.of(curation, autofix));
@@ -151,8 +153,13 @@ public final class DomainCatalog {
                                                     binding.memberType(), root));
                         })
                         .toList();
+        java.util.List<objectview.Viewable> memberRoots = new java.util.ArrayList<>();
+        memberRoots.addAll(loaded.memberRoots());
+        for (WikidataDynamicObject value : curatedInstances) {
+            if (!memberRoots.contains(value)) memberRoots.add(value);
+        }
         return new CuratableDomain(
-                base, curation, loaded.memberRoots(), groupRoots,
+                base, curation, memberRoots, groupRoots,
                 model != null && model.isFile() ? model : null);
     }
 

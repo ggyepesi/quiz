@@ -227,7 +227,8 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                 return null;
             }
             String title = o.enwikiTitle();
-            return title.isBlank() ? null : new quiz.source.WikipediaSource(title);
+            return title.isBlank() ? null
+                    : new quiz.source.WikipediaSource(title, o.wikipediaArticle());
         }
     }
 

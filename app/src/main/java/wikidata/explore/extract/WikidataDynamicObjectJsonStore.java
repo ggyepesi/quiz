@@ -473,6 +473,22 @@ public class WikidataDynamicObjectJsonStore {
         e.renderedInfoboxAnswered = instances.stream()
                 .anyMatch(WikidataDynamicObject::renderedInfoboxAnswered);
         for (WikidataDynamicObject o : instances) {
+            if (o.wikipediaArticle() != null) {
+                e.wikipediaArticle = o.wikipediaArticle();
+                break;
+            }
+        }
+        if (e.wikipediaArticle == null) for (WikidataDynamicObject o : instances) {
+            if (o.articleIntroduction() != null) {
+                writeArticleIntroduction(e, o.articleIntroduction());
+                break;
+            }
+        }
+        e.articleIntroductionAnswered = instances.stream()
+                .anyMatch(WikidataDynamicObject::articleIntroductionAnswered);
+        e.wikipediaArticleAnswered = instances.stream()
+                .anyMatch(WikidataDynamicObject::wikipediaArticleAnswered);
+        for (WikidataDynamicObject o : instances) {
             String label = o.getReferenceLabel();
             if (label != null && !label.isBlank()
                     && !label.equals(o.getDisplayName())) {
@@ -894,6 +910,12 @@ public class WikidataDynamicObjectJsonStore {
             object.infoboxEvidence(infoboxParameters(e), e.infoboxAnswered,
                     e.renderedInfoboxAnswered);
         }
+        if (e.wikipediaArticleAnswered || e.wikipediaArticle != null) {
+            object.wikipediaArticleEvidence(e.wikipediaArticle, e.wikipediaArticleAnswered);
+        } else if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
+            object.articleIntroductionEvidence(articleIntroduction(e),
+                    e.articleIntroductionAnswered);
+        }
         e.fieldStatus.forEach((field, token) -> {
             FieldStatus status = FieldStatus.fromStored(token);
             if (status != null) object.fieldStatus(field, status);
@@ -949,6 +971,21 @@ public class WikidataDynamicObjectJsonStore {
         return new datasource.evidence.InfoboxParameters(e.wikipediaInfoboxTemplate,
                 e.wikipediaInfoboxParameters, e.wikipediaInfoboxRenderedFields,
                 e.wikipediaInfoboxDocument);
+    }
+
+    private static void writeArticleIntroduction(Entity e,
+            datasource.evidence.ArticleIntroduction introduction) {
+        if (introduction == null) return;
+        e.wikipediaArticleDocument = introduction.document();
+        e.wikipediaArticleIntroduction = introduction.text();
+        e.wikipediaArticleLinks = introduction.links();
+    }
+
+    private static datasource.evidence.ArticleIntroduction articleIntroduction(Entity e) {
+        if (e == null || e.wikipediaArticleDocument == null) return null;
+        return new datasource.evidence.ArticleIntroduction(
+                e.wikipediaArticleIntroduction, e.wikipediaArticleDocument,
+                e.wikipediaArticleLinks);
     }
 
     /** Map each qid to its entity only when that qid has a single entity. This resolves
@@ -1043,6 +1080,10 @@ public class WikidataDynamicObjectJsonStore {
         writeInfobox(e, w.infoboxParameters());
         e.infoboxAnswered = w.infoboxAnswered();
         e.renderedInfoboxAnswered = w.renderedInfoboxAnswered();
+        e.wikipediaArticle = w.wikipediaArticle();
+        if (e.wikipediaArticle == null) writeArticleIntroduction(e, w.articleIntroduction());
+        e.articleIntroductionAnswered = w.articleIntroductionAnswered();
+        e.wikipediaArticleAnswered = w.wikipediaArticleAnswered();
         String referenceLabel = w.getReferenceLabel();
         if (referenceLabel != null
                 && !referenceLabel.equals(w.getDisplayName())) {
@@ -1077,6 +1118,12 @@ public class WikidataDynamicObjectJsonStore {
                 || e.wikipediaInfoboxDocument != null) {
             o.infoboxEvidence(infoboxParameters(e), e.infoboxAnswered,
                     e.renderedInfoboxAnswered);
+        }
+        if (e.wikipediaArticleAnswered || e.wikipediaArticle != null) {
+            o.wikipediaArticleEvidence(e.wikipediaArticle, e.wikipediaArticleAnswered);
+        } else if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
+            o.articleIntroductionEvidence(articleIntroduction(e),
+                    e.articleIntroductionAnswered);
         }
         o.valueObject(true);
         for (Map.Entry<String, Object> entry : e.fields.entrySet()) {
@@ -1153,6 +1200,23 @@ public class WikidataDynamicObjectJsonStore {
         @com.fasterxml.jackson.annotation.JsonInclude(
                 com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
         public boolean renderedInfoboxAnswered;
+        public datasource.evidence.SourceDocument wikipediaArticleDocument;
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+        public String wikipediaArticleIntroduction;
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+        public List<datasource.evidence.ArticleIntroduction.Link> wikipediaArticleLinks =
+                new ArrayList<>();
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
+        public boolean articleIntroductionAnswered;
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        public datasource.evidence.WikipediaArticle wikipediaArticle;
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
+        public boolean wikipediaArticleAnswered;
         // Generic Viewable reference label when it differs from the display name.
         public String referenceLabel;
         // The stamped domain class (e.g. "Constellation", "Star"); null for an

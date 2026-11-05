@@ -757,14 +757,45 @@ public final class ValidationPanel extends JPanel {
             articleEvidence.add(headerLine(new JLabel("Category relation"),
                     wikipediaCategoryButton, promoteWikipediaCategoryButton,
                     clearWikipediaCategoryButton));
+            quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
+                    configuredCandidateEvidence(selectedFieldType, selectedFieldPath);
+            boolean configuredEvidence = candidateMode
+                    != quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode.NONE;
+            boolean articlePassages = candidateMode
+                    == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                            .ARTICLE_PASSAGES;
+            boolean articlePassageInstances = candidateMode
+                    == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                            .ARTICLE_PASSAGE_INSTANCES;
             wikipediaEvidenceButton.setToolTipText(
-                    "Find exact mentions supporting values already present in this field; "
-                            + "results keep the article revision and excerpt for review");
-            articleEvidence.add(headerLine(new JLabel("Existing values"),
+                    configuredEvidence
+                            ? "Find configured Wikipedia evidence; every result keeps the "
+                                    + "article revision and exact passages for review"
+                            : "Find exact mentions supporting values already present in this "
+                                    + "field; results keep the article revision and excerpt "
+                                    + "for review");
+            articleEvidence.add(headerLine(new JLabel(articlePassageInstances
+                            ? "Proposed instances from bounded article passages"
+                            : articlePassages ? "Bounded article passages"
+                            : configuredEvidence ? "Existing values and loaded candidates"
+                            : "Existing values"),
                     wikipediaEvidenceButton));
             JLabel evidenceWhy = new JLabel(
-                    "<html>Corroborates current values from versioned article text. "
-                            + "It does not infer arbitrary missing fields.</html>");
+                    articlePassageInstances
+                            ? "<html>Reads each selected member's full article and proposes one "
+                                    + "target-class instance per bounded passage. Each passage "
+                                    + "is reviewed separately; none is bulk-accepted.</html>"
+                            : candidateMode == quiz.enrichment.WikipediaTextEvidenceProvider
+                            .CandidateEvidenceMode.ARTICLE_PASSAGES
+                            ? "<html>Reads each selected member's full article and proposes at "
+                                    + "most 40 content passages / 20,000 characters as one "
+                                    + "reviewable text value. It infers no entities or events.</html>"
+                            : configuredEvidence
+                            ? "<html>Corroborates current values and proposes already-loaded "
+                                    + "instances of the declared target class mentioned in the "
+                                    + "retained introduction. It creates no identities.</html>"
+                            : "<html>Corroborates current values from versioned article text. "
+                                    + "It does not infer arbitrary missing fields.</html>");
             evidenceWhy.setEnabled(false);
             articleEvidence.add(headerLine(evidenceWhy));
             target.add(articleEvidence);
@@ -1357,6 +1388,43 @@ public final class ValidationPanel extends JPanel {
                 : domain.wikipediaCategoryRule(ownerType, field);
     }
 
+    /** One lookup of the model-authored candidate rule, shared by its explanation and
+     *  execution so the button cannot promise a mode the action then fails to run. */
+    private quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+            configuredCandidateEvidence(String ownerType, String field) {
+        if (configuredArticlePassageInstances(ownerType, field) != null) {
+            return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                    .ARTICLE_PASSAGE_INSTANCES;
+        }
+        quiz.curation.FieldRulePromoter ruleModel =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        datasource.api.SourceBinding binding = ruleModel == null ? null
+                : ruleModel.declaredBinding(ownerType, field,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        if (datasource.wikipedia.WikipediaDatasourceProvider
+                .articlePassages(binding)) {
+            return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                    .ARTICLE_PASSAGES;
+        }
+        if (datasource.wikipedia.WikipediaDatasourceProvider
+                .articleIntroductionMentions(binding)) {
+            return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                    .LOADED_INTRODUCTION_MENTIONS;
+        }
+        return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode.NONE;
+    }
+
+    private datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+            configuredArticlePassageInstances(String ownerType, String field) {
+        quiz.curation.FieldRulePromoter ruleModel =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        datasource.api.SourceBinding binding = ruleModel == null ? null
+                : ruleModel.declaredBinding(ownerType, field,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        return datasource.wikipedia.WikipediaDatasourceProvider
+                .articlePassageInstances(binding);
+    }
+
     private quiz.curation.FieldSourceRecipe wikipediaCategoryRecipe() {
         quiz.curation.ManualCuration curation = curationStore();
         return curation == null || selectedFieldType == null || selectedFieldPath == null
@@ -1491,9 +1559,10 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
-    /** Corroborates existing values from versioned Wikipedia prose. This is deliberately
-     * a separate action from Load values: exact mention is evidence for a reviewed value,
-     * not a general-purpose inference rule for filling an arbitrary missing field. */
+    /** Reviews configured evidence from versioned Wikipedia prose. This is deliberately
+     * a separate action from Load values: a mention may corroborate an existing value or,
+     * when the model says so, nominate an already-typed instance; neither is automatic
+     * field inference. */
     private void findWikipediaEvidence() {
         String path = selectedFieldPath;
         if (path == null || path.isBlank()) return;
@@ -1515,8 +1584,45 @@ public final class ValidationPanel extends JPanel {
                 DomainSchemas.resolve(domain, selectedFieldType, path);
         wikidata.explore.model.EntityKindRule referentKind = fieldSchema == null
                 ? null : domain.entityKindRule(fieldSchema.targetType());
+        quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
+                configuredCandidateEvidence(selectedFieldType, path);
+        boolean introductionMentions = candidateMode
+                == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .LOADED_INTRODUCTION_MENTIONS;
+        boolean articlePassages = candidateMode
+                == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_PASSAGES;
+        boolean articlePassageInstances = candidateMode
+                == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_PASSAGE_INSTANCES;
+        datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+                passageInstanceSpec = configuredArticlePassageInstances(
+                        selectedFieldType, path);
+        if (articlePassages && (fieldSchema == null
+                || fieldSchema.kind() != objectview.field.FieldKind.TEXT
+                || fieldSchema.collection())) {
+            JOptionPane.showMessageDialog(this,
+                    "Bounded article passages require one Text value. " + selectedFieldType
+                            + "." + path + " does not have that field shape.");
+            return;
+        }
+        if (articlePassageInstances && (fieldSchema == null
+                || !fieldSchema.reference() || !fieldSchema.collection()
+                || fieldSchema.targetType().isBlank())) {
+            JOptionPane.showMessageDialog(this,
+                    "Article passage instances require a reference list with a declared "
+                            + "target class. " + selectedFieldType + "." + path
+                            + " does not have that field shape.");
+            return;
+        }
+        boolean mentionTargetConfigured = introductionMentions && fieldSchema != null
+                && fieldSchema.reference() && !fieldSchema.targetType().isBlank();
+        List<Viewable> mentionCandidates = !mentionTargetConfigured
+                ? List.of() : domain.instancesOf(fieldSchema.targetType());
         quiz.enrichment.WikipediaTextEvidenceProvider provider =
-                new quiz.enrichment.WikipediaTextEvidenceProvider(categoryRule, referentKind);
+                new quiz.enrichment.WikipediaTextEvidenceProvider(
+                        categoryRule, referentKind, mentionCandidates, candidateMode,
+                        passageInstanceSpec);
         int skipped = 0;
         for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
@@ -1525,8 +1631,17 @@ public final class ValidationPanel extends JPanel {
                     wikidata.explore.extract.WikidataDynamicObject wikidata
                     && !wikidata.categoryMemberships().isEmpty()
                     && categoryRule != null && categoryRule.configured();
+            datasource.evidence.ArticleIntroduction introduction = member instanceof
+                    wikidata.explore.extract.WikidataDynamicObject wikidata
+                    ? wikidata.articleIntroduction() : null;
+            datasource.evidence.WikipediaArticle retainedArticle = member instanceof
+                    wikidata.explore.extract.WikidataDynamicObject wikidata
+                    ? wikidata.wikipediaArticle() : null;
+            boolean hasIntroductionCandidates = introduction != null
+                    && introductionMentions && !mentionCandidates.isEmpty();
             if ((current == null || current instanceof Collection<?> values && values.isEmpty())
-                    && !hasCategories) {
+                    && !hasCategories && !hasIntroductionCandidates && !articlePassages
+                    && !articlePassageInstances) {
                 skipped++;
                 continue;
             }
@@ -1543,23 +1658,54 @@ public final class ValidationPanel extends JPanel {
                     path, drilled != null && drilled.collection(), sources,
                     DomainSchemas.resolve(domain, memberType, path), current,
                     member instanceof wikidata.explore.extract.WikidataDynamicObject wikidata
-                            ? wikidata.categoryMemberships() : List.of());
+                            ? wikidata.categoryMemberships() : List.of(),
+                    introduction, retainedArticle);
             jobs.add(new FindDataProcess(request,
                     EnrichmentRoute.all(List.of(provider)), false));
         }
         if (jobs.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "No member in this scope has both an existing value and a Wikidata identity.");
+                    "No member in this scope has an existing value, configured retained "
+                            + "article evidence, or a Wikidata identity.");
             return;
         }
+        String mentionExplanation = articlePassageInstances
+                ? "Each selected member's full article is read once. Every bounded content "
+                        + "passage becomes a separate review card proposing one "
+                        + fieldSchema.targetType() + "; accepting that card fills "
+                        + passageInstanceSpec.textField() + " with the passage, fills "
+                        + passageInstanceSpec.sourceField() + " with the selected "
+                        + selectedFieldType + ", and adds the new instance to " + path
+                        + ". No passage is included in Stage all safe results.<br>"
+                : articlePassages
+                ? "Each selected member's full article is read once; at most "
+                        + datasource.wikipedia.WikipediaDatasourceProvider
+                                .MAX_ARTICLE_PASSAGES
+                        + " content passages and "
+                        + datasource.wikipedia.WikipediaDatasourceProvider
+                                .MAX_ARTICLE_PASSAGE_CHARACTERS
+                        + " characters are proposed as one reviewable text value. Standard "
+                        + "maintenance sections are omitted; no entities or events are inferred.<br>"
+                : !introductionMentions ? ""
+                : !mentionTargetConfigured
+                ? "Introduction mentions are configured, but this field has no declared "
+                        + "reference target; no typed candidates can be proposed.<br>"
+                : mentionCandidates.isEmpty()
+                ? "Introduction mentions are configured, but there are 0 loaded "
+                        + fieldSchema.targetType()
+                        + " instances; no typed candidates can be proposed.<br>"
+                : "Retained article introductions can propose exact mentions among "
+                        + mentionCandidates.size() + " loaded " + fieldSchema.targetType()
+                        + " instance(s); they cannot create new identities.<br>";
         String message = "<html><div style='width: 520px'><b>Find Wikipedia evidence for "
                 + selectedFieldType + "."
                 + path + "</b><br><br>Eligible members: <b>" + jobs.size() + "</b><br>"
                 + "Skipped: <b>" + skipped + "</b> (no usable value/category evidence or identity)<br><br>"
                 + "Existing values are checked against article text. Configured category "
                 + "relations can also propose new values from memberships acquired by ModelBuilder. "
-                + (referentKind == null ? ""
-                        : "Category candidates must be a " + fieldSchema.targetType()
+                + mentionExplanation
+                + (articlePassages || articlePassageInstances || referentKind == null ? ""
+                        : "Typed candidates must be a " + fieldSchema.targetType()
                                 + " by the model's rule (" + referentKind.propertyPid()
                                 + "); others are not offered.<br>")
                 + "Every result retains its article revision and exact source evidence; "
@@ -1618,7 +1764,24 @@ public final class ValidationPanel extends JPanel {
             quiz.curation.ManualCuration curation,
             quiz.enrichment.EnrichmentDecision decision) {
         try {
+            quiz.curation.CuratedInstanceSink instanceSink =
+                    domain.capability(quiz.curation.CuratedInstanceSink.class);
+            if (!decision.instances().isEmpty() && instanceSink == null) {
+                throw new IllegalStateException(
+                        "This domain cannot add reviewed source-derived instances.");
+            }
             EnrichmentDecisionApplier.stage(domain, staging, decision);
+            if (instanceSink != null) {
+                List<String> unresolved =
+                        instanceSink.materialize(staging.instances()).unresolved();
+                if (!unresolved.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, quiz.ui.Dialogs.wrapped(
+                            unresolved.size() + " reference(s) of the staged instances name "
+                                    + "nothing loaded, so they were left empty:\n"
+                                    + String.join("\n", unresolved)),
+                            "Unresolved references", JOptionPane.WARNING_MESSAGE);
+                }
+            }
             Corrections.apply(domain.instances(), List.of(staging));
             updateApplyButton();
             refreshCoverage();

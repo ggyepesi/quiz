@@ -47,6 +47,21 @@ public class FieldSourcePanel extends JPanel {
     private final JButton categoryButton = new JButton("Configure…");
     private final JButton clearCategoryButton = new JButton("Clear");
     private final JLabel categoryLabel = new JLabel("none");
+    private enum CandidateEvidenceChoice {
+        NONE("None"),
+        INTRODUCTION_MENTIONS("Loaded target instances mentioned in the introduction"),
+        ARTICLE_PASSAGES("Bounded passages from the full article"),
+        ARTICLE_PASSAGE_INSTANCES(
+                "One target instance per bounded article passage");
+
+        private final String label;
+        CandidateEvidenceChoice(String label) { this.label = label; }
+        @Override public String toString() { return label; }
+    }
+    private final JComboBox<CandidateEvidenceChoice> candidateEvidenceBox =
+            new JComboBox<>(CandidateEvidenceChoice.values());
+    private final JComboBox<String> passageTextFieldBox = new JComboBox<>();
+    private final JComboBox<String> passageSourceFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
 
@@ -68,6 +83,8 @@ public class FieldSourcePanel extends JPanel {
     private FormRow reifyRoleRow;
     private FormRow sourceContextRow;
     private FormRow qualifierConditionRow;
+    private FormRow passageTextFieldRow;
+    private FormRow passageSourceFieldRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -277,6 +294,9 @@ public class FieldSourcePanel extends JPanel {
         filterValueField.setToolTipText(filterTip);
         buildUi();
 
+        candidateEvidenceBox.addActionListener(e ->
+                refreshCandidateEvidenceApplicability());
+
         qualifierPidField.getDocument().addDocumentListener(
                 new javax.swing.event.DocumentListener() {
                     @Override
@@ -390,11 +410,14 @@ public class FieldSourcePanel extends JPanel {
         GeneratedClassModel conditionOwner = ownerClass();
         applicable(qualifierConditionRow, acquired
                 && (conditionOwner == null || !conditionOwner.reifiesStatements()));
-        propertyPidField.setEnabled(acquired);
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
         requiredBox.setEnabled(acquired);
         onlyRelatedOfTypeBox.setEnabled(acquired);
+        FieldSourceType selectedSource =
+                (FieldSourceType) sourceTypeBox.getSelectedItem();
+        propertyPidField.setEnabled(acquired && (selectedSource == null
+                || selectedSource.usesPropertyInput()));
         if (owned) {
             qualifierPidField.setEnabled(false);
             typeBox.setSelectedItem(FieldType.ENTITY);
@@ -648,6 +671,14 @@ public class FieldSourcePanel extends JPanel {
         return sourceContextBox;
     }
 
+    javax.swing.JComboBox<String> passageTextFieldBox() {
+        return passageTextFieldBox;
+    }
+
+    javax.swing.JComboBox<String> passageSourceFieldBox() {
+        return passageSourceFieldBox;
+    }
+
     public void edit(GeneratedFieldModel field) {
         OwnedComponentSite previousSite = this.field == field
                 ? selectedSourceSite() : null;
@@ -695,6 +726,7 @@ public class FieldSourcePanel extends JPanel {
         refreshCompanionRows();
         refreshFallbackLabel();
         refreshCategoryLabel();
+        refreshCandidateEvidenceControl();
         updateRecommendation();
         refreshOwnedComponentControls();
         refreshGraphExpansionControl();
@@ -819,6 +851,156 @@ public class FieldSourcePanel extends JPanel {
         OwnedFieldSource override = activeOverride(false);
         return override == null ? field == null ? null : field.wikipediaCategoryRule()
                 : override.wikipediaCategoryRule();
+    }
+
+    private void refreshCandidateEvidenceControl() {
+        datasource.api.SourceBinding binding = field == null ? null
+                : FieldSourceBindings.binding(field,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+                passageSpec = datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstances(binding);
+        CandidateEvidenceChoice choice =
+                datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleIntroductionMentions(binding)
+                ? CandidateEvidenceChoice.INTRODUCTION_MENTIONS
+                : datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstanceOperation(binding)
+                ? CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
+                : datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassages(binding)
+                ? CandidateEvidenceChoice.ARTICLE_PASSAGES
+                : CandidateEvidenceChoice.NONE;
+        refreshPassageInstanceFields(passageSpec);
+        candidateEvidenceBox.setSelectedItem(choice);
+        refreshCandidateEvidenceApplicability();
+    }
+
+    private void refreshPassageInstanceFields(
+            datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+                    selected) {
+        passageTextFieldBox.removeAllItems();
+        passageSourceFieldBox.removeAllItems();
+        passageTextFieldBox.addItem("");
+        passageSourceFieldBox.addItem("");
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        GeneratedClassModel target = definition == null || projectModel == null
+                ? null : projectModel.findClass(definition.entityClassName());
+        GeneratedClassModel owner = ownerClass();
+        if (target != null) {
+            for (GeneratedFieldModel candidate : target.effectiveFields(projectModel)) {
+                if (candidate.type() == FieldType.TEXT
+                        && candidate.cardinality() == FieldCardinality.SINGLE) {
+                    passageTextFieldBox.addItem(candidate.name());
+                }
+                if (candidate.type() == FieldType.ENTITY
+                        && candidate.cardinality() == FieldCardinality.COLLECTION
+                        && owner != null
+                        && projectModel.isSameOrSubclass(
+                                owner.className(), candidate.entityClassName())) {
+                    passageSourceFieldBox.addItem(candidate.name());
+                }
+            }
+        }
+        if (selected != null) {
+            passageTextFieldBox.setSelectedItem(selected.textField());
+            passageSourceFieldBox.setSelectedItem(selected.sourceField());
+        }
+    }
+
+    private void refreshCandidateEvidenceApplicability() {
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        boolean referenceCollection = definition != null
+                && definition.type() == FieldType.ENTITY
+                && definition.cardinality() == FieldCardinality.COLLECTION
+                && definition.entityClassName() != null
+                && !definition.entityClassName().isBlank();
+        boolean textField = definition != null
+                && definition.type() == FieldType.TEXT
+                && definition.cardinality() == FieldCardinality.SINGLE;
+        CandidateEvidenceChoice selected = (CandidateEvidenceChoice)
+                candidateEvidenceBox.getSelectedItem();
+        candidateEvidenceBox.setEnabled(referenceCollection || textField
+                || selected != CandidateEvidenceChoice.NONE);
+        candidateEvidenceBox.setToolTipText(referenceCollection || textField
+                ? "Introduction mentions and passage instances apply to reference lists. "
+                        + "Bounded article passages apply to one Text value. Every result "
+                        + "requires explicit review."
+                : selected != CandidateEvidenceChoice.NONE
+                        ? "This rule no longer fits the field shape. Select None or restore "
+                                + "the field shape required by the selected operation."
+                        : "Available for a reference list or one Text value.");
+        boolean passageInstances = selected
+                == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
+        applicable(passageTextFieldRow, passageInstances);
+        applicable(passageSourceFieldRow, passageInstances);
+        passageTextFieldBox.setEnabled(referenceCollection);
+        passageSourceFieldBox.setEnabled(referenceCollection);
+    }
+
+    private void writeCandidateEvidenceRule() {
+        if (field == null) return;
+        datasource.api.SourceBinding existing = FieldSourceBindings.binding(field,
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        CandidateEvidenceChoice selected = (CandidateEvidenceChoice)
+                candidateEvidenceBox.getSelectedItem();
+        boolean recognized = existing == null
+                || datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleIntroductionMentions(existing)
+                || datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassages(existing)
+                || datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstanceOperation(existing);
+        if (!recognized) return;
+        String operation = switch (selected == null
+                ? CandidateEvidenceChoice.NONE : selected) {
+            case NONE -> "";
+            case INTRODUCTION_MENTIONS ->
+                    datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_INTRODUCTION_MENTIONS;
+            case ARTICLE_PASSAGES ->
+                    datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_PASSAGES;
+            case ARTICLE_PASSAGE_INSTANCES ->
+                    datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_PASSAGE_INSTANCES;
+        };
+        java.util.Map<String, String> parameters = selected
+                == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
+                ? java.util.Map.of(
+                        datasource.wikipedia.WikipediaDatasourceProvider
+                                .PASSAGE_TEXT_FIELD,
+                        selectedText(passageTextFieldBox),
+                        datasource.wikipedia.WikipediaDatasourceProvider
+                                .PASSAGE_SOURCE_FIELD,
+                        selectedText(passageSourceFieldBox))
+                : java.util.Map.of();
+        String existingOperation = existing == null ? "" : existing.recipe().operationId();
+        java.util.Map<String, String> existingParameters = existing == null
+                ? java.util.Map.of() : existing.recipe().parameters();
+        if (operation.equals(existingOperation)
+                && parameters.equals(existingParameters)) return;
+        field.sourceBindings().removeIf(binding -> binding.target().slot()
+                == datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        if (operation.isBlank()) return;
+        GeneratedClassModel owner = ownerClass();
+        if (owner == null) return;
+        String path = OwnedFieldSources.declaredFieldPath(owner, field);
+        datasource.api.SourceBindingTarget target =
+                new datasource.api.SourceBindingTarget(
+                        datasource.api.BindingScope.FIELD_VALUE, owner.className(), path,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                        owner.declarationId());
+        FieldSourceBindings.put(field, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe(
+                        datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        operation,
+                        parameters)));
+    }
+
+    private static String selectedText(JComboBox<String> box) {
+        Object selected = box.getSelectedItem();
+        return selected == null ? "" : selected.toString().trim();
     }
 
     private boolean sourceEditorDiffers(FieldSourceMapping mapping) {
@@ -1073,6 +1255,12 @@ public class FieldSourcePanel extends JPanel {
         categoryRow.add(categoryButton);
         categoryRow.add(clearCategoryButton);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia categories:", categoryRow);
+        GridBagUtils.labeledRow(form, c, y++, "Wikipedia evidence:",
+                candidateEvidenceBox);
+        passageTextFieldRow = FormRow.add(form, c, y++,
+                "Passage goes into:", passageTextFieldBox);
+        passageSourceFieldRow = FormRow.add(form, c, y++,
+                "Source instance goes into:", passageSourceFieldBox);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                                                  + "reification</b> class (the class \"Reifies statements of\" "
                                                  + "another): the <b>qualifier</b> PID this field draws from "
@@ -1219,6 +1407,8 @@ public class FieldSourcePanel extends JPanel {
                 }
             }
             refreshInverseFieldChoices();
+            refreshPassageInstanceFields(null);
+            refreshCandidateEvidenceApplicability();
         });
 
         typeBox.addActionListener(e -> {
@@ -1232,10 +1422,13 @@ public class FieldSourcePanel extends JPanel {
                 refreshObjectTypeBox(suggestEntityClassName(
                         propLabel == null ? "" : propLabel.toLowerCase()));
             }
+            refreshCandidateEvidenceApplicability();
+            refreshPassageInstanceFields(null);
         });
         shapeBox.addActionListener(e -> {
             updateRecommendation();
             refreshStatementFieldControls();
+            refreshCandidateEvidenceApplicability();
         });
         renderModeBox.addActionListener(e -> updateRecommendation());
         typeBox.addActionListener(e -> refreshGraphExpansionControl());
@@ -1297,8 +1490,12 @@ public class FieldSourcePanel extends JPanel {
                 ? m : existingOverride != null || sourceChanged
                 ? activeSourceMapping(true) : null;
         if (source != null) {
-            source.sourceType((FieldSourceType) sourceTypeBox.getSelectedItem());
-            source.propertyPid(propertyPidField.getText());
+            FieldSourceType selectedSource =
+                    (FieldSourceType) sourceTypeBox.getSelectedItem();
+            source.sourceType(selectedSource);
+            source.propertyPid(selectedSource != null
+                    && !selectedSource.usesPropertyInput()
+                    ? "" : propertyPidField.getText());
             source.qualifierPid(RuleNode.cleanPid(qualifierPidField.getText()));
             source.valueLanguage(valueLanguageField.getText());
             source.qualifierCondition(editedQualifierCondition());
@@ -1360,6 +1557,7 @@ public class FieldSourcePanel extends JPanel {
         }
 
         field.definition(fieldDefinitionPanel.definition());
+        writeCandidateEvidenceRule();
         if (ownedComponent) {
             field.type(FieldType.ENTITY);
             field.cardinality(FieldCardinality.SINGLE);
@@ -1841,7 +2039,10 @@ public class FieldSourcePanel extends JPanel {
                 (FieldSourceType) sourceTypeBox.getSelectedItem();
 
         discoverExternalButton.setVisible(
-                sourceType != null && sourceType.filledAfterExtraction() && queryRunner != null);
+                sourceType != null && sourceType.supportsPropertyDiscovery()
+                        && queryRunner != null);
+        propertyPidField.setEnabled(acquiredFromOwnProperty()
+                && (sourceType == null || sourceType.usesPropertyInput()));
 
         if (sourceType != null && !sourceType.implementedNow()) {
             recommendationLabel.setText(
@@ -1862,6 +2063,14 @@ public class FieldSourcePanel extends JPanel {
                     "Wikipedia infobox: 'Property' = Template.parameter "
                             + "(e.g. Infobox film.country). Read from the entity's English "
                             + "Wikipedia article, after extraction.");
+            return;
+        }
+
+        if (sourceType == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+            recommendationLabel.setText(
+                    "Wikipedia article introduction: fills this field with the lead text "
+                            + "of the entity's linked English Wikipedia article. The "
+                            + "Property field is not used.");
             return;
         }
 

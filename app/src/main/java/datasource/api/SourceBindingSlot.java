@@ -16,6 +16,9 @@ public enum SourceBindingSlot {
     ARTICLE_CORRESPONDENCE("article-correspondence", BindingScope.SOURCE_CORRESPONDENCE),
     PRIMARY_FIELD_VALUE("primary", BindingScope.FIELD_VALUE),
     CATEGORY_EVIDENCE("wikipedia-category", BindingScope.FIELD_VALUE),
+    /** Review-only candidates derived from a retained source document. This is separate
+     *  from the primary value: accepting one is an explicit curation decision. */
+    CANDIDATE_EVIDENCE("candidate-evidence", BindingScope.FIELD_VALUE),
     FALLBACK_FIELD_VALUE("additional-source", BindingScope.FIELD_VALUE);
 
     private final String id;

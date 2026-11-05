@@ -13,13 +13,15 @@ public record EnrichmentProposal(
         Subject subject,
         List<IdentityCandidate> identities,
         List<FieldCandidate> fields,
-        List<MediaCandidate> media) {
+        List<MediaCandidate> media,
+        List<InstanceCandidate> instances) {
 
     public EnrichmentProposal {
         subject = Objects.requireNonNull(subject, "Proposal subject is required");
         identities = copy(identities);
         fields = copy(fields);
         media = copy(media);
+        instances = copy(instances);
         Set<String> identityIds = identities.stream().map(IdentityCandidate::candidateId)
                 .collect(Collectors.toSet());
         for (FieldCandidate field : fields) {
@@ -34,6 +36,15 @@ public record EnrichmentProposal(
         for (IdentityCandidate candidate : identities) {
             validateClaims(subject, candidate.source(), candidate.evidence());
         }
+        for (InstanceCandidate candidate : instances) {
+            validateClaims(subject, candidate.source(), candidate.evidence());
+        }
+    }
+
+    /** Compatibility shape for providers which only propose values on the subject. */
+    public EnrichmentProposal(Subject subject, List<IdentityCandidate> identities,
+            List<FieldCandidate> fields, List<MediaCandidate> media) {
+        this(subject, identities, fields, media, List.of());
     }
 
     /**
@@ -216,6 +227,59 @@ public record EnrichmentProposal(
                               String license, boolean collection) {
             this(candidateId, identityCandidateId, field, imageUrl, previewUrl, source,
                     discoveryMethod, confidence, attribution, license, collection, List.of());
+        }
+    }
+
+    /**
+     * A new typed instance proposed by source evidence. The fields are already mapped to
+     * the target class's declared schema; review accepts this instance together with any
+     * subject-field reference that points at it.
+     */
+    public record InstanceCandidate(
+            String candidateId,
+            String type,
+            String id,
+            String displayName,
+            List<InstanceField> fields,
+            SourceRef source,
+            List<ExtractedClaim> evidence) {
+        public InstanceCandidate {
+            candidateId = required(candidateId,
+                    "Instance candidate identifier is required");
+            type = required(type, "Instance candidate type is required");
+            id = required(id, "Instance candidate identity is required");
+            displayName = text(displayName);
+            fields = copy(fields);
+            source = Objects.requireNonNull(source,
+                    "Instance candidate source is required");
+            evidence = copy(evidence);
+        }
+    }
+
+    public record InstanceField(
+            String field,
+            Object value,
+            List<TypedReference> references) {
+        public InstanceField {
+            field = required(field, "Instance field is required");
+            references = copy(references);
+            if (value != null && !references.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "An instance field cannot be literal and reference-valued together");
+            }
+        }
+        public static InstanceField literal(String field, Object value) {
+            return new InstanceField(field, value, List.of());
+        }
+        public static InstanceField references(String field, List<TypedReference> values) {
+            return new InstanceField(field, null, values);
+        }
+    }
+
+    public record TypedReference(String type, String id) {
+        public TypedReference {
+            type = required(type, "Reference type is required");
+            id = required(id, "Reference identifier is required");
         }
     }
 

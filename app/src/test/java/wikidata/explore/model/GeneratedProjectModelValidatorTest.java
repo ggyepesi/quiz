@@ -788,4 +788,44 @@ class GeneratedProjectModelValidatorTest {
                                 && problem.message().contains("ignored on a Date")),
                 result.format());
     }
+
+    @Test void passageInstanceMappingsMustNameFieldsOfTheDeclaredTargetClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        GeneratedFieldModel episodes = character.addField(
+                "episodes", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        episodes.entityClassName("Episode");
+        GeneratedClassModel episode = new GeneratedClassModel("Episode");
+        episode.addField("summary", FieldType.TEXT, FieldCardinality.SINGLE);
+        GeneratedFieldModel characters = episode.addField(
+                "characters", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        characters.entityClassName("Character");
+        project.rootClass(character);
+        project.addClass(episode);
+        episodes.entityDeclarationId(episode.declarationId());
+        characters.entityDeclarationId(character.declarationId());
+        datasource.api.SourceBindingTarget target = new datasource.api.SourceBindingTarget(
+                datasource.api.BindingScope.FIELD_VALUE, "Character", "episodes",
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                character.declarationId());
+        FieldSourceBindings.put(episodes, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe("wikipedia",
+                        "article-passage-instances", java.util.Map.of(
+                        "passageTextField", "missingSummary",
+                        "passageSourceField", "characters"))));
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains(
+                "Episode.missingSummary' must be one Text value"), invalid.format());
+
+        FieldSourceBindings.put(episodes, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe("wikipedia",
+                        "article-passage-instances", java.util.Map.of(
+                        "passageTextField", "summary",
+                        "passageSourceField", "characters"))));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
 }

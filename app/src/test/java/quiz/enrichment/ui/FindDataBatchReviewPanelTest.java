@@ -14,6 +14,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class FindDataBatchReviewPanelTest {
     @Test
@@ -42,6 +43,73 @@ class FindDataBatchReviewPanelTest {
                 .map(v -> String.valueOf(v.get("Target field"))).toList());
         assertNotNull(dynamic.get(0).get("Evidence"));
         assertEquals("https://example.test/high.jpg", dynamic.get(2).get("Value"));
+    }
+
+    @Test
+    void referenceProposalCaptionNamesTheCharacterAndRetainsTheReference() {
+        SourceRef source = new SourceRef(
+                "Wikipedia (English)", "Trojan War", "https://example.test/Trojan_War");
+        DynamicViewable achilles = new DynamicViewable("Q41746", "Achilles");
+        achilles.type("Character");
+        EnrichmentProposal.IdentityCandidate article =
+                new EnrichmentProposal.IdentityCandidate(
+                        "wikipedia:Trojan War", "Trojan War", List.of(), "", source,
+                        1, List.of());
+        EnrichmentProposal.FieldCandidate character =
+                new EnrichmentProposal.FieldCandidate(
+                        "mention:Q41746", article.candidateId(), "characters", List.of(),
+                        achilles, source, EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                        null, true, List.of());
+        EnrichmentProposal proposal = new EnrichmentProposal(
+                new EnrichmentProposal.Subject(
+                        "Episode", "Q12546", "Q12546", "Trojan War"),
+                List.of(article), List.of(character), List.of());
+
+        DynamicViewable change = (DynamicViewable)
+                FindDataBatchReviewPanel.changeCards(proposal).getFirst();
+
+        assertEquals("characters → Achilles", change.getDisplayName());
+        assertSame(achilles, change.get("Value"),
+                "the caption must not collapse the navigable Character reference to text");
+    }
+
+    @Test void eachProposedInstanceIsOneIndependentReviewDecision() {
+        SourceRef source = new SourceRef(
+                "Wikipedia (English)", "Achilles", "https://example.test/Achilles");
+        var first = instance("episode-1", "Achilles — Introduction", source);
+        var second = instance("episode-2", "Achilles — Myths", source);
+        EnrichmentProposal proposal = new EnrichmentProposal(
+                new EnrichmentProposal.Subject(
+                        "Character", "Q41746", "Q41746", "Achilles"),
+                List.of(), List.of(reference(first, source), reference(second, source)),
+                List.of(), List.of(first, second));
+
+        List<EnrichmentProposal> split =
+                FindDataBatchReviewPanel.splitInstanceCandidates(proposal);
+
+        assertEquals(2, split.size());
+        assertEquals(List.of("episode-1", "episode-2"), split.stream()
+                .map(part -> part.instances().getFirst().id()).toList());
+        assertEquals(List.of("episode-1", "episode-2"), split.stream()
+                .map(part -> ((Viewable) part.fields().getFirst().proposedValue())
+                        .getIdentifier()).toList());
+    }
+
+    private static EnrichmentProposal.InstanceCandidate instance(
+            String id, String label, SourceRef source) {
+        return new EnrichmentProposal.InstanceCandidate(id, "Episode", id, label,
+                List.of(EnrichmentProposal.InstanceField.literal(
+                        "summary", label + " text")), source, List.of());
+    }
+
+    private static EnrichmentProposal.FieldCandidate reference(
+            EnrichmentProposal.InstanceCandidate instance, SourceRef source) {
+        DynamicViewable value = new DynamicViewable(instance.id(), instance.displayName());
+        value.type(instance.type());
+        return new EnrichmentProposal.FieldCandidate(instance.id(), "", "episodes",
+                List.of(), value, source,
+                EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                null, true, List.of());
     }
 
     private static EnrichmentProposal.FieldCandidate field(

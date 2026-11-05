@@ -4,6 +4,7 @@ public enum FieldSourceType {
     SPARQL,
     DBPEDIA,
     WIKIPEDIA_INFOBOX,
+    WIKIPEDIA_ARTICLE_INTRODUCTION,
     WIKIDATA_SITELINK_COUNT,
     WIKIDATA_INCOMING_COUNT,
     WIKIDATA_INHERITED_INCOMING_COUNT,
@@ -16,6 +17,7 @@ public enum FieldSourceType {
 
     public boolean implementedNow() {
         return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX
+                || this == WIKIPEDIA_ARTICLE_INTRODUCTION
                 || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
                 || this == WIKIDATA_INHERITED_INCOMING_COUNT;
     }
@@ -32,8 +34,19 @@ public enum FieldSourceType {
      */
     public boolean filledAfterExtraction() {
         return this == DBPEDIA || this == WIKIPEDIA_INFOBOX
+                || this == WIKIPEDIA_ARTICLE_INTRODUCTION
                 || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
                 || this == WIKIDATA_INHERITED_INCOMING_COUNT;
+    }
+
+    /** Whether this source asks the modeller to name a property/parameter. */
+    public boolean usesPropertyInput() {
+        return this != WIKIPEDIA_ARTICLE_INTRODUCTION;
+    }
+
+    /** Whether the field editor can inspect samples and offer property choices. */
+    public boolean supportsPropertyDiscovery() {
+        return this == DBPEDIA || this == WIKIPEDIA_INFOBOX;
     }
 
     @Override
@@ -42,6 +55,7 @@ public enum FieldSourceType {
             case SPARQL -> "SPARQL (Wikidata)";
             case DBPEDIA -> "DBpedia (Wikipedia infobox)";
             case WIKIPEDIA_INFOBOX -> "Wikipedia infobox value";
+            case WIKIPEDIA_ARTICLE_INTRODUCTION -> "Wikipedia article introduction";
             case WIKIDATA_SITELINK_COUNT -> "Wikidata sitelink count";
             case WIKIDATA_INCOMING_COUNT -> "Wikidata incoming relation count";
             case WIKIDATA_INHERITED_INCOMING_COUNT ->

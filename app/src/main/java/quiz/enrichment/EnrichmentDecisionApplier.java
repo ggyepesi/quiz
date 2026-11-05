@@ -36,7 +36,9 @@ public final class EnrichmentDecisionApplier {
         Prepared prepared = prepare(domain, decision);
         prepared.identities().forEach(staging::stage);
         prepared.corrections().forEach(staging::stage);
-        return prepared.corrections().size() + prepared.identities().size();
+        prepared.instances().forEach(staging::stage);
+        return prepared.corrections().size() + prepared.identities().size()
+                + prepared.instances().size();
     }
 
     public static int apply(
@@ -63,6 +65,11 @@ public final class EnrichmentDecisionApplier {
                         && targetId.equals(link.targetId())
                         && sourceKinds.contains(link.sourceKind()))
                 .toList();
+        List<quiz.curation.CuratedInstance> previousInstances = curation.instances().stream()
+                .filter(existing -> decision.instances().stream().anyMatch(candidate ->
+                        candidate.type().equals(existing.type())
+                                && candidate.id().equals(existing.id())))
+                .toList();
 
         try {
             prepared.identities().forEach(curation::putIdentityLink);
@@ -71,6 +78,7 @@ public final class EnrichmentDecisionApplier {
                         correction.value(), correction.origin(), correction.valueKind(),
                         correction.policy(), correction.source());
             }
+            prepared.instances().forEach(curation::putInstance);
             curation.save();
         } catch (IOException | RuntimeException ex) {
             for (String field : affectedFields(decision)) {
@@ -79,6 +87,10 @@ public final class EnrichmentDecisionApplier {
             previousCorrections.forEach(curation::restore);
             sourceKinds.forEach(kind -> curation.removeIdentityLink(type, targetId, kind));
             previousLinks.forEach(curation::putIdentityLink);
+            for (quiz.curation.CuratedInstance instance : prepared.instances()) {
+                curation.removeInstance(instance.type(), instance.id());
+            }
+            previousInstances.forEach(curation::putInstance);
             throw ex;
         }
 
@@ -95,6 +107,8 @@ public final class EnrichmentDecisionApplier {
                     identity.evidence());
         }).toList();
         List<Correction> corrections = new ArrayList<>();
+        List<quiz.curation.CuratedInstance> instances = decision.instances().stream()
+                .map(EnrichmentDecisionApplier::curatedInstance).toList();
         for (EnrichmentDecision.FieldDecision fieldDecision : decision.fields()) {
             EnrichmentProposal.FieldCandidate candidate = fieldDecision.candidate();
             if (!candidate.compatible()) throw new IllegalArgumentException("Cannot apply "
@@ -128,7 +142,7 @@ public final class EnrichmentDecisionApplier {
                     quiz.curation.CorrectionPolicy.FILL_IF_EMPTY,
                     valueSource(media.source(), media.evidence())));
         }
-        return new Prepared(List.copyOf(corrections), identities);
+        return new Prepared(List.copyOf(corrections), identities, instances);
     }
 
     private static quiz.curation.ValueSource valueSource(
@@ -138,7 +152,24 @@ public final class EnrichmentDecisionApplier {
                 source.direction(), source.recordUrl(), evidence);
     }
 
-    private record Prepared(List<Correction> corrections, List<IdentityLink> identities) { }
+    private static quiz.curation.CuratedInstance curatedInstance(
+            EnrichmentProposal.InstanceCandidate candidate) {
+        List<quiz.curation.CuratedInstance.FieldValue> fields = candidate.fields().stream()
+                .map(field -> field.references().isEmpty()
+                        ? quiz.curation.CuratedInstance.FieldValue.literal(
+                                field.field(), field.value())
+                        : quiz.curation.CuratedInstance.FieldValue.references(field.field(),
+                                field.references().stream().map(reference ->
+                                        new quiz.curation.CuratedInstance.Reference(
+                                                reference.type(), reference.id())).toList()))
+                .toList();
+        return new quiz.curation.CuratedInstance(candidate.type(), candidate.id(),
+                candidate.displayName(), fields,
+                valueSource(candidate.source(), candidate.evidence()));
+    }
+
+    private record Prepared(List<Correction> corrections, List<IdentityLink> identities,
+                            List<quiz.curation.CuratedInstance> instances) { }
 
     /** The identifier an approved reference value stands for, or null when it is not a
      *  reference. A single-valued field yields its target's id; a collection yields the

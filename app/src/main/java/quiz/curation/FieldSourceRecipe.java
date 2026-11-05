@@ -131,6 +131,9 @@ public final class FieldSourceRecipe {
             } else if ("WIKIPEDIA_INFOBOX".equals(sourceType)) {
                 recipe = new SourceRecipe(WikipediaDatasourceProvider.ID,
                         WikipediaDatasourceProvider.INFOBOX_PARAMETER, safe);
+            } else if ("WIKIPEDIA_ARTICLE_INTRODUCTION".equals(sourceType)) {
+                recipe = new SourceRecipe(WikipediaDatasourceProvider.ID,
+                        WikipediaDatasourceProvider.ARTICLE_INTRODUCTION, safe);
             } else {
                 // Unknown future sidecar values remain readable. Resolution is the
                 // boundary that reports an unavailable provider/operation.

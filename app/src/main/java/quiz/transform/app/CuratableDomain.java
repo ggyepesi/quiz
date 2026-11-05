@@ -24,10 +24,11 @@ import domain.DomainSchemas;
  */
 final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         quiz.curation.FieldRulePromoter, quiz.transform.ui.PopulationSelectionStore,
-        quiz.transform.ui.ProjectBacking {
+        quiz.transform.ui.ProjectBacking, quiz.curation.CuratedInstanceSink {
 
     private final ManualCuration curation;
     private final Collection<? extends Viewable> memberRoots;
+    private final java.util.List<Viewable> curatedMemberRoots = new java.util.ArrayList<>();
     private final List<objectview.viewconfig.DomainGroupRoot> groupRootBindings;
     private final java.io.File modelFile;
     /** The project model as read when this domain opened, edited in memory since.
@@ -109,6 +110,34 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     }
     @Override public Viewable representativeSample(String type) { return base.representativeSample(type); }
     @Override public Collection<? extends Viewable> instances() { return base.instances(); }
+    @Override public Collection<? extends Viewable> memberRoots() {
+        java.util.List<Viewable> roots = new java.util.ArrayList<>();
+        memberRoots.stream().filter(Viewable.class::isInstance)
+                .map(Viewable.class::cast).forEach(roots::add);
+        for (Viewable value : curatedMemberRoots) {
+            if (!roots.contains(value)) roots.add(value);
+        }
+        return List.copyOf(roots);
+    }
+
+    @Override public quiz.curation.CuratedInstances.Result materialize(
+            java.util.Collection<quiz.curation.CuratedInstance> instances) {
+        if (instances == null || instances.isEmpty()) {
+            return new quiz.curation.CuratedInstances.Result(List.of(), List.of());
+        }
+        if (!(base.instances() instanceof java.util.List<?> raw)) {
+            throw new IllegalStateException("This domain's instance pool is not mutable");
+        }
+        @SuppressWarnings("unchecked")
+        java.util.List<wikidata.explore.extract.WikidataDynamicObject> pool =
+                (java.util.List<wikidata.explore.extract.WikidataDynamicObject>) raw;
+        quiz.curation.CuratedInstances.Result added =
+                quiz.curation.CuratedInstances.apply(pool, instances);
+        for (Viewable value : added.instances()) {
+            if (!curatedMemberRoots.contains(value)) curatedMemberRoots.add(value);
+        }
+        return added;
+    }
     @Override public List<String> selectionNames() {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(base.selectionNames());
         names.addAll(curationSourceSelections().keySet());
@@ -242,7 +271,6 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
         return base.entityOrigin(type, path);
     }
-    @Override public Collection<? extends Viewable> memberRoots() { return memberRoots; }
     @Override public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         // Derived from THIS domain's bindings, not the base's: the curated domain is
         // constructed with its own group roots.

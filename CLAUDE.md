@@ -85,6 +85,10 @@ construct per thing produced:
    A correspondence to another source (for example a Wikidata entity's English Wikipedia
    article) is class-level source configuration and renders as provenance; it is not a
    domain field and must not be rediscovered separately by each field or application.
+   When an explicit acquisition retains that source document, its versioned structure is
+   one source-evidence artifact on the correspondence. ObjectView inspects that artifact,
+   snapshots persist it, and later field recipes consume it; they do not fetch or store a
+   second interpretation of the same document.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*
@@ -102,6 +106,18 @@ construct per thing produced:
    same class, a subclass, or an explicit contextual representation. Merely occurring in a
    field must never retype an incompatible entity; incompatible values are absent from both
    the saved dynamic pool and its rendered materialization. *(Trigger: "the QID is the same".)*
+   Source prose may nominate a reference only through a configured candidate-evidence
+   binding, and its first bounded interpretation matches instances already admitted to the
+   field's declared target class. A mention is a review candidate, never automatic class
+   admission or field mutation. A configured article-passage operation may retain bounded,
+   versioned prose as a reviewable text value; it does not interpret that prose as entities,
+   events, class membership or field relations. A separate configured passage-instance
+   operation may propose one instance of a field's declared target class per bounded passage
+   only when the model explicitly maps the passage text and source instance into fields of
+   that target class. Each proposed instance is an independent review decision, is never in
+   bulk-safe acceptance, and enters the ordinary typed object graph only after acceptance.
+   An unlinked label may nominate a candidate only when it identifies one loaded target;
+   when loaded targets share the label, retained source links must resolve the identity.
 10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
    inspection state only; it must not silently configure another tool, mutate the model, or
    start expensive work. A mutation is an explicit, verb-labelled command that names its target

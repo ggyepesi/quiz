@@ -421,7 +421,9 @@ public class GenerationPipeline {
                         datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD,
                         datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
                         datasource.wikipedia.WikipediaDatasourceProvider
-                                .FAMILY_INFOBOX_FIELD));
+                                .FAMILY_INFOBOX_FIELD,
+                        datasource.wikipedia.WikipediaDatasourceProvider
+                                .FAMILY_ARTICLE_INTRODUCTION_FIELD));
 
         // NO owned components here. This is the single-class PREVIEW: it answers "who is
         // in this class, carrying what", and materializing a component per owner answers
@@ -736,8 +738,8 @@ public class GenerationPipeline {
                         + convergence.classifiedKinds() + " kind(s), "
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                "Acquire Wikidata computed fields, DBpedia fields, Wikipedia categories "
-                        + "and native infobox values");
+                "Acquire Wikidata computed fields, DBpedia fields, Wikipedia categories, "
+                        + "article introductions and native infobox values");
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
                 snapshot, pool, sourcePlan,
                 StandardExternalSourceFamilies.services(

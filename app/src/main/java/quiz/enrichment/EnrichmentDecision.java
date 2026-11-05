@@ -14,12 +14,21 @@ public record EnrichmentDecision(
         EnrichmentProposal.Subject subject,
         List<EnrichmentProposal.IdentityCandidate> identities,
         List<FieldDecision> fields,
-        EnrichmentProposal.MediaCandidate media) {
+        EnrichmentProposal.MediaCandidate media,
+        List<EnrichmentProposal.InstanceCandidate> instances) {
 
     public EnrichmentDecision {
         subject = Objects.requireNonNull(subject, "Decision subject is required");
         identities = identities == null ? List.of() : List.copyOf(identities);
         fields = fields == null ? List.of() : List.copyOf(fields);
+        instances = instances == null ? List.of() : List.copyOf(instances);
+    }
+
+    public EnrichmentDecision(EnrichmentProposal.Subject subject,
+                              List<EnrichmentProposal.IdentityCandidate> identities,
+                              List<FieldDecision> fields,
+                              EnrichmentProposal.MediaCandidate media) {
+        this(subject, identities, fields, media, List.of());
     }
 
     /** Compatibility form for callers which approve one source identity. */
@@ -27,7 +36,8 @@ public record EnrichmentDecision(
                               EnrichmentProposal.IdentityCandidate identity,
                               List<FieldDecision> fields,
                               EnrichmentProposal.MediaCandidate media) {
-        this(subject, identity == null ? List.of() : List.of(identity), fields, media);
+        this(subject, identity == null ? List.of() : List.of(identity), fields, media,
+                List.of());
     }
 
     /** Compatibility accessor; new code should use {@link #identities()}. */
@@ -59,7 +69,8 @@ public record EnrichmentDecision(
         EnrichmentProposal.MediaCandidate media = proposal.media().stream()
                 .max(Comparator.comparingDouble(EnrichmentProposal.MediaCandidate::confidence))
                 .orElse(null);
-        if (fields.isEmpty() && media == null) {
+        List<EnrichmentProposal.InstanceCandidate> instances = proposal.instances();
+        if (fields.isEmpty() && media == null && instances.isEmpty()) {
             return null;
         }
         Set<String> identityIds = new LinkedHashSet<>();
@@ -75,7 +86,8 @@ public record EnrichmentDecision(
         if (hasAmbiguousIdentitySources(identities)) {
             return null; // choosing between two records from one source needs explicit review
         }
-        return new EnrichmentDecision(proposal.subject(), identities, fields, media);
+        return new EnrichmentDecision(
+                proposal.subject(), identities, fields, media, instances);
     }
 
     /** True when applying automatically would silently replace one identity link with

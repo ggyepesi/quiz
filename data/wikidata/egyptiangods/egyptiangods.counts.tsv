@@ -1,0 +1,3 @@
+# Egyptian Gods — per-class counts, one row per save
+# counts every saved entity by class membership (ids include statement ids); classes overlap, so columns may exceed total
+2026-11-05T14:20:31	total=156	EgyptianDeity=156

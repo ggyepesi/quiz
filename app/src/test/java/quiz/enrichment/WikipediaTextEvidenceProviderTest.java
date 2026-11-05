@@ -9,6 +9,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikipediaTextEvidenceProviderTest {
@@ -155,6 +156,335 @@ class WikipediaTextEvidenceProviderTest {
                 claim.evidence().get(0).document(),
                 WikipediaTextEvidenceProvider.RECIPE_VERSION, ""));
         assertFalse(claim.claimId().isBlank());
+    }
+
+    @Test
+    void retainedIntroductionProposesOnlyLoadedTypedCandidatesWithoutRefetching()
+            throws Exception {
+        var achilles = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q41746", "Achilles");
+        var odysseus = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q472091", "Odysseus");
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> { throw new AssertionError("retained evidence must not be refetched"); },
+                null, null, List.of(achilles, odysseus));
+        String text = "Achilles pursues Hector after the death of Patroclus.";
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Achilles in the Trojan War", "42", text, List.of()));
+        objectview.field.FieldRef characters = objectview.field.FieldRef.described(
+                "characters", objectview.field.FieldKind.REFERENCE,
+                objectview.field.FieldKind.REFERENCE, "List<Character>", true, true,
+                "Character", false, false, false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "Episode", "Q999", "Q999", "Achilles in the Trojan War"),
+                "characters", true, List.of(), characters, List.of(), List.of(),
+                introduction);
+
+        EnrichmentProposal result = provider.discover(request).execute(new QueryContext());
+
+        assertEquals(1, result.fields().size());
+        var candidate = result.fields().get(0);
+        assertSame(achilles, candidate.proposedValue(),
+                "the proposal reuses the domain's typed Character instance");
+        assertEquals(EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                candidate.suggestedAction());
+        assertEquals("42", candidate.evidence().get(0).evidence().get(0)
+                .document().revision());
+        assertTrue(candidate.evidence().get(0).extractionMethod().contains("loaded"));
+    }
+
+    @Test void anAmbiguousUnlinkedLabelCorroboratesCurrentButNominatesNoNamesake()
+            throws Exception {
+        var greekHero = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q41746", "Achilles");
+        var namesake = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q21547790", "Achilles");
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> { throw new AssertionError("unlinked retained evidence needs no lookup"); },
+                null, null, List.of(greekHero, namesake));
+        String text = "Achilles was hidden on Skyros.";
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Achilles on Skyros", "42", text, List.of()));
+
+        EnrichmentProposal result = provider.discover(
+                        charactersRequest(introduction, List.of(greekHero)))
+                .execute(new QueryContext());
+
+        assertEquals(1, result.fields().size());
+        assertSame(greekHero, result.fields().getFirst().proposedValue());
+        assertEquals(EnrichmentProposal.ReviewAction.CORROBORATE,
+                result.fields().getFirst().suggestedAction());
+    }
+
+    @Test void anArticleLinkResolvesAnAmbiguousLabelToItsWikidataIdentity()
+            throws Exception {
+        var greekHero = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q41746", "Achilles");
+        greekHero.enwikiTitle("Achilles");
+        var namesake = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q21547790", "Achilles");
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> { throw new AssertionError("retained correspondence avoids lookup"); },
+                null, null, List.of(greekHero, namesake));
+        String text = "Achilles was hidden on Skyros.";
+        var link = new datasource.evidence.ArticleIntroduction.Link(
+                "Achilles", "Achilles", 0, "Achilles".length());
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Achilles on Skyros", "42", text, List.of(), List.of(link)),
+                List.of(link));
+
+        EnrichmentProposal result = provider.discover(charactersRequest(introduction))
+                .execute(new QueryContext());
+
+        assertEquals(1, result.fields().size());
+        assertSame(greekHero, result.fields().getFirst().proposedValue());
+        assertTrue(result.fields().getFirst().evidence().getFirst()
+                .extractionMethod().contains("linked"));
+    }
+
+    /** Full-article prose stays prose. The generic operation keeps bounded content with
+     * exact section evidence and does not turn links into domain entities. */
+    @Test void articlePassagesProposeBoundedContentAndOmitMaintenanceSections()
+            throws Exception {
+        String source = """
+                {"entities":{"Q9000":{"labels":{"en":{"value":"Achilles"}},
+                  "sitelinks":{"enwiki":{"title":"Achilles"}},"claims":{}}}}
+                """;
+        String article = """
+                {"query":{"pages":[{"pageid":12,"title":"Achilles","lastrevid":77,
+                  "extract":"<p>Achilles was a hero of the Trojan War.</p><h2>Myths</h2><p>He was hidden on Skyros.</p><p>Odysseus discovered him.</p><h2>References</h2><p>This citation list is not narrative content.</p>"}]}}
+                """;
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(uri -> {
+            if (uri.getHost().contains("wikipedia")) return article;
+            return source;
+        }, null, null, List.of(),
+                WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_PASSAGES);
+        objectview.field.FieldRef field = objectview.field.FieldRef.described(
+                "narrativeText", objectview.field.FieldKind.TEXT,
+                objectview.field.FieldKind.TEXT, "String", false, false,
+                "", false, false, false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "Character", "Q9000", "Q9000", "Achilles"),
+                "narrativeText", false, List.of(), field, null);
+
+        EnrichmentProposal result = provider.discover(request).execute(new QueryContext());
+
+        assertEquals(1, result.fields().size());
+        var candidate = result.fields().getFirst();
+        String proposed = (String) candidate.proposedValue();
+        assertTrue(proposed.contains("Achilles was a hero"));
+        assertTrue(proposed.contains("Myths\nHe was hidden on Skyros."));
+        assertFalse(proposed.contains("citation list"));
+        assertEquals(List.of("Introduction", "Myths", "Myths"),
+                candidate.evidence().getFirst().evidence().stream()
+                        .map(datasource.evidence.EvidenceFragment::section).toList());
+        assertEquals("bounded-article-passages-v1",
+                candidate.evidence().getFirst().recipeVersion());
+        assertEquals("77", candidate.evidence().getFirst().evidence().getFirst()
+                .document().revision());
+        assertEquals(EnrichmentProposal.ReviewAction.FILL_IF_EMPTY,
+                candidate.suggestedAction());
+    }
+
+    @Test void articlePassageBoundsArePartOfTheGenericOperation() {
+        String html = java.util.stream.IntStream.range(0, 60)
+                .mapToObj(index -> "<p>Passage " + index + " " + "x".repeat(700) + "</p>")
+                .collect(java.util.stream.Collectors.joining());
+        wikipedia.WikipediaArticleClient.ParsedArticleText parsed =
+                wikipedia.WikipediaArticleClient.parseArticleText(html);
+        var document = wikipedia.WikipediaArticleClient.sourceDocument(
+                "Bounded article", "5", parsed.text(), List.of(), parsed.links());
+        var article = new wikipedia.WikipediaArticleClient.Article(document, parsed.text(),
+                List.of(), parsed.links(), parsed.sections());
+
+        WikipediaTextEvidenceProvider.ArticlePassages passages =
+                WikipediaTextEvidenceProvider.articlePassages(article);
+
+        assertTrue(passages.passages().size()
+                <= datasource.wikipedia.WikipediaDatasourceProvider.MAX_ARTICLE_PASSAGES);
+        assertTrue(passages.text().length()
+                <= datasource.wikipedia.WikipediaDatasourceProvider
+                        .MAX_ARTICLE_PASSAGE_CHARACTERS);
+        for (WikipediaTextEvidenceProvider.Passage passage : passages.passages()) {
+            assertEquals(passage.text(), article.text().substring(passage.start(),
+                    passage.start() + passage.text().length()));
+        }
+    }
+
+    @Test void articlePassagesCanProposeTypedInstancesWithExplicitFieldMappings()
+            throws Exception {
+        String source = """
+                {"entities":{"Q9000":{"labels":{"en":{"value":"Achilles"}},
+                  "sitelinks":{"enwiki":{"title":"Achilles"}},"claims":{}}}}
+                """;
+        String article = """
+                {"query":{"pages":[{"pageid":12,"title":"Achilles","lastrevid":77,
+                  "extract":"<p>Achilles was a hero of the Trojan War.</p><h2>Myths</h2><p>He was hidden on Skyros.</p>"}]}}
+                """;
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(uri -> {
+            if (uri.getHost().contains("wikipedia")) return article;
+            return source;
+        }, null, null, List.of(),
+                WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_PASSAGE_INSTANCES,
+                new datasource.wikipedia.WikipediaDatasourceProvider
+                        .ArticlePassageInstanceSpec("summary", "characters"));
+        objectview.field.FieldRef episodes = objectview.field.FieldRef.described(
+                "episodes", objectview.field.FieldKind.REFERENCE,
+                objectview.field.FieldKind.REFERENCE, "List<Episode>", true, true,
+                "Episode", false, false, false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "Character", "Q9000", "Q9000", "Achilles"),
+                "episodes", true, List.of(), episodes, List.of());
+
+        EnrichmentProposal result = provider.discover(request).execute(new QueryContext());
+
+        assertEquals(2, result.instances().size());
+        assertEquals(2, result.fields().size());
+        for (int i = 0; i < result.instances().size(); i++) {
+            var instance = result.instances().get(i);
+            assertEquals("Episode", instance.type());
+            assertEquals("summary", instance.fields().get(0).field());
+            assertTrue(String.valueOf(instance.fields().get(0).value()).length() > 10);
+            assertEquals("characters", instance.fields().get(1).field());
+            assertEquals(List.of(new EnrichmentProposal.TypedReference(
+                    "Character", "Q9000")), instance.fields().get(1).references());
+            assertEquals(instance.id(), ((objectview.Viewable) result.fields().get(i)
+                    .proposedValue()).getIdentifier());
+            assertEquals("article-passage-instances-v1",
+                    instance.evidence().getFirst().recipeVersion());
+        }
+
+        EnrichmentRequest repeated = new EnrichmentRequest(request.subject(),
+                "episodes", true, List.of(), episodes,
+                List.of(result.fields().getFirst().proposedValue()));
+        EnrichmentProposal remaining = provider.discover(repeated)
+                .execute(new QueryContext());
+        assertEquals(1, remaining.instances().size(),
+                "an already accepted stable passage instance is not proposed again");
+    }
+
+    /** A link is identity evidence and wins over the label it carries. Here "Achilles"
+     * links to the ship; the one loaded Achilles is the hero, so the unique-label pass
+     * would have nominated the hero for a sentence about the ship. */
+    @Test void aLinkToAnotherEntityIsNotOverruledByAUniqueLoadedLabel() throws Exception {
+        var greekHero = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q41746", "Achilles");
+        greekHero.enwikiTitle("Achilles");
+        String ship = """
+                {"entities":{"Q2823105":{"labels":{"en":{"value":"HMS Achilles"}},
+                  "sitelinks":{"enwiki":{"title":"HMS Achilles (1863)"}},"claims":{}}}}
+                """;
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> ship, null, null, List.of(greekHero));
+        String text = "Achilles was launched in 1863.";
+        var link = new datasource.evidence.ArticleIntroduction.Link(
+                "Achilles", "HMS Achilles (1863)", 0, "Achilles".length());
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Warrior-class ironclad", "42", text, List.of(), List.of(link)),
+                List.of(link));
+
+        EnrichmentProposal result = provider.discover(charactersRequest(introduction))
+                .execute(new QueryContext());
+
+        assertTrue(result.fields().isEmpty(), result.fields().toString());
+    }
+
+    /** An accepted passage stays accepted after an unrelated edit. Its id was cut from the
+     * claim id, which hashes the revision and the offset: lengthening the introduction gave
+     * the unchanged Myths passage a new id, and the next review proposed it again. */
+    @Test void aPassageKeepsItsIdentityWhenAnotherPartOfTheArticleChanges() throws Exception {
+        EnrichmentProposal before = passageInstances("77",
+                "<p>Achilles was a hero of the Trojan War.</p>");
+        EnrichmentProposal after = passageInstances("78",
+                "<p>Achilles was a hero of the Trojan War, son of Peleus and Thetis.</p>");
+
+        String mythsBefore = before.instances().get(1).id();
+        String mythsAfter = after.instances().get(1).id();
+        assertEquals(mythsBefore, mythsAfter,
+                "the unchanged passage is the same instance in the next revision");
+        assertFalse(before.instances().get(0).id().equals(after.instances().get(0).id()),
+                "an edited passage is a different passage");
+    }
+
+    private static EnrichmentProposal passageInstances(String revision, String introduction)
+            throws Exception {
+        String source = """
+                {"entities":{"Q9000":{"labels":{"en":{"value":"Achilles"}},
+                  "sitelinks":{"enwiki":{"title":"Achilles"}},"claims":{}}}}
+                """;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String article = "{\"query\":{\"pages\":[{\"pageid\":12,\"title\":\"Achilles\","
+                + "\"lastrevid\":" + revision + ",\"extract\":" + json.valueToTree(
+                        introduction + "<h2>Myths</h2><p>He was hidden on Skyros.</p>")
+                + "}]}}";
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(uri ->
+                uri.getHost().contains("wikipedia") ? article : source,
+                null, null, List.of(),
+                WikipediaTextEvidenceProvider.CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES,
+                new datasource.wikipedia.WikipediaDatasourceProvider
+                        .ArticlePassageInstanceSpec("summary", "characters"));
+        objectview.field.FieldRef episodes = objectview.field.FieldRef.described(
+                "episodes", objectview.field.FieldKind.REFERENCE,
+                objectview.field.FieldKind.REFERENCE, "List<Episode>", true, true,
+                "Episode", false, false, false, false, "", false);
+        return provider.discover(new EnrichmentRequest(
+                new EnrichmentProposal.Subject("Character", "Q9000", "Q9000", "Achilles"),
+                "episodes", true, List.of(), episodes, List.of()))
+                .execute(new QueryContext());
+    }
+
+    private static EnrichmentRequest charactersRequest(
+            datasource.evidence.ArticleIntroduction introduction) {
+        return charactersRequest(introduction, List.of());
+    }
+
+    private static EnrichmentRequest charactersRequest(
+            datasource.evidence.ArticleIntroduction introduction, List<?> current) {
+        objectview.field.FieldRef characters = objectview.field.FieldRef.described(
+                "characters", objectview.field.FieldKind.REFERENCE,
+                objectview.field.FieldKind.REFERENCE, "List<Character>", true, true,
+                "Character", false, false, false, false, "", false);
+        return new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "Episode", "Q999", "Q999", "Achilles on Skyros"),
+                "characters", true, List.of(), characters, current, List.of(),
+                introduction);
+    }
+
+    @Test void retainedIntroductionDoesNotReplaceCategoryVersionEvidence() throws Exception {
+        wikidata.explore.model.WikipediaCategoryRule rule =
+                new wikidata.explore.model.WikipediaCategoryRule();
+        rule.pattern("Films set in <value>");
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> SIERRA_LEONE, rule, null, List.of());
+        String text = "Blood Diamond is a film.";
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Blood Diamond", "intro-42", text, List.of()));
+        var categoryDocument = wikipedia.WikipediaArticleClient.sourceDocument(
+                "Blood Diamond", "categories-99", "",
+                List.of("Films set in Sierra Leone"));
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "Movie", "movie-17", "Q157058", "Blood Diamond"),
+                "location", true, List.of(), locationField(), List.of(),
+                List.of(new datasource.evidence.CategoryMembership(
+                        "Films set in Sierra Leone", categoryDocument)), introduction);
+
+        EnrichmentProposal result = provider.discover(request).execute(new QueryContext());
+
+        assertEquals("categories-99", result.fields().getFirst().evidence().getFirst()
+                .evidence().getFirst().document().revision(),
+                "category claims retain the category acquisition's own source version");
     }
 
     @Test

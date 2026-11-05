@@ -26,6 +26,7 @@ public final class ManualCuration implements CorrectionSource {
     private final List<Merge> merges = new ArrayList<>();
     private final List<IdentityLink> identityLinks = new ArrayList<>();
     private final List<FieldSourceRecipe> sourceRecipes = new ArrayList<>();
+    private final List<CuratedInstance> instances = new ArrayList<>();
 
     public ManualCuration(File file) {
         this.file = file;
@@ -48,6 +49,7 @@ public final class ManualCuration implements CorrectionSource {
         merges.clear();
         identityLinks.clear();
         sourceRecipes.clear();
+        instances.clear();
         if (file != null && file.isFile()) {
             try {
                 Doc doc = MAPPER.readValue(file, Doc.class);
@@ -95,6 +97,11 @@ public final class ManualCuration implements CorrectionSource {
                         }
                     }
                 }
+                if (doc.instances != null) {
+                    for (InstanceEntry entry : doc.instances) {
+                        instances.add(entry.value());
+                    }
+                }
             } catch (IOException unreadable) {
                 // Missing is handled by the isFile guard. A present but unreadable
                 // sidecar must not fail silently and masquerade as "no curation".
@@ -125,6 +132,9 @@ public final class ManualCuration implements CorrectionSource {
         }
         for (FieldSourceRecipe recipe : sourceRecipes) {
             doc.sourceRecipes.add(new SourceRecipeEntry(recipe));
+        }
+        for (CuratedInstance instance : instances) {
+            doc.instances.add(new InstanceEntry(instance));
         }
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, doc);
     }
@@ -281,6 +291,23 @@ public final class ManualCuration implements CorrectionSource {
         return sourceRecipes.stream().map(FieldSourceRecipe::binding).toList();
     }
 
+    /** Add or replace one explicitly accepted source-derived instance. */
+    public void putInstance(CuratedInstance instance) {
+        if (instance == null) return;
+        instances.removeIf(existing -> existing.type().equals(instance.type())
+                && existing.id().equals(instance.id()));
+        instances.add(instance);
+    }
+
+    public void removeInstance(String type, String id) {
+        instances.removeIf(existing -> java.util.Objects.equals(type, existing.type())
+                && java.util.Objects.equals(id, existing.id()));
+    }
+
+    public List<CuratedInstance> instances() {
+        return List.copyOf(instances);
+    }
+
     /** Record the approved identity for one source, replacing an earlier choice. */
     public void putIdentityLink(IdentityLink link) {
         removeIdentityLink(link.type(), link.targetId(), link.sourceKind());
@@ -314,6 +341,7 @@ public final class ManualCuration implements CorrectionSource {
         public List<MergeEntry> merges = new ArrayList<>();
         public List<IdentityEntry> identityLinks = new ArrayList<>();
         public List<SourceRecipeEntry> sourceRecipes = new ArrayList<>();
+        public List<InstanceEntry> instances = new ArrayList<>();
     }
 
     static final class Entry {
@@ -429,6 +457,28 @@ public final class ManualCuration implements CorrectionSource {
             field = recipe.field();
             provider = recipe.provider();
             parameters = recipe.parameters();
+        }
+    }
+
+    static final class InstanceEntry {
+        public String type;
+        public String id;
+        public String displayName;
+        public List<CuratedInstance.FieldValue> fields = new ArrayList<>();
+        public ValueSource source;
+
+        InstanceEntry() { }
+
+        InstanceEntry(CuratedInstance instance) {
+            type = instance.type();
+            id = instance.id();
+            displayName = instance.displayName();
+            fields = instance.fields();
+            source = instance.source();
+        }
+
+        CuratedInstance value() {
+            return new CuratedInstance(type, id, displayName, fields, source);
         }
     }
 }

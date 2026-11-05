@@ -189,6 +189,11 @@ public final class FieldSourceBindings {
                     WikidataDatasourceProvider.ID, WikidataDatasourceProvider.SITELINK_COUNT,
                     Map.of());
         }
+        if (mapping.sourceType() == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+            return binding(target, WikipediaDatasourceProvider.ID,
+                    WikipediaDatasourceProvider.ARTICLE_INTRODUCTION,
+                    Map.of(SOURCE_TYPE, mapping.sourceType().name()));
+        }
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
             if (clean(mapping.propertyPid()).isBlank()) return null;
             return binding(target,
@@ -230,8 +235,9 @@ public final class FieldSourceBindings {
 
     private static SourceBinding fallback(
             SourceBindingTarget target, FieldSourceMapping mapping) {
-        if (mapping == null || clean(mapping.propertyPid()).isBlank()
-                || mapping.sourceType() == null) return null;
+        if (mapping == null || mapping.sourceType() == null
+                || mapping.sourceType().usesPropertyInput()
+                        && clean(mapping.propertyPid()).isBlank()) return null;
         ProviderOperation source = providerOperation(mapping.sourceType());
         if (source == null || WikidataDatasourceProvider.ID.equals(source.provider())) return null;
         return binding(target,
@@ -347,6 +353,11 @@ public final class FieldSourceBindings {
                 && WikipediaDatasourceProvider.INFOBOX_PARAMETER.equals(recipe.operationId())) {
             return FieldSourceType.WIKIPEDIA_INFOBOX;
         }
+        if (WikipediaDatasourceProvider.ID.equals(recipe.providerId())
+                && WikipediaDatasourceProvider.ARTICLE_INTRODUCTION.equals(
+                        recipe.operationId())) {
+            return FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION;
+        }
         try { return FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE)); }
         catch (RuntimeException ignored) { return FieldSourceType.MANUAL; }
     }
@@ -359,6 +370,10 @@ public final class FieldSourceBindings {
         if (type == FieldSourceType.WIKIPEDIA_INFOBOX) {
             return new ProviderOperation(WikipediaDatasourceProvider.ID,
                     WikipediaDatasourceProvider.INFOBOX_PARAMETER);
+        }
+        if (type == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+            return new ProviderOperation(WikipediaDatasourceProvider.ID,
+                    WikipediaDatasourceProvider.ARTICLE_INTRODUCTION);
         }
         if (type == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
             return new ProviderOperation(WikidataDatasourceProvider.ID,

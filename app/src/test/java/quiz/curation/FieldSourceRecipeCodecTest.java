@@ -81,6 +81,19 @@ class FieldSourceRecipeCodecTest {
                 "a Wikidata property is the model's business, not the sidecar's");
     }
 
+    @Test void aPropertylessArticleIntroductionStillRoundTrips() {
+        FieldSourceMapping source = mapping(
+                FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION, "", "");
+
+        FieldSourceRecipe scoped = FieldSourceRecipeCodec.scoped(
+                "Episode", "summary", source);
+
+        assertNotNull(scoped);
+        assertEquals(FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION,
+                FieldSourceRecipeCodec.mapping(scoped).sourceType());
+        assertEquals("", FieldSourceRecipeCodec.mapping(scoped).propertyPid());
+    }
+
     @Test void aRecipeNamingAnUnreadableKindIsIgnoredRatherThanFatal() {
         assertNull(FieldSourceRecipeCodec.mapping(FieldSourceRecipe.additionalSource(
                 "Movie", "locations", "SOME_LATER_SOURCE", "whatever", "")));
