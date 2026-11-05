@@ -340,6 +340,8 @@ public class ModelGraphPanel extends JPanel {
             case DBPEDIA -> "DB";
             case WIKIPEDIA_INFOBOX -> "infobox";
             case WIKIPEDIA_ARTICLE_INTRODUCTION -> "article intro";
+            case WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH -> "lead paragraph";
+            case WIKIPEDIA_ARTICLE_LEAD_SENTENCE -> "lead sentence";
             case WIKIDATA_SITELINK_COUNT -> "WD:sitelinks";
             case WIKIDATA_INCOMING_COUNT -> "WD:incoming-count";
             case WIKIDATA_INHERITED_INCOMING_COUNT -> "WD:inherited-incoming-count";

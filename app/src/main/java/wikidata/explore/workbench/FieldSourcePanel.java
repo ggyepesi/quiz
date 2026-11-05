@@ -2066,10 +2066,16 @@ public class FieldSourcePanel extends JPanel {
             return;
         }
 
-        if (sourceType == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+        if (sourceType != null && sourceType.wikipediaArticleText()) {
+            String projection = sourceType == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE
+                    ? "the first sentence of the lead paragraph"
+                    : sourceType == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH
+                    ? "the first paragraph of the article introduction"
+                    : "the complete article introduction";
             recommendationLabel.setText(
-                    "Wikipedia article introduction: fills this field with the lead text "
-                            + "of the entity's linked English Wikipedia article. The "
+                    "Wikipedia article text: fills this field with " + projection
+                            + " from the entity's linked English Wikipedia article. All "
+                            + "three choices reuse the same retained introduction. The "
                             + "Property field is not used.");
             return;
         }

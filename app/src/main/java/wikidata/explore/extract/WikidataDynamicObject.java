@@ -247,15 +247,16 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public boolean wikipediaArticleAnswered() { return wikipediaArticleAnswered; }
 
-    /** Retains the one complete article artifact and derives the older introduction
-     * projection from it, so later evidence readers do not acquire the same fact twice. */
+    /**
+     * Retains the explicitly fetched structured article. It is the article's sections,
+     * blocks and links, and never a second source of the introduction: that is retained
+     * only by {@link #articleIntroductionEvidence}, from the one batched lead route. Deriving
+     * it here as well gave one revision two introductions whose text and offsets differed
+     * by route, and every mention and claim built on them with it (#448).
+     */
     public void wikipediaArticleEvidence(
             datasource.evidence.WikipediaArticle value, boolean answered) {
-        if (value != null) {
-            wikipediaArticle = value;
-            articleIntroduction = value.introduction();
-            articleIntroductionAnswered = true;
-        }
+        if (value != null) wikipediaArticle = value;
         wikipediaArticleAnswered |= answered;
     }
 

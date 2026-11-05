@@ -88,7 +88,12 @@ construct per thing produced:
    When an explicit acquisition retains that source document, its versioned structure is
    one source-evidence artifact on the correspondence. ObjectView inspects that artifact,
    snapshots persist it, and later field recipes consume it; they do not fetch or store a
-   second interpretation of the same document.
+   second interpretation of the same document. A Wikipedia article's introduction is one
+   such artifact, retained from the batched lead acquisition; a separately fetched structured
+   article is another (its sections, blocks and links) and is never a second source of the
+   introduction. Wikipedia article fields select generic projections of the introduction
+   (the complete introduction, lead paragraph or lead sentence); the target field assigns
+   their domain meaning, never the projection code.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*

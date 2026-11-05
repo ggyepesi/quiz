@@ -23,7 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
-/** Batched acquisition and interpretation of versioned Wikipedia article introductions. */
+/** Batched acquisition and configured projection of versioned Wikipedia article leads. */
 public final class WikipediaArticleIntroductionAcquisition {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final int BATCH = 50;
@@ -79,7 +79,7 @@ public final class WikipediaArticleIntroductionAcquisition {
         java.util.concurrent.atomic.AtomicInteger batches =
                 new java.util.concurrent.atomic.AtomicInteger();
         try (GenerationLog.Group group = sink.group(
-                "Acquire Wikipedia article introductions — " + titles.size()
+                "Acquire Wikipedia article text — " + titles.size()
                         + " article(s) in batches of " + BATCH)) {
             List<batch.WorkUnit<Map<String, Acquired>>> units = new ArrayList<>();
             for (int from = 0; from < titles.size(); from += BATCH) {
@@ -111,7 +111,7 @@ public final class WikipediaArticleIntroductionAcquisition {
                         batches.incrementAndGet();
                     });
         }
-        sink.message("Wikipedia article introductions: " + values.get()
+        sink.message("Wikipedia article text: " + values.get()
                 + " field value(s) from " + pages.get() + " page(s), "
                 + batches.get() + " batch(es).\n");
         return new Result(pages.get(), values.get(), batches.get());
@@ -132,7 +132,12 @@ public final class WikipediaArticleIntroductionAcquisition {
                 throw new IllegalArgumentException("Datasource plan targets unknown field "
                         + step.target().className() + "." + step.target().fieldPath());
             }
-            result.add(new Declaration(owner, field, step.target()));
+            WikipediaDatasourceProvider.ArticleTextProjection projection =
+                    step.prepared().configuration(
+                            WikipediaDatasourceProvider.ArticleTextProjection.class);
+            result.add(new Declaration(owner, field, step.target(), projection == null
+                    ? WikipediaDatasourceProvider.ArticleTextProjection.INTRODUCTION
+                    : projection));
         }
         return List.copyOf(result);
     }
@@ -146,7 +151,9 @@ public final class WikipediaArticleIntroductionAcquisition {
             if (!FieldSourceTargeting.applies(
                     model, object, declaration.owner(), declaration.target())
                     || object.get(declaration.field().name()) != null) continue;
-            object.put(declaration.field().name(), evidence.text());
+            String value = declaration.projection().project(evidence);
+            if (value.isBlank()) continue;
+            object.put(declaration.field().name(), value);
             filled.add(declaration.owner().className() + "."
                     + declaration.field().name());
         }
@@ -234,7 +241,8 @@ public final class WikipediaArticleIntroductionAcquisition {
     @FunctionalInterface interface Fetcher { String fetch(URI uri) throws Exception; }
 
     private record Declaration(GeneratedClassModel owner, GeneratedFieldModel field,
-                               SourceBindingTarget target) { }
+                               SourceBindingTarget target,
+                               WikipediaDatasourceProvider.ArticleTextProjection projection) { }
     private record Acquired(ArticleIntroduction evidence) { }
     public record Result(int pages, int values, int batches) { }
 }

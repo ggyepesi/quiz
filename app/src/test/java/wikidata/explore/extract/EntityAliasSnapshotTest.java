@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class EntityAliasSnapshotTest {
 
@@ -159,14 +160,47 @@ class EntityAliasSnapshotTest {
         assertEquals("Maat", loaded.wikipediaArticle().getDisplayName());
         assertEquals("Introduction",
                 loaded.wikipediaArticle().sections().getFirst().heading());
-        assertEquals("Maat represented truth and order.",
-                loaded.articleIntroduction().text());
         org.junit.jupiter.api.Assertions.assertTrue(loaded.wikipediaArticleAnswered());
         String json = Files.readString(file.toPath());
         assertEquals(1, occurrences(json, "\"wikipediaArticle\""));
-        org.junit.jupiter.api.Assertions.assertFalse(
-                json.contains("\"wikipediaArticleIntroduction\""),
-                "the introduction is derived from the retained full article");
+        assertEquals(null, loaded.articleIntroduction(),
+                "a fetched structured article is not a second source of the introduction");
+        org.junit.jupiter.api.Assertions.assertFalse(loaded.articleIntroductionAnswered());
+    }
+
+    /** #448: one revision had two introductions — the batched lead and one derived from a
+     * fetched structured article — whose text and offsets differed, so mentions and claims
+     * depended on which route ran. The batched lead is the one introduction: retaining a
+     * structured article afterwards neither replaces it nor drops it on save. */
+    @Test void aFetchedArticleKeepsTheOneRetainedIntroduction(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject deity = new WikidataDynamicObject("Q170471", "Maat");
+        deity.type("EgyptianDeity");
+        var document = new datasource.evidence.SourceDocument(
+                "Wikipedia (English)", "Maat", "Maat",
+                "https://en.wikipedia.org/wiki/Maat", "123",
+                new datasource.evidence.ContentDigest("sha256", "abc"),
+                "2026-11-05T12:00:00Z");
+        var lead = new datasource.evidence.ArticleIntroduction(
+                "Maat was the goddess of truth.", document);
+        deity.articleIntroductionEvidence(lead, true);
+        var paragraph = new datasource.evidence.WikipediaArticle.Block(
+                "Paragraph 1", datasource.evidence.WikipediaArticle.Block.Kind.PARAGRAPH,
+                "Maat represented truth and order.", java.util.List.of(), 0, 33);
+        deity.wikipediaArticleEvidence(new datasource.evidence.WikipediaArticle(
+                document, "Maat represented truth and order.", java.util.List.of(),
+                java.util.List.of(new datasource.evidence.WikipediaArticle.Section(
+                        "Introduction", 0, java.util.List.of(paragraph),
+                        java.util.List.of(), 0, 33))), true);
+
+        assertSame(lead, deity.articleIntroduction());
+        var file = dir.resolve("both-artifacts-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(java.util.List.of(deity), file);
+        WikidataDynamicObject loaded = store.load(file).getFirst();
+        assertEquals("Maat was the goddess of truth.", loaded.articleIntroduction().text());
+        assertEquals("Introduction",
+                loaded.wikipediaArticle().sections().getFirst().heading());
     }
 
     private static int occurrences(String value, String needle) {

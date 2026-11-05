@@ -779,6 +779,70 @@
         }
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "summary",
+      "type" : "TEXT",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "WIKIPEDIA_ARTICLE_LEAD_SENTENCE"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "summary",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "article-introduction",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "projection" : "LEAD_SENTENCE",
+            "sourceType" : "WIKIPEDIA_ARTICLE_LEAD_SENTENCE"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "populationSource" : {
@@ -1676,6 +1740,70 @@
             "property" : "P1049",
             "sourceType" : "SPARQL",
             "valueLanguage" : ""
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "summary",
+      "type" : "TEXT",
+      "entityClassName" : "",
+      "unclassedEntity" : false,
+      "cardinality" : "SINGLE",
+      "renderMode" : "INLINE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "WIKIPEDIA_ARTICLE_LEAD_SENTENCE"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "summary",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "article-introduction",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "projection" : "LEAD_SENTENCE",
+            "sourceType" : "WIKIPEDIA_ARTICLE_LEAD_SENTENCE"
           }
         }
       } ] ],

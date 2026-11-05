@@ -361,7 +361,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                             convergence.iterations() + " semantic iteration(s)");
                     phase(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                             "Wikidata computed fields, DBpedia fields, Wikipedia categories, "
-                                    + "article introductions and native infobox values");
+                                    + "configured article text and native infobox values");
                     wikidata.explore.generation.ExternalSourceAcquisition.Result external =
                             wikidata.explore.generation.ExternalSourceAcquisition.apply(
                                     project, pool, sourcePlan,

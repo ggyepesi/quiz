@@ -153,13 +153,13 @@ public final class StandardExternalSourceFamilies {
             return datasource.wikipedia.WikipediaDatasourceProvider
                     .FAMILY_ARTICLE_INTRODUCTION_FIELD;
         }
-        @Override public String displayName() { return "Wikipedia article introduction"; }
+        @Override public String displayName() { return "Wikipedia article text"; }
         @Override public int summaryOrder() { return 15; }
         @Override public boolean configured(datasource.api.SourceExecutionPlan plan) {
             return plan != null && plan.acquires(id());
         }
         @Override public Outcome empty() {
-            return new Outcome(id(), 0, "0 article introduction value(s)", summaryOrder());
+            return new Outcome(id(), 0, "0 article text value(s)", summaryOrder());
         }
         @Override public Outcome acquire(Context context) throws Exception {
             wikidata.api.WikidataApiClient client = context.services().find(
@@ -170,7 +170,7 @@ public final class StandardExternalSourceFamilies {
                             context.model(), context.pool(), context.log(),
                             context.cancellation(), client, context.plan());
             return new Outcome(id(), result.values(),
-                    result.values() + " article introduction value(s)", summaryOrder());
+                    result.values() + " article text value(s)", summaryOrder());
         }
     }
 }

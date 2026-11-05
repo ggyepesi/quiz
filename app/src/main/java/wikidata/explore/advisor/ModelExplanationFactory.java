@@ -199,8 +199,12 @@ public final class ModelExplanationFactory {
             RuleDirection direction) {
         String entity = "?" + variable(clazz.className());
         String value = "?" + variable(field.name());
-        if (source.sourceType() == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
-            return entity + " enwiki article introduction = " + value;
+        if (source.sourceType().wikipediaArticleText()) {
+            return entity + " enwiki " + switch (source.sourceType()) {
+                case WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH -> "lead paragraph";
+                case WIKIPEDIA_ARTICLE_LEAD_SENTENCE -> "lead sentence";
+                default -> "article introduction";
+            } + " = " + value;
         }
         if (source.propertyPid().isBlank()) {
             return entity + " → " + value + " (property not configured)";

@@ -27,7 +27,7 @@ class ExternalSourceAcquisitionTest {
 
         assertEquals(0, result.values());
         assertEquals("0 Wikidata computed value(s), 0 category membership(s), "
-                        + "0 article introduction value(s), 0 infobox value(s), "
+                        + "0 article text value(s), 0 infobox value(s), "
                         + "0 DBpedia value(s)",
                 result.summary());
     }

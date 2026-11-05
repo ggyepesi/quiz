@@ -37,7 +37,24 @@ class WikipediaArticleClientTest {
                 .getFirst().targetTitle());
         assertEquals(WikipediaArticle.Block.Kind.LIST_ITEM,
                 mythology.sections().getFirst().blocks().getFirst().kind());
-        assertTrue(parsed.structuredArticle().introduction().text()
-                .contains("Achilles was a hero."));
+        assertTrue(parsed.structuredArticle().sections().getFirst().blocks().getFirst()
+                .value().contains("Achilles was a hero."));
+    }
+
+    /** A field recipe projects the one retained introduction; it does not fetch or store
+     * a second interpretation of the article. */
+    @Test void projectsLeadParagraphAndSentenceFromTheRetainedIntroduction() {
+        String extract = "<p>Thoth was the Egyptian god of writing. "
+                + "He was also associated with the Moon.</p>"
+                + "<p>His principal cult centre was Hermopolis.</p>";
+        WikipediaArticleClient.ParsedArticleText parsed =
+                WikipediaArticleClient.parseArticleText(extract);
+        var introduction = new datasource.evidence.ArticleIntroduction(parsed.text(),
+                WikipediaArticleClient.sourceDocument("Thoth", "17", parsed.text(),
+                        java.util.List.of(), parsed.links()), parsed.links());
+
+        assertEquals("Thoth was the Egyptian god of writing. "
+                + "He was also associated with the Moon.", introduction.leadParagraph());
+        assertEquals("Thoth was the Egyptian god of writing.", introduction.leadSentence());
     }
 }

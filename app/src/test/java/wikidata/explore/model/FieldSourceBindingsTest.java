@@ -80,6 +80,21 @@ class FieldSourceBindingsTest {
         assertEquals("article-introduction", primary.recipe().operationId());
     }
 
+    @Test void aLeadSentenceIsAProjectionOfTheArticleIntroductionOperation() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel field = model.rootClass().fields().getFirst();
+        field.mapping().sourceType(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE);
+
+        FieldSourceBindings.synchronizeForSave(model);
+        SourceBinding primary = FieldSourceBindings.binding(
+                field, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+
+        assertEquals("article-introduction", primary.recipe().operationId());
+        assertEquals("LEAD_SENTENCE", primary.recipe().parameter("projection"));
+        assertEquals(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE,
+                field.mapping().sourceType());
+    }
+
     @Test void bindingsSurviveTheModelFileAndRestoreLegacyProjection(
             @TempDir Path directory) throws Exception {
         GeneratedProjectModel model = model();

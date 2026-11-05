@@ -478,7 +478,7 @@ public class WikidataDynamicObjectJsonStore {
                 break;
             }
         }
-        if (e.wikipediaArticle == null) for (WikidataDynamicObject o : instances) {
+        for (WikidataDynamicObject o : instances) {
             if (o.articleIntroduction() != null) {
                 writeArticleIntroduction(e, o.articleIntroduction());
                 break;
@@ -912,7 +912,8 @@ public class WikidataDynamicObjectJsonStore {
         }
         if (e.wikipediaArticleAnswered || e.wikipediaArticle != null) {
             object.wikipediaArticleEvidence(e.wikipediaArticle, e.wikipediaArticleAnswered);
-        } else if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
+        }
+        if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
             object.articleIntroductionEvidence(articleIntroduction(e),
                     e.articleIntroductionAnswered);
         }
@@ -1081,7 +1082,7 @@ public class WikidataDynamicObjectJsonStore {
         e.infoboxAnswered = w.infoboxAnswered();
         e.renderedInfoboxAnswered = w.renderedInfoboxAnswered();
         e.wikipediaArticle = w.wikipediaArticle();
-        if (e.wikipediaArticle == null) writeArticleIntroduction(e, w.articleIntroduction());
+        writeArticleIntroduction(e, w.articleIntroduction());
         e.articleIntroductionAnswered = w.articleIntroductionAnswered();
         e.wikipediaArticleAnswered = w.wikipediaArticleAnswered();
         String referenceLabel = w.getReferenceLabel();
@@ -1121,7 +1122,8 @@ public class WikidataDynamicObjectJsonStore {
         }
         if (e.wikipediaArticleAnswered || e.wikipediaArticle != null) {
             o.wikipediaArticleEvidence(e.wikipediaArticle, e.wikipediaArticleAnswered);
-        } else if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
+        }
+        if (e.articleIntroductionAnswered || e.wikipediaArticleDocument != null) {
             o.articleIntroductionEvidence(articleIntroduction(e),
                     e.articleIntroductionAnswered);
         }

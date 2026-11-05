@@ -29,6 +29,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String FAMILY_INFOBOX_FIELD = "wikipedia-infobox-field";
     /** The article's lead text, without later sections. */
     public static final String ARTICLE_INTRODUCTION = "article-introduction";
+    public static final String ARTICLE_TEXT_PROJECTION = "projection";
     public static final String FAMILY_ARTICLE_INTRODUCTION_FIELD =
             "wikipedia-article-introduction-field";
     /** Exact mentions in a retained introduction proposed for review as references. */
@@ -104,26 +105,56 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         @Override public String id() { return ARTICLE_INTRODUCTION; }
         @Override public String displayName() { return "Article introduction"; }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
-        @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(new ParameterDescriptor(ARTICLE_TEXT_PROJECTION,
+                    "Article text", ParameterDescriptor.Kind.CHOICE, false,
+                    ArticleTextProjection.INTRODUCTION.name(),
+                    java.util.Arrays.stream(ArticleTextProjection.values())
+                            .map(Enum::name).toList(),
+                    "Use the complete introduction, its first paragraph, or its first "
+                            + "sentence. The target field assigns the semantic meaning."));
+        }
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.MODEL_VALUE, false, "");
         }
         @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            ArticleTextProjection projection = articleTextProjection(binding);
             return new PreparedSourceOperation(FAMILY_ARTICLE_INTRODUCTION_FIELD,
-                    "Wikipedia article introduction",
+                    "Wikipedia article text",
                     PreparedSourceOperation.Execution.ACQUIRE,
                     binding.target().className() + "." + binding.target().fieldPath()
-                            + " — English Wikipedia article introduction",
+                            + " — English Wikipedia " + projection.displayName(),
                     java.util.Map.of(
                             "input", "Wikipedia article linked from the entity ID",
-                            "operation", "Read the article introduction",
+                            "operation", "Read the " + projection.displayName(),
                             "output", "Fill the configured text field"),
-                    ArticleIntroductionSpec.INSTANCE, articleCorrespondence());
+                    projection, articleCorrespondence());
         }
     }
 
-    /** Marker configuration: the operation has no user-entered parameter. */
-    public enum ArticleIntroductionSpec { INSTANCE }
+    public enum ArticleTextProjection {
+        INTRODUCTION("complete article introduction") {
+            @Override public String project(datasource.evidence.ArticleIntroduction value) {
+                return value == null ? "" : value.text();
+            }
+        },
+        LEAD_PARAGRAPH("lead paragraph") {
+            @Override public String project(datasource.evidence.ArticleIntroduction value) {
+                return value == null ? "" : value.leadParagraph();
+            }
+        },
+        LEAD_SENTENCE("lead sentence") {
+            @Override public String project(datasource.evidence.ArticleIntroduction value) {
+                return value == null ? "" : value.leadSentence();
+            }
+        };
+
+        private final String displayName;
+
+        ArticleTextProjection(String displayName) { this.displayName = displayName; }
+        public String displayName() { return displayName; }
+        public abstract String project(datasource.evidence.ArticleIntroduction value);
+    }
 
     /**
      * A curation recipe, not an automatic value acquisition. The retained introduction
@@ -273,6 +304,23 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         SourceRecipe recipe = binding.recipe();
         return recipe != null && ID.equals(recipe.providerId())
                 && ARTICLE_INTRODUCTION.equals(recipe.operationId());
+    }
+
+    /** The configured projection of the one retained introduction, or null when this
+     * binding is not the article-text operation. Blank legacy recipes mean the complete
+     * introduction. */
+    public static ArticleTextProjection articleTextProjection(SourceBinding binding) {
+        if (!articleIntroduction(binding)) return null;
+        String configured = binding.recipe().parameter(ARTICLE_TEXT_PROJECTION);
+        if (configured == null || configured.isBlank()) {
+            return ArticleTextProjection.INTRODUCTION;
+        }
+        try {
+            return ArticleTextProjection.valueOf(configured.trim());
+        } catch (IllegalArgumentException invalid) {
+            throw new IllegalArgumentException(
+                    "Unknown Wikipedia article-text projection: " + configured, invalid);
+        }
     }
 
     public static boolean articleIntroductionMentions(SourceBinding binding) {

@@ -189,10 +189,12 @@ public final class FieldSourceBindings {
                     WikidataDatasourceProvider.ID, WikidataDatasourceProvider.SITELINK_COUNT,
                     Map.of());
         }
-        if (mapping.sourceType() == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+        if (mapping.sourceType().wikipediaArticleText()) {
             return binding(target, WikipediaDatasourceProvider.ID,
                     WikipediaDatasourceProvider.ARTICLE_INTRODUCTION,
-                    Map.of(SOURCE_TYPE, mapping.sourceType().name()));
+                    Map.of(SOURCE_TYPE, mapping.sourceType().name(),
+                            WikipediaDatasourceProvider.ARTICLE_TEXT_PROJECTION,
+                            articleTextProjection(mapping.sourceType()).name()));
         }
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
             if (clean(mapping.propertyPid()).isBlank()) return null;
@@ -356,7 +358,15 @@ public final class FieldSourceBindings {
         if (WikipediaDatasourceProvider.ID.equals(recipe.providerId())
                 && WikipediaDatasourceProvider.ARTICLE_INTRODUCTION.equals(
                         recipe.operationId())) {
-            return FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION;
+            try {
+                FieldSourceType stored = FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE));
+                if (stored.wikipediaArticleText()) return stored;
+            } catch (RuntimeException ignored) { }
+            return switch (articleTextProjection(recipe)) {
+                case LEAD_PARAGRAPH -> FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH;
+                case LEAD_SENTENCE -> FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE;
+                case INTRODUCTION -> FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION;
+            };
         }
         try { return FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE)); }
         catch (RuntimeException ignored) { return FieldSourceType.MANUAL; }
@@ -371,7 +381,7 @@ public final class FieldSourceBindings {
             return new ProviderOperation(WikipediaDatasourceProvider.ID,
                     WikipediaDatasourceProvider.INFOBOX_PARAMETER);
         }
-        if (type == FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION) {
+        if (type != null && type.wikipediaArticleText()) {
             return new ProviderOperation(WikipediaDatasourceProvider.ID,
                     WikipediaDatasourceProvider.ARTICLE_INTRODUCTION);
         }
@@ -393,6 +403,31 @@ public final class FieldSourceBindings {
                     WikidataDatasourceProvider.PROPERTY_VALUE);
         }
         return null;
+    }
+
+    private static WikipediaDatasourceProvider.ArticleTextProjection articleTextProjection(
+            FieldSourceType type) {
+        if (type == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH) {
+            return WikipediaDatasourceProvider.ArticleTextProjection.LEAD_PARAGRAPH;
+        }
+        if (type == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE) {
+            return WikipediaDatasourceProvider.ArticleTextProjection.LEAD_SENTENCE;
+        }
+        return WikipediaDatasourceProvider.ArticleTextProjection.INTRODUCTION;
+    }
+
+    private static WikipediaDatasourceProvider.ArticleTextProjection articleTextProjection(
+            SourceRecipe recipe) {
+        String value = recipe.parameter(WikipediaDatasourceProvider.ARTICLE_TEXT_PROJECTION);
+        if (value == null || value.isBlank()) {
+            return WikipediaDatasourceProvider.ArticleTextProjection.INTRODUCTION;
+        }
+        try {
+            return WikipediaDatasourceProvider.ArticleTextProjection.valueOf(value);
+        } catch (IllegalArgumentException invalid) {
+            throw new IllegalArgumentException(
+                    "Unknown Wikipedia article-text projection: " + value, invalid);
+        }
     }
 
     private record ProviderOperation(String provider, String operation) { }

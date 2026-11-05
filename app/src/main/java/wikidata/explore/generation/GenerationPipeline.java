@@ -739,7 +739,7 @@ public class GenerationPipeline {
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 "Acquire Wikidata computed fields, DBpedia fields, Wikipedia categories, "
-                        + "article introductions and native infobox values");
+                        + "configured article text and native infobox values");
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
                 snapshot, pool, sourcePlan,
                 StandardExternalSourceFamilies.services(

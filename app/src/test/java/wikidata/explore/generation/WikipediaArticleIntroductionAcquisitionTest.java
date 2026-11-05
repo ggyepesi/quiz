@@ -128,6 +128,42 @@ class WikipediaArticleIntroductionAcquisitionTest {
         assertEquals("Shared introduction.", second.get("summary"));
     }
 
+    /** Full introduction, lead paragraph and lead sentence are interpretations of one
+     * retained answer, not separate Wikipedia operations or requests. */
+    @Test void oneIntroductionSuppliesEveryConfiguredGenericLeadProjection()
+            throws Exception {
+        GeneratedProjectModel model = model();
+        model.rootClass().addField("leadParagraph", FieldType.TEXT,
+                FieldCardinality.SINGLE);
+        model.rootClass().addField("introduction", FieldType.TEXT,
+                FieldCardinality.SINGLE);
+        WikidataDynamicObject episode = episode();
+        AtomicInteger requests = new AtomicInteger();
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(List.of(
+                articleText("Episode", "summary", "LEAD_SENTENCE"),
+                articleText("Episode", "leadParagraph", "LEAD_PARAGRAPH"),
+                articleText("Episode", "introduction", "INTRODUCTION")),
+                datasource.Datasources.standard());
+
+        var result = WikipediaArticleIntroductionAcquisition.apply(
+                model, List.of(episode), GenerationLog.NOOP,
+                new work.CancellationToken(), null, plan, uri -> {
+                    requests.incrementAndGet();
+                    return response("Judgement of Paris", 17,
+                            "<p>Paris judges three goddesses. Athena offers wisdom.</p>"
+                                    + "<p>The contest begins at a wedding.</p>");
+                });
+
+        assertEquals(1, requests.get());
+        assertEquals("Paris judges three goddesses.", episode.get("summary"));
+        assertEquals("Paris judges three goddesses. Athena offers wisdom.",
+                episode.get("leadParagraph"));
+        assertEquals("Paris judges three goddesses. Athena offers wisdom.\n"
+                        + "The contest begins at a wedding.",
+                episode.get("introduction"));
+        assertEquals(3, result.values());
+    }
+
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel episode = new GeneratedClassModel("Episode");
@@ -137,12 +173,18 @@ class WikipediaArticleIntroductionAcquisitionTest {
     }
 
     private static SourceExecutionPlan plan() {
-        SourceBinding binding = new SourceBinding(
-                SourceBindingTarget.fieldValue("Episode", "summary",
-                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
-                new SourceRecipe("wikipedia", "article-introduction", Map.of()));
+        SourceBinding binding = articleText("Episode", "summary", "INTRODUCTION");
         return SourceExecutionPlan.compile(
                 List.of(binding), datasource.Datasources.standard());
+    }
+
+    private static SourceBinding articleText(
+            String type, String field, String projection) {
+        return new SourceBinding(
+                SourceBindingTarget.fieldValue(type, field,
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikipedia", "article-introduction",
+                        Map.of("projection", projection)));
     }
 
     private static WikidataDynamicObject episode() {

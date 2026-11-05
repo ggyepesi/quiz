@@ -52,26 +52,6 @@ public final class WikipediaArticle extends ViewableAdapter {
                         link.start(), link.end())).distinct().toList();
     }
 
-    /** The introduction projection used by existing mention recipes, derived from this
-     * retained article rather than fetched or stored through a second route. */
-    public ArticleIntroduction introduction() {
-        Section introduction = sections.stream()
-                .filter(section -> section.level() == 0
-                        || section.heading().equalsIgnoreCase("Introduction"))
-                .findFirst().orElse(null);
-        if (introduction == null || introduction.end() <= introduction.start()
-                || introduction.end() > text.length()) {
-            return new ArticleIntroduction("", document, List.of());
-        }
-        int start = introduction.start();
-        int end = introduction.end();
-        List<ArticleIntroduction.Link> links = links(introduction).stream()
-                .filter(link -> link.start() >= start && link.end() <= end)
-                .map(link -> new ArticleIntroduction.Link(link.text(), link.targetTitle(),
-                        link.start() - start, link.end() - start)).toList();
-        return new ArticleIntroduction(text.substring(start, end).trim(), document, links);
-    }
-
     @Override public String getIdentifier() { return document.documentId(); }
     @Override public String getDisplayName() { return document.title(); }
 

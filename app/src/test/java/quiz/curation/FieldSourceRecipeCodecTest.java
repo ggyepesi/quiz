@@ -94,6 +94,20 @@ class FieldSourceRecipeCodecTest {
         assertEquals("", FieldSourceRecipeCodec.mapping(scoped).propertyPid());
     }
 
+    @Test void aLeadSentenceKeepsItsProjectionThroughTheCurationFacade() {
+        FieldSourceMapping source = mapping(
+                FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE, "", "");
+
+        FieldSourceRecipe scoped = FieldSourceRecipeCodec.scoped(
+                "EgyptianDeity", "summary", source);
+
+        assertNotNull(scoped);
+        assertEquals("article-introduction", scoped.recipe().operationId());
+        assertEquals("LEAD_SENTENCE", scoped.recipe().parameter("projection"));
+        assertEquals(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE,
+                FieldSourceRecipeCodec.mapping(scoped).sourceType());
+    }
+
     @Test void aRecipeNamingAnUnreadableKindIsIgnoredRatherThanFatal() {
         assertNull(FieldSourceRecipeCodec.mapping(FieldSourceRecipe.additionalSource(
                 "Movie", "locations", "SOME_LATER_SOURCE", "whatever", "")));
