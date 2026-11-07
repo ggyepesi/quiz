@@ -14,7 +14,10 @@ import datasource.api.SourceRecipe;
 import datasource.api.PreparedSourceOperation;
 import datasource.api.SourceInputRequirement;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Wikipedia capabilities exposed without application-side provider branching. */
 public final class WikipediaDatasourceProvider implements DatasourceProvider {
@@ -368,11 +371,47 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     }
 
     /** The category interpretation declared at this field target, if any. */
-    public record CategoryRule(String pattern, String policy) { }
+    public record CategoryRule(
+            String pattern, String policy, List<CategoryMapping> mappings) {
+        public CategoryRule {
+            pattern = pattern == null ? "" : pattern;
+            policy = policy == null || policy.isBlank() ? "REVIEW" : policy;
+            mappings = mappings == null ? List.of() : List.copyOf(mappings);
+        }
 
-    /** Where a category title carries the field's value. A pattern without exactly one
-     *  is not a template, so it names no acquisition — the same thing the model
-     *  validator refuses, said here so a run finds out before it fetches. */
+        public String description() {
+            List<String> parts = new ArrayList<>();
+            if (!pattern.isBlank()) parts.add("‘" + pattern + "’");
+            if (!mappings.isEmpty()) parts.add(mappings.size() + " exact mapping(s)");
+            return String.join(" plus ", parts);
+        }
+    }
+
+    public record CategoryMapping(String category, String valueQid) { }
+
+    /** One codec for the provider-neutral source recipe. ModelBuilder fields and
+     * Transform curation both write through it, and {@link #categoryRule(SourceBinding)}
+     * is the one inverse. */
+    public static Map<String, String> categoryParameters(CategoryRule rule) {
+        if (rule == null) return Map.of();
+        Map<String, String> parameters = new LinkedHashMap<>();
+        parameters.put(WikipediaCategoryDiscoveryOperation.PATTERN, rule.pattern());
+        parameters.put(WikipediaCategoryDiscoveryOperation.POLICY, rule.policy());
+        parameters.put(WikipediaCategoryDiscoveryOperation.MAPPING_COUNT,
+                Integer.toString(rule.mappings().size()));
+        for (int index = 0; index < rule.mappings().size(); index++) {
+            CategoryMapping mapping = rule.mappings().get(index);
+            parameters.put(WikipediaCategoryDiscoveryOperation.mappingCategory(index),
+                    mapping.category());
+            parameters.put(WikipediaCategoryDiscoveryOperation.mappingValueQid(index),
+                    mapping.valueQid());
+        }
+        return parameters;
+    }
+
+    /** Where category membership carries the field's value. A rule needs either one
+     * valid {@code <value>} template or at least one valid exact category-to-QID
+     * mapping; otherwise it names no acquisition. */
     public static final String VALUE_PLACEHOLDER = "<value>";
 
     public static CategoryRule categoryRule(SourceBinding binding) {
@@ -387,12 +426,14 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             return null;
         }
         String pattern = recipe.parameter(WikipediaCategoryDiscoveryOperation.PATTERN);
+        List<CategoryMapping> mappings = categoryMappings(recipe);
         // A pattern still being typed matches nothing, and admitting it cost a whole
         // pool's sitelinks and categories on the Enrich path, which acquires BEFORE it
         // compiles — so the model was refused only after the fetching was done.
-        if (pattern == null
-                || pattern.split(java.util.regex.Pattern.quote(VALUE_PLACEHOLDER), -1)
-                        .length - 1 != 1) {
+        boolean patternConfigured = pattern != null && !pattern.isBlank()
+                && pattern.split(java.util.regex.Pattern.quote(VALUE_PLACEHOLDER), -1)
+                        .length - 1 == 1;
+        if (!patternConfigured && mappings.isEmpty()) {
             return null;
         }
         // The policy default is stated here as a STRING rather than reached for as
@@ -400,7 +441,29 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         // and must not depend on one. The descriptor declares the same default.
         String policy = recipe.parameter(WikipediaCategoryDiscoveryOperation.POLICY);
         if (policy == null || policy.isBlank()) policy = "REVIEW";
-        return new CategoryRule(pattern, policy);
+        return new CategoryRule(patternConfigured ? pattern : "", policy, mappings);
+    }
+
+    private static List<CategoryMapping> categoryMappings(SourceRecipe recipe) {
+        int count;
+        try {
+            count = Integer.parseInt(recipe.parameter(
+                    WikipediaCategoryDiscoveryOperation.MAPPING_COUNT));
+        } catch (RuntimeException ignored) {
+            count = 0;
+        }
+        List<CategoryMapping> mappings = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            String category = recipe.parameter(
+                    WikipediaCategoryDiscoveryOperation.mappingCategory(index));
+            String qid = recipe.parameter(
+                    WikipediaCategoryDiscoveryOperation.mappingValueQid(index));
+            if (category != null && !category.isBlank()
+                    && wikidata.WikidataIds.isQid(qid)) {
+                mappings.add(new CategoryMapping(category.trim(), qid.trim().toUpperCase()));
+            }
+        }
+        return mappings;
     }
 
     @Override public String id() { return ID; }

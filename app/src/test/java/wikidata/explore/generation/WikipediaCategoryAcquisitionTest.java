@@ -53,6 +53,29 @@ class WikipediaCategoryAcquisitionTest {
         assertTrue(WikipediaCategoryAcquisition.configured(planFor("Films set in <value>")));
     }
 
+    @Test void anExactCategoryMappingNamesAcquisitionWithoutAPattern() {
+        var providerRule = new datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule(
+                "", "REVIEW", List.of(
+                new datasource.wikipedia.WikipediaDatasourceProvider.CategoryMapping(
+                        "Falcon deities", "Q43489")));
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "EgyptianDeity", "iconographicSymbol",
+                        datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe(
+                        datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        datasource.wikipedia.WikipediaCategoryDiscoveryOperation.ID,
+                        datasource.wikipedia.WikipediaDatasourceProvider
+                                .categoryParameters(providerRule)));
+
+        var parsed = datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(binding);
+
+        assertEquals(providerRule, parsed);
+        assertTrue(WikipediaCategoryAcquisition.configured(
+                datasource.api.SourceExecutionPlan.compile(
+                        List.of(binding), datasource.Datasources.standard())));
+    }
+
     private static datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule rule(
             String pattern) {
         return datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(

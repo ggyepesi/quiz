@@ -138,29 +138,52 @@ final class ModelFieldRulePromoter {
             return FieldRulePromoter.PromotionPreview.ineligible(
                     "The model must already declare " + recipe.type() + "." + recipe.field() + ".");
         }
-        String pattern = recipe.parameter(FieldSourceRecipe.PATTERN);
-        if (pattern.indexOf("<value>") < 0
-                || pattern.indexOf("<value>") != pattern.lastIndexOf("<value>")) {
+        datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule providerRule =
+                datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(
+                        recipe.binding());
+        if (providerRule == null) {
             return FieldRulePromoter.PromotionPreview.ineligible(
-                    "The category pattern must contain exactly one <value> placeholder.");
+                    "Configure one <value> category pattern or at least one exact "
+                            + "category-to-QID mapping.");
         }
-        String policy = recipe.parameter(FieldSourceRecipe.POLICY);
+        String policy = providerRule.policy();
         try {
             wikidata.explore.model.CategoryCandidatePolicy.valueOf(policy);
         } catch (RuntimeException invalid) {
             return FieldRulePromoter.PromotionPreview.ineligible("Unknown category policy: " + policy);
         }
+        wikidata.explore.model.WikipediaCategoryRule candidate = recipe.categoryRule();
         wikidata.explore.model.WikipediaCategoryRule declared = field.wikipediaCategoryRule();
-        String previous = declared == null ? "" : declared.pattern();
-        if (declared != null && pattern.equals(previous)
-                && policy.equals(declared.policy().name())) {
+        String previous = categorySummary(declared);
+        if (sameCategoryRule(declared, candidate)) {
             return FieldRulePromoter.PromotionPreview.ineligible(
                     "The model already contains this category recipe.");
         }
         return new FieldRulePromoter.PromotionPreview(true,
                 previous.isBlank() ? "Add category source recipe" : "Update category source recipe",
                 modelFile.getAbsolutePath(), recipe.type(), recipe.field(), "",
-                "Wikipedia category", "", pattern, false, previous);
+                "Wikipedia category", "", categorySummary(candidate), false, previous);
+    }
+
+    private static boolean sameCategoryRule(
+            wikidata.explore.model.WikipediaCategoryRule left,
+            wikidata.explore.model.WikipediaCategoryRule right) {
+        return left != null && right != null
+                && left.pattern().equals(right.pattern())
+                && left.policy() == right.policy()
+                && new java.util.HashSet<>(left.mappings())
+                        .equals(new java.util.HashSet<>(right.mappings()));
+    }
+
+    private static String categorySummary(
+            wikidata.explore.model.WikipediaCategoryRule rule) {
+        if (rule == null || !rule.configured()) return "";
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        if (rule.patternConfigured()) parts.add(rule.pattern());
+        if (!rule.mappings().isEmpty()) {
+            parts.add(rule.mappings().size() + " exact mapping(s)");
+        }
+        return String.join(" + ", parts);
     }
 
     private FieldRulePromoter.PromotionPreview inspect(

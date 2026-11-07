@@ -843,6 +843,258 @@
         }
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "associatedAnimal",
+      "type" : "ENTITY",
+      "entityClassName" : "",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "AUTO",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "wikipediaCategoryRule" : {
+        "@class" : "wikidata.explore.model.WikipediaCategoryRule",
+        "pattern" : "",
+        "policy" : "REVIEW",
+        "mappings" : [ "java.util.ArrayList", [ {
+          "category" : "Falcon deities",
+          "valueQid" : "Q43489"
+        }, {
+          "category" : "Bird deities",
+          "valueQid" : "Q5113"
+        }, {
+          "category" : "Canine deities",
+          "valueQid" : "Q25324"
+        }, {
+          "category" : "Wolf deities",
+          "valueQid" : "Q18498"
+        }, {
+          "category" : "Cat deities",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Cat gods",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Cat goddesses",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Feline deities",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Feline gods",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Feline goddesses",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Lion deities",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Lion gods",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Lion goddesses",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Cattle deities",
+          "valueQid" : "Q830"
+        }, {
+          "category" : "Snake deities",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Snake gods",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Snake goddesses",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Reptile deities",
+          "valueQid" : "Q10811"
+        }, {
+          "category" : "Mythological caprids",
+          "valueQid" : "Q189804"
+        }, {
+          "category" : "Hippopotamuses in culture",
+          "valueQid" : "Q34505"
+        }, {
+          "category" : "Scorpions in culture",
+          "valueQid" : "Q19125"
+        }, {
+          "category" : "Beetles and humans",
+          "valueQid" : "Q22671"
+        }, {
+          "category" : "Mythological amphibians",
+          "valueQid" : "Q10908"
+        } ] ]
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "associatedAnimal",
+          "slot" : "CATEGORY_EVIDENCE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "category",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "mapping.0.category" : "Falcon deities",
+            "mapping.0.valueQid" : "Q43489",
+            "mapping.1.category" : "Bird deities",
+            "mapping.1.valueQid" : "Q5113",
+            "mapping.10.category" : "Lion deities",
+            "mapping.10.valueQid" : "Q140",
+            "mapping.11.category" : "Lion gods",
+            "mapping.11.valueQid" : "Q140",
+            "mapping.12.category" : "Lion goddesses",
+            "mapping.12.valueQid" : "Q140",
+            "mapping.13.category" : "Cattle deities",
+            "mapping.13.valueQid" : "Q830",
+            "mapping.14.category" : "Snake deities",
+            "mapping.14.valueQid" : "Q2102",
+            "mapping.15.category" : "Snake gods",
+            "mapping.15.valueQid" : "Q2102",
+            "mapping.16.category" : "Snake goddesses",
+            "mapping.16.valueQid" : "Q2102",
+            "mapping.17.category" : "Reptile deities",
+            "mapping.17.valueQid" : "Q10811",
+            "mapping.18.category" : "Mythological caprids",
+            "mapping.18.valueQid" : "Q189804",
+            "mapping.19.category" : "Hippopotamuses in culture",
+            "mapping.19.valueQid" : "Q34505",
+            "mapping.2.category" : "Canine deities",
+            "mapping.2.valueQid" : "Q25324",
+            "mapping.20.category" : "Scorpions in culture",
+            "mapping.20.valueQid" : "Q19125",
+            "mapping.21.category" : "Beetles and humans",
+            "mapping.21.valueQid" : "Q22671",
+            "mapping.22.category" : "Mythological amphibians",
+            "mapping.22.valueQid" : "Q10908",
+            "mapping.3.category" : "Wolf deities",
+            "mapping.3.valueQid" : "Q18498",
+            "mapping.4.category" : "Cat deities",
+            "mapping.4.valueQid" : "Q146",
+            "mapping.5.category" : "Cat gods",
+            "mapping.5.valueQid" : "Q146",
+            "mapping.6.category" : "Cat goddesses",
+            "mapping.6.valueQid" : "Q146",
+            "mapping.7.category" : "Feline deities",
+            "mapping.7.valueQid" : "Q25265",
+            "mapping.8.category" : "Feline gods",
+            "mapping.8.valueQid" : "Q25265",
+            "mapping.9.category" : "Feline goddesses",
+            "mapping.9.valueQid" : "Q25265",
+            "mappingCount" : "23",
+            "pattern" : "",
+            "policy" : "REVIEW"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "symbolizedBy",
+      "type" : "ENTITY",
+      "entityClassName" : "",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P4878",
+        "propertyLabel" : "symbolizes",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "DELAYED_ENTITY_FIELD",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "symbolizedBy",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "symbolizes",
+            "property" : "P4878",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "populationSource" : {
@@ -1804,6 +2056,258 @@
             "@class" : "java.util.ImmutableCollections$MapN",
             "projection" : "LEAD_SENTENCE",
             "sourceType" : "WIKIPEDIA_ARTICLE_LEAD_SENTENCE"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "associatedAnimal",
+      "type" : "ENTITY",
+      "entityClassName" : "",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "AUTO",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "AUTO",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "wikipediaCategoryRule" : {
+        "@class" : "wikidata.explore.model.WikipediaCategoryRule",
+        "pattern" : "",
+        "policy" : "REVIEW",
+        "mappings" : [ "java.util.ArrayList", [ {
+          "category" : "Falcon deities",
+          "valueQid" : "Q43489"
+        }, {
+          "category" : "Bird deities",
+          "valueQid" : "Q5113"
+        }, {
+          "category" : "Canine deities",
+          "valueQid" : "Q25324"
+        }, {
+          "category" : "Wolf deities",
+          "valueQid" : "Q18498"
+        }, {
+          "category" : "Cat deities",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Cat gods",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Cat goddesses",
+          "valueQid" : "Q146"
+        }, {
+          "category" : "Feline deities",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Feline gods",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Feline goddesses",
+          "valueQid" : "Q25265"
+        }, {
+          "category" : "Lion deities",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Lion gods",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Lion goddesses",
+          "valueQid" : "Q140"
+        }, {
+          "category" : "Cattle deities",
+          "valueQid" : "Q830"
+        }, {
+          "category" : "Snake deities",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Snake gods",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Snake goddesses",
+          "valueQid" : "Q2102"
+        }, {
+          "category" : "Reptile deities",
+          "valueQid" : "Q10811"
+        }, {
+          "category" : "Mythological caprids",
+          "valueQid" : "Q189804"
+        }, {
+          "category" : "Hippopotamuses in culture",
+          "valueQid" : "Q34505"
+        }, {
+          "category" : "Scorpions in culture",
+          "valueQid" : "Q19125"
+        }, {
+          "category" : "Beetles and humans",
+          "valueQid" : "Q22671"
+        }, {
+          "category" : "Mythological amphibians",
+          "valueQid" : "Q10908"
+        } ] ]
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "associatedAnimal",
+          "slot" : "CATEGORY_EVIDENCE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "category",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "mapping.0.category" : "Falcon deities",
+            "mapping.0.valueQid" : "Q43489",
+            "mapping.1.category" : "Bird deities",
+            "mapping.1.valueQid" : "Q5113",
+            "mapping.10.category" : "Lion deities",
+            "mapping.10.valueQid" : "Q140",
+            "mapping.11.category" : "Lion gods",
+            "mapping.11.valueQid" : "Q140",
+            "mapping.12.category" : "Lion goddesses",
+            "mapping.12.valueQid" : "Q140",
+            "mapping.13.category" : "Cattle deities",
+            "mapping.13.valueQid" : "Q830",
+            "mapping.14.category" : "Snake deities",
+            "mapping.14.valueQid" : "Q2102",
+            "mapping.15.category" : "Snake gods",
+            "mapping.15.valueQid" : "Q2102",
+            "mapping.16.category" : "Snake goddesses",
+            "mapping.16.valueQid" : "Q2102",
+            "mapping.17.category" : "Reptile deities",
+            "mapping.17.valueQid" : "Q10811",
+            "mapping.18.category" : "Mythological caprids",
+            "mapping.18.valueQid" : "Q189804",
+            "mapping.19.category" : "Hippopotamuses in culture",
+            "mapping.19.valueQid" : "Q34505",
+            "mapping.2.category" : "Canine deities",
+            "mapping.2.valueQid" : "Q25324",
+            "mapping.20.category" : "Scorpions in culture",
+            "mapping.20.valueQid" : "Q19125",
+            "mapping.21.category" : "Beetles and humans",
+            "mapping.21.valueQid" : "Q22671",
+            "mapping.22.category" : "Mythological amphibians",
+            "mapping.22.valueQid" : "Q10908",
+            "mapping.3.category" : "Wolf deities",
+            "mapping.3.valueQid" : "Q18498",
+            "mapping.4.category" : "Cat deities",
+            "mapping.4.valueQid" : "Q146",
+            "mapping.5.category" : "Cat gods",
+            "mapping.5.valueQid" : "Q146",
+            "mapping.6.category" : "Cat goddesses",
+            "mapping.6.valueQid" : "Q146",
+            "mapping.7.category" : "Feline deities",
+            "mapping.7.valueQid" : "Q25265",
+            "mapping.8.category" : "Feline gods",
+            "mapping.8.valueQid" : "Q25265",
+            "mapping.9.category" : "Feline goddesses",
+            "mapping.9.valueQid" : "Q25265",
+            "mappingCount" : "23",
+            "pattern" : "",
+            "policy" : "REVIEW"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "symbolizedBy",
+      "type" : "ENTITY",
+      "entityClassName" : "",
+      "unclassedEntity" : true,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "P4878",
+        "propertyLabel" : "symbolizes",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ITEM_TO_ROOT",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "DELAYED_ENTITY_FIELD",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "SPARQL"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "EgyptianDeity",
+          "fieldPath" : "symbolizedBy",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "property-value",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "label" : "symbolizes",
+            "property" : "P4878",
+            "sourceType" : "SPARQL",
+            "valueLanguage" : ""
           }
         }
       } ] ],

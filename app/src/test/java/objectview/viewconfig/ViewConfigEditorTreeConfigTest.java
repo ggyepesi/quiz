@@ -159,6 +159,14 @@ class ViewConfigEditorTreeConfigTest {
         return false;
     }
 
+    private static int rowDepth(ViewConfigEditor editor, String dotted) throws Exception {
+        for (Object state : rowStates(editor, "allRows")) {
+            FieldRow row = rowOf(state);
+            if (row.path().dotted().equals(dotted)) return row.depth();
+        }
+        throw new AssertionError("no row " + dotted + "; rows=" + rowPaths(editor));
+    }
+
     /** Checks a visible row through the table, as a click on its box does. */
     private static void check(ViewConfigEditor editor, String dotted) throws Exception {
         var tableField = ViewConfigEditor.class.getDeclaredField("table");
@@ -310,6 +318,30 @@ class ViewConfigEditorTreeConfigTest {
                 "the provenance collection's QID link is a real selectable value; rows="
                         + rowPaths(editor));
         assertEquals(qidLink, editor.selectedPath());
+    }
+
+    @Test void configuredSourcesAndDomainFieldsArePeerRows() throws Exception {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var deity = new wikidata.explore.model.GeneratedClassModel("EgyptianDeity");
+        deity.addField("summary", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        wikidata.explore.model.ClassSourceBindings.wikipediaArticle(deity, true);
+        model.rootClass(deity);
+        var amun = new wikidata.explore.extract.WikidataDynamicObject("Q1268", "Amun");
+        amun.type("EgyptianDeity");
+        amun.put("summary", "creator god");
+        amun.enwikiTitle("Amun");
+        var domain = wikidata.explore.transform.ProductCompiler.compile(
+                model, new java.util.ArrayList<>(List.of(amun)));
+
+        ViewConfigEditor editor = new ViewConfigEditor(
+                topConfig(), domain.configSample("EgyptianDeity"));
+        editor.setConnectedFieldSelection(true);
+        editor.setFieldTypes(domain.fieldTypes("EgyptianDeity"));
+
+        assertAll(() -> assertEquals(0, rowDepth(editor, "wikidataSource")),
+                () -> assertEquals(0, rowDepth(editor, "wikipediaSource")),
+                () -> assertEquals(0, rowDepth(editor, "summary")));
     }
 
     @Test void schemaBackedReferenceCycleCanBeConfiguredToAnyManualDepth()

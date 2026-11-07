@@ -25,7 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** Virtualized card review over every proposal produced by Load values. */
 public final class FindDataBatchReviewPanel {
@@ -34,7 +34,7 @@ public final class FindDataBatchReviewPanel {
 
     public static void showDialog(
             Component owner, String title, String prompt,
-            List<EnrichmentProposal> proposals, Consumer<BatchReviewDecision> onDone) {
+            List<EnrichmentProposal> proposals, Predicate<BatchReviewDecision> onDone) {
         show(owner, title, prompt, proposals, List.of(),
                 Dialog.ModalityType.APPLICATION_MODAL, onDone);
     }
@@ -48,7 +48,7 @@ public final class FindDataBatchReviewPanel {
     public static JDialog showModeless(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
-            Consumer<BatchReviewDecision> onDone) {
+            Predicate<BatchReviewDecision> onDone) {
         return show(owner, title, prompt, proposals, sourceReport,
                 Dialog.ModalityType.MODELESS, onDone);
     }
@@ -56,8 +56,7 @@ public final class FindDataBatchReviewPanel {
     private static JDialog show(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
-            Dialog.ModalityType modality,
-            Consumer<BatchReviewDecision> onDone) {
+            Dialog.ModalityType modality, Predicate<BatchReviewDecision> onDone) {
         Map<String, EnrichmentDecision> applicable = new LinkedHashMap<>();
         List<EnrichmentDecision> safeDefaults = new ArrayList<>();
         List<Viewable> cards = new ArrayList<>();
@@ -133,11 +132,14 @@ public final class FindDataBatchReviewPanel {
         return dialog;
     }
 
-    private static void stage(Consumer<BatchReviewDecision> callback,
-                              List<EnrichmentDecision> decisions, JLabel outcome,
-                              JButton selected, JButton all) {
+    static void stage(Predicate<BatchReviewDecision> callback,
+                      List<EnrichmentDecision> decisions, JLabel outcome,
+                      JButton selected, JButton all) {
         if (decisions.isEmpty()) return;
-        callback.accept(new BatchReviewDecision(List.copyOf(decisions)));
+        if (!callback.test(new BatchReviewDecision(List.copyOf(decisions)))) {
+            outcome.setText("Nothing staged; correct the reported problem and retry.");
+            return;
+        }
         outcome.setText("Staged " + decisions.size() + " result"
                 + (decisions.size() == 1 ? "" : "s")
                 + "; use Save staged changes in TransformApp to keep them.");
@@ -190,7 +192,7 @@ public final class FindDataBatchReviewPanel {
                         field.action() == EnrichmentProposal.ReviewAction.CORROBORATE);
     }
 
-    private static String detail(EnrichmentProposal proposal) {
+    static String detail(EnrichmentProposal proposal) {
         if (EnrichmentDecision.requiresIdentityChoice(proposal)) {
             return "Multiple records from the same source are referenced; choose an identity "
                     + "before applying.";
@@ -204,8 +206,10 @@ public final class FindDataBatchReviewPanel {
         if (accepted != null && !accepted.fields().isEmpty()) {
             EnrichmentProposal.FieldCandidate field = accepted.fields().get(0).candidate();
             return (field.suggestedAction() == EnrichmentProposal.ReviewAction.CORROBORATE
-                    ? field.field() + " already contains " + field.proposedValue()
-                    : field.field() + " = " + field.proposedValue())
+                    ? field.field() + " already contains "
+                            + proposedValueCaption(field.proposedValue())
+                    : field.field() + " = "
+                            + proposedValueCaption(field.proposedValue()))
                     + sourceSuffix(field.source());
         }
         if (accepted != null && accepted.media() != null) {

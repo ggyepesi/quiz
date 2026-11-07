@@ -11,6 +11,8 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.MembershipPattern;
+import wikidata.explore.model.FieldSemantics;
+import wikidata.explore.model.RuleDirection;
 import wikidata.api.FactDemand;
 import wikidata.api.FactDemandBinder;
 
@@ -41,8 +43,10 @@ import java.util.Set;
  * refs via {@code wbgetentities}), DATE (a {@link aux.FlexibleDate}) and STRING
  * (the raw literal, both read off the statements' mainsnak) — so a referenced class
  * can carry its own attributes, e.g. a {@code Ceremony} with a {@code year}/{@code
- * date}. Incoming relations are still out of scope. A SINGLE field takes the first
- * value, a COLLECTION keeps all; an already-populated field is left alone.
+ * date}. Incoming relations belong exclusively to the bounded rule-tree field query;
+ * admitting them here would read the opposite claim direction, record false empty
+ * coverage, and report a second contradictory field result. A SINGLE field takes the
+ * first value, a COLLECTION keeps all; an already-populated field is left alone.
  */
 public final class ReferentFieldLoad {
     private static final String ALIASES_FIELD = "@aliases";
@@ -300,7 +304,7 @@ public final class ReferentFieldLoad {
             List<GeneratedFieldModel> fields = new ArrayList<>();
             for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f != null && loadableType(f.type())
-                        && (clean(f.mapping().propertyPid()).matches("(?i)P\\d+")
+                        && (loadsOutgoingClaim(f)
                         || pattern == MembershipPattern.OWNED_COMPONENT)) {
                     fields.add(f);
                 }
@@ -530,7 +534,7 @@ public final class ReferentFieldLoad {
         // give a field the property its shared default lacks. Each group loads only the
         // fields that, in its own context, name a property.
         List<GeneratedFieldModel> sharedLoadable = defaults.stream()
-                .filter(field -> WikidataIds.isPid(clean(field.mapping().propertyPid())))
+                .filter(ReferentFieldLoad::loadsOutgoingClaim)
                 .toList();
         bySourceContext.forEach((key, values) -> {
             if (className.equals(key)) {
@@ -545,8 +549,7 @@ public final class ReferentFieldLoad {
                     wikidata.explore.model.OwnedFieldSources
                             .effectiveFields(model, target, site).stream()
                             .filter(field -> field != null && loadableType(field.type())
-                                    && WikidataIds.isPid(
-                                            clean(field.mapping().propertyPid())))
+                                    && loadsOutgoingClaim(field))
                             .toList();
             if (!fields.isEmpty()) groups.add(new ReferentGroup(key, fields, values));
         });
@@ -569,6 +572,20 @@ public final class ReferentFieldLoad {
         return t == FieldType.ENTITY || t == FieldType.DATE
                 || t == FieldType.STRING || t == FieldType.TEXT
                 || t == FieldType.IMAGE;
+    }
+
+    /** This pass reads claims stored on the class member itself. The rule-tree
+     * extractor owns incoming relations and logs their bounded SPARQL batches. */
+    private static boolean loadsOutgoingClaim(GeneratedFieldModel field) {
+        return field != null
+                && WikidataIds.isPid(clean(field.mapping().propertyPid()))
+                // Entity fields can genuinely point either way. Literal/media fields
+                // are statement values stored on the member and are the reason this
+                // pass also supports old programmatic models whose direction default
+                // predates their explicit field type.
+                && (field.type() != FieldType.ENTITY
+                    || FieldSemantics.effectiveDirection(field)
+                            == RuleDirection.ROOT_TO_ITEM);
     }
 
     private static LoadOutcome loadField(
@@ -744,8 +761,9 @@ public final class ReferentFieldLoad {
         if (producer == null) return Set.of();
         Set<String> producerPids = new LinkedHashSet<>();
         for (GeneratedFieldModel field : producer.effectiveFields(model)) {
-            String pid = clean(field.mapping().propertyPid());
-            if (WikidataIds.isPid(pid)) producerPids.add(pid);
+            if (loadsOutgoingClaim(field)) {
+                producerPids.add(clean(field.mapping().propertyPid()));
+            }
         }
         if (producer.ownedClass()) {
             for (MembershipPattern.OwnedBy ownedBy :
@@ -757,8 +775,9 @@ public final class ReferentFieldLoad {
                 for (GeneratedFieldModel field :
                         wikidata.explore.model.OwnedFieldSources.effectiveFields(
                                 model, producer, site)) {
-                    String pid = clean(field.mapping().propertyPid());
-                    if (WikidataIds.isPid(pid)) producerPids.add(pid);
+                    if (loadsOutgoingClaim(field)) {
+                        producerPids.add(clean(field.mapping().propertyPid()));
+                    }
                 }
             }
         }
@@ -803,8 +822,9 @@ public final class ReferentFieldLoad {
         GeneratedClassModel clazz = model.findClass(className);
         if (clazz == null) return;
         for (GeneratedFieldModel field : clazz.effectiveFields(model)) {
-            String pid = clean(field.mapping().propertyPid());
-            if (WikidataIds.isPid(pid)) pids.add(pid);
+            if (loadsOutgoingClaim(field)) {
+                pids.add(clean(field.mapping().propertyPid()));
+            }
             if (field.type() != FieldType.ENTITY) continue;
             GeneratedClassModel target = model.findClass(field.entityClassName());
             boolean owned = field.mapping().productionKind()
@@ -830,8 +850,9 @@ public final class ReferentFieldLoad {
         for (GeneratedFieldModel field :
                 wikidata.explore.model.OwnedFieldSources.effectiveFields(
                         model, target, site)) {
-            String pid = clean(field.mapping().propertyPid());
-            if (WikidataIds.isPid(pid)) pids.add(pid);
+            if (loadsOutgoingClaim(field)) {
+                pids.add(clean(field.mapping().propertyPid()));
+            }
             if (field.type() != FieldType.ENTITY) continue;
             GeneratedClassModel nested = model.findClass(field.entityClassName());
             if (nested == null || !(field.mapping().productionKind()
@@ -1019,8 +1040,10 @@ public final class ReferentFieldLoad {
             o.put(field.name(), collection ? values : values.get(0));
             loaded++;
         }
-        log.message("Referent field load " + className + "." + field.name()
-                + " (" + pid + ") -> " + loaded + " value(s)\n");
+        log.message("Semantic completion " + className + "." + field.name()
+                + " (" + pid + "): checked " + qids.size()
+                + " previously missing member(s), added " + loaded
+                + " value(s), " + unreached.size() + " unavailable.\n");
         if (!untranslatedCalendars.isEmpty() && log != null) {
             log.message("WARNING: " + className + "." + field.name()
                     + " kept value(s) untyped — calendar model(s) "
@@ -1083,8 +1106,10 @@ public final class ReferentFieldLoad {
             o.put(field.name(), collection ? values : values.get(0));
             loaded++;
         }
-        log.message("Referent field load " + className + "." + field.name()
-                + " (" + pid + ") -> " + loaded + " value(s)\n");
+        log.message("Semantic completion " + className + "." + field.name()
+                + " (" + pid + "): checked " + qids.size()
+                + " previously missing member(s), added " + loaded
+                + " value(s), " + unreached.size() + " unavailable.\n");
 
         // NOTE: the DESCRIPTIVE vocabulary for this field's target (e.g. Nominee.type ->
         // NomineeType) is NOT built here — that is done post-prune from the SERVED pool

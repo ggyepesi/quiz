@@ -183,6 +183,47 @@ class EnrichmentDecisionApplierTest {
         assertEquals(0, curation.identityLinks().size());
     }
 
+    @Test void validatesAWholeBatchBeforeStagingAnyDecision(@TempDir Path dir) {
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "One");
+        person.type("Person");
+        DomainModel domain = new DomainModel() {
+            @Override public List<String> types() { return List.of("Person"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("Person", "tags", false, true, FieldKind.TEXT),
+                        new DomainField("Person", "population", false, false,
+                                FieldKind.ORDERED)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(person);
+            }
+            @Override public Class<? extends Viewable> universe() {
+                return WikidataDynamicObject.class;
+            }
+        };
+        SourceRef source = new SourceRef("Source", "1", "url", "property");
+        EnrichmentProposal.FieldCandidate valid = new EnrichmentProposal.FieldCandidate(
+                "valid", "", "tags", List.of(), "tag", source,
+                EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION, null, true);
+        EnrichmentProposal.FieldCandidate invalid = new EnrichmentProposal.FieldCandidate(
+                "invalid", "", "population", null, "not a number", source,
+                EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION, null, false);
+        EnrichmentDecision first = new EnrichmentDecision(
+                new EnrichmentProposal.Subject("Person", "Q1", "Q1", "One"),
+                List.of(), List.of(new EnrichmentDecision.FieldDecision(
+                        valid, valid.suggestedAction())), null);
+        EnrichmentDecision second = new EnrichmentDecision(
+                first.subject(), List.of(), List.of(new EnrichmentDecision.FieldDecision(
+                        invalid, invalid.suggestedAction())), null);
+        CurationStaging staging = CurationStaging.forCuration(new ManualCuration(
+                dir.resolve("batch.curation.json").toFile()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> EnrichmentDecisionApplier.stageAll(
+                        domain, staging, List.of(first, second)));
+        assertEquals(0, staging.size(), "a rejected batch must stage no prefix");
+    }
+
     private static DomainModel domain(WikidataDynamicObject person) {
         return new DomainModel() {
             @Override public List<String> types() { return List.of("Person"); }

@@ -1364,8 +1364,7 @@ public final class ValidationPanel extends JPanel {
                                 "Review found data" + (path.isBlank() ? "" : " — " + path),
                                 "Review the values found for these members.", proposals,
                                 quiz.enrichment.ui.SourceYieldCards.of(result.sourceYields()),
-                                reviewed -> reviewed.accepted().forEach(
-                                        decision -> applyDecision(store, decision)));
+                                reviewed -> applyDecisions(store, reviewed.accepted()));
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(ValidationPanel.this,
@@ -1461,34 +1460,12 @@ public final class ValidationPanel extends JPanel {
             quiz.curation.ManualCuration curation, String observedCategory) {
         wikidata.explore.model.WikipediaCategoryRule current =
                 effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
-        // An observed category replaces the pattern; without one, the configured pattern
-        // is what there is to edit. Discovery that found nothing must not cost it.
-        JTextField pattern = new JTextField(observedCategory != null ? observedCategory
-                : current == null ? "" : current.pattern(), 30);
-        JComboBox<wikidata.explore.model.CategoryCandidatePolicy> policy =
-                new JComboBox<>(wikidata.explore.model.CategoryCandidatePolicy.values());
-        policy.setSelectedItem(current == null
-                ? wikidata.explore.model.CategoryCandidatePolicy.REVIEW : current.policy());
-        JPanel form = new JPanel(new java.awt.GridLayout(0, 1, 4, 4));
-        form.add(new JLabel("Category title pattern (one <value> placeholder):"));
-        form.add(pattern);
-        form.add(new JLabel("Replace the part naming the field value with <value>."));
-        form.add(new JLabel("Result policy:"));
-        form.add(policy);
-        if (JOptionPane.showConfirmDialog(this, form,
-                "Additional Wikipedia category source",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
-                != JOptionPane.OK_OPTION) return;
-        String entered = pattern.getText().trim();
-        if (entered.indexOf("<value>") < 0
-                || entered.indexOf("<value>") != entered.lastIndexOf("<value>")) {
-            JOptionPane.showMessageDialog(this,
-                    "The pattern must contain exactly one <value> placeholder.");
-            return;
-        }
+        wikidata.explore.model.WikipediaCategoryRule edited =
+                workbench.WikipediaCategoryRuleEditor.edit(
+                        this, current, observedCategory);
+        if (edited == null) return;
         curation.putSourceRecipe(quiz.curation.FieldSourceRecipe.wikipediaCategory(
-                selectedFieldType, selectedFieldPath, entered,
-                (wikidata.explore.model.CategoryCandidatePolicy) policy.getSelectedItem()));
+                selectedFieldType, selectedFieldPath, edited));
         updateWikipediaCategoryButtons();
         JOptionPane.showMessageDialog(this,
                 "The curation override is ready. Use Find Wikipedia evidence to preview "
@@ -1501,7 +1478,9 @@ public final class ValidationPanel extends JPanel {
                 selectedFieldType == null || selectedFieldPath == null ? null
                         : effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
         wikipediaCategoryButton.setText(effective != null && effective.configured()
-                ? (override == null ? "Model: " : "Override: ") + effective.pattern() + "…"
+                ? (override == null ? "Model: " : "Override: ")
+                        + workbench.WikipediaCategoryRuleEditor
+                                .summary(effective) + "…"
                 : "Configure category source…");
         boolean promotable = override != null
                 && domain.capability(quiz.curation.FieldRulePromoter.class) != null;
@@ -1725,8 +1704,7 @@ public final class ValidationPanel extends JPanel {
                                 "Review Wikipedia evidence — " + path,
                                 "Review exact article mentions and configured category relations.",
                                 proposals, quiz.enrichment.ui.SourceYieldCards.of(result.sourceYields()),
-                                reviewed -> reviewed.accepted().forEach(
-                                        decision -> applyDecision(store, decision)));
+                                reviewed -> applyDecisions(store, reviewed.accepted()));
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(this,
@@ -1760,17 +1738,21 @@ public final class ValidationPanel extends JPanel {
         return c == null ? null : c.curation();
     }
 
-    private void applyDecision(
+    /** One review action is one staging transaction and one error surface. */
+    private boolean applyDecisions(
             quiz.curation.ManualCuration curation,
-            quiz.enrichment.EnrichmentDecision decision) {
+            List<quiz.enrichment.EnrichmentDecision> decisions) {
         try {
             quiz.curation.CuratedInstanceSink instanceSink =
                     domain.capability(quiz.curation.CuratedInstanceSink.class);
-            if (!decision.instances().isEmpty() && instanceSink == null) {
+            boolean createsInstances = decisions != null && decisions.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .anyMatch(decision -> !decision.instances().isEmpty());
+            if (createsInstances && instanceSink == null) {
                 throw new IllegalStateException(
                         "This domain cannot add reviewed source-derived instances.");
             }
-            EnrichmentDecisionApplier.stage(domain, staging, decision);
+            EnrichmentDecisionApplier.stageAll(domain, staging, decisions);
             if (instanceSink != null) {
                 List<String> unresolved =
                         instanceSink.materialize(staging.instances()).unresolved();
@@ -1787,8 +1769,10 @@ public final class ValidationPanel extends JPanel {
             refreshCoverage();
             onCurated.run();
             renderFieldDrill();
+            return true;
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Could not stage result: " + ex.getMessage());
+            return false;
         }
     }
 

@@ -147,6 +147,25 @@ class WikidataSourceFieldsTest {
         assertEquals("https://en.wikipedia.org/wiki/Douglas_Adams", link.url());
     }
 
+    @Test void automaticReferenceDisplayKeepsTheWikipediaArticleLink() throws Exception {
+        WikipediaSource source = new WikipediaSource("Douglas Adams");
+        ArticleOwner owner = new ArticleOwner(source);
+        objectview.viewconfig.ViewConfig display = objectview.viewconfig.ViewConfig.leaf();
+        display.addField(objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                objectview.viewconfig.ViewConfig.leaf());
+        objectview.viewconfig.ViewConfig ownerView = objectview.viewconfig.ViewConfig.leaf();
+        ownerView.addField("wikipediaSource", display);
+
+        objectview.render.Card[] rendered = new objectview.render.Card[1];
+        javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
+                new objectview.render.Card(owner, ownerView, false));
+
+        objectview.render.LinkRow link = find(
+                rendered[0], objectview.render.LinkRow.class);
+        assertNotNull(link, "the ordinary DISPLAY projection must retain its link metadata");
+        assertEquals("https://en.wikipedia.org/wiki/Douglas_Adams", link.url());
+    }
+
     private static final class ArticleOwner extends objectview.ViewableAdapter {
         @objectview.annotations.DisplayField
         private final String name = "Book";

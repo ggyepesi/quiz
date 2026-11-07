@@ -45,6 +45,9 @@ class WikipediaTextEvidenceProviderTest {
     private static final String NAMELESS_THING = """
             {"entities":{"Q9999":{"labels":{"en":{"value":"Somewhere"}},"claims":{}}}}
             """;
+    private static final String FALCON = """
+            {"entities":{"Q43489":{"labels":{"en":{"value":"falcon"}},"claims":{}}}}
+            """;
 
     /** Answers each category value with its own entity, so a year and a country are told
      *  apart the way the API tells them apart — by their claims. */
@@ -537,6 +540,39 @@ class WikipediaTextEvidenceProviderTest {
         assertEquals("Location", place.typeName());
         assertTrue(candidate.evidence().get(0).evidence().get(0).excerpt()
                 .contains("Films set in Sierra Leone"));
+    }
+
+    @Test
+    void anExactCategoryMappingUsesTheConfiguredQidWithoutInferringATitle()
+            throws Exception {
+        wikidata.explore.model.WikipediaCategoryRule rule =
+                new wikidata.explore.model.WikipediaCategoryRule();
+        rule.mappings().add(new wikidata.explore.model.WikipediaCategoryMapping(
+                "Falcon deities", "Q43489"));
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> FALCON, rule);
+        var document = wikipedia.WikipediaArticleClient.sourceDocument(
+                "Horus", "category-17", "", List.of("Falcon deities"));
+        objectview.field.FieldRef symbols = objectview.field.FieldRef.described(
+                "iconographicSymbol", objectview.field.FieldKind.REFERENCE,
+                objectview.field.FieldKind.REFERENCE, "List<IconographicSymbol>",
+                true, true, "IconographicSymbol", false, false, false, false, "", false);
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "EgyptianDeity", "Q841", "Q841", "Horus"),
+                "iconographicSymbol", true, List.of(), symbols, List.of(),
+                List.of(new datasource.evidence.CategoryMembership(
+                        "Falcon deities", document)), null);
+
+        EnrichmentProposal result = provider.discover(request).execute(new QueryContext());
+
+        assertEquals(1, result.fields().size());
+        objectview.Viewable falcon = (objectview.Viewable) result.fields().getFirst()
+                .proposedValue();
+        assertEquals("Q43489", falcon.getIdentifier());
+        assertEquals("falcon", falcon.getDisplayName());
+        assertTrue(result.fields().getFirst().evidence().getFirst().evidence().getFirst()
+                .excerpt().contains("Falcon deities"));
     }
 
     /**

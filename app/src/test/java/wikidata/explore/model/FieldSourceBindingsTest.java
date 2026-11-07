@@ -24,6 +24,8 @@ class FieldSourceBindingsTest {
         fallback.sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
         fallback.propertyPid("Infobox film.country");
         field.ensureWikipediaCategoryRule().pattern("Films set in <value>");
+        field.wikipediaCategoryRule().mappings().add(
+                new WikipediaCategoryMapping("Road movies", "Q25110269"));
 
         FieldSourceBindings.synchronizeForSave(model);
 
@@ -32,6 +34,10 @@ class FieldSourceBindingsTest {
             assertEquals(datasource.api.BindingScope.FIELD_VALUE,
                     binding.resolve(Datasources.standard()).scope());
         }
+        var category = datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(
+                FieldSourceBindings.binding(field, SourceBindingSlot.CATEGORY_EVIDENCE));
+        assertEquals(List.of(new datasource.wikipedia.WikipediaDatasourceProvider
+                .CategoryMapping("Road movies", "Q25110269")), category.mappings());
     }
 
     @Test void aTypedFallbackProjectsToTheExistingExecutionModel() {

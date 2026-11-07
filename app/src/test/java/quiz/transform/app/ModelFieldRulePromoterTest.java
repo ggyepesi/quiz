@@ -126,4 +126,35 @@ class ModelFieldRulePromoterTest {
                 "promotion does not silently erase the curation override");
         assertFalse(domain.previewPromotion(recipe).eligible());
     }
+
+    @Test void promotesAnExactCategoryMappingWithoutRequiringAPattern() throws Exception {
+        File modelFile = temp.resolve("deities.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        deity.addField("iconographicSymbol", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        model.rootClass(deity);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject instance = new WikidataDynamicObject("Q841", "Horus");
+        instance.type("EgyptianDeity");
+        SnapshotDomain base = new SnapshotDomain(List.of(instance));
+        ManualCuration curation = new ManualCuration(
+                temp.resolve("deities.curation.json").toFile());
+        var rule = new wikidata.explore.model.WikipediaCategoryRule();
+        rule.mappings().add(new wikidata.explore.model.WikipediaCategoryMapping(
+                "Falcon deities", "Q43489"));
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaCategory(
+                "EgyptianDeity", "iconographicSymbol", rule);
+        CuratableDomain domain = new CuratableDomain(
+                base, curation, base.memberRoots(), List.of(), modelFile);
+
+        assertTrue(domain.previewPromotion(recipe).eligible());
+        domain.promote(recipe);
+        domain.writeProjectModel();
+
+        var promoted = new GeneratedProjectModelStore().load(modelFile)
+                .findClass("EgyptianDeity").fields().getFirst().wikipediaCategoryRule();
+        assertEquals(rule.mappings(), promoted.mappings());
+        assertFalse(domain.previewPromotion(recipe).eligible());
+    }
 }

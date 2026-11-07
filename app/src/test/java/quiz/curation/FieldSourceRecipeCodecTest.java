@@ -118,6 +118,19 @@ class FieldSourceRecipeCodecTest {
                 "Movie", "locations", "Films set in <value>", null)));
     }
 
+    @Test void exactCategoryMappingsSurviveTheSharedCurationRecipe() {
+        var rule = new wikidata.explore.model.WikipediaCategoryRule();
+        rule.mappings().add(new wikidata.explore.model.WikipediaCategoryMapping(
+                "Falcon deities", "Q43489"));
+
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaCategory(
+                "EgyptianDeity", "iconographicSymbol", rule);
+
+        assertEquals(rule.mappings(), recipe.categoryRule().mappings());
+        assertEquals("1", recipe.parameter(
+                datasource.wikipedia.WikipediaCategoryDiscoveryOperation.MAPPING_COUNT));
+    }
+
     /** The whole point of #108: the choice must still be there the next time the dataset
      *  is opened. Recording it in memory only meant it lasted until the panel closed. */
     @org.junit.jupiter.api.Test void aRecordedChoiceSurvivesTheSidecarRoundTrip(

@@ -559,35 +559,13 @@ public class FieldSourcePanel extends JPanel {
     private void editCategoryRule(String observedCategory) {
         if (field == null) return;
         WikipediaCategoryRule existing = activeCategoryRule();
-        JTextField pattern = new JTextField(observedCategory != null ? observedCategory
-                : existing == null ? "" : existing.pattern(), 28);
-        JComboBox<CategoryCandidatePolicy> policy =
-                new JComboBox<>(CategoryCandidatePolicy.values());
-        policy.setSelectedItem(existing == null
-                ? CategoryCandidatePolicy.REVIEW : existing.policy());
-        JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
-        form.add(new JLabel("Category title pattern (one <value> placeholder):"));
-        form.add(pattern);
-        form.add(new JLabel("Replace the part naming the field value with <value>."));
-        form.add(new JLabel("Result policy:"));
-        form.add(policy);
-        if (JOptionPane.showConfirmDialog(this, form, "Wikipedia category relation",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
-                != JOptionPane.OK_OPTION) return;
-        String entered = pattern.getText().trim();
-        if (entered.indexOf("<value>") < 0 || entered.indexOf("<value>")
-                != entered.lastIndexOf("<value>")) {
-            JOptionPane.showMessageDialog(this,
-                    "The pattern must contain exactly one <value> placeholder.");
-            return;
-        }
+        WikipediaCategoryRule edited = workbench.WikipediaCategoryRuleEditor.edit(
+                this, existing, observedCategory);
+        if (edited == null) return;
         OwnedFieldSource override = sourceContext().site() == null
                 ? null : activeOverride(true);
-        WikipediaCategoryRule rule = override == null
-                ? field.ensureWikipediaCategoryRule()
-                : override.ensureWikipediaCategoryRule();
-        rule.pattern(entered);
-        rule.policy((CategoryCandidatePolicy) policy.getSelectedItem());
+        if (override == null) field.wikipediaCategoryRule(edited);
+        else override.wikipediaCategoryRule(edited);
         FieldSourceBindings.synchronizeForSave(projectModel);
         refreshCategoryLabel();
         afterChange.accept(null);
@@ -596,7 +574,7 @@ public class FieldSourcePanel extends JPanel {
     private void refreshCategoryLabel() {
         WikipediaCategoryRule rule = activeCategoryRule();
         boolean set = rule != null && rule.configured();
-        categoryLabel.setText(set ? rule.pattern() + " — " + rule.policy() : "none");
+        categoryLabel.setText(workbench.WikipediaCategoryRuleEditor.summary(rule));
         clearCategoryButton.setEnabled(set);
     }
 

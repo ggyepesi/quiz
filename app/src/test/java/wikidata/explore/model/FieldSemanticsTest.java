@@ -8,6 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class FieldSemanticsTest {
 
+    @Test void aNewFieldDefaultsToTheMembersOutgoingPropertyValue() {
+        GeneratedFieldModel field = new GeneratedFieldModel(
+                "relation", FieldType.ENTITY, FieldCardinality.COLLECTION);
+
+        assertEquals(RuleDirection.ROOT_TO_ITEM, field.mapping().direction());
+        assertEquals(RuleDirection.ROOT_TO_ITEM,
+                FieldSemantics.effectiveDirection(field));
+    }
+
     @Test void scalarLiteralIsAlwaysOutgoing() {
         GeneratedFieldModel population = new GeneratedFieldModel(
                 "population", FieldType.NUMBER, FieldCardinality.SINGLE);

@@ -279,10 +279,12 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                                 .toList();
                 for (CategoryEvidence evidence : categories) {
                     String category = evidence.category();
-                    String valueTitle = categoryValue(category, categoryRule);
-                    if (valueTitle == null) continue;
-                    WikimediaEntityLookup.EntityRecord value =
-                            lookup.byWikipediaTitle(valueTitle).execute(context);
+                    wikidata.explore.model.WikipediaCategoryRule.Match match =
+                            categoryMatch(category, categoryRule);
+                    if (match == null) continue;
+                    WikimediaEntityLookup.EntityRecord value = !match.valueQid().isBlank()
+                            ? lookup.byQid(match.valueQid()).execute(context)
+                            : lookup.byWikipediaTitle(match.valueTitle()).execute(context);
                     if (value != null && WikidataIds.isQid(value.qid())
                             && isReferentOfTargetKind(value)) {
                         categoryValues.add(new CategoryValue(
@@ -367,7 +369,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                     List.of(EvidenceFragment.excerpt(categoryValue.document(), "Categories",
                             "Member of Category:" + categoryValue.category())),
                     "Wikipedia category relation", "category-relation-v1", "", 0.92,
-                    List.of("Category title matches: Films set in <place>"));
+                    List.of("Category title matches the field's configured Wikipedia "
+                            + "category rule"));
             fields.add(new EnrichmentProposal.FieldCandidate(
                     identityId + ':' + request.targetField() + ":category:" + fields.size(),
                     identityId, request.targetField(), request.currentValue(), value, source,
@@ -748,18 +751,17 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
      * film settings. A field without a configured rule now yields nothing, which is the
      * honest answer and the one the model can change.
      */
+    static wikidata.explore.model.WikipediaCategoryRule.Match categoryMatch(String category,
+            wikidata.explore.model.WikipediaCategoryRule configured) {
+        return configured == null ? null : configured.match(category);
+    }
+
+    /** Compatibility seam retained for the existing pattern tests: exact mappings have
+     * no inferred title, while a pattern still exposes the title it names. */
     static String categoryValue(String category,
             wikidata.explore.model.WikipediaCategoryRule configured) {
-        if (configured == null || !configured.configured() || category == null) return null;
-        String pattern = configured.pattern();
-        int placeholder = pattern.indexOf("<value>");
-        String prefix = pattern.substring(0, placeholder);
-        String suffix = pattern.substring(placeholder + "<value>".length());
-        if (!category.startsWith(prefix) || !category.endsWith(suffix)
-                || category.length() < prefix.length() + suffix.length()) return null;
-        String value = category.substring(prefix.length(), category.length() - suffix.length())
-                .trim();
-        return value.isBlank() ? null : value;
+        var match = categoryMatch(category, configured);
+        return match == null || match.valueTitle().isBlank() ? null : match.valueTitle();
     }
 
     private static Viewable existingEntity(Object current, String qid) {

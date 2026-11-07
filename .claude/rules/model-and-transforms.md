@@ -125,6 +125,19 @@ no per-value provenance. A union may read another union in any declaration order
 until no union changes. It is never compiled into a datasource query and never reimplements
 acquisition for one domain.
 
+# Wikipedia category relations
+
+A field's one Wikipedia-category source may interpret retained direct category memberships
+in two authored ways: an optional title pattern containing exactly one `<value>`, and any
+number of exact `category → Wikidata value QID` mappings. They are additive; an exact mapping
+wins for its category. Several exact categories may deliberately name the same value, so
+maintained groups such as “Cat gods” and “Cat goddesses” need no title heuristic.
+
+This rule never crawls the category tree, invents a value from the field name, or imports every
+member of a broad category. Generation retains the categories on the already-bounded entities'
+linked English Wikipedia pages; review interprets only those memberships. ModelBuilder and
+Transform use the same complete editor and the same source-recipe codec.
+
 # SPARQL
 
 Generated queries follow `docs/sparql-generation-rules.md` (R1–R18): two-sided VALUES, a

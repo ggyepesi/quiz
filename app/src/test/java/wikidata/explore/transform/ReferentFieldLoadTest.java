@@ -14,7 +14,9 @@ import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.GeneratedProjectModelValidator;
 import wikidata.explore.model.OwnedFieldSource;
 import wikidata.explore.model.OwnedFieldSources;
+import wikidata.explore.model.RuleDirection;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +28,67 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReferentFieldLoadTest {
 
+    @Test void incomingFieldsBelongOnlyToTheBoundedFieldQuery() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        GeneratedFieldModel symbolizedBy = deity.addField(
+                "symbolizedBy", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        symbolizedBy.unclassedEntity(true);
+        symbolizedBy.mapping().propertyPid("P4878");
+        symbolizedBy.mapping().direction(RuleDirection.ITEM_TO_ROOT);
+        model.rootClass(deity);
+
+        WikidataDynamicObject sekhmet = new WikidataDynamicObject("Q146104", "Sekhmet");
+        sekhmet.type("EgyptianDeity");
+        RecordingApi api = new RecordingApi();
+        // If this pass incorrectly reads the member's outgoing claims, it will assign
+        // this deliberately opposite-direction value and claim the declaration done.
+        api.entity("Q146104", "Sekhmet", Map.of("P4878", List.of("Q760218")))
+                .entity("Q760218", "Eye of Ra");
+        List<String> messages = new ArrayList<>();
+
+        ReferentFieldLoad.Result result = ReferentFieldLoad.load(
+                model, List.of(sekhmet), api,
+                wikidata.explore.extract.GenerationLog.of(messages::add), List.of());
+
+        assertEquals(0, result.loaded());
+        assertNull(sekhmet.get("symbolizedBy"));
+        assertTrue(result.completed().isEmpty(),
+                "an outgoing-claims response cannot complete an incoming declaration");
+        assertTrue(api.everyClaimPid.isEmpty(),
+                "P4878 is acquired by the bounded incoming query, not wbgetentities");
+        assertTrue(ReferentFieldLoad.compileManifest(model)
+                .propertiesFor("EgyptianDeity").isEmpty());
+        assertTrue(messages.stream().noneMatch(message ->
+                        message.contains("symbolizedBy")),
+                "the unrelated semantic-completion phase must not report the field");
+    }
+
+    @Test void outgoingCompletionLogSaysItCheckedOnlyPreviouslyMissingMembers() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        GeneratedFieldModel domain = deity.addField(
+                "domain", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        domain.unclassedEntity(true);
+        domain.mapping().propertyPid("P2925");
+        domain.mapping().direction(RuleDirection.ROOT_TO_ITEM);
+        model.rootClass(deity);
+
+        WikidataDynamicObject deityWithoutDomain =
+                new WikidataDynamicObject("Q1", "A deity");
+        deityWithoutDomain.type("EgyptianDeity");
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "A deity");
+        List<String> messages = new ArrayList<>();
+
+        ReferentFieldLoad.load(model, List.of(deityWithoutDomain), api,
+                wikidata.explore.extract.GenerationLog.of(messages::add), List.of());
+
+        assertTrue(messages.contains("Semantic completion EgyptianDeity.domain (P2925): "
+                + "checked 1 previously missing member(s), added 0 value(s), "
+                + "0 unavailable.\n"));
+    }
+
     @Test void semanticReloadDoesNotRestoreValuesOutsideTheAllowedVocabulary() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel element = new GeneratedClassModel("Element");
@@ -33,6 +96,7 @@ class ReferentFieldLoadTest {
                 "partOf", FieldType.ENTITY, FieldCardinality.COLLECTION);
         family.entityClassName("ElementFamily");
         family.mapping().propertyPid("P361");
+        family.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         family.mapping().allowedQids().add("Q19557");
         model.rootClass(element);
         model.addClass(new GeneratedClassModel("ElementFamily"));
@@ -113,11 +177,15 @@ class ReferentFieldLoadTest {
         nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("ForWork");
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
-        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        GeneratedFieldModel nomineeType = nominee.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        nomineeType.mapping().propertyPid("P31");
+        nomineeType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
-        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P136");
+        GeneratedFieldModel genre = forWork.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(nomination);
         model.addClass(nominee);
         model.addClass(forWork);
@@ -156,11 +224,15 @@ class ReferentFieldLoadTest {
         nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("ForWork");
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
-        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        GeneratedFieldModel nomineeType = nominee.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        nomineeType.mapping().propertyPid("P31");
+        nomineeType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
-        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P136");
+        GeneratedFieldModel genre = forWork.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(nomination);
         model.addClass(nominee);
         model.addClass(forWork);
@@ -194,11 +266,15 @@ class ReferentFieldLoadTest {
         recordClass.addField("otherSubject", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("RoleB");
         GeneratedClassModel roleA = new GeneratedClassModel("RoleA");
-        roleA.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        GeneratedFieldModel roleAType = roleA.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        roleAType.mapping().propertyPid("P31");
+        roleAType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         GeneratedClassModel roleB = new GeneratedClassModel("RoleB");
-        roleB.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        GeneratedFieldModel roleBType = roleB.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        roleBType.mapping().propertyPid("P31");
+        roleBType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(recordClass);
         model.addClass(roleA);
         model.addClass(roleB);
@@ -262,10 +338,12 @@ class ReferentFieldLoadTest {
                 "givenName", FieldType.ENTITY, FieldCardinality.SINGLE);
         given.entityClassName("GivenName");
         given.mapping().propertyPid("P735");
+        given.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         GeneratedFieldModel family = name.addField(
                 "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);
         family.entityClassName("FamilyName");
         family.mapping().propertyPid("P734");
+        family.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(person);
         model.addClass(name);
 
@@ -309,6 +387,7 @@ class ReferentFieldLoadTest {
         GeneratedFieldModel part = name.addField(
                 "primaryPart", FieldType.ENTITY, FieldCardinality.SINGLE);
         part.mapping().propertyPid("P735");
+        part.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         OwnedFieldSource override = OwnedFieldSources.ensureOverride(
                 legalName, "primaryPart");
         override.mapping().copyAcquisitionFrom(part.mapping());
@@ -365,8 +444,10 @@ class ReferentFieldLoadTest {
         personName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel name = new GeneratedClassModel("Name");
         name.ownedClass(true);
-        name.addField("primaryPart", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P735");
+        GeneratedFieldModel primaryPart = name.addField(
+                "primaryPart", FieldType.ENTITY, FieldCardinality.SINGLE);
+        primaryPart.mapping().propertyPid("P735");
+        primaryPart.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         name.addField("unsourced", FieldType.ENTITY, FieldCardinality.SINGLE);
         model.rootClass(person);
         model.addClass(name);
@@ -392,8 +473,10 @@ class ReferentFieldLoadTest {
         nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
                 .entityClassName("Nominee");
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
-        nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        GeneratedFieldModel nomineeType = nominee.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        nomineeType.mapping().propertyPid("P31");
+        nomineeType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         GeneratedClassModel person = new GeneratedClassModel("Person");
         person.addField("birthDate", FieldType.DATE, FieldCardinality.SINGLE)
                 .mapping().propertyPid("P569");
@@ -403,8 +486,10 @@ class ReferentFieldLoadTest {
         name.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
         GeneratedClassModel nameClass = new GeneratedClassModel("Name");
         nameClass.ownedClass(true);
-        nameClass.addField("familyName", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P734");
+        GeneratedFieldModel familyName = nameClass.addField(
+                "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        familyName.mapping().propertyPid("P734");
+        familyName.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(nomination);
         model.addClass(nominee);
         model.addClass(person);
@@ -433,12 +518,16 @@ class ReferentFieldLoadTest {
         model.addClass(nomination);
 
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
-        nominee.addField("occupation", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P106");
+        GeneratedFieldModel occupation = nominee.addField(
+                "occupation", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        occupation.mapping().propertyPid("P106");
+        occupation.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(nominee);
         GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
-        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P136");
+        GeneratedFieldModel genre = forWork.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(forWork);
         model.rootClass(nomination);
 
@@ -472,6 +561,7 @@ class ReferentFieldLoadTest {
         GeneratedFieldModel genre =
                 forWork.addField("genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
         genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(forWork);
         model.rootClass(nom);
 

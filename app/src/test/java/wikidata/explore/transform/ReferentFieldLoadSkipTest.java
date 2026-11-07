@@ -166,6 +166,7 @@ class ReferentFieldLoadSkipTest {
         GeneratedFieldModel genre = forWork.addField(
                 "genre", FieldType.ENTITY, FieldCardinality.SINGLE);
         genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         project.rootClass(nomination);
         project.addClass(forWork);
 
@@ -189,8 +190,10 @@ class ReferentFieldLoadSkipTest {
                 "forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
         ref.entityClassName("ForWork");
         GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
-        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P136");
+        GeneratedFieldModel genre = forWork.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.SINGLE);
+        genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         project.rootClass(nomination);
         project.addClass(forWork);
 
@@ -259,8 +262,10 @@ class ReferentFieldLoadSkipTest {
                 "forWork", FieldType.ENTITY, FieldCardinality.SINGLE);
         ref.entityClassName("ForWork");
         GeneratedClassModel forWork = new GeneratedClassModel("ForWork");
-        forWork.addField("genre", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P136");
+        GeneratedFieldModel genre = forWork.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.SINGLE);
+        genre.mapping().propertyPid("P136");
+        genre.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         project.rootClass(nomination);
         project.addClass(forWork);
         return project;

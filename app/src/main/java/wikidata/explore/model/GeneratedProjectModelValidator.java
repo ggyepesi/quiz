@@ -1078,10 +1078,28 @@ public final class GeneratedProjectModelValidator {
             WikipediaCategoryRule category = field.wikipediaCategoryRule();
             if (category != null) {
                 long placeholders = category.pattern().split("<value>", -1).length - 1L;
-                if (placeholders != 1) {
+                if (!category.pattern().isBlank() && placeholders != 1) {
                     problems.add(Problem.error(path(clazz, field),
                             "A Wikipedia category pattern must contain exactly one "
                                     + "<value> placeholder."));
+                }
+                java.util.Set<String> exactCategories = new java.util.HashSet<>();
+                for (WikipediaCategoryMapping mapping : category.mappings()) {
+                    if (mapping == null || !mapping.configured()) {
+                        problems.add(Problem.error(path(clazz, field),
+                                "Each exact Wikipedia category mapping needs a category "
+                                        + "title and a valid Wikidata value QID."));
+                    } else if (!exactCategories.add(
+                            mapping.category().toLowerCase(java.util.Locale.ROOT))) {
+                        problems.add(Problem.error(path(clazz, field),
+                                "A Wikipedia category may be mapped only once: "
+                                        + mapping.category() + "."));
+                    }
+                }
+                if (!category.configured()) {
+                    problems.add(Problem.error(path(clazz, field),
+                            "A Wikipedia category source needs either one <value> pattern "
+                                    + "or at least one exact category-to-QID mapping."));
                 }
                 if (category.policy() != CategoryCandidatePolicy.EVIDENCE_ONLY
                         && field.type() != FieldType.ENTITY) {

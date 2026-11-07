@@ -5,6 +5,7 @@ import datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,6 +25,8 @@ class GeneratedFieldModelFallbackTest {
         withFallback.ensureFallbackMapping().sourceType(FieldSourceType.DBPEDIA);
         withFallback.fallbackMapping().propertyPid("populationTotal");
         withFallback.ensureWikipediaCategoryRule().pattern("Places with <value>");
+        withFallback.wikipediaCategoryRule().mappings().add(
+                new WikipediaCategoryMapping("Capital cities", "Q5119"));
         withFallback.wikipediaCategoryRule().policy(CategoryCandidatePolicy.EVIDENCE_ONLY);
 
         GeneratedFieldModel noFallback = project.rootClass().addField(
@@ -45,6 +48,8 @@ class GeneratedFieldModelFallbackTest {
                 field(loaded, "population").wikipediaCategoryRule().pattern());
         assertEquals(CategoryCandidatePolicy.EVIDENCE_ONLY,
                 field(loaded, "population").wikipediaCategoryRule().policy());
+        assertEquals(List.of(new WikipediaCategoryMapping("Capital cities", "Q5119")),
+                field(loaded, "population").wikipediaCategoryRule().mappings());
         assertNull(field(loaded, "area").fallbackMapping(),
                 "a field with no fallback loads a null fallback");
         assertNull(field(loaded, "area").wikipediaCategoryRule(),

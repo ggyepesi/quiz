@@ -7,6 +7,7 @@ import wikidata.explore.model.FieldCardinality;
 import datasource.schema.FieldType;
 import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.RuleDirection;
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ class SemanticConvergenceTest {
                 "spouse", FieldType.ENTITY, FieldCardinality.COLLECTION);
         spouse.entityClassName("Person");
         spouse.mapping().propertyPid("P26");
+        spouse.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.rootClass(person);
         model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
                 "Person", List.of("Q5")));
@@ -176,8 +178,10 @@ class SemanticConvergenceTest {
         model.rootClass(holding);
         model.addClass(new GeneratedClassModel("PositionHolder"));
         GeneratedClassModel person = new GeneratedClassModel("Person");
-        person.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                .mapping().propertyPid("P31");
+        var personType = person.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        personType.mapping().propertyPid("P31");
+        personType.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(person);
         model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(
                 "Person", List.of("Q5")));
@@ -250,6 +254,7 @@ class SemanticConvergenceTest {
                 "type", FieldType.ENTITY, FieldCardinality.SINGLE);
         type.entityClassName("NomineeType");
         type.mapping().propertyPid("P31");
+        type.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(nomineeClass);
         model.addClass(new GeneratedClassModel("Person"));
         model.addEntityKindRule(new wikidata.explore.model.EntityKindRule(

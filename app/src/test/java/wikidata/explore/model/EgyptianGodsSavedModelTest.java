@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Forces the first Egyptian-deity configuration to stay bounded and source-authored. */
@@ -39,6 +40,38 @@ class EgyptianGodsSavedModelTest {
         assertEquals(FieldType.IMAGE, fields.get("image").type());
         assertEquals("P2925", fields.get("domain").mapping().propertyPid());
         assertEquals("P4185", fields.get("iconographicSymbol").mapping().propertyPid());
+        assertNull(fields.get("iconographicSymbol").wikipediaCategoryRule(),
+                "animal-category evidence is not an iconographic symbol");
+        GeneratedFieldModel associatedAnimal = fields.get("associatedAnimal");
+        assertEquals(FieldType.ENTITY, associatedAnimal.type());
+        assertTrue(associatedAnimal.collection());
+        assertTrue(associatedAnimal.unclassedEntity());
+        assertTrue(associatedAnimal.mapping().propertyPid().isBlank(),
+                "the association comes from the authored Wikipedia category source");
+        WikipediaCategoryRule animalAssociations =
+                associatedAnimal.wikipediaCategoryRule();
+        assertEquals(23, animalAssociations.mappings().size());
+        assertTrue(animalAssociations.mappings().contains(
+                new WikipediaCategoryMapping("Falcon deities", "Q43489")));
+        assertTrue(animalAssociations.mappings().contains(
+                new WikipediaCategoryMapping("Cattle deities", "Q830")));
+        assertTrue(animalAssociations.mappings().contains(
+                new WikipediaCategoryMapping("Scorpions in culture", "Q19125")));
+        var categorySource = FieldSourceBindings.binding(
+                associatedAnimal, SourceBindingSlot.CATEGORY_EVIDENCE);
+        assertEquals("wikipedia", categorySource.recipe().providerId());
+        assertEquals("category", categorySource.recipe().operationId());
+        GeneratedFieldModel symbolizedBy = fields.get("symbolizedBy");
+        assertEquals(FieldType.ENTITY, symbolizedBy.type());
+        assertTrue(symbolizedBy.collection());
+        assertTrue(symbolizedBy.unclassedEntity());
+        assertEquals("P4878", symbolizedBy.mapping().propertyPid());
+        assertEquals("symbolizes", symbolizedBy.mapping().propertyLabel());
+        assertEquals(RuleDirection.ITEM_TO_ROOT, symbolizedBy.mapping().direction());
+        var symbolizesSource = FieldSourceBindings.binding(
+                symbolizedBy, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        assertEquals("wikidata", symbolizesSource.recipe().providerId());
+        assertEquals("property-value", symbolizesSource.recipe().operationId());
         assertEquals("P1049", fields.get("worshippedBy").mapping().propertyPid());
         assertEquals(FieldType.TEXT, fields.get("summary").type());
         assertEquals(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE,
@@ -49,6 +82,7 @@ class EgyptianGodsSavedModelTest {
         assertEquals("article-introduction", summarySource.recipe().operationId());
         assertEquals("LEAD_SENTENCE", summarySource.recipe().parameter("projection"));
         for (String relation : java.util.List.of("domain", "iconographicSymbol",
+                "associatedAnimal", "symbolizedBy",
                 "father", "mother", "spouse", "child", "sibling", "partOf",
                 "equivalent", "worshippedBy")) {
             assertTrue(fields.get(relation).unclassedEntity(), relation);
@@ -70,6 +104,8 @@ class EgyptianGodsSavedModelTest {
         assertTrue(preview.contains("wdt:P31"), preview);
         assertTrue(preview.contains("wdt:P279*"), preview);
         assertTrue(preview.contains("wd:Q146083"), preview);
+        assertTrue(preview.contains("Member field \"symbolizedBy\"")
+                && preview.contains("wdt:P4878"), preview);
         assertTrue(preview.contains("schema:about"), preview);
     }
 }

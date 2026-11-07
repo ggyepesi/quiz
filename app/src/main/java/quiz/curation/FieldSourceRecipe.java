@@ -69,9 +69,31 @@ public final class FieldSourceRecipe {
 
     public static FieldSourceRecipe wikipediaCategory(
             String type, String field, String pattern, CategoryCandidatePolicy policy) {
-        return new FieldSourceRecipe(type, field, WIKIPEDIA_CATEGORY,
-                Map.of(PATTERN, pattern == null ? "" : pattern.trim(),
-                        POLICY, (policy == null ? CategoryCandidatePolicy.REVIEW : policy).name()));
+        WikipediaCategoryRule rule = new WikipediaCategoryRule();
+        rule.pattern(pattern);
+        rule.policy(policy);
+        return wikipediaCategory(type, field, rule);
+    }
+
+    public static FieldSourceRecipe wikipediaCategory(
+            String type, String field, WikipediaCategoryRule rule) {
+        WikipediaCategoryRule safe = rule == null
+                ? new WikipediaCategoryRule() : rule;
+        var mappings = safe.mappings().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(wikidata.explore.model.WikipediaCategoryMapping::configured)
+                .map(value -> new WikipediaDatasourceProvider.CategoryMapping(
+                        value.category(), value.valueQid())).toList();
+        var providerRule = new WikipediaDatasourceProvider.CategoryRule(
+                safe.patternConfigured() ? safe.pattern() : "",
+                safe.policy().name(), mappings);
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.fieldValue(type, field,
+                        SourceBindingSlot.CATEGORY_EVIDENCE),
+                new SourceRecipe(WikipediaDatasourceProvider.ID,
+                        WikipediaCategoryDiscoveryOperation.ID,
+                        WikipediaDatasourceProvider.categoryParameters(providerRule)));
+        return new FieldSourceRecipe(binding);
     }
 
     /** An additional source for one field: which kind of source, and what it names there
@@ -106,9 +128,18 @@ public final class FieldSourceRecipe {
      */
     public WikipediaCategoryRule categoryRule() {
         WikipediaCategoryRule rule = new WikipediaCategoryRule();
-        rule.pattern(parameter(PATTERN));
+        WikipediaDatasourceProvider.CategoryRule providerRule =
+                WikipediaDatasourceProvider.categoryRule(binding);
+        rule.pattern(providerRule == null ? parameter(PATTERN) : providerRule.pattern());
+        if (providerRule != null) {
+            providerRule.mappings().stream()
+                    .map(value -> new wikidata.explore.model.WikipediaCategoryMapping(
+                            value.category(), value.valueQid()))
+                    .forEach(rule.mappings()::add);
+        }
         try {
-            rule.policy(CategoryCandidatePolicy.valueOf(parameter(POLICY)));
+            rule.policy(CategoryCandidatePolicy.valueOf(providerRule == null
+                    ? parameter(POLICY) : providerRule.policy()));
         } catch (RuntimeException unknown) {
             rule.policy(CategoryCandidatePolicy.REVIEW);
         }

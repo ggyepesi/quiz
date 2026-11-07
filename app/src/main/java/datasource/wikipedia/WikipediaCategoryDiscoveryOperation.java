@@ -29,6 +29,15 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
     public static final String SAMPLE_SIZE = "sampleSize";
     public static final String PATTERN = "pattern";
     public static final String POLICY = "policy";
+    public static final String MAPPING_COUNT = "mappingCount";
+
+    public static String mappingCategory(int index) {
+        return "mapping." + index + ".category";
+    }
+
+    public static String mappingValueQid(int index) {
+        return "mapping." + index + ".valueQid";
+    }
 
     @Override public String id() { return ID; }
     @Override public String displayName() { return "Wikipedia categories"; }
@@ -42,8 +51,9 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
                         ParameterDescriptor.Kind.INTEGER, false, "8", List.of(),
                         "Number of source articles inspected."),
                 new ParameterDescriptor(PATTERN, "Category pattern",
-                        ParameterDescriptor.Kind.TEXT, true, "", List.of(),
-                        "Category title containing one <value> placeholder."),
+                        ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                        "Optional category title containing one <value> placeholder. "
+                                + "Exact category-to-QID mappings may be used instead."),
                 new ParameterDescriptor(POLICY, "Candidate policy",
                         ParameterDescriptor.Kind.CHOICE, false, "REVIEW",
                         java.util.Arrays.stream(
@@ -63,9 +73,11 @@ public final class WikipediaCategoryDiscoveryOperation implements SourceDiscover
         return new PreparedSourceOperation(FAMILY, "Wikipedia category field",
                 PreparedSourceOperation.Execution.ACQUIRE,
                 binding.target().className() + "." + binding.target().fieldPath()
-                        + " ← category ‘" + rule.pattern() + "’ (" + rule.policy() + ")",
+                        + " ← Wikipedia categories " + rule.description()
+                        + " (" + rule.policy() + ")",
                 Map.of("input", "Versioned category memberships from linked Wikipedia pages",
-                        "operation", "Match " + rule.pattern() + " using " + rule.policy(),
+                        "operation", "Match " + rule.description()
+                                + " using " + rule.policy(),
                         "output", "Retain matched values with category provenance"), rule,
                 List.of(new SourceInputRequirement(EntityRef.WIKIDATA,
                         SourceInputRequirement.Kind.ARTICLE_CORRESPONDENCE)));

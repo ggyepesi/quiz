@@ -101,6 +101,12 @@ public class GeneratedFieldModel {
         this.type = type == null ? FieldType.AUTO : type;
         this.cardinality =
                 cardinality == null ? FieldCardinality.SINGLE : cardinality;
+        // FieldSourceMapping is shared with class membership, whose natural default is
+        // item → root. A field's natural/default property value is the opposite: the
+        // member holds the claim. Incoming fields are an explicit authored choice.
+        // This also matches RuleIncludedField's default and prevents an unspecified
+        // field from being owned by both the incoming-query and outgoing-claims paths.
+        this.mapping.direction(RuleDirection.ROOT_TO_ITEM);
     }
 
     public static GeneratedFieldModel nameField() {

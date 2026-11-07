@@ -256,10 +256,19 @@ public final class FieldSourceBindings {
 
     private static SourceBinding category(
             SourceBindingTarget target, WikipediaCategoryRule rule) {
-        if (rule == null || clean(rule.pattern()).isBlank()) return null;
+        if (rule == null || !rule.configured()) return null;
+        List<WikipediaDatasourceProvider.CategoryMapping> mappings = rule.mappings().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(WikipediaCategoryMapping::configured)
+                .map(value -> new WikipediaDatasourceProvider.CategoryMapping(
+                        value.category(), value.valueQid())).toList();
+        WikipediaDatasourceProvider.CategoryRule providerRule =
+                new WikipediaDatasourceProvider.CategoryRule(
+                        rule.patternConfigured() ? clean(rule.pattern()) : "",
+                        rule.policy().name(), mappings);
         return binding(target,
                 WikipediaDatasourceProvider.ID, WikipediaCategoryDiscoveryOperation.ID,
-                Map.of(PATTERN, clean(rule.pattern()), POLICY, rule.policy().name()));
+                WikipediaDatasourceProvider.categoryParameters(providerRule));
     }
 
     private static SourceBinding binding(String owner, String path, SourceBindingSlot slot,
@@ -306,8 +315,16 @@ public final class FieldSourceBindings {
         if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
             WikipediaCategoryRule rule = category.get();
-            rule.pattern(recipe.parameter(PATTERN));
-            try { rule.policy(CategoryCandidatePolicy.valueOf(recipe.parameter(POLICY))); }
+            WikipediaDatasourceProvider.CategoryRule projected =
+                    WikipediaDatasourceProvider.categoryRule(binding);
+            if (projected == null) return;
+            rule.pattern(projected.pattern());
+            rule.mappings().clear();
+            projected.mappings().stream()
+                    .map(value -> new WikipediaCategoryMapping(
+                            value.category(), value.valueQid()))
+                    .forEach(rule.mappings()::add);
+            try { rule.policy(CategoryCandidatePolicy.valueOf(projected.policy())); }
             catch (RuntimeException ignored) { rule.policy(CategoryCandidatePolicy.REVIEW); }
             return;
         }

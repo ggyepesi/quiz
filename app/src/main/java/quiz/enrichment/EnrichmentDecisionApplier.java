@@ -32,13 +32,30 @@ public final class EnrichmentDecisionApplier {
      * {@code Save staged changes} remains the one explicit commit action. */
     public static int stage(
             DomainModel domain, CurationStaging staging, EnrichmentDecision decision) {
-        if (domain == null || staging == null || decision == null) return 0;
-        Prepared prepared = prepare(domain, decision);
-        prepared.identities().forEach(staging::stage);
-        prepared.corrections().forEach(staging::stage);
-        prepared.instances().forEach(staging::stage);
-        return prepared.corrections().size() + prepared.identities().size()
-                + prepared.instances().size();
+        return stageAll(domain, staging,
+                decision == null ? List.of() : List.of(decision));
+    }
+
+    /** Validate the complete review batch before staging any of it. One rejected value
+     *  therefore produces one batch failure instead of leaving a partial transaction and
+     *  one modal error per proposal. */
+    public static int stageAll(
+            DomainModel domain, CurationStaging staging,
+            List<EnrichmentDecision> decisions) {
+        if (domain == null || staging == null || decisions == null || decisions.isEmpty()) {
+            return 0;
+        }
+        List<Prepared> prepared = decisions.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(decision -> prepare(domain, decision))
+                .toList();
+        prepared.forEach(batch -> {
+            batch.identities().forEach(staging::stage);
+            batch.corrections().forEach(staging::stage);
+            batch.instances().forEach(staging::stage);
+        });
+        return prepared.stream().mapToInt(batch -> batch.corrections().size()
+                + batch.identities().size() + batch.instances().size()).sum();
     }
 
     public static int apply(

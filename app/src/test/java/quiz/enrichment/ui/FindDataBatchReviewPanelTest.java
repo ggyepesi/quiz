@@ -15,6 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FindDataBatchReviewPanelTest {
     @Test
@@ -71,6 +72,53 @@ class FindDataBatchReviewPanelTest {
         assertEquals("characters → Achilles", change.getDisplayName());
         assertSame(achilles, change.get("Value"),
                 "the caption must not collapse the navigable Character reference to text");
+    }
+
+    @Test void reviewSummaryUsesAReferencesDisplayNameInsteadOfJavaIdentity() {
+        SourceRef source = new SourceRef(
+                "Wikipedia (English)", "Bastet", "https://example.test/Bastet");
+        DynamicViewable cat = new DynamicViewable("Q146", "cat");
+        EnrichmentProposal.FieldCandidate animal =
+                new EnrichmentProposal.FieldCandidate(
+                        "animal:Q146", "", "associatedAnimal", List.of(), cat, source,
+                        EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                        null, true, List.of());
+        EnrichmentProposal proposal = new EnrichmentProposal(
+                new EnrichmentProposal.Subject(
+                        "EgyptianDeity", "Q146007", "Q146007", "Bastet"),
+                List.of(), List.of(animal), List.of());
+
+        String summary = FindDataBatchReviewPanel.detail(proposal);
+
+        assertTrue(summary.contains("associatedAnimal = cat"), summary);
+        assertTrue(!summary.contains("DynamicViewable@"), summary);
+    }
+
+    @Test void aRejectedBatchCallbackIsInvokedOnceAndLeavesRetryEnabled() {
+        var decision = new quiz.enrichment.EnrichmentDecision(
+                new EnrichmentProposal.Subject("Type", "id", "", "Item"),
+                List.of(), List.of(), null,
+                List.of(new EnrichmentProposal.InstanceCandidate(
+                        "new-id", "Type", "new-id", "New item", List.of(),
+                        new SourceRef("Source", "1", "https://example.test/1"),
+                        List.of())));
+        var attempts = new java.util.concurrent.atomic.AtomicInteger();
+        var outcome = new javax.swing.JLabel();
+        var selected = new javax.swing.JButton();
+        var all = new javax.swing.JButton();
+        selected.setEnabled(true);
+        all.setEnabled(true);
+
+        FindDataBatchReviewPanel.stage(batch -> {
+            attempts.incrementAndGet();
+            return false;
+        }, List.of(decision, decision), outcome, selected, all);
+
+        assertEquals(1, attempts.get(), "one batch action has one failure surface");
+        assertTrue(selected.isEnabled());
+        assertTrue(all.isEnabled());
+        assertEquals("Nothing staged; correct the reported problem and retry.",
+                outcome.getText());
     }
 
     @Test void eachProposedInstanceIsOneIndependentReviewDecision() {

@@ -167,6 +167,19 @@
       "membershipQid" : "",
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
+    }, {
+      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "fieldName" : "symbolizedBy",
+      "propertyPid" : "P4878",
+      "propertyLabel" : "symbolizes",
+      "kind" : "ENTITY",
+      "optional" : true,
+      "collection" : true,
+      "direction" : "ITEM_TO_ROOT",
+      "membershipPid" : "",
+      "membershipQid" : "",
+      "membershipQualifierCondition" : null,
+      "qualifierCondition" : null
     } ] ],
     "limit" : 1000,
     "sortFieldName" : "",

@@ -13,6 +13,7 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.model.StatementClassSource;
+import wikidata.explore.model.RuleDirection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -148,8 +149,10 @@ class BankedPropertyClosureTest {
 
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
         if (exposeEvidenceField) {
-            nominee.addField("type", FieldType.ENTITY, FieldCardinality.COLLECTION)
-                    .mapping().propertyPid("P31");
+            GeneratedFieldModel type = nominee.addField(
+                    "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+            type.mapping().propertyPid("P31");
+            type.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         }
         model.addClass(nominee);
 
@@ -164,8 +167,10 @@ class BankedPropertyClosureTest {
 
         GeneratedClassModel nameClass = new GeneratedClassModel("Name");
         nameClass.ownedClass(true);
-        nameClass.addField("familyName", FieldType.ENTITY, FieldCardinality.SINGLE)
-                .mapping().propertyPid("P734");
+        GeneratedFieldModel familyName = nameClass.addField(
+                "familyName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        familyName.mapping().propertyPid("P734");
+        familyName.mapping().direction(RuleDirection.ROOT_TO_ITEM);
         model.addClass(nameClass);
 
         model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
