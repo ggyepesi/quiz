@@ -13,31 +13,31 @@ import java.util.Map;
 
 /**
  * Reads the two existing structured views of each explicitly selected Wikipedia page.
- * The article client owns sections/blocks/links/categories and the infobox client owns
- * native parameters/rendered rows; this query only keeps their results together for
- * comparison.
+ * The article client owns sections/blocks/links/categories and the infobox parser owns
+ * native parameters/rendered rows; both read one parse response, so one request and one
+ * revision per article. This query only keeps them together for comparison.
  */
 public final class WikipediaDiscoveryQuery
         implements Query<List<WikipediaDiscoveryQuery.Article>> {
     public static final int MAX_ARTICLES = 50;
 
     private final List<WikidataDynamicObject> instances;
-    private final wikipedia.WikipediaInfoboxClient infoboxes;
+    private final wikipedia.WikipediaArticleClient articles;
 
     public WikipediaDiscoveryQuery(List<WikidataDynamicObject> instances) {
-        this(instances, new wikipedia.WikipediaInfoboxClient());
+        this(instances, new wikipedia.WikipediaArticleClient());
     }
 
     WikipediaDiscoveryQuery(List<WikidataDynamicObject> instances,
-            wikipedia.WikipediaInfoboxClient infoboxes) {
+            wikipedia.WikipediaArticleClient articles) {
         this.instances = selected(instances);
-        this.infoboxes = java.util.Objects.requireNonNull(infoboxes);
+        this.articles = java.util.Objects.requireNonNull(articles);
     }
 
     @Override public String purpose() { return "Inspect selected Wikipedia articles"; }
 
     @Override public String skeleton() {
-        return "selected instances -> structured articles + native infoboxes -> comparison";
+        return "selected instances -> one parse per article (structure + infobox) -> comparison";
     }
 
     @Override public String queryType() { return "Wikipedia API"; }
@@ -53,29 +53,11 @@ public final class WikipediaDiscoveryQuery
 
     @Override public List<Article> execute(QueryContext context) throws Exception {
         List<WikipediaArticleFetchQuery.Result> fetched =
-                new WikipediaArticleFetchQuery(instances).execute(context);
+                new WikipediaArticleFetchQuery(instances, articles).execute(context);
         List<Article> result = new ArrayList<>();
         for (WikipediaArticleFetchQuery.Result value : fetched) {
-            context.cancellation().throwIfCancelled();
-            if (!value.available()) {
-                result.add(new Article(value.instance(), value.title(), null, null,
-                        value.problem()));
-                continue;
-            }
-            InfoboxParameters infobox = null;
-            String problem = "";
-            try {
-                infobox = infoboxes.byTitle(value.title()).execute(context);
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-                throw interrupted;
-            } catch (java.util.concurrent.CancellationException cancelled) {
-                throw cancelled;
-            } catch (Exception failure) {
-                problem = "Article fetched; infobox unavailable: " + message(failure);
-            }
             result.add(new Article(value.instance(), value.title(), value.article(),
-                    infobox, problem));
+                    value.available() ? value.infobox() : null, value.problem()));
         }
         return List.copyOf(result);
     }
@@ -112,12 +94,6 @@ public final class WikipediaDiscoveryQuery
                     + " were selected.");
         }
         return values;
-    }
-
-    private static String message(Exception failure) {
-        String value = failure.getMessage();
-        return value == null || value.isBlank()
-                ? failure.getClass().getSimpleName() : value;
     }
 
     public record Article(

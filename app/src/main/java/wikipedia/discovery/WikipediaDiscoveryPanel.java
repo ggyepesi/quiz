@@ -124,7 +124,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             updateActions();
             if (running) {
                 sourceStatus.setText("Fetching exactly " + selected.size()
-                        + " selected structured article(s), then their infoboxes.");
+                        + " selected structured article(s), each with its infobox in the "
+                        + "same request.");
             }
         });
     }
@@ -271,7 +272,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         List<WikidataDynamicObject> values = new ArrayList<>(selected.values());
         if (values.isEmpty()) return;
         sourceStatus.setText("Fetching exactly " + values.size()
-                + " selected structured article(s), then their infoboxes.");
+                + " selected structured article(s), each with its infobox in the "
+                + "same request.");
         runner.run(new WikipediaDiscoveryQuery(values), result -> SwingUtilities.invokeLater(() -> {
             showAnalysis(WikipediaStructureAnalysis.analyze(result), "fetched");
             sourceStatus.setText("Fetched and compared " + result.stream()

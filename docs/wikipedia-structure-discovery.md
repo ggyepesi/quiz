@@ -24,7 +24,9 @@ SearchableView                        every instance and discovery-result view
 ```
 
 The retained `WikipediaArticle` remains the one source-evidence artifact. Discovery reads
-it; it does not fetch or store another interpretation of the article.
+it; it does not fetch or store another interpretation of the article. A fetch makes one
+`action=parse` request per article, and the structured article and its infobox are both
+read from that response, so they always describe the same revision (#461).
 
 ## First bounded workflow
 

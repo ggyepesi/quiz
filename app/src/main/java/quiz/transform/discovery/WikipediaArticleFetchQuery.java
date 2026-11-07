@@ -18,7 +18,7 @@ public final class WikipediaArticleFetchQuery
         this(instances, new wikipedia.WikipediaArticleClient());
     }
 
-    WikipediaArticleFetchQuery(List<WikidataDynamicObject> instances,
+    public WikipediaArticleFetchQuery(List<WikidataDynamicObject> instances,
             wikipedia.WikipediaArticleClient articles) {
         this.instances = instances == null ? List.of() : instances.stream()
                 .filter(java.util.Objects::nonNull).distinct().toList();
@@ -52,14 +52,14 @@ public final class WikipediaArticleFetchQuery
                 continue;
             }
             try {
-                wikipedia.WikipediaArticleClient.Article acquired =
+                wikipedia.WikipediaArticleClient.StructuredPage acquired =
                         articles.structuredByTitle(title).execute(context);
                 if (acquired == null) {
                     results.add(new Result(instance, title, null,
                             "Wikipedia did not return this article."));
                 } else {
                     results.add(new Result(instance, title,
-                            acquired.structuredArticle(), ""));
+                            acquired.article().structuredArticle(), acquired.infobox(), ""));
                 }
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
@@ -88,8 +88,16 @@ public final class WikipediaArticleFetchQuery
                 + " unavailable.";
     }
 
+    /** {@code infobox} comes from the same parse response, so the same revision, as
+     *  {@code article}; it is null when the page has none. */
     public record Result(WikidataDynamicObject instance, String title,
-                         WikipediaArticle article, String problem) {
+                         WikipediaArticle article,
+                         datasource.evidence.InfoboxParameters infobox, String problem) {
+        public Result(WikidataDynamicObject instance, String title,
+                      WikipediaArticle article, String problem) {
+            this(instance, title, article, null, problem);
+        }
+
         public Result {
             instance = java.util.Objects.requireNonNull(instance);
             title = title == null ? "" : title.trim();

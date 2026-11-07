@@ -257,18 +257,9 @@ public final class FieldSourceBindings {
     private static SourceBinding category(
             SourceBindingTarget target, WikipediaCategoryRule rule) {
         if (rule == null || !rule.configured()) return null;
-        List<WikipediaDatasourceProvider.CategoryMapping> mappings = rule.mappings().stream()
-                .filter(java.util.Objects::nonNull)
-                .filter(WikipediaCategoryMapping::configured)
-                .map(value -> new WikipediaDatasourceProvider.CategoryMapping(
-                        value.category(), value.valueQid())).toList();
-        WikipediaDatasourceProvider.CategoryRule providerRule =
-                new WikipediaDatasourceProvider.CategoryRule(
-                        rule.patternConfigured() ? clean(rule.pattern()) : "",
-                        rule.policy().name(), mappings);
         return binding(target,
                 WikipediaDatasourceProvider.ID, WikipediaCategoryDiscoveryOperation.ID,
-                WikipediaDatasourceProvider.categoryParameters(providerRule));
+                rule.recipeParameters());
     }
 
     private static SourceBinding binding(String owner, String path, SourceBindingSlot slot,
@@ -314,18 +305,9 @@ public final class FieldSourceBindings {
         SourceRecipe recipe = binding.recipe();
         if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
-            WikipediaCategoryRule rule = category.get();
-            WikipediaDatasourceProvider.CategoryRule projected =
-                    WikipediaDatasourceProvider.categoryRule(binding);
+            WikipediaCategoryRule projected = WikipediaCategoryRule.fromRecipe(binding);
             if (projected == null) return;
-            rule.pattern(projected.pattern());
-            rule.mappings().clear();
-            projected.mappings().stream()
-                    .map(value -> new WikipediaCategoryMapping(
-                            value.category(), value.valueQid()))
-                    .forEach(rule.mappings()::add);
-            try { rule.policy(CategoryCandidatePolicy.valueOf(projected.policy())); }
-            catch (RuntimeException ignored) { rule.policy(CategoryCandidatePolicy.REVIEW); }
+            category.get().assign(projected);
             return;
         }
         if (slot == SourceBindingSlot.FALLBACK_FIELD_VALUE) {

@@ -62,6 +62,55 @@ public class WikipediaCategoryRule {
                 .filter(java.util.Objects::nonNull)
                 .anyMatch(WikipediaCategoryMapping::configured);
     }
+    /**
+     * This rule as the provider-neutral recipe states it. The one model-to-recipe
+     * conversion: the field binding and the curation recipe both write through it, so
+     * they cannot drift in what they keep (#463). Only configured mappings are written;
+     * a pattern without exactly one {@code <value>} is written as none.
+     */
+    public java.util.Map<String, String> recipeParameters() {
+        java.util.List<datasource.wikipedia.WikipediaDatasourceProvider.CategoryMapping>
+                exact = mappings.stream().filter(java.util.Objects::nonNull)
+                        .filter(WikipediaCategoryMapping::configured)
+                        .map(value -> new datasource.wikipedia.WikipediaDatasourceProvider
+                                .CategoryMapping(value.category(), value.valueQid()))
+                        .toList();
+        return datasource.wikipedia.WikipediaDatasourceProvider.categoryParameters(
+                new datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule(
+                        patternConfigured() ? pattern() : "", policy().name(), exact));
+    }
+
+    /**
+     * The rule a category binding states, or null when it states no configured rule. The
+     * one recipe-to-model conversion, the inverse of {@link #recipeParameters()}; an
+     * unknown policy reads as the reviewed default.
+     */
+    public static WikipediaCategoryRule fromRecipe(datasource.api.SourceBinding binding) {
+        datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule recipe =
+                datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(binding);
+        if (recipe == null) return null;
+        WikipediaCategoryRule rule = new WikipediaCategoryRule();
+        rule.pattern(recipe.pattern());
+        recipe.mappings().forEach(value -> rule.mappings.add(
+                new WikipediaCategoryMapping(value.category(), value.valueQid())));
+        try {
+            rule.policy(CategoryCandidatePolicy.valueOf(recipe.policy()));
+        } catch (RuntimeException unknown) {
+            rule.policy(CategoryCandidatePolicy.REVIEW);
+        }
+        return rule;
+    }
+
+    /** Takes {@code other}'s content, for a holder that owns this rule instance. */
+    public void assign(WikipediaCategoryRule other) {
+        WikipediaCategoryRule source = other == null ? new WikipediaCategoryRule() : other;
+        pattern(source.pattern());
+        policy(source.policy());
+        mappings.clear();
+        source.mappings.stream().filter(java.util.Objects::nonNull)
+                .map(WikipediaCategoryMapping::copy).forEach(mappings::add);
+    }
+
     public WikipediaCategoryRule copy() {
         WikipediaCategoryRule copy = new WikipediaCategoryRule();
         copy.pattern(pattern()); copy.policy(policy());

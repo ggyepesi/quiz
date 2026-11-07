@@ -118,6 +118,25 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
     }
 
     /**
+     * Every value this page retained, under the key a field would use to read it: source
+     * parameters as {@code Template.parameter}, rendered rows as {@code Rendered.<label>}.
+     * The inverse of {@link #valueOf}; a reader that lists the page's values iterates this
+     * rather than spelling the key grammar again (#462).
+     */
+    public Map<Key, String> values() {
+        Map<Key, String> result = new LinkedHashMap<>();
+        if (!template.isBlank()) {
+            parameters.forEach((name, value) -> {
+                if (name != null && !name.isBlank()) result.put(new Key(template, name), value);
+            });
+        }
+        renderedFields.forEach((label, value) -> {
+            if (label != null && !label.isBlank()) result.put(Key.renderedRow(label), value);
+        });
+        return java.util.Collections.unmodifiableMap(result);
+    }
+
+    /**
      * How a field names one infobox value: {@code Infobox film.country} for a source
      * parameter, or {@code Rendered.Group} for a user-visible row.
      *
@@ -149,8 +168,13 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
                     ? null : new Key(template, parameter);
         }
 
+        /** The namespace of rendered infobox rows: {@code Rendered.<label>}. */
+        public static final String RENDERED = "Rendered";
+
+        public static Key renderedRow(String label) { return new Key(RENDERED, label); }
+
         /** Rendered infobox rows use the durable {@code Rendered.<label>} namespace. */
-        public boolean rendered() { return template.equalsIgnoreCase("Rendered"); }
+        public boolean rendered() { return template.equalsIgnoreCase(RENDERED); }
 
         @Override public String toString() { return template + "." + parameter; }
     }

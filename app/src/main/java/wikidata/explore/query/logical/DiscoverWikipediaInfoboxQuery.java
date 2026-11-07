@@ -83,12 +83,8 @@ public final class DiscoverWikipediaInfoboxQuery implements Query<TableQueryResu
             if (title == null || title.isBlank()) continue;
             var infobox = client.byTitle(title).execute(context);
             if (infobox == null) continue;
-            for (var entry : infobox.parameters().entrySet()) {
-                String key = infobox.template() + "." + entry.getKey();
-                observe(seen, key, entry.getValue(), infobox.document().title());
-            }
-            for (var entry : infobox.renderedFields().entrySet()) {
-                observe(seen, "Rendered." + entry.getKey(), entry.getValue(),
+            for (var entry : infobox.values().entrySet()) {
+                observe(seen, entry.getKey().toString(), entry.getValue(),
                         infobox.document().title());
             }
         }

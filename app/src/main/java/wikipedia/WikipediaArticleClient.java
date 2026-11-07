@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import datasource.evidence.ContentDigest;
 import datasource.evidence.ArticleIntroduction;
+import datasource.evidence.InfoboxParameters;
 import datasource.evidence.SourceDocument;
 import datasource.evidence.WikipediaArticle;
 import org.jsoup.Jsoup;
@@ -77,14 +78,15 @@ public final class WikipediaArticleClient {
      * a selected sample can justify the larger response; a generation-wide introduction
      * acquisition cannot.
      */
-    public Query<Article> structuredByTitle(String title) {
+    public Query<StructuredPage> structuredByTitle(String title) {
         String requested = title == null ? "" : title.trim();
         if (requested.isBlank()) throw new IllegalArgumentException("Article title is required");
         URI uri = parseApi(requested);
         return new Query<>() {
             @Override public String purpose() { return "Read structured Wikipedia article"; }
             @Override public String skeleton() {
-                return "parsed HTML + revision + sections + links + categories";
+                return "parsed HTML + wikitext + revision + sections + links + categories"
+                        + " + infobox";
             }
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() {
@@ -93,19 +95,24 @@ public final class WikipediaArticleClient {
             @Override public Map<String, String> parameters() {
                 return Map.of("title", requested);
             }
-            @Override public Article execute(QueryContext context) throws Exception {
+            @Override public StructuredPage execute(QueryContext context) throws Exception {
                 return context.step("Read structured article", "Wikipedia API", skeleton(),
                         parameters(), step -> {
                             step.request(uri.toString());
-                            Article article = parseStructured(JSON.readTree(fetcher.fetch(uri)));
+                            StructuredPage page =
+                                    parseStructuredPage(JSON.readTree(fetcher.fetch(uri)));
+                            Article article = page == null ? null : page.article();
                             step.summary(article == null ? "Article unavailable"
                                     : article.text().length() + " character(s), "
                                     + article.links().size() + " internal link(s), "
-                                    + article.categories().size() + " visible categories");
-                            return article;
+                                    + article.categories().size() + " visible categories, "
+                                    + (page.infobox() == null ? "no infobox" : "infobox"));
+                            return page;
                         });
             }
-            @Override public int rowCount(Article result) { return result == null ? 0 : 1; }
+            @Override public int rowCount(StructuredPage result) {
+                return result == null || result.article() == null ? 0 : 1;
+            }
         };
     }
 
@@ -137,6 +144,20 @@ public final class WikipediaArticleClient {
                 document, text, categories, parsed.structuredSections());
         return new Article(document, text, categories, parsed.links(), parsed.sections(),
                 structured);
+    }
+
+    /**
+     * The article and its infobox from ONE parse response, so both describe the same
+     * revision. Discovery used to request the infobox separately: two requests per
+     * article, and an edit between them paired an article with another revision's
+     * infobox (#461). The infobox is read by its own parser, from this response.
+     */
+    static StructuredPage parseStructuredPage(JsonNode root) {
+        Article article = parseStructured(root);
+        if (article == null) return null;
+        boolean parsed = !root.path("parse").isMissingNode() && !root.path("parse").isNull();
+        return new StructuredPage(article,
+                parsed ? WikipediaInfoboxClient.parseResponse(root) : null);
     }
 
     static Article parseStructured(JsonNode root) {
@@ -415,7 +436,7 @@ public final class WikipediaArticleClient {
 
     private static URI parseApi(String title) {
         return URI.create("https://en.wikipedia.org/w/api.php?action=parse"
-                + "&prop=text%7Csections%7Ccategories%7Clinks%7Crevid&redirects=1"
+                + "&prop=text%7Cwikitext%7Csections%7Ccategories%7Clinks%7Crevid&redirects=1"
                 + "&format=json&formatversion=2&page=" + encode(title));
     }
 
@@ -463,6 +484,13 @@ public final class WikipediaArticleClient {
             sections = sections == null ? List.of() : List.copyOf(sections);
             structuredSections = structuredSections == null
                     ? List.of() : List.copyOf(structuredSections);
+        }
+    }
+
+    /** One structured article and the infobox read from the same response, or null. */
+    public record StructuredPage(Article article, InfoboxParameters infobox) {
+        public StructuredPage {
+            article = java.util.Objects.requireNonNull(article);
         }
     }
 

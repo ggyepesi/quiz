@@ -98,15 +98,10 @@ public final class WikipediaStructureAnalysis {
     private static void collectInfobox(String article, InfoboxParameters infobox,
             Map<String, InfoboxAccumulator> values) {
         if (infobox == null) return;
-        infobox.parameters().forEach((name, value) -> {
-            String key = infobox.template() + '.' + name;
-            values.computeIfAbsent(normalized(key),
-                    ignored -> new InfoboxAccumulator(key)).add(article, value);
-        });
-        infobox.renderedFields().forEach((name, value) -> {
-            String key = "Rendered." + name;
-            values.computeIfAbsent(normalized(key),
-                    ignored -> new InfoboxAccumulator(key)).add(article, value);
+        infobox.values().forEach((key, value) -> {
+            String name = key.toString();
+            values.computeIfAbsent(normalized(name),
+                    ignored -> new InfoboxAccumulator(name)).add(article, value);
         });
     }
 
