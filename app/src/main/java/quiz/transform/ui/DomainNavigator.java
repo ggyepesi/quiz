@@ -5,6 +5,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import domain.DomainModel;
 
@@ -20,11 +21,29 @@ public final class DomainNavigator {
     private DomainNavigator() {}
 
     public static void show(Supplier<List<DomainEntry>> entries, DomainWriter writer) {
-        SwingUtilities.invokeLater(() -> build(entries, writer));
+        show(entries, "Domains", "Open in Transform Workbench",
+                (domain, name) -> TransformWorkbenchPanel.openFrame(domain, name, writer));
+    }
+
+    /**
+     * The saved-domain chooser is shared application navigation, not part of Transform's
+     * editing semantics. A read-only workbench can therefore load the exact same catalog
+     * without copying its asynchronous loading, persistence explanation, refresh, or
+     * already-open-window behaviour.
+     */
+    public static void show(
+            Supplier<List<DomainEntry>> entries,
+            String title,
+            String openLabel,
+            BiFunction<DomainModel, String, JFrame> opener) {
+        SwingUtilities.invokeLater(() -> build(entries, title, openLabel, opener));
     }
 
     private static void build(
-            Supplier<List<DomainEntry>> entriesSupplier, DomainWriter writer) {
+            Supplier<List<DomainEntry>> entriesSupplier,
+            String title,
+            String openLabel,
+            BiFunction<DomainModel, String, JFrame> opener) {
         DefaultListModel<DomainEntry> model = new DefaultListModel<>();
         JList<DomainEntry> list = new JList<>(model);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -50,7 +69,8 @@ public final class DomainNavigator {
             }
         };
         reload.run();
-        JButton open = new JButton("Open in Transform Workbench");
+        JButton open = new JButton(openLabel == null || openLabel.isBlank()
+                ? "Open" : openLabel);
 
         // Reuse an already-open workbench instead of reloading the domain (which can be
         // slow — Nobel re-parses + re-reads ~1000 portraits). Keyed by domain name.
@@ -78,7 +98,7 @@ public final class DomainNavigator {
                 }
                 @Override protected void done() {
                     try {
-                        JFrame f = TransformWorkbenchPanel.openFrame(get(), e.name(), writer);
+                        JFrame f = opener.apply(get(), e.name());
                         openFrames.put(e.name(), f);
                         f.addWindowListener(new java.awt.event.WindowAdapter() {
                             @Override public void windowClosed(java.awt.event.WindowEvent we) {
@@ -113,7 +133,7 @@ public final class DomainNavigator {
         south.add(open, BorderLayout.EAST);
         south.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
 
-        JFrame frame = new JFrame("Domains");
+        JFrame frame = new JFrame(title == null || title.isBlank() ? "Domains" : title);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
         frame.add(new JScrollPane(list), BorderLayout.CENTER);
