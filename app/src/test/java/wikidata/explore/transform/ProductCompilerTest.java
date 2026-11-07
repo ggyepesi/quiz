@@ -176,6 +176,32 @@ class ProductCompilerTest {
                 "collapsed String retains its entity-field provenance");
     }
 
+    @Test void explicitlyUnclassedEntityRemainsAGenericReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        GeneratedFieldModel associatedAnimal = deity.addField(
+                "associatedAnimal", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        associatedAnimal.unclassedEntity(true);
+        project.rootClass(deity);
+
+        WikidataDynamicObject cat = new WikidataDynamicObject("Q146", "cat");
+        WikidataDynamicObject bastet = substantive("Q146007", "Bastet");
+        bastet.type("EgyptianDeity");
+        bastet.put("associatedAnimal", new java.util.ArrayList<>(List.of(cat)));
+
+        ProductDomain domain = ProductCompiler.compile(
+                project, new java.util.ArrayList<>(List.of(bastet, cat)));
+
+        DomainField field = field(domain, "EgyptianDeity", "associatedAnimal");
+        assertNotNull(field);
+        assertTrue(field.reference(),
+                "unclassedEntity explicitly keeps identity without naming a class");
+        assertEquals("List<Viewable>",
+                domain.fieldTypes("EgyptianDeity").field("associatedAnimal").typeLabel());
+        assertSame(cat, ((List<?>) bastet.get("associatedAnimal")).getFirst(),
+                "the entity must not collapse to its display-name text");
+    }
+
     @Test void ownedClassOwnerRemainsAPolymorphicReference() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");
@@ -292,6 +318,29 @@ class ProductCompilerTest {
                         value.dynamicFieldValues().containsKey("wikidata")
                                 || value.dynamicFieldValues().containsKey("Wikidata")),
                 "the legacy embedded link must not survive as an undeclared extra");
+    }
+
+    @Test void configuredWikipediaSourceIsAReadableLinkedRuntimeField() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        wikidata.explore.model.ClassSourceBindings.wikipediaArticle(deity, true);
+        project.rootClass(deity);
+        WikidataDynamicObject amun = substantive("Q1268", "Amun");
+        amun.type("EgyptianDeity");
+        amun.enwikiTitle("Amun");
+
+        ProductDomain domain = ProductCompiler.compile(
+                project, new java.util.ArrayList<>(List.of(amun)));
+        objectview.field.FieldSet fields = objectview.field.FieldSet.of(
+                amun, domain.fieldSchema("EgyptianDeity"));
+
+        quiz.source.WikipediaSource source = assertInstanceOf(
+                quiz.source.WikipediaSource.class, fields.read("wikipediaSource"));
+        assertEquals("https://en.wikipedia.org/wiki/Amun", source.url());
+        assertTrue(objectview.field.FieldSet.of(source).displayField().link(),
+                "the runtime value must retain its linked display declaration");
+        assertFalse(amun.dynamicFieldValues().containsKey("wikipediaSource"),
+                "derived provenance must not become duplicate persisted domain data");
     }
 
     @Test void aDeclaredStatementSourceFieldRemainsDomainData() {

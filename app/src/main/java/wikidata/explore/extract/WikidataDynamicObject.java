@@ -86,6 +86,17 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     private final Map<String, Object> dynamicFields = new LinkedHashMap<>();
 
+    /** Values reconstructed from configured datasource declarations for the current
+     * runtime. They are visible through ObjectView but are not snapshot data: the
+     * persisted source facts above reconstruct them after the next load. */
+    @Hidden
+    @JsonIgnore
+    private transient Map<String, Object> runtimeFields;
+
+    @Hidden
+    @JsonIgnore
+    private transient Map<String, Object> viewFields;
+
     @Hidden
     @JsonIgnore
     private String type;
@@ -376,9 +387,49 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     @Override public Map<String, Object> dynamicFieldValues() { return dynamicFields; }
 
+    @Override public Map<String, Object> viewFieldValues() {
+        if (runtimeFields == null || runtimeFields.isEmpty()) return dynamicFields;
+        if (viewFields == null) viewFields = new RuntimeFieldMap(dynamicFields, runtimeFields);
+        return viewFields;
+    }
+
+    /** Replace the transient fields supplied by the currently compiled model. */
+    public void runtimeFields(Map<String, Object> values) {
+        runtimeFields = values == null || values.isEmpty()
+                ? null : new LinkedHashMap<>(values);
+        viewFields = null;
+    }
+
     @Override public FieldSchema dynamicFieldSchema() { return dynamicFieldSchema; }
 
     public void dynamicFieldSchema(FieldSchema schema) { this.dynamicFieldSchema = schema; }
+
+    /** Read-through map: persisted domain values retain their order, and configured
+     * runtime values supplement/override them without making writes persistent. */
+    private static final class RuntimeFieldMap
+            extends java.util.AbstractMap<String, Object> {
+        private final Map<String, Object> stored;
+        private final Map<String, Object> runtime;
+
+        private RuntimeFieldMap(Map<String, Object> stored, Map<String, Object> runtime) {
+            this.stored = stored;
+            this.runtime = runtime;
+        }
+
+        @Override public Object get(Object key) {
+            return runtime.containsKey(key) ? runtime.get(key) : stored.get(key);
+        }
+
+        @Override public boolean containsKey(Object key) {
+            return runtime.containsKey(key) || stored.containsKey(key);
+        }
+
+        @Override public java.util.Set<Entry<String, Object>> entrySet() {
+            Map<String, Object> merged = new LinkedHashMap<>(stored);
+            merged.putAll(runtime);
+            return java.util.Collections.unmodifiableMap(merged).entrySet();
+        }
+    }
 
     public void type(String type) {
         this.type = type;

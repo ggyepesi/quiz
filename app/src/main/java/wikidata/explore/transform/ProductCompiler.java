@@ -28,6 +28,8 @@ import java.util.Set;
  * <ul>
  *   <li>reference fields whose target class the model doesn't declare (e.g.
  *       {@code forWork} -&gt; {@code ForWork}) collapse to display-name strings;
+ *       fields explicitly declared as unclassed entities instead remain generic
+ *       identity-bearing references;
  *   <li>bare references (unstamped, no substance — e.g. the {@code type} values)
  *       collapse too (via {@link BareReferenceCollapse});
  *   <li>each field's shape and label come from the model declaration; instance
@@ -99,7 +101,9 @@ public final class ProductCompiler {
         //    article) from references before collapse — an entity's P31 `type` picks
         //    up such non-domain values, and they'd otherwise become bogus strings.
         filterNoiseReferences(modeledPool);
-        // 2. References to an unmodeled class read as their display-name string.
+        // 2. References that name an unmodeled class read as their display-name
+        //    string. An explicitly UNCLASSED entity is different: the declaration says
+        //    to keep its identity and label without inventing a target class.
         collapseUnmodeledReferences(model, modeledPool);
         // 3. A declared entity field keeps compatible stamped references even when the
         //    referent is outside the loaded top-level population. Other raw references
@@ -115,6 +119,13 @@ public final class ProductCompiler {
         //    had it, so the relation stays one-directional (like Constellation/Star —
         //    navigate Nomination as its own member type, no auto-materialized inverse).
         stripReifyLists(model, modeledPool);
+
+        // Datasource instance fields are derived from retained source facts. Generated
+        // ModelBuilder classes receive the same values in GeneratedViewableMapper;
+        // dynamic TransformApp instances receive them here as transient view fields.
+        // Keeping them out of dynamicFieldValues() prevents a derived provenance link
+        // from becoming a second persisted domain-data path.
+        materializeConfiguredInstanceFields(model, modeledPool);
 
         List<ProductClass> classes = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
@@ -136,6 +147,32 @@ public final class ProductCompiler {
         return new ProductDomain(schema, pool, WikidataDynamicObject.class,
                 () -> new quiz.transform.app.ProductSchemaInspector(model, schema),
                 roleSelections);
+    }
+
+    private static void materializeConfiguredInstanceFields(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
+        for (WikidataDynamicObject object : pool) {
+            Map<String, wikidata.explore.model.ConfiguredInstanceFields.Field> fields =
+                    new LinkedHashMap<>();
+            for (String className : object.directClassNames()) {
+                GeneratedClassModel owner = model.findClass(className);
+                if (owner == null) continue;
+                for (wikidata.explore.model.ConfiguredInstanceFields.Field field
+                        : wikidata.explore.model.ConfiguredInstanceFields.of(
+                                owner, model, datasource.Datasources.standard())) {
+                    fields.putIfAbsent(field.name(), field);
+                }
+            }
+            Map<String, Object> values = new LinkedHashMap<>();
+            for (wikidata.explore.model.ConfiguredInstanceFields.Field field
+                    : fields.values()) {
+                Object value = field.value(object);
+                if (value != null && !(value instanceof String text && text.isBlank())) {
+                    values.put(field.name(), value);
+                }
+            }
+            object.runtimeFields(values);
+        }
     }
 
     /** Reorder each stamped instance's fields to its ProductClass's field order —
@@ -206,8 +243,8 @@ public final class ProductCompiler {
             GeneratedFieldModel f) {
         FieldType type = f.type();
         String target = f.entityClassName();
-        boolean targetDeclared =
-                type == FieldType.ENTITY && model.findClass(target) != null;
+        boolean targetDeclared = type == FieldType.ENTITY
+                && (f.unclassedEntity() || model.findClass(target) != null);
         boolean reference = targetDeclared
                 || wikidata.explore.model.OwnedClassSemantics
                         .isOwnerReferenceField(owner, f);
@@ -249,8 +286,9 @@ public final class ProductCompiler {
 
     // --- convention resolution ------------------------------------------------
 
-    /** Collapses, in place, values of ENTITY fields whose declared target class
-     *  isn't in the model — on instances stamped as the owning class. */
+    /** Collapses, in place, values of ENTITY fields whose named target class
+     *  isn't in the model — on instances stamped as the owning class. Explicitly
+     *  unclassed entities retain their identity and label as generic references. */
     private static void collapseUnmodeledReferences(GeneratedProjectModel model,
                                                     List<WikidataDynamicObject> pool) {
         // (className, fieldName) pairs to collapse.
@@ -262,6 +300,7 @@ public final class ProductCompiler {
             }
             for (GeneratedFieldModel f : c.effectiveFields(model)) {
                 if (f != null && f.type() == FieldType.ENTITY
+                        && !f.unclassedEntity()
                         && !wikidata.explore.model.OwnedClassSemantics
                                 .isOwnerReferenceField(c, f)
                         && model.findClass(f.entityClassName()) == null) {
@@ -385,9 +424,9 @@ public final class ProductCompiler {
         }
     }
 
-    /** A declared modeled entity field, and the owned class's polymorphic owner field,
-     *  keep references without making those referents top-level members. References in
-     *  every other field collapse to text. */
+    /** A declared modeled or explicitly unclassed entity field, and the owned class's
+     *  polymorphic owner field, keep references without making those referents top-level
+     *  members. References in every other field collapse to text. */
     private static void collapseReferencesOutsideDeclaredEntityFields(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
         Set<String> entityFields = new LinkedHashSet<>();
@@ -395,7 +434,8 @@ public final class ProductCompiler {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
                 if (field != null && field.type() == FieldType.ENTITY
-                        && (wikidata.explore.model.OwnedClassSemantics
+                        && (field.unclassedEntity()
+                                || wikidata.explore.model.OwnedClassSemantics
                                         .isOwnerReferenceField(owner, field)
                                 || model.findClass(field.entityClassName()) != null)) {
                     entityFields.add(owner.className() + "\0" + field.name());
