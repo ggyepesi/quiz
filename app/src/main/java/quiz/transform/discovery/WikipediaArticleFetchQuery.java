@@ -59,7 +59,8 @@ public final class WikipediaArticleFetchQuery
                             "Wikipedia did not return this article."));
                 } else {
                     results.add(new Result(instance, title,
-                            acquired.article().structuredArticle(), acquired.infobox(), ""));
+                            acquired.article().structuredArticle(), acquired.infobox(),
+                            acquired.elements(), ""));
                 }
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
@@ -88,17 +89,20 @@ public final class WikipediaArticleFetchQuery
                 + " unavailable.";
     }
 
-    /** {@code infobox} comes from the same parse response, so the same revision, as
-     *  {@code article}; it is null when the page has none. */
+    /** {@code infobox} and {@code elements} come from the same parse response, so the same
+     *  revision, as {@code article}; the infobox is null when the page has none. */
     public record Result(WikidataDynamicObject instance, String title,
                          WikipediaArticle article,
-                         datasource.evidence.InfoboxParameters infobox, String problem) {
+                         datasource.evidence.InfoboxParameters infobox,
+                         List<wikipedia.ArticleElementInventory.ElementKind> elements,
+                         String problem) {
         public Result(WikidataDynamicObject instance, String title,
                       WikipediaArticle article, String problem) {
-            this(instance, title, article, null, problem);
+            this(instance, title, article, null, List.of(), problem);
         }
 
         public Result {
+            elements = elements == null ? List.of() : List.copyOf(elements);
             instance = java.util.Objects.requireNonNull(instance);
             title = title == null ? "" : title.trim();
             problem = problem == null ? "" : problem.trim();

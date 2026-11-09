@@ -57,7 +57,8 @@ public final class WikipediaDiscoveryQuery
         List<Article> result = new ArrayList<>();
         for (WikipediaArticleFetchQuery.Result value : fetched) {
             result.add(new Article(value.instance(), value.title(), value.article(),
-                    value.available() ? value.infobox() : null, value.problem()));
+                    value.available() ? value.infobox() : null,
+                    value.available() ? value.elements() : null, value.problem()));
         }
         return List.copyOf(result);
     }
@@ -96,13 +97,25 @@ public final class WikipediaDiscoveryQuery
         return values;
     }
 
+    /**
+     * {@code elements} is the block-level element inventory of the fetched HTML, or null
+     * when this article was not fetched in this run: a retained article keeps only the
+     * blocks its structure chose, so it cannot say what was dropped.
+     */
     public record Article(
             WikidataDynamicObject instance,
             String title,
             WikipediaArticle article,
             InfoboxParameters infobox,
+            List<wikipedia.ArticleElementInventory.ElementKind> elements,
             String problem) {
+        public Article(WikidataDynamicObject instance, String title,
+                       WikipediaArticle article, InfoboxParameters infobox, String problem) {
+            this(instance, title, article, infobox, null, problem);
+        }
+
         public Article {
+            elements = elements == null ? null : List.copyOf(elements);
             instance = java.util.Objects.requireNonNull(instance);
             title = title == null ? "" : title.trim();
             problem = problem == null ? "" : problem.trim();

@@ -143,6 +143,60 @@ public final class WikipediaDiscoveryRows {
         @Override public String getDisplayName() { return targetTitle(); }
     }
 
+    /**
+     * One block-level element kind across the selected articles, and what the article
+     * structure does with it. A kind marked "Not retained" is source structure that the
+     * retained article, and every recipe built on it, never sees.
+     */
+    public static final class BlockKindPattern extends ViewableAdapter {
+        @DisplayField @Label("Element") private final String element;
+        @Label("Retained as") private final String retainedAs;
+        @Label("Articles") private final int articles;
+        @Label("Selected articles") private final int selectedArticles;
+        private final int missing;
+        private final int occurrences;
+        @Inline private final List<BlockKindExample> examples;
+
+        BlockKindPattern(String element, String retainedAs, int articles,
+                int selectedArticles, int occurrences, List<BlockKindExample> examples) {
+            this.element = element;
+            this.retainedAs = retainedAs;
+            this.articles = articles;
+            this.selectedArticles = selectedArticles;
+            this.missing = Math.max(0, selectedArticles - articles);
+            this.occurrences = occurrences;
+            this.examples = List.copyOf(examples);
+        }
+
+        public String element() { return element; }
+        public String retainedAs() { return retainedAs; }
+        public int articles() { return articles; }
+        public int selectedArticles() { return selectedArticles; }
+        public int occurrences() { return occurrences; }
+        public List<BlockKindExample> examples() { return examples; }
+        @Override public String getIdentifier() { return element + ':' + retainedAs; }
+        @Override public String getDisplayName() { return element; }
+    }
+
+    /** The first non-empty occurrence of one element kind in one article. */
+    public static final class BlockKindExample extends ViewableAdapter {
+        @DisplayField @Link private final String article;
+        private final int occurrences;
+        @Label("Text") private final String text;
+
+        BlockKindExample(String title, int occurrences, String text) {
+            this.article = linked(title);
+            this.occurrences = occurrences;
+            this.text = text == null ? "" : text;
+        }
+
+        public String title() { return label(article); }
+        public int occurrences() { return occurrences; }
+        public String text() { return text; }
+        @Override public String getIdentifier() { return title(); }
+        @Override public String getDisplayName() { return title(); }
+    }
+
     public static final class ArticleExample extends ViewableAdapter {
         @DisplayField @Link private final String article;
 

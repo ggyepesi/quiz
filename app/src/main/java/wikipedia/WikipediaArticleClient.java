@@ -153,16 +153,27 @@ public final class WikipediaArticleClient {
      * infobox (#461). The infobox is read by its own parser, from this response.
      */
     static StructuredPage parseStructuredPage(JsonNode root) {
-        Article article = parseStructured(root);
-        if (article == null) return null;
-        boolean parsed = !root.path("parse").isMissingNode() && !root.path("parse").isNull();
-        return new StructuredPage(article,
-                parsed ? WikipediaInfoboxClient.parseResponse(root) : null);
+        Parsed parsed = parseStructuredWithElements(root);
+        if (parsed == null) return null;
+        boolean parse = !root.path("parse").isMissingNode() && !root.path("parse").isNull();
+        return new StructuredPage(parsed.article(),
+                parse ? WikipediaInfoboxClient.parseResponse(root) : null, parsed.elements());
     }
 
+    private record Parsed(Article article,
+                          List<ArticleElementInventory.ElementKind> elements) { }
+
     static Article parseStructured(JsonNode root) {
+        Parsed parsed = parseStructuredWithElements(root);
+        return parsed == null ? null : parsed.article();
+    }
+
+    private static Parsed parseStructuredWithElements(JsonNode root) {
         JsonNode page = root.path("parse");
-        if (page.isMissingNode() || page.isNull()) return parse(root);
+        if (page.isMissingNode() || page.isNull()) {
+            Article extract = parse(root);
+            return extract == null ? null : new Parsed(extract, List.of());
+        }
         String title = page.path("title").asText("").trim();
         String revision = page.path("revid").asText("").trim();
         String html = page.path("text").asText("");
@@ -180,8 +191,8 @@ public final class WikipediaArticleClient {
                 categories, parsed.links());
         WikipediaArticle structured = new WikipediaArticle(document, parsed.text(),
                 categories, parsed.structuredSections());
-        return new Article(document, parsed.text(), categories, parsed.links(),
-                parsed.sections(), structured);
+        return new Parsed(new Article(document, parsed.text(), categories, parsed.links(),
+                parsed.sections(), structured), parsed.elements());
     }
 
     /** One construction of the versioned document evidence used by every Wikipedia
@@ -227,16 +238,34 @@ public final class WikipediaArticleClient {
             text.setLength(text.length() - 1);
         }
         String normalized = text.toString();
+        java.util.Map<Element, String> outcomes = new java.util.IdentityHashMap<>();
         return new ParsedArticleText(normalized, links,
-                sections(normalized, headings), structuredSections(body, normalized, links));
+                sections(normalized, headings),
+                structuredSections(body, normalized, links, outcomes),
+                ArticleElementInventory.of(body, outcomes));
     }
 
     /**
      * Keeps the heading tree and meaningful source blocks without retaining presentation
      * markup. Offsets refer to the same normalized article text used by evidence fragments.
      */
+    /** What {@link #structuredSections} did with an element it read. An element it did
+     *  not read was not retained. */
+    static final String SECTION_HEADING = "Section heading";
+    static final String INSIDE_RETAINED_BLOCK = "Inside a retained block";
+    static final String EMPTY = "Empty";
+    static final String TEXT_NOT_LOCATED = "Text not located";
+    static final String NOT_RETAINED = "Not retained";
+
+    /**
+     * {@code outcomes} receives, for every element read, what was done with it: a block
+     * kind, or why no block was made. The element inventory reports these recorded
+     * outcomes, so it states what the structure did rather than predicting it — a
+     * prediction from the element alone missed blocks whose text could not be located.
+     */
     private static List<WikipediaArticle.Section> structuredSections(
-            Element body, String text, List<ArticleIntroduction.Link> links) {
+            Element body, String text, List<ArticleIntroduction.Link> links,
+            java.util.Map<Element, String> outcomes) {
         MutableSection introduction = new MutableSection("Introduction", 0, 0);
         List<MutableSection> roots = new ArrayList<>();
         roots.add(introduction);
@@ -244,11 +273,15 @@ public final class WikipediaArticleClient {
         stack.add(introduction);
         int[] searchFrom = {0};
         int[] blockNumber = {0};
-        for (Element element : body.select("h1, h2, h3, h4, h5, h6, p, li, blockquote, table")) {
+        for (Element element : body.select(RETAINED_ELEMENTS)) {
             String tag = element.normalName();
             if (tag.matches("h[1-6]")) {
                 String heading = element.text().trim();
-                if (heading.isBlank()) continue;
+                if (heading.isBlank()) {
+                    outcomes.put(element, EMPTY);
+                    continue;
+                }
+                outcomes.put(element, SECTION_HEADING);
                 int level = Character.digit(tag.charAt(1), 10);
                 int start = findText(text, heading, searchFrom[0]);
                 if (start < 0) start = searchFrom[0];
@@ -266,19 +299,24 @@ public final class WikipediaArticleClient {
                 searchFrom[0] = Math.min(text.length(), start + heading.length());
                 continue;
             }
-            if (insideRetainedBlock(element)) continue;
+            if (insideRetainedBlock(element)) {
+                outcomes.put(element, INSIDE_RETAINED_BLOCK);
+                continue;
+            }
             String value = normalizeBlockText(element.text());
-            if (value.isBlank()) continue;
+            if (value.isBlank()) {
+                outcomes.put(element, EMPTY);
+                continue;
+            }
             int start = findText(text, value, searchFrom[0]);
-            if (start < 0) continue;
+            if (start < 0) {
+                outcomes.put(element, TEXT_NOT_LOCATED);
+                continue;
+            }
             int end = start + value.length();
             searchFrom[0] = end;
-            WikipediaArticle.Block.Kind kind = switch (tag) {
-                case "li" -> WikipediaArticle.Block.Kind.LIST_ITEM;
-                case "blockquote" -> WikipediaArticle.Block.Kind.QUOTATION;
-                case "table" -> WikipediaArticle.Block.Kind.TABLE;
-                default -> WikipediaArticle.Block.Kind.PARAGRAPH;
-            };
+            WikipediaArticle.Block.Kind kind = blockKind(tag);
+            outcomes.put(element, kind.name());
             String label = switch (kind) {
                 case PARAGRAPH -> "Paragraph ";
                 case LIST_ITEM -> "List item ";
@@ -296,6 +334,19 @@ public final class WikipediaArticleClient {
             if (section.end <= 0) section.end = text.length();
         }
         return roots.stream().map(section -> section.freeze(text.length())).toList();
+    }
+
+    /** The elements {@link #structuredSections} reads: headings open sections, the rest
+     *  become blocks. Everything else in the article is not retained. */
+    static final String RETAINED_ELEMENTS = "h1, h2, h3, h4, h5, h6, p, li, blockquote, table";
+
+    private static WikipediaArticle.Block.Kind blockKind(String tag) {
+        return switch (tag) {
+            case "li" -> WikipediaArticle.Block.Kind.LIST_ITEM;
+            case "blockquote" -> WikipediaArticle.Block.Kind.QUOTATION;
+            case "table" -> WikipediaArticle.Block.Kind.TABLE;
+            default -> WikipediaArticle.Block.Kind.PARAGRAPH;
+        };
     }
 
     /** A nested list/table block is represented by its outermost retained block once. */
@@ -466,9 +517,16 @@ public final class WikipediaArticleClient {
         }
     }
 
+    /** {@code elements} is the block-level element inventory of the same HTML. */
     public record ParsedArticleText(String text, List<ArticleIntroduction.Link> links,
                                     List<ArticleSection> sections,
-                                    List<WikipediaArticle.Section> structuredSections) {
+                                    List<WikipediaArticle.Section> structuredSections,
+                                    List<ArticleElementInventory.ElementKind> elements) {
+        public ParsedArticleText(String text, List<ArticleIntroduction.Link> links,
+                                 List<ArticleSection> sections,
+                                 List<WikipediaArticle.Section> structuredSections) {
+            this(text, links, sections, structuredSections, List.of());
+        }
         public ParsedArticleText(String text, List<ArticleIntroduction.Link> links) {
             this(text, links, text == null || text.isBlank()
                     ? List.of() : List.of(new ArticleSection(
@@ -484,13 +542,17 @@ public final class WikipediaArticleClient {
             sections = sections == null ? List.of() : List.copyOf(sections);
             structuredSections = structuredSections == null
                     ? List.of() : List.copyOf(structuredSections);
+            elements = elements == null ? List.of() : List.copyOf(elements);
         }
     }
 
-    /** One structured article and the infobox read from the same response, or null. */
-    public record StructuredPage(Article article, InfoboxParameters infobox) {
+    /** One structured article, the infobox read from the same response (or null), and the
+     *  block-level element inventory of its HTML. */
+    public record StructuredPage(Article article, InfoboxParameters infobox,
+                                 List<ArticleElementInventory.ElementKind> elements) {
         public StructuredPage {
             article = java.util.Objects.requireNonNull(article);
+            elements = elements == null ? List.of() : List.copyOf(elements);
         }
     }
 

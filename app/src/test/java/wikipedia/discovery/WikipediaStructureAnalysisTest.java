@@ -92,6 +92,54 @@ class WikipediaStructureAnalysisTest {
                 + WikipediaDiscoveryQuery.MAX_ARTICLES));
     }
 
+    /** Block kinds are compared across fetched articles, with coverage over the selected
+     *  count; a dropped kind shows which articles carry it and its first text. */
+    @Test void blockKindsAggregateAcrossFetchedArticles() {
+        var dd = new wikipedia.ArticleElementInventory.ElementKind(
+                "dd", "Not retained", 3, "Indented commentary.");
+        var p = new wikipedia.ArticleElementInventory.ElementKind(
+                "p", "PARAGRAPH", 5, "Maat was the goddess of truth.");
+        WikipediaDiscoveryQuery.Article maat = withElements(
+                observed("Q170471", "Maat", "Worship"), List.of(dd, p));
+        WikipediaDiscoveryQuery.Article ra = withElements(
+                observed("Q36289", "Ra", "Worship"), List.of(p));
+        WikipediaDiscoveryQuery.Article missing = new WikipediaDiscoveryQuery.Article(
+                instance("Q2", "Other", "Other"), "Other", null, null, null,
+                "Wikipedia did not return this article.");
+
+        WikipediaStructureAnalysis.Result result =
+                WikipediaStructureAnalysis.analyze(List.of(maat, ra, missing));
+
+        assertTrue(result.blockKindsAvailable());
+        var paragraphs = result.blockKinds().getFirst();
+        assertEquals("p", paragraphs.element());
+        assertEquals(2, paragraphs.articles());
+        assertEquals(10, paragraphs.occurrences());
+        var dropped = result.blockKinds().get(1);
+        assertEquals("Not retained", dropped.retainedAs());
+        assertEquals(1, dropped.articles());
+        assertEquals(3, dropped.selectedArticles(),
+                "coverage counts every selected article, the unavailable one included");
+        assertEquals("Indented commentary.", dropped.examples().getFirst().text());
+    }
+
+    /** A retained article keeps only the blocks its structure chose, so it cannot say
+     *  what was dropped: the analysis reports the inventory as unavailable, not empty. */
+    @Test void retainedArticlesHaveNoBlockKindInventory() {
+        WikipediaStructureAnalysis.Result result = WikipediaStructureAnalysis.analyze(
+                List.of(observed("Q170471", "Maat", "Worship")));
+
+        assertTrue(!result.blockKindsAvailable());
+        assertTrue(result.blockKinds().isEmpty());
+    }
+
+    private static WikipediaDiscoveryQuery.Article withElements(
+            WikipediaDiscoveryQuery.Article value,
+            List<wikipedia.ArticleElementInventory.ElementKind> elements) {
+        return new WikipediaDiscoveryQuery.Article(value.instance(), value.title(),
+                value.article(), value.infobox(), elements, value.problem());
+    }
+
     private static WikipediaDiscoveryQuery.Article observed(
             String qid, String title, String heading) {
         WikipediaArticle article = article(title,

@@ -29,6 +29,9 @@ public final class WikipediaStructureAnalysis {
         Map<String, CategoryAccumulator> categories = new LinkedHashMap<>();
         Map<String, InfoboxAccumulator> infoboxes = new LinkedHashMap<>();
         Map<String, LinkAccumulator> links = new LinkedHashMap<>();
+        Map<String, BlockKindAccumulator> blockKinds = new LinkedHashMap<>();
+        boolean blockKindsAvailable = !available.isEmpty()
+                && available.stream().allMatch(value -> value.elements() != null);
         List<WikipediaSource> articles = new ArrayList<>();
 
         for (WikipediaDiscoveryQuery.Article source : available) {
@@ -44,6 +47,14 @@ public final class WikipediaStructureAnalysis {
                         .add(source.title());
             }
             collectInfobox(source.title(), source.infobox(), infoboxes);
+            if (blockKindsAvailable) {
+                for (wikipedia.ArticleElementInventory.ElementKind kind : source.elements()) {
+                    blockKinds.computeIfAbsent(kind.element() + '\0' + kind.retainedAs(),
+                            ignored -> new BlockKindAccumulator(
+                                    kind.element(), kind.retainedAs()))
+                            .add(source.title(), kind);
+                }
+            }
         }
 
         List<UnavailableArticle> unavailable = input.stream()
@@ -68,7 +79,11 @@ public final class WikipediaStructureAnalysis {
                         .map(value -> value.row(selectedCount)).toList(),
                         LinkPattern::articles,
                         value -> value.section() + " " + value.targetTitle()),
-                unavailable, selectedCount, available.size());
+                ranked(blockKinds.values().stream()
+                        .map(value -> value.row(selectedCount)).toList(),
+                        BlockKindPattern::articles,
+                        value -> value.element() + " " + value.retainedAs()),
+                blockKindsAvailable, unavailable, selectedCount, available.size());
     }
 
     private static void collectSection(String article, WikipediaArticle.Section section,
@@ -123,6 +138,8 @@ public final class WikipediaStructureAnalysis {
             List<InfoboxPattern> infoboxes,
             List<CategoryPattern> categories,
             List<LinkPattern> links,
+            List<BlockKindPattern> blockKinds,
+            boolean blockKindsAvailable,
             List<UnavailableArticle> unavailable,
             int selectedArticles,
             int availableArticles) {
@@ -132,6 +149,7 @@ public final class WikipediaStructureAnalysis {
             infoboxes = List.copyOf(infoboxes);
             categories = List.copyOf(categories);
             links = List.copyOf(links);
+            blockKinds = List.copyOf(blockKinds);
             unavailable = List.copyOf(unavailable);
         }
     }
@@ -154,6 +172,28 @@ public final class WikipediaStructureAnalysis {
                     levels.stream().map(String::valueOf)
                             .collect(java.util.stream.Collectors.joining(", ")),
                     examples);
+        }
+    }
+
+    private static final class BlockKindAccumulator {
+        private final String element;
+        private final String retainedAs;
+        private final LinkedHashSet<String> articles = new LinkedHashSet<>();
+        private final List<BlockKindExample> examples = new ArrayList<>();
+        private int occurrences;
+
+        private BlockKindAccumulator(String element, String retainedAs) {
+            this.element = element;
+            this.retainedAs = retainedAs;
+        }
+        private void add(String article, wikipedia.ArticleElementInventory.ElementKind kind) {
+            articles.add(article);
+            occurrences += kind.occurrences();
+            examples.add(new BlockKindExample(article, kind.occurrences(), kind.example()));
+        }
+        private BlockKindPattern row(int selected) {
+            return new BlockKindPattern(element, retainedAs, articles.size(), selected,
+                    occurrences, examples);
         }
     }
 

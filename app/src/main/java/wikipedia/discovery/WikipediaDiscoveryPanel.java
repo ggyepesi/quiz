@@ -304,6 +304,12 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         addResultTab("Links by section", analysis.links(),
                 WikipediaDiscoveryRows.LinkPattern.class, RenderingMode.CARD,
                 "No article links were retained.");
+        addResultTab("Block kinds", analysis.blockKinds(),
+                WikipediaDiscoveryRows.BlockKindPattern.class, RenderingMode.CARD,
+                analysis.blockKindsAvailable() ? "No block-level elements were found."
+                        : "Block kinds are read from fetched HTML. A retained article keeps "
+                                + "only the blocks its structure chose, so it cannot show "
+                                + "what was dropped: press Fetch selected articles.");
         if (!analysis.unavailable().isEmpty()) {
             addResultTab("Problems", analysis.unavailable(),
                     WikipediaDiscoveryRows.UnavailableArticle.class, RenderingMode.CARD,
@@ -313,8 +319,11 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 + analysis.selectedArticles() + " selected " + source + " article(s): "
                 + analysis.sections().size() + " section heading(s), "
                 + analysis.infoboxes().size() + " infobox key(s), "
-                + analysis.categories().size() + " category title(s), and "
-                + analysis.links().size() + " section/link pattern(s).");
+                + analysis.categories().size() + " category title(s), "
+                + analysis.links().size() + " section/link pattern(s), and "
+                + (analysis.blockKindsAvailable()
+                        ? analysis.blockKinds().size() + " block kind(s)."
+                        : "no block-kind inventory (retained articles)."));
     }
 
     private <T extends Viewable> void addResultTab(String title, List<T> values,
