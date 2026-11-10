@@ -3,7 +3,7 @@ package wikipedia.discovery;
 import quiz.transform.app.DomainCatalog;
 import quiz.transform.ui.DomainNavigator;
 
-/** Entry point for bounded, read-only comparison of Wikipedia source structure. */
+/** Entry point for bounded Wikipedia source comparison and explicit source configuration. */
 public final class WikipediaDiscoveryApp {
     private WikipediaDiscoveryApp() {}
 

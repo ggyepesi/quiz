@@ -323,8 +323,9 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             quiz.curation.FieldSourceRecipe recipe) throws Exception {
         quiz.curation.FieldRulePromoter.PromotionPreview promoted =
                 promoter().promote(recipe);
-        unsavedModelChanges.add("Promoted category source " + promoted.targetType() + "."
-                + promoted.field() + " ← " + promoted.sourceProperty());
+        unsavedModelChanges.add("Configured " + promoted.targetType() + "."
+                + promoted.field() + " from " + promoted.sourceKind() + " "
+                + promoted.sourceProperty());
         return promoted;
     }
 

@@ -97,6 +97,27 @@ public final class FieldSourceRecipe {
                         LABEL, clean(label)));
     }
 
+    /** One observed native Wikipedia infobox value promoted into an authored model
+     * field source. Discovery supplies the value key; the user supplies the target
+     * field and whether this is its primary or fallback source. */
+    public static FieldSourceRecipe wikipediaInfobox(
+            String type, String field, SourceBindingSlot slot,
+            String property, String label) {
+        if (slot != SourceBindingSlot.PRIMARY_FIELD_VALUE
+                && slot != SourceBindingSlot.FALLBACK_FIELD_VALUE) {
+            throw new IllegalArgumentException(
+                    "An infobox value must be a primary or fallback field source");
+        }
+        return new FieldSourceRecipe(new SourceBinding(
+                SourceBindingTarget.fieldValue(type, field, slot),
+                new SourceRecipe(WikipediaDatasourceProvider.ID,
+                        WikipediaDatasourceProvider.INFOBOX_PARAMETER,
+                        Map.of(PROPERTY, clean(property), LABEL, clean(label),
+                                SOURCE_TYPE,
+                                wikidata.explore.model.FieldSourceType.WIKIPEDIA_INFOBOX
+                                        .name()))));
+    }
+
     public String parameter(String name) {
         return binding.recipe().parameter(name);
     }

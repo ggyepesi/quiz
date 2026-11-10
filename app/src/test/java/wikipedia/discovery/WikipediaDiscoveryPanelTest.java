@@ -10,6 +10,7 @@ import javax.swing.JButton;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
@@ -74,6 +75,101 @@ class WikipediaDiscoveryPanelTest {
         });
     }
 
+    @Test void selectingOneInfoboxResultEnablesExplicitConfiguration() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+            maat.type("EgyptianDeity");
+            maat.enwikiTitle("Maat");
+            BackedDomain domain = new BackedDomain(maat);
+            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain);
+            try {
+                var observed = new WikipediaDiscoveryRows.InfoboxPattern(
+                        "Rendered.Parents", 8, 12, List.of());
+                var result = new WikipediaStructureAnalysis.Result(
+                        List.of(), List.of(), List.of(observed), List.of(), List.of(),
+                        List.of(), false, List.of(), 12, 12);
+                invoke(panel, "showAnalysis",
+                        new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
+                        result, "test");
+
+                JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
+                tabs.setSelectedIndex(2);
+                SearchableView infoboxes = (SearchableView) tabs.getComponentAt(2);
+                JButton configure = field(panel, "configureInfobox", JButton.class);
+                assertFalse(configure.isEnabled());
+
+                infoboxes.renderContext().select(observed);
+
+                assertTrue(configure.isEnabled(),
+                        "selecting one observed value must enable the action that configures it");
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
+    @Test void configurationPreviewNamesTheRuleCoverageSlotAndSaveFile() {
+        var observed = new WikipediaDiscoveryRows.InfoboxPattern(
+                "Rendered.Parents", 8, 12, List.of());
+        var field = new wikidata.explore.model.GeneratedFieldModel(
+                "parents", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        var target = new WikipediaDiscoveryPanel.FieldChoice("EgyptianDeity", field);
+        java.io.File model = new java.io.File("data/wikidata/mythology/mythology.model.json");
+
+        String text = WikipediaDiscoveryPanel.configurationDescription(
+                observed, target, WikipediaDiscoveryPanel.SourcePlace.FALLBACK,
+                null, model);
+
+        assertTrue(text.contains("EgyptianDeity.parents"), text);
+        assertTrue(text.contains("Rendered.Parents"), text);
+        assertTrue(text.contains("Fallback source"), text);
+        assertTrue(text.contains("8 of 12"), text);
+        assertTrue(text.contains(model.getPath()), text);
+        assertTrue(text.contains("does not write a file"), text);
+    }
+
+    @Test void targetFieldsKeepTheClassThatActuallyOwnsAnInheritedDeclaration() {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var entity = new wikidata.explore.model.GeneratedClassModel("MythologicalEntity");
+        entity.addField("parents", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        var deity = new wikidata.explore.model.GeneratedClassModel("EgyptianDeity");
+        deity.baseClassName("MythologicalEntity");
+        deity.addField("symbol", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        model.rootClass(entity);
+        model.addClass(deity);
+
+        List<WikipediaDiscoveryPanel.FieldChoice> choices =
+                WikipediaDiscoveryPanel.fieldChoices(model, "EgyptianDeity");
+
+        assertEquals(List.of("EgyptianDeity.symbol — String",
+                        "MythologicalEntity.parents — List<Object>"),
+                choices.stream().map(Object::toString).toList());
+    }
+
+    @Test void importedFieldConfigurationIsNotOfferedToTheImporter() {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var imported = new wikidata.explore.model.GeneratedClassModel("CelestialBody");
+        imported.importedFrom("Astronomy");
+        imported.addField("image", datasource.schema.FieldType.IMAGE,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        var planet = new wikidata.explore.model.GeneratedClassModel("Planet");
+        planet.baseClassName("CelestialBody");
+        planet.addField("parentBody", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        model.rootClass(planet);
+        model.addClass(imported);
+
+        List<WikipediaDiscoveryPanel.FieldChoice> choices =
+                WikipediaDiscoveryPanel.fieldChoices(model, "Planet");
+
+        assertEquals(List.of("Planet.parentBody — Object"),
+                choices.stream().map(Object::toString).toList(),
+                "an imported class stays editable only in its owning model");
+    }
+
     private static DomainModel domain(WikidataDynamicObject instance) {
         return new DomainModel() {
             @Override public List<String> types() { return List.of("EgyptianDeity"); }
@@ -96,6 +192,66 @@ class WikipediaDiscoveryPanelTest {
             return type.cast(field.get(owner));
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);
+        }
+    }
+
+    private static Object invoke(Object owner, String name, Class<?>[] types,
+            Object... arguments) {
+        try {
+            Method method = owner.getClass().getDeclaredMethod(name, types);
+            method.setAccessible(true);
+            return method.invoke(owner, arguments);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError(failure);
+        }
+    }
+
+    private static final class BackedDomain implements DomainModel,
+            quiz.transform.ui.ProjectBacking, quiz.curation.FieldRulePromoter {
+        private final WikidataDynamicObject instance;
+        private final wikidata.explore.model.GeneratedProjectModel project =
+                new wikidata.explore.model.GeneratedProjectModel();
+
+        private BackedDomain(WikidataDynamicObject instance) {
+            this.instance = instance;
+            var deity = new wikidata.explore.model.GeneratedClassModel("EgyptianDeity");
+            deity.addField("parents", datasource.schema.FieldType.ENTITY,
+                    wikidata.explore.model.FieldCardinality.COLLECTION);
+            project.rootClass(deity);
+            project.name("Mythology");
+        }
+
+        @Override public List<String> types() { return List.of("EgyptianDeity"); }
+        @Override public objectview.field.FieldSchema fieldSchema(String type) {
+            return () -> objectview.field.FieldSet.of(instance).fields();
+        }
+        @Override public Collection<? extends Viewable> instances() {
+            return List.of(instance);
+        }
+        @Override public Class<? extends Viewable> universe() {
+            return WikidataDynamicObject.class;
+        }
+        @Override public String projectName() { return "Mythology"; }
+        @Override public wikidata.explore.model.GeneratedProjectModel.ProjectKind projectKind() {
+            return wikidata.explore.model.GeneratedProjectModel.ProjectKind.DOMAIN;
+        }
+        @Override public java.io.File modelFile() {
+            return new java.io.File("mythology.model.json");
+        }
+        @Override public java.io.File snapshotFile() {
+            return new java.io.File("mythology.snapshot.json");
+        }
+        @Override public wikidata.explore.model.GeneratedProjectModel projectModel() {
+            return project;
+        }
+        @Override public List<String> unsavedModelChanges() { return List.of(); }
+        @Override public String modelWriteConflict() { return ""; }
+        @Override public void writeProjectModel() { }
+        @Override public PromotionPreview previewPromotion(quiz.curation.Correction correction) {
+            return PromotionPreview.ineligible("not used");
+        }
+        @Override public PromotionPreview promote(quiz.curation.Correction correction) {
+            return PromotionPreview.ineligible("not used");
         }
     }
 }

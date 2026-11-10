@@ -85,6 +85,7 @@ public final class WikipediaDiscoveryRows {
 
         public String key() { return key; }
         public int articles() { return articles; }
+        public int selectedArticles() { return selectedArticles; }
         public List<ValueExample> examples() { return examples; }
         @Override public String getIdentifier() { return key.toLowerCase(); }
         @Override public String getDisplayName() { return key; }

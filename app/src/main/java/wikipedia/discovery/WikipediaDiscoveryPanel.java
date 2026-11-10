@@ -16,11 +16,19 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import datasource.api.SourceBindingSlot;
+import quiz.curation.FieldRulePromoter;
+import quiz.curation.FieldSourceRecipe;
+import quiz.transform.ui.ProjectBacking;
+import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedFieldModel;
 
 /**
- * Read-only source workbench over a saved domain. ModelBuilder/Transform own the model
- * and its instances; this panel selects a bounded set and compares their retained or
- * freshly fetched Wikipedia source documents.
+ * Source workbench over a saved domain. It selects a bounded set and compares their
+ * retained or freshly fetched Wikipedia source documents. When that domain carries its
+ * editable ModelBuilder project, an explicitly selected infobox result may propose a
+ * field-source configuration in the working model; Save remains the one persistence
+ * boundary.
  */
 public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseable {
     private static final int DEFAULT_SAMPLE = 12;
@@ -39,6 +47,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private final JButton fetch = new JButton("Fetch selected articles");
     private final JButton cancel = new JButton("Cancel");
     private final JButton logs = new JButton("Query logs");
+    private final JButton configureInfobox =
+            new JButton("Configure selected infobox value…");
+    private final JButton saveModel = new JButton("Save model…");
     private final JLabel sourceStatus = new JLabel(" ");
     private final JLabel resultStatus = new JLabel(
             "Select instances, then analyze retained articles or fetch them from Wikipedia.");
@@ -49,22 +60,31 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private final JTabbedPane resultTabs = new JTabbedPane();
     private final LinkedHashMap<String, WikidataDynamicObject> selected =
             new LinkedHashMap<>();
+    private final ProjectBacking project;
+    private final FieldRulePromoter promoter;
     private List<WikidataDynamicObject> classMembers = List.of();
     private List<WikidataDynamicObject> selectedInClass = List.of();
     private List<WikidataDynamicObject> selectedInSample = List.of();
     private SearchableView instancesView;
     private SearchableView selectedView;
+    private WikipediaDiscoveryRows.InfoboxPattern selectedInfobox;
+    /** The Infobox values tab, the only one whose selection the configure action reads. */
+    private SearchableView infoboxView;
     private boolean closed;
 
     public WikipediaDiscoveryPanel(DomainModel model) {
         super(new BorderLayout(6, 6));
-        this.domain = new TransformController(model, null);
+        this.domain = new TransformController(model, new quiz.transform.app.DomainSaver());
+        this.project = model.capability(ProjectBacking.class);
+        this.promoter = model.capability(FieldRulePromoter.class);
         build();
         wire();
         populateTypes();
     }
 
     private void build() {
+        saveModel.setText(project == null ? "Save project…"
+                : "Save " + project.projectKind().toString().toLowerCase() + "…");
         JPanel controls = new JPanel(new objectview.utils.swing.WrapLayout(
                 FlowLayout.LEFT, 6, 2));
         controls.add(new JLabel("Class:"));
@@ -76,6 +96,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         controls.add(fetch);
         controls.add(cancel);
         controls.add(logs);
+        controls.add(saveModel);
 
         JPanel north = new JPanel(new BorderLayout(4, 3));
         north.add(controls, BorderLayout.NORTH);
@@ -96,7 +117,12 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         sourceTabs.addTab("Selected articles — 0", sample);
 
         JPanel results = new JPanel(new BorderLayout(4, 4));
-        results.add(resultStatus, BorderLayout.NORTH);
+        JPanel resultHeader = new JPanel(new BorderLayout(4, 2));
+        resultHeader.add(resultStatus, BorderLayout.CENTER);
+        JPanel resultActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        resultActions.add(configureInfobox);
+        resultHeader.add(resultActions, BorderLayout.EAST);
+        results.add(resultHeader, BorderLayout.NORTH);
         results.add(resultTabs, BorderLayout.CENTER);
         emptyResults();
 
@@ -118,6 +144,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         retained.addActionListener(event -> analyzeRetained());
         fetch.addActionListener(event -> fetchSelected());
         logs.addActionListener(event -> queries.showLogs(this));
+        configureInfobox.addActionListener(event -> configureSelectedInfobox());
+        saveModel.addActionListener(event -> saveModel());
+        resultTabs.addChangeListener(event -> updateActions());
         runner.registerRunButton(fetch);
         runner.registerCancelButton(cancel);
         runner.onRunningChanged(running -> {
@@ -296,15 +325,22 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void showAnalysis(WikipediaStructureAnalysis.Result analysis, String source) {
+        selectedInfobox = null;
         resultTabs.removeAll();
         addResultTab("Articles", analysis.articles(), WikipediaSource.class,
                 RenderingMode.CARD, "No structured articles are available.");
         addResultTab("Sections", analysis.sections(),
                 WikipediaDiscoveryRows.SectionPattern.class, RenderingMode.CARD,
                 "No section headings were retained.");
-        addResultTab("Infobox values", analysis.infoboxes(),
+        infoboxView = addResultTab("Infobox values", analysis.infoboxes(),
                 WikipediaDiscoveryRows.InfoboxPattern.class, RenderingMode.CARD,
-                "No infobox values were retained.");
+                "No infobox values were retained.", selected -> {
+                    selectedInfobox = selected.size() == 1
+                            && selected.getFirst()
+                            instanceof WikipediaDiscoveryRows.InfoboxPattern value
+                            ? value : null;
+                    updateActions();
+                });
         addResultTab("Categories", analysis.categories(),
                 WikipediaDiscoveryRows.CategoryPattern.class, RenderingMode.CARD,
                 "No visible categories were retained.");
@@ -333,26 +369,35 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                         : "no block-kind inventory (retained articles)."));
     }
 
-    private <T extends Viewable> void addResultTab(String title, List<T> values,
+    private <T extends Viewable> SearchableView addResultTab(String title, List<T> values,
             Class<T> rowType, RenderingMode mode, String emptyMessage) {
+        return addResultTab(title, values, rowType, mode, emptyMessage, null);
+    }
+
+    private <T extends Viewable> SearchableView addResultTab(String title, List<T> values,
+            Class<T> rowType, RenderingMode mode, String emptyMessage,
+            java.util.function.Consumer<List<Object>> selection) {
         SearchableView view = SearchableView.builder(values)
                 .type(rowType)
                 .mode(mode)
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
                 .emptyMessage(emptyMessage)
                 .collapsible(true)
+                .selectionSetListener(selection)
                 .build();
         resultTabs.addTab(title + " — " + values.size(), view);
+        return view;
     }
 
     private void emptyResults() {
+        selectedInfobox = null;
         resultTabs.removeAll();
         addResultTab("Articles", List.of(), WikipediaSource.class, RenderingMode.CARD,
                 "Select instances, then analyze retained articles or fetch them from "
                         + "Wikipedia.");
         addResultTab("Sections", List.of(), WikipediaDiscoveryRows.SectionPattern.class,
                 RenderingMode.CARD, "Fetch selected articles to discover their sections.");
-        addResultTab("Infobox values", List.of(),
+        infoboxView = addResultTab("Infobox values", List.of(),
                 WikipediaDiscoveryRows.InfoboxPattern.class, RenderingMode.CARD,
                 "Fetch selected articles to discover their infobox rows, links and images.");
         addResultTab("Categories", List.of(), WikipediaDiscoveryRows.CategoryPattern.class,
@@ -363,6 +408,218 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         addResultTab("Block kinds", List.of(),
                 WikipediaDiscoveryRows.BlockKindPattern.class, RenderingMode.CARD,
                 "Fetch selected articles to inspect their retained HTML block kinds.");
+    }
+
+    private void configureSelectedInfobox() {
+        WikipediaDiscoveryRows.InfoboxPattern observed = selectedInfobox;
+        String className = (String) type.getSelectedItem();
+        if (observed == null || className == null || project == null || promoter == null
+                || project.projectModel() == null) return;
+        String conflict = project.modelWriteConflict();
+        if (!conflict.isEmpty()) {
+            JOptionPane.showMessageDialog(this, conflict,
+                    "Cannot edit configuration", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        GeneratedClassModel owner = project.projectModel().findClass(className);
+        List<FieldChoice> fields = owner == null ? List.of()
+                : fieldChoices(project.projectModel(), className);
+        if (fields.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "The model exposes no editable fields for " + className + ".\n\n"
+                            + "Add the target field in ModelBuilder first; discovery will not "
+                            + "infer its type or cardinality from a sample.",
+                    "No target field", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JComboBox<FieldChoice> field = new JComboBox<>(fields.toArray(FieldChoice[]::new));
+        JComboBox<SourcePlace> place = new JComboBox<>(SourcePlace.values());
+        JTextArea preview = new JTextArea();
+        preview.setEditable(false);
+        preview.setLineWrap(true);
+        preview.setWrapStyleWord(true);
+        preview.setRows(12);
+        preview.setColumns(64);
+        Runnable refresh = () -> {
+            FieldChoice target = (FieldChoice) field.getSelectedItem();
+            SourcePlace selectedPlace = (SourcePlace) place.getSelectedItem();
+            if (target == null || selectedPlace == null) return;
+            datasource.api.SourceBinding previous =
+                    wikidata.explore.model.FieldSourceBindings.binding(
+                            target.field(), selectedPlace.slot());
+            preview.setText(configurationDescription(
+                    observed, target, selectedPlace, previous, project.modelFile()));
+            preview.setCaretPosition(0);
+        };
+        field.addActionListener(event -> {
+            FieldChoice target = (FieldChoice) field.getSelectedItem();
+            if (target != null) {
+                boolean hasPrimary = wikidata.explore.model.FieldSourceBindings.binding(
+                        target.field(), SourceBindingSlot.PRIMARY_FIELD_VALUE) != null;
+                place.setSelectedItem(hasPrimary
+                        ? SourcePlace.FALLBACK : SourcePlace.PRIMARY);
+            }
+            refresh.run();
+        });
+        place.addActionListener(event -> refresh.run());
+        FieldChoice initial = (FieldChoice) field.getSelectedItem();
+        if (initial != null && wikidata.explore.model.FieldSourceBindings.binding(
+                initial.field(), SourceBindingSlot.PRIMARY_FIELD_VALUE) != null) {
+            place.setSelectedItem(SourcePlace.FALLBACK);
+        }
+        refresh.run();
+
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = 0;
+        c.anchor = GridBagConstraints.NORTHWEST;
+        c.insets = new Insets(3, 3, 3, 8);
+        form.add(new JLabel("Target field:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        form.add(field, c);
+        c.gridx = 0;
+        c.gridy++;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        form.add(new JLabel("Use as:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        form.add(place, c);
+        c.gridx = 0;
+        c.gridy++;
+        c.gridwidth = 2;
+        c.weighty = 1;
+        c.fill = GridBagConstraints.BOTH;
+        c.insets = new Insets(10, 3, 3, 3);
+        form.add(new JScrollPane(preview), c);
+
+        Object[] options = {"Apply configuration", "Cancel"};
+        int answer = JOptionPane.showOptionDialog(quiz.ui.Dialogs.owner(this), form,
+                "Configure from Wikipedia discovery", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, options, options[1]);
+        if (answer != 0) return;
+        FieldChoice target = (FieldChoice) field.getSelectedItem();
+        SourcePlace selectedPlace = (SourcePlace) place.getSelectedItem();
+        if (target == null || selectedPlace == null) return;
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaInfobox(
+                target.owner(), target.field().name(), selectedPlace.slot(),
+                observed.key(),
+                wikidata.explore.model.FieldSourceType.WIKIPEDIA_INFOBOX.toString());
+        FieldRulePromoter.PromotionPreview promotion = promoter.previewPromotion(recipe);
+        if (!promotion.eligible()) {
+            JOptionPane.showMessageDialog(this, promotion.reason(),
+                    "Configuration not applied", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            promoter.promote(recipe);
+            resultStatus.setText("Configured " + target.owner() + "."
+                    + target.field().name() + " from " + observed.key() + " as its "
+                    + selectedPlace.label().toLowerCase() + ". Nothing has been saved yet; "
+                    + saveModel.getText().replace("…", "") + " writes "
+                    + project.modelFile().getPath() + ".");
+            updateActions();
+        } catch (Exception failure) {
+            JOptionPane.showMessageDialog(this,
+                    "Configuration failed: " + failure.getMessage(),
+                    "Configuration failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    static String configurationDescription(
+            WikipediaDiscoveryRows.InfoboxPattern observed,
+            FieldChoice target, SourcePlace place,
+            datasource.api.SourceBinding previous, java.io.File modelFile) {
+        String existing = previous == null ? "No source is currently configured in this slot."
+                : "This replaces " + sourceDescription(previous) + ".";
+        return "Configure " + target.owner() + "." + target.field().name() + " ("
+                + target.field().displayType() + ")\n\n"
+                + "Source: Wikipedia infobox value " + observed.key() + "\n"
+                + "Use as: " + place.label() + "\n"
+                + "Observed coverage: " + observed.articles() + " of "
+                + observed.selectedArticles() + " selected articles\n"
+                + existing + "\n\n"
+                + "Apply changes only the working configuration. It does not fetch values "
+                + "and does not write a file. Save writes the model to\n"
+                + (modelFile == null ? "(no model file)" : modelFile.getPath()) + ".";
+    }
+
+    private static String sourceDescription(datasource.api.SourceBinding binding) {
+        String property = binding.recipe().parameter(FieldSourceRecipe.PROPERTY);
+        return binding.recipe().providerId() + " / " + binding.recipe().operationId()
+                + (property.isBlank() ? "" : " / " + property);
+    }
+
+    static List<FieldChoice> fieldChoices(
+            wikidata.explore.model.GeneratedProjectModel model, String className) {
+        if (model == null || className == null) return List.of();
+        java.util.LinkedHashMap<String, FieldChoice> choices = new java.util.LinkedHashMap<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (GeneratedClassModel current = model.findClass(className);
+             current != null && seen.add(current.className());
+             current = current.baseClassName().isBlank()
+                     ? null : model.findClass(current.baseClassName())) {
+            if (current.isImported()) continue;
+            for (GeneratedFieldModel field : current.fields()) {
+                if (field != null) {
+                    choices.putIfAbsent(field.name(),
+                            new FieldChoice(current.className(), field));
+                }
+            }
+        }
+        return List.copyOf(choices.values());
+    }
+
+    /** TransformApp's Save, the same operation: it writes the project the domain was
+     *  opened from, under that project's own name. A guessed name is not that project,
+     *  and DomainSaver would write it as a detached dataset without the model. */
+    private void saveModel() {
+        if (project == null || project.unsavedModelChanges().isEmpty()) return;
+        String name = project.projectName();
+        String kind = project.projectKind().toString().toLowerCase();
+        if (name == null || name.isBlank()) {
+            JOptionPane.showMessageDialog(this,
+                    "This " + kind + " has no project name, so there is no saved project "
+                            + "to write. Nothing was saved.",
+                    "Save " + kind, JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!quiz.ui.Dialogs.confirmPersistence(
+                this, "Save " + kind, domain.describeSaveAsDomain(name))) return;
+        try {
+            quiz.ui.Dialogs.showPersistenceSuccess(
+                    this, "Save " + kind, name, domain.saveAsDomain(name));
+            updateActions();
+        } catch (Exception failure) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + failure.getMessage(),
+                    "Save failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    record FieldChoice(String owner, GeneratedFieldModel field) {
+        @Override public String toString() {
+            return owner + "." + field.name() + " — " + field.displayType();
+        }
+    }
+
+    enum SourcePlace {
+        PRIMARY("Primary source", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+        FALLBACK("Fallback source", SourceBindingSlot.FALLBACK_FIELD_VALUE);
+
+        private final String label;
+        private final SourceBindingSlot slot;
+        SourcePlace(String label, SourceBindingSlot slot) {
+            this.label = label;
+            this.slot = slot;
+        }
+        String label() { return label; }
+        SourceBindingSlot slot() { return slot; }
+        @Override public String toString() { return label; }
     }
 
     private void updateActions() {
@@ -381,6 +638,24 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         fetch.setText(running ? "Fetching selected articles…"
                 : "Fetch " + selected.size() + " selected article"
                         + (selected.size() == 1 ? "" : "s"));
+        boolean infoboxTab = resultTabs.getSelectedComponent() != null
+                && resultTabs.getSelectedComponent() == infoboxView;
+        configureInfobox.setEnabled(!running && infoboxTab && selectedInfobox != null
+                && project != null && promoter != null && project.projectModel() != null);
+        configureInfobox.setToolTipText(project == null || promoter == null
+                ? "This saved domain has no editable ModelBuilder project."
+                : selectedInfobox == null
+                        ? "Select exactly one value on the Infobox values tab."
+                        : "Configure the selected observed value as a source for an existing field.");
+        saveModel.setEnabled(!running && project != null
+                && !project.unsavedModelChanges().isEmpty());
+        saveModel.setToolTipText(project == null
+                ? "This saved domain has no editable ModelBuilder project."
+                : project.unsavedModelChanges().isEmpty()
+                        ? "There are no unsaved configuration changes."
+                        : "Save " + project.unsavedModelChanges().size()
+                                + " configuration change(s) to "
+                                + project.modelFile().getPath() + ".");
     }
 
     private static List<WikidataDynamicObject> dynamic(List<Viewable> values) {
@@ -389,9 +664,20 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     public boolean requestClose(Component owner) {
-        return !runner.isRunning()
-                || process.swing.SwingCancellationConfirmation.requestForVisibleRun(
-                        owner, runner::cancel);
+        if (runner.isRunning()
+                && !process.swing.SwingCancellationConfirmation.requestForVisibleRun(
+                        owner, runner::cancel)) return false;
+        if (project == null || project.unsavedModelChanges().isEmpty()) return true;
+        Object[] options = {"Keep open", "Discard and close"};
+        int choice = JOptionPane.showOptionDialog(this,
+                "These configuration changes have not been saved to\n"
+                        + project.modelFile().getPath() + ":\n\n  - "
+                        + String.join("\n  - ", project.unsavedModelChanges())
+                        + "\n\nUse \"" + saveModel.getText().replace("…", "")
+                        + "\" to keep them.",
+                "Unsaved configuration", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        return choice == 1;
     }
 
     @Override public void close() {

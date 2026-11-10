@@ -8,6 +8,7 @@ import quiz.curation.ValueSource;
 import domain.DomainModel;
 import quiz.transform.ui.FieldDefinitions;
 import wikidata.explore.model.FieldProductionKind;
+import wikidata.explore.model.FieldSourceBindings;
 import wikidata.explore.model.FieldSourceMapping;
 import wikidata.explore.model.FieldSourceType;
 import wikidata.explore.model.GeneratedClassModel;
@@ -80,6 +81,13 @@ final class ModelFieldRulePromoter {
         if (!preview.eligible()) throw new IllegalArgumentException(preview.reason());
         GeneratedFieldModel field = findField(
                 model.findClass(recipe.type()), recipe.field());
+        if (infobox(recipe) && recipe.binding().target().slot()
+                == datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE) {
+            // The binding names only kind, key and label; whatever the previous primary
+            // also said about acquisition (a qualifier condition, a value language, a
+            // direction) would otherwise survive and be saved into the infobox binding.
+            field.mapping().copyAcquisitionFrom(new FieldSourceMapping());
+        }
         wikidata.explore.model.FieldSourceBindings.put(field, recipe.binding());
         return preview;
     }
@@ -128,9 +136,23 @@ final class ModelFieldRulePromoter {
 
     private FieldRulePromoter.PromotionPreview inspect(
             FieldSourceRecipe recipe, GeneratedProjectModel model) {
-        if (recipe == null || !FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
+        if (recipe == null) {
             return FieldRulePromoter.PromotionPreview.ineligible(
-                    "Only Wikipedia category recipes can currently be promoted here.");
+                    "Select a reusable source recipe.");
+        }
+        if (FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
+            return inspectCategory(recipe, model);
+        }
+        if (infobox(recipe)) return inspectInfobox(recipe, model);
+        return FieldRulePromoter.PromotionPreview.ineligible(
+                "This source recipe cannot currently be promoted into a model field.");
+    }
+
+    private FieldRulePromoter.PromotionPreview inspectCategory(
+            FieldSourceRecipe recipe, GeneratedProjectModel model) {
+        if (!FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "This is not a Wikipedia category recipe.");
         }
         GeneratedClassModel owner = model.findClass(recipe.type());
         GeneratedFieldModel field = findField(owner, recipe.field());
@@ -163,6 +185,104 @@ final class ModelFieldRulePromoter {
                 previous.isBlank() ? "Add category source recipe" : "Update category source recipe",
                 modelFile.getAbsolutePath(), recipe.type(), recipe.field(), "",
                 "Wikipedia category", "", categorySummary(candidate), false, previous);
+    }
+
+    private static boolean infobox(FieldSourceRecipe recipe) {
+        return datasource.wikipedia.WikipediaDatasourceProvider.ID.equals(
+                        recipe.recipe().providerId())
+                && datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_PARAMETER.equals(
+                        recipe.recipe().operationId());
+    }
+
+    private FieldRulePromoter.PromotionPreview inspectInfobox(
+            FieldSourceRecipe recipe, GeneratedProjectModel model) {
+        datasource.api.SourceBinding binding = recipe.binding();
+        datasource.api.SourceBindingSlot slot = binding.target().slot();
+        if (slot != datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE
+                && slot != datasource.api.SourceBindingSlot.FALLBACK_FIELD_VALUE) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "A Wikipedia infobox value must be a primary or fallback field source.");
+        }
+        GeneratedClassModel owner = model.findClass(recipe.type());
+        GeneratedFieldModel field = findField(owner, recipe.field());
+        if (owner == null || field == null) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model must already declare " + recipe.type() + "."
+                            + recipe.field() + ".");
+        }
+        if (owner.isImported()) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    owner.className() + " is imported from " + owner.importedFrom()
+                            + "; configure the source in that owning model.");
+        }
+        if (owner.aggregateSource() != null || !acquired(field.mapping().productionKind())) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    recipe.type() + "." + recipe.field()
+                            + " is produced from other model data, not acquired from a source.");
+        }
+        if (!holdsInfoboxText(field)) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    recipe.type() + "." + recipe.field() + " is " + field.displayType()
+                            + "; an infobox value is stored as its text, so it can fill "
+                            + "only a single String or Text field.");
+        }
+        String property = recipe.parameter(FieldSourceRecipe.PROPERTY);
+        if (property.isBlank()
+                || datasource.evidence.InfoboxParameters.Key.parse(property) == null) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The discovery result does not name a complete infobox value key.");
+        }
+        datasource.api.SourceBinding previous =
+                FieldSourceBindings.binding(field, slot);
+        if (sameSource(binding, previous)) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model already uses this Wikipedia infobox value as the "
+                            + slotLabel(slot) + " source.");
+        }
+        String previousSource = previous == null ? "" : sourceSummary(previous);
+        String action = previous == null ? "Add " + slotLabel(slot) + " source"
+                : "Replace " + slotLabel(slot) + " source";
+        return new FieldRulePromoter.PromotionPreview(true, action,
+                modelFile.getAbsolutePath(), recipe.type(), recipe.field(),
+                field.displayType(), "Wikipedia infobox " + slotLabel(slot), "",
+                property, false, previousSource);
+    }
+
+    /** Acquisition writes an infobox value's text as it is
+     *  ({@code WikipediaInfoboxAcquisition.fill}); in an entity or list field that text
+     *  would stand where references or members belong. */
+    private static boolean holdsInfoboxText(GeneratedFieldModel field) {
+        return field.cardinality() == wikidata.explore.model.FieldCardinality.SINGLE
+                && (field.type() == datasource.schema.FieldType.STRING
+                        || field.type() == datasource.schema.FieldType.TEXT);
+    }
+
+    private static boolean acquired(FieldProductionKind kind) {
+        return kind == FieldProductionKind.AUTO
+                || kind == FieldProductionKind.INLINE_VALUE
+                || kind == FieldProductionKind.DELAYED_ENTITY_FIELD
+                || kind == FieldProductionKind.CHILD_OBJECTS;
+    }
+
+    private static boolean sameSource(
+            datasource.api.SourceBinding left, datasource.api.SourceBinding right) {
+        if (left == null || right == null || !left.sameTarget(right)) return false;
+        return left.recipe().providerId().equals(right.recipe().providerId())
+                && left.recipe().operationId().equals(right.recipe().operationId())
+                && left.recipe().parameter(FieldSourceRecipe.PROPERTY).equals(
+                        right.recipe().parameter(FieldSourceRecipe.PROPERTY));
+    }
+
+    private static String slotLabel(datasource.api.SourceBindingSlot slot) {
+        return slot == datasource.api.SourceBindingSlot.FALLBACK_FIELD_VALUE
+                ? "fallback" : "primary";
+    }
+
+    private static String sourceSummary(datasource.api.SourceBinding binding) {
+        if (binding == null) return "";
+        String property = binding.recipe().parameter(FieldSourceRecipe.PROPERTY);
+        return binding.recipe().providerId() + " / " + binding.recipe().operationId()
+                + (property.isBlank() ? "" : " / " + property);
     }
 
     private static boolean sameCategoryRule(
