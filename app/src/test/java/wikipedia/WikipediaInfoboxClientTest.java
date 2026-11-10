@@ -77,4 +77,40 @@ class WikipediaInfoboxClientTest {
         assertEquals("2, 8, 14, 2", result.renderedFields().get("Electrons per shell"));
         assertFalse(result.renderedFields().containsKey("Nested presentation"));
     }
+
+    /** #469: text-only infobox rows lost exactly the source structure needed for
+     * disambiguation and for image-only values such as Egyptian hieroglyphs. */
+    @Test void renderedRowsRetainWikipediaTargetsAndImagesBehindTheirTextProjection()
+            throws Exception {
+        String html = """
+                <table class="infobox">
+                  <tr><th class="infobox-label">Symbol</th>
+                    <td class="infobox-data"><a href="/wiki/Ostrich_feather"
+                      title="Feather">ostrich feather</a>, Balance</td></tr>
+                  <tr><th class="infobox-label">Parents</th>
+                    <td class="infobox-data"><a href="/wiki/Ra">Ra</a> and
+                      <a href="/wiki/Hathor">Hathor</a></td></tr>
+                  <tr><th class="infobox-label">Name in hieroglyphs</th>
+                    <td class="infobox-data"><img alt="Maat in hieroglyphs"
+                      src="//upload.wikimedia.org/maat.svg"></td></tr>
+                </table>
+                """;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var result = WikipediaInfoboxClient.parseResponse(json.readTree(
+                "{\"parse\":{\"title\":\"Maat\",\"revid\":42,\"wikitext\":"
+                        + json.valueToTree("{{Infobox deity|symbol=Ostrich feather}}")
+                        + ",\"text\":" + json.valueToTree(html) + "}}"));
+
+        var symbol = result.renderedValues().get("Symbol");
+        assertEquals("ostrich feather, Balance", symbol.text());
+        assertEquals("Feather", symbol.links().getFirst().targetTitle());
+        assertEquals("Ra", result.renderedValues().get("Parents")
+                .links().getFirst().targetTitle());
+        var glyph = result.renderedValues().get("Name in hieroglyphs");
+        assertEquals("", glyph.text(), "an image-only value must not invent text");
+        assertEquals("https://upload.wikimedia.org/maat.svg",
+                glyph.media().getFirst().mediaUrl());
+        assertEquals("ostrich feather, Balance", result.renderedFields().get("Symbol"),
+                "existing Rendered.Symbol configurations keep their scalar projection");
+    }
 }

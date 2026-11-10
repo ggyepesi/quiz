@@ -85,6 +85,54 @@ class EntityAliasSnapshotTest {
                 "source facts stay outside the rendered field graph");
     }
 
+    @Test void structuredInfoboxLinksAndMediaSurviveTheSnapshotBoundary(@TempDir Path dir)
+            throws Exception {
+        WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+        maat.type("EgyptianDeity");
+        var value = new datasource.evidence.WikipediaFragment("Ra and Hathor",
+                List.of(new datasource.evidence.WikipediaArticle.ArticleLink(
+                        "Ra", "Ra", 0, 2)),
+                List.of(new datasource.evidence.WikipediaFragment.Media(
+                        "Maat in hieroglyphs", "https://upload.wikimedia.org/maat.svg", true)));
+        maat.infoboxParameters(datasource.evidence.InfoboxParameters
+                .fromEnglishWikipediaStructured("Infobox deity", java.util.Map.of(),
+                        java.util.Map.of("Parents", value), "Maat", "42"));
+
+        var file = dir.resolve("structured-infobox-snapshot.json").toFile();
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+        store.save(List.of(maat), file);
+        var loaded = store.load(file).getFirst().infoboxParameters();
+
+        assertEquals("Ra", loaded.renderedValues().get("Parents")
+                .links().getFirst().targetTitle());
+        assertEquals("https://upload.wikimedia.org/maat.svg",
+                loaded.renderedValues().get("Parents").media().getFirst().mediaUrl());
+        org.junit.jupiter.api.Assertions.assertFalse(Files.readString(file.toPath())
+                .contains("wikipediaInfoboxRenderedFields"),
+                "new snapshots store the structured row once, not a duplicate string map");
+    }
+
+    @Test void mergingSourceAndRenderedInfoboxEvidenceKeepsStructuredRows() {
+        WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+        maat.infoboxEvidence(datasource.evidence.InfoboxParameters.fromEnglishWikipedia(
+                "Infobox deity", java.util.Map.of("name", "Maat"), "Maat", "42"),
+                true, false);
+        var parents = new datasource.evidence.WikipediaFragment("Ra and Hathor",
+                List.of(new datasource.evidence.WikipediaArticle.ArticleLink(
+                        "Ra", "Ra", 0, 2)),
+                List.of(new datasource.evidence.WikipediaFragment.Media(
+                        "Maat in hieroglyphs", "https://upload.wikimedia.org/maat.svg", true)));
+        maat.infoboxEvidence(datasource.evidence.InfoboxParameters
+                        .fromEnglishWikipediaStructured("Infobox deity", java.util.Map.of(),
+                                java.util.Map.of("Parents", parents), "Maat", "42"),
+                true, true);
+
+        var merged = maat.infoboxParameters().renderedValues().get("Parents");
+        assertEquals("Ra", merged.links().getFirst().targetTitle());
+        assertEquals("https://upload.wikimedia.org/maat.svg",
+                merged.media().getFirst().mediaUrl());
+    }
+
     @Test void answeredWithoutInfoboxSurvivesTheSnapshotBoundary(@TempDir Path dir)
             throws Exception {
         WikidataDynamicObject movie = new WikidataDynamicObject("Q1", "Film");

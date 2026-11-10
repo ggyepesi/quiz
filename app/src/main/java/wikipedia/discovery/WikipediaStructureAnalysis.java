@@ -113,7 +113,7 @@ public final class WikipediaStructureAnalysis {
     private static void collectInfobox(String article, InfoboxParameters infobox,
             Map<String, InfoboxAccumulator> values) {
         if (infobox == null) return;
-        infobox.values().forEach((key, value) -> {
+        infobox.structuredValues().forEach((key, value) -> {
             String name = key.toString();
             values.computeIfAbsent(normalized(name),
                     ignored -> new InfoboxAccumulator(name)).add(article, value);
@@ -215,7 +215,7 @@ public final class WikipediaStructureAnalysis {
         private final List<ValueExample> examples = new ArrayList<>();
 
         private InfoboxAccumulator(String key) { this.key = key; }
-        private void add(String article, String value) {
+        private void add(String article, datasource.evidence.WikipediaFragment value) {
             articles.add(article);
             examples.add(new ValueExample(article, value));
         }

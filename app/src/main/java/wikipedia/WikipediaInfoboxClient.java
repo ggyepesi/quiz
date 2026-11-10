@@ -3,6 +3,7 @@ package wikipedia;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import datasource.evidence.InfoboxParameters;
+import datasource.evidence.WikipediaFragment;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import work.Query;
@@ -74,10 +75,10 @@ public final class WikipediaInfoboxClient {
         JsonNode renderedNode = parse.path("text");
         String rendered = renderedNode.isTextual()
                 ? renderedNode.asText() : renderedNode.path("*").asText("");
-        Map<String, String> fields = parseRenderedFields(rendered);
+        Map<String, WikipediaFragment> fields = parseRenderedValues(rendered);
         if (title.isBlank() || revision.isBlank()
                 || (parsed == null && fields.isEmpty())) return null;
-        return InfoboxParameters.fromEnglishWikipedia(
+        return InfoboxParameters.fromEnglishWikipediaStructured(
                 parsed == null ? "" : parsed.template(),
                 parsed == null ? Map.of() : parsed.parameters(), fields, title, revision);
     }
@@ -90,20 +91,27 @@ public final class WikipediaInfoboxClient {
      * nested rows that are presentation, not fields.</p>
      */
     public static Map<String, String> parseRenderedFields(String html) {
-        if (html == null || html.isBlank()) return Map.of();
-        Element table = Jsoup.parse(html).selectFirst("table.infobox");
-        if (table == null) return Map.of();
         Map<String, String> result = new LinkedHashMap<>();
+        parseRenderedValues(html).forEach((name, value) -> result.put(name, value.text()));
+        return Map.copyOf(result);
+    }
+
+    /** Rich rendered rows; {@link #parseRenderedFields} is their scalar text projection. */
+    public static Map<String, WikipediaFragment> parseRenderedValues(String html) {
+        if (html == null || html.isBlank()) return Map.of();
+        Element table = Jsoup.parse(html, "https://en.wikipedia.org/")
+                .selectFirst("table.infobox");
+        if (table == null) return Map.of();
+        Map<String, WikipediaFragment> result = new LinkedHashMap<>();
         for (Element row : table.select("tr")) {
             if (enclosingTable(row) != table) continue;
             Element label = directChild(row, "th", "infobox-label");
             Element data = directChild(row, "td", "infobox-data");
             if (label == null || data == null) continue;
             String name = label.text().trim();
-            String value = data.text().trim();
-            if (name.isBlank() || value.isBlank()) continue;
-            result.merge(name, value, (left, right) -> left.equals(right)
-                    || left.contains("; " + right) ? left : left + "; " + right);
+            WikipediaFragment value = WikipediaHtmlFragmentParser.parseChildren(data).value();
+            if (name.isBlank() || value.isEmpty()) continue;
+            result.merge(name, value, WikipediaFragment::append);
         }
         return Map.copyOf(result);
     }

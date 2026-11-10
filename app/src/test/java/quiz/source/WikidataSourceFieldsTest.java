@@ -166,10 +166,48 @@ class WikidataSourceFieldsTest {
         assertEquals("https://en.wikipedia.org/wiki/Douglas_Adams", link.url());
     }
 
+    /** Retaining article structure gives the source an expandable body. The linked
+     * display remains a link; disclosure belongs to the separate triangle. */
+    @Test void anExpandableWikipediaSourceKeepsItsLinkedCaption() throws Exception {
+        var document = wikipedia.WikipediaArticleClient.sourceDocument(
+                "Douglas Adams", "17", "Douglas Adams wrote novels.", List.of());
+        var article = new datasource.evidence.WikipediaArticle(document,
+                "Douglas Adams wrote novels.", List.of(), List.of());
+        WikipediaSource source = new WikipediaSource("Douglas Adams", article);
+        ArticleOwner owner = new ArticleOwner(source);
+
+        objectview.viewconfig.ViewConfig retained =
+                objectview.viewconfig.ViewConfig.of(
+                        datasource.evidence.WikipediaArticle.class);
+        retained.setAllFields(false);
+        retained.addField("revision", objectview.viewconfig.ViewConfig.leaf());
+        objectview.viewconfig.ViewConfig sourceView =
+                objectview.viewconfig.ViewConfig.of(WikipediaSource.class);
+        sourceView.setAllFields(false);
+        sourceView.addField("article", objectview.viewconfig.ViewConfig.leaf());
+        sourceView.addField("retainedArticle", retained);
+        objectview.viewconfig.ViewConfig ownerView =
+                objectview.viewconfig.ViewConfig.of(ArticleOwner.class);
+        ownerView.setAllFields(false);
+        ownerView.addField("wikipediaSource", sourceView);
+
+        objectview.render.Card[] rendered = new objectview.render.Card[1];
+        javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
+                new objectview.render.Card(owner, ownerView, false));
+
+        objectview.render.ReferenceRow reference = find(
+                rendered[0], objectview.render.ReferenceRow.class);
+        assertNotNull(reference, "the retained article remains expandable");
+        assertEquals("https://en.wikipedia.org/wiki/Douglas_Adams", reference.url(),
+                "the configured linked DISPLAY remains the source caption's destination");
+    }
+
     private static final class ArticleOwner extends objectview.ViewableAdapter {
         @objectview.annotations.DisplayField
         private final String name = "Book";
-        private final WikipediaSource wikipediaSource;
+        // Saved datasource schemas deliberately declare this polymorphic reference as
+        // Viewable. Rendering must resolve its DISPLAY metadata from the actual target.
+        private final objectview.Viewable wikipediaSource;
 
         private ArticleOwner(WikipediaSource wikipediaSource) {
             this.wikipediaSource = wikipediaSource;

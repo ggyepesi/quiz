@@ -93,7 +93,11 @@ construct per thing produced:
    article is another (its sections, blocks and links) and is never a second source of the
    introduction. Wikipedia article fields select generic projections of the introduction
    (the complete introduction, lead paragraph or lead sentence); the target field assigns
-   their domain meaning, never the projection code.
+   their domain meaning, never the projection code. Parsed Wikipedia HTML uses one fragment
+   interpretation for article content and rendered infobox values. Article projections consume
+   its normalized text and links; rendered infobox rows retain its text, linked article targets
+   and media together. A scalar field may project that row artifact's text, but acquisition and
+   discovery must not reparse or flatten it into a competing fact.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*

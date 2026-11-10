@@ -958,7 +958,7 @@ public class WikidataDynamicObjectJsonStore {
         e.wikipediaInfoboxDocument = acquired.document();
         e.wikipediaInfoboxTemplate = acquired.template();
         e.wikipediaInfoboxParameters.putAll(acquired.parameters());
-        e.wikipediaInfoboxRenderedFields.putAll(acquired.renderedFields());
+        e.wikipediaInfoboxRenderedValues.putAll(acquired.renderedValues());
     }
 
     /** Null when the page was read and carried no infobox: answered, with nothing to say. */
@@ -966,11 +966,13 @@ public class WikidataDynamicObjectJsonStore {
         if (e == null || e.wikipediaInfoboxDocument == null
                 || ((e.wikipediaInfoboxTemplate == null
                         || e.wikipediaInfoboxTemplate.isBlank())
-                    && e.wikipediaInfoboxRenderedFields.isEmpty())) {
+                    && e.wikipediaInfoboxRenderedFields.isEmpty()
+                    && e.wikipediaInfoboxRenderedValues.isEmpty())) {
             return null;
         }
         return new datasource.evidence.InfoboxParameters(e.wikipediaInfoboxTemplate,
                 e.wikipediaInfoboxParameters, e.wikipediaInfoboxRenderedFields,
+                e.wikipediaInfoboxRenderedValues,
                 e.wikipediaInfoboxDocument);
     }
 
@@ -1196,6 +1198,11 @@ public class WikidataDynamicObjectJsonStore {
         @com.fasterxml.jackson.annotation.JsonInclude(
                 com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
         public Map<String, String> wikipediaInfoboxRenderedFields = new LinkedHashMap<>();
+        /** Structured rendered rows. The string map above is read-only legacy input. */
+        @com.fasterxml.jackson.annotation.JsonInclude(
+                com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+        public Map<String, datasource.evidence.WikipediaFragment>
+                wikipediaInfoboxRenderedValues = new LinkedHashMap<>();
         @com.fasterxml.jackson.annotation.JsonInclude(
                 com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT)
         public boolean infoboxAnswered;

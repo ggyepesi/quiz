@@ -15,25 +15,47 @@ import java.util.TreeMap;
  *
  * <p>{@code parameters} are what the article's source template says. Some infoboxes are
  * wrapper templates, however, and calculate user-visible facts while rendering. Those facts
- * live in {@code renderedFields}; keeping both beneath one evidence object lets a configured
- * field say which representation it reads without inventing a second Wikipedia source.</p>
+ * live in {@code renderedValues}; {@code renderedFields} is their backwards-compatible text
+ * projection. Keeping both beneath one evidence object lets a configured field say which
+ * representation it reads without inventing a second Wikipedia source.</p>
  */
 public record InfoboxParameters(String template, Map<String, String> parameters,
                                 Map<String, String> renderedFields,
+                                Map<String, WikipediaFragment> renderedValues,
                                 SourceDocument document) {
     /** Source-only construction retained for callers whose response has no rendered HTML. */
     public InfoboxParameters(String template, Map<String, String> parameters,
                              SourceDocument document) {
-        this(template, parameters, Map.of(), document);
+        this(template, parameters, Map.of(), Map.of(), document);
+    }
+
+    /** Legacy/string construction: each rendered row becomes a text-only fragment. */
+    public InfoboxParameters(String template, Map<String, String> parameters,
+                             Map<String, String> renderedFields,
+                             SourceDocument document) {
+        this(template, parameters, renderedFields, Map.of(), document);
     }
 
     public InfoboxParameters {
         template = template == null ? "" : template.trim();
         parameters = Map.copyOf(new LinkedHashMap<>(parameters == null ? Map.of() : parameters));
-        renderedFields = Map.copyOf(new LinkedHashMap<>(
-                renderedFields == null ? Map.of() : renderedFields));
+        Map<String, WikipediaFragment> structured = new LinkedHashMap<>();
+        if (renderedValues != null) renderedValues.forEach((name, value) -> {
+            if (name != null && !name.isBlank() && value != null) {
+                structured.put(name, value);
+            }
+        });
+        if (renderedFields != null) renderedFields.forEach((name, value) -> {
+            if (name != null && !name.isBlank()) {
+                structured.putIfAbsent(name, WikipediaFragment.text(value));
+            }
+        });
+        renderedValues = Map.copyOf(structured);
+        Map<String, String> scalar = new LinkedHashMap<>();
+        renderedValues.forEach((name, value) -> scalar.put(name, value.text()));
+        renderedFields = Map.copyOf(scalar);
         document = Objects.requireNonNull(document, "Infobox source document is required");
-        if (template.isBlank() && renderedFields.isEmpty()) {
+        if (template.isBlank() && renderedValues.isEmpty()) {
             throw new IllegalArgumentException(
                     "An infobox template or rendered field is required");
         }
@@ -74,21 +96,44 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
     public static InfoboxParameters fromEnglishWikipedia(String template,
             Map<String, String> parameters, Map<String, String> renderedFields,
             String title, String revision) {
+        Map<String, WikipediaFragment> structured = new LinkedHashMap<>();
+        if (renderedFields != null) renderedFields.forEach((name, value) ->
+                structured.put(name, WikipediaFragment.text(value)));
+        return fromEnglishWikipediaValues(template, parameters, structured, title, revision);
+    }
+
+    /** Rich rendered-row construction used by the HTML parser. */
+    public static InfoboxParameters fromEnglishWikipediaStructured(String template,
+            Map<String, String> parameters, Map<String, WikipediaFragment> renderedValues,
+            String title, String revision) {
+        return fromEnglishWikipediaValues(template, parameters, renderedValues, title, revision);
+    }
+
+    private static InfoboxParameters fromEnglishWikipediaValues(String template,
+            Map<String, String> parameters, Map<String, WikipediaFragment> renderedValues,
+            String title, String revision) {
         String cleanTemplate = template == null ? "" : template.trim();
         Map<String, String> cleanParameters = parameters == null ? Map.of() : parameters;
-        Map<String, String> cleanRendered = renderedFields == null
-                ? Map.of() : renderedFields;
+        Map<String, WikipediaFragment> cleanRendered = renderedValues == null
+                ? Map.of() : renderedValues;
         String cleanTitle = title == null ? "" : title.trim();
         StringBuilder material = new StringBuilder(cleanTemplate);
         new TreeMap<>(cleanParameters).forEach((name, value) ->
                 material.append('\n').append(name).append('=').append(value));
         new TreeMap<>(cleanRendered).forEach((name, value) ->
-                material.append("\n@rendered:").append(name).append('=').append(value));
+                material.append("\n@rendered:").append(name).append('=').append(value.text())
+                        .append("\n@links:").append(value.links().stream()
+                                .map(link -> link.text() + "->" + link.targetTitle())
+                                .collect(java.util.stream.Collectors.joining("|")))
+                        .append("\n@media:").append(value.media().stream()
+                                .map(media -> media.mediaLabel() + "->" + media.mediaUrl())
+                                .collect(java.util.stream.Collectors.joining("|"))));
         SourceDocument document = new SourceDocument("Wikipedia (English)",
                 cleanTitle, cleanTitle, articleUrl(cleanTitle), revision,
                 new ContentDigest("sha256", sha256(material.toString())),
                 Instant.now().toString());
-        return new InfoboxParameters(cleanTemplate, cleanParameters, cleanRendered, document);
+        return new InfoboxParameters(cleanTemplate, cleanParameters, Map.of(),
+                cleanRendered, document);
     }
 
     private static String articleUrl(String title) {
@@ -131,6 +176,22 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
             });
         }
         renderedFields.forEach((label, value) -> {
+            if (label != null && !label.isBlank()) result.put(Key.renderedRow(label), value);
+        });
+        return java.util.Collections.unmodifiableMap(result);
+    }
+
+    /** The same enumeration as {@link #values()}, retaining links and media. */
+    public Map<Key, WikipediaFragment> structuredValues() {
+        Map<Key, WikipediaFragment> result = new LinkedHashMap<>();
+        if (!template.isBlank()) {
+            parameters.forEach((name, value) -> {
+                if (name != null && !name.isBlank()) {
+                    result.put(new Key(template, name), WikipediaFragment.text(value));
+                }
+            });
+        }
+        renderedValues.forEach((label, value) -> {
             if (label != null && !label.isBlank()) result.put(Key.renderedRow(label), value);
         });
         return java.util.Collections.unmodifiableMap(result);

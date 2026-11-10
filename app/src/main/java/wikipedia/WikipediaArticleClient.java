@@ -9,13 +9,10 @@ import datasource.evidence.SourceDocument;
 import datasource.evidence.WikipediaArticle;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
 import work.Query;
 import work.QueryContext;
 
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -228,15 +225,12 @@ public final class WikipediaArticleClient {
         if (extract == null || extract.isBlank()) {
             return new ParsedArticleText("", List.of(), List.of());
         }
-        Element body = Jsoup.parseBodyFragment(extract).body();
-        StringBuilder text = new StringBuilder();
-        List<ArticleIntroduction.Link> links = new ArrayList<>();
-        java.util.Map<Element, Span> spans = new java.util.IdentityHashMap<>();
-        for (Node child : body.childNodes()) append(child, text, links, spans);
-        while (!text.isEmpty() && Character.isWhitespace(text.charAt(text.length() - 1))) {
-            text.setLength(text.length() - 1);
-        }
-        String normalized = text.toString();
+        Element body = Jsoup.parseBodyFragment(extract, "https://en.wikipedia.org/").body();
+        WikipediaHtmlFragmentParser.Parsed fragment =
+                WikipediaHtmlFragmentParser.parseChildren(body);
+        String normalized = fragment.value().text();
+        List<ArticleIntroduction.Link> links = fragment.links();
+        java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans = fragment.spans();
         java.util.Map<Element, String> outcomes = new java.util.IdentityHashMap<>();
         List<WikipediaArticle.Section> structured =
                 structuredSections(body, normalized, links, outcomes, spans);
@@ -270,7 +264,8 @@ public final class WikipediaArticleClient {
      */
     private static List<WikipediaArticle.Section> structuredSections(
             Element body, String text, List<ArticleIntroduction.Link> links,
-            java.util.Map<Element, String> outcomes, java.util.Map<Element, Span> spans) {
+            java.util.Map<Element, String> outcomes,
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans) {
         MutableSection introduction = new MutableSection("Introduction", 0, 0);
         List<MutableSection> roots = new ArrayList<>();
         roots.add(introduction);
@@ -305,7 +300,7 @@ public final class WikipediaArticleClient {
                 outcomes.put(element, INSIDE_RETAINED_BLOCK);
                 continue;
             }
-            Span span = spanOf(spans, element, text);
+            WikipediaHtmlFragmentParser.Span span = spanOf(spans, element, text);
             if (span.end() <= span.start()) {
                 outcomes.put(element, EMPTY);
                 continue;
@@ -364,20 +359,18 @@ public final class WikipediaArticleClient {
         return false;
     }
 
-    /** Where one element's text lies in the article text, without surrounding breaks. */
-    record Span(int start, int end) { }
-
     /** The recorded span, clamped to the final text (its trailing whitespace is trimmed
      *  after the walk) and trimmed of the breaks the walk wrote around the element. */
-    private static Span spanOf(java.util.Map<Element, Span> spans, Element element,
-            String text) {
-        Span recorded = spans.get(element);
-        if (recorded == null) return new Span(0, 0);
+    private static WikipediaHtmlFragmentParser.Span spanOf(
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            Element element, String text) {
+        WikipediaHtmlFragmentParser.Span recorded = spans.get(element);
+        if (recorded == null) return new WikipediaHtmlFragmentParser.Span(0, 0);
         int start = Math.min(recorded.start(), text.length());
         int end = Math.min(recorded.end(), text.length());
         while (start < end && Character.isWhitespace(text.charAt(start))) start++;
         while (end > start && Character.isWhitespace(text.charAt(end - 1))) end--;
-        return new Span(start, end);
+        return new WikipediaHtmlFragmentParser.Span(start, end);
     }
 
     private static final class MutableSection {
@@ -405,7 +398,7 @@ public final class WikipediaArticleClient {
     /** Flat sections, started where the walk wrote each heading — never by searching the
      *  text for the heading's words, which an earlier paragraph may also contain. */
     private static List<ArticleSection> sections(Element body, String text,
-            java.util.Map<Element, Span> spans) {
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans) {
         if (text == null || text.isBlank()) return List.of();
         List<SectionStart> starts = new ArrayList<>();
         for (Element heading : body.select("h1, h2, h3, h4, h5, h6")) {
@@ -426,81 +419,6 @@ public final class WikipediaArticleClient {
     }
 
     private record SectionStart(String title, int start) { }
-
-    /**
-     * Writes {@code node}'s text and records where every element's text lies. Blocks,
-     * table rows, definition entries and captions are lines; table cells are separated by
-     * a space, so a row reads "Symbol Ostrich feather" rather than "SymbolOstrich feather".
-     */
-    private static void append(Node node, StringBuilder text,
-            List<ArticleIntroduction.Link> links, java.util.Map<Element, Span> spans) {
-        if (node instanceof TextNode value) {
-            appendText(text, value.getWholeText());
-            return;
-        }
-        if (!(node instanceof Element element)) return;
-        String tag = element.normalName();
-        boolean block = switch (tag) {
-            case "p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
-                 "table", "tr", "caption", "dl", "dt", "dd", "figure", "figcaption" -> true;
-            default -> false;
-        };
-        if (block) appendBoundary(text);
-        if ("br".equals(tag)) {
-            appendBoundary(text);
-            return;
-        }
-        if (("td".equals(tag) || "th".equals(tag)) && !text.isEmpty()) {
-            char last = text.charAt(text.length() - 1);
-            if (last != '\n' && last != ' ') text.append(' ');
-        }
-        int start = text.length();
-        for (Node child : element.childNodes()) append(child, text, links, spans);
-        int end = text.length();
-        spans.put(element, new Span(start, end));
-        if ("a".equals(tag)) {
-            while (start < end && Character.isWhitespace(text.charAt(start))) start++;
-            while (end > start && Character.isWhitespace(text.charAt(end - 1))) end--;
-            String target = linkTarget(element);
-            if (end > start && !target.isBlank()) {
-                links.add(new ArticleIntroduction.Link(
-                        text.substring(start, end), target, start, end));
-            }
-        }
-        if (block) appendBoundary(text);
-    }
-
-    private static void appendText(StringBuilder out, String value) {
-        if (value == null || value.isEmpty()) return;
-        for (int index = 0; index < value.length(); index++) {
-            char character = value.charAt(index);
-            if (Character.isWhitespace(character)) {
-                if (!out.isEmpty() && out.charAt(out.length() - 1) != '\n'
-                        && out.charAt(out.length() - 1) != ' ') out.append(' ');
-                continue;
-            }
-            out.append(character);
-        }
-    }
-
-    private static void appendBoundary(StringBuilder text) {
-        while (!text.isEmpty() && text.charAt(text.length() - 1) == ' ') {
-            text.setLength(text.length() - 1);
-        }
-        if (!text.isEmpty() && text.charAt(text.length() - 1) != '\n') text.append('\n');
-    }
-
-    private static String linkTarget(Element link) {
-        String title = link.attr("title").trim();
-        if (!title.isBlank()) return title;
-        String href = link.attr("href").trim();
-        int wiki = href.indexOf("/wiki/");
-        if (wiki < 0) return "";
-        String encoded = href.substring(wiki + "/wiki/".length());
-        int fragment = encoded.indexOf('#');
-        if (fragment >= 0) encoded = encoded.substring(0, fragment);
-        return URLDecoder.decode(encoded, StandardCharsets.UTF_8).replace('_', ' ').trim();
-    }
 
     private static URI api(String title) {
         return URI.create("https://en.wikipedia.org/w/api.php?action=query"

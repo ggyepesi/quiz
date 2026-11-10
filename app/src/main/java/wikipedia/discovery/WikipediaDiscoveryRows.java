@@ -1,6 +1,7 @@
 package wikipedia.discovery;
 
 import datasource.evidence.WikipediaArticle;
+import datasource.evidence.WikipediaFragment;
 import objectview.ViewableAdapter;
 import objectview.annotations.DisplayField;
 import objectview.annotations.Inline;
@@ -208,14 +209,14 @@ public final class WikipediaDiscoveryRows {
 
     public static final class ValueExample extends ViewableAdapter {
         @DisplayField @Link private final String article;
-        private final String value;
+        @Inline private final WikipediaFragment value;
 
-        ValueExample(String title, String value) {
+        ValueExample(String title, WikipediaFragment value) {
             article = linked(title);
-            this.value = value == null ? "" : value.trim();
+            this.value = value == null ? WikipediaFragment.text("") : value;
         }
         public String title() { return label(article); }
-        public String value() { return value; }
+        public WikipediaFragment value() { return value; }
         @Override public String getIdentifier() { return title() + ':' + value; }
         @Override public String getDisplayName() { return title(); }
     }

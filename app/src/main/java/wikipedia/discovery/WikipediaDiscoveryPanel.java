@@ -198,8 +198,12 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 .fieldSchemas(value -> domain.renderedFieldSchema(value, className))
                 .typeSchemas(domain::fieldSchema)
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
-                .selectionSetListener(chosen -> selection.accept(chosen.stream()
-                        .filter(Viewable.class::isInstance).map(Viewable.class::cast).toList()))
+                .selectionSetListener(chosen -> {
+                    selection.accept(chosen.stream()
+                            .filter(Viewable.class::isInstance)
+                            .map(Viewable.class::cast).toList());
+                    updateActions();
+                })
                 .collapsible(true)
                 .build();
     }
@@ -223,8 +227,11 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         List<WikidataDynamicObject> candidates = selectedInClass.stream()
                 .filter(value -> !selected.containsKey(key(value))).toList();
         List<WikidataDynamicObject> added = candidates.stream().limit(available).toList();
+        boolean firstAddition = selected.isEmpty() && !added.isEmpty();
         added.forEach(this::putSelected);
-        if (selectedView == null) {
+        if (selectedView == null || firstAddition) {
+            // An empty SearchableView deliberately has no cards container. The first
+            // addition creates that container; later additions stay local to it.
             rebuildSelectedView();
         } else {
             selectedView.appendViewables(added);
@@ -340,8 +347,22 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void emptyResults() {
         resultTabs.removeAll();
-        resultTabs.addTab("Discovery results", new JLabel(
-                "  No articles have been analyzed yet."));
+        addResultTab("Articles", List.of(), WikipediaSource.class, RenderingMode.CARD,
+                "Select instances, then analyze retained articles or fetch them from "
+                        + "Wikipedia.");
+        addResultTab("Sections", List.of(), WikipediaDiscoveryRows.SectionPattern.class,
+                RenderingMode.CARD, "Fetch selected articles to discover their sections.");
+        addResultTab("Infobox values", List.of(),
+                WikipediaDiscoveryRows.InfoboxPattern.class, RenderingMode.CARD,
+                "Fetch selected articles to discover their infobox rows, links and images.");
+        addResultTab("Categories", List.of(), WikipediaDiscoveryRows.CategoryPattern.class,
+                RenderingMode.CARD, "Fetch selected articles to discover their categories.");
+        addResultTab("Links by section", List.of(),
+                WikipediaDiscoveryRows.LinkPattern.class, RenderingMode.CARD,
+                "Fetch selected articles to discover links by article section.");
+        addResultTab("Block kinds", List.of(),
+                WikipediaDiscoveryRows.BlockKindPattern.class, RenderingMode.CARD,
+                "Fetch selected articles to inspect their retained HTML block kinds.");
     }
 
     private void updateActions() {

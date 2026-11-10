@@ -279,13 +279,13 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         java.util.Map<String, String> parameters = new java.util.LinkedHashMap<>(
                 existing.parameters());
         parameters.putAll(acquired.parameters());
-        java.util.Map<String, String> rendered = new java.util.LinkedHashMap<>(
-                existing.renderedFields());
-        rendered.putAll(acquired.renderedFields());
+        java.util.Map<String, datasource.evidence.WikipediaFragment> rendered =
+                new java.util.LinkedHashMap<>(existing.renderedValues());
+        rendered.putAll(acquired.renderedValues());
         String template = acquired.template().isBlank()
                 ? existing.template() : acquired.template();
         return new datasource.evidence.InfoboxParameters(
-                template, parameters, rendered, acquired.document());
+                template, parameters, java.util.Map.of(), rendered, acquired.document());
     }
 
     public String enwikiTitle() {

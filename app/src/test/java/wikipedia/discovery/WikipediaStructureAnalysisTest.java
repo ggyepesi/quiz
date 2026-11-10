@@ -65,6 +65,24 @@ class WikipediaStructureAnalysisTest {
         assertEquals(2, result.sections().getFirst().examples().size());
     }
 
+    @Test void infoboxExamplesExposeStructuredValuesToObjectView() {
+        var value = new datasource.evidence.WikipediaFragment("Ra and Hathor",
+                List.of(new WikipediaArticle.ArticleLink("Ra", "Ra", 0, 2),
+                        new WikipediaArticle.ArticleLink("Hathor", "Hathor", 7, 13)),
+                List.of());
+        var infobox = InfoboxParameters.fromEnglishWikipediaStructured("Infobox deity",
+                Map.of(), Map.of("Parents", value), "Maat", "1");
+        WikipediaDiscoveryQuery.Article maat = new WikipediaDiscoveryQuery.Article(
+                instance("Q170471", "Maat", "Maat"), "Maat",
+                article("Maat", List.of(), List.of()), infobox, "");
+
+        var example = WikipediaStructureAnalysis.analyze(List.of(maat))
+                .infoboxes().getFirst().examples().getFirst();
+
+        assertInstanceOf(Viewable.class, example.value());
+        assertEquals("Hathor", example.value().links().get(1).targetTitle());
+    }
+
     @Test void everyDiscoveryResultIsAnObjectViewValue() {
         WikipediaStructureAnalysis.Result result =
                 WikipediaStructureAnalysis.analyze(List.of(observed(
