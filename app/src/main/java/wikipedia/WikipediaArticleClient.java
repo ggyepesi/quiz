@@ -229,19 +229,19 @@ public final class WikipediaArticleClient {
             return new ParsedArticleText("", List.of(), List.of());
         }
         Element body = Jsoup.parseBodyFragment(extract).body();
-        List<String> headings = body.select("h1, h2, h3, h4, h5, h6").stream()
-                .map(Element::text).map(String::trim).filter(value -> !value.isBlank()).toList();
         StringBuilder text = new StringBuilder();
         List<ArticleIntroduction.Link> links = new ArrayList<>();
-        for (Node child : body.childNodes()) append(child, text, links);
+        java.util.Map<Element, Span> spans = new java.util.IdentityHashMap<>();
+        for (Node child : body.childNodes()) append(child, text, links, spans);
         while (!text.isEmpty() && Character.isWhitespace(text.charAt(text.length() - 1))) {
             text.setLength(text.length() - 1);
         }
         String normalized = text.toString();
         java.util.Map<Element, String> outcomes = new java.util.IdentityHashMap<>();
+        List<WikipediaArticle.Section> structured =
+                structuredSections(body, normalized, links, outcomes, spans);
         return new ParsedArticleText(normalized, links,
-                sections(normalized, headings),
-                structuredSections(body, normalized, links, outcomes),
+                sections(body, normalized, spans), structured,
                 ArticleElementInventory.of(body, outcomes));
     }
 
@@ -254,24 +254,28 @@ public final class WikipediaArticleClient {
     static final String SECTION_HEADING = "Section heading";
     static final String INSIDE_RETAINED_BLOCK = "Inside a retained block";
     static final String EMPTY = "Empty";
-    static final String TEXT_NOT_LOCATED = "Text not located";
     static final String NOT_RETAINED = "Not retained";
 
     /**
      * {@code outcomes} receives, for every element read, what was done with it: a block
      * kind, or why no block was made. The element inventory reports these recorded
-     * outcomes, so it states what the structure did rather than predicting it — a
-     * prediction from the element alone missed blocks whose text could not be located.
+     * outcomes, so it states what the structure did rather than predicting it.
+     *
+     * <p>Positions come from {@code spans}, recorded by the walk that wrote {@code text}.
+     * They used to be found by searching the text for each element's own text, which was
+     * built differently (table cells joined, nested blocks spaced rather than broken), so
+     * 94 list items, quotations, paragraphs and every multi-cell table of one article were
+     * silently dropped, and a word matching a later heading could cut a section short
+     * (#464). A block's value is now exactly its slice of the article text.</p>
      */
     private static List<WikipediaArticle.Section> structuredSections(
             Element body, String text, List<ArticleIntroduction.Link> links,
-            java.util.Map<Element, String> outcomes) {
+            java.util.Map<Element, String> outcomes, java.util.Map<Element, Span> spans) {
         MutableSection introduction = new MutableSection("Introduction", 0, 0);
         List<MutableSection> roots = new ArrayList<>();
         roots.add(introduction);
         List<MutableSection> stack = new ArrayList<>();
         stack.add(introduction);
-        int[] searchFrom = {0};
         int[] blockNumber = {0};
         for (Element element : body.select(RETAINED_ELEMENTS)) {
             String tag = element.normalName();
@@ -283,8 +287,7 @@ public final class WikipediaArticleClient {
                 }
                 outcomes.put(element, SECTION_HEADING);
                 int level = Character.digit(tag.charAt(1), 10);
-                int start = findText(text, heading, searchFrom[0]);
-                if (start < 0) start = searchFrom[0];
+                int start = spanOf(spans, element, text).start();
                 if (introduction.end == 0) introduction.end = start;
                 while (!stack.isEmpty() && stack.getLast().level >= level) {
                     stack.removeLast().end = start;
@@ -296,25 +299,20 @@ public final class WikipediaArticleClient {
                     stack.getLast().children.add(section);
                 }
                 stack.add(section);
-                searchFrom[0] = Math.min(text.length(), start + heading.length());
                 continue;
             }
             if (insideRetainedBlock(element)) {
                 outcomes.put(element, INSIDE_RETAINED_BLOCK);
                 continue;
             }
-            String value = normalizeBlockText(element.text());
-            if (value.isBlank()) {
+            Span span = spanOf(spans, element, text);
+            if (span.end() <= span.start()) {
                 outcomes.put(element, EMPTY);
                 continue;
             }
-            int start = findText(text, value, searchFrom[0]);
-            if (start < 0) {
-                outcomes.put(element, TEXT_NOT_LOCATED);
-                continue;
-            }
-            int end = start + value.length();
-            searchFrom[0] = end;
+            int start = span.start();
+            int end = span.end();
+            String value = text.substring(start, end);
             WikipediaArticle.Block.Kind kind = blockKind(tag);
             outcomes.put(element, kind.name());
             String label = switch (kind) {
@@ -359,12 +357,20 @@ public final class WikipediaArticleClient {
         return false;
     }
 
-    private static String normalizeBlockText(String value) {
-        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
-    }
+    /** Where one element's text lies in the article text, without surrounding breaks. */
+    record Span(int start, int end) { }
 
-    private static int findText(String text, String value, int from) {
-        return text.indexOf(value, Math.max(0, from));
+    /** The recorded span, clamped to the final text (its trailing whitespace is trimmed
+     *  after the walk) and trimmed of the breaks the walk wrote around the element. */
+    private static Span spanOf(java.util.Map<Element, Span> spans, Element element,
+            String text) {
+        Span recorded = spans.get(element);
+        if (recorded == null) return new Span(0, 0);
+        int start = Math.min(recorded.start(), text.length());
+        int end = Math.min(recorded.end(), text.length());
+        while (start < end && Character.isWhitespace(text.charAt(start))) start++;
+        while (end > start && Character.isWhitespace(text.charAt(end - 1))) end--;
+        return new Span(start, end);
     }
 
     private static final class MutableSection {
@@ -389,15 +395,16 @@ public final class WikipediaArticleClient {
         }
     }
 
-    private static List<ArticleSection> sections(String text, List<String> headings) {
+    /** Flat sections, started where the walk wrote each heading — never by searching the
+     *  text for the heading's words, which an earlier paragraph may also contain. */
+    private static List<ArticleSection> sections(Element body, String text,
+            java.util.Map<Element, Span> spans) {
         if (text == null || text.isBlank()) return List.of();
         List<SectionStart> starts = new ArrayList<>();
-        int searchFrom = 0;
-        for (String heading : headings == null ? List.<String>of() : headings) {
-            int start = text.indexOf(heading, searchFrom);
-            if (start < 0) continue;
-            starts.add(new SectionStart(heading, start));
-            searchFrom = start + heading.length();
+        for (Element heading : body.select("h1, h2, h3, h4, h5, h6")) {
+            String title = heading.text().trim();
+            if (title.isBlank()) continue;
+            starts.add(new SectionStart(title, spanOf(spans, heading, text).start()));
         }
         List<ArticleSection> result = new ArrayList<>();
         int first = starts.isEmpty() ? text.length() : starts.getFirst().start();
@@ -413,8 +420,13 @@ public final class WikipediaArticleClient {
 
     private record SectionStart(String title, int start) { }
 
+    /**
+     * Writes {@code node}'s text and records where every element's text lies. Blocks,
+     * table rows, definition entries and captions are lines; table cells are separated by
+     * a space, so a row reads "Symbol Ostrich feather" rather than "SymbolOstrich feather".
+     */
     private static void append(Node node, StringBuilder text,
-            List<ArticleIntroduction.Link> links) {
+            List<ArticleIntroduction.Link> links, java.util.Map<Element, Span> spans) {
         if (node instanceof TextNode value) {
             appendText(text, value.getWholeText());
             return;
@@ -422,7 +434,8 @@ public final class WikipediaArticleClient {
         if (!(node instanceof Element element)) return;
         String tag = element.normalName();
         boolean block = switch (tag) {
-            case "p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote" -> true;
+            case "p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
+                 "table", "tr", "caption", "dl", "dt", "dd", "figure", "figcaption" -> true;
             default -> false;
         };
         if (block) appendBoundary(text);
@@ -430,9 +443,14 @@ public final class WikipediaArticleClient {
             appendBoundary(text);
             return;
         }
+        if (("td".equals(tag) || "th".equals(tag)) && !text.isEmpty()) {
+            char last = text.charAt(text.length() - 1);
+            if (last != '\n' && last != ' ') text.append(' ');
+        }
         int start = text.length();
-        for (Node child : element.childNodes()) append(child, text, links);
+        for (Node child : element.childNodes()) append(child, text, links, spans);
         int end = text.length();
+        spans.put(element, new Span(start, end));
         if ("a".equals(tag)) {
             while (start < end && Character.isWhitespace(text.charAt(start))) start++;
             while (end > start && Character.isWhitespace(text.charAt(end - 1))) end--;

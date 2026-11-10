@@ -44,8 +44,8 @@ read from that response, so they always describe the same revision (#461).
    - linked targets grouped by the section in which each link occurred;
    - block kinds: every block-level element kind in the fetched HTML, named by its tag
      and its own classes (`table.infobox`, `div.poem`), with what the article structure
-     did with it — a block kind, folded into a surrounding block, read but its text not
-     located, or not retained. The outcome is the one the section builder recorded, not a
+     did with it — a block kind, a section heading, folded into a surrounding block, empty, or
+     not retained. The outcome is the one the section builder recorded, not a
      prediction. It needs freshly fetched HTML: a retained article keeps only the blocks
      its structure chose, so it cannot show what was dropped;
    - unavailable inputs and their exact failures.

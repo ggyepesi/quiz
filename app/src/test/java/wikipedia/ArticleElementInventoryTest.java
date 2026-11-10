@@ -40,9 +40,8 @@ class ArticleElementInventoryTest {
         Map<String, ArticleElementInventory.ElementKind> kinds = inventory();
 
         assertEquals(2, kinds.get("p / PARAGRAPH").occurrences());
-        assertTrue(kinds.containsKey("table.infobox.vcard / Text not located"),
-                "the structure read the infobox table but could not place its text, so "
-                        + "it made no block: " + kinds.keySet());
+        assertTrue(kinds.containsKey("table.infobox.vcard / TABLE"),
+                "the infobox is read as an ordinary table block: " + kinds.keySet());
         assertTrue(kinds.containsKey("li / LIST_ITEM"), "a footnote becomes a list item");
         assertTrue(kinds.containsKey("p / Inside a retained block"));
         assertTrue(kinds.containsKey("h2 / Section heading"));
@@ -55,8 +54,7 @@ class ArticleElementInventoryTest {
                 kinds.get("dd / Not retained").example());
     }
 
-    /** The inventory reports what the structure did, not a prediction: a prediction from
-     *  the element alone counted the infobox as a TABLE block the structure never built. */
+    /** The inventory reports what the structure did, not a prediction about it. */
     @Test void theRetainedKindsCountExactlyTheBlocksTheStructureBuilt() {
         var parsed = WikipediaArticleClient.parseArticleText(HTML);
         java.util.Set<String> blockKinds = java.util.Arrays.stream(
