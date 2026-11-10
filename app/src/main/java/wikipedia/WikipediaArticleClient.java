@@ -320,13 +320,16 @@ public final class WikipediaArticleClient {
                 case LIST_ITEM -> "List item ";
                 case QUOTATION -> "Quotation ";
                 case TABLE -> "Table ";
+                case DEFINITION -> "Definition ";
+                case CAPTION -> "Caption ";
             } + (++blockNumber[0]);
             List<WikipediaArticle.ArticleLink> blockLinks = links.stream()
                     .filter(link -> link.start() >= start && link.end() <= end)
                     .map(link -> new WikipediaArticle.ArticleLink(link.text(),
                             link.targetTitle(), link.start(), link.end())).toList();
             stack.getLast().blocks.add(new WikipediaArticle.Block(
-                    label, kind, value, blockLinks, start, end));
+                    label, kind, ArticleElementInventory.sourceElement(element), value,
+                    blockLinks, start, end));
         }
         for (MutableSection section : stack) {
             if (section.end <= 0) section.end = text.length();
@@ -336,13 +339,16 @@ public final class WikipediaArticleClient {
 
     /** The elements {@link #structuredSections} reads: headings open sections, the rest
      *  become blocks. Everything else in the article is not retained. */
-    static final String RETAINED_ELEMENTS = "h1, h2, h3, h4, h5, h6, p, li, blockquote, table";
+    static final String RETAINED_ELEMENTS =
+            "h1, h2, h3, h4, h5, h6, p, li, blockquote, table, dt, dd, figcaption";
 
     private static WikipediaArticle.Block.Kind blockKind(String tag) {
         return switch (tag) {
             case "li" -> WikipediaArticle.Block.Kind.LIST_ITEM;
             case "blockquote" -> WikipediaArticle.Block.Kind.QUOTATION;
             case "table" -> WikipediaArticle.Block.Kind.TABLE;
+            case "dt", "dd" -> WikipediaArticle.Block.Kind.DEFINITION;
+            case "figcaption" -> WikipediaArticle.Block.Kind.CAPTION;
             default -> WikipediaArticle.Block.Kind.PARAGRAPH;
         };
     }
@@ -352,7 +358,8 @@ public final class WikipediaArticleClient {
         for (Element parent = element.parent(); parent != null; parent = parent.parent()) {
             String tag = parent.normalName();
             if (tag.equals("p") || tag.equals("li") || tag.equals("blockquote")
-                    || tag.equals("table")) return true;
+                    || tag.equals("table") || tag.equals("dt") || tag.equals("dd")
+                    || tag.equals("figcaption")) return true;
         }
         return false;
     }

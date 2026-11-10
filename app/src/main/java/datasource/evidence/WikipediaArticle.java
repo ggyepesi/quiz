@@ -94,27 +94,42 @@ public final class WikipediaArticle extends ViewableAdapter {
         @Override public String getDisplayName() { return heading; }
     }
 
-    /** A paragraph, list item, quotation, or table retained under its source heading. */
+    /**
+     * A paragraph, list item, quotation, table, definition entry or caption retained under
+     * its source heading. The kind is the HTML structure; {@code element} is the source
+     * element as the page names it ({@code table.infobox.vcard}, {@code ol.references > li}),
+     * so an infobox, navigation box or footnote is told apart by what the page states,
+     * not by a meaning assigned here.
+     */
     public static final class Block extends ViewableAdapter {
-        public enum Kind { PARAGRAPH, LIST_ITEM, QUOTATION, TABLE }
+        public enum Kind { PARAGRAPH, LIST_ITEM, QUOTATION, TABLE, DEFINITION, CAPTION }
 
         @DisplayField private final String block;
         private final Kind kind;
+        @Label("Source element") private final String element;
         @Label("Article text") private final String value;
         @Inline private final List<ArticleLink> links;
         @Hidden private final int start;
         @Hidden private final int end;
 
+        public Block(String block, Kind kind, String value, List<ArticleLink> links,
+                     int start, int end) {
+            this(block, kind, "", value, links, start, end);
+        }
+
+        /** {@code element} is empty for blocks retained before it was recorded. */
         @JsonCreator
         public Block(
                 @JsonProperty("block") String block,
                 @JsonProperty("kind") Kind kind,
+                @JsonProperty("element") String element,
                 @JsonProperty("value") String value,
                 @JsonProperty("links") List<ArticleLink> links,
                 @JsonProperty("start") int start,
                 @JsonProperty("end") int end) {
             this.block = clean(block, "Article block");
             this.kind = kind == null ? Kind.PARAGRAPH : kind;
+            this.element = element == null ? "" : element.trim();
             this.value = value == null ? "" : value.trim();
             this.links = immutable(links);
             if (start < 0 || end < start) {
@@ -125,6 +140,7 @@ public final class WikipediaArticle extends ViewableAdapter {
         }
 
         public Kind kind() { return kind; }
+        public String element() { return element; }
         public String value() { return value; }
         public List<ArticleLink> links() { return links; }
         public int start() { return start; }

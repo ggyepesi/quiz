@@ -58,6 +58,19 @@ public final class ArticleElementInventory {
         return List.copyOf(result);
     }
 
+    /**
+     * The name a retained block records for its source: {@link #name}, prefixed for a list
+     * item or definition entry by the list it belongs to, because there the page states
+     * the role on the list ({@code ol.references > li}), not on the item.
+     */
+    static String sourceElement(Element element) {
+        String tag = element.normalName();
+        Element container = element.parent();
+        boolean entry = tag.equals("li") || tag.equals("dt") || tag.equals("dd");
+        return entry && container != null
+                ? name(container) + " > " + name(element) : name(element);
+    }
+
     /** The tag plus the element's own classes, sorted so one kind has one name. */
     static String name(Element element) {
         List<String> classes = new ArrayList<>(element.classNames());

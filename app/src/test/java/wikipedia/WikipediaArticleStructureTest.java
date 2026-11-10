@@ -88,4 +88,54 @@ class WikipediaArticleStructureTest {
                 .filter(section -> section.title().equals("Worship"))
                 .findFirst().orElseThrow().start());
     }
+
+    private static final String KINDS = """
+            <dl><dd>Indented commentary on Maat.</dd></dl>
+            <figure><figcaption>Maat wearing an ostrich feather.</figcaption></figure>
+            <table class="infobox vcard"><tr><th>Symbol</th><td>Ostrich feather</td></tr></table>
+            <h2>References</h2>
+            <ol class="references"><li>Wilkinson 2003, p. 150.</li></ol>
+            """;
+
+    /** Definition entries and captions were content the structure never read; each block
+     *  also records its source element, so an infobox or a footnote is told apart by what
+     *  the page states rather than by a meaning assigned in code. */
+    @Test void definitionsAndCaptionsAreBlocksAndEveryBlockNamesItsSourceElement() {
+        List<WikipediaArticle.Block> blocks =
+                blocks(WikipediaArticleClient.parseArticleText(KINDS));
+
+        assertEquals(List.of("DEFINITION dl > dd", "CAPTION figcaption",
+                        "TABLE table.infobox.vcard", "LIST_ITEM ol.references > li"),
+                blocks.stream().map(block -> block.kind() + " " + block.element()).toList());
+        assertEquals("Indented commentary on Maat.", blocks.get(0).value());
+    }
+
+    /** The source element is part of the retained article; a snapshot written before it
+     *  was recorded still loads, with an empty element. */
+    @Test void theSourceElementSurvivesASnapshotAndOlderSnapshotsStillLoad(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        var parsed = WikipediaArticleClient.parseArticleText(KINDS);
+        var document = WikipediaArticleClient.sourceDocument("Maat", "1", parsed.text(),
+                List.of(), parsed.links());
+        var maat = new wikidata.explore.extract.WikidataDynamicObject("Q170471", "Maat");
+        maat.type("EgyptianDeity");
+        maat.wikipediaArticleEvidence(new WikipediaArticle(document, parsed.text(), List.of(),
+                parsed.structuredSections()), true);
+        var store = new wikidata.explore.extract.WikidataDynamicObjectJsonStore();
+        var file = dir.resolve("kinds-snapshot.json").toFile();
+        store.save(List.of(maat), file);
+
+        var loaded = store.load(file).getFirst().wikipediaArticle();
+        List<WikipediaArticle.Block> blocks = new ArrayList<>();
+        collect(loaded.sections(), blocks);
+        assertEquals("table.infobox.vcard", blocks.get(2).element());
+
+        String older = java.nio.file.Files.readString(file.toPath())
+                .replaceAll("\\s*\"element\"\\s*:\\s*\"[^\"]*\",?", "");
+        java.nio.file.Files.writeString(file.toPath(), older);
+        List<WikipediaArticle.Block> olderBlocks = new ArrayList<>();
+        collect(store.load(file).getFirst().wikipediaArticle().sections(), olderBlocks);
+        assertEquals("", olderBlocks.get(2).element());
+        assertEquals(WikipediaArticle.Block.Kind.TABLE, olderBlocks.get(2).kind());
+    }
 }

@@ -46,12 +46,13 @@ class ArticleElementInventoryTest {
         assertTrue(kinds.containsKey("p / Inside a retained block"));
         assertTrue(kinds.containsKey("h2 / Section heading"));
         for (String dropped : List.of("div.hatnote.navigation-not-searchable",
-                "dl", "dd", "figure", "figcaption")) {
+                "dl", "figure", "ol.references")) {
             assertTrue(kinds.containsKey(dropped + " / Not retained"),
-                    dropped + " is dropped and now visible: " + kinds.keySet());
+                    dropped + " is not retained, and visible as such: " + kinds.keySet());
         }
+        assertTrue(kinds.containsKey("figcaption / CAPTION"));
         assertEquals("Indented commentary on Maat.",
-                kinds.get("dd / Not retained").example());
+                kinds.get("dd / DEFINITION").example());
     }
 
     /** The inventory reports what the structure did, not a prediction about it. */
