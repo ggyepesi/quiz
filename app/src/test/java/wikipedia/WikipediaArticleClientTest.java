@@ -35,7 +35,7 @@ class WikipediaArticleClientTest {
                 mythology.blocks().getFirst().kind());
         assertEquals("Troy", mythology.blocks().getFirst().links()
                 .getFirst().targetTitle());
-        assertEquals(WikipediaArticle.Block.Kind.LIST_ITEM,
+        assertEquals(WikipediaArticle.Block.Kind.LIST,
                 mythology.sections().getFirst().blocks().getFirst().kind());
         assertTrue(parsed.structuredArticle().sections().getFirst().blocks().getFirst()
                 .value().contains("Achilles was a hero."));

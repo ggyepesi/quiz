@@ -3,6 +3,8 @@ package quiz.ui;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Dimension;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +20,22 @@ class DialogsTest {
                 Dialogs.persistenceSuccessMessage("Save domain", "Periodic Table",
                         "Config: data/wikidata/periodictable/periodictable.model.json\n"));
     }
+
+    @Test void persistenceSuccessIsRaisedBeforeItBlocksItsOwner() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/quiz/ui/Dialogs.java"));
+        int success = source.indexOf("public static void showPersistenceSuccess(");
+        int afterSuccess = source.indexOf("\n    static ", success);
+        String successBody = source.substring(success, afterSuccess);
+        int raised = source.indexOf("static void showRaisedMessage(");
+        int afterRaised = source.indexOf("\n    static ", raised + 1);
+        String raisedBody = source.substring(raised, afterRaised);
+
+        assertTrue(successBody.contains("showRaisedMessage(parent,"));
+        assertTrue(raisedBody.indexOf("raiseOnOpen(dialog);")
+                < raisedBody.indexOf("dialog.setVisible(true);"),
+                "the front/focus listener must be installed before the modal dialog opens");
+    }
+
     @Test void resizableDialogNeverStartsSmallerThanItsUsableMinimum() {
         assertEquals(new Dimension(720, 560), Dialogs.dialogSize(
                 new Dimension(600, 400), new Dimension(720, 560)));

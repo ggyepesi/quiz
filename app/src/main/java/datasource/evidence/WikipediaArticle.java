@@ -1,6 +1,7 @@
 package datasource.evidence;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
 import objectview.annotations.DisplayField;
@@ -95,29 +96,43 @@ public final class WikipediaArticle extends ViewableAdapter {
     }
 
     /**
-     * A paragraph, list item, quotation, table, definition entry or caption retained under
-     * its source heading. The kind is the HTML structure; {@code element} is the source
-     * element as the page names it ({@code table.infobox.vcard}, {@code ol.references > li}),
+     * A paragraph, list, legacy flat list item, quotation, table, definition entry or
+     * caption retained under its source heading. When the page supplies a definition term,
+     * {@code block} is that
+     * authored title and {@code value} contains the complete term-and-description evidence;
+     * otherwise {@code block} is the stable structural label such as "Paragraph 3". The
+     * kind is the HTML structure; {@code element} is the source
+     * element as the page names it ({@code table.infobox.vcard}, {@code ol.references}),
      * so an infobox, navigation box or footnote is told apart by what the page states,
      * not by a meaning assigned here.
      */
     public static final class Block extends ViewableAdapter {
-        public enum Kind { PARAGRAPH, LIST_ITEM, QUOTATION, TABLE, DEFINITION, CAPTION }
+        public enum Kind { PARAGRAPH, LIST, LIST_ITEM, QUOTATION, TABLE, DEFINITION, CAPTION }
 
         @DisplayField private final String block;
         private final Kind kind;
         @Label("Source element") private final String element;
         @Label("Article text") private final String value;
         @Inline private final List<ArticleLink> links;
+        @Inline @JsonInclude(JsonInclude.Include.NON_NULL)
+        private final ArticleList list;
+        @Inline @JsonInclude(JsonInclude.Include.NON_NULL)
+        private final ArticleTable table;
         @Hidden private final int start;
         @Hidden private final int end;
 
         public Block(String block, Kind kind, String value, List<ArticleLink> links,
                      int start, int end) {
-            this(block, kind, "", value, links, start, end);
+            this(block, kind, "", value, links, null, null, start, end);
         }
 
         /** {@code element} is empty for blocks retained before it was recorded. */
+        public Block(
+                String block, Kind kind, String element, String value,
+                List<ArticleLink> links, int start, int end) {
+            this(block, kind, element, value, links, null, null, start, end);
+        }
+
         @JsonCreator
         public Block(
                 @JsonProperty("block") String block,
@@ -125,6 +140,8 @@ public final class WikipediaArticle extends ViewableAdapter {
                 @JsonProperty("element") String element,
                 @JsonProperty("value") String value,
                 @JsonProperty("links") List<ArticleLink> links,
+                @JsonProperty("list") ArticleList list,
+                @JsonProperty("table") ArticleTable table,
                 @JsonProperty("start") int start,
                 @JsonProperty("end") int end) {
             this.block = clean(block, "Article block");
@@ -132,6 +149,8 @@ public final class WikipediaArticle extends ViewableAdapter {
             this.element = element == null ? "" : element.trim();
             this.value = value == null ? "" : value.trim();
             this.links = immutable(links);
+            this.list = list;
+            this.table = table;
             if (start < 0 || end < start) {
                 throw new IllegalArgumentException("Article block range is invalid");
             }
@@ -143,11 +162,198 @@ public final class WikipediaArticle extends ViewableAdapter {
         public String element() { return element; }
         public String value() { return value; }
         public List<ArticleLink> links() { return links; }
+        public ArticleList list() { return list; }
+        public ArticleTable table() { return table; }
         public int start() { return start; }
         public int end() { return end; }
 
         @Override public String getIdentifier() { return block + '@' + start; }
         @Override public String getDisplayName() { return block; }
+    }
+
+    /** One authored ordered or unordered list, retaining its nested item hierarchy. */
+    public static final class ArticleList extends ViewableAdapter {
+        @DisplayField private final String list;
+        private final boolean ordered;
+        @Inline private final List<ListItem> items;
+        @Hidden private final int start;
+        @Hidden private final int end;
+
+        @JsonCreator
+        public ArticleList(
+                @JsonProperty("list") String list,
+                @JsonProperty("ordered") boolean ordered,
+                @JsonProperty("items") List<ListItem> items,
+                @JsonProperty("start") int start,
+                @JsonProperty("end") int end) {
+            this.list = clean(list, ordered ? "Ordered list" : "Unordered list");
+            this.ordered = ordered;
+            this.items = immutable(items);
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Article list range is invalid");
+            }
+            this.start = start;
+            this.end = end;
+        }
+
+        public boolean ordered() { return ordered; }
+        public List<ListItem> items() { return items; }
+        public int start() { return start; }
+        public int end() { return end; }
+        @Override public String getIdentifier() { return list + '@' + start; }
+        @Override public String getDisplayName() { return list; }
+    }
+
+    /** One list item. Its text is the exact source span, including any nested items. */
+    public static final class ListItem extends ViewableAdapter {
+        @DisplayField private final String item;
+        @Label("Article text") private final String value;
+        @Inline private final List<ArticleLink> links;
+        @Inline private final List<ArticleList> lists;
+        @Hidden private final int start;
+        @Hidden private final int end;
+
+        @JsonCreator
+        public ListItem(
+                @JsonProperty("item") String item,
+                @JsonProperty("value") String value,
+                @JsonProperty("links") List<ArticleLink> links,
+                @JsonProperty("lists") List<ArticleList> lists,
+                @JsonProperty("start") int start,
+                @JsonProperty("end") int end) {
+            this.item = clean(item, "List item");
+            this.value = value == null ? "" : value.trim();
+            this.links = immutable(links);
+            this.lists = immutable(lists);
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Article list-item range is invalid");
+            }
+            this.start = start;
+            this.end = end;
+        }
+
+        public String value() { return value; }
+        public List<ArticleLink> links() { return links; }
+        public List<ArticleList> lists() { return lists; }
+        public int start() { return start; }
+        public int end() { return end; }
+        @Override public String getIdentifier() { return item + '@' + start; }
+        @Override public String getDisplayName() { return item; }
+    }
+
+    /** One authored HTML table with its caption and row/cell structure. */
+    public static final class ArticleTable extends ViewableAdapter {
+        @DisplayField private final String table;
+        @Label("Caption") private final String caption;
+        @Inline private final List<ArticleLink> captionLinks;
+        @Inline private final List<TableRow> rows;
+        @Hidden private final int start;
+        @Hidden private final int end;
+
+        @JsonCreator
+        public ArticleTable(
+                @JsonProperty("table") String table,
+                @JsonProperty("caption") String caption,
+                @JsonProperty("captionLinks") List<ArticleLink> captionLinks,
+                @JsonProperty("rows") List<TableRow> rows,
+                @JsonProperty("start") int start,
+                @JsonProperty("end") int end) {
+            this.table = clean(table, "Table");
+            this.caption = caption == null ? "" : caption.trim();
+            this.captionLinks = immutable(captionLinks);
+            this.rows = immutable(rows);
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Article table range is invalid");
+            }
+            this.start = start;
+            this.end = end;
+        }
+
+        public String caption() { return caption; }
+        public List<ArticleLink> captionLinks() { return captionLinks; }
+        public List<TableRow> rows() { return rows; }
+        public int start() { return start; }
+        public int end() { return end; }
+        @Override public String getIdentifier() { return table + '@' + start; }
+        @Override public String getDisplayName() { return table; }
+    }
+
+    /** One table row in source order. */
+    public static final class TableRow extends ViewableAdapter {
+        @DisplayField private final String row;
+        @Inline private final List<TableCell> cells;
+        @Hidden private final int start;
+        @Hidden private final int end;
+
+        @JsonCreator
+        public TableRow(
+                @JsonProperty("row") String row,
+                @JsonProperty("cells") List<TableCell> cells,
+                @JsonProperty("start") int start,
+                @JsonProperty("end") int end) {
+            this.row = clean(row, "Row");
+            this.cells = immutable(cells);
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Article table-row range is invalid");
+            }
+            this.start = start;
+            this.end = end;
+        }
+
+        public List<TableCell> cells() { return cells; }
+        public int start() { return start; }
+        public int end() { return end; }
+        @Override public String getIdentifier() { return row + '@' + start; }
+        @Override public String getDisplayName() { return row; }
+    }
+
+    /** One header or data cell, retaining the attributes that describe its table role. */
+    public static final class TableCell extends ViewableAdapter {
+        @DisplayField private final String cell;
+        private final boolean header;
+        private final String scope;
+        private final int rowSpan;
+        private final int columnSpan;
+        @Label("Article text") private final String value;
+        @Inline private final List<ArticleLink> links;
+        @Hidden private final int start;
+        @Hidden private final int end;
+
+        @JsonCreator
+        public TableCell(
+                @JsonProperty("cell") String cell,
+                @JsonProperty("header") boolean header,
+                @JsonProperty("scope") String scope,
+                @JsonProperty("rowSpan") int rowSpan,
+                @JsonProperty("columnSpan") int columnSpan,
+                @JsonProperty("value") String value,
+                @JsonProperty("links") List<ArticleLink> links,
+                @JsonProperty("start") int start,
+                @JsonProperty("end") int end) {
+            this.cell = clean(cell, header ? "Header" : "Cell");
+            this.header = header;
+            this.scope = scope == null ? "" : scope.trim();
+            this.rowSpan = Math.max(1, rowSpan);
+            this.columnSpan = Math.max(1, columnSpan);
+            this.value = value == null ? "" : value.trim();
+            this.links = immutable(links);
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Article table-cell range is invalid");
+            }
+            this.start = start;
+            this.end = end;
+        }
+
+        public boolean header() { return header; }
+        public String scope() { return scope; }
+        public int rowSpan() { return rowSpan; }
+        public int columnSpan() { return columnSpan; }
+        public String value() { return value; }
+        public List<ArticleLink> links() { return links; }
+        public int start() { return start; }
+        public int end() { return end; }
+        @Override public String getIdentifier() { return cell + '@' + start; }
+        @Override public String getDisplayName() { return cell; }
     }
 
     /** A source link inside one retained block, preserving its exact article-text range. */

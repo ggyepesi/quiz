@@ -39,16 +39,32 @@ read from that response, so they always describe the same revision (#461).
 6. Inspect ObjectView result tabs for:
    - complete structured articles;
    - section headings with article coverage and exact section blocks;
+   - every retained section-content block with its article, full section path, source
+     element, text and links. When Wikipedia expresses a named item as a definition term
+     followed by one or more descriptions, the term is retained as that item's title and
+     the complete term-and-description text remains its exact evidence;
+   - list items in their ordered/unordered, nested source hierarchy. The searchable list-item
+     projection keeps the article and section path and refers to the same retained item;
+   - table rows and their header/data cells, including captions, links, row/column spans and
+     exact source ranges. The searchable table-row projection reads the retained table and
+     never reconstructs cells from flattened table text;
+   - table-header values with coverage and exact examples;
    - infobox keys with observed values;
    - visible categories with contributing articles;
    - linked targets grouped by the section in which each link occurred;
-   - block kinds: every block-level element kind in the fetched HTML, named by its tag
+   - HTML elements: every structural element kind in the fetched HTML, named by its tag
      and its own classes (`table.infobox`, `div.poem`), with what the article structure
      did with it — a block kind, a section heading, folded into a surrounding block, empty, or
      not retained. The outcome is the one the section builder recorded, not a
      prediction. It needs freshly fetched HTML: a retained article keeps only the blocks
      its structure chose, so it cannot show what was dropped;
    - unavailable inputs and their exact failures.
+
+Selecting one section, infobox key, category, link, table-header value or HTML-element
+outcome shows the matching original domain instances in the shared ObjectView instance
+panel. This is an ephemeral structural-presence group: it states only that those retained
+articles contain the selected source structure. It neither interprets the values nor creates
+or saves a TransformApp group.
 
 Coverage always uses the explicit selected article count as its denominator. Failed or
 missing articles remain visible rather than silently shrinking the population.

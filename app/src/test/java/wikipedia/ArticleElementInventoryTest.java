@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The article structure reads a fixed set of elements; everything else in the page was
  * dropped without trace, so no comparison could show it was missing. The inventory lists
- * every block-level element kind under the name the page gives it, together with what
+ * every structural element kind under the name the page gives it, together with what
  * the structure does with it.
  */
 class ArticleElementInventoryTest {
@@ -42,17 +42,45 @@ class ArticleElementInventoryTest {
         assertEquals(2, kinds.get("p / PARAGRAPH").occurrences());
         assertTrue(kinds.containsKey("table.infobox.vcard / TABLE"),
                 "the infobox is read as an ordinary table block: " + kinds.keySet());
-        assertTrue(kinds.containsKey("li / LIST_ITEM"), "a footnote becomes a list item");
+        assertTrue(kinds.containsKey("ol.references / LIST"),
+                "a footnote list becomes one structured list block");
+        assertTrue(kinds.containsKey("li / List item"),
+                "the item is retained inside the list structure");
         assertTrue(kinds.containsKey("p / Inside a retained block"));
         assertTrue(kinds.containsKey("h2 / Section heading"));
         for (String dropped : List.of("div.hatnote.navigation-not-searchable",
-                "dl", "figure", "ol.references")) {
+                "dl", "figure")) {
             assertTrue(kinds.containsKey(dropped + " / Not retained"),
                     dropped + " is not retained, and visible as such: " + kinds.keySet());
         }
         assertTrue(kinds.containsKey("figcaption / CAPTION"));
         assertEquals("Indented commentary on Maat.",
                 kinds.get("dd / DEFINITION").example());
+    }
+
+    @Test void aDefinitionTitleAndBodyAccountForOneRetainedBlock() {
+        var parsed = WikipediaArticleClient.parseArticleText(
+                "<dl><dt>Slay the Nemean Lion</dt><dd>Defeat the lion.</dd></dl>");
+        Map<String, ArticleElementInventory.ElementKind> kinds = parsed.elements().stream()
+                .collect(Collectors.toMap(
+                        kind -> kind.element() + " / " + kind.retainedAs(), kind -> kind));
+
+        assertTrue(kinds.containsKey("dt / Definition title"));
+        assertTrue(kinds.containsKey("dd / DEFINITION"));
+        assertEquals(1, countBlocks(parsed.structuredSections()));
+    }
+
+    /** A tbody the parser inserts, and the rows of a table nested in a cell, are part of
+     *  the retained table's text; reporting them "Not retained" would claim a loss. */
+    @Test void elementsInsideARetainedTableAreNeverReportedAsDropped() {
+        var parsed = WikipediaArticleClient.parseArticleText(
+                "<table><caption>C</caption><tr><th>H</th><td>V<table><tr><td>inner"
+                        + "</td></tr></table></td></tr></table>");
+        List<String> dropped = parsed.elements().stream()
+                .filter(kind -> kind.retainedAs().equals(WikipediaArticleClient.NOT_RETAINED))
+                .map(ArticleElementInventory.ElementKind::element).toList();
+
+        assertEquals(List.of(), dropped);
     }
 
     /** The inventory reports what the structure did, not a prediction about it. */

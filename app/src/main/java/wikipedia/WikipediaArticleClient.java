@@ -247,6 +247,13 @@ public final class WikipediaArticleClient {
      *  not read was not retained. */
     static final String SECTION_HEADING = "Section heading";
     static final String INSIDE_RETAINED_BLOCK = "Inside a retained block";
+    static final String DEFINITION_TITLE = "Definition title";
+    static final String LIST_ITEM = "List item";
+    static final String NESTED_LIST = "Nested list";
+    static final String TABLE_CAPTION = "Table caption";
+    static final String TABLE_ROW = "Table row";
+    static final String TABLE_HEADER_CELL = "Table header cell";
+    static final String TABLE_DATA_CELL = "Table data cell";
     static final String EMPTY = "Empty";
     static final String NOT_RETAINED = "Not retained";
 
@@ -272,7 +279,9 @@ public final class WikipediaArticleClient {
         List<MutableSection> stack = new ArrayList<>();
         stack.add(introduction);
         int[] blockNumber = {0};
+        List<Element> retainedBlocks = new ArrayList<>();
         for (Element element : body.select(RETAINED_ELEMENTS)) {
+            if (outcomes.containsKey(element)) continue;
             String tag = element.normalName();
             if (tag.matches("h[1-6]")) {
                 String heading = element.text().trim();
@@ -300,6 +309,28 @@ public final class WikipediaArticleClient {
                 outcomes.put(element, INSIDE_RETAINED_BLOCK);
                 continue;
             }
+            if (tag.equals("dt") && hasFollowingDefinition(element)) {
+                outcomes.put(element, DEFINITION_TITLE);
+                continue;
+            }
+            DefinitionEntry definition = definitionStartingAt(element, spans, text);
+            if (definition != null) {
+                definition.terms().forEach(term -> outcomes.put(term, DEFINITION_TITLE));
+                outcomes.put(definition.descriptions().getFirst(),
+                        WikipediaArticle.Block.Kind.DEFINITION.name());
+                definition.descriptions().stream().skip(1).forEach(description ->
+                        outcomes.put(description, INSIDE_RETAINED_BLOCK));
+                retainedBlocks.addAll(definition.terms());
+                retainedBlocks.addAll(definition.descriptions());
+                List<WikipediaArticle.ArticleLink> blockLinks = linksInRange(
+                        links, definition.start(), definition.end());
+                stack.getLast().blocks.add(new WikipediaArticle.Block(
+                        definition.title(), WikipediaArticle.Block.Kind.DEFINITION,
+                        definition.sourceElement(),
+                        text.substring(definition.start(), definition.end()), blockLinks,
+                        definition.start(), definition.end()));
+                continue;
+            }
             WikipediaHtmlFragmentParser.Span span = spanOf(spans, element, text);
             if (span.end() <= span.start()) {
                 outcomes.put(element, EMPTY);
@@ -310,21 +341,33 @@ public final class WikipediaArticleClient {
             String value = text.substring(start, end);
             WikipediaArticle.Block.Kind kind = blockKind(tag);
             outcomes.put(element, kind.name());
-            String label = switch (kind) {
+            retainedBlocks.add(element);
+            WikipediaArticle.ArticleList list = kind == WikipediaArticle.Block.Kind.LIST
+                    ? articleList(element, text, links, spans, outcomes) : null;
+            WikipediaArticle.ArticleTable table = kind == WikipediaArticle.Block.Kind.TABLE
+                    ? articleTable(element, text, links, spans, outcomes) : null;
+            String structuralLabel = switch (kind) {
                 case PARAGRAPH -> "Paragraph ";
+                case LIST -> tag.equals("ol") ? "Ordered list " : "Unordered list ";
                 case LIST_ITEM -> "List item ";
                 case QUOTATION -> "Quotation ";
                 case TABLE -> "Table ";
                 case DEFINITION -> "Definition ";
                 case CAPTION -> "Caption ";
             } + (++blockNumber[0]);
-            List<WikipediaArticle.ArticleLink> blockLinks = links.stream()
-                    .filter(link -> link.start() >= start && link.end() <= end)
-                    .map(link -> new WikipediaArticle.ArticleLink(link.text(),
-                            link.targetTitle(), link.start(), link.end())).toList();
+            String label = table != null && !table.caption().isBlank()
+                    ? table.caption() : structuralLabel;
+            List<WikipediaArticle.ArticleLink> blockLinks = linksInRange(links, start, end);
             stack.getLast().blocks.add(new WikipediaArticle.Block(
                     label, kind, ArticleElementInventory.sourceElement(element), value,
-                    blockLinks, start, end));
+                    blockLinks, list, table, start, end));
+        }
+        // Whatever a retained block contains is in its value, whether or not the block's
+        // own structure names it (a table's tbody, the rows of a table inside a cell).
+        for (Element block : retainedBlocks) {
+            for (Element inner : block.getAllElements()) {
+                if (inner != block) outcomes.putIfAbsent(inner, INSIDE_RETAINED_BLOCK);
+            }
         }
         for (MutableSection section : stack) {
             if (section.end <= 0) section.end = text.length();
@@ -332,13 +375,199 @@ public final class WikipediaArticleClient {
         return roots.stream().map(section -> section.freeze(text.length())).toList();
     }
 
+    /** A definition list says that one or more terms title the descriptions that follow.
+     * Keep that authored relation in the source artifact instead of emitting unrelated
+     * {@code dt}/{@code dd} blocks and asking discovery views to reconstruct it. */
+    private static DefinitionEntry definitionStartingAt(
+            Element element, java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            String text) {
+        if (element == null || !element.normalName().equals("dd")) return null;
+        Element previous = element.previousElementSibling();
+        if (previous == null || !previous.normalName().equals("dt")) return null;
+
+        List<Element> terms = new ArrayList<>();
+        for (Element term = previous;
+                term != null && term.normalName().equals("dt");
+                term = term.previousElementSibling()) {
+            terms.addFirst(term);
+        }
+        List<Element> descriptions = new ArrayList<>();
+        for (Element description = element;
+                description != null && description.normalName().equals("dd");
+                description = description.nextElementSibling()) {
+            descriptions.add(description);
+        }
+        String title = terms.stream().map(Element::text).map(String::trim)
+                .filter(value -> !value.isBlank())
+                .collect(java.util.stream.Collectors.joining(" / "));
+        if (title.isBlank() || descriptions.isEmpty()) return null;
+
+        WikipediaHtmlFragmentParser.Span first = spanOf(spans, terms.getFirst(), text);
+        WikipediaHtmlFragmentParser.Span last = spanOf(
+                spans, descriptions.getLast(), text);
+        if (last.end() <= first.start()) return null;
+        Element parent = terms.getFirst().parent();
+        String source = parent != null && parent == descriptions.getFirst().parent()
+                ? ArticleElementInventory.name(parent) + " > "
+                        + ArticleElementInventory.name(terms.getFirst()) + " + "
+                        + ArticleElementInventory.name(descriptions.getFirst())
+                : ArticleElementInventory.sourceElement(terms.getFirst()) + " + "
+                        + ArticleElementInventory.sourceElement(descriptions.getFirst());
+        return new DefinitionEntry(terms, descriptions, title, source,
+                first.start(), last.end());
+    }
+
+    private static boolean hasFollowingDefinition(Element term) {
+        if (term == null || !term.normalName().equals("dt")) return false;
+        Element next = term.nextElementSibling();
+        while (next != null && next.normalName().equals("dt")) {
+            next = next.nextElementSibling();
+        }
+        return next != null && next.normalName().equals("dd");
+    }
+
+    private record DefinitionEntry(
+            List<Element> terms, List<Element> descriptions, String title,
+            String sourceElement, int start, int end) {
+        private DefinitionEntry {
+            terms = List.copyOf(terms);
+            descriptions = List.copyOf(descriptions);
+        }
+    }
+
+    private static WikipediaArticle.ArticleList articleList(
+            Element list, String text, List<ArticleIntroduction.Link> links,
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            java.util.Map<Element, String> outcomes) {
+        return articleList(list, "", text, links, spans, outcomes);
+    }
+
+    private static WikipediaArticle.ArticleList articleList(
+            Element list, String ownerPath, String text,
+            List<ArticleIntroduction.Link> links,
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            java.util.Map<Element, String> outcomes) {
+        boolean ordered = list.normalName().equals("ol");
+        List<WikipediaArticle.ListItem> items = new ArrayList<>();
+        int position = 0;
+        for (Element child : list.children()) {
+            if (!child.normalName().equals("li")) continue;
+            position++;
+            String itemPath = ownerPath.isBlank() ? String.valueOf(position)
+                    : ownerPath + '.' + position;
+            items.add(listItem(child, itemPath, text, links, spans, outcomes));
+        }
+        String kind = ordered ? "Ordered list" : "Unordered list";
+        WikipediaHtmlFragmentParser.Span span = spanOf(spans, list, text);
+        return new WikipediaArticle.ArticleList(
+                ownerPath.isBlank() ? kind : kind + " at item " + ownerPath,
+                ordered, items, span.start(), span.end());
+    }
+
+    private static WikipediaArticle.ListItem listItem(
+            Element item, String path, String text, List<ArticleIntroduction.Link> links,
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            java.util.Map<Element, String> outcomes) {
+        outcomes.put(item, LIST_ITEM);
+        WikipediaHtmlFragmentParser.Span span = spanOf(spans, item, text);
+        List<WikipediaArticle.ArticleList> nestedLists = new ArrayList<>();
+        for (Element nested : nestedListsOwnedBy(item)) {
+            outcomes.put(nested, NESTED_LIST);
+            nestedLists.add(articleList(nested, path, text, links, spans, outcomes));
+        }
+        return new WikipediaArticle.ListItem("Item " + path,
+                text.substring(span.start(), span.end()),
+                linksInRange(links, span.start(), span.end()), nestedLists,
+                span.start(), span.end());
+    }
+
+    /** Nested lists whose nearest list-item ancestor is this item. */
+    private static List<Element> nestedListsOwnedBy(Element item) {
+        return item.select("ol, ul").stream().filter(list -> {
+            for (Element parent = list.parent(); parent != null; parent = parent.parent()) {
+                if (parent.normalName().equals("li")) return parent == item;
+            }
+            return false;
+        }).toList();
+    }
+
+    private static WikipediaArticle.ArticleTable articleTable(
+            Element table, String text, List<ArticleIntroduction.Link> links,
+            java.util.Map<Element, WikipediaHtmlFragmentParser.Span> spans,
+            java.util.Map<Element, String> outcomes) {
+        Element captionElement = table.children().stream()
+                .filter(child -> child.normalName().equals("caption"))
+                .findFirst().orElse(null);
+        String caption = "";
+        List<WikipediaArticle.ArticleLink> captionLinks = List.of();
+        if (captionElement != null) {
+            outcomes.put(captionElement, TABLE_CAPTION);
+            WikipediaHtmlFragmentParser.Span span = spanOf(spans, captionElement, text);
+            caption = text.substring(span.start(), span.end());
+            captionLinks = linksInRange(links, span.start(), span.end());
+        }
+
+        List<WikipediaArticle.TableRow> rows = new ArrayList<>();
+        for (Element row : table.select("tr")) {
+            if (nearestTable(row) != table) continue;
+            outcomes.put(row, TABLE_ROW);
+            WikipediaHtmlFragmentParser.Span rowSpan = spanOf(spans, row, text);
+            List<WikipediaArticle.TableCell> cells = new ArrayList<>();
+            int cellNumber = 0;
+            for (Element cell : row.children()) {
+                boolean header = cell.normalName().equals("th");
+                if (!header && !cell.normalName().equals("td")) continue;
+                cellNumber++;
+                outcomes.put(cell, header ? TABLE_HEADER_CELL : TABLE_DATA_CELL);
+                WikipediaHtmlFragmentParser.Span cellSpan = spanOf(spans, cell, text);
+                cells.add(new WikipediaArticle.TableCell(
+                        (header ? "Header " : "Cell ") + cellNumber,
+                        header, cell.attr("scope"), positiveInt(cell.attr("rowspan")),
+                        positiveInt(cell.attr("colspan")),
+                        text.substring(cellSpan.start(), cellSpan.end()),
+                        linksInRange(links, cellSpan.start(), cellSpan.end()),
+                        cellSpan.start(), cellSpan.end()));
+            }
+            rows.add(new WikipediaArticle.TableRow("Row " + (rows.size() + 1), cells,
+                    rowSpan.start(), rowSpan.end()));
+        }
+        String title = caption.isBlank() ? "Table" : caption;
+        WikipediaHtmlFragmentParser.Span span = spanOf(spans, table, text);
+        return new WikipediaArticle.ArticleTable(title, caption, captionLinks, rows,
+                span.start(), span.end());
+    }
+
+    private static Element nearestTable(Element element) {
+        for (Element parent = element.parent(); parent != null; parent = parent.parent()) {
+            if (parent.normalName().equals("table")) return parent;
+        }
+        return null;
+    }
+
+    private static int positiveInt(String value) {
+        try {
+            return Math.max(1, Integer.parseInt(value));
+        } catch (NumberFormatException ignored) {
+            return 1;
+        }
+    }
+
+    private static List<WikipediaArticle.ArticleLink> linksInRange(
+            List<ArticleIntroduction.Link> links, int start, int end) {
+        return links.stream().filter(link -> link.start() >= start && link.end() <= end)
+                .map(link -> new WikipediaArticle.ArticleLink(link.text(),
+                        link.targetTitle(), link.start(), link.end())).toList();
+    }
+
     /** The elements {@link #structuredSections} reads: headings open sections, the rest
      *  become blocks. Everything else in the article is not retained. */
     static final String RETAINED_ELEMENTS =
-            "h1, h2, h3, h4, h5, h6, p, li, blockquote, table, dt, dd, figcaption";
+            "h1, h2, h3, h4, h5, h6, p, ol, ul, li, blockquote, table, dt, dd, "
+                    + "figcaption";
 
     private static WikipediaArticle.Block.Kind blockKind(String tag) {
         return switch (tag) {
+            case "ol", "ul" -> WikipediaArticle.Block.Kind.LIST;
             case "li" -> WikipediaArticle.Block.Kind.LIST_ITEM;
             case "blockquote" -> WikipediaArticle.Block.Kind.QUOTATION;
             case "table" -> WikipediaArticle.Block.Kind.TABLE;
@@ -353,7 +582,8 @@ public final class WikipediaArticleClient {
         for (Element parent = element.parent(); parent != null; parent = parent.parent()) {
             String tag = parent.normalName();
             if (tag.equals("p") || tag.equals("li") || tag.equals("blockquote")
-                    || tag.equals("table") || tag.equals("dt") || tag.equals("dd")
+                    || tag.equals("ol") || tag.equals("ul") || tag.equals("table")
+                    || tag.equals("dt") || tag.equals("dd")
                     || tag.equals("figcaption")) return true;
         }
         return false;
@@ -460,7 +690,7 @@ public final class WikipediaArticleClient {
         }
     }
 
-    /** {@code elements} is the block-level element inventory of the same HTML. */
+    /** {@code elements} is the structural-HTML-element inventory of the same HTML. */
     public record ParsedArticleText(String text, List<ArticleIntroduction.Link> links,
                                     List<ArticleSection> sections,
                                     List<WikipediaArticle.Section> structuredSections,
@@ -490,7 +720,7 @@ public final class WikipediaArticleClient {
     }
 
     /** One structured article, the infobox read from the same response (or null), and the
-     *  block-level element inventory of its HTML. */
+     *  structural-HTML-element inventory of its HTML. */
     public record StructuredPage(Article article, InfoboxParameters infobox,
                                  List<ArticleElementInventory.ElementKind> elements) {
         public StructuredPage {

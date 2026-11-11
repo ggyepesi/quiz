@@ -8,6 +8,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Field;
@@ -23,6 +24,41 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Selection must immediately make the action that consumes it available. */
 class WikipediaDiscoveryPanelTest {
 
+    @Test void transformSelectionOpensInTheSameWorkbenchWithoutFetchingOrResampling()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+            maat.type("EgyptianDeity");
+            maat.enwikiTitle("Maat");
+            WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
+            ra.type("EgyptianDeity");
+            ra.enwikiTitle("Ra");
+            var initial = new WikipediaDiscoveryPanel.InitialSelection(
+                    "EgyptianDeity", List.of(maat, ra),
+                    "TransformApp — symbol missing");
+            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+                    domain(List.of(maat, ra), List.of("EgyptianDeity")), initial);
+            try {
+                JTabbedPane sources = field(panel, "sourceTabs", JTabbedPane.class);
+                SearchableView selected = field(panel, "selectedView", SearchableView.class);
+                JButton fetch = field(panel, "fetch", JButton.class);
+                JLabel status = field(panel, "sourceStatus", JLabel.class);
+
+                assertEquals(1, sources.getSelectedIndex(),
+                        "the handed-over selection, not the whole class, is in front");
+                assertEquals(List.of(maat, ra),
+                        selected.cardList().getVirtualList().items());
+                assertEquals("Fetch 2 selected articles", fetch.getText());
+                assertTrue(fetch.isEnabled());
+                assertTrue(status.getText().contains("Received exactly 2 selected"));
+                assertTrue(status.getText().contains("TransformApp — symbol missing"));
+                assertTrue(status.getText().contains("No article has been fetched"));
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
     @Test void infoboxDiscoveryIsVisibleBeforeTheFirstFetch() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
@@ -31,8 +67,11 @@ class WikipediaDiscoveryPanelTest {
             WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain(maat));
             try {
                 JTabbedPane results = field(panel, "resultTabs", JTabbedPane.class);
-                assertEquals(List.of("Articles — 0", "Sections — 0", "Infobox values — 0",
-                                "Categories — 0", "Links by section — 0", "Block kinds — 0"),
+                assertEquals(List.of("Articles — 0", "Sections — 0",
+                                "Section contents — 0", "List items — 0",
+                                "Table rows — 0", "Table headers — 0",
+                                "Infobox values — 0",
+                                "Categories — 0", "Links by section — 0", "HTML elements — 0"),
                         java.util.stream.IntStream.range(0, results.getTabCount())
                                 .mapToObj(results::getTitleAt).toList());
             } finally {
@@ -87,15 +126,16 @@ class WikipediaDiscoveryPanelTest {
                 var observed = new WikipediaDiscoveryRows.InfoboxPattern(
                         "Rendered.Parents", 8, 12, List.of());
                 var result = new WikipediaStructureAnalysis.Result(
-                        List.of(), List.of(), List.of(observed), List.of(), List.of(),
-                        List.of(), false, List.of(), 12, 12);
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(observed), List.of(), List.of(), List.of(),
+                        false, List.of(), 12, 12);
                 invoke(panel, "showAnalysis",
                         new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
                         result, "test");
 
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
-                tabs.setSelectedIndex(2);
-                SearchableView infoboxes = (SearchableView) tabs.getComponentAt(2);
+                tabs.setSelectedIndex(6);
+                SearchableView infoboxes = (SearchableView) tabs.getComponentAt(6);
                 JButton configure = field(panel, "configureInfobox", JButton.class);
                 assertFalse(configure.isEnabled());
 
@@ -212,21 +252,60 @@ class WikipediaDiscoveryPanelTest {
                 var observed = new WikipediaDiscoveryRows.InfoboxPattern(
                         "Rendered.Parents", 8, 12, List.of());
                 var result = new WikipediaStructureAnalysis.Result(
-                        List.of(), List.of(), List.of(observed), List.of(), List.of(),
-                        List.of(), false, List.of(), 12, 12);
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(observed), List.of(), List.of(), List.of(),
+                        false, List.of(), 12, 12);
                 invoke(panel, "showAnalysis",
                         new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
                         result, "test");
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
-                tabs.setSelectedIndex(2);
-                ((SearchableView) tabs.getComponentAt(2)).renderContext().select(observed);
+                tabs.setSelectedIndex(6);
+                ((SearchableView) tabs.getComponentAt(6)).renderContext().select(observed);
                 assertNotNull(field(panel, "selectedInfobox", Object.class));
 
                 JComboBox<?> types = field(panel, "type", JComboBox.class);
                 types.setSelectedItem("Character");
 
                 assertEquals(null, field(panel, "selectedInfobox", Object.class));
-                assertEquals("Infobox values — 0", tabs.getTitleAt(2));
+                assertEquals("Infobox values — 0", tabs.getTitleAt(6));
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
+    @Test void selectingAStructuralPatternShowsItsOriginalInstancesAsAReadOnlyGroup()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+            maat.type("EgyptianDeity");
+            maat.enwikiTitle("Maat");
+            WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
+            ra.type("EgyptianDeity");
+            ra.enwikiTitle("Ra");
+            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+                    domain(List.of(maat, ra), List.of("EgyptianDeity")));
+            try {
+                var animals = new WikipediaDiscoveryRows.SectionPattern(
+                        "Animals", 2, 2, 2, "2", List.of(), List.of(maat, ra));
+                var result = new WikipediaStructureAnalysis.Result(
+                        List.of(), List.of(animals), List.of(), List.of(), List.of(),
+                        List.of(), List.of(), List.of(), List.of(), List.of(),
+                        false, List.of(), 2, 2);
+                invoke(panel, "showAnalysis",
+                        new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
+                        result, "test");
+
+                JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
+                SearchableView sections = (SearchableView) tabs.getComponentAt(1);
+                sections.renderContext().select(animals);
+
+                SearchableView matching = field(panel, "matchingView", SearchableView.class);
+                JLabel status = field(panel, "matchingStatus", JLabel.class);
+                assertEquals(List.of(maat, ra),
+                        matching.cardList().getVirtualList().items());
+                assertTrue(status.getText().contains("Section: Animals"));
+                assertTrue(status.getText().contains("Read-only discovery group"));
             } finally {
                 panel.close();
             }

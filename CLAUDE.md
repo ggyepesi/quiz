@@ -91,7 +91,13 @@ construct per thing produced:
    second interpretation of the same document. A Wikipedia article's introduction is one
    such artifact, retained from the batched lead acquisition; a separately fetched structured
    article is another (its sections, blocks and links) and is never a second source of the
-   introduction. Wikipedia article fields select generic projections of the introduction
+   introduction. When the article authors a named item as a definition term followed by one
+   or more descriptions, the retained source artifact keeps that as one titled block; a
+   discovery view never reconstructs the relation from adjacent flattened text. Wikipedia
+   lists are retained as ordered/unordered containers with their nested item hierarchy,
+   and tables retain their authored caption, rows, header/data cells, links and spans;
+   discovery views project those structures and never reparse their flattened text. Wikipedia
+   article fields select generic projections of the introduction
    (the complete introduction, lead paragraph or lead sentence); the target field assigns
    their domain meaning, never the projection code. Parsed Wikipedia HTML uses one fragment
    interpretation for article content and rendered infobox values. Article projections consume

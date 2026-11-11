@@ -46,9 +46,31 @@ public final class Dialogs {
     public static void showPersistenceSuccess(
             Component parent, String verb, String target, String report) {
         String action = verb == null || verb.isBlank() ? "Save" : verb.trim();
-        JOptionPane.showMessageDialog(owner(parent),
+        showRaisedMessage(parent,
                 wrapped(persistenceSuccessMessage(action, target, report)),
                 action + " succeeded", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Show a modal message through the same explicit lifecycle as the larger workbench
+     * dialogs. {@link JOptionPane#showMessageDialog} creates and opens its private dialog
+     * in one call, so {@link #raiseOnOpen(JDialog)} cannot be attached first; on macOS a
+     * second dialog shown immediately after a confirmation can consequently remain
+     * behind its owner while blocking that owner.
+     */
+    static void showRaisedMessage(
+            Component parent, JComponent content, String title, int messageType) {
+        Window dialogOwner = owner(parent);
+        JOptionPane pane = new JOptionPane(content, messageType,
+                JOptionPane.DEFAULT_OPTION);
+        JDialog dialog = pane.createDialog(dialogOwner, title);
+        raiseOnOpen(dialog);
+        dialog.setLocationRelativeTo(dialogOwner);
+        try {
+            dialog.setVisible(true);
+        } finally {
+            dialog.dispose();
+        }
     }
 
     static String persistenceSuccessMessage(

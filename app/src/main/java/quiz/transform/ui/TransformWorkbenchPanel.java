@@ -63,6 +63,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JButton forgetIdentitiesButton = new JButton("Forget staged");
     private final JButton experimentSelectionButton =
             new JButton("Experimental source inspection…");
+    private final JButton wikipediaDiscoveryButton =
+            new JButton("Wikipedia discovery…");
     private final JButton analyzeRelationsButton =
             new JButton("Analyze relations…");
     private final JButton showClosurePathButton =
@@ -77,6 +79,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private JButton experimentFetchButton;
     private JButton experimentArticleFetchButton;
     private boolean experimentActive;
+    private wikipedia.discovery.WikipediaDiscoveryPanel.OpenedWindow wikipediaDiscovery;
     private JPanel instanceScopeHeader;
     private quiz.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
@@ -529,6 +532,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         forgetIdentitiesButton.setVisible(false);
         experimentSelectionButton.setEnabled(false);
         experimentSelectionButton.addActionListener(e -> startInstanceExperiment());
+        wikipediaDiscoveryButton.setEnabled(false);
+        wikipediaDiscoveryButton.addActionListener(e -> openWikipediaDiscovery());
         analyzeRelationsButton.setToolTipText(
                 "Measure self-referencing fields over the instances currently shown");
         analyzeRelationsButton.setEnabled(false);
@@ -552,6 +557,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JPanel instanceActions = new JPanel(
                 instanceActionsLayout());
         instanceActions.add(experimentSelectionButton);
+        instanceActions.add(wikipediaDiscoveryButton);
         instanceActions.add(analyzeRelationsButton);
         instanceActions.add(showClosurePathButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
@@ -861,6 +867,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      * Keeping the window open is the default; discarding is an explicit choice that names
      * each edit it loses.
      */
+    /** Whether an open Wikipedia Discovery window may close with this workbench. Its
+     *  running fetch is kept unless the user confirms stopping it. */
+    boolean confirmCloseWikipediaDiscovery() {
+        var opened = wikipediaDiscovery;
+        return opened == null || !opened.window().isDisplayable()
+                || opened.workbench().requestStopRun(this);
+    }
+
     boolean confirmCloseWithUnsavedModelChanges() {
         ProjectBacking project = controller.domain().capability(ProjectBacking.class);
         List<String> changes = project == null ? List.of() : project.unsavedModelChanges();
@@ -969,6 +983,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // to describe the render.
         scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
         identitiesButton.setEnabled(false);
+        wikipediaDiscoveryButton.setEnabled(false);
         analyzeRelationsButton.setEnabled(false);
 
         renderHolder.removeAll();
@@ -1082,6 +1097,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             curateFieldButton.setEnabled(false);
             identitiesButton.setEnabled(false);
             experimentSelectionButton.setEnabled(false);
+            wikipediaDiscoveryButton.setEnabled(false);
             analyzeRelationsButton.setEnabled(false);
             return;
         }
@@ -1126,7 +1142,111 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         identitiesButton.setEnabled(curation != null && hasResolvable);
         experimentSelectionButton.setEnabled(scope.visibleMembers().stream()
                 .anyMatch(value -> quiz.source.SourceIdentities.wikidataQid(value) != null));
+        updateWikipediaDiscoveryAction();
         analyzeRelationsButton.setEnabled(!relationsFor(scope.selectedType()).isEmpty());
+    }
+
+    private void updateWikipediaDiscoveryAction() {
+        RenderedScope scope = renderedScope;
+        String unavailable = scope == null
+                ? "Wait for the current instance scope to finish rendering"
+                : wikipediaDiscoveryUnavailable(scope.selectedType(), selectedInstances,
+                        value -> controller.isInstanceOf(value, scope.selectedType()));
+        wikipediaDiscoveryButton.setEnabled(unavailable == null);
+        wikipediaDiscoveryButton.setToolTipText(unavailable == null
+                ? "Open the shared Wikipedia Discovery workbench with exactly "
+                        + selectedInstances.size() + " selected "
+                        + scope.selectedType() + " instance(s)"
+                        + (selectedInstances.size()
+                                <= wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES
+                                ? "" : "; remove at least "
+                                + (selectedInstances.size()
+                                - wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES)
+                                + " there before fetching")
+                : unavailable);
+    }
+
+    /** Why a Transform selection cannot be handed to Wikipedia Discovery. The current
+     * logical class is explicit; names and Java implementation classes are not used to
+     * reconstruct it. */
+    static String wikipediaDiscoveryUnavailable(
+            String selectedType, List<Viewable> selected,
+            java.util.function.Predicate<Viewable> belongsToSelectedType) {
+        if (selected == null || selected.isEmpty()) {
+            return "Select one or more instance cards to inspect on Wikipedia";
+        }
+        if (selectedType == null || selectedType.isBlank()
+                || TransformController.ALL_ENTITIES.equals(selectedType)) {
+            return "Choose one logical class before opening Wikipedia Discovery";
+        }
+        long outside = selected.stream().filter(value -> belongsToSelectedType == null
+                || !belongsToSelectedType.test(value)).count();
+        if (outside > 0) {
+            return outside + " selected instance(s) do not belong to the current "
+                    + selectedType + " class";
+        }
+        long incompatible = selected.stream().filter(value ->
+                !(value instanceof wikidata.explore.extract.WikidataDynamicObject)).count();
+        if (incompatible > 0) {
+            return incompatible + " selected instance(s) do not carry retained Wikipedia "
+                    + "source data";
+        }
+        long withoutArticle = selected.stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .filter(value -> value.enwikiTitle().isBlank()).count();
+        if (withoutArticle > 0) {
+            return withoutArticle + " selected instance(s) have no English Wikipedia "
+                    + "article correspondence";
+        }
+        return null;
+    }
+
+    private void openWikipediaDiscovery() {
+        RenderedScope scope = renderedScope;
+        String unavailable = scope == null ? "No rendered instance scope."
+                : wikipediaDiscoveryUnavailable(scope.selectedType(), selectedInstances,
+                        value -> controller.isInstanceOf(value, scope.selectedType()));
+        if (unavailable != null) {
+            JOptionPane.showMessageDialog(this, unavailable,
+                    "Wikipedia discovery", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (wikipediaDiscovery != null && wikipediaDiscovery.window().isDisplayable()) {
+            // Its model edits are this workbench's own pending changes, kept and guarded
+            // here; replacing the window loses only a running fetch.
+            if (!wikipediaDiscovery.workbench().requestStopRun(this)) {
+                wikipediaDiscovery.window().toFront();
+                wikipediaDiscovery.window().requestFocus();
+                return;
+            }
+            wikipediaDiscovery.window().dispose();
+            wikipediaDiscovery = null;
+        }
+        List<wikidata.explore.extract.WikidataDynamicObject> selection =
+                selectedInstances.stream()
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast).toList();
+        String source = "TransformApp";
+        if (selectedField != null && fieldScope != ScopeFilter.ALL) {
+            source += " — " + selectedField.displayPath() + " "
+                    + (fieldScope == ScopeFilter.MISSING ? "missing" : "present");
+        } else if (activeGroup != null) {
+            source += " — " + activeGroup.getDisplayName();
+        }
+        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
+        String title = project != null && project.projectName() != null
+                && !project.projectName().isBlank() ? project.projectName()
+                : domainName == null || domainName.isBlank()
+                        ? scope.selectedType() : domainName;
+        var initial = new wikipedia.discovery.WikipediaDiscoveryPanel.InitialSelection(
+                scope.selectedType(), selection, source);
+        wikipediaDiscovery = wikipedia.discovery.WikipediaDiscoveryPanel.openWindow(
+                controller.domain(), title, initial, this);
+        var opened = wikipediaDiscovery;
+        opened.window().addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed(java.awt.event.WindowEvent event) {
+                if (wikipediaDiscovery == opened) wikipediaDiscovery = null;
+            }
+        });
     }
 
     /**
@@ -1680,8 +1800,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         GroupMembersView grouped = new GroupMembersView(
                 root, group -> {
             activeGroup = group;
-            selectedInstances = List.of();
-            updateClosurePathAction();
+            selectInstances(List.of());
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
             List<Viewable> members = applySelectionScope(explicitMembers(group));
@@ -1768,6 +1887,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             instanceScopeHeader.revalidate();
             instanceScopeHeader.repaint();
         }
+    }
+
+    private void selectInstances(List<Viewable> values) {
+        selectedInstances = values == null ? List.of() : List.copyOf(values);
+        updateClosurePathAction();
+        updateWikipediaDiscoveryAction();
     }
 
     /** Why the path cannot be shown for this selection, or null when it can. A disabled
@@ -1996,8 +2121,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         if (!experimentActive) {
             panel.add(flatView(members, type, values -> {
-                        selectedInstances = values;
-                        updateClosurePathAction();
+                        selectInstances(values);
                     },
                     this::experimentMark), BorderLayout.CENTER);
             return panel;
@@ -2023,8 +2147,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         instances.add(instanceActions, BorderLayout.NORTH);
         experimentInstancesView = flatView(members, type,
                 values -> {
-                    selectedInstances = values;
-                    updateClosurePathAction();
+                    selectInstances(values);
                 }, this::experimentMark);
         instances.add(experimentInstancesView, BorderLayout.CENTER);
         tabs.addTab("Instances", instances);
@@ -2662,7 +2785,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                if (!panel.confirmCloseWithUnsavedModelChanges()) {
+                if (!panel.confirmCloseWikipediaDiscovery()
+                        || !panel.confirmCloseWithUnsavedModelChanges()) {
                     return;   // keep the window open
                 }
                 if (panel.hasUnsavedIdentities()) {
@@ -2699,6 +2823,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         queries.runner().cancel();
         resolveRunner.cancel();
         experimentRunner.cancel();
+        if (wikipediaDiscovery != null) {
+            wikipediaDiscovery.window().dispose();
+            wikipediaDiscovery.workbench().close();
+            wikipediaDiscovery = null;
+        }
         requestClient.close();
         queryFactory.close();
     }

@@ -9,22 +9,28 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Which block-level elements one article's HTML contains, and what the article structure
+ * Which structural elements one article's HTML contains, and what the article structure
  * does with each: the inventory Wikipedia Discovery compares across articles.
  *
  * <p>An element is named by its tag and its own class attribute as the page states them
  * ({@code table.infobox.vcard}, {@code div.hatnote}), never by a meaning this code assigns.
- * "Block-level" is the HTML notion, not a Wikipedia vocabulary. What the structure did
- * with it is the outcome the section builder recorded for that element while building the
- * retained sections, so the inventory shows what was dropped rather than re-deciding it.</p>
+ * The inventory covers HTML block elements plus the rows and cells needed to inspect a
+ * retained table. What the structure did with an element is the outcome recorded while
+ * building the retained sections, so the inventory shows what was dropped rather than
+ * re-deciding it.
+ * A definition term is reported as the title of the retained definition block; its first
+ * description is the block and any further descriptions are folded into that same block.
+ * Lists are retained as containers with nested items; tables retain captions, rows and
+ * header/data cells under their table block.</p>
  */
 public final class ArticleElementInventory {
-    /** HTML block-level elements; inline content is part of the block around it. */
-    private static final Set<String> BLOCK_LEVEL = Set.of(
+    /** HTML structural elements; inline content is part of the structure around it. */
+    private static final Set<String> STRUCTURAL_ELEMENTS = Set.of(
             "address", "article", "aside", "blockquote", "dd", "details", "dialog", "div",
-            "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form",
+            "caption", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form",
             "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "li", "main", "nav",
-            "ol", "p", "pre", "section", "table", "ul");
+            "ol", "p", "pre", "section", "table", "tbody", "td", "tfoot", "th",
+            "thead", "tr", "ul");
     private static final int EXAMPLE_CHARACTERS = 240;
 
     private ArticleElementInventory() { }
@@ -46,7 +52,7 @@ public final class ArticleElementInventory {
         if (body == null) return List.of();
         Map<String, Tally> kinds = new LinkedHashMap<>();
         for (Element element : body.getAllElements()) {
-            if (element == body || !BLOCK_LEVEL.contains(element.normalName())) continue;
+            if (element == body || !STRUCTURAL_ELEMENTS.contains(element.normalName())) continue;
             String name = name(element);
             String retainedAs = outcomes == null ? WikipediaArticleClient.NOT_RETAINED
                     : outcomes.getOrDefault(element, WikipediaArticleClient.NOT_RETAINED);

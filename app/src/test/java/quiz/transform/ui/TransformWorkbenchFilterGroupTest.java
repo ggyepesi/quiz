@@ -2,6 +2,7 @@ package quiz.transform.ui;
 
 import domain.DomainField;
 import flag.State;
+import objectview.Viewable;
 import org.junit.jupiter.api.Test;
 import quiz.transform.OperationGroup;
 import quiz.transform.FilterCondition;
@@ -46,6 +47,55 @@ class TransformWorkbenchFilterGroupTest {
         assertTrue(TransformWorkbenchPanel.instanceActionsLayout()
                         instanceof objectview.utils.swing.WrapLayout,
                 "the default-width action row must report the height of wrapped buttons");
+    }
+
+    @Test void wikipediaDiscoveryConsumesOnlyAnExplicitSingleClassSelection() {
+        var maat = new wikidata.explore.extract.WikidataDynamicObject("Q170471", "Maat");
+        maat.type("EgyptianDeity");
+        maat.enwikiTitle("Maat");
+        java.util.function.Predicate<objectview.Viewable> deity = value ->
+                value.directClassNames().contains("EgyptianDeity");
+
+        assertEquals("Select one or more instance cards to inspect on Wikipedia",
+                TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                        "EgyptianDeity", List.of(), deity));
+        assertEquals("Choose one logical class before opening Wikipedia Discovery",
+                TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                        TransformController.ALL_ENTITIES, List.of(maat), ignored -> true));
+        assertNull(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                "EgyptianDeity", List.of(maat), deity));
+
+        var achilles = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q41746", "Achilles");
+        achilles.type("Character");
+        achilles.enwikiTitle("Achilles");
+        assertTrue(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                "EgyptianDeity", List.of(maat, achilles), deity)
+                .contains("do not belong"));
+
+        var unnamedArticle = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q1", "No article");
+        unnamedArticle.type("EgyptianDeity");
+        assertTrue(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                "EgyptianDeity", List.of(unnamedArticle), deity)
+                .contains("no English Wikipedia article"));
+    }
+
+    @Test void anOversizedExplicitSelectionIsHandedOverWholeForManualReduction() {
+        List<Viewable> selected = java.util.stream.IntStream.range(0,
+                        wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES + 1)
+                .mapToObj(index -> {
+                    var value = new wikidata.explore.extract.WikidataDynamicObject(
+                            "Q" + (index + 1), "Deity " + index);
+                    value.type("EgyptianDeity");
+                    value.enwikiTitle("Deity " + index);
+                    return (Viewable) value;
+                }).toList();
+
+        assertNull(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
+                "EgyptianDeity", selected,
+                value -> value.directClassNames().contains("EgyptianDeity")),
+                "TransformApp must not silently sample or truncate an explicit selection");
     }
 
     @Test void relationEquivalenceClassesUseTheSameGroupsAsTheMainWorkbench() {

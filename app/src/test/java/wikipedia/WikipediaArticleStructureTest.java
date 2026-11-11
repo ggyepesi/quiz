@@ -48,7 +48,7 @@ class WikipediaArticleStructureTest {
 
         assertEquals(List.of(WikipediaArticle.Block.Kind.PARAGRAPH,
                         WikipediaArticle.Block.Kind.TABLE,
-                        WikipediaArticle.Block.Kind.LIST_ITEM,
+                        WikipediaArticle.Block.Kind.LIST,
                         WikipediaArticle.Block.Kind.QUOTATION,
                         WikipediaArticle.Block.Kind.PARAGRAPH),
                 blocks.stream().map(WikipediaArticle.Block::kind).toList());
@@ -57,7 +57,9 @@ class WikipediaArticleStructureTest {
         assertEquals("Her feather weighed the heart.\nA second paragraph.",
                 blocks.get(2).value());
         java.util.Set<String> outcomes = new java.util.HashSet<>(List.of(
-                "Section heading", "Inside a retained block", "Empty", "Not retained"));
+                "Section heading", "Inside a retained block", "Definition title",
+                "List item", "Nested list", "Table caption", "Table row",
+                "Table header cell", "Table data cell", "Empty", "Not retained"));
         for (WikipediaArticle.Block.Kind kind : WikipediaArticle.Block.Kind.values()) {
             outcomes.add(kind.name());
         }
@@ -105,9 +107,99 @@ class WikipediaArticleStructureTest {
                 blocks(WikipediaArticleClient.parseArticleText(KINDS));
 
         assertEquals(List.of("DEFINITION dl > dd", "CAPTION figcaption",
-                        "TABLE table.infobox.vcard", "LIST_ITEM ol.references > li"),
+                        "TABLE table.infobox.vcard", "LIST ol.references"),
                 blocks.stream().map(block -> block.kind() + " " + block.element()).toList());
         assertEquals("Indented commentary on Maat.", blocks.get(0).value());
+    }
+
+    @Test void aListRetainsItsOrderedNestedItemHierarchy() {
+        String html = """
+                <h2>Labours</h2>
+                <ol class="labours">
+                  <li>Defeat the lion.
+                    <ul><li>Find its cave.</li><li>Use its own claws.</li></ul>
+                  </li>
+                  <li>Defeat the Hydra.</li>
+                </ol>
+                """;
+
+        var parsed = WikipediaArticleClient.parseArticleText(html);
+        WikipediaArticle.Block block = blocks(parsed).getFirst();
+        WikipediaArticle.ArticleList list = block.list();
+
+        assertEquals(WikipediaArticle.Block.Kind.LIST, block.kind());
+        assertEquals("ol.labours", block.element());
+        assertTrue(list.ordered());
+        assertEquals(List.of("Item 1", "Item 2"),
+                list.items().stream().map(WikipediaArticle.ListItem::getDisplayName).toList());
+        WikipediaArticle.ArticleList nested = list.items().getFirst().lists().getFirst();
+        assertEquals("Unordered list at item 1", nested.getDisplayName());
+        assertEquals(List.of("Item 1.1", "Item 1.2"), nested.items()
+                .stream().map(WikipediaArticle.ListItem::getDisplayName).toList());
+        assertTrue(list.items().getFirst().value().contains("Find its cave"));
+        assertEquals(list.items().getFirst().value(), parsed.text().substring(
+                list.items().getFirst().start(), list.items().getFirst().end()));
+    }
+
+    @Test void aTableRetainsCaptionRowsHeaderAndDataCells() {
+        String html = """
+                <table class="wikitable">
+                  <caption><a href="/wiki/Twelve_Labours" title="Twelve Labours">Labours</a></caption>
+                  <tr><th scope="col">Number</th><th scope="col">Labour</th></tr>
+                  <tr><th scope="row">1</th><td rowspan="2"><a href="/wiki/Nemean_lion">Lion</a></td></tr>
+                </table>
+                """;
+
+        var parsed = WikipediaArticleClient.parseArticleText(html);
+        WikipediaArticle.Block block = blocks(parsed).getFirst();
+        WikipediaArticle.ArticleTable table = block.table();
+
+        assertEquals("Labours", block.getDisplayName());
+        assertEquals("Labours", table.caption());
+        assertEquals("Twelve Labours", table.captionLinks().getFirst().targetTitle());
+        assertEquals(2, table.rows().size());
+        assertEquals(List.of(true, true), table.rows().getFirst().cells().stream()
+                .map(WikipediaArticle.TableCell::header).toList());
+        WikipediaArticle.TableCell lion = table.rows().get(1).cells().get(1);
+        assertEquals("Lion", lion.value());
+        assertEquals(2, lion.rowSpan());
+        assertEquals("Nemean lion", lion.links().getFirst().targetTitle());
+        assertEquals(lion.value(), parsed.text().substring(lion.start(), lion.end()));
+    }
+
+    /** #471: Wikipedia uses definition terms as visible item titles. The title and its
+     * descriptions are one source item, not unrelated blocks that a later view has to
+     * guess belong together. */
+    @Test void aDefinitionTermTitlesTheDescriptionsThatFollowIt() {
+        String html = """
+                <h2>Labours of Heracles</h2>
+                <dl>
+                  <dt>1. Slay the Nemean Lion</dt>
+                  <dd>Heracles defeated the lion with his bare hands.</dd>
+                  <dt>2. Slay the Lernaean Hydra</dt>
+                  <dd>Heracles defeated the many-headed Hydra.</dd>
+                  <dd>Iolaus helped burn the multiplying necks.</dd>
+                </dl>
+                """;
+
+        var parsed = WikipediaArticleClient.parseArticleText(html);
+        WikipediaArticle.Section labours = parsed.structuredSections().stream()
+                .filter(section -> section.heading().equals("Labours of Heracles"))
+                .findFirst().orElseThrow();
+
+        assertEquals(List.of("1. Slay the Nemean Lion",
+                        "2. Slay the Lernaean Hydra"),
+                labours.blocks().stream().map(WikipediaArticle.Block::getDisplayName)
+                        .toList());
+        assertEquals(List.of("dl > dt + dd", "dl > dt + dd"),
+                labours.blocks().stream().map(WikipediaArticle.Block::element).toList());
+        assertTrue(labours.blocks().getFirst().value()
+                .contains("Heracles defeated the lion"));
+        assertTrue(labours.blocks().get(1).value()
+                .contains("Iolaus helped burn the multiplying necks"));
+        for (WikipediaArticle.Block block : labours.blocks()) {
+            assertEquals(block.value(), parsed.text().substring(block.start(), block.end()));
+        }
     }
 
     /** The source element is part of the retained article; a snapshot written before it

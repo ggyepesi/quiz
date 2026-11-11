@@ -34,6 +34,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private static final int DEFAULT_SAMPLE = 12;
 
     private final TransformController domain;
+    private final InitialSelection initialSelection;
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
     private final SwingQueryRunner runner = queries.runner();
 
@@ -56,8 +57,11 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     private final JPanel selectedHolder = new JPanel(new BorderLayout());
+    private final JPanel matchingHolder = new JPanel(new BorderLayout());
     private final JTabbedPane sourceTabs = new JTabbedPane();
     private final JTabbedPane resultTabs = new JTabbedPane();
+    private final JLabel matchingStatus = new JLabel(
+            "Select one structural pattern to show its matching original instances.");
     private final LinkedHashMap<String, WikidataDynamicObject> selected =
             new LinkedHashMap<>();
     private final ProjectBacking project;
@@ -67,14 +71,22 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private List<WikidataDynamicObject> selectedInSample = List.of();
     private SearchableView instancesView;
     private SearchableView selectedView;
+    private SearchableView matchingView;
     private WikipediaDiscoveryRows.InfoboxPattern selectedInfobox;
     /** The Infobox values tab, the only one whose selection the configure action reads. */
     private SearchableView infoboxView;
     private boolean closed;
 
     public WikipediaDiscoveryPanel(DomainModel model) {
+        this(model, null);
+    }
+
+    /** The same workbench may start empty (the standalone app) or with the exact
+     *  instances explicitly selected in another domain-data view such as TransformApp. */
+    public WikipediaDiscoveryPanel(DomainModel model, InitialSelection initialSelection) {
         super(new BorderLayout(6, 6));
         this.domain = new TransformController(model, new quiz.transform.app.DomainSaver());
+        this.initialSelection = initialSelection;
         this.project = model.capability(ProjectBacking.class);
         this.promoter = model.capability(FieldRulePromoter.class);
         build();
@@ -123,7 +135,18 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         resultActions.add(configureInfobox);
         resultHeader.add(resultActions, BorderLayout.EAST);
         results.add(resultHeader, BorderLayout.NORTH);
-        results.add(resultTabs, BorderLayout.CENTER);
+
+        JPanel matching = new JPanel(new BorderLayout(4, 3));
+        matching.setBorder(BorderFactory.createTitledBorder("Matching instances"));
+        matching.add(matchingStatus, BorderLayout.NORTH);
+        matching.add(matchingHolder, BorderLayout.CENTER);
+        clearMatchingGroup();
+
+        JSplitPane resultSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+                resultTabs, matching);
+        resultSplit.setResizeWeight(0.63);
+        resultSplit.setContinuousLayout(true);
+        results.add(resultSplit, BorderLayout.CENTER);
         emptyResults();
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
@@ -170,9 +193,48 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                     + "Wikipedia article correspondence.");
             updateActions();
         } else {
-            type.setSelectedIndex(0);
+            String requested = initialSelection == null
+                    ? null : initialSelection.className();
+            boolean offered = requested != null
+                    && java.util.stream.IntStream.range(0, type.getItemCount())
+                    .mapToObj(type::getItemAt).anyMatch(requested::equals);
+            if (offered) type.setSelectedItem(requested);
+            else type.setSelectedIndex(0);
             showType((String) type.getSelectedItem());
+            if (offered) seedInitialSelection();
         }
+    }
+
+    private void seedInitialSelection() {
+        if (initialSelection == null) return;
+        java.util.Map<String, WikidataDynamicObject> available = classMembers.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        WikipediaDiscoveryPanel::key, value -> value,
+                        (first, ignored) -> first, java.util.LinkedHashMap::new));
+        selected.clear();
+        int omitted = 0;
+        for (WikidataDynamicObject requested : initialSelection.instances()) {
+            WikidataDynamicObject member = available.get(key(requested));
+            if (member == null) omitted++;
+            else putSelected(member);
+        }
+        selectedInSample = List.of();
+        rebuildSelectedView();
+        invalidateAnalysis("The selected articles came from "
+                + initialSelection.origin() + ". Analyze them to produce results.");
+        sourceTabs.setSelectedIndex(1);
+        String limit = selected.size() <= WikipediaDiscoveryQuery.MAX_ARTICLES ? ""
+                : " Fetch is disabled until you remove at least "
+                        + (selected.size() - WikipediaDiscoveryQuery.MAX_ARTICLES)
+                        + " selection(s); one run is bounded to "
+                        + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles.";
+        sourceStatus.setText("Received exactly " + selected.size() + " selected "
+                + initialSelection.className() + " instance(s) from "
+                + initialSelection.origin() + ". No article has been fetched."
+                + (omitted == 0 ? "" : " " + omitted
+                        + " selected instance(s) had no usable English Wikipedia "
+                        + "correspondence in this class and were not added.") + limit);
+        updateActions();
     }
 
     private void showType(String className) {
@@ -236,6 +298,33 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 })
                 .collapsible(true)
                 .build();
+    }
+
+    private void showStructuralGroup(List<Object> chosen) {
+        WikipediaDiscoveryRows.StructuralGroup group = chosen != null && chosen.size() == 1
+                && chosen.getFirst() instanceof WikipediaDiscoveryRows.StructuralGroup value
+                ? value : null;
+        if (group == null) {
+            clearMatchingGroup();
+            return;
+        }
+        String className = (String) type.getSelectedItem();
+        matchingView = instanceView(group.members(), className, ignored -> { });
+        matchingHolder.removeAll();
+        matchingHolder.add(matchingView, BorderLayout.CENTER);
+        matchingHolder.revalidate();
+        matchingHolder.repaint();
+        matchingStatus.setText(group.groupName() + " — " + group.members().size() + " "
+                + className + " instance(s). Read-only discovery group; nothing is saved.");
+    }
+
+    private void clearMatchingGroup() {
+        matchingView = null;
+        matchingHolder.removeAll();
+        matchingHolder.revalidate();
+        matchingHolder.repaint();
+        matchingStatus.setText(
+                "Select one structural pattern to show its matching original instances.");
     }
 
     private void startRandomSample() {
@@ -334,12 +423,25 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void showAnalysis(WikipediaStructureAnalysis.Result analysis, String source) {
         selectedInfobox = null;
+        clearMatchingGroup();
         resultTabs.removeAll();
         addResultTab("Articles", analysis.articles(), WikipediaSource.class,
                 RenderingMode.CARD, "No structured articles are available.");
         addResultTab("Sections", analysis.sections(),
                 WikipediaDiscoveryRows.SectionPattern.class, RenderingMode.CARD,
                 "No section headings were retained.");
+        addResultTab("Section contents", analysis.contents(),
+                WikipediaDiscoveryRows.SectionContent.class, RenderingMode.CARD,
+                "No section content blocks were retained.");
+        addResultTab("List items", analysis.listItems(),
+                WikipediaDiscoveryRows.ListItemContent.class, RenderingMode.CARD,
+                "No structured list items were retained.");
+        addResultTab("Table rows", analysis.tableRows(),
+                WikipediaDiscoveryRows.TableRowContent.class, RenderingMode.CARD,
+                "No structured table rows were retained.");
+        addResultTab("Table headers", analysis.tableHeaders(),
+                WikipediaDiscoveryRows.TableHeaderPattern.class, RenderingMode.CARD,
+                "No authored table-header values were retained.");
         infoboxView = addResultTab("Infobox values", analysis.infoboxes(),
                 WikipediaDiscoveryRows.InfoboxPattern.class, RenderingMode.CARD,
                 "No infobox values were retained.", selected -> {
@@ -347,6 +449,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                             && selected.getFirst()
                             instanceof WikipediaDiscoveryRows.InfoboxPattern value
                             ? value : null;
+                    showStructuralGroup(selected);
                     updateActions();
                 });
         addResultTab("Categories", analysis.categories(),
@@ -355,10 +458,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         addResultTab("Links by section", analysis.links(),
                 WikipediaDiscoveryRows.LinkPattern.class, RenderingMode.CARD,
                 "No article links were retained.");
-        addResultTab("Block kinds", analysis.blockKinds(),
+        addResultTab("HTML elements", analysis.blockKinds(),
                 WikipediaDiscoveryRows.BlockKindPattern.class, RenderingMode.CARD,
-                analysis.blockKindsAvailable() ? "No block-level elements were found."
-                        : "Block kinds are read from fetched HTML. A retained article keeps "
+                analysis.blockKindsAvailable() ? "No structural HTML elements were found."
+                        : "HTML elements are read from fetched HTML. A retained article keeps "
                                 + "only the blocks its structure chose, so it cannot show "
                                 + "what was dropped: press Fetch selected articles.");
         if (!analysis.unavailable().isEmpty()) {
@@ -369,17 +472,22 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         resultStatus.setText("Compared " + analysis.availableArticles() + " of "
                 + analysis.selectedArticles() + " selected " + source + " article(s): "
                 + analysis.sections().size() + " section heading(s), "
+                + analysis.contents().size() + " content block(s), "
+                + analysis.listItems().size() + " list item(s), "
+                + analysis.tableRows().size() + " table row(s), "
+                + analysis.tableHeaders().size() + " table header pattern(s), "
                 + analysis.infoboxes().size() + " infobox key(s), "
                 + analysis.categories().size() + " category title(s), "
                 + analysis.links().size() + " section/link pattern(s), and "
                 + (analysis.blockKindsAvailable()
-                        ? analysis.blockKinds().size() + " block kind(s)."
-                        : "no block-kind inventory (retained articles)."));
+                        ? analysis.blockKinds().size() + " HTML element outcome(s)."
+                        : "no HTML-element inventory (retained articles)."));
     }
 
     private <T extends Viewable> SearchableView addResultTab(String title, List<T> values,
             Class<T> rowType, RenderingMode mode, String emptyMessage) {
-        return addResultTab(title, values, rowType, mode, emptyMessage, null);
+        return addResultTab(title, values, rowType, mode, emptyMessage,
+                this::showStructuralGroup);
     }
 
     private <T extends Viewable> SearchableView addResultTab(String title, List<T> values,
@@ -399,12 +507,25 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void emptyResults() {
         selectedInfobox = null;
+        clearMatchingGroup();
         resultTabs.removeAll();
         addResultTab("Articles", List.of(), WikipediaSource.class, RenderingMode.CARD,
                 "Select instances, then analyze retained articles or fetch them from "
                         + "Wikipedia.");
         addResultTab("Sections", List.of(), WikipediaDiscoveryRows.SectionPattern.class,
                 RenderingMode.CARD, "Fetch selected articles to discover their sections.");
+        addResultTab("Section contents", List.of(),
+                WikipediaDiscoveryRows.SectionContent.class, RenderingMode.CARD,
+                "Fetch selected articles to inspect the content retained under each section.");
+        addResultTab("List items", List.of(),
+                WikipediaDiscoveryRows.ListItemContent.class, RenderingMode.CARD,
+                "Fetch selected articles to inspect nested list items.");
+        addResultTab("Table rows", List.of(),
+                WikipediaDiscoveryRows.TableRowContent.class, RenderingMode.CARD,
+                "Fetch selected articles to inspect table captions, rows and cells.");
+        addResultTab("Table headers", List.of(),
+                WikipediaDiscoveryRows.TableHeaderPattern.class, RenderingMode.CARD,
+                "Fetch selected articles to compare authored table-header values.");
         infoboxView = addResultTab("Infobox values", List.of(),
                 WikipediaDiscoveryRows.InfoboxPattern.class, RenderingMode.CARD,
                 "Fetch selected articles to discover their infobox rows, links and images.");
@@ -413,9 +534,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         addResultTab("Links by section", List.of(),
                 WikipediaDiscoveryRows.LinkPattern.class, RenderingMode.CARD,
                 "Fetch selected articles to discover links by article section.");
-        addResultTab("Block kinds", List.of(),
+        addResultTab("HTML elements", List.of(),
                 WikipediaDiscoveryRows.BlockKindPattern.class, RenderingMode.CARD,
-                "Fetch selected articles to inspect their retained HTML block kinds.");
+                "Fetch selected articles to inspect how their structural HTML elements "
+                        + "were retained.");
     }
 
     private void invalidateAnalysis(String message) {
@@ -705,9 +827,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     public boolean requestClose(Component owner) {
-        if (runner.isRunning()
-                && !process.swing.SwingCancellationConfirmation.requestForVisibleRun(
-                        owner, runner::cancel)) return false;
+        if (!requestStopRun(owner)) return false;
         if (project == null || project.unsavedModelChanges().isEmpty()) return true;
         Object[] options = {"Keep open", "Discard and close"};
         int choice = JOptionPane.showOptionDialog(this,
@@ -721,28 +841,71 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         return choice == 1;
     }
 
+    /** Whether running work may stop: keeping it is the default. A caller that owns the
+     *  working model (TransformApp) asks only this, because model edits made here stay
+     *  pending in that caller and are guarded by its own close. */
+    public boolean requestStopRun(Component owner) {
+        return !runner.isRunning()
+                || process.swing.SwingCancellationConfirmation.requestForVisibleRun(
+                        owner, runner::cancel);
+    }
+
     @Override public void close() {
         if (closed) return;
         closed = true;
         runner.cancel();
     }
 
+    /** Explicit handoff into the shared workbench. The source view supplies the logical
+     * class and instances; discovery never reconstructs that selection from names. */
+    public record InitialSelection(
+            String className, List<WikidataDynamicObject> instances, String origin) {
+        public InitialSelection {
+            className = className == null ? "" : className.trim();
+            instances = instances == null ? List.of()
+                    : instances.stream().filter(java.util.Objects::nonNull)
+                    .distinct().toList();
+            origin = origin == null || origin.isBlank() ? "the originating view"
+                    : origin.trim();
+        }
+    }
+
     public static JFrame openFrame(DomainModel domain, String title) {
+        return openFrame(domain, title, null);
+    }
+
+    public static JFrame openFrame(
+            DomainModel domain, String title, InitialSelection initialSelection) {
+        return openWindow(domain, title, initialSelection, null).window();
+    }
+
+    /** One window lifecycle for both the standalone navigator and contextual callers.
+     *  {@code owner} is the workbench that owns the working model, or null when this
+     *  window owns it. An owned window's model edits stay pending in its owner, which
+     *  guards them, so closing it asks only about a running fetch: offering to "discard"
+     *  them here would name a loss that does not happen. */
+    public static OpenedWindow openWindow(
+            DomainModel domain, String title, InitialSelection initialSelection,
+            Component owner) {
         JFrame frame = new JFrame("Wikipedia Discovery — " + title);
-        WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain);
+        WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain, initialSelection);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.add(panel);
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent event) {
-                if (panel.requestClose(frame)) frame.dispose();
+                boolean close = owner == null ? panel.requestClose(frame)
+                        : panel.requestStopRun(frame);
+                if (close) frame.dispose();
             }
             @Override public void windowClosed(java.awt.event.WindowEvent event) {
                 panel.close();
             }
         });
         frame.setSize(1650, 950);
-        frame.setLocationRelativeTo(null);
+        frame.setLocationRelativeTo(owner);
         frame.setVisible(true);
-        return frame;
+        return new OpenedWindow(frame, panel);
     }
+
+    public record OpenedWindow(JFrame window, WikipediaDiscoveryPanel workbench) { }
 }

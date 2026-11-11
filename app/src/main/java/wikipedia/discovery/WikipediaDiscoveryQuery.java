@@ -98,7 +98,7 @@ public final class WikipediaDiscoveryQuery
     }
 
     /**
-     * {@code elements} is the block-level element inventory of the fetched HTML, or null
+     * {@code elements} is the structural-HTML-element inventory of the fetched HTML, or null
      * when this article was not fetched in this run: a retained article keeps only the
      * blocks its structure chose, so it cannot say what was dropped.
      */

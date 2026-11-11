@@ -46,9 +46,14 @@ class WikipediaStructureAnalysisTest {
         assertEquals("A giant heron may have been the animal model for Bennu.",
                 result.sections().getFirst().examples().getFirst().blocks()
                         .getFirst().value());
+        assertEquals("Paragraph 1", result.contents().getFirst().title());
+        assertEquals("Possible animal model", result.contents().getFirst().sectionPath());
+        assertEquals("A giant heron may have been the animal model for Bennu.",
+                result.contents().getFirst().text());
         assertEquals("Bennu heron", result.links().getFirst().targetTitle());
         assertEquals("Possible animal model", result.links().getFirst().section());
         assertEquals("Infobox deity.symbol", result.infoboxes().getFirst().key());
+        assertEquals(List.of(source), result.infoboxes().getFirst().members());
         assertEquals(1, result.unavailable().size());
     }
 
@@ -90,10 +95,64 @@ class WikipediaStructureAnalysisTest {
 
         assertTrue(result.articles().stream().allMatch(Viewable.class::isInstance));
         assertTrue(result.sections().stream().allMatch(Viewable.class::isInstance));
+        assertTrue(result.contents().stream().allMatch(Viewable.class::isInstance));
+        assertTrue(result.listItems().stream().allMatch(Viewable.class::isInstance));
+        assertTrue(result.tableRows().stream().allMatch(Viewable.class::isInstance));
+        assertTrue(result.tableHeaders().stream().allMatch(Viewable.class::isInstance));
         assertTrue(result.categories().stream().allMatch(Viewable.class::isInstance));
         assertTrue(result.links().stream().allMatch(Viewable.class::isInstance));
         assertInstanceOf(Viewable.class,
                 result.sections().getFirst().examples().getFirst());
+    }
+
+    @Test void aNamedDefinitionIsADirectlySearchableSectionContentCard() {
+        WikipediaArticle article = article("Heracles", List.of(new WikipediaArticle.Section(
+                "Labours of Heracles", 3,
+                List.of(new WikipediaArticle.Block("1. Slay the Nemean Lion",
+                        WikipediaArticle.Block.Kind.DEFINITION, "dl > dt + dd",
+                        "1. Slay the Nemean Lion Heracles defeated the lion.",
+                        List.of(), 10, 68)), List.of(), 0, 68)), List.of());
+        WikipediaDiscoveryQuery.Article heracles = new WikipediaDiscoveryQuery.Article(
+                instance("Q122248", "Heracles", "Heracles"), "Heracles",
+                article, null, "");
+
+        WikipediaDiscoveryRows.SectionContent content =
+                WikipediaStructureAnalysis.analyze(List.of(heracles))
+                        .contents().getFirst();
+
+        assertEquals("1. Slay the Nemean Lion", content.getDisplayName());
+        assertEquals("Labours of Heracles", content.sectionPath());
+        assertEquals(WikipediaArticle.Block.Kind.DEFINITION, content.kind());
+        assertTrue(content.text().contains("Heracles defeated the lion"));
+    }
+
+    @Test void listItemsAndTableRowsAreSearchableProjectionsOfRetainedStructure() {
+        var parsed = wikipedia.WikipediaArticleClient.parseArticleText("""
+                <h2>Works</h2>
+                <ul><li>First<ul><li>Nested</li></ul></li><li>Second</li></ul>
+                <table><caption>People</caption><tr><th>Name</th><td>Heracles</td></tr></table>
+                """);
+        WikipediaArticle source = new WikipediaArticle(
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Heracles", "1", parsed.text(), List.of(), parsed.links()),
+                parsed.text(), List.of(), parsed.structuredSections());
+        WikipediaDiscoveryQuery.Article article = new WikipediaDiscoveryQuery.Article(
+                instance("Q122248", "Heracles", "Heracles"), "Heracles",
+                source, null, "");
+
+        WikipediaStructureAnalysis.Result result =
+                WikipediaStructureAnalysis.analyze(List.of(article));
+
+        assertEquals(List.of(1, 2, 1),
+                result.listItems().stream()
+                        .map(WikipediaDiscoveryRows.ListItemContent::depth).toList());
+        assertEquals("Nested", result.listItems().get(1).content().value());
+        assertEquals(1, result.tableRows().size());
+        assertEquals(List.of("Name", "Heracles"), result.tableRows().getFirst()
+                .content().cells().stream().map(WikipediaArticle.TableCell::value).toList());
+        assertEquals(List.of("Name"), result.tableHeaders().stream()
+                .map(WikipediaDiscoveryRows.TableHeaderPattern::header).toList());
+        assertEquals(List.of(article.instance()), result.tableHeaders().getFirst().members());
     }
 
     @Test void retainedAnalysisCannotBypassTheExplicitArticleLimit() {
@@ -110,7 +169,7 @@ class WikipediaStructureAnalysisTest {
                 + WikipediaDiscoveryQuery.MAX_ARTICLES));
     }
 
-    /** Block kinds are compared across fetched articles, with coverage over the selected
+    /** HTML element outcomes are compared across fetched articles, with coverage over the selected
      *  count; a dropped kind shows which articles carry it and its first text. */
     @Test void blockKindsAggregateAcrossFetchedArticles() {
         var dd = new wikipedia.ArticleElementInventory.ElementKind(
