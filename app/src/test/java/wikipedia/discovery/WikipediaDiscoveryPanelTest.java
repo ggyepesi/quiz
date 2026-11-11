@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Field;
@@ -116,14 +117,19 @@ class WikipediaDiscoveryPanelTest {
                 wikidata.explore.model.FieldCardinality.COLLECTION);
         var target = new WikipediaDiscoveryPanel.FieldChoice("EgyptianDeity", field);
         java.io.File model = new java.io.File("data/wikidata/mythology/mythology.model.json");
+        var promotion = new quiz.curation.FieldRulePromoter.PromotionPreview(
+                true, "Add fallback source", model.getPath(), "EgyptianDeity", "parents",
+                "List<Object>", "Wikipedia infobox fallback", "", "Rendered.Parents",
+                false, "");
 
         String text = WikipediaDiscoveryPanel.configurationDescription(
                 observed, target, WikipediaDiscoveryPanel.SourcePlace.FALLBACK,
-                null, model);
+                promotion, model);
 
         assertTrue(text.contains("EgyptianDeity.parents"), text);
         assertTrue(text.contains("Rendered.Parents"), text);
         assertTrue(text.contains("Fallback source"), text);
+        assertTrue(text.contains("Add fallback source"), text);
         assertTrue(text.contains("8 of 12"), text);
         assertTrue(text.contains(model.getPath()), text);
         assertTrue(text.contains("does not write a file"), text);
@@ -142,7 +148,7 @@ class WikipediaDiscoveryPanelTest {
         model.addClass(deity);
 
         List<WikipediaDiscoveryPanel.FieldChoice> choices =
-                WikipediaDiscoveryPanel.fieldChoices(model, "EgyptianDeity");
+                WikipediaDiscoveryPanel.declaredFieldChoices(model, "EgyptianDeity");
 
         assertEquals(List.of("EgyptianDeity.symbol — String",
                         "MythologicalEntity.parents — List<Object>"),
@@ -163,24 +169,114 @@ class WikipediaDiscoveryPanelTest {
         model.addClass(imported);
 
         List<WikipediaDiscoveryPanel.FieldChoice> choices =
-                WikipediaDiscoveryPanel.fieldChoices(model, "Planet");
+                WikipediaDiscoveryPanel.declaredFieldChoices(model, "Planet");
 
         assertEquals(List.of("Planet.parentBody — Object"),
                 choices.stream().map(Object::toString).toList(),
                 "an imported class stays editable only in its owning model");
     }
 
+    @Test void targetChooserUsesThePromotersEligibilityDecision() {
+        var model = new wikidata.explore.model.GeneratedProjectModel();
+        var deity = new wikidata.explore.model.GeneratedClassModel("EgyptianDeity");
+        deity.addField("summary", datasource.schema.FieldType.TEXT,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        deity.addField("parents", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        model.rootClass(deity);
+        var observed = new WikipediaDiscoveryRows.InfoboxPattern(
+                "Rendered.Symbol", 8, 12, List.of());
+        quiz.curation.FieldRulePromoter promoter = promoterForField("summary");
+
+        List<WikipediaDiscoveryPanel.FieldChoice> choices =
+                WikipediaDiscoveryPanel.eligibleFieldChoices(
+                        model, "EgyptianDeity", observed, promoter);
+
+        assertEquals(List.of("EgyptianDeity.summary — Text"),
+                choices.stream().map(Object::toString).toList(),
+                "the chooser must not maintain a broader eligibility rule than promotion");
+    }
+
+    @Test void changingClassInvalidatesResultsProducedForThePreviousClass()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+            maat.type("EgyptianDeity");
+            maat.enwikiTitle("Maat");
+            WikidataDynamicObject achilles = new WikidataDynamicObject("Q41746", "Achilles");
+            achilles.type("Character");
+            achilles.enwikiTitle("Achilles");
+            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+                    domain(List.of(maat, achilles), List.of("EgyptianDeity", "Character")));
+            try {
+                var observed = new WikipediaDiscoveryRows.InfoboxPattern(
+                        "Rendered.Parents", 8, 12, List.of());
+                var result = new WikipediaStructureAnalysis.Result(
+                        List.of(), List.of(), List.of(observed), List.of(), List.of(),
+                        List.of(), false, List.of(), 12, 12);
+                invoke(panel, "showAnalysis",
+                        new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
+                        result, "test");
+                JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
+                tabs.setSelectedIndex(2);
+                ((SearchableView) tabs.getComponentAt(2)).renderContext().select(observed);
+                assertNotNull(field(panel, "selectedInfobox", Object.class));
+
+                JComboBox<?> types = field(panel, "type", JComboBox.class);
+                types.setSelectedItem("Character");
+
+                assertEquals(null, field(panel, "selectedInfobox", Object.class));
+                assertEquals("Infobox values — 0", tabs.getTitleAt(2));
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
     private static DomainModel domain(WikidataDynamicObject instance) {
+        return domain(List.of(instance), List.of("EgyptianDeity"));
+    }
+
+    private static DomainModel domain(
+            List<WikidataDynamicObject> instances, List<String> types) {
         return new DomainModel() {
-            @Override public List<String> types() { return List.of("EgyptianDeity"); }
+            @Override public List<String> types() { return types; }
             @Override public objectview.field.FieldSchema fieldSchema(String type) {
-                return () -> objectview.field.FieldSet.of(instance).fields();
+                WikidataDynamicObject sample = instances.stream()
+                        .filter(value -> value.directClassNames().contains(type)).findFirst()
+                        .orElse(instances.getFirst());
+                return () -> objectview.field.FieldSet.of(sample).fields();
             }
             @Override public Collection<? extends Viewable> instances() {
-                return List.of(instance);
+                return instances;
             }
             @Override public Class<? extends Viewable> universe() {
                 return WikidataDynamicObject.class;
+            }
+        };
+    }
+
+    private static quiz.curation.FieldRulePromoter promoterForField(String acceptedField) {
+        return new quiz.curation.FieldRulePromoter() {
+            @Override public PromotionPreview previewPromotion(
+                    quiz.curation.FieldSourceRecipe recipe) {
+                return acceptedField.equals(recipe.field())
+                        ? new PromotionPreview(true, "Add source", "model.json",
+                                recipe.type(), recipe.field(), "Text",
+                                "Wikipedia infobox", "", recipe.parameter("property"),
+                                false, "")
+                        : PromotionPreview.ineligible("Unsupported target field");
+            }
+            @Override public PromotionPreview promote(
+                    quiz.curation.FieldSourceRecipe recipe) {
+                return previewPromotion(recipe);
+            }
+            @Override public PromotionPreview previewPromotion(
+                    quiz.curation.Correction correction) {
+                return PromotionPreview.ineligible("not used");
+            }
+            @Override public PromotionPreview promote(quiz.curation.Correction correction) {
+                return PromotionPreview.ineligible("not used");
             }
         };
     }

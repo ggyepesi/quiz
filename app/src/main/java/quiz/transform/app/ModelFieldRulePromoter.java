@@ -144,6 +144,7 @@ final class ModelFieldRulePromoter {
             return inspectCategory(recipe, model);
         }
         if (infobox(recipe)) return inspectInfobox(recipe, model);
+        if (infoboxLinks(recipe)) return inspectInfoboxLinks(recipe, model);
         return FieldRulePromoter.PromotionPreview.ineligible(
                 "This source recipe cannot currently be promoted into a model field.");
     }
@@ -191,6 +192,13 @@ final class ModelFieldRulePromoter {
         return datasource.wikipedia.WikipediaDatasourceProvider.ID.equals(
                         recipe.recipe().providerId())
                 && datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_PARAMETER.equals(
+                        recipe.recipe().operationId());
+    }
+
+    private static boolean infoboxLinks(FieldSourceRecipe recipe) {
+        return datasource.wikipedia.WikipediaDatasourceProvider.ID.equals(
+                        recipe.recipe().providerId())
+                && datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_ROW_LINKS.equals(
                         recipe.recipe().operationId());
     }
 
@@ -248,6 +256,62 @@ final class ModelFieldRulePromoter {
                 property, false, previousSource);
     }
 
+    private FieldRulePromoter.PromotionPreview inspectInfoboxLinks(
+            FieldSourceRecipe recipe, GeneratedProjectModel model) {
+        datasource.api.SourceBinding binding = recipe.binding();
+        if (binding.target().slot()
+                != datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "Rendered infobox links belong to the candidate-evidence slot.");
+        }
+        GeneratedClassModel owner = model.findClass(recipe.type());
+        GeneratedFieldModel field = findField(owner, recipe.field());
+        if (owner == null || field == null) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model must already declare " + recipe.type() + "."
+                            + recipe.field() + ".");
+        }
+        if (owner.isImported()) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    owner.className() + " is imported from " + owner.importedFrom()
+                            + "; configure the evidence in that owning model.");
+        }
+        if (field.type() != datasource.schema.FieldType.ENTITY
+                || field.cardinality()
+                        != wikidata.explore.model.FieldCardinality.COLLECTION
+                || field.entityClassName().isBlank()) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    recipe.type() + "." + recipe.field()
+                            + " must be an entity list with a declared target class.");
+        }
+        if (owner.aggregateSource() != null
+                || !acquiredReference(field.mapping().productionKind())) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    recipe.type() + "." + recipe.field()
+                            + " is derived from other model data and cannot take reviewed "
+                            + "source references.");
+        }
+        String property = recipe.parameter(FieldSourceRecipe.PROPERTY);
+        datasource.evidence.InfoboxParameters.Key key =
+                datasource.evidence.InfoboxParameters.Key.parse(property);
+        if (key == null || !key.rendered()) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "Reference evidence needs a complete Rendered.<label> infobox key.");
+        }
+        datasource.api.SourceBinding previous = FieldSourceBindings.binding(
+                field, datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        if (sameSource(binding, previous)) {
+            return FieldRulePromoter.PromotionPreview.ineligible(
+                    "The model already reviews links from this rendered infobox row.");
+        }
+        return new FieldRulePromoter.PromotionPreview(true,
+                previous == null ? "Add candidate-evidence source"
+                        : "Replace candidate-evidence source",
+                modelFile.getAbsolutePath(), recipe.type(), recipe.field(),
+                field.displayType(), "Wikipedia infobox candidate evidence", "",
+                property, false, previous == null ? "" : sourceSummary(previous));
+    }
+
     /** Acquisition writes an infobox value's text as it is
      *  ({@code WikipediaInfoboxAcquisition.fill}); in an entity or list field that text
      *  would stand where references or members belong. */
@@ -262,6 +326,12 @@ final class ModelFieldRulePromoter {
                 || kind == FieldProductionKind.INLINE_VALUE
                 || kind == FieldProductionKind.DELAYED_ENTITY_FIELD
                 || kind == FieldProductionKind.CHILD_OBJECTS;
+    }
+
+    private static boolean acquiredReference(FieldProductionKind kind) {
+        return kind == FieldProductionKind.AUTO
+                || kind == FieldProductionKind.INLINE_VALUE
+                || kind == FieldProductionKind.DELAYED_ENTITY_FIELD;
     }
 
     private static boolean sameSource(

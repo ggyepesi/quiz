@@ -69,6 +69,41 @@ class FieldSourcePanelRowsTest {
                 reopenedCandidates.getSelectedItem().toString());
     }
 
+    @Test void aReferenceCollectionCanPersistRenderedInfoboxLinkEvidence() {
+        GeneratedFieldModel parents = field("parents", FieldType.ENTITY,
+                FieldProductionKind.AUTO, "Deity");
+        parents.cardinality(FieldCardinality.COLLECTION);
+        GeneratedProjectModel project = projectContaining(parents, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(parents);
+
+        JComboBox<?> candidates = comboContainingLabel(panel,
+                "Loaded target instances linked from a rendered infobox row");
+        selectLabel(candidates,
+                "Loaded target instances linked from a rendered infobox row");
+        panel.infoboxEvidenceKeyField().setText("Rendered.Parents");
+        assertTrue(visibleRowLabels(panel).contains("Infobox value key:"));
+        button(panel, "Apply field source").doClick();
+
+        datasource.api.SourceBinding binding =
+                wikidata.explore.model.FieldSourceBindings.binding(parents,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertEquals("Rendered.Parents",
+                datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinks(binding));
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(parents);
+        assertEquals("Loaded target instances linked from a rendered infobox row",
+                comboContainingLabel(reopened,
+                        "Loaded target instances linked from a rendered infobox row")
+                        .getSelectedItem().toString());
+        assertEquals("Rendered.Parents",
+                reopened.infoboxEvidenceKeyField().getText());
+    }
+
     @Test void oneTextValueCanPersistBoundedWikipediaArticlePassages() {
         GeneratedFieldModel narrative = field("narrativeText", FieldType.TEXT,
                 FieldProductionKind.AUTO, "");

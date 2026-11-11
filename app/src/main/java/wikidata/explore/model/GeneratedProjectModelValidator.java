@@ -56,6 +56,7 @@ public final class GeneratedProjectModelValidator {
             validateValueLanguages(clazz, problems);
             validateQualifierConditions(clazz, problems);
             validateArticlePassageInstances(project, clazz, problems);
+            validateInfoboxRowLinks(clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
             if (clazz.reifiesStatements()) {
@@ -489,6 +490,29 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(where, "Source instance target '"
                         + target.className() + "." + spec.sourceField()
                         + "' must be an ENTITY list that accepts " + owner.className() + "."));
+            }
+        }
+    }
+
+    private static void validateInfoboxRowLinks(
+            GeneratedClassModel owner, List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            datasource.api.SourceBinding binding = FieldSourceBindings.binding(
+                    field, datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+            if (!datasource.wikipedia.WikipediaDatasourceProvider
+                    .infoboxRowLinkOperation(binding)) continue;
+            String where = path(owner, field);
+            if (field.type() != FieldType.ENTITY
+                    || field.cardinality() != FieldCardinality.COLLECTION
+                    || field.entityClassName().isBlank()) {
+                problems.add(Problem.error(where, "Rendered infobox links require a "
+                        + "list-valued ENTITY field with a declared target class."));
+            }
+            if (datasource.wikipedia.WikipediaDatasourceProvider
+                    .infoboxRowLinks(binding) == null) {
+                problems.add(Problem.error(where, "Rendered infobox links require a "
+                        + "complete Rendered.<label> value key."));
             }
         }
     }

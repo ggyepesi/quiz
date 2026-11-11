@@ -30,6 +30,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
     public enum CandidateEvidenceMode {
         NONE,
         LOADED_INTRODUCTION_MENTIONS,
+        INFOBOX_ROW_LINKS,
         ARTICLE_PASSAGES,
         ARTICLE_PASSAGE_INSTANCES
     }
@@ -39,6 +40,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
     private final wikidata.explore.model.WikipediaCategoryRule categoryRule;
     private final wikidata.explore.model.EntityKindRule referentKind;
     private final Map<String, List<MentionTerm>> mentionCandidates;
+    private final WikipediaLinkedReferenceResolver linkedCandidates;
     private final CandidateEvidenceMode candidateEvidenceMode;
     private final datasource.wikipedia.WikipediaDatasourceProvider
             .ArticlePassageInstanceSpec passageInstanceSpec;
@@ -159,6 +161,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 new java.util.LinkedHashMap<>();
         index.forEach((key, value) -> immutable.put(key, List.copyOf(value)));
         this.mentionCandidates = Map.copyOf(immutable);
+        this.linkedCandidates = new WikipediaLinkedReferenceResolver(unique.values());
     }
 
     @Override public String name() { return "Wikipedia text evidence"; }
@@ -294,7 +297,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 List<MentionHit> candidates = switch (candidateEvidenceMode) {
                     case LOADED_INTRODUCTION_MENTIONS ->
                             mentionedCandidates(article, context);
-                    case NONE, ARTICLE_PASSAGES, ARTICLE_PASSAGE_INSTANCES -> List.of();
+                    case NONE, INFOBOX_ROW_LINKS, ARTICLE_PASSAGES,
+                            ARTICLE_PASSAGE_INSTANCES -> List.of();
                 };
                 return proposal(request, article, categoryValues, categoryRule, candidates,
                         candidateEvidenceMode == CandidateEvidenceMode.ARTICLE_PASSAGES
@@ -583,37 +587,17 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             wikipedia.WikipediaArticleClient.Article article, QueryContext context)
             throws Exception {
         java.util.LinkedHashMap<String, MentionHit> hits = new java.util.LinkedHashMap<>();
-        java.util.LinkedHashMap<String, WikimediaEntityLookup.EntityRecord> resolved =
-                new java.util.LinkedHashMap<>();
-        for (datasource.evidence.ArticleIntroduction.Link link : article.links()) {
-            String phrase = clean(link.text());
-            String first = firstWord(phrase).toLowerCase(Locale.ROOT);
-            List<MentionTerm> matching = mentionCandidates.getOrDefault(first, List.of())
-                    .stream().filter(term -> term.phrase().equalsIgnoreCase(phrase)).toList();
-            if (matching.isEmpty()) continue;
-            List<MentionTerm> corresponding = matching.stream()
-                    .filter(term -> term.articleTitle().equalsIgnoreCase(link.targetTitle()))
-                    .toList();
-            if (corresponding.size() == 1) {
-                MentionTerm candidate = corresponding.getFirst();
-                hits.putIfAbsent(candidate.candidate().getIdentifier(), new MentionHit(
-                        candidate.candidate(), phrase, link.start(), true,
-                        "Article introduction", "typed-introduction-mention-v2"));
-                continue;
-            }
-            WikimediaEntityLookup.EntityRecord entity = resolved.get(link.targetTitle());
-            if (!resolved.containsKey(link.targetTitle())) {
-                entity = lookup.byWikipediaTitle(link.targetTitle()).execute(context);
-                resolved.put(link.targetTitle(), entity);
-            }
-            if (entity == null) continue;
-            for (MentionTerm candidate : matching) {
-                if (entity.qid().equals(candidate.candidate().getIdentifier())) {
-                    hits.putIfAbsent(entity.qid(), new MentionHit(
-                            candidate.candidate(), phrase, link.start(), true,
-                            "Article introduction", "typed-introduction-mention-v2"));
-                }
-            }
+        List<WikipediaLinkedReferenceResolver.Link> candidateLinks =
+                WikipediaLinkedReferenceResolver.introductionLinks(article.links()).stream()
+                        .filter(this::hasCandidateLabel).toList();
+        for (WikipediaLinkedReferenceResolver.Match match : linkedCandidates.resolve(
+                candidateLinks, lookup, context,
+                (link, candidate) -> clean(candidate.getDisplayName())
+                        .equalsIgnoreCase(clean(link.text())))) {
+            WikipediaLinkedReferenceResolver.Link link = match.link();
+            hits.putIfAbsent(match.candidate().getIdentifier(), new MentionHit(
+                    match.candidate(), link.text(), link.start(), true,
+                    "Article introduction", "typed-introduction-mention-v2"));
         }
         // Linked text was answered by its link above, including when the link names an
         // entity that is not loaded: a unique loaded label must not overrule it.
@@ -622,6 +606,16 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             hits.putIfAbsent(hit.candidate().getIdentifier(), hit);
         }
         return List.copyOf(hits.values());
+    }
+
+    /** Introduction prose nominates by an exact visible label. The link settles WHICH
+     * loaded namesake that label means; it does not widen phrases such as "her father"
+     * into candidates, and unrelated links never trigger title lookups. */
+    private boolean hasCandidateLabel(WikipediaLinkedReferenceResolver.Link link) {
+        String phrase = clean(link == null ? null : link.text());
+        String first = firstWord(phrase).toLowerCase(Locale.ROOT);
+        return mentionCandidates.getOrDefault(first, List.of()).stream()
+                .anyMatch(term -> term.phrase().equalsIgnoreCase(phrase));
     }
 
     /** Extract bounded content paragraphs while dropping Wikipedia's standard navigation

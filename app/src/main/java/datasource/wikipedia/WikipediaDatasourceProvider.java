@@ -30,6 +30,8 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     /** One configured source parameter or rendered row interpreted as a model field value. */
     public static final String INFOBOX_PARAMETER = "infobox-parameter";
     public static final String FAMILY_INFOBOX_FIELD = "wikipedia-infobox-field";
+    /** Links retained in one rendered infobox row, proposed as typed references. */
+    public static final String INFOBOX_ROW_LINKS = "infobox-row-links";
     /** The article's lead text, without later sections. */
     public static final String ARTICLE_INTRODUCTION = "article-introduction";
     public static final String ARTICLE_TEXT_PROJECTION = "projection";
@@ -55,6 +57,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private final List<DatasourceOperation> operations = List.of(
             new WikipediaCategoryDiscoveryOperation(),
             new InfoboxParameter(),
+            new InfoboxRowLinks(),
             new ArticleIntroduction(),
             new ArticleIntroductionMentions(),
             new ArticlePassages(),
@@ -100,7 +103,50 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                             "input", "Wikipedia pages linked from reachable entity IDs",
                             "operation", "Parse " + parameter + " from versioned infoboxes",
                             "output", "Fill values according to the configured source slot"),
-                    parameter, articleCorrespondence());
+                    new InfoboxValueSpec(parameter, true), articleCorrespondence());
+        }
+    }
+
+    private record InfoboxRowLinks() implements DatasourceOperation {
+        @Override public String id() { return INFOBOX_ROW_LINKS; }
+        @Override public String displayName() { return "Rendered infobox row links"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(new ParameterDescriptor("property", "Rendered.label",
+                    ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                    "The rendered infobox row whose retained article links are proposed "
+                            + "as references."));
+        }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(
+                    SourceValueKind.ENTITY_REFERENCE, datasource.EntityRef.WIKIDATA);
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            String parameter = infoboxRowLinks(binding);
+            if (parameter == null) return new PreparedSourceOperation(
+                    FAMILY_INFOBOX_FIELD, "Wikipedia infobox evidence",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    "Incomplete rendered-infobox link recipe at "
+                            + binding.target().className() + "."
+                            + binding.target().fieldPath(),
+                    java.util.Map.of(), null);
+            return new PreparedSourceOperation(FAMILY_INFOBOX_FIELD,
+                    "Wikipedia infobox evidence",
+                    PreparedSourceOperation.Execution.ACQUIRE,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review links retained in " + parameter,
+                    java.util.Map.of(
+                            "input", "Versioned rendered infobox row on each reachable entity",
+                            "operation", "Retain its linked Wikipedia article targets",
+                            "output", "Propose loaded target-class instances for review"),
+                    new InfoboxValueSpec(parameter, false), articleCorrespondence());
+        }
+    }
+
+    /** One infobox acquisition declaration: the key and whether its text fills a field. */
+    public record InfoboxValueSpec(String key, boolean fillField) {
+        public InfoboxValueSpec {
+            key = key == null ? "" : key.trim();
         }
     }
 
@@ -296,6 +342,27 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                 || !INFOBOX_PARAMETER.equals(recipe.operationId())) return null;
         String parameter = recipe.parameter("property");
         return parameter == null || parameter.isBlank() ? null : parameter;
+    }
+
+    /** The rendered-row key whose retained links this candidate-evidence binding reads. */
+    public static String infoboxRowLinks(SourceBinding binding) {
+        if (!infoboxRowLinkOperation(binding)) return null;
+        String parameter = binding.recipe().parameter("property");
+        datasource.evidence.InfoboxParameters.Key key =
+                datasource.evidence.InfoboxParameters.Key.parse(parameter);
+        return key != null && key.rendered() ? parameter : null;
+    }
+
+    /** Whether this is the operation, including an incomplete recipe an editor must show. */
+    public static boolean infoboxRowLinkOperation(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && INFOBOX_ROW_LINKS.equals(recipe.operationId());
     }
 
     public static boolean articleIntroduction(SourceBinding binding) {

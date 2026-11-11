@@ -118,6 +118,19 @@ public final class FieldSourceRecipe {
                                         .name()))));
     }
 
+    /** One rendered infobox row interpreted only through its retained article links.
+     * The links nominate already-loaded instances for review; the row text is not used
+     * as an entity value. */
+    public static FieldSourceRecipe wikipediaInfoboxLinks(
+            String type, String field, String property, String label) {
+        return new FieldSourceRecipe(new SourceBinding(
+                SourceBindingTarget.fieldValue(type, field,
+                        SourceBindingSlot.CANDIDATE_EVIDENCE),
+                new SourceRecipe(WikipediaDatasourceProvider.ID,
+                        WikipediaDatasourceProvider.INFOBOX_ROW_LINKS,
+                        Map.of(PROPERTY, clean(property), LABEL, clean(label)))));
+    }
+
     public String parameter(String name) {
         return binding.recipe().parameter(name);
     }

@@ -274,6 +274,44 @@ class WikipediaInfoboxAcquisitionTest {
                 .renderedFields().get("Group"));
     }
 
+    @Test void candidateEvidenceRetainsRenderedLinksWithoutFillingTheEntityField()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        var parents = deity.addField("parents", FieldType.ENTITY,
+                FieldCardinality.COLLECTION);
+        parents.entityClassName("EgyptianDeity");
+        model.rootClass(deity);
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "EgyptianDeity", "parents",
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE),
+                new datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
+                        java.util.Map.of("property", "Rendered.Parents")));
+        var sourcePlan = datasource.api.SourceExecutionPlan.compile(
+                List.of(binding), datasource.Datasources.standard());
+        WikidataDynamicObject maat = new WikidataDynamicObject("Q1", "Maat");
+        maat.type("EgyptianDeity");
+
+        var result = WikipediaInfoboxAcquisition.apply(model, List.of(maat),
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
+                uri -> renderedResponse("Film 1", 7, "{{Infobox deity}}", """
+                        <table class="infobox"><tbody><tr>
+                          <th class="infobox-label">Parents</th>
+                          <td class="infobox-data"><a href="/wiki/Ra">Ra</a> and
+                            <a href="/wiki/Hathor">Hathor</a></td>
+                        </tr></tbody></table>
+                        """), sourcePlan);
+
+        assertEquals(1, result.pages());
+        assertEquals(0, result.values(), "candidate evidence must not fill a model field");
+        assertNull(maat.get("parents"));
+        var retained = maat.infoboxParameters().renderedValues().get("Parents");
+        assertNotNull(retained);
+        assertEquals(List.of("Ra", "Hathor"), retained.links().stream()
+                .map(datasource.evidence.WikipediaArticle.ArticleLink::targetTitle).toList());
+    }
+
     private static String digestOf(String wikitext) throws Exception {
         List<WikidataDynamicObject> objects = films(1);
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,

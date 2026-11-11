@@ -182,6 +182,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         selectedInSample = List.of();
         rebuildInstanceView();
         rebuildSelectedView();
+        invalidateAnalysis("The class changed. Select instances and analyze its articles.");
         sourceStatus.setText(classMembers.size() + " " + className
                 + " instance(s) have an English Wikipedia article correspondence. "
                 + "No article will be fetched until Fetch selected articles is pressed.");
@@ -245,6 +246,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         shuffled.stream().limit(count).forEach(this::putSelected);
         selectedInSample = List.of();
         rebuildSelectedView();
+        invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
         sourceTabs.setSelectedIndex(1);
         sourceStatus.setText("Selected " + count + " random " + type.getSelectedItem()
                 + " instance(s). Add or remove instances before fetching.");
@@ -266,6 +268,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             selectedView.appendViewables(added);
             updateSelectedTab();
         }
+        if (!added.isEmpty()) {
+            invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
+        }
         sourceStatus.setText("Added " + added.size() + " instance(s); " + selected.size()
                 + " article(s) are now selected."
                 + (added.size() == candidates.size() ? "" : " The remaining "
@@ -281,6 +286,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         if (selectedView != null) selectedView.removeViewables(removed);
         selectedInSample = List.of();
         updateSelectedTab();
+        if (!removed.isEmpty()) {
+            invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
+        }
         sourceStatus.setText("Removed " + removed.size() + " instance(s); " + selected.size()
                 + " article(s) remain selected.");
         updateActions();
@@ -410,6 +418,11 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 "Fetch selected articles to inspect their retained HTML block kinds.");
     }
 
+    private void invalidateAnalysis(String message) {
+        emptyResults();
+        resultStatus.setText(message);
+    }
+
     private void configureSelectedInfobox() {
         WikipediaDiscoveryRows.InfoboxPattern observed = selectedInfobox;
         String className = (String) type.getSelectedItem();
@@ -423,18 +436,21 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         }
         GeneratedClassModel owner = project.projectModel().findClass(className);
         List<FieldChoice> fields = owner == null ? List.of()
-                : fieldChoices(project.projectModel(), className);
+                : eligibleFieldChoices(project.projectModel(), className, observed, promoter);
         if (fields.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "The model exposes no editable fields for " + className + ".\n\n"
-                            + "Add the target field in ModelBuilder first; discovery will not "
-                            + "infer its type or cardinality from a sample.",
+                    "The model exposes no field that can take this infobox value for "
+                            + className + ".\n\nIts text can fill one acquired, single-valued "
+                            + "String or Text field. A rendered row's links can instead be "
+                            + "candidate evidence for an entity list with a declared target "
+                            + "class. Add or change the target field in ModelBuilder first; "
+                            + "discovery will not infer its type or cardinality from a sample.",
                     "No target field", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         JComboBox<FieldChoice> field = new JComboBox<>(fields.toArray(FieldChoice[]::new));
-        JComboBox<SourcePlace> place = new JComboBox<>(SourcePlace.values());
+        JComboBox<SourcePlace> place = new JComboBox<>();
         JTextArea preview = new JTextArea();
         preview.setEditable(false);
         preview.setLineWrap(true);
@@ -445,30 +461,27 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             FieldChoice target = (FieldChoice) field.getSelectedItem();
             SourcePlace selectedPlace = (SourcePlace) place.getSelectedItem();
             if (target == null || selectedPlace == null) return;
-            datasource.api.SourceBinding previous =
-                    wikidata.explore.model.FieldSourceBindings.binding(
-                            target.field(), selectedPlace.slot());
+            FieldRulePromoter.PromotionPreview promotion = promoter.previewPromotion(
+                    infoboxRecipe(observed, target, selectedPlace));
             preview.setText(configurationDescription(
-                    observed, target, selectedPlace, previous, project.modelFile()));
+                    observed, target, selectedPlace, promotion, project.modelFile()));
             preview.setCaretPosition(0);
         };
-        field.addActionListener(event -> {
+        Runnable refreshPlaces = () -> {
             FieldChoice target = (FieldChoice) field.getSelectedItem();
-            if (target != null) {
-                boolean hasPrimary = wikidata.explore.model.FieldSourceBindings.binding(
-                        target.field(), SourceBindingSlot.PRIMARY_FIELD_VALUE) != null;
-                place.setSelectedItem(hasPrimary
-                        ? SourcePlace.FALLBACK : SourcePlace.PRIMARY);
-            }
+            if (target == null) return;
+            List<SourcePlace> eligible = eligiblePlaces(observed, target, promoter);
+            place.setModel(new DefaultComboBoxModel<>(eligible.toArray(SourcePlace[]::new)));
+            boolean hasPrimary = wikidata.explore.model.FieldSourceBindings.binding(
+                    target.field(), SourceBindingSlot.PRIMARY_FIELD_VALUE) != null;
+            SourcePlace preferred = hasPrimary && eligible.contains(SourcePlace.FALLBACK)
+                    ? SourcePlace.FALLBACK : eligible.getFirst();
+            place.setSelectedItem(preferred);
             refresh.run();
-        });
+        };
+        field.addActionListener(event -> refreshPlaces.run());
         place.addActionListener(event -> refresh.run());
-        FieldChoice initial = (FieldChoice) field.getSelectedItem();
-        if (initial != null && wikidata.explore.model.FieldSourceBindings.binding(
-                initial.field(), SourceBindingSlot.PRIMARY_FIELD_VALUE) != null) {
-            place.setSelectedItem(SourcePlace.FALLBACK);
-        }
-        refresh.run();
+        refreshPlaces.run();
 
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
@@ -506,10 +519,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         FieldChoice target = (FieldChoice) field.getSelectedItem();
         SourcePlace selectedPlace = (SourcePlace) place.getSelectedItem();
         if (target == null || selectedPlace == null) return;
-        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaInfobox(
-                target.owner(), target.field().name(), selectedPlace.slot(),
-                observed.key(),
-                wikidata.explore.model.FieldSourceType.WIKIPEDIA_INFOBOX.toString());
+        FieldSourceRecipe recipe = infoboxRecipe(observed, target, selectedPlace);
         FieldRulePromoter.PromotionPreview promotion = promoter.previewPromotion(recipe);
         if (!promotion.eligible()) {
             JOptionPane.showMessageDialog(this, promotion.reason(),
@@ -534,13 +544,17 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     static String configurationDescription(
             WikipediaDiscoveryRows.InfoboxPattern observed,
             FieldChoice target, SourcePlace place,
-            datasource.api.SourceBinding previous, java.io.File modelFile) {
-        String existing = previous == null ? "No source is currently configured in this slot."
-                : "This replaces " + sourceDescription(previous) + ".";
+            FieldRulePromoter.PromotionPreview promotion, java.io.File modelFile) {
+        String existing = promotion.previousProperty().isBlank()
+                ? "No source is currently configured in this slot."
+                : "This replaces " + promotion.previousProperty() + ".";
         return "Configure " + target.owner() + "." + target.field().name() + " ("
                 + target.field().displayType() + ")\n\n"
-                + "Source: Wikipedia infobox value " + observed.key() + "\n"
+                + "Source: " + (place == SourcePlace.CANDIDATE_EVIDENCE
+                        ? "links retained in Wikipedia infobox row "
+                        : "Wikipedia infobox value ") + observed.key() + "\n"
                 + "Use as: " + place.label() + "\n"
+                + "Action: " + promotion.reason() + "\n"
                 + "Observed coverage: " + observed.articles() + " of "
                 + observed.selectedArticles() + " selected articles\n"
                 + existing + "\n\n"
@@ -549,13 +563,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 + (modelFile == null ? "(no model file)" : modelFile.getPath()) + ".";
     }
 
-    private static String sourceDescription(datasource.api.SourceBinding binding) {
-        String property = binding.recipe().parameter(FieldSourceRecipe.PROPERTY);
-        return binding.recipe().providerId() + " / " + binding.recipe().operationId()
-                + (property.isBlank() ? "" : " / " + property);
-    }
-
-    static List<FieldChoice> fieldChoices(
+    static List<FieldChoice> declaredFieldChoices(
             wikidata.explore.model.GeneratedProjectModel model, String className) {
         if (model == null || className == null) return List.of();
         java.util.LinkedHashMap<String, FieldChoice> choices = new java.util.LinkedHashMap<>();
@@ -573,6 +581,37 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             }
         }
         return List.copyOf(choices.values());
+    }
+
+    static List<FieldChoice> eligibleFieldChoices(
+            wikidata.explore.model.GeneratedProjectModel model, String className,
+            WikipediaDiscoveryRows.InfoboxPattern observed, FieldRulePromoter promoter) {
+        if (promoter == null || observed == null) return List.of();
+        return declaredFieldChoices(model, className).stream()
+                .filter(field -> !eligiblePlaces(observed, field, promoter).isEmpty())
+                .toList();
+    }
+
+    private static List<SourcePlace> eligiblePlaces(
+            WikipediaDiscoveryRows.InfoboxPattern observed, FieldChoice target,
+            FieldRulePromoter promoter) {
+        return java.util.Arrays.stream(SourcePlace.values())
+                .filter(place -> promoter.previewPromotion(
+                        infoboxRecipe(observed, target, place)).eligible())
+                .toList();
+    }
+
+    private static FieldSourceRecipe infoboxRecipe(
+            WikipediaDiscoveryRows.InfoboxPattern observed,
+            FieldChoice target, SourcePlace place) {
+        if (place == SourcePlace.CANDIDATE_EVIDENCE) {
+            return FieldSourceRecipe.wikipediaInfoboxLinks(
+                    target.owner(), target.field().name(), observed.key(),
+                    "Rendered infobox row links");
+        }
+        return FieldSourceRecipe.wikipediaInfobox(
+                target.owner(), target.field().name(), place.slot(), observed.key(),
+                wikidata.explore.model.FieldSourceType.WIKIPEDIA_INFOBOX.toString());
     }
 
     /** TransformApp's Save, the same operation: it writes the project the domain was
@@ -609,7 +648,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     enum SourcePlace {
         PRIMARY("Primary source", SourceBindingSlot.PRIMARY_FIELD_VALUE),
-        FALLBACK("Fallback source", SourceBindingSlot.FALLBACK_FIELD_VALUE);
+        FALLBACK("Fallback source", SourceBindingSlot.FALLBACK_FIELD_VALUE),
+        CANDIDATE_EVIDENCE(
+                "Candidate evidence", SourceBindingSlot.CANDIDATE_EVIDENCE);
 
         private final String label;
         private final SourceBindingSlot slot;

@@ -67,7 +67,7 @@ public final class WikipediaInfoboxAcquisition {
                     && declarations.stream().anyMatch(d -> FieldSourceTargeting.applies(
                             model, object, d.owner(), d.target())
                     && !answered(object, d)
-                    && object.get(d.field().name()) == null)) {
+                    && (!d.fillField() || object.get(d.field().name()) == null))) {
                 targets.computeIfAbsent(object.qid(), ignored -> new ArrayList<>()).add(object);
             }
         }
@@ -142,6 +142,7 @@ public final class WikipediaInfoboxAcquisition {
         for (Declaration declaration : declarations) {
             if (!FieldSourceTargeting.applies(
                     model, object, declaration.owner(), declaration.target())
+                    || !declaration.fillField()
                     || object.get(declaration.field().name()) != null) continue;
             String value = acquired.valueOf(
                     InfoboxParameters.Key.parse(declaration.parameter()));
@@ -270,7 +271,8 @@ public final class WikipediaInfoboxAcquisition {
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
                 if (field != null && source(field) != null
                         && InfoboxParameters.Key.parse(source(field).propertyPid()) != null) {
-                    result.add(new Declaration(owner, field, source(field).propertyPid()));
+                    result.add(new Declaration(
+                            owner, field, source(field).propertyPid(), null, true));
                 }
             }
         }
@@ -282,9 +284,15 @@ public final class WikipediaInfoboxAcquisition {
         List<Declaration> result = new ArrayList<>();
         if (model == null || sourcePlan == null) return result;
         for (SourceExecutionPlan.Step step : sourcePlan.steps(BindingScope.FIELD_VALUE)) {
-            String parameter = step.prepared().configuration(String.class);
             if (!WikipediaDatasourceProvider.FAMILY_INFOBOX_FIELD.equals(
                     step.prepared().familyId())) continue;
+            WikipediaDatasourceProvider.InfoboxValueSpec specification =
+                    step.prepared().configuration(
+                            WikipediaDatasourceProvider.InfoboxValueSpec.class);
+            // Compatibility with plans prepared before InfoboxValueSpec recorded
+            // whether a row fills a field or is retained only as candidate evidence.
+            String legacy = step.prepared().configuration(String.class);
+            String parameter = specification == null ? legacy : specification.key();
             if (parameter == null) continue;
             GeneratedClassModel owner = model.findClass(step.target().className());
             GeneratedFieldModel field = wikidata.explore.model.OwnedFieldSources
@@ -299,7 +307,8 @@ public final class WikipediaInfoboxAcquisition {
                         + step.target().className() + "." + step.target().fieldPath()
                         + ": " + parameter);
             }
-            result.add(new Declaration(owner, field, parameter, step.target()));
+            result.add(new Declaration(owner, field, parameter, step.target(),
+                    specification == null || specification.fillField()));
         }
         return List.copyOf(result);
     }
@@ -345,10 +354,10 @@ public final class WikipediaInfoboxAcquisition {
     }
     private record Declaration(
             GeneratedClassModel owner, GeneratedFieldModel field, String parameter,
-            datasource.api.SourceBindingTarget target) {
+            datasource.api.SourceBindingTarget target, boolean fillField) {
         private Declaration(GeneratedClassModel owner, GeneratedFieldModel field,
                 String parameter) {
-            this(owner, field, parameter, null);
+            this(owner, field, parameter, null, true);
         }
 
         private boolean rendered() {

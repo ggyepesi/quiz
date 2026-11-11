@@ -249,6 +249,36 @@ class WikipediaTextEvidenceProviderTest {
                 .extractionMethod().contains("linked"));
     }
 
+    @Test void unrelatedLinksNeitherNominateByTargetNorTriggerTitleLookups()
+            throws Exception {
+        var ra = new wikidata.explore.extract.WikidataDynamicObject("Q2831", "Ra");
+        ra.enwikiTitle("Ra");
+        var requests = new java.util.concurrent.atomic.AtomicInteger();
+        WikipediaTextEvidenceProvider provider = new WikipediaTextEvidenceProvider(
+                uri -> {
+                    requests.incrementAndGet();
+                    return "{}";
+                }, null, null, List.of(ra));
+        String text = "Her father ruled Egypt.";
+        var links = List.of(
+                new datasource.evidence.ArticleIntroduction.Link(
+                        "Her father", "Ra", 0, 10),
+                new datasource.evidence.ArticleIntroduction.Link(
+                        "Egypt", "Egypt", 17, 22));
+        var introduction = new datasource.evidence.ArticleIntroduction(text,
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "A deity", "42", text, List.of(), links), links);
+
+        EnrichmentProposal result = provider.discover(charactersRequest(introduction))
+                .execute(new QueryContext());
+
+        assertTrue(result.fields().isEmpty(),
+                "an introduction link identifies an exact visible candidate label; "
+                        + "it does not interpret 'Her father' as Ra");
+        assertEquals(0, requests.get(),
+                "links whose visible text names no loaded candidate are never resolved");
+    }
+
     /** Full-article prose stays prose. The generic operation keeps bounded content with
      * exact section evidence and does not turn links into domain entities. */
     @Test void articlePassagesProposeBoundedContentAndOmitMaintenanceSections()

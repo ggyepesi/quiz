@@ -50,6 +50,7 @@ public class FieldSourcePanel extends JPanel {
     private enum CandidateEvidenceChoice {
         NONE("None"),
         INTRODUCTION_MENTIONS("Loaded target instances mentioned in the introduction"),
+        INFOBOX_ROW_LINKS("Loaded target instances linked from a rendered infobox row"),
         ARTICLE_PASSAGES("Bounded passages from the full article"),
         ARTICLE_PASSAGE_INSTANCES(
                 "One target instance per bounded article passage");
@@ -60,6 +61,7 @@ public class FieldSourcePanel extends JPanel {
     }
     private final JComboBox<CandidateEvidenceChoice> candidateEvidenceBox =
             new JComboBox<>(CandidateEvidenceChoice.values());
+    private final JTextField infoboxEvidenceKeyField = new JTextField(24);
     private final JComboBox<String> passageTextFieldBox = new JComboBox<>();
     private final JComboBox<String> passageSourceFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
@@ -85,6 +87,7 @@ public class FieldSourcePanel extends JPanel {
     private FormRow qualifierConditionRow;
     private FormRow passageTextFieldRow;
     private FormRow passageSourceFieldRow;
+    private FormRow infoboxEvidenceKeyRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -653,6 +656,10 @@ public class FieldSourcePanel extends JPanel {
         return passageTextFieldBox;
     }
 
+    javax.swing.JTextField infoboxEvidenceKeyField() {
+        return infoboxEvidenceKeyField;
+    }
+
     javax.swing.JComboBox<String> passageSourceFieldBox() {
         return passageSourceFieldBox;
     }
@@ -843,12 +850,17 @@ public class FieldSourcePanel extends JPanel {
                         .articleIntroductionMentions(binding)
                 ? CandidateEvidenceChoice.INTRODUCTION_MENTIONS
                 : datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinkOperation(binding)
+                ? CandidateEvidenceChoice.INFOBOX_ROW_LINKS
+                : datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
                 : datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGES
                 : CandidateEvidenceChoice.NONE;
+        infoboxEvidenceKeyField.setText(choice == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
+                && binding != null ? binding.recipe().parameter("property") : "");
         refreshPassageInstanceFields(passageSpec);
         candidateEvidenceBox.setSelectedItem(choice);
         refreshCandidateEvidenceApplicability();
@@ -910,6 +922,8 @@ public class FieldSourcePanel extends JPanel {
                         : "Available for a reference list or one Text value.");
         boolean passageInstances = selected
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
+        applicable(infoboxEvidenceKeyRow,
+                selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS);
         applicable(passageTextFieldRow, passageInstances);
         applicable(passageSourceFieldRow, passageInstances);
         passageTextFieldBox.setEnabled(referenceCollection);
@@ -926,6 +940,8 @@ public class FieldSourcePanel extends JPanel {
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .articleIntroductionMentions(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinkOperation(existing)
+                || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(existing);
@@ -936,6 +952,8 @@ public class FieldSourcePanel extends JPanel {
             case INTRODUCTION_MENTIONS ->
                     datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_INTRODUCTION_MENTIONS;
+            case INFOBOX_ROW_LINKS ->
+                    datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_ROW_LINKS;
             case ARTICLE_PASSAGES ->
                     datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_PASSAGES;
@@ -952,6 +970,8 @@ public class FieldSourcePanel extends JPanel {
                         datasource.wikipedia.WikipediaDatasourceProvider
                                 .PASSAGE_SOURCE_FIELD,
                         selectedText(passageSourceFieldBox))
+                : selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
+                ? java.util.Map.of("property", infoboxEvidenceKeyField.getText().trim())
                 : java.util.Map.of();
         String existingOperation = existing == null ? "" : existing.recipe().operationId();
         java.util.Map<String, String> existingParameters = existing == null
@@ -1235,6 +1255,11 @@ public class FieldSourcePanel extends JPanel {
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia categories:", categoryRow);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia evidence:",
                 candidateEvidenceBox);
+        infoboxEvidenceKeyField.setToolTipText(
+                "Rendered.<label> selected in Wikipedia Discovery, for example "
+                        + "Rendered.Parents.");
+        infoboxEvidenceKeyRow = FormRow.add(form, c, y++,
+                "Infobox value key:", infoboxEvidenceKeyField);
         passageTextFieldRow = FormRow.add(form, c, y++,
                 "Passage goes into:", passageTextFieldBox);
         passageSourceFieldRow = FormRow.add(form, c, y++,

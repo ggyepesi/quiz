@@ -365,7 +365,7 @@
   button: Configure…
   button: Clear  (disabled)
   label: Wikipedia evidence:
-  combo: 4 item(s)  (disabled)
+  combo: 5 item(s)  (disabled)
   label: Qualifier of:
   ids: []
     text: []

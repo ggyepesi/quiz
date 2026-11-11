@@ -828,4 +828,34 @@ class GeneratedProjectModelValidatorTest {
         assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
                 GeneratedProjectModelValidator.validate(project).format());
     }
+
+    @Test void infoboxLinkEvidenceRequiresARenderedKeyAndTypedEntityList() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        GeneratedFieldModel parents = deity.addField(
+                "parents", FieldType.STRING, FieldCardinality.SINGLE);
+        project.rootClass(deity);
+        datasource.api.SourceBindingTarget target = new datasource.api.SourceBindingTarget(
+                datasource.api.BindingScope.FIELD_VALUE, "EgyptianDeity", "parents",
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                deity.declarationId());
+        FieldSourceBindings.put(parents, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
+                        java.util.Map.of("property", "Infobox deity.parents"))));
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains("list-valued ENTITY field"), invalid.format());
+        assertTrue(invalid.format().contains("Rendered.<label>"), invalid.format());
+
+        parents.type(FieldType.ENTITY);
+        parents.cardinality(FieldCardinality.COLLECTION);
+        parents.entityClassName("EgyptianDeity");
+        FieldSourceBindings.put(parents, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
+                        java.util.Map.of("property", "Rendered.Parents"))));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
 }

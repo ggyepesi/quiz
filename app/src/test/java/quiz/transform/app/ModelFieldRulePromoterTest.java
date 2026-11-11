@@ -229,6 +229,41 @@ class ModelFieldRulePromoterTest {
         }
     }
 
+    @Test void renderedInfoboxLinksCanBecomeCandidateEvidenceForAnEntityList()
+            throws Exception {
+        File modelFile = temp.resolve("parents.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        var parents = deity.addField("parents", FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        parents.entityClassName("EgyptianDeity");
+        model.rootClass(deity);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject maat = new WikidataDynamicObject("Q185101", "Maat");
+        maat.type("EgyptianDeity");
+        SnapshotDomain base = new SnapshotDomain(List.of(maat));
+        CuratableDomain domain = new CuratableDomain(base,
+                new ManualCuration(temp.resolve("parents.curation.json").toFile()),
+                base.memberRoots(), List.of(), modelFile);
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaInfoboxLinks(
+                "EgyptianDeity", "parents", "Rendered.Parents",
+                "Rendered Parents row links");
+
+        var preview = domain.previewPromotion(recipe);
+        assertTrue(preview.eligible(), preview.reason());
+        domain.promote(recipe);
+        domain.writeProjectModel();
+
+        var savedField = new GeneratedProjectModelStore().load(modelFile)
+                .findClass("EgyptianDeity").fields().getFirst();
+        var saved = wikidata.explore.model.FieldSourceBindings.binding(savedField,
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertEquals("Rendered.Parents",
+                datasource.wikipedia.WikipediaDatasourceProvider.infoboxRowLinks(saved));
+        assertFalse(domain.previewPromotion(recipe).eligible(),
+                "one candidate-evidence source is not offered twice");
+    }
+
     /** The infobox binding says only kind, key and label; a replaced Wikidata primary's
      *  qualifier condition and value language must not be saved into it. */
     @Test void replacingAPrimarySourceLeavesNothingOfThePreviousOneBehind()

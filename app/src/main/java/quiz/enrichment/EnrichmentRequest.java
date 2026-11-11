@@ -16,7 +16,18 @@ public record EnrichmentRequest(
         Object currentValue,
         List<datasource.evidence.CategoryMembership> categoryMemberships,
         datasource.evidence.ArticleIntroduction articleIntroduction,
-        datasource.evidence.WikipediaArticle wikipediaArticle) {
+        datasource.evidence.WikipediaArticle wikipediaArticle,
+        datasource.evidence.InfoboxParameters infoboxParameters) {
+
+    public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
+                             boolean collection, List<SourceRef> sources,
+                             objectview.field.FieldRef targetSchema, Object currentValue,
+                             List<datasource.evidence.CategoryMembership> categoryMemberships,
+                             datasource.evidence.ArticleIntroduction articleIntroduction,
+                             datasource.evidence.WikipediaArticle wikipediaArticle) {
+        this(subject, targetField, collection, sources, targetSchema, currentValue,
+                categoryMemberships, articleIntroduction, wikipediaArticle, null);
+    }
 
     public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
                              boolean collection, List<SourceRef> sources,
@@ -24,7 +35,7 @@ public record EnrichmentRequest(
                              List<datasource.evidence.CategoryMembership> categoryMemberships,
                              datasource.evidence.ArticleIntroduction articleIntroduction) {
         this(subject, targetField, collection, sources, targetSchema, currentValue,
-                categoryMemberships, articleIntroduction, null);
+                categoryMemberships, articleIntroduction, null, null);
     }
 
     public EnrichmentRequest(EnrichmentProposal.Subject subject, String targetField,
