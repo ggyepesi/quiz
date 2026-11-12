@@ -8,6 +8,7 @@ import objectview.render.GroupMembersView;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import quiz.source.WikipediaSource;
+import quiz.transform.ui.BoundedInstanceSelection;
 import quiz.transform.ui.TransformController;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.query.swing.SwingQueryRunner;
@@ -42,12 +43,6 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
     private final SwingQueryRunner runner = queries.runner();
 
-    private final JComboBox<String> type = new JComboBox<>();
-    private final JSpinner sampleSize = new JSpinner(new SpinnerNumberModel(
-            DEFAULT_SAMPLE, 1, WikipediaDiscoveryQuery.MAX_ARTICLES, 1));
-    private final JButton randomSample = new JButton("Start random sample");
-    private final JButton addSelection = new JButton("Add selection");
-    private final JButton removeSelection = new JButton("Remove selection");
     private final JButton retained = new JButton("Analyze retained articles");
     private final JButton fetch = new JButton("Fetch selected articles");
     private final JButton cancel = new JButton("Cancel");
@@ -59,19 +54,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private final JLabel resultStatus = new JLabel(
             "Select instances, then analyze retained articles or fetch them from Wikipedia.");
 
-    private final JPanel instancesHolder = new JPanel(new BorderLayout());
-    private final JPanel selectedHolder = new JPanel(new BorderLayout());
-    private final JTabbedPane sourceTabs = new JTabbedPane();
     private final JTabbedPane resultTabs = new JTabbedPane();
-    private final LinkedHashMap<String, WikidataDynamicObject> selected =
-            new LinkedHashMap<>();
     private final ProjectBacking project;
     private final FieldRulePromoter promoter;
-    private List<WikidataDynamicObject> classMembers = List.of();
-    private List<WikidataDynamicObject> selectedInClass = List.of();
-    private List<WikidataDynamicObject> selectedInSample = List.of();
-    private SearchableView instancesView;
-    private SearchableView selectedView;
+    private final BoundedInstanceSelection selection;
     private GroupMembersView structuralGroupsView;
     private final IdentityHashMap<WikipediaDiscoveryRows.StructuralGroup, DiscoveryGroup>
             structuralGroups = new IdentityHashMap<>();
@@ -92,6 +78,18 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         this.initialSelection = initialSelection;
         this.project = model.capability(ProjectBacking.class);
         this.promoter = model.capability(FieldRulePromoter.class);
+        this.selection = new BoundedInstanceSelection(domain,
+                new BoundedInstanceSelection.Host() {
+                    @Override public void selectionChanged(String reason) {
+                        invalidateAnalysis(reason);
+                    }
+                    @Override public void status(String text) { sourceStatus.setText(text); }
+                    @Override public void updateActions() {
+                        WikipediaDiscoveryPanel.this.updateActions();
+                    }
+                }, WikipediaDiscoveryQuery.MAX_ARTICLES, DEFAULT_SAMPLE, "articles",
+                value -> !value.enwikiTitle().isBlank(),
+                "have an English Wikipedia article correspondence");
         build();
         wire();
         populateTypes();
@@ -102,11 +100,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 : "Save " + project.projectKind().toString().toLowerCase() + "…");
         JPanel controls = new JPanel(new objectview.utils.swing.WrapLayout(
                 FlowLayout.LEFT, 6, 2));
-        controls.add(new JLabel("Class:"));
-        controls.add(type);
-        controls.add(new JLabel("Random starting sample:"));
-        controls.add(sampleSize);
-        controls.add(randomSample);
+        selection.addControls(controls);
         controls.add(retained);
         controls.add(fetch);
         controls.add(cancel);
@@ -116,20 +110,6 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         JPanel north = new JPanel(new BorderLayout(4, 3));
         north.add(controls, BorderLayout.NORTH);
         north.add(sourceStatus, BorderLayout.SOUTH);
-
-        JPanel instances = new JPanel(new BorderLayout(4, 4));
-        JPanel instanceActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        instanceActions.add(addSelection);
-        instances.add(instanceActions, BorderLayout.NORTH);
-        instances.add(instancesHolder, BorderLayout.CENTER);
-        sourceTabs.addTab("Class instances", instances);
-
-        JPanel sample = new JPanel(new BorderLayout(4, 4));
-        JPanel sampleActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        sampleActions.add(removeSelection);
-        sample.add(sampleActions, BorderLayout.NORTH);
-        sample.add(selectedHolder, BorderLayout.CENTER);
-        sourceTabs.addTab("Selected articles — 0", sample);
 
         JPanel results = new JPanel(new BorderLayout(4, 4));
         JPanel resultHeader = new JPanel(new BorderLayout(4, 2));
@@ -142,7 +122,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         emptyResults();
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                sourceTabs, results);
+                selection.tabs(), results);
         split.setResizeWeight(0.42);
         split.setContinuousLayout(true);
         north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
@@ -152,10 +132,6 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void wire() {
-        type.addActionListener(event -> showType((String) type.getSelectedItem()));
-        randomSample.addActionListener(event -> startRandomSample());
-        addSelection.addActionListener(event -> addSelectedInstances());
-        removeSelection.addActionListener(event -> removeSelectedInstances());
         retained.addActionListener(event -> analyzeRetained());
         fetch.addActionListener(event -> fetchSelected());
         logs.addActionListener(event -> queries.showLogs(this));
@@ -165,9 +141,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         runner.registerRunButton(fetch);
         runner.registerCancelButton(cancel);
         runner.onRunningChanged(running -> {
+            selection.setRunning(running);
             updateActions();
             if (running) {
-                sourceStatus.setText("Fetching exactly " + selected.size()
+                sourceStatus.setText("Fetching exactly " + selection.size()
                         + " selected structured article(s), each with its infobox in the "
                         + "same request.");
             }
@@ -175,121 +152,33 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void populateTypes() {
-        for (String candidate : domain.types()) {
-            if (TransformController.ALL_ENTITIES.equals(candidate)) continue;
-            if (wikipediaMembers(candidate).isEmpty()) continue;
-            type.addItem(candidate);
-        }
-        if (type.getItemCount() == 0) {
+        String requested = initialSelection == null ? null : initialSelection.className();
+        if (!selection.populate(requested)) {
             sourceStatus.setText("This project has no class instances with an English "
                     + "Wikipedia article correspondence.");
             updateActions();
-        } else {
-            String requested = initialSelection == null
-                    ? null : initialSelection.className();
-            boolean offered = requested != null
-                    && java.util.stream.IntStream.range(0, type.getItemCount())
-                    .mapToObj(type::getItemAt).anyMatch(requested::equals);
-            if (offered) type.setSelectedItem(requested);
-            else type.setSelectedIndex(0);
-            showType((String) type.getSelectedItem());
-            if (offered) seedInitialSelection();
+        } else if (requested != null && requested.equals(selection.className())) {
+            seedInitialSelection();
         }
     }
 
     private void seedInitialSelection() {
-        if (initialSelection == null) return;
-        java.util.Map<String, WikidataDynamicObject> available = classMembers.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        WikipediaDiscoveryPanel::key, value -> value,
-                        (first, ignored) -> first, java.util.LinkedHashMap::new));
-        selected.clear();
-        int omitted = 0;
-        for (WikidataDynamicObject requested : initialSelection.instances()) {
-            WikidataDynamicObject member = available.get(key(requested));
-            if (member == null) omitted++;
-            else putSelected(member);
-        }
-        selectedInSample = List.of();
-        rebuildSelectedView();
+        int omitted = selection.seed(initialSelection.instances());
         invalidateAnalysis("The selected articles came from "
                 + initialSelection.origin() + ". Analyze them to produce results.");
-        sourceTabs.setSelectedIndex(1);
-        String limit = selected.size() <= WikipediaDiscoveryQuery.MAX_ARTICLES ? ""
+        int selectedCount = selection.size();
+        String limit = selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES ? ""
                 : " Fetch is disabled until you remove at least "
-                        + (selected.size() - WikipediaDiscoveryQuery.MAX_ARTICLES)
+                        + (selectedCount - WikipediaDiscoveryQuery.MAX_ARTICLES)
                         + " selection(s); one run is bounded to "
                         + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles.";
-        sourceStatus.setText("Received exactly " + selected.size() + " selected "
+        sourceStatus.setText("Received exactly " + selectedCount + " selected "
                 + initialSelection.className() + " instance(s) from "
                 + initialSelection.origin() + ". No article has been fetched."
                 + (omitted == 0 ? "" : " " + omitted
                         + " selected instance(s) had no usable English Wikipedia "
                         + "correspondence in this class and were not added.") + limit);
         updateActions();
-    }
-
-    private void showType(String className) {
-        classMembers = className == null ? List.of() : wikipediaMembers(className);
-        selected.clear();
-        selectedInClass = List.of();
-        selectedInSample = List.of();
-        rebuildInstanceView();
-        rebuildSelectedView();
-        invalidateAnalysis("The class changed. Select instances and analyze its articles.");
-        sourceStatus.setText(classMembers.size() + " " + className
-                + " instance(s) have an English Wikipedia article correspondence. "
-                + "No article will be fetched until Fetch selected articles is pressed.");
-        updateActions();
-    }
-
-    private List<WikidataDynamicObject> wikipediaMembers(String className) {
-        return domain.domain().instancesOf(className).stream()
-                .filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast)
-                .filter(value -> !value.enwikiTitle().isBlank())
-                .distinct().toList();
-    }
-
-    private void rebuildInstanceView() {
-        String className = (String) type.getSelectedItem();
-        instancesView = instanceView(classMembers, className,
-                values -> selectedInClass = dynamic(values));
-        instancesHolder.removeAll();
-        instancesHolder.add(instancesView, BorderLayout.CENTER);
-        instancesHolder.revalidate();
-        instancesHolder.repaint();
-    }
-
-    private void rebuildSelectedView() {
-        String className = (String) type.getSelectedItem();
-        selectedView = instanceView(new ArrayList<>(selected.values()), className,
-                values -> selectedInSample = dynamic(values));
-        selectedHolder.removeAll();
-        selectedHolder.add(selectedView, BorderLayout.CENTER);
-        selectedHolder.revalidate();
-        selectedHolder.repaint();
-        updateSelectedTab();
-    }
-
-    private SearchableView instanceView(List<? extends Viewable> values, String className,
-            java.util.function.Consumer<List<Viewable>> selection) {
-        return SearchableView.builder(values)
-                .sample(className == null ? null : domain.configSample(className))
-                .hiddenFields(className == null ? java.util.Set.of()
-                        : domain.structuralFields(className))
-                .fieldTypes(className == null ? null : domain.fieldTypes(className))
-                .fieldSchemas(value -> domain.renderedFieldSchema(value, className))
-                .typeSchemas(domain::fieldSchema)
-                .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
-                .selectionSetListener(chosen -> {
-                    selection.accept(chosen.stream()
-                            .filter(Viewable.class::isInstance)
-                            .map(Viewable.class::cast).toList());
-                    updateActions();
-                })
-                .collapsible(true)
-                .build();
     }
 
     private void showStructuralGroup(List<Object> chosen) {
@@ -307,7 +196,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private void addStructuralGroups(WikipediaStructureAnalysis.Result analysis) {
         structuralGroups.clear();
         DiscoveryGroup root = new DiscoveryGroup("All selected instances");
-        selected.values().forEach(value -> root.addMember(value, false));
+        selection.selected().forEach(value -> root.addMember(value, false));
         int count = 0;
         if (analysis != null) {
             count += addSectionFacet(root, analysis.sections(), analysis.contents(),
@@ -318,13 +207,13 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             count += addStructuralFacet(root, "Table headers", analysis.tableHeaders());
             count += addStructuralFacet(root, "HTML elements", analysis.blockKinds());
         }
-        String className = (String) type.getSelectedItem();
+        String className = selection.className();
         structuralGroupsView = new GroupMembersView(root, group -> {
             JPanel members = new JPanel(new BorderLayout(4, 4));
             members.setBorder(BorderFactory.createTitledBorder(
                     group.getDisplayName() + " — " + group.getMembers().size()
                             + " matching instance(s)"));
-            members.add(instanceView(new ArrayList<>(group.getMembers()), className,
+            members.add(selection.instanceView(new ArrayList<>(group.getMembers()), className,
                     ignored -> { }), BorderLayout.CENTER);
             return members;
         }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true);
@@ -484,82 +373,14 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
 
-    private void startRandomSample() {
-        List<WikidataDynamicObject> shuffled = new ArrayList<>(classMembers);
-        java.util.Collections.shuffle(shuffled);
-        int count = Math.min((Integer) sampleSize.getValue(), shuffled.size());
-        selected.clear();
-        shuffled.stream().limit(count).forEach(this::putSelected);
-        selectedInSample = List.of();
-        rebuildSelectedView();
-        invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
-        sourceTabs.setSelectedIndex(1);
-        sourceStatus.setText("Selected " + count + " random " + type.getSelectedItem()
-                + " instance(s). Add or remove instances before fetching.");
-        updateActions();
-    }
-
-    private void addSelectedInstances() {
-        int available = Math.max(0, WikipediaDiscoveryQuery.MAX_ARTICLES - selected.size());
-        List<WikidataDynamicObject> candidates = selectedInClass.stream()
-                .filter(value -> !selected.containsKey(key(value))).toList();
-        List<WikidataDynamicObject> added = candidates.stream().limit(available).toList();
-        boolean firstAddition = selected.isEmpty() && !added.isEmpty();
-        added.forEach(this::putSelected);
-        if (selectedView == null || firstAddition) {
-            // An empty SearchableView deliberately has no cards container. The first
-            // addition creates that container; later additions stay local to it.
-            rebuildSelectedView();
-        } else {
-            selectedView.appendViewables(added);
-            updateSelectedTab();
-        }
-        if (!added.isEmpty()) {
-            invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
-        }
-        sourceStatus.setText("Added " + added.size() + " instance(s); " + selected.size()
-                + " article(s) are now selected."
-                + (added.size() == candidates.size() ? "" : " The remaining "
-                + (candidates.size() - added.size()) + " instance(s) were not added because "
-                + "one discovery run is bounded to "
-                + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles."));
-        updateActions();
-    }
-
-    private void removeSelectedInstances() {
-        List<WikidataDynamicObject> removed = List.copyOf(selectedInSample);
-        removed.forEach(value -> selected.remove(key(value)));
-        if (selectedView != null) selectedView.removeViewables(removed);
-        selectedInSample = List.of();
-        updateSelectedTab();
-        if (!removed.isEmpty()) {
-            invalidateAnalysis("The selected articles changed. Analyze them to refresh the results.");
-        }
-        sourceStatus.setText("Removed " + removed.size() + " instance(s); " + selected.size()
-                + " article(s) remain selected.");
-        updateActions();
-    }
-
-    private void putSelected(WikidataDynamicObject value) {
-        selected.putIfAbsent(key(value), value);
-    }
-
-    private static String key(WikidataDynamicObject value) {
-        return value.identityTypeName() + ':' + value.getIdentifier();
-    }
-
-    private void updateSelectedTab() {
-        sourceTabs.setTitleAt(1, "Selected articles — " + selected.size());
-    }
-
     private void analyzeRetained() {
         List<WikipediaDiscoveryQuery.Article> values = WikipediaDiscoveryQuery.retained(
-                new ArrayList<>(selected.values()));
+                selection.selected());
         showAnalysis(WikipediaStructureAnalysis.analyze(values), "retained");
     }
 
     private void fetchSelected() {
-        List<WikidataDynamicObject> values = new ArrayList<>(selected.values());
+        List<WikidataDynamicObject> values = selection.selected();
         if (values.isEmpty()) return;
         sourceStatus.setText("Fetching exactly " + values.size()
                 + " selected structured article(s), each with its infobox in the "
@@ -704,7 +525,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void configureSelectedInfobox() {
         WikipediaDiscoveryRows.InfoboxPattern observed = selectedInfobox;
-        String className = (String) type.getSelectedItem();
+        String className = selection.className();
         if (observed == null || className == null || project == null || promoter == null
                 || project.projectModel() == null) return;
         String conflict = project.modelWriteConflict();
@@ -944,20 +765,14 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void updateActions() {
         boolean running = runner.isRunning();
-        boolean hasType = type.getSelectedItem() != null && !classMembers.isEmpty();
-        boolean hasSelection = !selected.isEmpty();
-        type.setEnabled(!running && type.getItemCount() > 0);
-        sampleSize.setEnabled(!running && hasType);
-        randomSample.setEnabled(!running && hasType);
-        addSelection.setEnabled(!running && !selectedInClass.isEmpty()
-                && selected.size() < WikipediaDiscoveryQuery.MAX_ARTICLES);
-        removeSelection.setEnabled(!running && !selectedInSample.isEmpty());
+        int selectedCount = selection == null ? 0 : selection.size();
+        boolean hasSelection = selectedCount > 0;
         retained.setEnabled(!running && hasSelection);
         fetch.setEnabled(!running && hasSelection
-                && selected.size() <= WikipediaDiscoveryQuery.MAX_ARTICLES);
+                && selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES);
         fetch.setText(running ? "Fetching selected articles…"
-                : "Fetch " + selected.size() + " selected article"
-                        + (selected.size() == 1 ? "" : "s"));
+                : "Fetch " + selectedCount + " selected article"
+                        + (selectedCount == 1 ? "" : "s"));
         boolean infoboxTab = resultTabs.getSelectedComponent() != null
                 && resultTabs.getSelectedComponent() == infoboxView;
         configureInfobox.setEnabled(!running && infoboxTab && selectedInfobox != null
@@ -976,11 +791,6 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                         : "Save " + project.unsavedModelChanges().size()
                                 + " configuration change(s) to "
                                 + project.modelFile().getPath() + ".");
-    }
-
-    private static List<WikidataDynamicObject> dynamic(List<Viewable> values) {
-        return values.stream().filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast).toList();
     }
 
     public boolean requestClose(Component owner) {

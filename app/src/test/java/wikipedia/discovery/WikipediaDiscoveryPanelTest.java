@@ -40,8 +40,8 @@ class WikipediaDiscoveryPanelTest {
             WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
                     domain(List.of(maat, ra), List.of("EgyptianDeity")), initial);
             try {
-                JTabbedPane sources = field(panel, "sourceTabs", JTabbedPane.class);
-                SearchableView selected = field(panel, "selectedView", SearchableView.class);
+                JTabbedPane sources = field(field(panel, "selection", Object.class), "tabs", JTabbedPane.class);
+                SearchableView selected = field(field(panel, "selection", Object.class), "selectedView", SearchableView.class);
                 JButton fetch = field(panel, "fetch", JButton.class);
                 JLabel status = field(panel, "sourceStatus", JLabel.class);
 
@@ -89,8 +89,8 @@ class WikipediaDiscoveryPanelTest {
             maat.enwikiTitle("Maat");
             WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain(maat));
             try {
-                SearchableView instances = field(panel, "instancesView", SearchableView.class);
-                JButton add = field(panel, "addSelection", JButton.class);
+                SearchableView instances = field(field(panel, "selection", Object.class), "instancesView", SearchableView.class);
+                JButton add = field(field(panel, "selection", Object.class), "addSelection", JButton.class);
 
                 assertFalse(add.isEnabled());
                 instances.renderContext().select(maat);
@@ -99,13 +99,13 @@ class WikipediaDiscoveryPanelTest {
 
                 add.doClick();
 
-                SearchableView selected = field(panel, "selectedView", SearchableView.class);
+                SearchableView selected = field(field(panel, "selection", Object.class), "selectedView", SearchableView.class);
                 assertNotNull(selected.cardList(),
                         "the first addition must create the initially empty cards panel");
                 assertEquals(List.of(maat),
                         selected.cardList().getVirtualList().items());
 
-                JButton remove = field(panel, "removeSelection", JButton.class);
+                JButton remove = field(field(panel, "selection", Object.class), "removeSelection", JButton.class);
                 assertFalse(remove.isEnabled());
                 selected.renderContext().select(maat);
                 assertTrue(remove.isEnabled(),
@@ -264,7 +264,7 @@ class WikipediaDiscoveryPanelTest {
                 ((SearchableView) tabs.getComponentAt(7)).renderContext().select(observed);
                 assertNotNull(field(panel, "selectedInfobox", Object.class));
 
-                JComboBox<?> types = field(panel, "type", JComboBox.class);
+                JComboBox<?> types = field(field(panel, "selection", Object.class), "type", JComboBox.class);
                 types.setSelectedItem("Character");
 
                 assertEquals(null, field(panel, "selectedInfobox", Object.class));
