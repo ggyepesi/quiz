@@ -108,21 +108,22 @@ public final class WikipediaStructureAnalysis {
             Map<String, LinkAccumulator> links) {
         String path = parent.isBlank() ? section.heading()
                 : parent + " › " + section.heading();
-        String key = normalized(section.heading());
+        String key = normalized(path);
         if (!key.isBlank()) {
             sections.computeIfAbsent(key,
                     ignored -> new SectionAccumulator(section.heading()))
                     .add(instance, article, path, section);
         }
         for (WikipediaArticle.Block block : section.blocks()) {
-            contents.add(new SectionContent(article, path, block));
+            contents.add(new SectionContent(instance, article, path, block));
             if (block.list() != null) {
-                collectListItems(article, path, block.list(), block.list().items(),
-                        1, listItems);
+                collectListItems(instance, article, path,
+                        block.list(), block.list().items(),
+                        1, null, listItems);
             }
             if (block.table() != null) {
                 for (WikipediaArticle.TableRow row : block.table().rows()) {
-                    tableRows.add(new TableRowContent(article, path,
+                    tableRows.add(new TableRowContent(instance, article, path,
                             block.table().getDisplayName(), row));
                     for (WikipediaArticle.TableCell cell : row.cells()) {
                         if (!cell.header() || cell.value().isBlank()) continue;
@@ -137,7 +138,7 @@ public final class WikipediaStructureAnalysis {
             for (WikipediaArticle.ArticleLink link : block.links()) {
                 String linkKey = key + '\0' + normalized(link.targetTitle());
                 links.computeIfAbsent(linkKey, ignored ->
-                        new LinkAccumulator(section.heading(), link.targetTitle()))
+                        new LinkAccumulator(path, link.targetTitle()))
                         .add(instance, article, link.text(), block.value(), link.start());
             }
         }
@@ -147,13 +148,17 @@ public final class WikipediaStructureAnalysis {
         }
     }
 
-    private static void collectListItems(String article, String path,
+    private static void collectListItems(WikidataDynamicObject instance,
+            String article, String path,
             WikipediaArticle.ArticleList list, List<WikipediaArticle.ListItem> items,
-            int depth, List<ListItemContent> into) {
+            int depth, ListItemContent parent, List<ListItemContent> into) {
         for (WikipediaArticle.ListItem item : items) {
-            into.add(new ListItemContent(article, path, list.getDisplayName(), depth, item));
+            ListItemContent content = new ListItemContent(article, path,
+                    list.getDisplayName(), depth, item, instance, parent);
+            into.add(content);
             for (WikipediaArticle.ArticleList nested : item.lists()) {
-                collectListItems(article, path, nested, nested.items(), depth + 1, into);
+                collectListItems(instance, article, path,
+                        nested, nested.items(), depth + 1, content, into);
             }
         }
     }

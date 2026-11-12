@@ -2,6 +2,9 @@ package wikipedia.discovery;
 
 import domain.DomainModel;
 import objectview.Viewable;
+import objectview.group.DefaultViewableGroup;
+import objectview.group.ViewableGroup;
+import objectview.render.GroupMembersView;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import quiz.source.WikipediaSource;
@@ -14,6 +17,7 @@ import work.QueryContext;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import datasource.api.SourceBindingSlot;
@@ -57,11 +61,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private final JPanel instancesHolder = new JPanel(new BorderLayout());
     private final JPanel selectedHolder = new JPanel(new BorderLayout());
-    private final JPanel matchingHolder = new JPanel(new BorderLayout());
     private final JTabbedPane sourceTabs = new JTabbedPane();
     private final JTabbedPane resultTabs = new JTabbedPane();
-    private final JLabel matchingStatus = new JLabel(
-            "Select one structural pattern to show its matching original instances.");
     private final LinkedHashMap<String, WikidataDynamicObject> selected =
             new LinkedHashMap<>();
     private final ProjectBacking project;
@@ -71,7 +72,9 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private List<WikidataDynamicObject> selectedInSample = List.of();
     private SearchableView instancesView;
     private SearchableView selectedView;
-    private SearchableView matchingView;
+    private GroupMembersView structuralGroupsView;
+    private final IdentityHashMap<WikipediaDiscoveryRows.StructuralGroup, DiscoveryGroup>
+            structuralGroups = new IdentityHashMap<>();
     private WikipediaDiscoveryRows.InfoboxPattern selectedInfobox;
     /** The Infobox values tab, the only one whose selection the configure action reads. */
     private SearchableView infoboxView;
@@ -135,18 +138,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         resultActions.add(configureInfobox);
         resultHeader.add(resultActions, BorderLayout.EAST);
         results.add(resultHeader, BorderLayout.NORTH);
-
-        JPanel matching = new JPanel(new BorderLayout(4, 3));
-        matching.setBorder(BorderFactory.createTitledBorder("Matching instances"));
-        matching.add(matchingStatus, BorderLayout.NORTH);
-        matching.add(matchingHolder, BorderLayout.CENTER);
-        clearMatchingGroup();
-
-        JSplitPane resultSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-                resultTabs, matching);
-        resultSplit.setResizeWeight(0.63);
-        resultSplit.setContinuousLayout(true);
-        results.add(resultSplit, BorderLayout.CENTER);
+        results.add(resultTabs, BorderLayout.CENTER);
         emptyResults();
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
@@ -304,28 +296,193 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         WikipediaDiscoveryRows.StructuralGroup group = chosen != null && chosen.size() == 1
                 && chosen.getFirst() instanceof WikipediaDiscoveryRows.StructuralGroup value
                 ? value : null;
-        if (group == null) {
-            clearMatchingGroup();
-            return;
-        }
-        String className = (String) type.getSelectedItem();
-        matchingView = instanceView(group.members(), className, ignored -> { });
-        matchingHolder.removeAll();
-        matchingHolder.add(matchingView, BorderLayout.CENTER);
-        matchingHolder.revalidate();
-        matchingHolder.repaint();
-        matchingStatus.setText(group.groupName() + " — " + group.members().size() + " "
-                + className + " instance(s). Read-only discovery group; nothing is saved.");
+        DiscoveryGroup selectedGroup = group == null ? null : structuralGroups.get(group);
+        if (selectedGroup == null || structuralGroupsView == null) return;
+        structuralGroupsView.selectGroup(selectedGroup, true);
+        resultStatus.setText(group.groupName() + " — " + group.members().size()
+                + " matching instance(s). Open Structural groups to inspect them; "
+                + "this read-only group is not saved.");
     }
 
-    private void clearMatchingGroup() {
-        matchingView = null;
-        matchingHolder.removeAll();
-        matchingHolder.revalidate();
-        matchingHolder.repaint();
-        matchingStatus.setText(
-                "Select one structural pattern to show its matching original instances.");
+    private void addStructuralGroups(WikipediaStructureAnalysis.Result analysis) {
+        structuralGroups.clear();
+        DiscoveryGroup root = new DiscoveryGroup("All selected instances");
+        selected.values().forEach(value -> root.addMember(value, false));
+        int count = 0;
+        if (analysis != null) {
+            count += addSectionFacet(root, analysis.sections(), analysis.contents(),
+                    analysis.listItems(), analysis.tableRows());
+            count += addStructuralFacet(root, "Infobox keys", analysis.infoboxes());
+            count += addStructuralFacet(root, "Categories", analysis.categories());
+            count += addStructuralFacet(root, "Links by section", analysis.links());
+            count += addStructuralFacet(root, "Table headers", analysis.tableHeaders());
+            count += addStructuralFacet(root, "HTML elements", analysis.blockKinds());
+        }
+        String className = (String) type.getSelectedItem();
+        structuralGroupsView = new GroupMembersView(root, group -> {
+            JPanel members = new JPanel(new BorderLayout(4, 4));
+            members.setBorder(BorderFactory.createTitledBorder(
+                    group.getDisplayName() + " — " + group.getMembers().size()
+                            + " matching instance(s)"));
+            members.add(instanceView(new ArrayList<>(group.getMembers()), className,
+                    ignored -> { }), BorderLayout.CENTER);
+            return members;
+        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true);
+        structuralGroupsView.groups().setStatusText(count == 0
+                ? "Fetch or analyze articles to discover structural groups"
+                : "Select a read-only structural group; nothing here is saved");
+        structuralGroupsView.selectGroup(root, true);
+        resultTabs.addTab("Structural groups — " + count, structuralGroupsView);
     }
+
+    private int addStructuralFacet(DiscoveryGroup root, String name,
+            List<? extends WikipediaDiscoveryRows.StructuralGroup> patterns) {
+        if (patterns == null || patterns.isEmpty()) return 0;
+        DiscoveryGroup facet = root.getOrCreateChild(name).role(ViewableGroup.Role.FACET);
+        for (WikipediaDiscoveryRows.StructuralGroup pattern : patterns) {
+            DiscoveryGroup bucket = facet.getOrCreateChild(pattern.groupName())
+                    .role(ViewableGroup.Role.BUCKET);
+            DiscoveryGroup result = bucket;
+            pattern.members().forEach(member -> result.addMember(member, true));
+            structuralGroups.put(pattern, bucket);
+        }
+        return patterns.size();
+    }
+
+    private int addSectionFacet(DiscoveryGroup root,
+            List<WikipediaDiscoveryRows.SectionPattern> patterns,
+            List<WikipediaDiscoveryRows.SectionContent> contents,
+            List<WikipediaDiscoveryRows.ListItemContent> listItems,
+            List<WikipediaDiscoveryRows.TableRowContent> tableRows) {
+        if ((patterns == null || patterns.isEmpty())
+                && (contents == null || contents.isEmpty())
+                && (listItems == null || listItems.isEmpty())
+                && (tableRows == null || tableRows.isEmpty())) return 0;
+        DiscoveryGroup facet = root.getOrCreateChild("Sections")
+                .role(ViewableGroup.Role.FACET);
+        for (WikipediaDiscoveryRows.SectionPattern pattern :
+                patterns == null ? List.<WikipediaDiscoveryRows.SectionPattern>of()
+                        : patterns) {
+            DiscoveryGroup bucket = sectionGroup(facet, pattern.getDisplayName());
+            DiscoveryGroup result = bucket;
+            pattern.members().forEach(member -> result.addMember(member, true));
+            structuralGroups.put(pattern, bucket);
+        }
+        addSectionContents(facet, contents == null ? List.of() : contents,
+                listItems == null ? List.of() : listItems,
+                tableRows == null ? List.of() : tableRows);
+        return (patterns == null ? 0 : patterns.size())
+                + (contents == null ? 0 : contents.size())
+                + (listItems == null ? 0 : listItems.size())
+                + (tableRows == null ? 0 : tableRows.size());
+    }
+
+    private void addSectionContents(DiscoveryGroup sections,
+            List<WikipediaDiscoveryRows.SectionContent> contents,
+            List<WikipediaDiscoveryRows.ListItemContent> items,
+            List<WikipediaDiscoveryRows.TableRowContent> rows) {
+        LinkedHashMap<String, Integer> listSizes = new LinkedHashMap<>();
+        for (WikipediaDiscoveryRows.ListItemContent item : items) {
+            listSizes.merge(listIdentity(item), 1, Integer::sum);
+        }
+        LinkedHashMap<String, Integer> tableSizes = new LinkedHashMap<>();
+        for (WikipediaDiscoveryRows.TableRowContent row : rows) {
+            tableSizes.merge(tableIdentity(row), 1, Integer::sum);
+        }
+        LinkedHashMap<String, DiscoveryGroup> lists = new LinkedHashMap<>();
+        LinkedHashMap<String, DiscoveryGroup> tables = new LinkedHashMap<>();
+        for (WikipediaDiscoveryRows.SectionContent content : contents) {
+            DiscoveryGroup section = sectionGroup(sections, content.sectionPath());
+            DiscoveryGroup node;
+            if (content.list() != null) {
+                String identity = content.articleTitle() + '\0' + content.sectionPath()
+                        + '\0' + content.list().getDisplayName();
+                int size = listSizes.getOrDefault(identity,
+                        content.list().items().size());
+                node = section.getOrCreateChild(containerLabel(
+                        content.list().getDisplayName(), size, "item",
+                        content.articleTitle()))
+                        .role(ViewableGroup.Role.BUCKET);
+                lists.put(identity, node);
+            } else if (content.table() != null) {
+                String identity = content.articleTitle() + '\0' + content.sectionPath()
+                        + '\0' + content.table().getDisplayName();
+                int size = tableSizes.getOrDefault(identity,
+                        content.table().rows().size());
+                node = section.getOrCreateChild(containerLabel(
+                        content.table().getDisplayName(), size, "row",
+                        content.articleTitle()))
+                        .role(ViewableGroup.Role.BUCKET);
+                tables.put(identity, node);
+            } else {
+                node = section.getOrCreateChild(content.kind() + ": "
+                        + content.getDisplayName()).role(ViewableGroup.Role.BUCKET);
+            }
+            addMembers(node, content.members());
+            structuralGroups.put(content, node);
+        }
+        for (WikipediaDiscoveryRows.ListItemContent item : items) {
+            DiscoveryGroup section = sectionGroup(sections, item.sectionPath());
+            // A parent item precedes its nested items, so its node already exists.
+            DiscoveryGroup parentItem = item.parent() == null ? null
+                    : structuralGroups.get(item.parent());
+            DiscoveryGroup owner = parentItem == null ? section : parentItem;
+            int size = listSizes.getOrDefault(listIdentity(item), 0);
+            DiscoveryGroup list = lists.computeIfAbsent(listIdentity(item), ignored ->
+                    owner.getOrCreateChild(containerLabel(item.list(), size, "item",
+                                    item.articleTitle()))
+                            .role(ViewableGroup.Role.BUCKET));
+            DiscoveryGroup bucket = list.getOrCreateChild(item.getDisplayName())
+                    .role(ViewableGroup.Role.BUCKET);
+            addMembers(bucket, item.members());
+            structuralGroups.put(item, bucket);
+        }
+        for (WikipediaDiscoveryRows.TableRowContent row : rows) {
+            DiscoveryGroup section = sectionGroup(sections, row.sectionPath());
+            int size = tableSizes.getOrDefault(tableIdentity(row), 0);
+            DiscoveryGroup table = tables.computeIfAbsent(tableIdentity(row), ignored ->
+                    section.getOrCreateChild(containerLabel(row.table(), size, "row",
+                                    row.articleTitle()))
+                            .role(ViewableGroup.Role.BUCKET));
+            DiscoveryGroup bucket = table.getOrCreateChild(row.getDisplayName())
+                    .role(ViewableGroup.Role.BUCKET);
+            addMembers(bucket, row.members());
+            structuralGroups.put(row, bucket);
+        }
+    }
+
+    private static void addMembers(DiscoveryGroup group,
+            List<WikidataDynamicObject> members) {
+        members.forEach(member -> group.addMember(member, true));
+    }
+
+    /** A list or table belongs to one article, so its node names the article; only the
+     *  section path above it is shared across the selected articles. */
+    private static String containerLabel(
+            String name, int size, String itemName, String article) {
+        return name + " — " + size + ' ' + itemName + (size == 1 ? "" : "s")
+                + " (" + article + ')';
+    }
+
+    private static DiscoveryGroup sectionGroup(DiscoveryGroup sections, String path) {
+        DiscoveryGroup result = sections;
+        for (String part : path.split("\\s*›\\s*")) {
+            if (!part.isBlank()) {
+                result = result.getOrCreateChild(part.strip())
+                        .role(ViewableGroup.Role.BUCKET);
+            }
+        }
+        return result;
+    }
+
+    private static String listIdentity(WikipediaDiscoveryRows.ListItemContent item) {
+        return item.articleTitle() + '\0' + item.sectionPath() + '\0' + item.list();
+    }
+
+    private static String tableIdentity(WikipediaDiscoveryRows.TableRowContent row) {
+        return row.articleTitle() + '\0' + row.sectionPath() + '\0' + row.table();
+    }
+
 
     private void startRandomSample() {
         List<WikidataDynamicObject> shuffled = new ArrayList<>(classMembers);
@@ -423,8 +580,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void showAnalysis(WikipediaStructureAnalysis.Result analysis, String source) {
         selectedInfobox = null;
-        clearMatchingGroup();
         resultTabs.removeAll();
+        addStructuralGroups(analysis);
         addResultTab("Articles", analysis.articles(), WikipediaSource.class,
                 RenderingMode.CARD, "No structured articles are available.");
         addResultTab("Sections", analysis.sections(),
@@ -507,8 +664,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void emptyResults() {
         selectedInfobox = null;
-        clearMatchingGroup();
         resultTabs.removeAll();
+        addStructuralGroups(null);
         addResultTab("Articles", List.of(), WikipediaSource.class, RenderingMode.CARD,
                 "Select instances, then analyze retained articles or fetch them from "
                         + "Wikipedia.");
@@ -854,6 +1011,15 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         if (closed) return;
         closed = true;
         runner.cancel();
+    }
+
+    /** UI adapter only: the discovered pattern remains the source of membership. */
+    private static final class DiscoveryGroup
+            extends DefaultViewableGroup<WikidataDynamicObject, DiscoveryGroup> {
+        private DiscoveryGroup(String name) { super(name); }
+        @Override protected DiscoveryGroup newChild(String name) {
+            return new DiscoveryGroup(name);
+        }
     }
 
     /** Explicit handoff into the shared workbench. The source view supplies the logical

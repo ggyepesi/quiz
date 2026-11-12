@@ -17,6 +17,94 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The comparison keeps source structure and coverage; it never invents a domain fact. */
 class WikipediaStructureAnalysisTest {
 
+    @Test void structuralCardsLeadWithSourceMeaningAndKeepParserPositionSecondary() {
+        WikipediaDiscoveryRows.SectionPattern labour =
+                new WikipediaDiscoveryRows.SectionPattern(
+                        "Slaying the Nemean lion", 1, 1, 1, "3",
+                        List.of(new WikipediaDiscoveryRows.SectionExample(
+                                "Heracles",
+                                "Labours of Heracles › Slaying the Nemean lion",
+                                3, List.of(), 40)), List.of());
+        WikipediaDiscoveryRows.ListItemContent item =
+                new WikipediaDiscoveryRows.ListItemContent(
+                        "Heracles", "Labours of Heracles", "Ordered list", 1,
+                        new WikipediaArticle.ListItem("Item 1",
+                                "Slay the Nemean lion and bring back its skin.",
+                                List.of(), List.of(), 10, 58));
+        WikipediaDiscoveryRows.SectionContent paragraph =
+                new WikipediaDiscoveryRows.SectionContent(
+                        "Heracles", "Labours of Heracles",
+                        new WikipediaArticle.Block("Paragraph 3",
+                                WikipediaArticle.Block.Kind.PARAGRAPH,
+                                "Heracles completed twelve labours for Eurystheus.",
+                                List.of(), 60, 110));
+
+        assertEquals("Labours of Heracles › Slaying the Nemean lion",
+                labour.getDisplayName());
+        assertEquals("Slay the Nemean lion and bring back its skin.",
+                item.getDisplayName());
+        assertEquals("Item 1", item.sourcePosition());
+        assertEquals("Heracles completed twelve labours for Eurystheus.",
+                paragraph.getDisplayName());
+        assertEquals("Paragraph 3", paragraph.sourcePosition());
+    }
+
+    /** Whether a title was authored is stored on the block (a definition term, a table
+     *  caption), not guessed from wording: an authored title that reads like a parser
+     *  position stays the title, and an untitled block is captioned by its text. */
+    @Test void anAuthoredTitleIsKeptEvenWhenItReadsLikeAParserPosition() {
+        WikipediaDiscoveryRows.SectionContent definition =
+                new WikipediaDiscoveryRows.SectionContent(
+                        "Heracles", "Labours of Heracles",
+                        new WikipediaArticle.Block("Table 1",
+                                WikipediaArticle.Block.Kind.DEFINITION,
+                                "Table 1 The first of the labours.", List.of(), 0, 34));
+        WikipediaDiscoveryRows.SectionContent captioned =
+                new WikipediaDiscoveryRows.SectionContent(
+                        "Heracles", "Labours of Heracles",
+                        new WikipediaArticle.Block("Row 2",
+                                WikipediaArticle.Block.Kind.TABLE, "", "Row 2 A | B",
+                                List.of(), null,
+                                new WikipediaArticle.ArticleTable("Row 2", "Row 2",
+                                        List.of(), List.of(), 40, 51), 40, 51));
+        WikipediaDiscoveryRows.SectionContent untitledTable =
+                new WikipediaDiscoveryRows.SectionContent(
+                        "Heracles", "Labours of Heracles",
+                        new WikipediaArticle.Block("Table 4",
+                                WikipediaArticle.Block.Kind.TABLE, "", "A | B",
+                                List.of(), null,
+                                new WikipediaArticle.ArticleTable("Table", "",
+                                        List.of(), List.of(), 60, 65), 60, 65));
+
+        assertEquals("Table 1", definition.getDisplayName());
+        assertEquals("Row 2", captioned.getDisplayName());
+        assertEquals("A | B", untitledTable.getDisplayName());
+    }
+
+    @Test void identicalHeadingsUnderDifferentParentsRemainDifferentStructures() {
+        WikipediaArticle.Section first = new WikipediaArticle.Section(
+                "Traditions", 2, List.of(),
+                List.of(new WikipediaArticle.Section(
+                        "First labour", 3, List.of(), List.of(), 10, 20)), 0, 20);
+        WikipediaArticle.Section second = new WikipediaArticle.Section(
+                "Labours of Heracles", 2, List.of(),
+                List.of(new WikipediaArticle.Section(
+                        "First labour", 3, List.of(), List.of(), 30, 40)), 21, 40);
+        WikipediaDiscoveryQuery.Article source = new WikipediaDiscoveryQuery.Article(
+                instance("Q122248", "Heracles", "Heracles"), "Heracles",
+                article("Heracles", List.of(first, second), List.of()), null, "");
+
+        List<WikipediaDiscoveryRows.SectionPattern> firstLabours =
+                WikipediaStructureAnalysis.analyze(List.of(source)).sections().stream()
+                        .filter(pattern -> pattern.heading().equals("First labour"))
+                        .toList();
+
+        assertEquals(List.of(
+                        "Labours of Heracles › First labour",
+                        "Traditions › First labour"),
+                firstLabours.stream().map(Viewable::getDisplayName).sorted().toList());
+    }
+
     @Test void aPossibleAnimalModelSectionKeepsItsExactArticleEvidence() {
         WikipediaArticle bennu = article("Bennu", List.of(new WikipediaArticle.Section(
                 "Possible animal model", 2,
@@ -46,7 +134,9 @@ class WikipediaStructureAnalysisTest {
         assertEquals("A giant heron may have been the animal model for Bennu.",
                 result.sections().getFirst().examples().getFirst().blocks()
                         .getFirst().value());
-        assertEquals("Paragraph 1", result.contents().getFirst().title());
+        assertEquals("A giant heron may have been the animal model for Bennu.",
+                result.contents().getFirst().title());
+        assertEquals("Paragraph 1", result.contents().getFirst().sourcePosition());
         assertEquals("Possible animal model", result.contents().getFirst().sectionPath());
         assertEquals("A giant heron may have been the animal model for Bennu.",
                 result.contents().getFirst().text());
@@ -146,6 +236,8 @@ class WikipediaStructureAnalysisTest {
         assertEquals(List.of(1, 2, 1),
                 result.listItems().stream()
                         .map(WikipediaDiscoveryRows.ListItemContent::depth).toList());
+        assertTrue(result.listItems().stream()
+                .allMatch(item -> item.members().equals(List.of(article.instance()))));
         assertEquals("Nested", result.listItems().get(1).content().value());
         assertEquals(1, result.tableRows().size());
         assertEquals(List.of("Name", "Heracles"), result.tableRows().getFirst()

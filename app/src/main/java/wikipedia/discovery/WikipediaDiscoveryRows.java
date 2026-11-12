@@ -10,21 +10,25 @@ import objectview.annotations.Label;
 import objectview.annotations.Link;
 import wikidata.explore.extract.WikidataDynamicObject;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /** ObjectView rows used by the Wikipedia discovery workbench. */
 public final class WikipediaDiscoveryRows {
+    private static final int CAPTION_LIMIT = 140;
+
     private WikipediaDiscoveryRows() {}
 
     /** A read-only discovery grouping over the original selected domain instances. */
-    public interface StructuralGroup {
+    public interface StructuralGroup extends objectview.Viewable {
         String groupName();
         List<WikidataDynamicObject> members();
     }
 
     public static final class SectionPattern extends ViewableAdapter
             implements StructuralGroup {
-        @DisplayField private final String heading;
+        @DisplayField private final String section;
+        @Label("Heading") private final String heading;
         @Label("Articles") private final int articles;
         @Label("Selected articles") private final int selectedArticles;
         private final int missing;
@@ -42,6 +46,7 @@ public final class WikipediaDiscoveryRows {
         SectionPattern(String heading, int articles, int selectedArticles,
                 int occurrences, String levels, List<SectionExample> examples,
                 List<WikidataDynamicObject> members) {
+            this.section = sectionCaption(heading, examples);
             this.heading = heading;
             this.articles = articles;
             this.selectedArticles = selectedArticles;
@@ -57,10 +62,10 @@ public final class WikipediaDiscoveryRows {
         public int selectedArticles() { return selectedArticles; }
         public int occurrences() { return occurrences; }
         public List<SectionExample> examples() { return examples; }
-        @Override public String groupName() { return "Section: " + heading; }
+        @Override public String groupName() { return "Section: " + section; }
         @Override public List<WikidataDynamicObject> members() { return members; }
-        @Override public String getIdentifier() { return heading.toLowerCase(); }
-        @Override public String getDisplayName() { return heading; }
+        @Override public String getIdentifier() { return section.toLowerCase(); }
+        @Override public String getDisplayName() { return section; }
     }
 
     public static final class SectionExample extends ViewableAdapter {
@@ -89,10 +94,12 @@ public final class WikipediaDiscoveryRows {
     /** One retained source block at its exact article/section location. Definition terms
      * become the card title because the source page states that title; paragraphs and
      * other untitled blocks keep their stable structural label. */
-    public static final class SectionContent extends ViewableAdapter {
+    public static final class SectionContent extends ViewableAdapter
+            implements StructuralGroup {
         @DisplayField private final String title;
         @Link private final String article;
         @Label("Section path") private final String sectionPath;
+        @Label("Source position") private final String sourcePosition;
         private final WikipediaArticle.Block.Kind kind;
         @Label("Source element") private final String sourceElement;
         @Label("Article text") private final String text;
@@ -100,9 +107,17 @@ public final class WikipediaDiscoveryRows {
         @Inline private final WikipediaArticle.ArticleList list;
         @Inline private final WikipediaArticle.ArticleTable table;
         @Hidden private final int start;
+        @Hidden private final List<WikidataDynamicObject> members;
 
         SectionContent(String article, String sectionPath, WikipediaArticle.Block block) {
-            this.title = block == null ? "Article block" : block.getDisplayName();
+            this(null, article, sectionPath, block);
+        }
+
+        SectionContent(WikidataDynamicObject member, String article, String sectionPath,
+                WikipediaArticle.Block block) {
+            this.sourcePosition = block == null ? "Article block" : block.getDisplayName();
+            this.title = readableCaption(sourcePosition, block == null ? "" : block.value(),
+                    authoredTitle(block));
             this.article = linked(article);
             this.sectionPath = sectionPath == null ? "" : sectionPath;
             this.kind = block == null ? WikipediaArticle.Block.Kind.PARAGRAPH : block.kind();
@@ -112,11 +127,13 @@ public final class WikipediaDiscoveryRows {
             this.list = block == null ? null : block.list();
             this.table = block == null ? null : block.table();
             this.start = block == null ? 0 : block.start();
+            this.members = member == null ? List.of() : List.of(member);
         }
 
         public String title() { return title; }
         public String articleTitle() { return label(article); }
         public String sectionPath() { return sectionPath; }
+        public String sourcePosition() { return sourcePosition; }
         public WikipediaArticle.Block.Kind kind() { return kind; }
         public String text() { return text; }
         public List<WikipediaArticle.ArticleLink> links() { return links; }
@@ -125,64 +142,112 @@ public final class WikipediaDiscoveryRows {
         @Override public String getIdentifier() {
             return articleTitle() + ':' + sectionPath + ':' + start;
         }
+        @Override public String groupName() {
+            return kind + " in " + sectionPath + ": " + title;
+        }
+        @Override public List<WikidataDynamicObject> members() { return members; }
         @Override public String getDisplayName() { return title; }
     }
 
     /** One retained list item projected with its article and section location. */
-    public static final class ListItemContent extends ViewableAdapter {
-        @DisplayField private final String item;
+    public static final class ListItemContent extends ViewableAdapter
+            implements StructuralGroup {
+        @DisplayField private final String title;
         @Link private final String article;
         @Label("Section path") private final String sectionPath;
         @Label("List") private final String list;
+        @Label("Source position") private final String sourcePosition;
         private final int depth;
         @Inline private final WikipediaArticle.ListItem content;
+        @Hidden private final List<WikidataDynamicObject> members;
+        /** The item whose nested list holds this one, as the retained hierarchy states. */
+        @Hidden private final ListItemContent parent;
 
         ListItemContent(String article, String sectionPath, String list,
                 int depth, WikipediaArticle.ListItem content) {
-            this.item = content == null ? "List item" : content.getDisplayName();
+            this(article, sectionPath, list, depth, content, null);
+        }
+
+        ListItemContent(String article, String sectionPath, String list,
+                int depth, WikipediaArticle.ListItem content,
+                WikidataDynamicObject member) {
+            this(article, sectionPath, list, depth, content, member, null);
+        }
+
+        ListItemContent(String article, String sectionPath, String list,
+                int depth, WikipediaArticle.ListItem content,
+                WikidataDynamicObject member, ListItemContent parent) {
+            this.parent = parent;
+            this.sourcePosition = content == null ? "List item" : content.getDisplayName();
+            this.title = readableCaption(sourcePosition,
+                    content == null ? "" : content.value(), false);
             this.article = linked(article);
             this.sectionPath = sectionPath == null ? "" : sectionPath;
             this.list = list == null ? "" : list;
             this.depth = Math.max(1, depth);
             this.content = content;
+            this.members = member == null ? List.of() : List.of(member);
         }
 
         public String articleTitle() { return label(article); }
         public String sectionPath() { return sectionPath; }
+        public String list() { return list; }
         public int depth() { return depth; }
+        public String sourcePosition() { return sourcePosition; }
+        public ListItemContent parent() { return parent; }
         public WikipediaArticle.ListItem content() { return content; }
         @Override public String getIdentifier() {
             return articleTitle() + ':' + sectionPath + ':'
-                    + (content == null ? item : content.start());
+                    + (content == null ? sourcePosition : content.start());
         }
-        @Override public String getDisplayName() { return item; }
+        @Override public String groupName() {
+            return "List item in " + sectionPath + ": " + title;
+        }
+        @Override public List<WikidataDynamicObject> members() { return members; }
+        @Override public String getDisplayName() { return title; }
     }
 
     /** One retained table row projected with its article, section and table location. */
-    public static final class TableRowContent extends ViewableAdapter {
-        @DisplayField private final String row;
+    public static final class TableRowContent extends ViewableAdapter
+            implements StructuralGroup {
+        @DisplayField private final String title;
         @Link private final String article;
         @Label("Section path") private final String sectionPath;
         @Label("Table") private final String table;
+        @Label("Source position") private final String sourcePosition;
         @Inline private final WikipediaArticle.TableRow content;
+        @Hidden private final List<WikidataDynamicObject> members;
 
         TableRowContent(String article, String sectionPath, String table,
                 WikipediaArticle.TableRow content) {
-            this.row = content == null ? "Table row" : content.getDisplayName();
+            this(null, article, sectionPath, table, content);
+        }
+
+        TableRowContent(WikidataDynamicObject member, String article, String sectionPath,
+                String table, WikipediaArticle.TableRow content) {
+            this.sourcePosition = content == null ? "Table row" : content.getDisplayName();
+            this.title = readableCaption(sourcePosition, tableRowText(content), false);
             this.article = linked(article);
             this.sectionPath = sectionPath == null ? "" : sectionPath;
             this.table = table == null ? "" : table;
             this.content = content;
+            this.members = member == null ? List.of() : List.of(member);
         }
 
         public String articleTitle() { return label(article); }
         public String sectionPath() { return sectionPath; }
+        public String table() { return table; }
+        public String sourcePosition() { return sourcePosition; }
         public WikipediaArticle.TableRow content() { return content; }
         @Override public String getIdentifier() {
             return articleTitle() + ':' + sectionPath + ':'
-                    + (content == null ? row : content.start());
+                    + (content == null ? sourcePosition : content.start());
         }
-        @Override public String getDisplayName() { return row; }
+        @Override public String groupName() {
+            return "Table row in " + sectionPath + ": " + title;
+        }
+        @Override public List<WikidataDynamicObject> members() { return members; }
+        @Override public String getDisplayName() { return title; }
     }
 
     public static final class InfoboxPattern extends ViewableAdapter
@@ -477,6 +542,43 @@ public final class WikipediaDiscoveryRows {
         String clean = title == null ? "" : title.trim();
         return clean.isBlank() ? "" : clean + '|' + wikipedia.WikipediaArticleClient
                 .pageUrl(clean);
+    }
+
+    private static String sectionCaption(String heading, List<SectionExample> examples) {
+        LinkedHashSet<String> paths = new LinkedHashSet<>();
+        examples.stream().map(SectionExample::path).filter(path -> !path.isBlank())
+                .forEach(paths::add);
+        return paths.size() == 1 ? paths.getFirst() : heading;
+    }
+
+    private static String tableRowText(WikipediaArticle.TableRow row) {
+        if (row == null) return "";
+        return row.cells().stream().map(WikipediaArticle.TableCell::value)
+                .filter(value -> value != null && !value.isBlank())
+                .limit(4).collect(java.util.stream.Collectors.joining(" | "));
+    }
+
+    /** Whether the retained block's title is one the page authored: a definition term, or
+     *  a table's caption. Every other block title is a structural position. */
+    private static boolean authoredTitle(WikipediaArticle.Block block) {
+        return block != null && (block.kind() == WikipediaArticle.Block.Kind.DEFINITION
+                || block.table() != null && !block.table().caption().isBlank());
+    }
+
+    /** Parser coordinates remain provenance; authored source text names anonymous rows. */
+    private static String readableCaption(
+            String sourcePosition, String sourceText, boolean authored) {
+        String position = compact(sourcePosition);
+        String text = compact(sourceText);
+        if (authored || text.isBlank()) {
+            return position.isBlank() ? "Structural element" : position;
+        }
+        if (text.length() <= CAPTION_LIMIT) return text;
+        return text.substring(0, CAPTION_LIMIT - 1).stripTrailing() + '…';
+    }
+
+    private static String compact(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
     private static String label(String linked) {

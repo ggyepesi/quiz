@@ -37,14 +37,29 @@ read from that response, so they always describe the same revision (#461).
 5. Either analyze the structured articles already retained in the snapshot or explicitly
    fetch exactly the selected articles and their infoboxes.
 6. Inspect ObjectView result tabs for:
+   - a visible **Structural groups** browser, using the same group-tree plus ObjectView
+     member panel as TransformApp. Its section, infobox, category, link, table-header and
+     HTML-element groups are read-only views of the exact selected domain instances. The
+     section branch mirrors every retained structure the generic article reader recognizes:
+     sections contain their paragraphs and named definitions, lists contain their items and
+     nested lists, and tables contain their rows (with cells rendered as row fields). Thus
+     the Heracles article appears as `Mythology → Labours of Heracles → Ordered list — 12
+     items (Heracles) → …`; no mythology-specific rule creates that hierarchy. Section paths
+     are shared across the selected articles, while each list or table node names its one
+     article, so two articles' lists never merge. Nested items sit under the item whose list
+     holds them, as the retained hierarchy states;
    - complete structured articles;
-   - section headings with article coverage and exact section blocks;
+   - section headings with article coverage, full parent-to-child paths and exact section
+     blocks. A subsection such as an individual Labour of Heracles is captioned with its
+     complete path instead of looking like an unrelated top-level section;
    - every retained section-content block with its article, full section path, source
      element, text and links. When Wikipedia expresses a named item as a definition term
      followed by one or more descriptions, the term is retained as that item's title and
      the complete term-and-description text remains its exact evidence;
    - list items in their ordered/unordered, nested source hierarchy. The searchable list-item
-     projection keeps the article and section path and refers to the same retained item;
+     projection uses concise authored text as its caption, while `Item 1` remains visible as
+     its source position; it keeps the article and section path and refers to the same
+     retained item. Anonymous paragraphs and table rows follow the same rule;
    - table rows and their header/data cells, including captions, links, row/column spans and
      exact source ranges. The searchable table-row projection reads the retained table and
      never reconstructs cells from flattened table text;
@@ -61,10 +76,10 @@ read from that response, so they always describe the same revision (#461).
    - unavailable inputs and their exact failures.
 
 Selecting one section, infobox key, category, link, table-header value or HTML-element
-outcome shows the matching original domain instances in the shared ObjectView instance
-panel. This is an ephemeral structural-presence group: it states only that those retained
-articles contain the selected source structure. It neither interprets the values nor creates
-or saves a TransformApp group.
+outcome selects its matching node in the **Structural groups** tab; opening that tab shows
+the original domain instances through the shared ObjectView member panel. This is an ephemeral
+structural-presence group: it states only that those retained articles contain the selected
+source structure. It neither interprets the values nor creates or saves a TransformApp group.
 
 Coverage always uses the explicit selected article count as its denominator. Failed or
 missing articles remain visible rather than silently shrinking the population.

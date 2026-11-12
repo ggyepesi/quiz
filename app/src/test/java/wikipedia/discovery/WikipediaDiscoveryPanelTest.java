@@ -2,6 +2,7 @@ package wikipedia.discovery;
 
 import domain.DomainModel;
 import objectview.Viewable;
+import objectview.render.GroupMembersView;
 import objectview.view.SearchableView;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
@@ -67,7 +68,7 @@ class WikipediaDiscoveryPanelTest {
             WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain(maat));
             try {
                 JTabbedPane results = field(panel, "resultTabs", JTabbedPane.class);
-                assertEquals(List.of("Articles — 0", "Sections — 0",
+                assertEquals(List.of("Structural groups — 0", "Articles — 0", "Sections — 0",
                                 "Section contents — 0", "List items — 0",
                                 "Table rows — 0", "Table headers — 0",
                                 "Infobox values — 0",
@@ -134,8 +135,8 @@ class WikipediaDiscoveryPanelTest {
                         result, "test");
 
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
-                tabs.setSelectedIndex(6);
-                SearchableView infoboxes = (SearchableView) tabs.getComponentAt(6);
+                tabs.setSelectedIndex(7);
+                SearchableView infoboxes = (SearchableView) tabs.getComponentAt(7);
                 JButton configure = field(panel, "configureInfobox", JButton.class);
                 assertFalse(configure.isEnabled());
 
@@ -259,15 +260,15 @@ class WikipediaDiscoveryPanelTest {
                         new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
                         result, "test");
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
-                tabs.setSelectedIndex(6);
-                ((SearchableView) tabs.getComponentAt(6)).renderContext().select(observed);
+                tabs.setSelectedIndex(7);
+                ((SearchableView) tabs.getComponentAt(7)).renderContext().select(observed);
                 assertNotNull(field(panel, "selectedInfobox", Object.class));
 
                 JComboBox<?> types = field(panel, "type", JComboBox.class);
                 types.setSelectedItem("Character");
 
                 assertEquals(null, field(panel, "selectedInfobox", Object.class));
-                assertEquals("Infobox values — 0", tabs.getTitleAt(6));
+                assertEquals("Infobox values — 0", tabs.getTitleAt(7));
             } finally {
                 panel.close();
             }
@@ -287,9 +288,16 @@ class WikipediaDiscoveryPanelTest {
                     domain(List.of(maat, ra), List.of("EgyptianDeity")));
             try {
                 var animals = new WikipediaDiscoveryRows.SectionPattern(
-                        "Animals", 2, 2, 2, "2", List.of(), List.of(maat, ra));
+                        "Animals", 2, 2, 2, "3",
+                        List.of(new WikipediaDiscoveryRows.SectionExample(
+                                "Maat", "Iconography › Animals", 3, List.of(), 1)),
+                        List.of(maat, ra));
+                var cow = new WikipediaDiscoveryRows.ListItemContent(
+                        "Maat", "Iconography › Animals", "Ordered list", 1,
+                        new datasource.evidence.WikipediaArticle.ListItem(
+                                "Item 1", "Cow", List.of(), List.of(), 2, 5), maat);
                 var result = new WikipediaStructureAnalysis.Result(
-                        List.of(), List.of(animals), List.of(), List.of(), List.of(),
+                        List.of(), List.of(animals), List.of(), List.of(cow), List.of(),
                         List.of(), List.of(), List.of(), List.of(), List.of(),
                         false, List.of(), 2, 2);
                 invoke(panel, "showAnalysis",
@@ -297,15 +305,97 @@ class WikipediaDiscoveryPanelTest {
                         result, "test");
 
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
-                SearchableView sections = (SearchableView) tabs.getComponentAt(1);
+                SearchableView sections = (SearchableView) tabs.getComponentAt(2);
                 sections.renderContext().select(animals);
 
-                SearchableView matching = field(panel, "matchingView", SearchableView.class);
-                JLabel status = field(panel, "matchingStatus", JLabel.class);
+                GroupMembersView groups = field(panel, "structuralGroupsView",
+                        GroupMembersView.class);
+                var matching = groups.groups().selectedGroup();
                 assertEquals(List.of(maat, ra),
-                        matching.cardList().getVirtualList().items());
-                assertTrue(status.getText().contains("Section: Animals"));
-                assertTrue(status.getText().contains("Read-only discovery group"));
+                        List.copyOf(matching.getMembers()));
+                assertEquals("Animals", matching.getDisplayName());
+                assertEquals("Iconography", matching.getParent().getDisplayName(),
+                        "full section paths must become an actual group hierarchy");
+                assertEquals(groups, tabs.getComponentAt(0),
+                        "structural groups must be a visible result tab");
+                JLabel status = field(panel, "resultStatus", JLabel.class);
+                assertTrue(status.getText().contains("Open Structural groups"));
+                assertTrue(status.getText().contains("read-only group is not saved"));
+
+                SearchableView items = (SearchableView) tabs.getComponentAt(4);
+                items.renderContext().select(cow);
+                var itemGroup = groups.groups().selectedGroup();
+                assertEquals("Cow", itemGroup.getDisplayName());
+                assertEquals("Ordered list — 1 item (Maat)",
+                        itemGroup.getParent().getDisplayName());
+                assertEquals("Animals",
+                        itemGroup.getParent().getParent().getDisplayName(),
+                        "recognized list structure must remain under its section");
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
+    /** Section paths are shared across articles, but a list belongs to one article: two
+     *  equally long lists under the same path once merged into one node claiming that
+     *  length. A nested item sits under the item the retained hierarchy names, not under
+     *  one recovered by reparsing its "Item 1.1" label. */
+    @Test void listsOfDifferentArticlesStaySeparateAndNestedItemsFollowTheirParent()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
+            maat.type("EgyptianDeity");
+            maat.enwikiTitle("Maat");
+            WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
+            ra.type("EgyptianDeity");
+            ra.enwikiTitle("Ra");
+            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+                    domain(List.of(maat, ra), List.of("EgyptianDeity")));
+            try {
+                String path = "Iconography › Animals";
+                var cow = new WikipediaDiscoveryRows.ListItemContent(
+                        "Maat", path, "Ordered list", 1,
+                        new datasource.evidence.WikipediaArticle.ListItem(
+                                "Item 1", "Cow", List.of(), List.of(), 2, 5), maat);
+                // Labelled as though it were item 1.1 of Ra's list; the stored parent
+                // says it is nested under Maat's Cow.
+                var calf = new WikipediaDiscoveryRows.ListItemContent(
+                        "Maat", path, "Ordered list at item 1", 2,
+                        new datasource.evidence.WikipediaArticle.ListItem(
+                                "Item 9.9", "Calf", List.of(), List.of(), 3, 4), maat, cow);
+                var falcon = new WikipediaDiscoveryRows.ListItemContent(
+                        "Ra", path, "Ordered list", 1,
+                        new datasource.evidence.WikipediaArticle.ListItem(
+                                "Item 1", "Falcon", List.of(), List.of(), 2, 8), ra);
+                var result = new WikipediaStructureAnalysis.Result(
+                        List.of(), List.of(), List.of(), List.of(cow, calf, falcon),
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                        false, List.of(), 2, 2);
+                invoke(panel, "showAnalysis",
+                        new Class<?>[]{WikipediaStructureAnalysis.Result.class, String.class},
+                        result, "test");
+
+                JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
+                GroupMembersView groups = field(panel, "structuralGroupsView",
+                        GroupMembersView.class);
+                SearchableView items = (SearchableView) tabs.getComponentAt(4);
+
+                items.renderContext().select(falcon);
+                var falconList = groups.groups().selectedGroup().getParent();
+                assertEquals("Ordered list — 1 item (Ra)", falconList.getDisplayName());
+                assertEquals(List.of(ra), List.copyOf(falconList.getMembers()));
+
+                items.renderContext().select(cow);
+                var cowGroup = groups.groups().selectedGroup();
+                assertEquals("Ordered list — 1 item (Maat)",
+                        cowGroup.getParent().getDisplayName());
+                assertEquals(List.of(maat), List.copyOf(cowGroup.getParent().getMembers()));
+
+                items.renderContext().select(calf);
+                var calfGroup = groups.groups().selectedGroup();
+                assertEquals(cowGroup, calfGroup.getParent().getParent(),
+                        "the nested list hangs under the item the hierarchy names");
             } finally {
                 panel.close();
             }
