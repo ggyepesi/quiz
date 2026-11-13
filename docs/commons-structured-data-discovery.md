@@ -5,7 +5,7 @@
 Commons Discovery is the read-only source workbench for answering:
 
 > Which Wikimedia Commons files explicitly depict these exact modeled entities, and
-> which structured metadata do those files actually carry?
+> what complete structured depiction scene does each retained file describe?
 
 It is deliberately a separate application while this datasource is being understood. It
 does not add fields, alter instances, save groups, or infer that visually similar media
@@ -20,47 +20,62 @@ turning discovery into a second extraction path.
 4. Start a random sample, then add or remove instances in the two ObjectView selection
    panels. One run accepts at most 20 exact QIDs.
 5. Choose the visible maximum number of Commons files per QID (20 by default).
-6. Press **Fetch N selected entities**. The action states the exact QID count, the per-QID
-   cap, the maximum file count before duplicates are merged, and that the project is not
-   changed.
+6. Press **Fetch N selected entities**. The action states the selected-instance and distinct
+   QID counts, the per-QID cap, the maximum file count before duplicates are merged, and
+   that the project is not changed.
 7. Inspect:
    - **Connected objects**, a shared ObjectView `MultiView` containing the original domain
-     instances and the resulting media objects. `MediaRepresentation.depictedEntities`
-     refers to those same instances, so a reference navigates to its original card;
-   - **Groups**, with read-only facets by depicted entity (named by label and QID, since
-     instances may share a label) and by metadata presence;
+     instances and the resulting media objects. `MediaRepresentation.selectedEntities`
+     refers to those same instances, so a reference navigates to its original card. Each
+     media object contains every retained structured depiction and its qualifiers;
+   - **Groups**, with read-only facets by selected entity, co-depicted entity, supported
+     depiction qualifier value, and field coverage;
    - **No structured depiction**, containing exact selected instances for which the bounded
      query returned no file.
 
 Each media object exposes its image, linked Commons file page, English caption (falling
-back to the filename), exact depicted instances, QID-valued creators, creation dates,
-medium, collection, and location/institution when Structured Data on Commons provides
-them. Missing values remain missing; discovery does not manufacture an entity from a
-blank node or label.
+back to the filename), exact selected instances, every non-deprecated depicts statement,
+prominence, supported qualifier values, main subject, digital representation, QID-valued
+creators, creation dates, medium, collection, and location/institution when Structured Data
+on Commons provides them. Every co-depicted entity remains a linked `WikidataSource`, even
+when a loaded instance carries the same QID: a shared datasource identifier does not decide
+which modeled class that entity belongs to (directive 9), so discovery neither manufactures a
+domain instance nor attaches the depiction to an existing one.
+
+The supported depiction qualifiers are the Commons-documented bounded vocabulary: shown
+with features, color, wears, quantity, inscription, symbolizes, relative position, shape,
+material, applies to part, hair color, uses, expression/gesture/body pose, determination
+method, and depicted part. The query spells these predicates out because an unbounded
+variable-predicate scan is prohibitively expensive on the Commons endpoint.
 
 ## Acquisition and bounds
 
 The query uses the programmatic QLever Wikimedia Commons endpoint recommended by the
-Commons query-service documentation. One request contains one ordered, capped subquery
-per exact selected QID:
+Commons query-service documentation. Acquisition has two visible, logged stages:
 
 ```text
-selected QID -> Commons file whose depicts (P180) equals that QID -> structured metadata
+selected QID -> capped Commons files whose depicts (P180) equals that QID
+retained image files -> file metadata
+retained image files -> all non-deprecated P180 statements, ranks and supported qualifiers
 ```
 
-The shared batch executor owns this QID batch. If the endpoint cannot complete it, the
-executor splits the QID list and retries smaller complete batches. It never widens the
-input, follows an inverse relation, crawls another depicted entity, or silently raises a
-cap. Query logs show every issued SPARQL request and its elapsed time; running work has an
-explicit cancel action and closing the window asks before cancellation.
+Metadata and the depiction scene are separate requests per file batch: in one query every
+metadata value multiplied every depiction and qualifier row of the same file.
+
+The shared batch executor owns both stages. It splits the selected-QID request when needed,
+then reads retained files in batches of 25 with up to two requests in flight, splitting a
+failed file batch without changing the result. It never widens the input, follows an inverse
+relation, uses a co-depicted entity to discover more files, or silently raises a cap. Query
+logs show every issued SPARQL request and its elapsed time; running work has an explicit
+cancel action and closing the window asks before cancellation.
 
 Only image files are shown as depictions. Audio, video and documents also carry depicts
 statements but would render as a broken image; they still count toward the per-QID cap, and
 the result states how many were not shown.
 
 Duplicate files found for several selected QIDs become one `MediaRepresentation` with
-several depicted-entity references. This keeps the Commons file, rather than a
-file/subject pair, as the identity-bearing concept.
+several selected-entity references and one shared depiction scene. This keeps the Commons
+file, rather than a file/subject pair, as the identity-bearing concept.
 
 ## Reused owners
 
@@ -72,10 +87,10 @@ BoundedInstanceSelection              class, random sample and explicit add/remo
 BatchExecutor                         adaptive complete QID batches
 SwingQuerySession                     execution, cancellation and structured query logs
 WikidataSparqlClient                  SPARQL transport pointed at the Commons endpoint
-WikimediaEntityLookup                 batched labels for QID-valued metadata
+WikimediaEntityLookup                 batched labels for QID/PID scene values
 CommonsMedia                          filename, image URL and SVG handling
 SearchableView / MultiView            every selection and result representation
-GroupMembersView                      depicted-entity and field-coverage facets
+GroupMembersView                      selected/co-depicted/qualifier/coverage facets
 ```
 
 The Commons-specific layer owns only its endpoint query and the mapping from Commons RDF

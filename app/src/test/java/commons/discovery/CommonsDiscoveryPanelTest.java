@@ -99,11 +99,12 @@ class CommonsDiscoveryPanelTest {
         WikidataDynamicObject constellation = entity("Q1", "Horus", "Constellation");
         MediaRepresentation first = new MediaRepresentation("M1", "First",
                 "https://commons.wikimedia.org/wiki/Special:FilePath/A.jpg",
-                List.of(horus), "", List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(horus), List.of(), "", List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of());
         MediaRepresentation second = new MediaRepresentation("M2", "Second",
                 "https://commons.wikimedia.org/wiki/Special:FilePath/B.jpg",
-                List.of(constellation), "", List.of(), List.of(), List.of(), List.of(),
-                List.of());
+                List.of(constellation), List.of(), "", List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of());
         java.lang.reflect.Method groups = CommonsDiscoveryPanel.class.getDeclaredMethod(
                 "groups", List.class, List.class);
         groups.setAccessible(true);
@@ -111,7 +112,7 @@ class CommonsDiscoveryPanelTest {
                 groups.invoke(null, List.of(first, second), List.of(horus, constellation));
 
         var bySubject = root.getChildren().stream()
-                .filter(child -> child.getDisplayName().equals("Depicted entity"))
+                .filter(child -> child.getDisplayName().equals("Selected entity"))
                 .findFirst().orElseThrow();
         assertEquals(2, bySubject.getChildren().size(),
                 "each instance keeps its own bucket: " + bySubject.getChildren());
@@ -122,6 +123,39 @@ class CommonsDiscoveryPanelTest {
                 group.getDisplayName().contains("EgyptianDeity")));
         assertTrue(bySubject.getChildren().stream().anyMatch(group ->
                 group.getDisplayName().contains("Constellation")));
+    }
+
+    @Test void sceneGroupsExposeCoDepictedEntitiesAndQualifierValues() throws Exception {
+        WikidataDynamicObject horus = entity("Q1", "Horus", "EgyptianDeity");
+        DepictionQualifier color = new DepictionQualifier("S2", "P462", "color",
+                "http://www.wikidata.org/entity/Q23445", "Q23445", "black");
+        DepictionEvidence selected = new DepictionEvidence(
+                "S1", "Q1", "Horus", true, List.of());
+        DepictionEvidence falcon = new DepictionEvidence(
+                "S2", "Q2", "falcon", false, List.of(color));
+        MediaRepresentation media = new MediaRepresentation("M1", "Horus scene",
+                "https://commons.wikimedia.org/wiki/Special:FilePath/Horus.jpg",
+                List.of(horus), List.of(selected, falcon), "", List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of());
+        java.lang.reflect.Method groups = CommonsDiscoveryPanel.class.getDeclaredMethod(
+                "groups", List.class, List.class);
+        groups.setAccessible(true);
+        objectview.group.ViewableGroup<?> root = (objectview.group.ViewableGroup<?>)
+                groups.invoke(null, List.of(media), List.of(horus));
+
+        var coDepicted = root.getChildren().stream()
+                .filter(child -> child.getDisplayName().equals("Co-depicted entity"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("falcon (Q2) — 1 file(s)"), coDepicted.getChildren().stream()
+                .map(objectview.Viewable::getDisplayName).toList());
+        assertEquals(1, coDepicted.getChildren().iterator().next().getMembers().size());
+
+        var qualifiers = root.getChildren().stream()
+                .filter(child -> child.getDisplayName().equals("Depiction qualifier"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("color: black (P462, Q23445) — 1 file(s)"),
+                qualifiers.getChildren().stream()
+                        .map(objectview.Viewable::getDisplayName).toList());
     }
 
     private static <T> T field(Object owner, String name, Class<T> type) {

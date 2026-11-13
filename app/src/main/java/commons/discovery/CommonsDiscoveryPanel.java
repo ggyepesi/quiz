@@ -145,8 +145,9 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         return "Fetching depicts (P180) for " + subjects.size() + " selected instance(s), "
                 + "exactly " + qids + " selected QID(s): at most " + limit
                 + " Commons files per QID, "
-                + maximum + " before duplicate files are merged. No other entity is "
-                + "discovered and the project is not changed.";
+                + maximum + " before duplicate files are merged; then every retained "
+                + "image's metadata and depiction scene are loaded in batches of 25. Co-depicted "
+                + "entities do not discover more files and the project is not changed.";
     }
 
     private void showResult(CommonsDiscoveryQuery.Result result) {
@@ -194,10 +195,24 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
                 .filter(value -> !value.creators().isEmpty()).count();
         long withDate = result.media().stream()
                 .filter(value -> !value.creationDates().isEmpty()).count();
+        long depictionStatements = result.media().stream()
+                .mapToLong(value -> value.depictions().size()).sum();
+        long qualifierValues = result.media().stream()
+                .flatMap(value -> value.depictions().stream())
+                .mapToLong(value -> value.qualifiers().size()).sum();
+        java.util.Set<String> selectedQids = subjects.stream()
+                .map(WikidataDynamicObject::qid).collect(java.util.stream.Collectors.toSet());
+        long coDepicted = result.media().stream()
+                .flatMap(value -> value.depictions().stream())
+                .map(value -> value.depictedEntity().qid())
+                .filter(qid -> !selectedQids.contains(qid)).distinct().count();
         resultStatus.setText("Found " + result.media().size()
                 + " distinct Commons file(s) for "
                 + (result.selectedSubjects() - result.withoutMedia().size()) + " of "
-                + result.selectedSubjects() + " selected entities; " + withCreator
+                + result.selectedSubjects() + " selected entities; loaded "
+                + depictionStatements + " depiction statement(s), " + coDepicted
+                + " distinct co-depicted entities and " + qualifierValues
+                + " supported qualifier value(s). " + withCreator
                 + " have a QID-valued creator and " + withDate
                 + " have a creation date."
                 + (result.nonImageFiles() == 0 ? "" : " " + result.nonImageFiles()
@@ -213,14 +228,14 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
             List<WikidataDynamicObject> subjects) {
         MediaGroup root = new MediaGroup("All Commons media");
         media.forEach(value -> root.addMember(value, false));
-        MediaGroup bySubject = root.getOrCreateChild("Depicted entity")
+        MediaGroup bySubject = root.getOrCreateChild("Selected entity")
                 .role(ViewableGroup.Role.FACET);
         Map<String, Integer> labelCounts = new LinkedHashMap<>();
         subjects.forEach(subject -> labelCounts.merge(depictionGroupLabel(subject), 1,
                 Integer::sum));
         for (WikidataDynamicObject subject : subjects) {
             List<MediaRepresentation> matches = media.stream()
-                    .filter(value -> value.depictedEntities().contains(subject)).toList();
+                    .filter(value -> value.selectedEntities().contains(subject)).toList();
             String label = depictionGroupLabel(subject);
             if (labelCounts.getOrDefault(label, 0) > 1) {
                 label += " [" + subject.identityTypeName() + "]";
@@ -232,8 +247,63 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
                     .role(ViewableGroup.Role.BUCKET);
             matches.forEach(value -> bucket.addMember(value, true));
         }
+        java.util.Set<String> selectedQids = subjects.stream()
+                .map(WikidataDynamicObject::qid).collect(java.util.stream.Collectors.toSet());
+        MediaGroup coDepicted = root.getOrCreateChild("Co-depicted entity")
+                .role(ViewableGroup.Role.FACET);
+        Map<String, String> coDepictedLabels = new LinkedHashMap<>();
+        Map<String, java.util.Set<MediaRepresentation>> coDepictedMembers =
+                new LinkedHashMap<>();
+        for (MediaRepresentation value : media) {
+            for (DepictionEvidence depiction : value.depictions()) {
+                String qid = depiction.depictedEntity().qid();
+                if (selectedQids.contains(qid)) continue;
+                coDepictedLabels.putIfAbsent(qid, depiction.getDisplayName());
+                coDepictedMembers.computeIfAbsent(qid, ignored -> new java.util.LinkedHashSet<>())
+                        .add(value);
+            }
+        }
+        coDepictedMembers.forEach((qid, members) -> {
+            MediaGroup bucket = coDepicted.getOrCreateChild(coDepictedLabels.get(qid)
+                    + " — " + members.size() + " file(s)")
+                    .role(ViewableGroup.Role.BUCKET);
+            members.forEach(value -> bucket.addMember(value, true));
+        });
+        MediaGroup qualifierValues = root.getOrCreateChild("Depiction qualifier")
+                .role(ViewableGroup.Role.FACET);
+        Map<String, String> qualifierLabels = new LinkedHashMap<>();
+        Map<String, java.util.Set<MediaRepresentation>> qualifierMembers =
+                new LinkedHashMap<>();
+        for (MediaRepresentation value : media) {
+            for (DepictionEvidence depiction : value.depictions()) {
+                for (DepictionQualifier qualifier : depiction.qualifiers()) {
+                    qualifierLabels.putIfAbsent(
+                            qualifier.facetKey(), qualifier.facetLabel());
+                    qualifierMembers.computeIfAbsent(qualifier.facetKey(),
+                            ignored -> new java.util.LinkedHashSet<>()).add(value);
+                }
+            }
+        }
+        qualifierMembers.forEach((key, members) -> {
+            MediaGroup bucket = qualifierValues.getOrCreateChild(qualifierLabels.get(key)
+                    + " — " + members.size() + " file(s)")
+                    .role(ViewableGroup.Role.BUCKET);
+            members.forEach(value -> bucket.addMember(value, true));
+        });
         MediaGroup coverage = root.getOrCreateChild("Field coverage")
                 .role(ViewableGroup.Role.FACET);
+        coverage(coverage, "Has co-depicted entities", media,
+                value -> value.depictions().stream().anyMatch(depiction ->
+                        !selectedQids.contains(depiction.depictedEntity().qid())));
+        coverage(coverage, "Has depiction qualifiers", media,
+                value -> value.depictions().stream()
+                        .anyMatch(depiction -> !depiction.qualifiers().isEmpty()));
+        coverage(coverage, "Has prominent depiction", media,
+                value -> value.depictions().stream().anyMatch(DepictionEvidence::prominent));
+        coverage(coverage, "Has digital representation", media,
+                value -> !value.digitalRepresentations().isEmpty());
+        coverage(coverage, "Has main subject", media,
+                value -> !value.mainSubjects().isEmpty());
         coverage(coverage, "Has creator", media,
                 value -> !value.creators().isEmpty());
         coverage(coverage, "Missing creator", media,
