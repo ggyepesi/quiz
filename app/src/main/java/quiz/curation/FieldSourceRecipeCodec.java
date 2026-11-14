@@ -36,7 +36,10 @@ public final class FieldSourceRecipeCodec {
      *  read after extraction by definition, so the source type answers that itself. */
     public static FieldSourceRecipe scoped(String type, String field,
             FieldSourceMapping mapping) {
+        // A datasource operation's configuration is its binding, which this sidecar's
+        // kind + property shape cannot carry.
         if (mapping == null || mapping.sourceType() == null
+                || mapping.sourceType() == FieldSourceType.DATASOURCE
                 || !mapping.sourceType().filledAfterExtraction()
                 || mapping.sourceType().usesPropertyInput()
                         && mapping.propertyPid().isBlank()) {

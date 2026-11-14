@@ -32,4 +32,12 @@ public interface Query<R> {
     default String summary(R result) {
         return rowCount(result) + " rows";
     }
+
+    /**
+     * Terminal status of a successfully returned result. Most queries are all-or-nothing;
+     * inspection queries may preserve successful rows while naming failed requests.
+     */
+    default QueryStatus status(R result) {
+        return QueryStatus.OK;
+    }
 }

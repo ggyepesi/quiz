@@ -2,23 +2,24 @@
 
 ## Purpose
 
-Commons Discovery is the read-only source workbench for answering:
+Commons Discovery is the read-only **Commons depictions** tab of the Discovery
+workbench (`docs/discovery-workbench.md`), answering:
 
 > Which Wikimedia Commons files explicitly depict these exact modeled entities, and
 > what complete structured depiction scene does each retained file describe?
 
-It is deliberately a separate application while this datasource is being understood. It
-does not add fields, alter instances, save groups, or infer that visually similar media
+It does not add fields, alter instances, save groups, or infer that visually similar media
 depicts an entity. A later source recipe can be designed from observed coverage without
 turning discovery into a second extraction path.
 
 ## First bounded workflow
 
-1. Run `commons.discovery.CommonsDiscoveryApp` from the `app` module.
+1. Run `discovery.DiscoveryApp` from the `app` module.
 2. Open a saved generated project through the shared saved-project navigator.
 3. Choose a class whose loaded instances have Wikidata QIDs.
-4. Start a random sample, then add or remove instances in the two ObjectView selection
-   panels. One run accepts at most 20 exact QIDs.
+4. Start a random sample, then add or remove instances in the workbench's two ObjectView
+   selection panels, and open the **Commons depictions** tab. One Commons run accepts at
+   most 20 exact QIDs; a larger selection disables Fetch and says how many to remove.
 5. Choose the visible maximum number of Commons files per QID (20 by default).
 6. Press **Fetch N selected entities**. The action states the selected-instance and distinct
    QID counts, the per-QID cap, the maximum file count before duplicates are merged, and
@@ -83,7 +84,8 @@ file, rather than a file/subject pair, as the identity-bearing concept.
 DomainCatalog / DomainNavigator       saved-project discovery and explicit loading
 DomainModel / TransformController     class membership and rendered field schemas
 BoundedInstanceSelection              class, random sample and explicit add/remove of
-                                      exact instances, shared with Wikipedia Discovery
+                                      exact instances, held once by the Discovery
+                                      workbench and read by every source tab
 BatchExecutor                         adaptive complete QID batches
 SwingQuerySession                     execution, cancellation and structured query logs
 WikidataSparqlClient                  SPARQL transport pointed at the Commons endpoint

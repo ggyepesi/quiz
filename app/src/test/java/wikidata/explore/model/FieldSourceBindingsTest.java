@@ -57,6 +57,62 @@ class FieldSourceBindingsTest {
                 FieldSourceBindings.binding(field, SourceBindingSlot.FALLBACK_FIELD_VALUE));
     }
 
+    /**
+     * A registry operation with no source type of its own is configured by its binding
+     * alone. Synchronization derives the primary slot from the mapping, so it must keep
+     * that binding while the type says DATASOURCE and drop it once another type is
+     * chosen — otherwise a field would carry two primary sources.
+     */
+    @Test void aDatasourceOperationBindingIsTheFieldsConfigurationUntilAnotherTypeIsChosen() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel field = model.rootClass().fields().getFirst();
+        SourceBinding views = new SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "locations", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikimedia-pageviews", "article-views",
+                        java.util.Map.of("months", "6")));
+
+        FieldSourceBindings.put(field, views);
+        FieldSourceBindings.synchronizeForSave(model);
+
+        assertEquals(FieldSourceType.DATASOURCE, field.mapping().sourceType());
+        assertEquals(views, FieldSourceBindings.binding(
+                field, SourceBindingSlot.PRIMARY_FIELD_VALUE));
+
+        field.mapping().sourceType(FieldSourceType.SPARQL);
+        field.mapping().propertyPid("");
+        FieldSourceBindings.synchronizeForSave(model);
+
+        assertEquals(null, FieldSourceBindings.binding(
+                field, SourceBindingSlot.PRIMARY_FIELD_VALUE));
+    }
+
+    @Test void aStoredDatasourceOperationBindingSaysDatasourceOnLoad() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel field = model.rootClass().fields().getFirst();
+        field.mapping().sourceType(FieldSourceType.SPARQL);
+        field.sourceBindings().add(new SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "locations", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikimedia-pageviews", "article-views",
+                        java.util.Map.of())));
+
+        FieldSourceBindings.migrateOnLoad(model);
+
+        assertEquals(FieldSourceType.DATASOURCE, field.mapping().sourceType());
+        assertEquals("article-views", FieldSourceBindings.binding(
+                field, SourceBindingSlot.PRIMARY_FIELD_VALUE).recipe().operationId());
+    }
+
+    @Test void onlyOperationsWithoutASourceTypeAreRegistryOnly() {
+        assertTrue(FieldSourceBindings.registryOnly(new datasource.api.SourceRecipe(
+                "wikimedia-pageviews", "article-views", java.util.Map.of())));
+        assertFalse(FieldSourceBindings.registryOnly(new datasource.api.SourceRecipe(
+                "dbpedia", "property", java.util.Map.of())));
+        assertFalse(FieldSourceBindings.registryOnly(new datasource.api.SourceRecipe(
+                "wikidata", "sitelink-count", java.util.Map.of())));
+    }
+
     @Test void anExternalPrimaryResolvesToItsActualProvider() {
         GeneratedProjectModel model = model();
         GeneratedFieldModel field = model.rootClass().fields().getFirst();

@@ -27,10 +27,19 @@ public final class StandardExternalSourceFamilies {
                 .build();
     }
 
+    /** The configured families, by name, for a phase that says what it is about to read. */
+    public static String describe(datasource.api.SourceExecutionPlan plan) {
+        List<String> names = create().families().stream()
+                .filter(family -> family.configured(plan))
+                .map(ExternalSourceFamily::displayName).toList();
+        return names.isEmpty() ? "no external field sources are configured"
+                : String.join(", ", names);
+    }
+
     public static ExternalSourceFamilyRegistry create() {
         return new ExternalSourceFamilyRegistry(List.of(
                 new WikidataComputed(), new Dbpedia(), new Categories(),
-                new ArticleIntroductions(), new Infobox()));
+                new ArticleIntroductions(), new Infobox(), new Pageviews()));
     }
 
     private record WikidataComputed() implements ExternalSourceFamily {
@@ -171,6 +180,32 @@ public final class StandardExternalSourceFamilies {
                             context.cancellation(), client, context.plan());
             return new Outcome(id(), result.values(),
                     result.values() + " article text value(s)", summaryOrder());
+        }
+    }
+
+    private record Pageviews() implements ExternalSourceFamily {
+        @Override public String id() {
+            return datasource.pageviews.PageviewsDatasourceProvider.FAMILY_FIELD;
+        }
+        @Override public String displayName() { return "Wikimedia Pageviews"; }
+        @Override public int summaryOrder() { return 40; }
+        @Override public boolean configured(datasource.api.SourceExecutionPlan plan) {
+            return plan != null && plan.acquires(id());
+        }
+        @Override public Outcome empty() {
+            return new Outcome(id(), 0, "0 pageview value(s)", summaryOrder());
+        }
+        @Override public Outcome acquire(Context context) throws Exception {
+            // The article comes from the entity's Wikipedia correspondence, which the
+            // Wikidata entity client resolves when it was not retained.
+            wikidata.api.WikidataApiClient client = context.services().find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.api.WikidataApiClient.class).orElse(null);
+            PageviewsFieldAcquisition.Result result = PageviewsFieldAcquisition.apply(
+                    context.model(), context.pool(), context.log(),
+                    context.cancellation(), client, context.plan());
+            return new Outcome(id(), result.values(),
+                    result.values() + " pageview value(s)", summaryOrder());
         }
     }
 }

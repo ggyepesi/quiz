@@ -34,16 +34,17 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
             ra.type("EgyptianDeity");
             ra.enwikiTitle("Ra");
-            var initial = new WikipediaDiscoveryPanel.InitialSelection(
+            var initial = new discovery.DiscoveryWorkbench.InitialSelection(
                     "EgyptianDeity", List.of(maat, ra),
                     "TransformApp — symbol missing");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+            discovery.DiscoveryWorkbench workbench = new discovery.DiscoveryWorkbench(
                     domain(List.of(maat, ra), List.of("EgyptianDeity")), initial);
+            WikipediaDiscoveryPanel panel = workbench.wikipedia();
             try {
                 JTabbedPane sources = field(field(panel, "selection", Object.class), "tabs", JTabbedPane.class);
                 SearchableView selected = field(field(panel, "selection", Object.class), "selectedView", SearchableView.class);
                 JButton fetch = field(panel, "fetch", JButton.class);
-                JLabel status = field(panel, "sourceStatus", JLabel.class);
+                JLabel status = field(workbench, "selectionStatus", JLabel.class);
 
                 assertEquals(1, sources.getSelectedIndex(),
                         "the handed-over selection, not the whole class, is in front");
@@ -53,9 +54,9 @@ class WikipediaDiscoveryPanelTest {
                 assertTrue(fetch.isEnabled());
                 assertTrue(status.getText().contains("Received exactly 2 selected"));
                 assertTrue(status.getText().contains("TransformApp — symbol missing"));
-                assertTrue(status.getText().contains("No article has been fetched"));
+                assertTrue(status.getText().contains("Nothing has been requested"));
             } finally {
-                panel.close();
+                workbench.close();
             }
         });
     }
@@ -65,7 +66,7 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
             maat.type("EgyptianDeity");
             maat.enwikiTitle("Maat");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain(maat));
+            WikipediaDiscoveryPanel panel = panel(domain(maat));
             try {
                 JTabbedPane results = field(panel, "resultTabs", JTabbedPane.class);
                 assertEquals(List.of("Structural groups — 0", "Articles — 0", "Sections — 0",
@@ -87,7 +88,7 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject maat = new WikidataDynamicObject("Q170471", "Maat");
             maat.type("EgyptianDeity");
             maat.enwikiTitle("Maat");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain(maat));
+            WikipediaDiscoveryPanel panel = panel(domain(maat));
             try {
                 SearchableView instances = field(field(panel, "selection", Object.class), "instancesView", SearchableView.class);
                 JButton add = field(field(panel, "selection", Object.class), "addSelection", JButton.class);
@@ -122,7 +123,7 @@ class WikipediaDiscoveryPanelTest {
             maat.type("EgyptianDeity");
             maat.enwikiTitle("Maat");
             BackedDomain domain = new BackedDomain(maat);
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain);
+            WikipediaDiscoveryPanel panel = panel(domain);
             try {
                 var observed = new WikipediaDiscoveryRows.InfoboxPattern(
                         "Rendered.Parents", 8, 12, List.of());
@@ -247,7 +248,7 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject achilles = new WikidataDynamicObject("Q41746", "Achilles");
             achilles.type("Character");
             achilles.enwikiTitle("Achilles");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+            WikipediaDiscoveryPanel panel = panel(
                     domain(List.of(maat, achilles), List.of("EgyptianDeity", "Character")));
             try {
                 var observed = new WikipediaDiscoveryRows.InfoboxPattern(
@@ -284,7 +285,7 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
             ra.type("EgyptianDeity");
             ra.enwikiTitle("Ra");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+            WikipediaDiscoveryPanel panel = panel(
                     domain(List.of(maat, ra), List.of("EgyptianDeity")));
             try {
                 var animals = new WikipediaDiscoveryRows.SectionPattern(
@@ -350,7 +351,7 @@ class WikipediaDiscoveryPanelTest {
             WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
             ra.type("EgyptianDeity");
             ra.enwikiTitle("Ra");
-            WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(
+            WikipediaDiscoveryPanel panel = panel(
                     domain(List.of(maat, ra), List.of("EgyptianDeity")));
             try {
                 String path = "Iconography › Animals";
@@ -448,6 +449,11 @@ class WikipediaDiscoveryPanelTest {
                 return PromotionPreview.ineligible("not used");
             }
         };
+    }
+
+    /** The Wikipedia tab, built the one way it exists: inside the Discovery workbench. */
+    private static WikipediaDiscoveryPanel panel(DomainModel domain) {
+        return new discovery.DiscoveryWorkbench(domain, null).wikipedia();
     }
 
     private static <T> T field(Object owner, String name, Class<T> type) {

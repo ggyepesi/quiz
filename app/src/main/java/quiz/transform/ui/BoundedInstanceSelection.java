@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * The explicit, bounded instance selection every source-discovery workbench starts from:
- * a class, a random starting sample, and ObjectView panels to add and remove exact
- * instances. Only the eligibility rule (an article correspondence, a QID) and the run
- * bound differ between workbenches; selecting never starts a request.
+ * The explicit, bounded instance selection source discovery starts from: a class, a
+ * random starting sample, and ObjectView panels to add and remove exact instances. The
+ * Discovery workbench holds one, and every source tab registers as a {@link Host} and
+ * reads that same selection; selecting never starts a request.
  *
  * <p>This was written out once per workbench. Two copies already disagreed on the
  * identity of a selected instance and on whether another view could hand a selection
@@ -26,14 +26,27 @@ public final class BoundedInstanceSelection {
     public interface Host {
         /** The previous results no longer describe the selection. */
         void selectionChanged(String reason);
-        /** Describe the current selection state to the user. */
-        void status(String text);
+        /** Describe the current selection state to the user. Shown once, by whoever
+         *  shows the selection; a source tab describes only its own work. */
+        default void status(String text) { }
         /** Re-evaluate the owner's actions; selection controls update themselves. */
         void updateActions();
     }
 
     private final TransformController domain;
-    private final Host host;
+    /** Every source that runs over this selection; each keeps its own results. */
+    private final List<Host> hosts = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final Host host = new Host() {
+        @Override public void selectionChanged(String reason) {
+            hosts.forEach(value -> value.selectionChanged(reason));
+        }
+        @Override public void status(String text) {
+            hosts.forEach(value -> value.status(text));
+        }
+        @Override public void updateActions() {
+            hosts.forEach(Host::updateActions);
+        }
+    };
     private final int maximum;
     private final String selectedNoun;
     private final Predicate<WikidataDynamicObject> eligible;
@@ -54,7 +67,8 @@ public final class BoundedInstanceSelection {
     private List<WikidataDynamicObject> selectedInSample = List.of();
     private SearchableView instancesView;
     private SearchableView selectedView;
-    private boolean running;
+    /** The sources whose work over the selection is running now. */
+    private final java.util.Set<Object> running = new java.util.HashSet<>();
 
     /**
      * @param selectedNoun what one run reads per selected instance, plural ("articles")
@@ -65,7 +79,7 @@ public final class BoundedInstanceSelection {
             int defaultSample, String selectedNoun,
             Predicate<WikidataDynamicObject> eligible, String eligibility) {
         this.domain = java.util.Objects.requireNonNull(domain);
-        this.host = java.util.Objects.requireNonNull(host);
+        this.hosts.add(java.util.Objects.requireNonNull(host));
         this.maximum = maximum;
         this.selectedNoun = selectedNoun;
         this.eligible = java.util.Objects.requireNonNull(eligible);
@@ -143,7 +157,7 @@ public final class BoundedInstanceSelection {
      * them over. Returns how many were not eligible members and were left out. An
      * oversized hand-over is kept whole so the user reduces it explicitly.
      */
-    public int seed(List<WikidataDynamicObject> instances) {
+    public int seed(List<WikidataDynamicObject> instances, String reason) {
         java.util.Map<WikidataDynamicObject, WikidataDynamicObject> available =
                 new LinkedHashMap<>();
         classMembers.forEach(value -> available.putIfAbsent(value, value));
@@ -157,15 +171,26 @@ public final class BoundedInstanceSelection {
         selectedInSample = List.of();
         rebuildSelectedView();
         tabs.setSelectedIndex(1);
+        host.selectionChanged(reason);
         updateControls();
+        host.updateActions();
         return omitted;
     }
 
-    /** Disables selection edits while the owner runs work over the selection. */
-    public void setRunning(boolean running) {
-        this.running = running;
+    /** Another source that runs over this same selection. */
+    public void addHost(Host another) {
+        hosts.add(java.util.Objects.requireNonNull(another));
+    }
+
+    /** Disables selection edits while any source runs work over the selection; one
+     *  source finishing does not re-enable them under another that is still running. */
+    public void setRunning(Object source, boolean running) {
+        if (running) this.running.add(source);
+        else this.running.remove(source);
         updateControls();
     }
+
+    public int maximum() { return maximum; }
 
     /** An ObjectView of instances of {@code className}, rendered with its schema. */
     public SearchableView instanceView(List<? extends Viewable> values, String className,
@@ -288,12 +313,13 @@ public final class BoundedInstanceSelection {
 
     private void updateControls() {
         boolean hasType = className() != null && !classMembers.isEmpty();
-        type.setEnabled(!running && type.getItemCount() > 0);
-        sampleSize.setEnabled(!running && hasType);
-        randomSample.setEnabled(!running && hasType);
-        addSelection.setEnabled(!running && !selectedInClass.isEmpty()
+        boolean idle = running.isEmpty();
+        type.setEnabled(idle && type.getItemCount() > 0);
+        sampleSize.setEnabled(idle && hasType);
+        randomSample.setEnabled(idle && hasType);
+        addSelection.setEnabled(idle && !selectedInClass.isEmpty()
                 && selected.size() < maximum);
-        removeSelection.setEnabled(!running && !selectedInSample.isEmpty());
+        removeSelection.setEnabled(idle && !selectedInSample.isEmpty());
     }
 
     private static void replace(JPanel holder, JComponent view) {

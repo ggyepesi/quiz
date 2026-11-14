@@ -425,6 +425,35 @@ class FieldSourcePanelRowsTest {
         assertTrue(!shown.contains("Reify role:"), shown.toString());
     }
 
+    /**
+     * One Apply writes the field's type and its source together, so the source is checked
+     * against the type being applied. It was checked against the stored type, which
+     * refused Pageviews on a String field being turned into a Number in the same Apply.
+     */
+    @Test void aDatasourceOperationIsCheckedAgainstTheTypeAppliedWithIt() {
+        GeneratedFieldModel views = field("views", FieldType.STRING,
+                FieldProductionKind.AUTO, "");
+        FieldSourcePanel panel = editing(views);
+        selectLabel(comboContaining(panel, FieldSourceType.DATASOURCE),
+                FieldSourceType.DATASOURCE.toString());
+        selectLabel(comboContainingLabel(panel,
+                        "Wikimedia Pageviews — English Wikipedia article views"),
+                "Wikimedia Pageviews — English Wikipedia article views");
+
+        button(panel, "Apply field source").doClick();
+        assertEquals(null, wikidata.explore.model.FieldSourceBindings.binding(views,
+                datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                "a String field still refuses a number source");
+
+        selectLabel(comboContaining(panel, FieldType.NUMBER), FieldType.NUMBER.toString());
+        button(panel, "Apply field source").doClick();
+        assertEquals(FieldType.NUMBER, views.type());
+        assertEquals(datasource.pageviews.PageviewsDatasourceProvider.ARTICLE_VIEWS,
+                wikidata.explore.model.FieldSourceBindings.binding(views,
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE)
+                        .recipe().operationId());
+    }
+
     private static GeneratedFieldModel field(
             String name, FieldType type, FieldProductionKind kind, String target) {
         GeneratedProjectModel project = new GeneratedProjectModel();

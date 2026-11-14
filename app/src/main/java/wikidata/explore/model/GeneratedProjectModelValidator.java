@@ -39,6 +39,13 @@ public final class GeneratedProjectModelValidator {
         validateTransformations(project, problems);
         validateTransformationBuildSteps(project, problems);
         validateDependencyCycles(project, problems);
+        FieldSourceBindings.datasourceConfigurationProblems(project).forEach(problem ->
+                problems.add(Problem.error(problem.location(), problem.message())));
+        // A warning, not an error: errors refuse Save model, and a half-finished edit
+        // must stay savable. Generate refuses the same mismatch when it compiles the plan.
+        FieldSourceCompatibility.problems(project, datasource.Datasources.standard())
+                .forEach(problem -> problems.add(
+                        Problem.warning(problem.location(), problem.message())));
 
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) {

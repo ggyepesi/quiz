@@ -34,6 +34,14 @@ public interface FailureClassifier {
                 if (t instanceof ResponseInterruptedException) {
                     return FailureDecision.of(BatchFailure.TRANSIENT);
                 }
+                // The shared HTTP path has already spent its own retries; a status that
+                // escapes it is still worth the executor's budget only when the server
+                // may answer differently later.
+                if (t instanceof objectview.utils.UrlOpener.HttpStatusException http) {
+                    int status = http.status();
+                    return FailureDecision.of(status == 429 || status >= 500
+                            ? BatchFailure.UNAVAILABLE : BatchFailure.FATAL);
+                }
                 if (t instanceof IOException) {
                     return FailureDecision.of(BatchFailure.UNAVAILABLE);
                 }

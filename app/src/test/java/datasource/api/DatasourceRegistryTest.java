@@ -68,7 +68,7 @@ class DatasourceRegistryTest {
         assertTrue(datasource.Datasources.standard()
                         != datasource.Datasources.standard(),
                 "each caller is composed for, not served from a global");
-        assertEquals(3, datasource.Datasources.standard().providers().size(),
+        assertEquals(4, datasource.Datasources.standard().providers().size(),
                 "the application composes every shipped provider");
     }
 }

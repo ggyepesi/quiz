@@ -15,13 +15,19 @@ public enum FieldSourceType {
     WIKIPEDIA_CATEGORY,
     WIKIPROJECT,
     COMMONS,
+    /**
+     * A registered datasource operation that has no constant of its own here. The field's
+     * stored source binding is the whole configuration; this constant only says to read
+     * it. A new provider joins through the registry and never adds a constant.
+     */
+    DATASOURCE,
     MANUAL;
 
     public boolean implementedNow() {
         return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX
                 || wikipediaArticleText()
                 || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
-                || this == WIKIDATA_INHERITED_INCOMING_COUNT;
+                || this == WIKIDATA_INHERITED_INCOMING_COUNT || this == DATASOURCE;
     }
 
     /**
@@ -38,12 +44,12 @@ public enum FieldSourceType {
         return this == DBPEDIA || this == WIKIPEDIA_INFOBOX
                 || wikipediaArticleText()
                 || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
-                || this == WIKIDATA_INHERITED_INCOMING_COUNT;
+                || this == WIKIDATA_INHERITED_INCOMING_COUNT || this == DATASOURCE;
     }
 
     /** Whether this source asks the modeller to name a property/parameter. */
     public boolean usesPropertyInput() {
-        return !wikipediaArticleText();
+        return !wikipediaArticleText() && this != DATASOURCE;
     }
 
     /** Whether the field editor can inspect samples and offer property choices. */
@@ -76,6 +82,7 @@ public enum FieldSourceType {
             case WIKIPEDIA_CATEGORY -> "Wikipedia category";
             case WIKIPROJECT -> "WikiProject";
             case COMMONS -> "Commons";
+            case DATASOURCE -> "Datasource operation";
             case MANUAL -> "Manual";
         };
     }

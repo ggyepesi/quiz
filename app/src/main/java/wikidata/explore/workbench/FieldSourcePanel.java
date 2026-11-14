@@ -216,6 +216,13 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<FieldSourceType> sourceTypeBox =
             new JComboBox<>(FieldSourceType.values());
     private final JComboBox<SourceContext> sourceContextBox = new JComboBox<>();
+    // Operations no source type above names; the registry declares them and their inputs.
+    private final datasource.api.DatasourceRegistry datasources =
+            datasource.Datasources.standard();
+    private final workbench.DatasourceOperationForm datasourceOperationForm =
+            new workbench.DatasourceOperationForm(datasources,
+                    wikidata.explore.model.FieldSourceBindings::registryOnly);
+    private FormRow datasourceOperationRow;
     private final JButton clearSourceOverrideButton =
             new JButton("Use shared default");
     private boolean updatingSourceContext;
@@ -759,6 +766,9 @@ public class FieldSourcePanel extends JPanel {
         if (mapping == null) mapping = field == null ? null : field.mapping();
         if (mapping == null) return;
         sourceTypeBox.setSelectedItem(mapping.sourceType());
+        datasourceOperationForm.show(storedDatasourceRecipe());
+        applicable(datasourceOperationRow,
+                mapping.sourceType() == FieldSourceType.DATASOURCE);
         directionBox.setSelectedItem(mapping.direction());
         propertyPidField.setText(mapping.propertyPid());
         qualifierPidField.setText(mapping.qualifierPid());
@@ -790,6 +800,52 @@ public class FieldSourcePanel extends JPanel {
         Object selected = sourceContextBox.getSelectedItem();
         return selected instanceof SourceContext context ? context
                 : new SourceContext("Shared default", null);
+    }
+
+    /** The registry-only operation stored in the primary slot at the selected site. */
+    private datasource.api.SourceRecipe storedDatasourceRecipe() {
+        if (field == null) return null;
+        OwnedFieldSource override = activeOverride(false);
+        List<datasource.api.SourceBinding> bindings = override == null
+                ? field.sourceBindings() : override.sourceBindings();
+        return bindings.stream()
+                .filter(binding -> binding.target().slot()
+                        == datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE)
+                .map(datasource.api.SourceBinding::recipe)
+                .filter(wikidata.explore.model.FieldSourceBindings::registryOnly)
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * The chosen operation bound to this field at the selected site, after the operation
+     * itself has accepted it. Refuses with the operation's own reason.
+     */
+    private datasource.api.SourceBinding editedDatasourceBinding() {
+        datasource.api.SourceRecipe recipe = datasourceOperationForm.recipe();
+        if (recipe == null) {
+            throw new IllegalArgumentException("choose a datasource operation");
+        }
+        GeneratedClassModel owner = ownerClass();
+        if (owner == null) throw new IllegalArgumentException("the field has no class");
+        OwnedComponentSite site = selectedSourceSite();
+        String path = componentFieldPath();
+        datasource.api.SourceBindingTarget target = site == null
+                ? datasource.api.SourceBindingTarget.fieldValue(owner.className(), path,
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE)
+                : datasource.api.SourceBindingTarget.ownedFieldValue(site.targetClass(),
+                        path, site.ownerClass(), site.ownerField(),
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        datasource.api.SourceBinding binding =
+                new datasource.api.SourceBinding(target, recipe);
+        datasource.api.DatasourceOperation operation = recipe.resolve(
+                datasources, datasource.api.BindingScope.FIELD_VALUE);
+        // Against the shape being applied with it, not the stored one: Apply writes both.
+        FieldCardinality shape = (FieldCardinality) shapeBox.getSelectedItem();
+        wikidata.explore.model.FieldSourceCompatibility.requireCompatible(binding, operation,
+                (FieldType) typeBox.getSelectedItem(),
+                shape != null && shape.isCollection());
+        operation.prepare(binding);
+        return binding;
     }
 
     public OwnedComponentSite selectedSourceSite() {
@@ -1004,6 +1060,9 @@ public class FieldSourcePanel extends JPanel {
     private boolean sourceEditorDiffers(FieldSourceMapping mapping) {
         if (mapping == null) return false;
         return mapping.sourceType() != sourceTypeBox.getSelectedItem()
+                || sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE
+                        && !java.util.Objects.equals(storedDatasourceRecipe(),
+                                datasourceOperationForm.recipe())
                 || !mapping.propertyPid().equals(propertyPidField.getText().trim())
                 || !mapping.qualifierPid().equals(
                         RuleNode.cleanPid(qualifierPidField.getText()))
@@ -1185,6 +1244,9 @@ public class FieldSourcePanel extends JPanel {
         sourceContextRow = FormRow.add(
                 form, c, y++, "Source applies to:", sourceContextPanel);
         GridBagUtils.labeledRow(form, c, y++, "From:", sourceTypeBox);
+        datasourceOperationRow = FormRow.add(
+                form, c, y++, "Operation:", datasourceOperationForm);
+        applicable(datasourceOperationRow, false);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propRow.add(propertyPidField);
@@ -1365,7 +1427,10 @@ public class FieldSourcePanel extends JPanel {
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
+        datasourceOperationForm.onChange(this::updateRecommendation);
         sourceTypeBox.addActionListener(e -> {
+            applicable(datasourceOperationRow,
+                    sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE);
             updateRecommendation();
             refreshGraphExpansionControl();
         });
@@ -1475,6 +1540,17 @@ public class FieldSourcePanel extends JPanel {
         if (field == null) {
             return;
         }
+        // Checked before anything is written, so a recipe the operation refuses leaves
+        // the model as it was and says why.
+        datasource.api.SourceBinding datasourceBinding = null;
+        if (sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE) {
+            try {
+                datasourceBinding = editedDatasourceBinding();
+            } catch (IllegalArgumentException refused) {
+                applyStatusLabel.setText("✗ Not applied: " + refused.getMessage());
+                return;
+            }
+        }
 
         GeneratedClassModel owner = ownerClass();
         // Nothing here reads or rewrites the owning class's identity. It used to: the
@@ -1505,6 +1581,15 @@ public class FieldSourcePanel extends JPanel {
             source.qualifierDateMode(
                     (QualifierDateMode) qualifierDateModeBox.getSelectedItem());
             source.direction((RuleDirection) directionBox.getSelectedItem());
+            if (datasourceBinding != null) {
+                OwnedFieldSource override = activeOverride(false);
+                if (override == null) {
+                    wikidata.explore.model.FieldSourceBindings.put(field, datasourceBinding);
+                } else {
+                    wikidata.explore.model.FieldSourceBindings.put(
+                            override, datasourceBinding);
+                }
+            }
         }
         Object pk = productionBox.getSelectedItem();
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
@@ -2050,6 +2135,20 @@ public class FieldSourcePanel extends JPanel {
         if (sourceType != null && !sourceType.implementedNow()) {
             recommendationLabel.setText(
                     "Source: " + sourceType + " | Not yet implemented");
+            return;
+        }
+
+        if (sourceType == FieldSourceType.DATASOURCE) {
+            String description;
+            try {
+                datasource.api.SourceBinding binding = editedDatasourceBinding();
+                description = binding.recipe().resolve(datasources).prepare(binding)
+                        .description();
+            } catch (RuntimeException refused) {
+                description = "not accepted — " + refused.getMessage();
+            }
+            recommendationLabel.setText("Datasource operation: " + description
+                    + ". Read after extraction; the Property field is not used.");
             return;
         }
 

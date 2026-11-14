@@ -7,7 +7,8 @@ Wikipedia Discovery answers the question that comes before field configuration:
 > What repeated, inspectable source structure exists across these selected articles,
 > and what exact examples support it?
 
-It is a read-only source workbench. It does not infer domain facts, add fields, edit the
+It is the read-only **Wikipedia articles** tab of the Discovery workbench
+(`docs/discovery-workbench.md`). It does not infer domain facts, add fields, edit the
 model, or create instances. A promising result may later be promoted explicitly to an
 ordinary datasource recipe; the discovery application is not a second extraction path.
 
@@ -30,10 +31,14 @@ read from that response, so they always describe the same revision (#461).
 
 ## First bounded workflow
 
-1. Open one saved project through the shared domain chooser.
-2. Choose a class whose loaded instances have English-Wikipedia correspondence.
+1. Run `discovery.DiscoveryApp` and open one saved project through the shared domain
+   chooser, or press TransformApp's Wikipedia discovery action, which hands over its
+   selected instances and opens this tab.
+2. Choose a class whose loaded instances have Wikidata QIDs.
 3. Start with a random selection of at most 50 instances.
-4. Add or remove instances through the ObjectView instance panels.
+4. Add or remove instances through the workbench's ObjectView instance panels. Selected
+   instances without an English Wikipedia article correspondence are counted and not
+   read.
 5. Either analyze the structured articles already retained in the snapshot or explicitly
    fetch exactly the selected articles and their infoboxes.
 6. Inspect ObjectView result tabs for:

@@ -199,6 +199,14 @@ public final class ModelExplanationFactory {
             RuleDirection direction) {
         String entity = "?" + variable(clazz.className());
         String value = "?" + variable(field.name());
+        if (source.sourceType() == FieldSourceType.DATASOURCE) {
+            datasource.api.SourceBinding binding = wikidata.explore.model.FieldSourceBindings
+                    .binding(field, datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE);
+            return binding == null
+                    ? entity + " → " + value + " (datasource operation not chosen)"
+                    : entity + " → " + value + " (" + binding.recipe().providerId() + " "
+                            + binding.recipe().operationId() + ")";
+        }
         if (source.sourceType().wikipediaArticleText()) {
             return entity + " enwiki " + switch (source.sourceType()) {
                 case WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH -> "lead paragraph";

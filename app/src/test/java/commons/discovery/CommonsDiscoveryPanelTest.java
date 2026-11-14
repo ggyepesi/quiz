@@ -25,7 +25,7 @@ class CommonsDiscoveryPanelTest {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = entity("Q170471", "Maat", "EgyptianDeity");
             WikidataDynamicObject ra = entity("Q2831", "Ra", "EgyptianDeity");
-            CommonsDiscoveryPanel panel = new CommonsDiscoveryPanel(
+            CommonsDiscoveryPanel panel = panel(
                     domain(List.of(maat, ra), List.of("EgyptianDeity")));
             try {
                 JButton fetch = field(panel, "fetch", JButton.class);
@@ -54,7 +54,7 @@ class CommonsDiscoveryPanelTest {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = entity("Q170471", "Maat", "EgyptianDeity");
             WikidataDynamicObject local = entity("local-id", "Local", "LocalNote");
-            CommonsDiscoveryPanel panel = new CommonsDiscoveryPanel(domain(
+            CommonsDiscoveryPanel panel = panel(domain(
                     List.of(maat, local), List.of("EgyptianDeity", "LocalNote")));
             try {
                 JComboBox<?> types = field(field(panel, "selection", Object.class), "type", JComboBox.class);
@@ -156,6 +156,11 @@ class CommonsDiscoveryPanelTest {
         assertEquals(List.of("color: black (P462, Q23445) — 1 file(s)"),
                 qualifiers.getChildren().stream()
                         .map(objectview.Viewable::getDisplayName).toList());
+    }
+
+    /** The Commons tab, built the one way it exists: inside the Discovery workbench. */
+    private static CommonsDiscoveryPanel panel(DomainModel domain) {
+        return new discovery.DiscoveryWorkbench(domain, null).commons();
     }
 
     private static <T> T field(Object owner, String name, Class<T> type) {

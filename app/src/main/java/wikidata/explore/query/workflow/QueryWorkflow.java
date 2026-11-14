@@ -65,10 +65,15 @@ public class QueryWorkflow<R> {
             throw e;
         }
 
-        recorder.finish(
-                QueryStatus.OK,
-                query.summary(result),
-                null);
+        QueryStatus status = query.status(result);
+        if (status == null || status == QueryStatus.RUNNING
+                || status == QueryStatus.FAILED || status == QueryStatus.CANCELLED) {
+            IllegalStateException invalid = new IllegalStateException(
+                    "A returned query result must finish as OK or PARTIAL");
+            recorder.finish(QueryStatus.FAILED, null, invalid.getMessage());
+            throw invalid;
+        }
+        recorder.finish(status, query.summary(result), null);
 
         resultSink.accept(result);
         return result;

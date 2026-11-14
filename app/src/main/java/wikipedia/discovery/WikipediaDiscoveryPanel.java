@@ -29,17 +29,15 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.model.GeneratedFieldModel;
 
 /**
- * Source workbench over a saved domain. It selects a bounded set and compares their
- * retained or freshly fetched Wikipedia source documents. When that domain carries its
+ * The Wikipedia tab of the Discovery workbench. It compares the retained or freshly
+ * fetched Wikipedia source documents of the workbench's selected instances that have an
+ * English Wikipedia article correspondence. When that domain carries its
  * editable ModelBuilder project, an explicitly selected infobox result may propose a
  * field-source configuration in the working model; Save remains the one persistence
  * boundary.
  */
 public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseable {
-    private static final int DEFAULT_SAMPLE = 12;
-
     private final TransformController domain;
-    private final InitialSelection initialSelection;
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
     private final SwingQueryRunner runner = queries.runner();
 
@@ -66,33 +64,37 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private SearchableView infoboxView;
     private boolean closed;
 
-    public WikipediaDiscoveryPanel(DomainModel model) {
-        this(model, null);
-    }
-
-    /** The same workbench may start empty (the standalone app) or with the exact
-     *  instances explicitly selected in another domain-data view such as TransformApp. */
-    public WikipediaDiscoveryPanel(DomainModel model, InitialSelection initialSelection) {
+    public WikipediaDiscoveryPanel(TransformController domain,
+            BoundedInstanceSelection selection) {
         super(new BorderLayout(6, 6));
-        this.domain = new TransformController(model, new quiz.transform.app.DomainSaver());
-        this.initialSelection = initialSelection;
-        this.project = model.capability(ProjectBacking.class);
-        this.promoter = model.capability(FieldRulePromoter.class);
-        this.selection = new BoundedInstanceSelection(domain,
-                new BoundedInstanceSelection.Host() {
-                    @Override public void selectionChanged(String reason) {
-                        invalidateAnalysis(reason);
-                    }
-                    @Override public void status(String text) { sourceStatus.setText(text); }
-                    @Override public void updateActions() {
-                        WikipediaDiscoveryPanel.this.updateActions();
-                    }
-                }, WikipediaDiscoveryQuery.MAX_ARTICLES, DEFAULT_SAMPLE, "articles",
-                value -> !value.enwikiTitle().isBlank(),
-                "have an English Wikipedia article correspondence");
+        this.domain = java.util.Objects.requireNonNull(domain);
+        this.project = domain.domain().capability(ProjectBacking.class);
+        this.promoter = domain.domain().capability(FieldRulePromoter.class);
+        this.selection = java.util.Objects.requireNonNull(selection);
+        selection.addHost(new BoundedInstanceSelection.Host() {
+            @Override public void selectionChanged(String reason) {
+                invalidateAnalysis(reason);
+            }
+            @Override public void updateActions() {
+                WikipediaDiscoveryPanel.this.updateActions();
+            }
+        });
         build();
         wire();
-        populateTypes();
+        updateActions();
+    }
+
+    /** The selected instances this source can read: those with an English Wikipedia
+     *  article correspondence. The others are counted, never silently dropped. */
+    private List<WikidataDynamicObject> articles() {
+        return selection.selected().stream()
+                .filter(value -> !value.enwikiTitle().isBlank()).toList();
+    }
+
+    private String withoutArticles() {
+        int missing = selection.size() - articles().size();
+        return missing == 0 ? "" : " " + missing + " selected instance(s) have no English "
+                + "Wikipedia article correspondence and are not read.";
     }
 
     private void build() {
@@ -100,7 +102,6 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 : "Save " + project.projectKind().toString().toLowerCase() + "…");
         JPanel controls = new JPanel(new objectview.utils.swing.WrapLayout(
                 FlowLayout.LEFT, 6, 2));
-        selection.addControls(controls);
         controls.add(retained);
         controls.add(fetch);
         controls.add(cancel);
@@ -121,14 +122,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         results.add(resultTabs, BorderLayout.CENTER);
         emptyResults();
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                selection.tabs(), results);
-        split.setResizeWeight(0.42);
-        split.setContinuousLayout(true);
         north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
-        split.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
+        results.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         add(north, BorderLayout.NORTH);
-        add(split, BorderLayout.CENTER);
+        add(results, BorderLayout.CENTER);
     }
 
     private void wire() {
@@ -141,44 +138,14 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         runner.registerRunButton(fetch);
         runner.registerCancelButton(cancel);
         runner.onRunningChanged(running -> {
-            selection.setRunning(running);
+            selection.setRunning(this, running);
             updateActions();
             if (running) {
-                sourceStatus.setText("Fetching exactly " + selection.size()
+                sourceStatus.setText("Fetching exactly " + articles().size()
                         + " selected structured article(s), each with its infobox in the "
                         + "same request.");
             }
         });
-    }
-
-    private void populateTypes() {
-        String requested = initialSelection == null ? null : initialSelection.className();
-        if (!selection.populate(requested)) {
-            sourceStatus.setText("This project has no class instances with an English "
-                    + "Wikipedia article correspondence.");
-            updateActions();
-        } else if (requested != null && requested.equals(selection.className())) {
-            seedInitialSelection();
-        }
-    }
-
-    private void seedInitialSelection() {
-        int omitted = selection.seed(initialSelection.instances());
-        invalidateAnalysis("The selected articles came from "
-                + initialSelection.origin() + ". Analyze them to produce results.");
-        int selectedCount = selection.size();
-        String limit = selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES ? ""
-                : " Fetch is disabled until you remove at least "
-                        + (selectedCount - WikipediaDiscoveryQuery.MAX_ARTICLES)
-                        + " selection(s); one run is bounded to "
-                        + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles.";
-        sourceStatus.setText("Received exactly " + selectedCount + " selected "
-                + initialSelection.className() + " instance(s) from "
-                + initialSelection.origin() + ". No article has been fetched."
-                + (omitted == 0 ? "" : " " + omitted
-                        + " selected instance(s) had no usable English Wikipedia "
-                        + "correspondence in this class and were not added.") + limit);
-        updateActions();
     }
 
     private void showStructuralGroup(List<Object> chosen) {
@@ -196,7 +163,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private void addStructuralGroups(WikipediaStructureAnalysis.Result analysis) {
         structuralGroups.clear();
         DiscoveryGroup root = new DiscoveryGroup("All selected instances");
-        selection.selected().forEach(value -> root.addMember(value, false));
+        articles().forEach(value -> root.addMember(value, false));
         int count = 0;
         if (analysis != null) {
             count += addSectionFacet(root, analysis.sections(), analysis.contents(),
@@ -375,21 +342,22 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void analyzeRetained() {
         List<WikipediaDiscoveryQuery.Article> values = WikipediaDiscoveryQuery.retained(
-                selection.selected());
+                articles());
         showAnalysis(WikipediaStructureAnalysis.analyze(values), "retained");
     }
 
     private void fetchSelected() {
-        List<WikidataDynamicObject> values = selection.selected();
+        List<WikidataDynamicObject> values = articles();
         if (values.isEmpty()) return;
         sourceStatus.setText("Fetching exactly " + values.size()
                 + " selected structured article(s), each with its infobox in the "
-                + "same request.");
+                + "same request." + withoutArticles());
         runner.run(new WikipediaDiscoveryQuery(values), result -> SwingUtilities.invokeLater(() -> {
             showAnalysis(WikipediaStructureAnalysis.analyze(result), "fetched");
             sourceStatus.setText("Fetched and compared " + result.stream()
                     .filter(WikipediaDiscoveryQuery.Article::available).count() + " of "
-                    + result.size() + " selected article(s). Query logs contain every request.");
+                    + result.size() + " selected article(s). Query logs contain every request."
+                    + withoutArticles());
         }), failure -> SwingUtilities.invokeLater(() -> {
             String message = failure == null || failure.getMessage() == null
                     ? "Wikipedia discovery failed." : failure.getMessage();
@@ -765,14 +733,20 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void updateActions() {
         boolean running = runner.isRunning();
-        int selectedCount = selection == null ? 0 : selection.size();
+        int selectedCount = selection == null ? 0 : articles().size();
         boolean hasSelection = selectedCount > 0;
+        boolean bounded = selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES;
         retained.setEnabled(!running && hasSelection);
-        fetch.setEnabled(!running && hasSelection
-                && selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES);
+        fetch.setEnabled(!running && hasSelection && bounded);
         fetch.setText(running ? "Fetching selected articles…"
                 : "Fetch " + selectedCount + " selected article"
                         + (selectedCount == 1 ? "" : "s"));
+        fetch.setToolTipText(!hasSelection
+                ? "Select at least one instance with an English Wikipedia article."
+                : bounded ? null : "One run is bounded to "
+                        + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles; remove "
+                        + (selectedCount - WikipediaDiscoveryQuery.MAX_ARTICLES)
+                        + " from the selection.");
         boolean infoboxTab = resultTabs.getSelectedComponent() != null
                 && resultTabs.getSelectedComponent() == infoboxView;
         configureInfobox.setEnabled(!running && infoboxTab && selectedInfobox != null
@@ -831,57 +805,4 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             return new DiscoveryGroup(name);
         }
     }
-
-    /** Explicit handoff into the shared workbench. The source view supplies the logical
-     * class and instances; discovery never reconstructs that selection from names. */
-    public record InitialSelection(
-            String className, List<WikidataDynamicObject> instances, String origin) {
-        public InitialSelection {
-            className = className == null ? "" : className.trim();
-            instances = instances == null ? List.of()
-                    : instances.stream().filter(java.util.Objects::nonNull)
-                    .distinct().toList();
-            origin = origin == null || origin.isBlank() ? "the originating view"
-                    : origin.trim();
-        }
-    }
-
-    public static JFrame openFrame(DomainModel domain, String title) {
-        return openFrame(domain, title, null);
-    }
-
-    public static JFrame openFrame(
-            DomainModel domain, String title, InitialSelection initialSelection) {
-        return openWindow(domain, title, initialSelection, null).window();
-    }
-
-    /** One window lifecycle for both the standalone navigator and contextual callers.
-     *  {@code owner} is the workbench that owns the working model, or null when this
-     *  window owns it. An owned window's model edits stay pending in its owner, which
-     *  guards them, so closing it asks only about a running fetch: offering to "discard"
-     *  them here would name a loss that does not happen. */
-    public static OpenedWindow openWindow(
-            DomainModel domain, String title, InitialSelection initialSelection,
-            Component owner) {
-        JFrame frame = new JFrame("Wikipedia Discovery — " + title);
-        WikipediaDiscoveryPanel panel = new WikipediaDiscoveryPanel(domain, initialSelection);
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.add(panel);
-        frame.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent event) {
-                boolean close = owner == null ? panel.requestClose(frame)
-                        : panel.requestStopRun(frame);
-                if (close) frame.dispose();
-            }
-            @Override public void windowClosed(java.awt.event.WindowEvent event) {
-                panel.close();
-            }
-        });
-        frame.setSize(1650, 950);
-        frame.setLocationRelativeTo(owner);
-        frame.setVisible(true);
-        return new OpenedWindow(frame, panel);
-    }
-
-    public record OpenedWindow(JFrame window, WikipediaDiscoveryPanel workbench) { }
 }

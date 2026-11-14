@@ -335,6 +335,14 @@ public class ModelGraphPanel extends JPanel {
             return "union of " + String.join(", ",
                     field.mapping().unionSourcePaths());
         }
+        if (field.mapping().sourceType()
+                == wikidata.explore.model.FieldSourceType.DATASOURCE) {
+            datasource.api.SourceBinding binding =
+                    wikidata.explore.model.FieldSourceBindings.binding(field,
+                            datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE);
+            return binding == null ? "datasource (not chosen)"
+                    : binding.recipe().providerId() + ":" + binding.recipe().operationId();
+        }
         String source = switch (field.mapping().sourceType()) {
             case SPARQL -> "WD";
             case DBPEDIA -> "DB";
@@ -350,6 +358,7 @@ public class ModelGraphPanel extends JPanel {
             case WIKIPEDIA_CATEGORY -> "category";
             case WIKIPROJECT -> "project";
             case COMMONS -> "Commons";
+            case DATASOURCE -> "datasource";
             case MANUAL -> "manual";
         };
         String property = field.mapping().propertyPid().isBlank()

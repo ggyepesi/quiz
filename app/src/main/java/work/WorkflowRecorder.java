@@ -292,7 +292,8 @@ public class WorkflowRecorder {
 
         root.complete(
                 terminal,
-                withRequestCensus(terminal == LogStatus.OK ? summary : error),
+                withRequestCensus(terminal == LogStatus.OK || terminal == LogStatus.PARTIAL
+                        ? summary : error),
                 error);
         fireCompletion(root);
     }

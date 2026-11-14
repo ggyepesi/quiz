@@ -35,6 +35,7 @@ public enum LogStatus {
         return switch (status) {
             case RUNNING -> RUNNING;
             case OK -> OK;
+            case PARTIAL -> PARTIAL;
             case FAILED -> FAILED;
             case CANCELLED -> CANCELLED;
         };

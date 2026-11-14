@@ -24,7 +24,10 @@ public final class ModelSourceExecutionPlan {
         List<SourceBinding> bindings =
                 new ArrayList<>(ClassSourceBindings.synchronizeAndCollect(project));
         bindings.addAll(fields);
-        return SourceExecutionPlan.compile(bindings, registry);
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(bindings, registry);
+        FieldSourceCompatibility.requireCompatible(project, plan);
+        FieldSourceBindings.requireCompleteDatasourceMappings(project);
+        return plan;
     }
 
     /** Resolves bindings that have already been banked, without changing the model. */
@@ -32,7 +35,10 @@ public final class ModelSourceExecutionPlan {
             GeneratedProjectModel project, DatasourceRegistry registry) {
         List<SourceBinding> bindings = new ArrayList<>(ClassSourceBindings.collect(project));
         bindings.addAll(FieldSourceBindings.collect(project));
-        return SourceExecutionPlan.compile(bindings, registry);
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(bindings, registry);
+        FieldSourceCompatibility.requireCompatible(project, plan);
+        FieldSourceBindings.requireCompleteDatasourceMappings(project);
+        return plan;
     }
 
     /** Compatibility boundary for callers not yet explicit about banking edits. */

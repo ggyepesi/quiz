@@ -4,6 +4,7 @@ import datasource.api.DatasourceRegistry;
 import datasource.wikidata.WikidataDatasourceProvider;
 import datasource.wikipedia.WikipediaDatasourceProvider;
 import datasource.dbpedia.DbpediaDatasourceProvider;
+import datasource.pageviews.PageviewsDatasourceProvider;
 
 import java.util.List;
 
@@ -25,6 +26,7 @@ public final class Datasources {
         return new DatasourceRegistry(List.of(
                 new DbpediaDatasourceProvider(),
                 new WikipediaDatasourceProvider(),
-                new WikidataDatasourceProvider()));
+                new WikidataDatasourceProvider(),
+                new PageviewsDatasourceProvider()));
     }
 }

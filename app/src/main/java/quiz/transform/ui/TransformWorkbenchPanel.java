@@ -79,7 +79,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private JButton experimentFetchButton;
     private JButton experimentArticleFetchButton;
     private boolean experimentActive;
-    private wikipedia.discovery.WikipediaDiscoveryPanel.OpenedWindow wikipediaDiscovery;
+    private discovery.DiscoveryWorkbench.OpenedWindow wikipediaDiscovery;
     private JPanel instanceScopeHeader;
     private quiz.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
@@ -1237,10 +1237,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 && !project.projectName().isBlank() ? project.projectName()
                 : domainName == null || domainName.isBlank()
                         ? scope.selectedType() : domainName;
-        var initial = new wikipedia.discovery.WikipediaDiscoveryPanel.InitialSelection(
+        var initial = new discovery.DiscoveryWorkbench.InitialSelection(
                 scope.selectedType(), selection, source);
-        wikipediaDiscovery = wikipedia.discovery.WikipediaDiscoveryPanel.openWindow(
-                controller.domain(), title, initial, this);
+        wikipediaDiscovery = discovery.DiscoveryWorkbench.openWindow(
+                controller.domain(), title, initial, this,
+                discovery.DiscoveryWorkbench.Source.WIKIPEDIA);
         var opened = wikipediaDiscovery;
         opened.window().addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosed(java.awt.event.WindowEvent event) {

@@ -134,7 +134,7 @@ public final class FieldSourceBindings {
 
     private static void synchronize(
             String owner, String path, GeneratedFieldModel field) {
-        replace(field, SourceBindingSlot.PRIMARY_FIELD_VALUE,
+        replacePrimary(field.sourceBindings(), field.mapping(),
                 primary(owner, path, field.mapping()));
         replace(field, SourceBindingSlot.FALLBACK_FIELD_VALUE,
                 fallback(owner, path, field.fallbackMapping()));
@@ -166,7 +166,7 @@ public final class FieldSourceBindings {
             SourceBindingTarget categoryTarget = SourceBindingTarget.ownedFieldValue(
                     ownershipField.entityClassName(), override.fieldPath(), owner, path,
                     SourceBindingSlot.CATEGORY_EVIDENCE);
-            replace(override.sourceBindings(), SourceBindingSlot.PRIMARY_FIELD_VALUE,
+            replacePrimary(override.sourceBindings(), override.mapping(),
                     primary(primaryTarget, override.mapping()));
             replace(override.sourceBindings(), SourceBindingSlot.FALLBACK_FIELD_VALUE,
                     fallback(fallbackTarget, override.fallbackMapping()));
@@ -184,6 +184,8 @@ public final class FieldSourceBindings {
     private static SourceBinding primary(
             SourceBindingTarget target, FieldSourceMapping mapping) {
         if (mapping == null) return null;
+        // The stored binding IS the configuration; there is nothing to derive from.
+        if (mapping.sourceType() == FieldSourceType.DATASOURCE) return null;
         if (mapping.sourceType() == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
             return binding(target,
                     WikidataDatasourceProvider.ID, WikidataDatasourceProvider.SITELINK_COUNT,
@@ -287,6 +289,78 @@ public final class FieldSourceBindings {
         if (replacement != null) bindings.add(replacement);
     }
 
+    /**
+     * The primary slot follows the mapping's source type. A registry operation without a
+     * {@link FieldSourceType} of its own survives exactly while the type says
+     * {@link FieldSourceType#DATASOURCE}; choosing any other type replaces it, so a field
+     * never carries two primary sources.
+     */
+    private static void replacePrimary(List<SourceBinding> bindings,
+            FieldSourceMapping mapping, SourceBinding replacement) {
+        replace(bindings, SourceBindingSlot.PRIMARY_FIELD_VALUE, replacement);
+        if (mapping == null || mapping.sourceType() != FieldSourceType.DATASOURCE) {
+            bindings.removeIf(binding -> binding.target().slot()
+                    == SourceBindingSlot.PRIMARY_FIELD_VALUE
+                    && registryOnly(binding.recipe()));
+        }
+    }
+
+    /** Whether no {@link FieldSourceType} produces this recipe, so only the registry
+     *  describes it and the field editor offers it as a datasource operation. */
+    public static boolean registryOnly(SourceRecipe recipe) {
+        return recipe != null && SOURCE_TYPE_OPERATIONS.stream().noneMatch(operation ->
+                operation.provider().equals(recipe.providerId())
+                        && operation.operation().equals(recipe.operationId()));
+    }
+
+    /** A field that says "Datasource operation" is complete only with one chosen
+     * registry operation in its primary slot. The editor, validator and execution plan
+     * all ask this one rule. */
+    public static List<ConfigurationProblem> datasourceConfigurationProblems(
+            GeneratedProjectModel project) {
+        List<ConfigurationProblem> problems = new ArrayList<>();
+        visit(project, (owner, path, field) -> {
+            checkDatasourceMapping(owner + "." + path, field.mapping(),
+                    field.sourceBindings(), problems);
+            for (OwnedFieldSource override : field.ownedFieldSources()) {
+                if (override == null) continue;
+                checkDatasourceMapping(field.entityClassName() + "."
+                                + override.fieldPath() + " at " + owner + "." + path,
+                        override.mapping(), override.sourceBindings(), problems);
+            }
+        });
+        return List.copyOf(problems);
+    }
+
+    public static void requireCompleteDatasourceMappings(GeneratedProjectModel project) {
+        List<ConfigurationProblem> problems = datasourceConfigurationProblems(project);
+        if (problems.isEmpty()) return;
+        ConfigurationProblem first = problems.getFirst();
+        throw new IllegalArgumentException(first.location() + ": " + first.message());
+    }
+
+    private static void checkDatasourceMapping(String location, FieldSourceMapping mapping,
+            List<SourceBinding> bindings, List<ConfigurationProblem> problems) {
+        if (mapping == null || mapping.sourceType() != FieldSourceType.DATASOURCE) return;
+        long chosen = bindings.stream().filter(binding -> binding != null
+                        && binding.target().slot() == SourceBindingSlot.PRIMARY_FIELD_VALUE
+                        && registryOnly(binding.recipe()))
+                .count();
+        if (chosen != 1) {
+            problems.add(new ConfigurationProblem(location,
+                    "Datasource operation is selected as the load method, but "
+                            + (chosen == 0 ? "no operation is chosen."
+                            : chosen + " operations are chosen; exactly one is required.")));
+        }
+    }
+
+    public record ConfigurationProblem(String location, String message) { }
+
+    private static final List<ProviderOperation> SOURCE_TYPE_OPERATIONS =
+            java.util.Arrays.stream(FieldSourceType.values())
+                    .map(FieldSourceBindings::providerOperation)
+                    .filter(java.util.Objects::nonNull).distinct().toList();
+
     private static void projectLegacy(GeneratedFieldModel field, SourceBinding binding) {
         projectLegacy(field.mapping(), field::ensureFallbackMapping,
                 field::ensureWikipediaCategoryRule, binding);
@@ -303,6 +377,12 @@ public final class FieldSourceBindings {
             SourceBinding binding) {
         SourceBindingSlot slot = binding.target().slot();
         SourceRecipe recipe = binding.recipe();
+        if (slot == SourceBindingSlot.PRIMARY_FIELD_VALUE && registryOnly(recipe)) {
+            primary.sourceType(FieldSourceType.DATASOURCE);
+            primary.propertyPid("");
+            primary.propertyLabel("");
+            return;
+        }
         if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
             WikipediaCategoryRule projected = WikipediaCategoryRule.fromRecipe(binding);

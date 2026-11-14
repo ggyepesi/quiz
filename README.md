@@ -85,8 +85,7 @@ There is no packaged launcher yet; run the entry points from your IDE against th
 |---|---|
 | `wikidata.explore.workbench.ModelBuilderMain` | the modelling workbench |
 | `quiz.transform.app.TransformApp` | curation and transforms over a generated snapshot |
-| `wikipedia.discovery.WikipediaDiscoveryApp` | bounded, read-only comparison of Wikipedia article structure |
-| `commons.discovery.CommonsDiscoveryApp` | bounded, read-only discovery of Wikimedia Commons depiction scenes |
+| `discovery.DiscoveryApp` | bounded, read-only source discovery: Wikipedia article structure, Commons depiction scenes and Wikipedia pageviews over one instance selection |
 | `quiz.web.ViewableServerMain` | the API for the web client — port 7070, first argument overrides |
 
 The client is a separate process:

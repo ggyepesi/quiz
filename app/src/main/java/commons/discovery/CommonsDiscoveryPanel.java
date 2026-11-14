@@ -1,6 +1,5 @@
 package commons.discovery;
 
-import domain.DomainModel;
 import objectview.demo.MultiView;
 import objectview.group.DefaultViewableGroup;
 import objectview.group.ViewableGroup;
@@ -9,7 +8,6 @@ import objectview.view.SearchableView;
 import objectview.utils.swing.WrapLayout;
 import quiz.transform.ui.BoundedInstanceSelection;
 import quiz.transform.ui.TransformController;
-import wikidata.WikidataIds;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.query.swing.SwingQuerySession;
@@ -22,13 +20,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Read-only source workbench for Structured Data on Commons.  Selection is local and
- * explicit; inspecting a class never starts a request, and a completed discovery never
- * changes the loaded model or its saved snapshots.
+ * The Commons tab of the Discovery workbench: Structured Data on Commons for the
+ * workbench's explicit instance selection. Inspecting a class never starts a request, and
+ * a completed discovery never changes the loaded model or its saved snapshots.
  */
 public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable {
-    private static final int DEFAULT_SAMPLE = 12;
-
     private final TransformController domain;
     private final CommonsStructuredDataClient commons;
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
@@ -47,39 +43,32 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
     private final BoundedInstanceSelection selection;
     private boolean closed;
 
-    public CommonsDiscoveryPanel(DomainModel model) {
-        this(model, new CommonsStructuredDataClient());
+    public CommonsDiscoveryPanel(TransformController domain,
+            BoundedInstanceSelection selection) {
+        this(domain, selection, new CommonsStructuredDataClient());
     }
 
-    CommonsDiscoveryPanel(DomainModel model, CommonsStructuredDataClient commons) {
+    CommonsDiscoveryPanel(TransformController domain, BoundedInstanceSelection selection,
+            CommonsStructuredDataClient commons) {
         super(new BorderLayout(6, 6));
-        this.domain = new TransformController(model, new quiz.transform.app.DomainSaver());
+        this.domain = java.util.Objects.requireNonNull(domain);
         this.commons = java.util.Objects.requireNonNull(commons);
-        this.selection = new BoundedInstanceSelection(domain,
-                new BoundedInstanceSelection.Host() {
+        this.selection = java.util.Objects.requireNonNull(selection);
+        selection.addHost(new BoundedInstanceSelection.Host() {
                     @Override public void selectionChanged(String reason) {
                         invalidateResults(reason);
-                    }
-                    @Override public void status(String text) {
-                        selectionStatus.setText(text);
                     }
                     @Override public void updateActions() {
                         CommonsDiscoveryPanel.this.updateActions();
                     }
-                }, CommonsDiscoveryQuery.MAX_SUBJECTS, DEFAULT_SAMPLE, "entities",
-                value -> WikidataIds.isQid(value.qid()), "have Wikidata QIDs");
+                });
         build();
         wire();
-        if (!selection.populate(null)) {
-            selectionStatus.setText("This project has no generated class instances "
-                    + "with Wikidata QIDs. No Commons request can be made.");
-            updateActions();
-        }
+        updateActions();
     }
 
     private void build() {
         JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
-        selection.addControls(controls);
         controls.add(new JLabel("Maximum Commons files per selected QID:"));
         controls.add(mediaLimit);
         controls.add(fetch);
@@ -95,14 +84,10 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         results.add(resultTabs, BorderLayout.CENTER);
         emptyResults();
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                selection.tabs(), results);
-        split.setResizeWeight(0.38);
-        split.setContinuousLayout(true);
         north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
-        split.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
+        results.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         add(north, BorderLayout.NORTH);
-        add(split, BorderLayout.CENTER);
+        add(results, BorderLayout.CENTER);
     }
 
     private void wire() {
@@ -112,7 +97,7 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         runner.registerCancelButton(cancel);
         runner.cancelAction(commons::cancelActiveWork);
         runner.onRunningChanged(running -> {
-            selection.setRunning(running);
+            selection.setRunning(this, running);
             if (running) {
                 selectionStatus.setText(fetchDescription(selection.selected(),
                         (Integer) mediaLimit.getValue()));
@@ -355,18 +340,23 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         boolean running = runner.isRunning();
         int selectedCount = selection == null ? 0 : selection.size();
         mediaLimit.setEnabled(!running);
-        fetch.setEnabled(!running && selectedCount > 0
-                && selectedCount <= CommonsDiscoveryQuery.MAX_SUBJECTS);
+        boolean bounded = selectedCount <= CommonsDiscoveryQuery.MAX_SUBJECTS;
+        fetch.setEnabled(!running && selectedCount > 0 && bounded);
         fetch.setText(running ? "Fetching Commons depictions…"
                 : "Fetch " + selectedCount + " selected entit"
                         + (selectedCount == 1 ? "y" : "ies"));
         fetch.setToolTipText(selectedCount == 0
                 ? "Select at least one instance with a Wikidata QID."
+                : !bounded ? "One Commons run is bounded to "
+                        + CommonsDiscoveryQuery.MAX_SUBJECTS + " entities; remove "
+                        + (selectedCount - CommonsDiscoveryQuery.MAX_SUBJECTS)
+                        + " from the selection."
                 : fetchDescription(selection.selected(),
                         (Integer) mediaLimit.getValue()));
     }
 
-    public boolean requestClose(Component owner) {
+    /** Whether running work may stop: keeping it is the default. */
+    public boolean requestStopRun(Component owner) {
         return !runner.isRunning()
                 || process.swing.SwingCancellationConfirmation.requestForVisibleRun(
                         owner, runner::cancel);
@@ -377,25 +367,6 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         closed = true;
         runner.cancel();
         commons.close();
-    }
-
-    public static JFrame openFrame(DomainModel domain, String title) {
-        JFrame frame = new JFrame("Commons Discovery — " + title);
-        CommonsDiscoveryPanel panel = new CommonsDiscoveryPanel(domain);
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.add(panel);
-        frame.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent event) {
-                if (panel.requestClose(frame)) frame.dispose();
-            }
-            @Override public void windowClosed(java.awt.event.WindowEvent event) {
-                panel.close();
-            }
-        });
-        frame.setSize(1650, 950);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-        return frame;
     }
 
     private static final class MediaGroup
