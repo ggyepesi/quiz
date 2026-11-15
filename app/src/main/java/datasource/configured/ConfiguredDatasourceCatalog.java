@@ -13,11 +13,12 @@ import java.util.List;
 /**
  * Loads installed configured datasource providers from one explicit directory.
  *
- * <p>The registry is composed for every validation, snapshot graph and generation, so the
- * installed directory is read once per process; a file changed on disk is installed by a
- * restart. Reading never throws: a missing directory or an invalid file is a stated
- * problem that names the exact path, and costs only the configured providers it affects,
- * never the code-backed sources or the model editors that compose the registry.
+ * <p>The registry is composed for every validation, snapshot graph and generation, so
+ * {@code Datasources.configured()} reads the installed directory once per process; a file
+ * changed on disk is installed by a restart. Reading never throws: a missing directory,
+ * an invalid file or a provider id that is already taken is a stated problem that names
+ * the exact path, and costs only that provider, never the other configured providers,
+ * the code-backed sources or the model editors that compose the registry.
  */
 public final class ConfiguredDatasourceCatalog {
     private static final String SUFFIX = ".datasource.json";
@@ -34,21 +35,17 @@ public final class ConfiguredDatasourceCatalog {
         }
     }
 
-    private static final class Standard {
-        static final Installed INSTALLED = read(standardDirectory());
-    }
-
     /** The checked-in directory beside every other data folder of the application. */
     public static Path standardDirectory() {
         return Path.of(aux.Constants.dataDirectory, "datasources");
     }
 
-    /** The standard directory, read once for this process. */
-    public static Installed installed() {
-        return Standard.INSTALLED;
+    public static Installed read(Path directory) {
+        return read(directory, java.util.Set.of());
     }
 
-    public static Installed read(Path directory) {
+    /** @param takenIds provider ids composed beside this directory, which it may not reuse */
+    public static Installed read(Path directory, java.util.Set<String> takenIds) {
         Path shown = directory.toAbsolutePath().normalize();
         if (!Files.isDirectory(directory)) {
             return new Installed(directory, List.of(), List.of(
@@ -67,10 +64,18 @@ public final class ConfiguredDatasourceCatalog {
         }
         List<DatasourceProvider> providers = new ArrayList<>();
         List<String> problems = new ArrayList<>();
+        java.util.Set<String> taken = new java.util.HashSet<>(takenIds);
         for (Path file : files) {
             try {
-                providers.add(new ConfiguredRestDatasourceProvider(
-                        JSON.readValue(file.toFile(), ConfiguredDatasourceDefinition.class)));
+                ConfiguredDatasourceDefinition definition =
+                        JSON.readValue(file.toFile(), ConfiguredDatasourceDefinition.class);
+                if (!taken.add(definition.id())) {
+                    problems.add("Configured datasource " + file.toAbsolutePath().normalize()
+                            + " was not installed: provider id '" + definition.id()
+                            + "' is already used by another datasource.");
+                    continue;
+                }
+                providers.add(new ConfiguredRestDatasourceProvider(definition));
             } catch (Exception failure) {
                 problems.add("Configured datasource " + file.toAbsolutePath().normalize()
                         + " was not installed: " + rootMessage(failure));

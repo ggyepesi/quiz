@@ -27,7 +27,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private static final int DEFAULT_SAMPLE = 12;
     /** The largest per-run bound of any source; a source with a smaller one says so. */
     private static final int MAXIMUM = 50;
-    static final String NOT_INSTALLED = "Configured datasources — not installed";
+    static final String NOT_INSTALLED = "Configured datasources — not available";
 
     /** The source tabs, in the order they are shown. */
     public enum Source {
@@ -53,18 +53,19 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
 
     public DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection) {
         this(model, initialSelection, datasource.Datasources.standard(),
-                datasource.configured.ConfiguredDatasourceCatalog.installed().problems());
+                datasource.Datasources.configured().problems());
     }
 
     /**
      * @param configurationProblems why configured providers are missing from
-     *                              {@code datasources}; shown where their tabs would be
+     *                              {@code datasources}; shown, with any operation this
+     *                              workbench cannot offer, where their tabs would be
      */
     DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection,
             datasource.api.DatasourceRegistry datasources,
             List<String> configurationProblems) {
         super(new BorderLayout(6, 6));
-        this.configurationProblems = List.copyOf(configurationProblems);
+        List<String> problems = new java.util.ArrayList<>(configurationProblems);
         TransformController domain =
                 new TransformController(model, new quiz.transform.app.DomainSaver());
         selection = new BoundedInstanceSelection(domain,
@@ -81,13 +82,24 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         pageviews = new PageviewsDiscoveryPanel(selection);
         for (datasource.api.DatasourceProvider provider : datasources.providers()) {
             for (datasource.api.DatasourceOperation operation : provider.operations()) {
-                if (operation instanceof datasource.api.discovery.RelatedRecordDiscoveryOperation
-                        related) {
-                    relatedRecords.add(new RelatedRecordDiscoveryPanel(
-                            domain, selection, provider, related));
+                if (!(operation instanceof datasource.api.discovery.RelatedRecordDiscoveryOperation
+                        related)) continue;
+                // The selection admits instances by Wikidata QID; an operation that needs
+                // another namespace could only fail at Fetch, so it is not offered.
+                List<String> namespaces = related.inputReferences().stream()
+                        .map(datasource.api.SourceReferenceSchema::namespace).toList();
+                if (!namespaces.contains(datasource.EntityRef.WIKIDATA)) {
+                    problems.add(provider.displayName() + " — " + related.displayName()
+                            + " is not offered: it needs " + String.join(", ", namespaces)
+                            + " entities, and this workbench selects instances by Wikidata "
+                            + "QID.");
+                    continue;
                 }
+                relatedRecords.add(new RelatedRecordDiscoveryPanel(
+                        domain, selection, provider, related));
             }
         }
+        this.configurationProblems = List.copyOf(problems);
         build();
         populate(initialSelection);
     }

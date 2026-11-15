@@ -24,13 +24,33 @@ public final class Datasources {
     /** The providers this application ships. Callers take a registry as a parameter;
      *  the composition root is the one place that decides what is in it. */
     public static DatasourceRegistry standard() {
-        List<datasource.api.DatasourceProvider> providers = new ArrayList<>(List.of(
+        List<datasource.api.DatasourceProvider> providers = new ArrayList<>(shipped());
+        providers.addAll(configured().providers());
+        return new DatasourceRegistry(providers);
+    }
+
+    /**
+     * The configured providers installed beside the shipped ones, read once per process.
+     * A configured id that repeats a shipped or an earlier configured id is not installed,
+     * so composing {@link #standard()} cannot fail on a duplicate.
+     */
+    public static datasource.configured.ConfiguredDatasourceCatalog.Installed configured() {
+        return Configured.INSTALLED;
+    }
+
+    private static final class Configured {
+        static final datasource.configured.ConfiguredDatasourceCatalog.Installed INSTALLED =
+                datasource.configured.ConfiguredDatasourceCatalog.read(
+                        datasource.configured.ConfiguredDatasourceCatalog.standardDirectory(),
+                        shipped().stream().map(datasource.api.DatasourceProvider::id)
+                                .collect(java.util.stream.Collectors.toSet()));
+    }
+
+    private static List<datasource.api.DatasourceProvider> shipped() {
+        return List.of(
                 new DbpediaDatasourceProvider(),
                 new WikipediaDatasourceProvider(),
                 new WikidataDatasourceProvider(),
-                new PageviewsDatasourceProvider()));
-        providers.addAll(
-                datasource.configured.ConfiguredDatasourceCatalog.installed().providers());
-        return new DatasourceRegistry(providers);
+                new PageviewsDatasourceProvider());
     }
 }

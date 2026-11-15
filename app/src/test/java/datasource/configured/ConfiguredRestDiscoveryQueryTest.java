@@ -135,6 +135,58 @@ class ConfiguredRestDiscoveryQueryTest {
                 result.failedWork());
     }
 
+    /** A search only nominates. Detail evidence naming another selected seed relates the
+     *  record to that seed too, although that seed's own search did not return it (#492). */
+    @Test void detailEvidenceDecidesEverySelectedRelation() throws Exception {
+        ConfiguredRestClient client = new ConfiguredRestClient(uri -> {
+            if (uri.getPath().endsWith("/search")) {
+                return uri.getQuery().contains("q=Anubis")
+                        ? "{\"total\":1,\"objectIDs\":[9]}"
+                        : "{\"total\":0,\"objectIDs\":[]}";
+            }
+            return """
+                    {"objectID":9,"title":"Two deities",
+                     "tags":[
+                       {"term":"Anubis","Wikidata_URL":"https://www.wikidata.org/wiki/Q47534"},
+                       {"term":"Ra","Wikidata_URL":"https://www.wikidata.org/wiki/Q2831"}]}
+                    """;
+        });
+
+        var result = operation(client, 4).discover(new RelatedRecordDiscoveryRequest(List.of(
+                seed("anubis", "Q47534", "Anubis"),
+                seed("ra", "Q2831", "Ra")))).execute(new QueryContext());
+
+        assertEquals(List.of("anubis", "ra"),
+                result.records().getFirst().matchedSeedKeys());
+    }
+
+    /** A refused detail request was a successful batch value, so its step said
+     *  "completed; 0 unavailable" while the result was partial (#492). */
+    @Test void aRefusedRequestMakesItsStepPartial() throws Exception {
+        ConfiguredRestClient client = new ConfiguredRestClient(uri -> {
+            if (uri.getPath().endsWith("/search")) {
+                return "{\"total\":2,\"objectIDs\":[1,2]}";
+            }
+            if (uri.getPath().endsWith("/1")) return detail(1, "Anubis statue",
+                    "Q47534", "Anubis");
+            throw new objectview.utils.UrlOpener.HttpStatusException(404, uri.toURL());
+        });
+        work.LogNode root = new work.LogNode(work.LogKind.WORKFLOW, "Discover");
+        work.WorkflowRecorder recorder = new work.WorkflowRecorder(root);
+        recorder.start();
+
+        var result = operation(client, 2).discover(new RelatedRecordDiscoveryRequest(List.of(
+                seed("anubis", "Q47534", "Anubis"))))
+                .execute(new QueryContext().withRecorder(recorder));
+
+        assertTrue(result.partial());
+        List<work.LogNode> steps = new ArrayList<>(root.steps());
+        assertEquals(work.LogStatus.OK, steps.get(0).status(), steps.get(0).summary());
+        work.LogNode details = steps.get(1);
+        assertEquals(work.LogStatus.PARTIAL, details.status());
+        assertEquals("1 completed; 1 refused; 0 unavailable", details.summary());
+    }
+
     private static RelatedRecordSeed seed(String key, String qid, String label) {
         return new RelatedRecordSeed(key, EntityRef.wikidata(qid), label);
     }

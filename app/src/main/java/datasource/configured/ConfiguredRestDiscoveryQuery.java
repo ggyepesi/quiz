@@ -92,7 +92,8 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
         runStage(context, "Load " + candidateSeeds.size() + " " + providerName
                         + " detail record(s)",
                 candidateSeeds.entrySet().stream()
-                        .map(entry -> detailUnit(entry.getKey(), entry.getValue())).toList(),
+                        .map(entry -> detailUnit(entry.getKey(), entry.getValue().size()))
+                        .toList(),
                 details, failures);
 
         LinkedHashMap<String, MutableRecord> records = new LinkedHashMap<>();
@@ -110,7 +111,7 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
                 failures.stream().distinct().toList());
     }
 
-    private <R> void runStage(QueryContext context, String title,
+    private <R extends Outcome> void runStage(QueryContext context, String title,
             List<? extends WorkUnit<R>> units, List<R> values, List<String> failures)
             throws Exception {
         if (units.isEmpty()) return;
@@ -126,8 +127,12 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
                             operation.parallelism())
                             .runBestEffort(units, (descriptor, value) -> values.add(value));
                     failed.forEach(descriptor -> failures.add(descriptor.title()));
-                    step.summary(values.size() + " completed; " + failed.size()
-                            + " unavailable");
+                    long refused = values.stream()
+                            .filter(value -> !value.failure().isBlank()).count();
+                    String summary = (values.size() - refused) + " completed; " + refused
+                            + " refused; " + failed.size() + " unavailable";
+                    if (refused + failed.size() > 0) step.partial(summary);
+                    else step.summary(summary);
                     return null;
                 });
     }
@@ -169,22 +174,24 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
         };
     }
 
-    private WorkUnit<DetailOutcome> detailUnit(
-            String resultId, List<RelatedRecordSeed> possibleSeeds) {
+    /**
+     * A search only nominates a record. Its detail evidence decides every selected seed it
+     * relates to, including seeds whose own search did not return it.
+     */
+    private WorkUnit<DetailOutcome> detailUnit(String resultId, int nominatingSeeds) {
         String url = ConfiguredRestUrls.detail(operation.detail(), resultId);
-        List<RelatedRecordSeed> exactSeeds = List.copyOf(possibleSeeds);
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {
                 return new WorkDescriptor(providerId + "-detail",
                         providerId + ":detail:" + resultId,
                         "Load " + providerName + " record " + resultId,
-                        Map.of("record", resultId, "possible matches",
-                                Integer.toString(exactSeeds.size())));
+                        Map.of("record", resultId, "nominated by",
+                                nominatingSeeds + " seed search(es)"));
             }
             @Override public String request() { return url; }
             @Override public DetailOutcome execute() throws Exception {
                 try {
-                    return detail(client.get(url), resultId, exactSeeds);
+                    return detail(client.get(url), resultId);
                 } catch (objectview.utils.UrlOpener.HttpStatusException status) {
                     return new DetailOutcome(null, refused(status, "record " + resultId));
                 }
@@ -206,10 +213,9 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
         return "Could not read " + providerName + " " + what + ": HTTP " + status.status();
     }
 
-    private DetailOutcome detail(JsonNode root, String requestedId,
-            List<RelatedRecordSeed> possibleSeeds) {
+    private DetailOutcome detail(JsonNode root, String requestedId) {
         List<String> evidence = JsonFieldPath.strings(root, operation.match().path());
-        List<String> matched = possibleSeeds.stream()
+        List<String> matched = seeds.stream()
                 .filter(seed -> evidence.stream().map(this::matchValue)
                         .anyMatch(value -> value.equalsIgnoreCase(seed.entity().id())))
                 .map(RelatedRecordSeed::key).distinct().toList();
@@ -259,14 +265,18 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
                         + result.failedWork().size() + " request(s) failed");
     }
 
+    /** A batch value that may carry a refusal the run continues past. */
+    private interface Outcome { String failure(); }
+
     private record SearchOutcome(RelatedRecordSeed seed, List<String> ids, int total,
-            String failure) {
+            String failure) implements Outcome {
         SearchOutcome {
             ids = List.copyOf(ids == null ? List.of() : ids);
             failure = failure == null ? "" : failure;
         }
     }
-    private record DetailOutcome(DiscoveredRelatedRecord record, String failure) {
+    private record DetailOutcome(DiscoveredRelatedRecord record, String failure)
+            implements Outcome {
         DetailOutcome { failure = failure == null ? "" : failure; }
     }
 

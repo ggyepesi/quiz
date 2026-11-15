@@ -129,6 +129,42 @@ class DiscoveryWorkbenchTest {
         });
     }
 
+    /** The selection supplies Wikidata entities only. An operation that needs another
+     *  namespace used to get a tab that failed at Fetch; it is now named as not offered. */
+    @Test void anOperationNeedingAnotherNamespaceIsNotOffered() throws Exception {
+        java.nio.file.Path met = java.nio.file.Path.of("..", "data", "datasources",
+                "met-collection.datasource.json");
+        datasource.configured.ConfiguredDatasourceDefinition definition =
+                new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                        java.nio.file.Files.readString(met).replace(
+                                "\"inputNamespace\": \"wikidata\"",
+                                "\"inputNamespace\": \"viaf\""),
+                        datasource.configured.ConfiguredDatasourceDefinition.class);
+        java.util.List<datasource.api.DatasourceProvider> providers = new java.util.ArrayList<>(
+                datasource.Datasources.standard().providers());
+        providers.add(new datasource.configured.ConfiguredRestDatasourceProvider(definition));
+        SwingUtilities.invokeAndWait(() -> {
+            DiscoveryWorkbench workbench = new DiscoveryWorkbench(
+                    domain(deity("Q170471", "Maat", "Maat")), null,
+                    new datasource.api.DatasourceRegistry(providers), List.of());
+            try {
+                assertEquals(List.of(), workbench.relatedRecords());
+                javax.swing.JTabbedPane sources = field(workbench, "sources",
+                        javax.swing.JTabbedPane.class);
+                javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
+                        sources.getComponentAt(
+                                sources.indexOfTab(DiscoveryWorkbench.NOT_INSTALLED));
+                String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
+                        .getText();
+                assertTrue(text.startsWith("Metropolitan Museum of Art Collection — "
+                        + "Artifacts tagged with selected entities is not offered: it needs "
+                        + "viaf entities"), text);
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
     /** The checked-in configured providers; surefire runs in the app module. */
     private static DiscoveryWorkbench workbench(DomainModel model,
             DiscoveryWorkbench.InitialSelection initial) {

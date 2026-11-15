@@ -38,7 +38,7 @@ detail requests run with the configured bounded concurrency. One unavailable req
 the result `PARTIAL` and names the failed work; records already read remain visible. A
 server-side status (429, 5xx) is retried on the batch budget first. A status the server will
 not reconsider (another 4xx) is not retried and costs only that one request, whether it
-answered a seed's search or a detail record.
+answered a seed's search or a detail record; its step closes `PARTIAL` and counts it as refused.
 
 ## Supported grammar
 
@@ -86,8 +86,9 @@ GET /public/collection/v1.1/search
     &q=<selected display label>
 ```
 
-The label search only finds bounded candidates. A detail record is retained only when one of
-its `tags[].Wikidata_URL` values names the selected entity's exact QID. Thus a title that merely
+The label search only nominates bounded candidates. A detail record is retained only when one
+of its `tags[].Wikidata_URL` values names a selected entity's exact QID, and it relates to every
+selected entity its evidence names — including one whose own search did not return it. Thus a title that merely
 contains “Anubis” does not relate an object to Anubis; a Met subject tag carrying
 `https://www.wikidata.org/wiki/Q47534` does.
 
@@ -103,11 +104,14 @@ Add another `*.datasource.json` file under `data/datasources/` (beside `data/wik
 bounded search/detail grammar, it appears as another Discovery workbench tab without Java
 changes.
 
-The directory is read once per process, because every model validation, snapshot graph and
-generation composes the registry. An invalid file, or a missing directory, is never silently
-ignored and never stops anything else: that provider is not installed, and the Discovery
-workbench shows a **Configured datasources — not installed** tab naming the exact path and
-why. Code-backed sources and the model editors are unaffected.
+The directory is read once per process (`Datasources.configured()`), because every model
+validation, snapshot graph and generation composes the registry. An invalid file, a missing
+directory, or a provider id already used by a shipped or an earlier configured datasource is
+never silently ignored and never stops anything else: that provider is not installed, and the
+Discovery workbench shows a **Configured datasources — not available** tab naming the exact
+path and why. The same tab names an installed operation whose input namespace the workbench
+cannot supply — its selection admits instances by Wikidata QID — instead of offering a tab
+that could only fail at Fetch. Code-backed sources and the model editors are unaffected.
 
 If the source cannot honestly fit this grammar—for example it needs authentication, continuation
 tokens, POST bodies, a graph expansion or a different evidence relation—do not imitate it with

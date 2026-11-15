@@ -58,6 +58,30 @@ class ConfiguredDatasourceCatalogTest {
         assertTrue(problem.contains("declares no operations"), problem);
     }
 
+    /** A repeated provider id used to install, then fail DatasourceRegistry construction,
+     *  which took every configured provider down with it (#492). */
+    @Test void aTakenProviderIdCostsOnlyThatFile(@TempDir Path directory) throws Exception {
+        Path met = CHECKED_IN.resolve("met-collection.datasource.json");
+        Files.copy(met, directory.resolve("a-met.datasource.json"));
+        Files.copy(met, directory.resolve("b-met-again.datasource.json"));
+        Files.writeString(directory.resolve("c-wikidata.datasource.json"),
+                Files.readString(met).replace("\"id\": \"met-collection\"",
+                        "\"id\": \"wikidata\""));
+
+        var installed = ConfiguredDatasourceCatalog.read(directory, java.util.Set.of("wikidata"));
+
+        assertEquals(java.util.List.of("met-collection"), installed.providers().stream()
+                .map(datasource.api.DatasourceProvider::id).toList());
+        assertEquals(2, installed.problems().size(), installed.problems().toString());
+        assertTrue(installed.problems().get(0).contains("b-met-again.datasource.json")
+                && installed.problems().get(0).contains("'met-collection' is already used"),
+                installed.problems().get(0));
+        assertTrue(installed.problems().get(1).contains("c-wikidata.datasource.json")
+                && installed.problems().get(1).contains("'wikidata' is already used"),
+                installed.problems().get(1));
+        new datasource.api.DatasourceRegistry(installed.providers());
+    }
+
     @Test void aMissingDirectoryIsStatedNotSilentlyEmpty(@TempDir Path parent) {
         Path missing = parent.resolve("datasources");
 
