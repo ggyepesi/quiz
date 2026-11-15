@@ -6,6 +6,7 @@ import datasource.wikipedia.WikipediaDatasourceProvider;
 import datasource.dbpedia.DbpediaDatasourceProvider;
 import datasource.pageviews.PageviewsDatasourceProvider;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,10 +24,13 @@ public final class Datasources {
     /** The providers this application ships. Callers take a registry as a parameter;
      *  the composition root is the one place that decides what is in it. */
     public static DatasourceRegistry standard() {
-        return new DatasourceRegistry(List.of(
+        List<datasource.api.DatasourceProvider> providers = new ArrayList<>(List.of(
                 new DbpediaDatasourceProvider(),
                 new WikipediaDatasourceProvider(),
                 new WikidataDatasourceProvider(),
                 new PageviewsDatasourceProvider()));
+        providers.addAll(
+                datasource.configured.ConfiguredDatasourceCatalog.installed().providers());
+        return new DatasourceRegistry(providers);
     }
 }

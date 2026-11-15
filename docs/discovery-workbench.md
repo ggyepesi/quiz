@@ -16,6 +16,7 @@ selection:
 | Wikipedia articles | retained or fetched article structure and infobox (`docs/wikipedia-structure-discovery.md`) | 50 articles |
 | Commons depictions | Structured Data on Commons depiction scenes (`docs/commons-structured-data-discovery.md`) | 20 QIDs |
 | Wikipedia pageviews | English Wikipedia views by human readers over complete months | 50 articles |
+| Metropolitan Museum artifacts | Met Egyptian Art records whose subject tag names the selected exact Wikidata entity (`docs/configured-rest-datasources.md`) | 10 entities, 20 candidate IDs each |
 
 A source that needs more than a QID (an English Wikipedia article) counts the selected
 instances it cannot read and says so; it never narrows the selection for the others. A
@@ -26,6 +27,10 @@ unlock it under another that is still running.
 Moving between tabs never asks for the instances again, and no tab changes the project.
 TransformApp's Wikipedia discovery action opens this same workbench with its selected
 instances handed over, on the Wikipedia tab.
+
+The first three tabs are code-backed source workflows. Further bounded related-record tabs are
+discovered from the datasource registry. Their result records, source fields and limits come
+from checked-in datasource configuration; the workbench does not name or branch on Met.
 
 ## Pageviews
 
@@ -50,3 +55,8 @@ A field source is a `DatasourceProvider` registered in `Datasources.standard()` 
 without a new `FieldSourceType` constant; the stored binding is the field's whole
 configuration. A discovery view for it is one more tab registered on the workbench's
 shared selection.
+
+A bounded JSON REST related-record source may instead be installed entirely through
+`data/datasources/*.datasource.json`. It compiles into the same registry as a code-backed
+provider, executes through the shared batch/query-log path and renders through the generic
+related-record ObjectView tab. See `docs/configured-rest-datasources.md`.

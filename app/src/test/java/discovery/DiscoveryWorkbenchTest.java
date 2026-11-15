@@ -7,6 +7,7 @@ import wikidata.explore.extract.WikidataDynamicObject;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Field;
 import java.util.Collection;
@@ -28,7 +29,7 @@ class DiscoveryWorkbenchTest {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = deity("Q170471", "Maat", "Maat");
             WikidataDynamicObject withoutArticle = deity("Q2831", "Ra", "");
-            DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain(maat,
+            DiscoveryWorkbench workbench = workbench(domain(maat,
                     withoutArticle), new DiscoveryWorkbench.InitialSelection(
                     "EgyptianDeity", List.of(maat, withoutArticle), "a test"));
             try {
@@ -41,6 +42,13 @@ class DiscoveryWorkbenchTest {
                         "Commons reads every selected QID");
                 assertEquals("Read views of 1 selected article",
                         field(workbench.pageviews(), "fetch", JButton.class).getText());
+                assertEquals(1, workbench.relatedRecords().size());
+                JButton met = field(workbench.relatedRecords().getFirst(),
+                        "fetch", JButton.class);
+                assertEquals("Fetch MuseumArtifact records for 2 selected instances",
+                        met.getText());
+                assertTrue(met.getToolTipText().contains("at most 20 search result(s)"));
+                assertTrue(met.getToolTipText().contains("project is not changed"));
             } finally {
                 workbench.close();
             }
@@ -51,7 +59,7 @@ class DiscoveryWorkbenchTest {
             throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = deity("Q170471", "Maat", "Maat");
-            DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain(maat), null);
+            DiscoveryWorkbench workbench = workbench(domain(maat), null);
             try {
                 JComboBox<?> type = field(workbench.selection(), "type", JComboBox.class);
                 Object wikipedia = new Object();
@@ -66,6 +74,75 @@ class DiscoveryWorkbenchTest {
                 workbench.close();
             }
         });
+    }
+
+    @Test void anOverLimitMetSelectionSaysExactlyWhyFetchIsDisabled() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject[] values = java.util.stream.IntStream.rangeClosed(1, 12)
+                    .mapToObj(index -> deity("Q" + index, "Deity " + index, ""))
+                    .toArray(WikidataDynamicObject[]::new);
+            DiscoveryWorkbench workbench = workbench(domain(values),
+                    new DiscoveryWorkbench.InitialSelection(
+                            "EgyptianDeity", List.of(values), "a test"));
+            try {
+                RelatedRecordDiscoveryPanel met = workbench.relatedRecords().getFirst();
+                JButton fetch = field(met, "fetch", JButton.class);
+                JLabel availability = field(met, "availability", JLabel.class);
+
+                assertFalse(fetch.isEnabled());
+                assertEquals("Cannot fetch MuseumArtifact records from Metropolitan Museum "
+                                + "of Art Collection: 12 instances are selected, but one run "
+                                + "accepts at most 10. Remove 2 selected instance(s); no request "
+                                + "has started.",
+                        availability.getText());
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
+    /** A configured provider that is not installed leaves the other tabs working and
+     *  says, where its tab would be, which file and why. */
+    @Test void aDatasourceThatIsNotInstalledIsNamedWhereItsTabWouldBe() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = deity("Q170471", "Maat", "Maat");
+            String problem = "Configured datasource /x/broken.datasource.json was not "
+                    + "installed: declares no operations";
+            DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain(maat), null,
+                    datasource.Datasources.standard(), List.of(problem));
+            try {
+                javax.swing.JTabbedPane sources = field(workbench, "sources",
+                        javax.swing.JTabbedPane.class);
+                int tab = sources.indexOfTab(DiscoveryWorkbench.NOT_INSTALLED);
+                assertTrue(tab >= 0);
+                javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
+                        sources.getComponentAt(tab);
+                String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
+                        .getText();
+                assertTrue(text.startsWith(problem), text);
+                assertTrue(text.contains("other sources are unaffected"), text);
+                assertEquals(DiscoveryWorkbench.Source.PAGEVIEWS.title(),
+                        sources.getTitleAt(DiscoveryWorkbench.Source.PAGEVIEWS.ordinal()));
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
+    /** The checked-in configured providers; surefire runs in the app module. */
+    private static DiscoveryWorkbench workbench(DomainModel model,
+            DiscoveryWorkbench.InitialSelection initial) {
+        var installed = datasource.configured.ConfiguredDatasourceCatalog.read(
+                java.nio.file.Path.of("..", "data", "datasources"));
+        assertEquals(List.of(), installed.problems());
+        java.util.List<datasource.api.DatasourceProvider> providers =
+                new java.util.ArrayList<>(installed.providers());
+        datasource.Datasources.standard().providers().stream()
+                .filter(provider -> providers.stream()
+                        .noneMatch(added -> added.id().equals(provider.id())))
+                .forEach(providers::add);
+        return new DiscoveryWorkbench(model, initial,
+                new datasource.api.DatasourceRegistry(providers), List.of());
     }
 
     private static WikidataDynamicObject deity(String qid, String name, String article) {

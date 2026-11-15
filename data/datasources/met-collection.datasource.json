@@ -1,0 +1,153 @@
+{
+  "id": "met-collection",
+  "displayName": "Metropolitan Museum of Art Collection",
+  "operations": [
+    {
+      "id": "tagged-artifacts",
+      "displayName": "Artifacts tagged with selected entities",
+      "inputNamespace": "wikidata",
+      "maximumSeeds": 10,
+      "maximumRecordsPerSeed": 20,
+      "parallelism": 4,
+      "search": {
+        "url": "https://collectionapi.metmuseum.org/public/collection/v1.1/search",
+        "query": {
+          "departmentId": "10",
+          "hasImages": "true",
+          "tags": "true",
+          "limit": "${limit}",
+          "q": "${seed.label}"
+        },
+        "idsPath": "objectIDs[]",
+        "totalPath": "total"
+      },
+      "detail": {
+        "url": "https://collectionapi.metmuseum.org/public/collection/v1/objects/${result.id}"
+      },
+      "match": {
+        "path": "tags[].Wikidata_URL",
+        "valueFormat": "WIKIDATA_URL"
+      },
+      "record": {
+        "typeName": "MuseumArtifact",
+        "namespace": "met-object",
+        "idPath": "objectID",
+        "displayPath": "title",
+        "fields": [
+          {
+            "name": "image",
+            "label": "Image",
+            "path": "primaryImageSmall",
+            "kind": "MEDIA",
+            "collection": false
+          },
+          {
+            "name": "metSource",
+            "label": "Met source",
+            "path": "objectURL",
+            "kind": "URL",
+            "collection": false
+          },
+          {
+            "name": "objectName",
+            "label": "Object type",
+            "path": "objectName",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "department",
+            "label": "Department",
+            "path": "department",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "subjectTags",
+            "label": "Subject tags",
+            "path": "tags[].term",
+            "kind": "TEXT",
+            "collection": true
+          },
+          {
+            "name": "period",
+            "label": "Period",
+            "path": "period",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "dynasty",
+            "label": "Dynasty",
+            "path": "dynasty",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "reign",
+            "label": "Reign",
+            "path": "reign",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "objectDate",
+            "label": "Date",
+            "path": "objectDate",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "culture",
+            "label": "Culture",
+            "path": "culture",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "medium",
+            "label": "Medium",
+            "path": "medium",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "dimensions",
+            "label": "Dimensions",
+            "path": "dimensions",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "country",
+            "label": "Country",
+            "path": "country",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "region",
+            "label": "Region",
+            "path": "region",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "locale",
+            "label": "Locale",
+            "path": "locale",
+            "kind": "TEXT",
+            "collection": false
+          },
+          {
+            "name": "objectWikidataSource",
+            "label": "Object Wikidata source",
+            "path": "objectWikidata_URL",
+            "kind": "URL",
+            "collection": false
+          }
+        ]
+      }
+    }
+  ]
+}

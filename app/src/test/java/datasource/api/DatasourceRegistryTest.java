@@ -68,7 +68,12 @@ class DatasourceRegistryTest {
         assertTrue(datasource.Datasources.standard()
                         != datasource.Datasources.standard(),
                 "each caller is composed for, not served from a global");
-        assertEquals(4, datasource.Datasources.standard().providers().size(),
-                "the application composes every shipped provider");
+        var installed = datasource.configured.ConfiguredDatasourceCatalog.installed();
+        assertEquals(4 + installed.providers().size(),
+                datasource.Datasources.standard().providers().size(),
+                "the application composes every shipped and every installed provider");
+        installed.providers().forEach(provider -> assertTrue(
+                datasource.Datasources.standard().provider(provider.id()).isPresent(),
+                provider.id() + " enters through the same registry"));
     }
 }

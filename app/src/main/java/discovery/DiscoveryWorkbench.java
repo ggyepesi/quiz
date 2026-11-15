@@ -27,6 +27,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private static final int DEFAULT_SAMPLE = 12;
     /** The largest per-run bound of any source; a source with a smaller one says so. */
     private static final int MAXIMUM = 50;
+    static final String NOT_INSTALLED = "Configured datasources — not installed";
 
     /** The source tabs, in the order they are shown. */
     public enum Source {
@@ -43,12 +44,27 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private final WikipediaDiscoveryPanel wikipedia;
     private final CommonsDiscoveryPanel commons;
     private final PageviewsDiscoveryPanel pageviews;
+    private final java.util.List<RelatedRecordDiscoveryPanel> relatedRecords =
+            new java.util.ArrayList<>();
+    private final List<String> configurationProblems;
     private final JTabbedPane sources = new JTabbedPane();
     private final JLabel selectionStatus = new JLabel(" ");
     private boolean closed;
 
     public DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection) {
+        this(model, initialSelection, datasource.Datasources.standard(),
+                datasource.configured.ConfiguredDatasourceCatalog.installed().problems());
+    }
+
+    /**
+     * @param configurationProblems why configured providers are missing from
+     *                              {@code datasources}; shown where their tabs would be
+     */
+    DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection,
+            datasource.api.DatasourceRegistry datasources,
+            List<String> configurationProblems) {
         super(new BorderLayout(6, 6));
+        this.configurationProblems = List.copyOf(configurationProblems);
         TransformController domain =
                 new TransformController(model, new quiz.transform.app.DomainSaver());
         selection = new BoundedInstanceSelection(domain,
@@ -63,6 +79,15 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         wikipedia = new WikipediaDiscoveryPanel(domain, selection);
         commons = new CommonsDiscoveryPanel(domain, selection);
         pageviews = new PageviewsDiscoveryPanel(selection);
+        for (datasource.api.DatasourceProvider provider : datasources.providers()) {
+            for (datasource.api.DatasourceOperation operation : provider.operations()) {
+                if (operation instanceof datasource.api.discovery.RelatedRecordDiscoveryOperation
+                        related) {
+                    relatedRecords.add(new RelatedRecordDiscoveryPanel(
+                            domain, selection, provider, related));
+                }
+            }
+        }
         build();
         populate(initialSelection);
     }
@@ -78,6 +103,16 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         sources.addTab(Source.WIKIPEDIA.title(), wikipedia);
         sources.addTab(Source.COMMONS.title(), commons);
         sources.addTab(Source.PAGEVIEWS.title(), pageviews);
+        relatedRecords.forEach(panel -> sources.addTab(panel.title(), panel));
+        if (!configurationProblems.isEmpty()) {
+            JTextArea problems = new JTextArea(String.join("\n\n", configurationProblems)
+                    + "\n\nThe other sources are unaffected. Correct the file and restart "
+                    + "the application to install it.");
+            problems.setEditable(false);
+            problems.setLineWrap(true);
+            problems.setWrapStyleWord(true);
+            sources.addTab(NOT_INSTALLED, new JScrollPane(problems));
+        }
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 selection.tabs(), sources);
@@ -116,17 +151,27 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     public WikipediaDiscoveryPanel wikipedia() { return wikipedia; }
     public CommonsDiscoveryPanel commons() { return commons; }
     public PageviewsDiscoveryPanel pageviews() { return pageviews; }
+    List<RelatedRecordDiscoveryPanel> relatedRecords() {
+        return List.copyOf(relatedRecords);
+    }
 
     /** Whether every running source may stop; keeping each is the default. */
     public boolean requestStopRun(Component owner) {
-        return wikipedia.requestStopRun(owner) && commons.requestStopRun(owner)
-                && pageviews.requestStopRun(owner);
+        if (!(wikipedia.requestStopRun(owner) && commons.requestStopRun(owner)
+                && pageviews.requestStopRun(owner))) return false;
+        for (RelatedRecordDiscoveryPanel panel : relatedRecords) {
+            if (!panel.requestStopRun(owner)) return false;
+        }
+        return true;
     }
 
     /** Stops running sources, then asks about configuration this window owns. */
     public boolean requestClose(Component owner) {
-        return commons.requestStopRun(owner) && pageviews.requestStopRun(owner)
-                && wikipedia.requestClose(owner);
+        if (!(commons.requestStopRun(owner) && pageviews.requestStopRun(owner))) return false;
+        for (RelatedRecordDiscoveryPanel panel : relatedRecords) {
+            if (!panel.requestStopRun(owner)) return false;
+        }
+        return wikipedia.requestClose(owner);
     }
 
     @Override public void close() {
@@ -135,6 +180,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         wikipedia.close();
         commons.close();
         pageviews.close();
+        relatedRecords.forEach(RelatedRecordDiscoveryPanel::close);
     }
 
     /** Explicit handoff from another view. The source view supplies the logical class

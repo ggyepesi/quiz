@@ -104,6 +104,14 @@ construct per thing produced:
    its normalized text and links; rendered infobox rows retain its text, linked article targets
    and media together. A scalar field may project that row artifact's text, but acquisition and
    discovery must not reparse or flatten it into a competing fact.
+   A configuration-defined datasource is still an ordinary registered
+   `DatasourceProvider`/`DatasourceOperation`; configuration never starts a parallel runner.
+   Its first supported grammar is deliberately bounded JSON REST search → detail: exact
+   selected source identities enter, explicit per-seed limits cap detail requests, configured
+   source evidence proves which returned record relates to which seed, and the shared batch,
+   retry, cancellation and query-log path executes it. Discovery renders those source-native
+   records read-only through ObjectView. Turning one into a modeled class, population or field
+   relation remains a separate explicit construct; a label match never makes that decision.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*
