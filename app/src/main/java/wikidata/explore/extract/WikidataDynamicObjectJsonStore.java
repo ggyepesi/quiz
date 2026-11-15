@@ -456,6 +456,16 @@ public class WikidataDynamicObjectJsonStore {
                     statements.putIfAbsent(source.statement(), source));
         }
         e.wikidataStatements.addAll(statements.values());
+        java.util.LinkedHashMap<String, quiz.source.WikidataRelationRouteMatch> routeMatches =
+                new java.util.LinkedHashMap<>();
+        for (WikidataDynamicObject o : instances) {
+            for (quiz.source.WikidataRelationRouteMatch match
+                    : o.wikidataRelationRouteMatches()) {
+                routeMatches.merge(match.getIdentifier(), match,
+                        quiz.source.WikidataRelationRouteMatch::merge);
+            }
+        }
+        e.wikidataRelationRouteMatches.addAll(routeMatches.values());
         java.util.LinkedHashSet<datasource.evidence.CategoryMembership> categories =
                 new java.util.LinkedHashSet<>();
         for (WikidataDynamicObject o : instances) categories.addAll(o.categoryMemberships());
@@ -902,6 +912,7 @@ public class WikidataDynamicObjectJsonStore {
         object.aliases(e.aliases);
         object.enwikiTitle(e.enwikiTitle);
         object.wikidataStatementSources(e.wikidataStatements);
+        object.wikidataRelationRouteMatches(e.wikidataRelationRouteMatches);
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             object.categoryMemberships(categoryMemberships(e));
         }
@@ -1073,6 +1084,7 @@ public class WikidataDynamicObjectJsonStore {
         e.aliases.addAll(w.aliases());
         e.enwikiTitle = w.enwikiTitle();
         e.wikidataStatements.addAll(w.wikidataStatementSources());
+        e.wikidataRelationRouteMatches.addAll(w.wikidataRelationRouteMatches());
         if (!w.categoryMemberships().isEmpty()) {
             e.wikipediaCategoryDocument = w.categoryMemberships().getFirst().document();
             w.categoryMemberships().stream()
@@ -1114,6 +1126,7 @@ public class WikidataDynamicObjectJsonStore {
         o.aliases(e.aliases);
         o.enwikiTitle(e.enwikiTitle);
         o.wikidataStatementSources(e.wikidataStatements);
+        o.wikidataRelationRouteMatches(e.wikidataRelationRouteMatches);
         if (e.categoryMembershipsAnswered || !e.wikipediaCategories.isEmpty()) {
             o.categoryMemberships(categoryMemberships(e));
         }
@@ -1186,6 +1199,9 @@ public class WikidataDynamicObjectJsonStore {
         public String enwikiTitle;
         /** Full source triples for statement-derived records. */
         public List<quiz.source.WikidataStatementSource> wikidataStatements =
+                new ArrayList<>();
+        /** Configured relation-route matches retained for per-route coverage. */
+        public List<quiz.source.WikidataRelationRouteMatch> wikidataRelationRouteMatches =
                 new ArrayList<>();
         public datasource.evidence.SourceDocument wikipediaCategoryDocument;
         public List<String> wikipediaCategories = new ArrayList<>();

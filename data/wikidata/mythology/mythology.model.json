@@ -34,8 +34,8 @@
       "requireLabel" : true,
       "labelLanguage" : "en",
       "valueLanguage" : "",
-      "requireSitelink" : true,
-      "limit" : 5000,
+      "requireSitelink" : false,
+      "limit" : 6000,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -581,8 +581,8 @@
       "requireLabel" : true,
       "labelLanguage" : "en",
       "valueLanguage" : "",
-      "requireSitelink" : true,
-      "limit" : 5000,
+      "requireSitelink" : false,
+      "limit" : 6000,
       "rankBy" : "",
       "rankDescending" : true,
       "productionKind" : "AUTO",
@@ -1202,7 +1202,8 @@
           "providerId" : "wikipedia",
           "operationId" : "article-introduction",
           "parameters" : {
-            "@class" : "java.util.ImmutableCollections$Map1",
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "projection" : "INTRODUCTION",
             "sourceType" : "WIKIPEDIA_ARTICLE_INTRODUCTION"
           }
         }

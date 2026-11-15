@@ -123,7 +123,7 @@ public class GeneratedViewableSourceGenerator {
                     == datasource.api.SourceValueKind.ENTITY_REFERENCE) {
                 sb.append("    @objectview.annotations.Reference\n");
             }
-            sb.append("    public ").append(javaType(configured.valueSchema()))
+            sb.append("    public ").append(javaType(configured))
               .append(" ").append(sanitizeFieldName(configured.name()));
             if (configured.valueSchema().collection()) {
                 sb.append(" = new java.util.ArrayList<>()");
@@ -193,6 +193,18 @@ public class GeneratedViewableSourceGenerator {
             case TEXT, LANGUAGE_TEXT, DATE_TIME, URL, MODEL_VALUE, DOCUMENT, UNKNOWN
                     -> "String";
         };
+        return schema.collection()
+                ? "java.util.List<" + scalar + ">" : scalar;
+    }
+
+    private static String javaType(
+            wikidata.explore.model.ConfiguredInstanceFields.Field configured) {
+        datasource.api.SourceValueSchema schema = configured.valueSchema();
+        if (schema.kind() != datasource.api.SourceValueKind.ENTITY_REFERENCE
+                || configured.referenceType() == objectview.Viewable.class) {
+            return javaType(schema);
+        }
+        String scalar = configured.referenceType().getCanonicalName();
         return schema.collection()
                 ? "java.util.List<" + scalar + ">" : scalar;
     }

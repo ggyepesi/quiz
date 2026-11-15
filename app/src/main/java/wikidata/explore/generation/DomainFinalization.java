@@ -68,6 +68,8 @@ public final class DomainFinalization {
         wikidata.explore.transform.FieldExpectations.Result[] expectationResult =
                 new wikidata.explore.transform.FieldExpectations.Result[1];
         List<WikidataDynamicObject> suspectedSelfReferences = new java.util.ArrayList<>();
+        List<WikidataRelationRouteCoverage.Summary> routeCoverage =
+                new java.util.ArrayList<>();
         List<GenerationStage> stages = List.of(
                 // Classification has settled before finalization. Apply the field's
                 // configured type to the saved dynamic pool too; materialization must
@@ -161,6 +163,19 @@ public final class DomainFinalization {
                         if (log != null) {
                             log.message("Dropped " + ownerless.size()
                                     + " owned part(s) whose owner is not served.\n");
+                        }
+                    }
+                }),
+                stage("relation-route-coverage", "Settle relation-route coverage", () -> {
+                    routeCoverage.addAll(WikidataRelationRouteCoverage.settle(pool));
+                    if (log != null) {
+                        for (WikidataRelationRouteCoverage.Summary summary : routeCoverage) {
+                            log.message("Relation route coverage " + summary.ownerClass()
+                                    + "." + summary.field() + " — " + summary.route()
+                                    + ": " + summary.matchedOwners() + " owner(s) matched, "
+                                    + summary.retainedOwners() + " owner(s) retained "
+                                    + summary.retainedMatches() + " of " + summary.matches()
+                                    + " terminal match(es).\n");
                         }
                     }
                 }),

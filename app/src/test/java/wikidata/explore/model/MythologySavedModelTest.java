@@ -5,6 +5,7 @@ import datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -106,6 +107,10 @@ class MythologySavedModelTest {
             throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(
                 new File("../data/wikidata/mythology/mythology.model.json"));
+        assertFalse(model.findClass("Character").instanceMapping().requireSitelink(),
+                "child routes can retain valid mythological characters without articles");
+        assertEquals(6000, model.findClass("Character").instanceMapping().limit(),
+                "the wider Character population must remain explicitly bounded");
         GeneratedFieldModel children = model.findClass("Character").fields().stream()
                 .filter(field -> "child".equals(field.name()))
                 .findFirst().orElseThrow();
@@ -127,6 +132,41 @@ class MythologySavedModelTest {
                         + route.steps().stream().map(step -> step.direction() + " "
                                 + step.relation().relationId())
                         .collect(java.util.stream.Collectors.joining(", "))).toList());
+    }
+
+    @Test void savedRouteEvidenceDoesNotReplaceACharactersEntitySource()
+            throws Exception {
+        var loaded = new wikidata.explore.extract.WikidataDynamicObjectJsonStore()
+                .loadAllWithFieldGraph(new File(
+                        "../data/wikidata/mythology/mythology.snapshot.json"));
+        var selected = new java.util.ArrayList<>(loaded.objects().stream()
+                .filter(value -> List.of("Q22878", "Q27921410", "Q2666563",
+                        "Q21547808").contains(value.getIdentifier()))
+                .toList());
+        assertEquals(4, selected.size(), "the fixture contains Laocoön and three Acoetes");
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/mythology/mythology.model.json"));
+
+        wikidata.explore.transform.ProductCompiler.compile(model, selected);
+
+        for (var character : selected) {
+            var fields = objectview.field.FieldSet.of(character);
+            assertEquals(List.of(new quiz.source.WikidataSource(
+                            character.getIdentifier())),
+                    fields.read("wikidataSource"),
+                    character.getDisplayName() + " keeps its one QID source");
+        }
+        var laocoon = selected.stream()
+                .filter(value -> "Q22878".equals(value.getIdentifier()))
+                .findFirst().orElseThrow();
+        assertEquals(5, ((List<?>) objectview.field.FieldSet.of(laocoon)
+                .read("wikidataStatements")).size(),
+                "route evidence remains separately inspectable");
+        var routedAcoetes = selected.stream()
+                .filter(value -> "Q27921410".equals(value.getIdentifier()))
+                .findFirst().orElseThrow();
+        assertEquals(2, ((List<?>) objectview.field.FieldSet.of(routedAcoetes)
+                .read("wikidataStatements")).size());
     }
 
 }

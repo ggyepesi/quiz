@@ -52,19 +52,6 @@
       "qualifierCondition" : null
     }, {
       "@class" : "wikidata.explore.rule.RuleIncludedField",
-      "fieldName" : "child",
-      "propertyPid" : "P40",
-      "propertyLabel" : "child",
-      "kind" : "ENTITY",
-      "optional" : true,
-      "collection" : true,
-      "direction" : "ROOT_TO_ITEM",
-      "membershipPid" : "P31",
-      "membershipQid" : "Q22988604",
-      "membershipQualifierCondition" : null,
-      "qualifierCondition" : null
-    }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
       "fieldName" : "type",
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
@@ -77,7 +64,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     } ] ],
-    "limit" : 5000,
+    "limit" : 6000,
     "sortFieldName" : "",
     "sortDescending" : false,
     "includedQids" : [ "java.util.LinkedHashSet", [ ] ],
@@ -85,7 +72,7 @@
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
     "valueFilters" : [ "java.util.ArrayList", [ ] ],
     "edges" : [ "java.util.ArrayList", [ ] ],
-    "requireSitelink" : true,
+    "requireSitelink" : false,
     "rankBySitelinks" : false,
     "rankPropertyPid" : "",
     "rankDescending" : true,

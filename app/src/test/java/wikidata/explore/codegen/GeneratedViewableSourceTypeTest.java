@@ -27,6 +27,35 @@ class GeneratedViewableSourceTypeTest {
         assertFalse(source.contains("public String qid"));
         assertTrue(source.contains("@objectview.annotations.Label(\"Wikidata source\")"));
         assertTrue(source.contains("public java.util.List<objectview.Viewable> wikidataSource"));
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikidata statements\")"));
+        assertTrue(source.contains("public java.util.List<objectview.Viewable> wikidataStatements"));
+        assertFalse(source.contains("wikidataRelationRouteMatches"),
+                "coverage exists only when a relation route is configured");
+    }
+
+    @Test void relationRoutesDeclareStructuredOperationVisibleCoverage() {
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        var children = character.addField(
+                "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        children.entityClassName("Character");
+        wikidata.explore.model.FieldSourceBindings.put(children,
+                new datasource.api.SourceBinding(
+                        datasource.api.SourceBindingTarget.fieldValue(
+                                "Character", "children",
+                                datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                        new datasource.api.SourceRecipe("wikidata", "relation-routes",
+                                java.util.Map.of("routes", "[{\"id\":\"direct\","
+                                        + "\"steps\":[{\"relation\":\"P40\","
+                                        + "\"direction\":\"OUTGOING\"}]}]"))));
+
+        String source = generator.sourceFor(character);
+
+        assertTrue(source.contains("@objectview.annotations.Label("
+                + "\"Wikidata relation route matches\")"));
+        assertTrue(source.contains("FieldRole.NONE"));
+        assertTrue(source.contains("public java.util.List<"
+                + "quiz.source.WikidataRelationRouteMatch> "
+                + "wikidataRelationRouteMatches"));
     }
 
     @Test void inlineRenderModeSurvivesCodeGeneration() {
@@ -136,9 +165,11 @@ class GeneratedViewableSourceTypeTest {
                     mapped.occurrenceIdentities());
             assertEquals(List.of(source), mapped.wikidataStatementSources());
             objectview.field.FieldRef sourceField = objectview.field.FieldSet.of(mapped)
-                    .field("wikidataSource");
-            assertEquals("Wikidata source", sourceField.label());
+                    .field("wikidataStatements");
+            assertEquals("Wikidata statements", sourceField.label());
             assertEquals(objectview.field.FieldRole.PROVENANCE, sourceField.role());
+            assertEquals(List.of(), objectview.field.FieldSet.of(mapped)
+                    .read("wikidataSource"));
             assertEquals("https://www.wikidata.org/wiki/Q28", mapped.getUrl());
         }
     }
@@ -210,11 +241,13 @@ class GeneratedViewableSourceTypeTest {
             assertEquals(2, mapped.size());
             Object sources = objectview.field.FieldSet.of(mapped.get(1))
                     .read("wikidataSource");
-            assertEquals(2, ((java.util.List<?>) sources).size());
-            assertTrue(((java.util.List<?>) sources).stream()
-                    .anyMatch(quiz.source.WikidataSource.class::isInstance));
-            assertTrue(((java.util.List<?>) sources).stream()
-                    .anyMatch(quiz.source.WikidataStatementSource.class::isInstance));
+            assertEquals(java.util.List.of(new quiz.source.WikidataSource("Q1")),
+                    sources);
+            Object statements = objectview.field.FieldSet.of(mapped.get(1))
+                    .read("wikidataStatements");
+            assertEquals(1, ((java.util.List<?>) statements).size());
+            assertTrue(((java.util.List<?>) statements).getFirst()
+                    instanceof quiz.source.WikidataStatementSource);
         }
     }
 

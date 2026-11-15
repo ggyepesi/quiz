@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Entity and statement provenance use one ordinary, inspectable field. */
+/** Entity identity and statement evidence use separate ordinary, inspectable fields. */
 class WikidataSourceFieldsTest {
 
     @Test void aSourceEntityPublishesItsQidAsALinkField() {
@@ -34,7 +34,7 @@ class WikidataSourceFieldsTest {
                 FieldSet.of(value).field("identity").role());
     }
 
-    @Test void aStatementRecordPublishesItsWholeSourceAsAReferenceField() {
+    @Test void aStatementRecordPublishesItsEvidenceSeparatelyFromEntitySources() {
         WikidataStatementSource statement = new WikidataStatementSource(
                 "Q28$a", "Q28", "P1411", "Q103916", "Best Actor");
         var record = new wikidata.explore.extract.WikidataDynamicObject(
@@ -43,11 +43,13 @@ class WikidataSourceFieldsTest {
 
         FieldSet fields = FieldSet.of(record);
         FieldRef source = fields.field("wikidataSource");
+        FieldRef statements = fields.field("wikidataStatements");
 
         assertEquals(FieldKind.COLLECTION, source.kind());
-        assertTrue(source.annotatedReference());
-        assertEquals(statement,
-                assertInstanceOf(List.class, fields.read("wikidataSource")).getFirst());
+        assertEquals(List.of(), fields.read("wikidataSource"));
+        assertEquals(FieldKind.COLLECTION, statements.kind());
+        assertTrue(statements.annotatedReference());
+        assertEquals(List.of(statement), fields.read("wikidataStatements"));
         FieldSet statementFields = FieldSet.of(statement);
         assertTrue(statementFields.field("statementSubject").link());
         assertTrue(statementFields.field("statementProperty").link());
@@ -81,11 +83,11 @@ class WikidataSourceFieldsTest {
                         objectview.viewconfig.ViewConfig.of(
                                 WikidataStatementSource.class), false));
 
-        assertEquals(6, count(card[0], objectview.render.LinkRow.class),
-                "containing claim, subject, property, object, GUID and exact JSON");
+        assertEquals(5, count(card[0], objectview.render.LinkRow.class),
+                "subject, property, object, GUID and exact JSON");
     }
 
-    @Test void anAggregatedRecordKeepsEverySourceStatementInTheSameField() {
+    @Test void anAggregatedRecordKeepsEverySourceStatementInTheEvidenceField() {
         var record = new wikidata.explore.extract.WikidataDynamicObject(
                 "modeled-key", "modeled record");
         record.wikidataStatementSources(List.of(
@@ -93,12 +95,53 @@ class WikidataSourceFieldsTest {
                 new WikidataStatementSource("Q3$b", "Q3", "P166", "Q2", "Prize")));
 
         FieldSet fields = FieldSet.of(record);
-        FieldRef source = fields.field("wikidataSource");
+        FieldRef source = fields.field("wikidataStatements");
 
         assertEquals(FieldKind.COLLECTION, source.kind());
         assertTrue(source.collection());
         assertEquals(2, assertInstanceOf(
-                List.class, fields.read("wikidataSource")).size());
+                List.class, fields.read("wikidataStatements")).size());
+    }
+
+    @Test void aQidEntityWithRouteEvidenceNeverLosesItsEntitySource() {
+        var laocoon = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q22878", "Laocoön");
+        var evidence = new WikidataStatementSource(
+                "Q22878$child", "Q22878", "P40", "Q12748409",
+                "Antiphantes");
+        laocoon.addWikidataStatementSource(evidence);
+
+        FieldSet fields = FieldSet.of(laocoon);
+
+        assertEquals(List.of(new WikidataSource("Q22878")),
+                fields.read("wikidataSource"));
+        assertEquals(List.of(evidence), fields.read("wikidataStatements"));
+    }
+
+    @Test void theDefaultStatementCaptionLinksToTheClaimOnWikidata() throws Exception {
+        var statement = new WikidataStatementSource(
+                "Q22878$child", "Q22878", "P40", "Q12748409",
+                "Antiphantes");
+        var entity = new wikidata.explore.extract.WikidataDynamicObject(
+                "Q22878", "Laocoön");
+        entity.addWikidataStatementSource(statement);
+        objectview.viewconfig.ViewConfig statementView =
+                objectview.viewconfig.ViewConfig.leaf();
+        statementView.addField(objectview.field.ViewableContractFieldSet.DISPLAY_KEY,
+                objectview.viewconfig.ViewConfig.leaf());
+        objectview.viewconfig.ViewConfig entityView =
+                objectview.viewconfig.ViewConfig.leaf();
+        entityView.addField("wikidataStatements", statementView);
+        Object statements = FieldSet.of(entity).read("wikidataStatements");
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        context.setCollectionExpanded(statements, true);
+        objectview.render.Card[] rendered = new objectview.render.Card[1];
+
+        javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
+                new objectview.render.Card(entity, entityView, context, false));
+
+        assertNotNull(findLink(rendered[0],
+                "https://www.wikidata.org/wiki/Q22878#P40"));
     }
 
     @Test void theDefaultSourceCaptionKeepsItsWikidataLink() throws Exception {
@@ -222,6 +265,19 @@ class WikidataSourceFieldsTest {
         if (root instanceof java.awt.Container container) {
             for (java.awt.Component child : container.getComponents()) {
                 T found = find(child, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static objectview.render.LinkRow findLink(
+            java.awt.Component root, String url) {
+        if (root instanceof objectview.render.LinkRow link
+                && url.equals(link.url())) return link;
+        if (root instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) {
+                objectview.render.LinkRow found = findLink(child, url);
                 if (found != null) return found;
             }
         }

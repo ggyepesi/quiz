@@ -222,25 +222,161 @@ class WikidataGraphAdjacencyAcquisitionTest {
                 refused.getMessage());
     }
 
-    @Test void anUnpagedIncomingAnswerIsNeverClaimedComplete()
+    @Test void shortIncomingPagesContinueUntilAnEmptyPageIsConfirmed()
             throws Exception {
         EntityRef position = EntityRef.wikidata("Q4164871");
         GraphRelation subclass = new GraphRelation("wikidata", "P279");
         GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(position),
                 subclass, GraphTraversalDirection.INCOMING);
-        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient()
-                .row(Map.of("subject", "Q6412254", "value", "Q4164871"));
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            int call;
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                call++;
+                if (call == 1) return List.of(
+                        WikidataGraphAdjacencyAcquisitionTest.row(
+                                "Q6412254", "Q4164871", "0001"));
+                if (call == 2) return List.of(
+                        WikidataGraphAdjacencyAcquisitionTest.row(
+                                "Q6412255", "Q4164871", "0002"));
+                return List.of();
+            }
+        };
         InMemoryGraphStore store = new InMemoryGraphStore();
 
         new WikidataGraphAdjacencyAcquisition(null, sparql, null, null)
                 .acquire(store, demand);
 
-        assertEquals(List.of(EntityRef.wikidata("Q6412254")), store.adjacent(demand)
+        assertEquals(List.of(EntityRef.wikidata("Q6412254"),
+                        EntityRef.wikidata("Q6412255")), store.adjacent(demand)
                 .edges().stream().map(edge -> edge.source()).toList());
-        assertEquals(GraphAdjacencyCoverage.INCOMPLETE,
+        assertEquals(GraphAdjacencyCoverage.COMPLETE,
                 store.adjacencyKnowledge(position, demand));
+        assertEquals(4, requests.size(),
+                "two short pages, then an empty page and its one-row confirmation");
+        assertTrue(requests.getFirst().contains(
+                "ORDER BY STR(?statement)\nLIMIT 1000"));
+        assertTrue(requests.get(1).contains("FILTER(STR(?statement) > \"")
+                && requests.get(1).contains("0001"));
+        assertTrue(requests.getLast().endsWith("LIMIT 1"));
         assertTrue(WikidataGraphAdjacencyAcquisition.incomingQuery(
                 subclass, List.of(position)).contains("?subject wdt:P279 ?value"));
+    }
+
+    @Test void anIncomingRelationWithNoEdgesIsStillProvenComplete() throws Exception {
+        EntityRef position = EntityRef.wikidata("Q4164871");
+        GraphRelation subclass = new GraphRelation("wikidata", "P279");
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(position),
+                subclass, GraphTraversalDirection.INCOMING);
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                return List.of();
+            }
+        };
+        InMemoryGraphStore store = new InMemoryGraphStore();
+
+        new WikidataGraphAdjacencyAcquisition(null, sparql, null, null)
+                .acquire(store, demand);
+
+        assertEquals(2, requests.size(), "empty page plus one-row confirmation");
+        assertEquals(GraphAdjacencyCoverage.COMPLETE,
+                store.adjacencyKnowledge(position, demand));
+    }
+
+    @Test void aFailedLaterIncomingPageDoesNotCommitItsPrefixAsComplete()
+            throws Exception {
+        EntityRef position = EntityRef.wikidata("Q4164871");
+        GraphRelation subclass = new GraphRelation("wikidata", "P279");
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(position),
+                subclass, GraphTraversalDirection.INCOMING);
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                if (!query.contains("FILTER(STR(?statement) >")) {
+                    return List.of(WikidataGraphAdjacencyAcquisitionTest.row(
+                            "Q6412254", "Q4164871", "0001"));
+                }
+                throw new RuntimeException(new batch.ResponseTimeoutException(
+                        "page timed out", null));
+            }
+        };
+        InMemoryGraphStore store = new InMemoryGraphStore();
+
+        new WikidataGraphAdjacencyAcquisition(null, sparql, null, null)
+                .acquire(store, demand);
+
+        assertTrue(store.adjacent(demand).edges().isEmpty(),
+                "a prefix remains local to the page unit until every page succeeds");
+        assertEquals(GraphAdjacencyCoverage.UNAVAILABLE,
+                store.adjacencyKnowledge(position, demand));
+    }
+
+    @Test void aHeavyIncomingPageHalvesWithoutMovingItsCursor() throws Exception {
+        EntityRef position = EntityRef.wikidata("Q4164871");
+        GraphRelation subclass = new GraphRelation("wikidata", "P279");
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(position),
+                subclass, GraphTraversalDirection.INCOMING);
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                if (query.endsWith("LIMIT 1000")) {
+                    throw new RuntimeException(new batch.ResponseTimeoutException(
+                            "page timed out", null));
+                }
+                if (query.endsWith("LIMIT 500")
+                        && !query.contains("FILTER(STR(?statement) >")) {
+                    return List.of(WikidataGraphAdjacencyAcquisitionTest.row(
+                            "Q6412254", "Q4164871", "0001"));
+                }
+                return List.of();
+            }
+        };
+        InMemoryGraphStore store = new InMemoryGraphStore();
+
+        new WikidataGraphAdjacencyAcquisition(null, sparql, null, null)
+                .acquire(store, demand);
+
+        assertEquals(List.of(1000, 500, 500, 1), requests.stream()
+                .map(WikidataGraphAdjacencyAcquisitionTest::limitOf).toList());
+        assertEquals(GraphAdjacencyCoverage.COMPLETE,
+                store.adjacencyKnowledge(position, demand));
+    }
+
+    /** Halving a page shrinks the rows returned, not the ordering WDQS performs over the
+     *  whole partition; a heavy partition of several targets splits its targets first. */
+    @Test void aHeavySeveralTargetPartitionSplitsItsTargetsBeforeHalving()
+            throws Exception {
+        EntityRef first = EntityRef.wikidata("Q101");
+        EntityRef second = EntityRef.wikidata("Q102");
+        GraphRelation father = new GraphRelation("wikidata", "P22");
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(first, second),
+                father, GraphTraversalDirection.INCOMING);
+        List<String> requests = new ArrayList<>();
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                requests.add(query);
+                if (query.contains("wd:Q101 wd:Q102")) {
+                    throw new RuntimeException(new batch.ResponseTimeoutException(
+                            "partition timed out", null));
+                }
+                return List.of();
+            }
+        };
+        InMemoryGraphStore store = new InMemoryGraphStore();
+
+        new WikidataGraphAdjacencyAcquisition(null, sparql, null, null)
+                .acquire(store, demand);
+
+        assertEquals(List.of(1000, 1000, 1, 1000, 1), requests.stream()
+                .map(WikidataGraphAdjacencyAcquisitionTest::limitOf).toList(),
+                "one failed partition page, then each target read at full page size");
+        assertEquals(GraphAdjacencyCoverage.COMPLETE,
+                store.adjacencyKnowledge(first, demand));
+        assertEquals(GraphAdjacencyCoverage.COMPLETE,
+                store.adjacencyKnowledge(second, demand));
     }
 
     /** An incoming edge used to carry no statement id, so a route that reached an entity
@@ -248,11 +384,13 @@ class WikidataGraphAdjacencyAcquisitionTest {
     @Test void anIncomingEdgeCarriesTheStatementThatStatesIt() throws Exception {
         EntityRef laocoon = EntityRef.wikidata("Q101");
         GraphRelation father = new GraphRelation("wikidata", "P22");
-        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient().row(Map.of(
-                "subject", "http://www.wikidata.org/entity/Q201",
-                "value", "http://www.wikidata.org/entity/Q101",
-                "statement", "http://www.wikidata.org/entity/statement/"
-                        + "Q201-4A2B-11EF-ABCD"));
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient() {
+            @Override public List<wikidata.WikidataBinding> query(String query) {
+                return query.contains("FILTER(STR(?statement) >") ? List.of()
+                        : List.of(WikidataGraphAdjacencyAcquisitionTest.row(
+                                "Q201", "Q101", "4A2B-11EF-ABCD"));
+            }
+        };
         InMemoryGraphStore store = new InMemoryGraphStore();
         GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(laocoon), father,
                 GraphTraversalDirection.INCOMING);
@@ -266,5 +404,18 @@ class WikidataGraphAdjacencyAcquisitionTest {
         assertTrue(query.contains("?subject wdt:P22 ?value .")
                 && query.contains("?subject p:P22 ?statement .")
                 && query.contains("?statement ps:P22 ?value ."), query);
+    }
+
+    private static wikidata.WikidataBinding row(
+            String subject, String value, String statementSuffix) {
+        return new wikidata.WikidataBinding(Map.of(
+                "subject", "http://www.wikidata.org/entity/" + subject,
+                "value", "http://www.wikidata.org/entity/" + value,
+                "statement", "http://www.wikidata.org/entity/statement/"
+                        + subject + "-" + statementSuffix));
+    }
+
+    private static int limitOf(String query) {
+        return Integer.parseInt(query.substring(query.lastIndexOf("LIMIT ") + 6));
     }
 }

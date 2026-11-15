@@ -74,6 +74,9 @@ public final class WikidataRelationRouteFieldAcquisition {
             Map<EntityRef, List<WikidataDynamicObject>> owners = owners(
                     model, reachable, declaration);
             if (owners.isEmpty()) continue;
+            owners.values().stream().flatMap(List::stream).forEach(owner ->
+                    owner.clearWikidataRelationRouteMatches(
+                            declaration.owner().className(), declaration.field().name()));
             Map<EntityRef, WikidataDynamicObject> references = references(
                     model, reachable, declaration);
             sink.message("Follow " + declaration.spec().routes().size()
@@ -104,6 +107,13 @@ public final class WikidataRelationRouteFieldAcquisition {
                         if (mergeReference(copy, declaration.field().name(), reference)) {
                             values++;
                         }
+                        copy.addWikidataRelationRouteMatch(
+                                new quiz.source.WikidataRelationRouteMatch(
+                                        declaration.owner().className(),
+                                        declaration.field().name(),
+                                        match.route().id(), match.route().label(),
+                                        new quiz.source.WikidataSource(terminal.id()),
+                                        quiz.source.WikidataRelationRouteMatch.Status.MATCHED));
                         evidence.forEach(copy::addWikidataStatementSource);
                     }
                 }

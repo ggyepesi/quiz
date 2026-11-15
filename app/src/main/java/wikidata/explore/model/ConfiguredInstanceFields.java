@@ -29,6 +29,7 @@ public final class ConfiguredInstanceFields {
             String label,
             datasource.api.SourceValueSchema valueSchema,
             objectview.field.FieldRole role,
+            Class<? extends objectview.Viewable> referenceType,
             Function<Object, Object> reader) {
 
         public Field {
@@ -37,6 +38,8 @@ public final class ConfiguredInstanceFields {
             label = label == null ? "" : label;
             valueSchema = java.util.Objects.requireNonNull(valueSchema, "valueSchema");
             role = role == null ? objectview.field.FieldRole.NONE : role;
+            referenceType = referenceType == null
+                    ? objectview.Viewable.class : referenceType;
             reader = java.util.Objects.requireNonNull(reader, "reader");
         }
 
@@ -67,7 +70,7 @@ public final class ConfiguredInstanceFields {
         return objectview.field.FieldRef.described(
                 field.name(), field.label(), field.role(),
                 kind, valueKind, typeLabel, reference, schema.collection(),
-                reference ? "Viewable" : null, false, false,
+                reference ? field.referenceType().getSimpleName() : null, false, false,
                 false, false, "", reference);
     }
 
@@ -108,7 +111,8 @@ public final class ConfiguredInstanceFields {
     private static Field datasourceField(
             String providerId, DatasourceInstanceField declaration) {
         return new Field(providerId, declaration.name(), declaration.label(),
-                declaration.valueSchema(), objectview.field.FieldRole.PROVENANCE,
+                declaration.valueSchema(), declaration.role(),
+                declaration.referenceType(),
                 declaration::value);
     }
 
@@ -120,17 +124,34 @@ public final class ConfiguredInstanceFields {
             Set<String> seen) {
         if (model == null || !seen.add(model.className())) return;
         for (SourceBinding binding : model.sourceBindings()) {
-            DatasourceProvider provider = registry.provider(
-                    binding.recipe().providerId()).orElseThrow(() ->
-                    new IllegalStateException("No datasource provider '"
-                            + binding.recipe().providerId() + "'"));
-            for (DatasourceInstanceField declaration : provider.instanceFields(binding)) {
-                put(fields, datasourceField(binding.recipe().providerId(), declaration));
+            collectConfiguredField(registry, fields, binding);
+        }
+        // Operation-contributed instance fields belong to the binding that enables
+        // them. Relation-route coverage is the first ordinary FIELD_VALUE example;
+        // correspondence fields already use the class-binding half of this path.
+        for (GeneratedFieldModel field : model.fields()) {
+            if (field == null) continue;
+            for (SourceBinding binding : field.sourceBindings()) {
+                collectConfiguredField(registry, fields, binding);
             }
         }
         if (project != null && model.hasBase()) {
             collectConfiguredFields(project.findClass(model.baseClassName()), project,
                     registry, fields, seen);
+        }
+    }
+
+    private static void collectConfiguredField(
+            DatasourceRegistry registry,
+            LinkedHashMap<String, Field> fields,
+            SourceBinding binding) {
+        if (binding == null) return;
+        DatasourceProvider provider = registry.provider(
+                binding.recipe().providerId()).orElseThrow(() ->
+                new IllegalStateException("No datasource provider '"
+                        + binding.recipe().providerId() + "'"));
+        for (DatasourceInstanceField declaration : provider.instanceFields(binding)) {
+            put(fields, datasourceField(binding.recipe().providerId(), declaration));
         }
     }
 

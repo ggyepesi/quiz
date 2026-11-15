@@ -274,7 +274,8 @@ public final class SnapshotFieldGraph {
                     objectview.field.FieldSet fields = objectview.field.FieldSet.of(object);
                     for (objectview.field.FieldRef field : fields.fields()) {
                         if (object.dynamicFieldValues().containsKey(field.name())) continue;
-                        if (field.role() == objectview.field.FieldRole.NONE && !field.link()) continue;
+                        if (field.role() == objectview.field.FieldRole.NONE
+                                && !field.link() && !field.reference()) continue;
                         FieldShape shape = type.fields.computeIfAbsent(field.name(), FieldShape::new);
                         shape.declare(field);
                         shape.observe(fields.read(field.name()));
@@ -361,6 +362,11 @@ public final class SnapshotFieldGraph {
                             .toFieldRef(configured);
                     type.fields.computeIfAbsent(
                             declared.name(), FieldShape::new).declare(declared);
+                    if (configured.valueSchema().kind()
+                            == datasource.api.SourceValueKind.ENTITY_REFERENCE) {
+                        declareReferenceType(configured.referenceType(),
+                                new LinkedHashSet<>());
+                    }
                 }
                 if (generatedClass.reifiesStatements()) {
                     type.fields.computeIfAbsent("source", FieldShape::new)
@@ -368,6 +374,32 @@ public final class SnapshotFieldGraph {
                                     FieldRef.of("source", FieldKind.REFERENCE,
                                             "Viewable", true, false, false),
                                     true));
+                }
+            }
+        }
+
+        /** Declare a provider-owned structured reference from its one reflected
+         * contract. This lets a saved snapshot offer nested operation paths without
+         * scanning values or inventing a second schema description. */
+        private void declareReferenceType(
+                Class<? extends Viewable> referenceType,
+                Set<Class<? extends Viewable>> seen) {
+            if (referenceType == null || referenceType == Viewable.class
+                    || !seen.add(referenceType)) {
+                return;
+            }
+            String typeName = referenceType.getSimpleName();
+            TypeShape type = graph.types.computeIfAbsent(typeName, TypeShape::new);
+            for (java.lang.reflect.Field reflected
+                    : objectview.ViewableAdapter.getAllFields(referenceType)) {
+                FieldRef declared = objectview.field.ReflectionFieldSet.describe(
+                        reflected, referenceType);
+                type.fields.computeIfAbsent(declared.name(), FieldShape::new)
+                        .declare(declared);
+                Class<? extends Viewable> nested =
+                        objectview.field.ViewableFieldPaths.nestedViewableClass(reflected);
+                if (nested != null && !declared.structural()) {
+                    declareReferenceType(nested, seen);
                 }
             }
         }

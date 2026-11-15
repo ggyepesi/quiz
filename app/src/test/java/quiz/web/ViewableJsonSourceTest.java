@@ -28,13 +28,15 @@ class ViewableJsonSourceTest {
                 new quiz.source.WikidataStatementSource(
                         "Q28$a", "Q28", "P1411", "Q103916", "Best Actor")));
 
-        ViewableView.Field source = source(ViewableJson.of(nomination,
-                sourceTicks("@view:display", "statementJson", "guid")));
+        ViewableView.Field source = statements(ViewableJson.of(nomination,
+                statementTicks("@view:display", "statementJson", "guid")));
 
-        assertEquals("wikidataSource", source.name());
+        assertEquals("wikidataStatements", source.name());
         assertEquals("refs", source.kind());
         assertEquals("Q28 — P1411 → Best Actor (Q103916)",
                 source.refs().getFirst().name());
+        assertEquals("https://www.wikidata.org/wiki/Q28#P1411",
+                source.refs().getFirst().url());
         ViewableView.Field exact = source.refs().getFirst().inline().fields().stream()
                 .filter(field -> "statementJson".equals(field.name()))
                 .findFirst().orElseThrow();
@@ -85,10 +87,10 @@ class ViewableJsonSourceTest {
 
         // The default ticks each statement's DISPLAY: captions, nothing to open.
         ViewableView view = ViewableJson.of(award);
-        ViewableView.Field source = source(view);
+        ViewableView.Field source = statements(view);
 
         assertEquals("Le Duc Tho — Nobel Peace Prize", view.name());
-        assertEquals("wikidataSource", source.name());
+        assertEquals("wikidataStatements", source.name());
         assertEquals("refs", source.kind());
         assertEquals(List.of(
                         "Q66107 — P166 → Nobel Peace Prize (Q35637)",
@@ -98,24 +100,39 @@ class ViewableJsonSourceTest {
                 .filter(ref -> ref.inline() != null).count());
 
         // Ticking a field under the statement makes each one expandable.
-        ViewableView.Field ticked = source(ViewableJson.of(award,
-                sourceTicks("@view:display", "guid")));
+        ViewableView.Field ticked = statements(ViewableJson.of(award,
+                statementTicks("@view:display", "guid")));
         assertEquals(2, ticked.refs().stream()
                 .filter(ref -> ref.inline() != null).count());
     }
 
     private static objectview.viewconfig.ViewConfig sourceTicks(String... fields) {
+        return ticks("wikidataSource", fields);
+    }
+
+    private static objectview.viewconfig.ViewConfig statementTicks(String... fields) {
+        return ticks("wikidataStatements", fields);
+    }
+
+    private static objectview.viewconfig.ViewConfig ticks(
+            String fieldName, String... fields) {
         objectview.viewconfig.ViewConfig statement = objectview.viewconfig.ViewConfig.leaf();
         for (String field : fields) {
             statement.addField(field, objectview.viewconfig.ViewConfig.leaf());
         }
         objectview.viewconfig.ViewConfig root = objectview.viewconfig.ViewConfig.leaf();
-        root.addField("wikidataSource", statement);
+        root.addField(fieldName, statement);
         return root;
     }
 
     private static ViewableView.Field source(ViewableView view) {
         return view.fields().stream().filter(f -> "wikidataSource".equals(f.name()))
+                .findFirst().orElseThrow(() -> new AssertionError(view.fields()));
+    }
+
+    private static ViewableView.Field statements(ViewableView view) {
+        return view.fields().stream()
+                .filter(f -> "wikidataStatements".equals(f.name()))
                 .findFirst().orElseThrow(() -> new AssertionError(view.fields()));
     }
 }

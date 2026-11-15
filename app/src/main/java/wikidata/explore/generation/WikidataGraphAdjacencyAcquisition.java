@@ -18,6 +18,7 @@ import datasource.graph.store.LocalGraphStore;
 import wikidata.WikidataBatchFailureClassifier;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
+import wikidata.WikidataKeysetPages;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.explore.extract.GenerationLog;
@@ -303,13 +304,14 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
             LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception {
         if (sparql == null) throw new IllegalStateException(
                 "No Wikidata query service is configured for incoming graph edges");
-        List<WorkUnit<List<GraphEdge>>> units = new ArrayList<>();
-        for (int from = 0; from < demand.nodes().size(); from += REVERSE_BATCH_SIZE) {
-            units.add(new IncomingUnit(sparql, demand.relation(), demand.nodes().subList(
-                    from, Math.min(demand.nodes().size(), from + REVERSE_BATCH_SIZE))));
-        }
         List<WorkDescriptor> failed;
         try (GenerationLog.Group group = log.group(acquisitionTitle(demand))) {
+            List<WorkUnit<List<GraphEdge>>> units = new ArrayList<>();
+            for (int from = 0; from < demand.nodes().size(); from += REVERSE_BATCH_SIZE) {
+                units.add(new IncomingUnit(sparql, demand.relation(), demand.nodes().subList(
+                        from, Math.min(demand.nodes().size(), from + REVERSE_BATCH_SIZE)),
+                        group.batchProgress(), cancellation));
+            }
             failed = new BatchExecutor<List<GraphEdge>>(
                     BatchPolicy.defaults().withResume(false), group.batchProgress(),
                     WikidataBatchFailureClassifier.INSTANCE, cancellation,
@@ -318,15 +320,12 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
                         List<EntityRef> completed = objectsOf(descriptor);
                         store.commitAdjacency(new GraphAdjacencyDemand(completed,
                                         demand.relation(), GraphTraversalDirection.INCOMING),
-                                edges, GraphAdjacencyCoverage.INCOMPLETE);
+                                edges, GraphAdjacencyCoverage.COMPLETE);
                     });
         }
         Set<EntityRef> unavailable = new LinkedHashSet<>();
         for (WorkDescriptor descriptor : failed) unavailable.addAll(objectsOf(descriptor));
         for (EntityRef node : demand.nodes()) {
-            // This unpaged WDQS query can return a syntactically valid partial 200.
-            // Retain every returned edge, but never turn absence from that answer into
-            // proof of completeness. Keyset paging is required before COMPLETE is safe.
             if (unavailable.contains(node)) {
                 store.markCoverage(single(node, demand),
                         GraphAdjacencyCoverage.UNAVAILABLE);
@@ -484,14 +483,23 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
     /** Truthy incoming edges, each with the statement that states it, so an edge
      *  reached this way carries the same statement id as an outgoing one. */
     static String incomingQuery(GraphRelation relation, List<EntityRef> objects) {
+        return incomingQuery(relation, objects, "", WikidataKeysetPages.PAGE_SIZE);
+    }
+
+    /** One ordered keyset page. Statement IRIs are globally unique, so the statement
+     * itself is a stable cursor across every target in this bounded VALUES partition. */
+    static String incomingQuery(
+            GraphRelation relation, List<EntityRef> objects, String cursor, int limit) {
         String pid = relation.relationId();
         StringBuilder query = new StringBuilder(
                 "SELECT DISTINCT ?subject ?value ?statement WHERE {\n  VALUES ?value {");
         for (EntityRef object : objects) query.append(" wd:").append(object.id());
-        return query.append(" }\n  ?subject wdt:").append(pid).append(" ?value .\n")
+        query.append(" }\n  ?subject wdt:").append(pid).append(" ?value .\n")
                 .append("  ?subject p:").append(pid).append(" ?statement .\n")
-                .append("  ?statement ps:").append(pid).append(" ?value .\n}")
-                .toString();
+                .append("  ?statement ps:").append(pid).append(" ?value .\n")
+                .append(WikidataKeysetPages.after("STR(?statement)", cursor));
+        return query.append("}\nORDER BY STR(?statement)\nLIMIT ")
+                .append(Math.max(1, limit)).toString();
     }
 
     /** A WDQS statement IRI ends in the GUID with its first "$" written as "-". */
@@ -503,18 +511,31 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
         return tail.substring(0, dash) + "$" + tail.substring(dash + 1);
     }
 
+    /**
+     * One VALUES partition of incoming targets, read completely through the shared keyset
+     * pages. While the partition holds several targets, a heavy page is not halved: the
+     * failure escapes so the executor splits the targets, which is what makes the ordered
+     * population smaller. Only a single target halves its page size. Edges stay local to
+     * the unit until every page has succeeded, so a later failure never publishes a prefix.
+     */
     private static final class IncomingUnit implements WorkUnit<List<GraphEdge>> {
         private final WikidataSparqlClient client;
         private final GraphRelation relation;
         private final List<EntityRef> objects;
+        private final batch.BatchProgress progress;
+        private final CancellationToken cancellation;
         private final WorkDescriptor descriptor;
 
         private IncomingUnit(
                 WikidataSparqlClient client, GraphRelation relation,
-                List<EntityRef> objects) {
+                List<EntityRef> objects, batch.BatchProgress progress,
+                CancellationToken cancellation) {
             this.client = client;
             this.relation = relation;
             this.objects = List.copyOf(objects);
+            this.progress = progress == null ? batch.BatchProgress.NOOP : progress;
+            this.cancellation = cancellation == null
+                    ? new CancellationToken() : cancellation;
             String ids = this.objects.stream().map(EntityRef::id)
                     .collect(java.util.stream.Collectors.joining(","));
             descriptor = new WorkDescriptor("graph-incoming", relation.relationId()
@@ -524,25 +545,56 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
         }
 
         @Override public WorkDescriptor descriptor() { return descriptor; }
-        @Override public String request() { return incomingQuery(relation, objects); }
+
+        /** Each page is logged with its own request; this unit issues none itself. */
         @Override public List<GraphEdge> execute() throws Exception {
             Map<String, GraphEdge> edges = new LinkedHashMap<>();
-            for (WikidataBinding binding : client.query(request())) {
-                String subject = binding.qid("subject");
-                String value = binding.qid("value");
-                if (!WikidataIds.isQid(subject) || !WikidataIds.isQid(value)) continue;
-                GraphEdge edge = new GraphEdge(EntityRef.wikidata(subject), relation,
-                        EntityRef.wikidata(value),
-                        statementGuid(binding.value("statement")));
-                edges.putIfAbsent(subject + "\u0000" + value, edge);
+            for (GraphEdge edge : WikidataKeysetPages.read(client, new IncomingPages(),
+                    objects.size() == 1, progress, cancellation).values()) {
+                edges.putIfAbsent(edge.source().id() + "\u0000"
+                        + ((EntityRef) edge.target()).id(), edge);
             }
             return List.copyOf(edges.values());
         }
+
         @Override public List<? extends WorkUnit<List<GraphEdge>>> split() {
             if (objects.size() < 2) return List.of();
             int middle = objects.size() / 2;
-            return List.of(new IncomingUnit(client, relation, objects.subList(0, middle)),
-                    new IncomingUnit(client, relation, objects.subList(middle, objects.size())));
+            return List.of(new IncomingUnit(client, relation,
+                            objects.subList(0, middle), progress, cancellation),
+                    new IncomingUnit(client, relation,
+                            objects.subList(middle, objects.size()), progress,
+                            cancellation));
+        }
+
+        private final class IncomingPages
+                implements WikidataKeysetPages.Population<GraphEdge> {
+            @Override public String request(String cursor, int limit) {
+                return incomingQuery(relation, objects, cursor, limit);
+            }
+
+            @Override public String cursor(WikidataBinding row) {
+                return row.value("statement");
+            }
+
+            @Override public GraphEdge value(WikidataBinding row) {
+                String subject = row.qid("subject");
+                String value = row.qid("value");
+                if (!WikidataIds.isQid(subject) || !WikidataIds.isQid(value)) return null;
+                return new GraphEdge(EntityRef.wikidata(subject), relation,
+                        EntityRef.wikidata(value), statementGuid(row.value("statement")));
+            }
+
+            @Override public WorkDescriptor descriptor(String cursor, int limit) {
+                String position = cursor.isBlank() ? "start" : cursor;
+                return new WorkDescriptor("graph-incoming-page",
+                        descriptor.key() + ":" + position + ":" + limit,
+                        relation.relationId() + " incoming edges for " + objects.size()
+                                + " object(s) after " + position,
+                        Map.of("property", relation.relationId(),
+                                "objects", descriptor.parameters().get("objects"),
+                                "cursor", cursor, "limit", String.valueOf(limit)));
+            }
         }
     }
 }

@@ -98,9 +98,11 @@ class FieldSetTest {
 
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
-        assertEquals(4, f.size(),
-                "schema fields plus source provenance and the display-name contract field");
+        assertEquals(6, f.size(),
+                "schema fields plus datasource evidence and the display-name contract field");
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
+        assertEquals(FieldRole.PROVENANCE, f.get("wikidataStatements").role());
+        assertEquals(FieldRole.NONE, f.get("wikidataRelationRouteMatches").role());
         assertTrue(f.get("cast").collection(), "schema says collection despite the single value");
         assertEquals(FieldKind.ORDERED, f.get("year").kind(), "typed even though absent from the map");
         // Values still read from the object: cast present, year absent (null).
@@ -130,6 +132,7 @@ class FieldSetTest {
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
         assertEquals(List.of("cast", "unexpected", "wikidataSource",
+                        "wikidataStatements", "wikidataRelationRouteMatches",
                         ViewableContractFieldSet.DISPLAY_KEY),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
         assertTrue(dynamicSet.has("cast"));
@@ -145,9 +148,10 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(5, f.size(),
-                "model fields plus source provenance and the display-name contract field");
+        assertEquals(7, f.size(),
+                "model fields plus datasource evidence and the display-name contract field");
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
+        assertEquals(FieldRole.PROVENANCE, f.get("wikidataStatements").role());
         assertEquals(FieldKind.ORDERED, f.get("year").kind());
         assertTrue(f.get("category").collection());
         assertTrue(f.get("category").reference());

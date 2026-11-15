@@ -618,10 +618,23 @@ this as an explicit **Run graph** action whose searchable, linked results do not
 Review disposition; `GraphEvidenceConditions` returns the decision with evidence edges, test
 edges, positive witnesses and exact coverage. There is no second evidence-acquisition path.
 
-Incoming Wikidata adjacency currently uses an unpaged WDQS query. Returned edges are retained,
-but every successful answer is stamped `INCOMPLETE`, never `COMPLETE`: under R18 a syntactically
-valid partial 200 cannot prove absence. Keyset paging remains #199; until it is implemented an
-incoming absence can produce Review but never a confident rejection.
+Incoming Wikidata adjacency uses R18 keyset paging over the statement IRI, through the shared
+`WikidataKeysetPages`. Each bounded target partition keeps reading ordered pages even when a page
+is shorter than the requested limit; an empty page is confirmed with a separate one-row probe
+before the partition is stamped `COMPLETE`. A heavy page of a several-target partition splits the
+targets; only a single target retries at the same cursor with a smaller page size. Edges stay local to the partition
+until every page succeeds, so a later timeout cannot publish a successful prefix as complete; that
+partition is instead `UNAVAILABLE` and the route result is partial.
+
+Bounded relation routes used as field sources also retain a small, ordinary side-output per exact
+match: owner class, target field, configured route id and label, and reached terminal entity.
+Finalization compares each terminal with the completed target field and marks it `Retained` or
+`Not retained`. This is deliberately not inferred later from the route's PIDs: two routes may use
+the same properties, and one qualified route may contain several statements. The side-output is
+declared only on classes that configure relation routes, survives snapshot save/load, and is an
+ObjectView field. TransformApp can therefore facet the original owner instances by
+`Wikidata relation route matches → Route`, or by the correlated `Route coverage` value such as
+`Child by father — Not retained`, without a route-specific results UI.
 
 The remaining slice is:
 

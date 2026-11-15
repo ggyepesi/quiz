@@ -45,6 +45,22 @@ class RuntimeFieldsStayTransientTest {
         assertEquals(java.util.Set.of("summary"), saved.dynamicFieldValues().keySet());
     }
 
+    @Test void transformSaveConversionRetainsDurableRouteCoverage() {
+        WikidataDynamicObject source = maat();
+        source.addWikidataRelationRouteMatch(
+                new quiz.source.WikidataRelationRouteMatch(
+                        "Character", "children", "direct", "Direct child",
+                        new quiz.source.WikidataSource("Q201", "Antiphantes"),
+                        quiz.source.WikidataRelationRouteMatch.Status.RETAINED));
+
+        WikidataDynamicObject saved = ViewableToWdo.pool(List.of(source)).getFirst();
+
+        assertEquals(List.of("direct Q201 RETAINED"),
+                saved.wikidataRelationRouteMatches().stream()
+                        .map(value -> value.routeId() + " " + value.terminal().qid()
+                                + " " + value.status().name()).toList());
+    }
+
     @Test void theSnapshotStoreLeavesRuntimeFieldsOut(@TempDir Path dir) throws Exception {
         var file = dir.resolve("runtime-fields-snapshot.json").toFile();
         new WikidataDynamicObjectJsonStore().save(List.of(maat()), file);

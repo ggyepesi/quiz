@@ -21,6 +21,48 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FacetGroupTest {
 
+    @Test void routeCoverageFacetsTheOriginalOwnersByExactConfiguredRoute() {
+        wikidata.explore.extract.WikidataDynamicObject laocoon =
+                routeOwner("Q101", "Laocoon", "direct", "Direct child", "Q201",
+                        quiz.source.WikidataRelationRouteMatch.Status.RETAINED);
+        wikidata.explore.extract.WikidataDynamicObject acoetes =
+                routeOwner("Q102", "Acoetes", "qualified",
+                        "Named child group", "Q202",
+                        quiz.source.WikidataRelationRouteMatch.Status.NOT_RETAINED);
+
+        FacetGroup group = new FacetGroup("Child route coverage", "Character",
+                "wikidataRelationRouteMatches.route");
+        group.reproduce(List.of(laocoon, acoetes));
+
+        assertEquals(List.of("Direct child", "Named child group"),
+                group.getChildren().stream().map(Viewable::getDisplayName).toList());
+        assertEquals(List.of("Laocoon"), group.getChild("Direct child").getMembers()
+                .stream().map(Viewable::getDisplayName).toList());
+        assertEquals(List.of("Acoetes"), group.getChild("Named child group").getMembers()
+                .stream().map(Viewable::getDisplayName).toList());
+
+        FacetGroup statuses = new FacetGroup("Child route and status", "Character",
+                "wikidataRelationRouteMatches.coverage");
+        statuses.reproduce(List.of(laocoon, acoetes));
+        assertEquals(List.of("Direct child — Retained",
+                        "Named child group — Not retained"),
+                statuses.getChildren().stream().map(Viewable::getDisplayName).toList(),
+                "route and final status stay correlated on the exact match");
+    }
+
+    private static wikidata.explore.extract.WikidataDynamicObject routeOwner(
+            String qid, String label, String routeId, String route, String terminal,
+            quiz.source.WikidataRelationRouteMatch.Status status) {
+        wikidata.explore.extract.WikidataDynamicObject owner =
+                new wikidata.explore.extract.WikidataDynamicObject(qid, label);
+        owner.type("Character");
+        owner.addWikidataRelationRouteMatch(new quiz.source.WikidataRelationRouteMatch(
+                "Character", "children", routeId, route,
+                new quiz.source.WikidataSource(terminal),
+                status));
+        return owner;
+    }
+
     private static DynamicViewable city(String name, String region) {
         DynamicViewable c = new DynamicViewable(name, name);
         c.type("City");

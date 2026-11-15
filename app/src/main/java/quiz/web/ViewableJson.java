@@ -658,7 +658,8 @@ public final class ViewableJson {
                     return ViewableView.Field.ref(name, new ViewableView.Ref(
                             target.getIdentifier(), chip, target.typeName(), thumb(object),
                             null, new ViewableView.Via(root.typeName(),
-                                    root.getIdentifier(), decision.at().path().toString())));
+                                    root.getIdentifier(), decision.at().path().toString()),
+                            object.captionUrl()));
                 }
                 // A value object has no pool address to fetch, but folding must not
                 // discard its configured body. Carry the same projection inline; the
@@ -738,10 +739,10 @@ public final class ViewableJson {
                 return new ViewableView.Ref(target.getIdentifier(), caption,
                         target.typeName(), thumb(object), null,
                         new ViewableView.Via(root.typeName(), root.getIdentifier(),
-                                member.at().path().toString()));
+                                member.at().path().toString()), object.captionUrl());
             }
             return new ViewableView.Ref(null, caption, target.typeName(), thumb(object),
-                    nested(object, member.at(), ancestors));
+                    nested(object, member.at(), ancestors), null, object.captionUrl());
         }
 
         /** The avatar of a chip: its first ticked media field. An unticked field is

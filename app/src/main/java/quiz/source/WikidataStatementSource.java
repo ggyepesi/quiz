@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import objectview.ViewableAdapter;
+import objectview.annotations.DisplayField;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
 import wikidata.WikidataIds;
@@ -35,8 +36,10 @@ public final class WikidataStatementSource extends ViewableAdapter
     private final Map<String, List<String>> qualifiers;
     private final List<Reference> references;
 
-    /** Human page containing the claim, positioned at its property group. */
-    @Link(text = "Open on Wikidata")
+    /** Human-readable statement identity. It is the ordinary DISPLAY field, so a
+     * collapsed/default statement is already a link rather than a plain triple. */
+    @DisplayField
+    @Link
     @JsonIgnore
     private final String source;
 
@@ -83,13 +86,13 @@ public final class WikidataStatementSource extends ViewableAdapter
         this.rank = clean(rank).isBlank() ? "normal" : clean(rank);
         this.qualifiers = immutableValues(qualifiers);
         this.references = List.copyOf(references == null ? List.of() : references);
-        this.source = subjectPropertyUrl();
         this.statementSubject = linked(subject, subjectUrl());
         this.statementProperty = linked(property, propertyUrl());
         this.statementObject = linked(displayedObject(), objectUrl());
         this.statementValue = WikidataIds.isQid(object) ? null : object;
         this.guid = linked(this.statement, statementUrl());
         this.statementJson = statementUrl();
+        this.source = linked(getDisplayName(), subjectPropertyUrl());
     }
 
     /** A statement for which only its identity/triple is available. */

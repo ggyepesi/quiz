@@ -38,13 +38,29 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     @Hidden
     private List<String> aliases = new ArrayList<>();
 
-    /** The datasource-declared provenance field; snapshots restore its values from
-     * their compact Wikidata statement records and the entity identifier. */
+    /** The datasource-declared entity provenance. A QID entity has exactly this
+     * source even when statements also prove how one of its fields was acquired. */
     @objectview.annotations.Label("Wikidata source")
     @objectview.annotations.Role(objectview.field.FieldRole.PROVENANCE)
     @objectview.annotations.Reference
     @JsonIgnore
-    private final List<objectview.Viewable> wikidataSource = new ArrayList<>();
+    private final List<quiz.source.WikidataSource> wikidataSource = new ArrayList<>();
+
+    /** Retained statement evidence is provenance too, but never the entity source.
+     * Snapshots store this compactly and reconstruct the visible field on load. */
+    @objectview.annotations.Label("Wikidata statements")
+    @objectview.annotations.Role(objectview.field.FieldRole.PROVENANCE)
+    @objectview.annotations.Reference
+    @JsonIgnore
+    private final List<quiz.source.WikidataStatementSource> wikidataStatements =
+            new ArrayList<>();
+
+    /** Which configured bounded routes reached which terminal values for this owner. */
+    @objectview.annotations.Label("Wikidata relation route matches")
+    @objectview.annotations.Reference
+    @JsonIgnore
+    private final List<quiz.source.WikidataRelationRouteMatch> wikidataRelationRouteMatches =
+            new ArrayList<>();
 
     /** Acquired source facts, kept outside the rendered field graph until a configured
      * recipe interprets them. */
@@ -179,15 +195,12 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     }
 
     public List<quiz.source.WikidataStatementSource> wikidataStatementSources() {
-        return wikidataSource.stream()
-                .filter(quiz.source.WikidataStatementSource.class::isInstance)
-                .map(quiz.source.WikidataStatementSource.class::cast)
-                .toList();
+        return List.copyOf(wikidataStatements);
     }
 
     public void wikidataStatementSources(
             java.util.Collection<quiz.source.WikidataStatementSource> values) {
-        wikidataSource.removeIf(quiz.source.WikidataStatementSource.class::isInstance);
+        wikidataStatements.clear();
         if (values == null) return;
         for (quiz.source.WikidataStatementSource value : values) {
             addWikidataStatementSource(value);
@@ -196,15 +209,45 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public void addWikidataStatementSource(quiz.source.WikidataStatementSource value) {
         if (value == null) return;
-        for (int index = 0; index < wikidataSource.size(); index++) {
-            objectview.Viewable existing = wikidataSource.get(index);
-            if (existing instanceof quiz.source.WikidataStatementSource statement
-                    && statement.statement().equals(value.statement())) {
-                wikidataSource.set(index, statement.merge(value));
+        for (int index = 0; index < wikidataStatements.size(); index++) {
+            quiz.source.WikidataStatementSource existing = wikidataStatements.get(index);
+            if (existing.statement().equals(value.statement())) {
+                wikidataStatements.set(index, existing.merge(value));
                 return;
             }
         }
-        wikidataSource.add(value);
+        wikidataStatements.add(value);
+    }
+
+    public List<quiz.source.WikidataRelationRouteMatch> wikidataRelationRouteMatches() {
+        return List.copyOf(wikidataRelationRouteMatches);
+    }
+
+    public void wikidataRelationRouteMatches(
+            java.util.Collection<quiz.source.WikidataRelationRouteMatch> values) {
+        wikidataRelationRouteMatches.clear();
+        if (values == null) return;
+        values.forEach(this::addWikidataRelationRouteMatch);
+    }
+
+    public void addWikidataRelationRouteMatch(
+            quiz.source.WikidataRelationRouteMatch value) {
+        if (value == null) return;
+        for (int index = 0; index < wikidataRelationRouteMatches.size(); index++) {
+            quiz.source.WikidataRelationRouteMatch existing =
+                    wikidataRelationRouteMatches.get(index);
+            if (existing.getIdentifier().equals(value.getIdentifier())) {
+                wikidataRelationRouteMatches.set(index, existing.merge(value));
+                return;
+            }
+        }
+        wikidataRelationRouteMatches.add(value);
+    }
+
+    public void clearWikidataRelationRouteMatches(String ownerClass, String field) {
+        wikidataRelationRouteMatches.removeIf(value ->
+                java.util.Objects.equals(value.ownerClass(), ownerClass)
+                        && java.util.Objects.equals(value.field(), field));
     }
 
     public List<datasource.evidence.CategoryMembership> categoryMemberships() {
@@ -663,6 +706,10 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         // rewires the dynamic domain-field graph supplied by its caller.
         copy.wikidataSource.clear();
         copy.wikidataSource.addAll(wikidataSource);
+        copy.wikidataStatements.clear();
+        copy.wikidataStatements.addAll(wikidataStatements);
+        copy.wikidataRelationRouteMatches.clear();
+        copy.wikidataRelationRouteMatches.addAll(wikidataRelationRouteMatches);
         copy.wikidataEntityMissing = wikidataEntityMissing;
         copy.dynamicFieldSchema = dynamicFieldSchema;
         copy.fieldStatuses = fieldStatuses == null

@@ -59,6 +59,8 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
     public static final String SOURCE_FIELD = "wikidataSource";
+    public static final String STATEMENTS_FIELD = "wikidataStatements";
+    public static final String ROUTE_MATCHES_FIELD = "wikidataRelationRouteMatches";
     public static final String WIKIPEDIA_SOURCE_FIELD = "wikipediaSource";
 
     private static final DatasourceInstanceField SOURCE =
@@ -73,12 +75,49 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                     if (!(source instanceof wikidata.explore.extract.WikidataDynamicObject o)) {
                         return List.of();
                     }
-                    List<quiz.source.WikidataStatementSource> statements =
-                            o.wikidataStatementSources();
-                    if (!statements.isEmpty()) return List.copyOf(statements);
                     String qid = o.qid();
                     return qid.isBlank() ? List.of()
                             : List.of(new quiz.source.WikidataSource(qid));
+                }
+            };
+
+    private static final DatasourceInstanceField STATEMENTS =
+            new DatasourceInstanceField() {
+                @Override public String name() { return STATEMENTS_FIELD; }
+                @Override public String label() { return "Wikidata statements"; }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof wikidata.explore.extract.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    return List.copyOf(o.wikidataStatementSources());
+                }
+            };
+
+    private static final DatasourceInstanceField ROUTE_MATCHES =
+            new DatasourceInstanceField() {
+                @Override public String name() { return ROUTE_MATCHES_FIELD; }
+                @Override public String label() {
+                    return "Wikidata relation route matches";
+                }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public objectview.field.FieldRole role() {
+                    return objectview.field.FieldRole.NONE;
+                }
+                @Override public Class<? extends objectview.Viewable> referenceType() {
+                    return quiz.source.WikidataRelationRouteMatch.class;
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof wikidata.explore.extract.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    return List.copyOf(o.wikidataRelationRouteMatches());
                 }
             };
 
@@ -202,15 +241,22 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     @Override public String displayName() { return "Wikidata"; }
     @Override public List<? extends DatasourceOperation> operations() { return operations; }
     @Override public List<? extends DatasourceInstanceField> instanceFields() {
-        return List.of(SOURCE);
+        return List.of(SOURCE, STATEMENTS);
     }
 
     @Override public List<? extends DatasourceInstanceField> instanceFields(
             datasource.api.SourceBinding binding) {
-        if (binding == null
-                || binding.target().scope() != BindingScope.SOURCE_CORRESPONDENCE
-                || !ID.equals(binding.recipe().providerId())
-                || !SITELINK.equals(binding.recipe().operationId())) return List.of();
+        if (binding == null || !ID.equals(binding.recipe().providerId())) {
+            return List.of();
+        }
+        if (binding.target().scope() == BindingScope.FIELD_VALUE
+                && RELATION_ROUTES.equals(binding.recipe().operationId())) {
+            return List.of(ROUTE_MATCHES);
+        }
+        if (binding.target().scope() != BindingScope.SOURCE_CORRESPONDENCE
+                || !SITELINK.equals(binding.recipe().operationId())) {
+            return List.of();
+        }
         String wiki = binding.recipe().parameter("wiki").trim();
         if (wiki.isBlank()) wiki = "enwiki";
         if (!"enwiki".equals(wiki)) {

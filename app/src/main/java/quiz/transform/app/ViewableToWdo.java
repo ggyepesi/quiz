@@ -393,6 +393,8 @@ public final class ViewableToWdo {
         copy.referenceLabel(source.getReferenceLabel());
         copy.valueObject(source.isValueObject());
         copy.wikidataEntityMissing(source.isWikidataEntityMissing());
+        copy.wikidataStatementSources(source.wikidataStatementSources());
+        copy.wikidataRelationRouteMatches(source.wikidataRelationRouteMatches());
         copy.fieldStatuses(source.fieldStatuses());
         copy.dynamicFieldSchema(source.dynamicFieldSchema());
         source.fieldOrigins().forEach(copy::recordOrigin);

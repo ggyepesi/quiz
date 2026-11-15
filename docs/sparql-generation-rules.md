@@ -222,10 +222,14 @@ Format per rule: **Trigger** (when it applies) · **Rule** (what to do) ·
   with a separate one-row request. If a bounded page is too heavy, halve that
   page's size while preserving its cursor, and keep the proven smaller size for
   later pages. If even a one-row page fails, abort the population instead of
-  accepting the prefix accumulated so far.
+  accepting the prefix accumulated so far. Halving shrinks the rows returned, not
+  the ordering WDQS performs over the population: when the population is a
+  partition of VALUES targets, split the targets first and halve only a
+  single-target page.
 - **Hook:** `WikidataSparqlClient` (no truncation check); `RuleTreeExtractor`
-  per-parent `catch … continue`; `RelationalObjectPopulationLoader` (ordered
-  keyset pages for a relational statement-object population).
+  per-parent `catch … continue`; `WikidataKeysetPages` (the one keyset pager, each
+  page its own logged batch unit), used by `RelationalObjectPopulationLoader` and
+  incoming graph adjacency.
 
 ### Reusable assembly helper
 `SparqlValues.clause(var, qids)` builds `VALUES ?var { wd:Q… }` (cleans + dedups

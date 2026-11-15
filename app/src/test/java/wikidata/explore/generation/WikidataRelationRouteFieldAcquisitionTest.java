@@ -85,6 +85,14 @@ class WikidataRelationRouteFieldAcquisitionTest {
                         .map(source -> source.statement() + " " + source.subject() + " "
                                 + source.property() + " " + source.object() + " "
                                 + source.qualifiers()).toList());
+        assertEquals(List.of(
+                        "direct Q201 Matched; final field not settled",
+                        "qualified Q202 Matched; final field not settled",
+                        "qualified Q203 Matched; final field not settled"),
+                laocoon.wikidataRelationRouteMatches().stream()
+                        .map(match -> match.routeId() + " " + match.terminal().qid()
+                                + " " + match.status()).toList(),
+                "coverage retains the exact configured route, not only its PIDs");
     }
 
     @Test void acquiredReferencesReenterTheExistingSemanticFieldPipeline()

@@ -28,6 +28,55 @@ class SnapshotFieldGraphStoreTest {
 
     @TempDir File dir;
 
+    @Test void relationRouteCoverageAndItsNestedOperationSchemaRoundTrip()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        var children = character.addField(
+                "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        children.entityClassName("Character");
+        wikidata.explore.model.FieldSourceBindings.put(children,
+                new datasource.api.SourceBinding(
+                        datasource.api.SourceBindingTarget.fieldValue(
+                                "Character", "children",
+                                datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                        new datasource.api.SourceRecipe("wikidata", "relation-routes",
+                                Map.of("routes", "[{\"id\":\"direct\",\"steps\":["
+                                        + "{\"relation\":\"P40\","
+                                        + "\"direction\":\"OUTGOING\"}]}]"))));
+        model.rootClass(character);
+
+        WikidataDynamicObject owner = wdo("Q101", "Character", false);
+        owner.addWikidataRelationRouteMatch(new quiz.source.WikidataRelationRouteMatch(
+                "Character", "children", "direct", "Direct child",
+                new quiz.source.WikidataSource("Q201", "Antiphantes"),
+                quiz.source.WikidataRelationRouteMatch.Status.RETAINED));
+        File file = new File(dir, "route-coverage.snapshot.json");
+        WikidataDynamicObjectJsonStore store = new WikidataDynamicObjectJsonStore();
+
+        store.saveWithFieldGraph(List.of(owner), file, model);
+        var loaded = store.loadAllWithFieldGraph(file);
+
+        var restored = loaded.objects().getFirst()
+                .wikidataRelationRouteMatches().getFirst();
+        assertEquals("direct", restored.routeId());
+        assertEquals("Q201", restored.terminal().qid());
+        assertEquals(quiz.source.WikidataRelationRouteMatch.Status.RETAINED,
+                restored.status());
+        SnapshotDomain domain = new SnapshotDomain(
+                loaded.objects(), loaded.fieldGraph());
+        List<String> paths = domain.fields("Character").stream()
+                .map(DomainField::field).toList();
+        assertTrue(paths.contains("wikidataRelationRouteMatches.route"),
+                paths.toString());
+        assertTrue(paths.contains("wikidataRelationRouteMatches.status"),
+                paths.toString());
+        assertTrue(paths.contains("wikidataRelationRouteMatches.coverage"),
+                paths.toString());
+        assertEquals("WikidataRelationRouteMatch", domain.fieldSchema("Character")
+                .field("wikidataRelationRouteMatches").targetType());
+    }
+
     @Test void generatedModelEnrichesOnlyTheFieldGraph() throws Exception {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel state = new GeneratedClassModel("State");

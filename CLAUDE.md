@@ -122,7 +122,12 @@ construct per thing produced:
    ordinary referent stamping decides their class, so on a reference cycle (Character.child)
    only an existing member keeps the link; admitting reached entities would be a separate,
    explicitly configured and type-checked construct. The statements that made a path true are
-   kept as the owner's ordinary Wikidata statement provenance.
+   kept as the owner's ordinary Wikidata statement provenance. An entity's QID source and those
+   retained statements are separate provenance fields: evidence may explain a relation, but it
+   never replaces or joins the entity's own Wikidata source. Route coverage is retained from the
+   executor's exact match — owner class, target field, configured route id and terminal entity —
+   and finalization marks whether that terminal survived in the final field. Reporting and
+   grouping consume that record; they never reconstruct a route from its statement properties.
 4. **Regenerate vs migrate is an explicit decision.** Don't default to compatibility. If the
    data is reproducible, regenerate clean; a translation layer is permanent pollution.
    *(Trigger: "but the old snapshots…".)*

@@ -31,7 +31,7 @@ class GenerationResultSourceLinkTest {
                 ((quiz.source.WikidataStatementSource)
                         assertInstanceOf(List.class,
                                 objectview.field.FieldSet.of(statement)
-                                        .read("wikidataSource"))
+                                        .read("wikidataStatements"))
                                 .getFirst()).getDisplayName());
     }
 
@@ -80,10 +80,10 @@ class GenerationResultSourceLinkTest {
         objectview.Viewable record = storedRecord;
 
         objectview.field.FieldSet fields = objectview.field.FieldSet.of(record);
-        Object sourceValue = fields.read("wikidataSource");
+        Object sourceValue = fields.read("wikidataStatements");
         assertEquals(2, assertInstanceOf(List.class, sourceValue).size());
         assertEquals(objectview.field.FieldRole.PROVENANCE,
-                fields.field("wikidataSource").role());
+                fields.field("wikidataStatements").role());
 
         objectview.render.Card[] rendered = new objectview.render.Card[1];
         javax.swing.SwingUtilities.invokeAndWait(() -> {
@@ -107,7 +107,7 @@ class GenerationResultSourceLinkTest {
             }
             objectview.viewconfig.ViewConfig config =
                     objectview.viewconfig.ViewConfig.of(record.getClass());
-            config.addField("wikidataSource", statement);
+            config.addField("wikidataStatements", statement);
             rendered[0] = new objectview.render.Card(record, config, context, false);
             rendered[0].setOpaque(true);
             rendered[0].setBackground(java.awt.Color.WHITE);
@@ -120,7 +120,7 @@ class GenerationResultSourceLinkTest {
         assertNotNull(title, "the configured display label is the card header");
         assertTrue(title.getWidth() > 0,
                 "the configured display label keeps title space");
-        assertNotNull(findField(rendered[0], "wikidataSource"),
+        assertNotNull(findField(rendered[0], "wikidataStatements"),
                 "provenance is an ordinary expandable field below the header");
         assertNotNull(findField(rendered[0], "statementSubject"));
         assertNotNull(findField(rendered[0], "statementProperty"));
