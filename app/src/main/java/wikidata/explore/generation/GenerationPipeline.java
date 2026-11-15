@@ -22,6 +22,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.Consumer;
 import wikidata.api.FactDemand;
@@ -413,31 +414,40 @@ public class GenerationPipeline {
                         : "; additional published QIDs were acquired.\n"));
         }
 
-        // The preview runs no semantic convergence for ordinary entity fields, so a family
-        // that adds entity references is not replayed through it here either: replaying
-        // would load and stamp referents, and materialize the owned parts the note below
-        // leaves out of the preview, for this one source only.
-        ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
-                snapshot, dynamicObjects, sourcePlan,
-                StandardExternalSourceFamilies.services(client, dbpedia, entityApi), log, cancellation,
-                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
-                java.util.Set.of(
-                        datasource.wikidata.WikidataDatasourceProvider
-                                .FAMILY_RELATION_ROUTE_FIELD,
-                        datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD,
-                        datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
-                        datasource.wikipedia.WikipediaDatasourceProvider
-                                .FAMILY_INFOBOX_FIELD,
-                        datasource.wikipedia.WikipediaDatasourceProvider
-                                .FAMILY_ARTICLE_INTRODUCTION_FIELD,
-                        datasource.pageviews.PageviewsDatasourceProvider.FAMILY_FIELD));
+        // Preview uses the same acquisition -> semantic-convergence staging as Generate
+        // and Enrich. Its smaller root scope and request limits remain preview concerns;
+        // configured source semantics do not change with the button that invoked them.
+        GenerationQualityTracker previewTracker = new GenerationQualityTracker();
+        ExternalSourceAcquisition.Applied externalApplied =
+                ExternalSourceAcquisition.applyWithSemanticReplay(
+                        snapshot, dynamicObjects, sourcePlan,
+                        StandardExternalSourceFamilies.services(
+                                client, dbpedia, entityApi),
+                        log, cancellation,
+                        ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
+                        List.of(), previewTracker,
+                        java.util.Set.of(
+                                datasource.wikidata.WikidataDatasourceProvider
+                                        .FAMILY_RELATION_ROUTE_FIELD,
+                                datasource.wikidata.WikidataDatasourceProvider
+                                        .FAMILY_COMPUTED_FIELD,
+                                datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
+                                datasource.wikipedia.WikipediaDatasourceProvider
+                                        .FAMILY_INFOBOX_FIELD,
+                                datasource.wikipedia.WikipediaDatasourceProvider
+                                        .FAMILY_ARTICLE_INTRODUCTION_FIELD,
+                                datasource.pageviews.PageviewsDatasourceProvider
+                                        .FAMILY_FIELD));
+        ExternalSourceAcquisition.Result external = externalApplied.sources();
+        SemanticConvergence.Result semantic = externalApplied.semantic();
 
-        // NO owned components here. This is the single-class PREVIEW: it answers "who is
-        // in this class, carrying what", and materializing a component per owner answers
-        // neither — one empty part per instance, since nothing on this path fetches their
-        // declared properties. They are produced by Generate domain and by Enrich, which
-        // do. Say so, or their absence reads as a fault in the model.
-        int sites = ownedComponentSites(snapshot);
+        // Semantic convergence runs here only when an entity-valued source added
+        // references; otherwise this preview still omits it (a known gap against "scope
+        // and limits only", docs/parameterized-generation-pipeline.md). Without it NO owned
+        // components are made — nothing on this path fetches their declared properties,
+        // so each would be an empty part. Generate domain and Enrich produce them. Say
+        // so, or their absence reads as a fault in the model.
+        int sites = semantic == null ? ownedComponentSites(snapshot) : 0;
         if (sites > 0 && log != null) {
             log.message("Preview: " + sites + " owned-component field(s) NOT materialized "
                     + "— parts are produced with their values by Generate domain or "
@@ -466,18 +476,37 @@ public class GenerationPipeline {
 
         return new GenerationRun(
                 snapshot, depth, plan, dynamicObjects, runtime, instances,
-                null, List.of(), previewQuality(external), List.of(),
+                null, semantic == null ? List.of()
+                        : List.copyOf(semantic.completedDeclarations().values()),
+                previewQuality(external, previewTracker.quality()), List.of(),
                 GenerationRun.SelfReferenceAudit.notRun(),
-                GenerationRun.OwnedCompositionAudit.notRun(),
-                GenerationRun.KindClassificationAudit.notRun(),
+                semantic == null ? GenerationRun.OwnedCompositionAudit.notRun()
+                        : GenerationRun.OwnedCompositionAudit.ran(
+                                semantic.ownedComponentsCreated()),
+                semantic == null ? GenerationRun.KindClassificationAudit.notRun()
+                        : GenerationRun.KindClassificationAudit.ran(
+                                semantic.newlyClassifiedKinds()),
                 GenerationRun.ProjectionAudit.notRun());
     }
 
     static GenerationRun.Quality previewQuality(ExternalSourceAcquisition.Result external) {
-        if (external == null || external.complete()) {
+        return previewQuality(external, GenerationRun.Quality.completeQuality());
+    }
+
+    static GenerationRun.Quality previewQuality(
+            ExternalSourceAcquisition.Result external,
+            GenerationRun.Quality semantic) {
+        LinkedHashSet<String> warnings = new LinkedHashSet<>();
+        LinkedHashSet<String> qids = new LinkedHashSet<>();
+        if (external != null) warnings.addAll(external.failures());
+        if (semantic != null) {
+            warnings.addAll(semantic.warnings());
+            qids.addAll(semantic.unavailableQids());
+        }
+        if (warnings.isEmpty() && qids.isEmpty()) {
             return GenerationRun.Quality.completeQuality();
         }
-        return GenerationRun.Quality.partial(external.failures(), List.of());
+        return GenerationRun.Quality.partial(List.copyOf(warnings), List.copyOf(qids));
     }
 
     public GenerationRun remap(

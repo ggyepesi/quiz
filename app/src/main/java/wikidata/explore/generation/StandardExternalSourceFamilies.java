@@ -42,7 +42,11 @@ public final class StandardExternalSourceFamilies {
                 new ArticleIntroductions(), new Infobox(), new Pageviews()));
     }
 
-    private record WikidataRelationRoutes() implements ExternalSourceFamily {
+    /** One instance lives for one orchestration call, so replay rounds share its graph
+     * cache while separate Preview/Generate/Enrich actions remain isolated. */
+    private static final class WikidataRelationRoutes implements ExternalSourceFamily {
+        private datasource.graph.store.InMemoryGraphStore store;
+        private WikidataGraphAdjacencyAcquisition acquirer;
         @Override public String id() {
             return datasource.wikidata.WikidataDatasourceProvider
                     .FAMILY_RELATION_ROUTE_FIELD;
@@ -63,10 +67,15 @@ public final class StandardExternalSourceFamilies {
             wikidata.WikidataSparqlClient sparql = context.services().find(
                     datasource.wikidata.WikidataDatasourceProvider.ID,
                     wikidata.WikidataSparqlClient.class).orElse(null);
+            if (store == null) {
+                store = new datasource.graph.store.InMemoryGraphStore();
+                acquirer = new WikidataGraphAdjacencyAcquisition(
+                        api, sparql, context.log(), context.cancellation());
+            }
             WikidataRelationRouteFieldAcquisition.Result result =
                     WikidataRelationRouteFieldAcquisition.apply(
-                            context.model(), context.pool(), context.plan(), api, sparql,
-                            context.log(), context.cancellation());
+                            context.model(), context.pool(), context.plan(), context.log(),
+                            acquirer, store);
             String coverage = result.incomplete().isEmpty()
                     && result.unavailable().isEmpty() ? ""
                     : ", " + result.incomplete().size() + " incomplete and "

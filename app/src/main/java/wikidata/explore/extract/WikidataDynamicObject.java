@@ -196,9 +196,15 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
 
     public void addWikidataStatementSource(quiz.source.WikidataStatementSource value) {
         if (value == null) return;
-        boolean known = wikidataStatementSources().stream()
-                .anyMatch(existing -> existing.statement().equals(value.statement()));
-        if (!known) wikidataSource.add(value);
+        for (int index = 0; index < wikidataSource.size(); index++) {
+            objectview.Viewable existing = wikidataSource.get(index);
+            if (existing instanceof quiz.source.WikidataStatementSource statement
+                    && statement.statement().equals(value.statement())) {
+                wikidataSource.set(index, statement.merge(value));
+                return;
+            }
+        }
+        wikidataSource.add(value);
     }
 
     public List<datasource.evidence.CategoryMembership> categoryMemberships() {

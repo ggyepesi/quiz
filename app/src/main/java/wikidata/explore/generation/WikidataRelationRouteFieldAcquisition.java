@@ -45,17 +45,37 @@ public final class WikidataRelationRouteFieldAcquisition {
         WikidataGraphAdjacencyAcquisition acquirer =
                 new WikidataGraphAdjacencyAcquisition(api, sparql, sink, cancellation);
         InMemoryGraphStore store = new InMemoryGraphStore();
+        return apply(model, pool, plan, sink, acquirer, store);
+    }
+
+    /** Run-scoped entry used by the source family so fixed-point passes share acquired
+     * adjacency and never ask the same route edge from the network twice. */
+    static Result apply(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            SourceExecutionPlan plan,
+            GenerationLog log,
+            WikidataGraphAdjacencyAcquisition acquirer,
+            InMemoryGraphStore store) throws Exception {
+        if (model == null || pool == null || pool.isEmpty() || plan == null) {
+            return new Result(0, 0, List.of(), List.of());
+        }
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        List<Declaration> declarations = declarations(model, plan);
+        if (declarations.isEmpty()) return new Result(0, 0, List.of(), List.of());
         int fields = 0;
         int values = 0;
         LinkedHashSet<EntityRef> incomplete = new LinkedHashSet<>();
         LinkedHashSet<EntityRef> unavailable = new LinkedHashSet<>();
 
-        List<WikidataDynamicObject> reachable =
-                wikidata.explore.extract.WikidataObjectGraph.reachable(pool);
         for (Declaration declaration : declarations) {
+            List<WikidataDynamicObject> reachable =
+                    wikidata.explore.extract.WikidataObjectGraph.reachable(pool);
             Map<EntityRef, List<WikidataDynamicObject>> owners = owners(
                     model, reachable, declaration);
             if (owners.isEmpty()) continue;
+            Map<EntityRef, WikidataDynamicObject> references = references(
+                    model, reachable, declaration);
             sink.message("Follow " + declaration.spec().routes().size()
                     + " bounded route(s) for " + declaration.owner().className() + "."
                     + declaration.field().name() + " from " + owners.size()
@@ -72,16 +92,18 @@ public final class WikidataRelationRouteFieldAcquisition {
                             || !WikidataIds.isQid(terminal.id())) continue;
                     List<quiz.source.WikidataStatementSource> evidence =
                             statementSources(match.path());
+                    WikidataDynamicObject reference = references.computeIfAbsent(
+                            terminal, ignored -> new WikidataDynamicObject(
+                                    terminal.id(), terminal.id()));
                     for (WikidataDynamicObject copy : owner.getValue()) {
-                        int before = valueCount(copy.get(declaration.field().name()));
                         // A route links; it does not admit. The reference stays bare, and
                         // the ordinary referent stamping decides its class exactly as for
-                        // a property-loaded value: on a reference cycle such as
-                        // Character.child only an existing member keeps the link (rules 9
-                        // and 27), so a route never grows the authored population.
-                        copy.merge(declaration.field().name(),
-                                new WikidataDynamicObject(terminal.id(), terminal.id()));
-                        if (valueCount(copy.get(declaration.field().name())) > before) values++;
+                        // a property-loaded value. On a reference cycle, reuse the
+                        // compatible typed member already in the pool; a genuinely new
+                        // terminal remains bare and cannot grow the authored population.
+                        if (mergeReference(copy, declaration.field().name(), reference)) {
+                            values++;
+                        }
                         evidence.forEach(copy::addWikidataStatementSource);
                     }
                 }
@@ -92,6 +114,53 @@ public final class WikidataRelationRouteFieldAcquisition {
                 + unavailable.size() + " unavailable adjacency node(s).\n");
         return new Result(fields, values, List.copyOf(incomplete),
                 List.copyOf(unavailable));
+    }
+
+    private static Map<EntityRef, WikidataDynamicObject> references(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            Declaration declaration) {
+        LinkedHashMap<EntityRef, WikidataDynamicObject> result = new LinkedHashMap<>();
+        for (WikidataDynamicObject object : pool) {
+            if (object == null || !object.hasTypeStamp()
+                    || !WikidataIds.isQid(object.qid())
+                    || !wikidata.explore.model.EntityRepresentations.fieldAccepts(
+                            model, declaration.field().entityClassName(),
+                            object.directClassNames())) continue;
+            result.putIfAbsent(EntityRef.wikidata(object.qid()), object);
+        }
+        return result;
+    }
+
+    /** Merge by source identity, replacing an older bare copy with the compatible typed
+     * pool member without counting that replacement as a newly acquired route value. */
+    private static boolean mergeReference(
+            WikidataDynamicObject owner, String field, WikidataDynamicObject reference) {
+        Object existing = owner.get(field);
+        if (existing instanceof WikidataDynamicObject value
+                && value.qid().equals(reference.qid())) {
+            if (value != reference && !value.hasTypeStamp() && reference.hasTypeStamp()) {
+                owner.put(field, reference);
+            }
+            return false;
+        }
+        if (existing instanceof List<?> values) {
+            for (int index = 0; index < values.size(); index++) {
+                Object value = values.get(index);
+                if (value instanceof WikidataDynamicObject dynamic
+                        && dynamic.qid().equals(reference.qid())) {
+                    if (dynamic != reference && !dynamic.hasTypeStamp()
+                            && reference.hasTypeStamp()) {
+                        List<Object> replacement = new ArrayList<>(values);
+                        replacement.set(index, reference);
+                        owner.put(field, replacement);
+                    }
+                    return false;
+                }
+            }
+        }
+        owner.merge(field, reference);
+        return true;
     }
 
     private static List<Declaration> declarations(
@@ -187,11 +256,6 @@ public final class WikidataRelationRouteFieldAcquisition {
             }
         }
         return List.copyOf(sources);
-    }
-
-    private static int valueCount(Object value) {
-        if (value == null) return 0;
-        return value instanceof List<?> values ? values.size() : 1;
     }
 
     private record Declaration(

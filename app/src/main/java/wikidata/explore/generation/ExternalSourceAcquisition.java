@@ -8,6 +8,7 @@ import wikidata.explore.model.GeneratedProjectModel;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +17,8 @@ import java.util.concurrent.CancellationException;
 
 /** Executes installed external field-acquisition families from a resolved source plan. */
 public final class ExternalSourceAcquisition {
+    private static final int MAX_REFERENCE_PASSES = 12;
+
     private ExternalSourceAcquisition() { }
 
     public enum FailurePolicy { STRICT, CONTINUE_OPTIONAL }
@@ -61,19 +64,32 @@ public final class ExternalSourceAcquisition {
                 .map(ExternalSourceFamily::id).filter(selected::contains)
                 .collect(java.util.stream.Collectors.toCollection(
                         java.util.LinkedHashSet::new));
-        Result route = producing.isEmpty()
-                ? new Result(List.of(), List.of())
-                : apply(model, pool, plan, services, log, cancellation, failurePolicy,
-                        registry, producing);
+        Result route = new Result(List.of(), List.of());
         SemanticConvergence.Result semantic = null;
-        if (route.values() > 0) {
-            wikidata.api.WikidataApiClient api = services == null ? null : services.find(
-                    datasource.wikidata.WikidataDatasourceProvider.ID,
-                    wikidata.api.WikidataApiClient.class).orElse(null);
-            if (log != null) log.message("Entity-valued sources added references; "
-                    + "settling their configured classes and fields before continuing.\n");
-            semantic = SemanticConvergence.apply(model, pool, api, log, alreadyLoaded,
-                    quality, plan);
+        java.util.Collection<wikidata.explore.extract.LoadedDeclaration> loaded =
+                alreadyLoaded == null ? List.of() : alreadyLoaded;
+        wikidata.api.WikidataApiClient api = services == null ? null : services.find(
+                datasource.wikidata.WikidataDatasourceProvider.ID,
+                wikidata.api.WikidataApiClient.class).orElse(null);
+        for (int pass = 1; !producing.isEmpty() && pass <= MAX_REFERENCE_PASSES; pass++) {
+            Result round = apply(model, pool, plan, services, log, cancellation,
+                    failurePolicy, registry, producing);
+            route = mergeRounds(route, round);
+            if (round.values() == 0) break;
+            if (log != null) log.message("Entity-valued sources pass " + pass + " added "
+                    + round.values() + " reference(s); settling their configured classes "
+                    + "and fields before checking for newly eligible owners.\n");
+            SemanticConvergence.Result settled = SemanticConvergence.apply(
+                    model, pool, api, log, loaded, quality, plan);
+            semantic = SemanticConvergence.combine(semantic, settled);
+            loaded = settled.completedDeclarations().values();
+            if (pass == MAX_REFERENCE_PASSES) {
+                String warning = "Entity-valued source acquisition exceeded "
+                        + MAX_REFERENCE_PASSES + " fixed-point passes";
+                if (quality != null) quality.failed("entity-reference-acquisition", warning);
+                route = route.withFailure(warning);
+                if (log != null) log.message("WARNING: " + warning + ".\n");
+            }
         }
         selected.removeAll(producing);
         Result remaining = selected.isEmpty()
@@ -85,6 +101,40 @@ public final class ExternalSourceAcquisition {
         List<String> failures = new ArrayList<>(route.failures());
         failures.addAll(remaining.failures());
         return new Applied(new Result(outcomes, failures), semantic);
+    }
+
+    /** Accumulates repeated outcomes from one family without exposing duplicate family
+     * entries to callers. The last summary supplies the wording; its leading count is
+     * replaced by the cumulative number when it follows the standard outcome contract. */
+    private static Result mergeRounds(Result first, Result later) {
+        LinkedHashMap<String, ExternalSourceFamily.Outcome> merged = new LinkedHashMap<>();
+        for (ExternalSourceFamily.Outcome outcome : first.outcomes()) {
+            merged.put(outcome.familyId(), outcome);
+        }
+        for (ExternalSourceFamily.Outcome outcome : later.outcomes()) {
+            ExternalSourceFamily.Outcome prior = merged.get(outcome.familyId());
+            if (prior == null) {
+                merged.put(outcome.familyId(), outcome);
+                continue;
+            }
+            int values = prior.values() + outcome.values();
+            LinkedHashSet<String> warnings = new LinkedHashSet<>(prior.warnings());
+            warnings.addAll(outcome.warnings());
+            String summary = cumulativeSummary(outcome.summary(), outcome.values(), values);
+            merged.put(outcome.familyId(), new ExternalSourceFamily.Outcome(
+                    outcome.familyId(), values, summary, outcome.summaryOrder(),
+                    List.copyOf(warnings)));
+        }
+        LinkedHashSet<String> failures = new LinkedHashSet<>(first.failures());
+        failures.addAll(later.failures());
+        return new Result(List.copyOf(merged.values()), List.copyOf(failures));
+    }
+
+    private static String cumulativeSummary(String summary, int round, int total) {
+        if (summary == null || summary.isBlank() || round == total) return summary;
+        String prefix = Integer.toString(round);
+        return summary.startsWith(prefix + " ")
+                ? total + summary.substring(prefix.length()) : summary;
     }
 
     public static Applied applyWithSemanticReplay(
@@ -229,6 +279,12 @@ public final class ExternalSourceAcquisition {
                     .map(ExternalSourceFamily.Outcome::summary)
                     .filter(value -> !value.isBlank())
                     .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        Result withFailure(String failure) {
+            LinkedHashSet<String> all = new LinkedHashSet<>(failures);
+            if (failure != null && !failure.isBlank()) all.add(failure);
+            return new Result(outcomes, List.copyOf(all));
         }
     }
 }

@@ -121,6 +121,32 @@ public final class WikidataStatementSource extends ViewableAdapter
 
     public List<Reference> references() { return references; }
 
+    /**
+     * The same statement can be reached by more than one graph path (most commonly
+     * through different values of one qualifier).  Its GUID is the identity, while
+     * qualifiers and references are accumulated evidence.  Merge that evidence here,
+     * at the owner of the durable statement representation, instead of letting each
+     * acquisition path decide which copy wins.
+     */
+    public WikidataStatementSource merge(WikidataStatementSource other) {
+        if (other == null) return this;
+        if (!statement.equals(other.statement)) {
+            throw new IllegalArgumentException(
+                    "Cannot merge different Wikidata statements: "
+                            + statement + " and " + other.statement);
+        }
+        Map<String, List<String>> mergedQualifiers = mergeValues(
+                qualifiers, other.qualifiers);
+        List<Reference> mergedReferences = new ArrayList<>(references);
+        for (Reference reference : other.references) {
+            if (!mergedReferences.contains(reference)) mergedReferences.add(reference);
+        }
+        return new WikidataStatementSource(statement,
+                richer(subject, other.subject), richer(property, other.property),
+                richer(object, other.object), richer(objectLabel, other.objectLabel),
+                richerRank(rank, other.rank), mergedQualifiers, mergedReferences);
+    }
+
     public String subjectUrl() {
         return WikidataIds.isQid(subject)
                 ? "https://www.wikidata.org/wiki/" + subject : "";
@@ -220,5 +246,29 @@ public final class WikidataStatementSource extends ViewableAdapter
             if (!cleaned.isEmpty()) copy.put(pid, List.copyOf(cleaned));
         });
         return java.util.Collections.unmodifiableMap(copy);
+    }
+
+    private static Map<String, List<String>> mergeValues(
+            Map<String, List<String>> first, Map<String, List<String>> second) {
+        Map<String, List<String>> merged = new LinkedHashMap<>();
+        if (first != null) first.forEach((key, values) ->
+                merged.put(key, new ArrayList<>(values)));
+        if (second != null) second.forEach((key, values) -> {
+            List<String> target = merged.computeIfAbsent(key,
+                    ignored -> new ArrayList<>());
+            for (String value : values) if (!target.contains(value)) target.add(value);
+        });
+        return immutableValues(merged);
+    }
+
+    private static String richer(String first, String second) {
+        return clean(first).isBlank() ? clean(second) : clean(first);
+    }
+
+    private static String richerRank(String first, String second) {
+        String left = clean(first);
+        String right = clean(second);
+        return (left.isBlank() || "normal".equals(left)) && !right.isBlank()
+                ? right : left;
     }
 }

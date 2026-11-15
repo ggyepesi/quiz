@@ -59,6 +59,8 @@ public class PropertyDiscoveryPanel extends JPanel {
     private final JButton    qualifiersButton = new JButton("Qualifiers…");
     private final JButton    cancelButton    = new JButton("Cancel");
     private final JLabel     statusLabel     = new JLabel(" ");
+    private final RelationRouteDiscoveryPanel routeDiscoveryPanel =
+            new RelationRouteDiscoveryPanel();
 
     // --- Results ---
     private final List<DiscoveredProperty>     properties = new ArrayList<>();
@@ -126,6 +128,7 @@ public class PropertyDiscoveryPanel extends JPanel {
                 this::acceptQualifiers,
                 this::buildQualifiersQuery,
                 ex -> statusLabel.setText("Error: " + ex.getMessage()));
+        routeDiscoveryPanel.setQueryRunner(queryRunner);
     }
 
     public void log(Consumer<String> log) {
@@ -187,6 +190,17 @@ public class PropertyDiscoveryPanel extends JPanel {
         this.onAddExcludedQid = handler == null ? qid -> {} : handler;
     }
 
+    public void relationRouteTarget(
+            Supplier<String> name,
+            Supplier<String> unavailable,
+            Consumer<datasource.graph.RelationRoute> add) {
+        routeDiscoveryPanel.target(name, unavailable, add);
+    }
+
+    public void refreshRelationRouteTarget() {
+        routeDiscoveryPanel.refreshTarget();
+    }
+
     // --- UI build ---
 
     private void buildUi() {
@@ -235,7 +249,8 @@ public class PropertyDiscoveryPanel extends JPanel {
         north.add(hint, BorderLayout.NORTH);
         north.add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(controls),
                 BorderLayout.CENTER);
-        add(north, BorderLayout.NORTH);
+        JPanel propertySurface = new JPanel(new BorderLayout(4, 4));
+        propertySurface.add(north, BorderLayout.NORTH);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         actions.add(selectionsHolder);
@@ -257,7 +272,12 @@ public class PropertyDiscoveryPanel extends JPanel {
         JPanel results = new JPanel(new BorderLayout(4, 4));
         results.add(resultHolder, BorderLayout.CENTER);
         results.add(actions, BorderLayout.SOUTH);
-        add(results, BorderLayout.CENTER);
+        propertySurface.add(results, BorderLayout.CENTER);
+        JTabbedPane discoveryKinds = new JTabbedPane(
+                JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
+        discoveryKinds.addTab("Properties", propertySurface);
+        discoveryKinds.addTab("Relation routes", routeDiscoveryPanel);
+        add(discoveryKinds, BorderLayout.CENTER);
         showResults();
 
         cancelButton.setEnabled(false);

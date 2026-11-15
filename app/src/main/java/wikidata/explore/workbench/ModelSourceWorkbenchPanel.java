@@ -498,6 +498,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
 
         discoveryPanel.refreshNodeTitle();
+        discoveryPanel.refreshRelationRouteTarget();
         subclassDiscoveryPanel.showClass(classForExplorerMembership());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
@@ -634,6 +635,23 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return clazz != null
                 && clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
                 && !clazz.isImported() ? clazz : null;
+    }
+
+    private String relationRouteTargetName() {
+        return selected instanceof GeneratedFieldModel
+                ? fieldSourcePanel.relationRouteTargetName() : "";
+    }
+
+    private String relationRouteUnavailableReason() {
+        return selected instanceof GeneratedFieldModel
+                ? fieldSourcePanel.relationRouteUnavailableReason()
+                : "Select an entity-list field in Configuration first.";
+    }
+
+    private void addRelationRoute(datasource.graph.RelationRoute route) {
+        String unavailable = relationRouteUnavailableReason();
+        if (!unavailable.isBlank()) throw new IllegalArgumentException(unavailable);
+        fieldSourcePanel.addRelationRoute(route);
     }
 
     /** Explicit bridge from exploration to configuration. Merely selecting or viewing
@@ -1048,6 +1066,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 this::selectedNodeTitle);
         discoveryPanel.setApplyEdits(
                 this::applyEdits);
+        discoveryPanel.relationRouteTarget(
+                this::relationRouteTargetName,
+                this::relationRouteUnavailableReason,
+                this::addRelationRoute);
 
         discoveryPanel.addFieldUnavailableReason(() ->
                 selected instanceof GeneratedClassModel clazz

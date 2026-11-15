@@ -276,13 +276,15 @@ final class RelationRoutesInput extends JPanel {
                 }
                 List<RelationRoute.Step> steps = new ArrayList<>();
                 for (Row row : members) {
-                    WikidataRouteRelation relation =
-                            new WikidataRouteRelation(row.kind, row.pid);
-                    relation.requireDirection(row.direction);
-                    steps.add(new RelationRoute.Step(relation.relation(), row.direction));
+                    steps.add(new RelationRoute.Step(
+                            new WikidataRouteRelation(row.kind, row.pid).relation(),
+                            row.direction));
                 }
                 result.add(new RelationRoute(entry.getKey(), label, steps));
             }
+            // The same typed-walk rules the saved recipe is checked against, so the
+            // dialog refuses what configuration would refuse later.
+            if (!result.isEmpty()) new datasource.wikidata.WikidataRelationRouteSpec(result);
             return List.copyOf(result);
         }
 

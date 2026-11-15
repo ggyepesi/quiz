@@ -283,6 +283,24 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(subclasses >= 0, "subclass discovery belongs to Explorer tools");
         assertInstanceOf(SubclassDiscoveryPanel.class,
                 wikidata.getComponentAt(subclasses));
+        int discover = wikidata.indexOfTab("Discover");
+        assertTrue(discover >= 0);
+        JTabbedPane discoveryKinds = tabbedPaneContaining(
+                (Container) wikidata.getComponentAt(discover), "Relation routes");
+        assertInstanceOf(RelationRouteDiscoveryPanel.class,
+                discoveryKinds.getComponentAt(discoveryKinds.indexOfTab("Relation routes")));
+    }
+
+    private static JTabbedPane tabbedPaneContaining(Container root, String title) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof JTabbedPane tabs && tabs.indexOfTab(title) >= 0) return tabs;
+            if (child instanceof Container container) {
+                try {
+                    return tabbedPaneContaining(container, title);
+                } catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No tab named " + title);
     }
 
     @Test void aDiscoveredSubclassIsAddedOnlyByTheExplicitExplorerAction()

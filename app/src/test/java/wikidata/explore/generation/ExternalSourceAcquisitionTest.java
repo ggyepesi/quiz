@@ -174,7 +174,8 @@ class ExternalSourceAcquisitionTest {
                         new ExternalSourceFamilyRegistry(List.of(text, references)),
                         Set.of("text", "references"));
 
-        assertEquals(List.of("references", "text"), order);
+        assertEquals(List.of("references", "references", "text"), order,
+                "the reference family must explicitly report its zero-value fixed point");
         assertTrue(applied.semantic() != null,
                 "the references it added are settled through semantic convergence");
         assertEquals(2, applied.sources().values());
@@ -182,6 +183,8 @@ class ExternalSourceAcquisitionTest {
 
     private static ExternalSourceFamily family(String id, boolean producesReferences,
             List<String> order) {
+        java.util.concurrent.atomic.AtomicInteger calls =
+                new java.util.concurrent.atomic.AtomicInteger();
         return new ExternalSourceFamily() {
             @Override public String id() { return id; }
             @Override public String displayName() { return id; }
@@ -192,7 +195,8 @@ class ExternalSourceAcquisitionTest {
             @Override public Outcome empty() { return new Outcome(id, 0, "", 1); }
             @Override public Outcome acquire(Context context) {
                 order.add(id);
-                return new Outcome(id, 1, "1 " + id, 1);
+                int values = !producesReferences || calls.getAndIncrement() == 0 ? 1 : 0;
+                return new Outcome(id, values, values + " " + id, 1);
             }
         };
     }

@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikidataRelationRouteFieldAcquisitionTest {
@@ -93,13 +94,18 @@ class WikidataRelationRouteFieldAcquisitionTest {
         // Figure is not on a reference cycle with Character, so the ordinary referent
         // stamping admits a route terminal and the semantic pass loads its fields.
         GeneratedClassModel figure = new GeneratedClassModel("Figure");
+        GeneratedClassModel artifact = new GeneratedClassModel("Artifact");
         GeneratedFieldModel children = character.addField(
                 "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
         children.entityClassName("Figure");
         GeneratedFieldModel father = figure.addField(
                 "father", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        GeneratedFieldModel relics = figure.addField(
+                "relics", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        relics.entityClassName("Artifact");
         model.rootClass(character);
         model.addClass(figure);
+        model.addClass(artifact);
         SourceBinding route = new SourceBinding(
                 SourceBindingTarget.fieldValue("Character", "children",
                         SourceBindingSlot.PRIMARY_FIELD_VALUE),
@@ -113,16 +119,26 @@ class WikidataRelationRouteFieldAcquisitionTest {
                 new SourceRecipe("wikidata", "property-value", Map.of(
                         "property", "P22", "label", "father",
                         "sourceType", "SPARQL", "valueLanguage", "")));
+        SourceBinding relicRoute = new SourceBinding(
+                SourceBindingTarget.fieldValue("Figure", "relics",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "relation-routes", Map.of("routes", """
+                        [{"id":"relic","label":"Related relic","steps":[
+                          {"relation":"P527","direction":"OUTGOING"}]}]
+                        """)));
         wikidata.explore.model.FieldSourceBindings.put(children, route);
         wikidata.explore.model.FieldSourceBindings.put(father, parent);
+        wikidata.explore.model.FieldSourceBindings.put(relics, relicRoute);
         SourceExecutionPlan plan = SourceExecutionPlan.compile(
-                List.of(route, parent), Datasources.standard());
+                List.of(route, parent, relicRoute), Datasources.standard());
         WikidataDynamicObject laocoon = character("Q101", "Laocoon");
         FakeWikidataApiClient api = new FakeWikidataApiClient()
                 .entity("Q201", "child", Map.of("P22", List.of("Q301")))
                 .entity("Q301", "parent")
+                .entity("Q202", "relic")
                 .statement("Q101", "P40", "Q101$P40-child", "Q201", Map.of())
-                .statement("Q201", "P22", "Q201$P22-parent", "Q301", Map.of());
+                .statement("Q201", "P22", "Q201$P22-parent", "Q301", Map.of())
+                .statement("Q201", "P527", "Q201$P527-relic", "Q202", Map.of());
         SourceRuntimeServices services = SourceRuntimeServices.builder()
                 .put("wikidata", wikidata.api.WikidataApiClient.class, api)
                 .build();
@@ -137,12 +153,86 @@ class WikidataRelationRouteFieldAcquisitionTest {
                                 datasource.wikidata.WikidataDatasourceProvider
                                         .FAMILY_RELATION_ROUTE_FIELD));
 
-        assertEquals(1, result.sources().values());
+        assertEquals(2, result.sources().values(),
+                "the Figure admitted by pass one must become a route owner in pass two");
         assertNotNull(result.semantic(),
                 "entity-valued route results must trigger the shared semantic pass");
         WikidataDynamicObject child = one(laocoon.get("children"));
         assertEquals(java.util.Set.of("Figure"), child.directClassNames());
         assertEquals("Q301", one(child.get("father")).qid());
+        WikidataDynamicObject relic = one(child.get("relics"));
+        assertEquals("Q202", relic.qid());
+        assertEquals(java.util.Set.of("Artifact"), relic.directClassNames());
+    }
+
+    @Test void aCyclicRouteReusesTheCompatibleMemberAlreadyInThePool()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        GeneratedFieldModel children = character.addField(
+                "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        children.entityClassName("Character");
+        model.rootClass(character);
+        SourceBinding binding = route("Character", "children", "P40");
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard());
+        WikidataDynamicObject owner = character("Q101", "Laocoon");
+        WikidataDynamicObject existingChild = character("Q201", "Antiphantes");
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .statement("Q101", "P40", "Q101$P40-child", "Q201", Map.of());
+
+        WikidataRelationRouteFieldAcquisition.apply(model,
+                List.of(owner, existingChild), plan, api, null, GenerationLog.NOOP,
+                new work.CancellationToken());
+
+        assertSame(existingChild, one(owner.get("children")),
+                "source identity is resolved inside the field's configured type");
+    }
+
+    @Test void pathsThroughSeveralQualifierValuesMergeOneStatementEvidence()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        GeneratedFieldModel children = character.addField(
+                "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        children.entityClassName("Character");
+        model.rootClass(character);
+        String routes = """
+                [{"id":"qualified","label":"Named child groups","steps":[
+                  {"relation":"statement:P40","direction":"OUTGOING"},
+                  {"relation":"qualifier:P3831","direction":"OUTGOING"},
+                  {"relation":"P527","direction":"OUTGOING"}]}]
+                """;
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.fieldValue("Character", "children",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "relation-routes", Map.of("routes", routes)));
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard());
+        WikidataDynamicObject owner = character("Q101", "Laocoon");
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .statement("Q101", "P40", "Q101$P40-groups", "",
+                        Map.of("P3831", List.of("Q301", "Q302")))
+                .statement("Q301", "P527", "Q301$P527-child", "Q201", Map.of())
+                .statement("Q302", "P527", "Q302$P527-child", "Q202", Map.of());
+
+        WikidataRelationRouteFieldAcquisition.apply(model, List.of(owner), plan,
+                api, null, GenerationLog.NOOP, new work.CancellationToken());
+
+        quiz.source.WikidataStatementSource statement = owner.wikidataStatementSources()
+                .stream().filter(source -> source.statement().equals("Q101$P40-groups"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("Q301", "Q302"), statement.qualifiers().get("P3831"));
+    }
+
+    private static SourceBinding route(String owner, String field, String pid) {
+        return new SourceBinding(
+                SourceBindingTarget.fieldValue(owner, field,
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "relation-routes", Map.of("routes", """
+                        [{"id":"direct","label":"Direct","steps":[
+                          {"relation":"%s","direction":"OUTGOING"}]}]
+                        """.formatted(pid))));
     }
 
     private static WikidataDynamicObject character(String qid, String label) {

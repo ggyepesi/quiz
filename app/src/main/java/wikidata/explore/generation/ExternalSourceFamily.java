@@ -16,7 +16,9 @@ public interface ExternalSourceFamily {
     /**
      * Whether this family adds entity references to the pool. Such a family runs before
      * the others, and its new references are settled through semantic convergence (their
-     * configured classes and fields) before any later family reads the pool.
+     * configured classes and fields) before any later family reads the pool. Its outcome
+     * value count must count newly inserted references, not all values it can observe;
+     * orchestration uses zero new values as the fixed-point condition.
      */
     default boolean producesEntityReferences() { return false; }
     boolean configured(SourceExecutionPlan plan);

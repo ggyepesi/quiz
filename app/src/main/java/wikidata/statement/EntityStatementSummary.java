@@ -26,8 +26,20 @@ public final class EntityStatementSummary {
 
     public record Qualifier(String pid, String label, String value, String valueQid) { }
 
+    /** {@code rank} is "preferred", "normal" or "deprecated" when the query read it,
+     *  and blank when it did not (the ordinary inspection query). */
     public record Statement(
-            String id, String value, String valueQid, List<Qualifier> qualifiers) { }
+            String id, String value, String valueQid, List<Qualifier> qualifiers,
+            String rank) {
+        public Statement {
+            rank = rank == null ? "" : rank;
+        }
+
+        public Statement(
+                String id, String value, String valueQid, List<Qualifier> qualifiers) {
+            this(id, value, valueQid, qualifiers, "");
+        }
+    }
 
     public record Property(String pid, String label, List<Statement> statements) { }
 
@@ -54,12 +66,12 @@ public final class EntityStatementSummary {
             PREFIX wd: <http://www.wikidata.org/entity/>
             PREFIX wikibase: <http://wikiba.se/ontology#>
             PREFIX bd: <http://www.bigdata.com/rdf#>
-            SELECT ?e ?prop ?propLabel ?st ?val ?valLabel ?qualp ?qualpLabel ?qv ?qvLabel WHERE {
+            SELECT ?e ?prop ?propLabel ?st ?statementRank ?val ?valLabel ?qualp ?qualpLabel ?qv ?qvLabel WHERE {
               VALUES ?e { %s }
               ?e ?p ?st .
               ?prop wikibase:claim ?p .
-              ?prop wikibase:statementProperty ?ps .
-              ?st ?ps ?val .
+            %s
+            %s
               OPTIONAL {
                 ?st ?pq ?qv .
                 ?qualp wikibase:qualifier ?pq .
@@ -77,9 +89,40 @@ public final class EntityStatementSummary {
 
     /** One bounded VALUES query for several entities; used by the adaptive batch executor. */
     public static String query(List<String> qids) {
+        return query(qids, false);
+    }
+
+    /**
+     * Statement projection used while discovering routes generation can execute.
+     * Unknown/novalue main snaks may still carry a useful qualifier, while deprecated
+     * statements must not nominate a route that generation deliberately drops.
+     */
+    public static String routeQuery(List<String> qids) {
+        return query(qids, true);
+    }
+
+    private static String query(List<String> qids, boolean routeDiscovery) {
         String values = (qids == null ? List.<String>of() : qids).stream()
                 .map(qid -> "wd:" + qid).collect(java.util.stream.Collectors.joining(" "));
-        return QUERY.formatted(values, wikidata.query.LabelService.service());
+        String mainValue = routeDiscovery
+                ? """
+                  OPTIONAL {
+                    ?prop wikibase:statementProperty ?ps .
+                    ?st ?ps ?val .
+                  }
+                  """
+                : """
+                  ?prop wikibase:statementProperty ?ps .
+                  ?st ?ps ?val .
+                  """;
+        String rank = routeDiscovery
+                ? """
+                  ?st wikibase:rank ?statementRank .
+                  FILTER(?statementRank != wikibase:DeprecatedRank)
+                  """
+                : "";
+        return QUERY.formatted(values, mainValue, rank,
+                wikidata.query.LabelService.service());
     }
 
     /** Restores one summary per requested QID, including entities with no returned rows. */
@@ -111,6 +154,7 @@ public final class EntityStatementSummary {
             String statementId = b.value("st");
             StAgg sa = pa.statements.computeIfAbsent(statementId, k -> new StAgg());
             sa.id = statementId;
+            if (sa.rank.isEmpty()) sa.rank = rank(b.value("statementRank"));
             if (sa.value == null) {
                 String valUri = b.value("val");
                 if (isEntity(valUri)) {
@@ -138,7 +182,7 @@ public final class EntityStatementSummary {
             List<Statement> sts = new ArrayList<>();
             for (StAgg sa : pa.statements.values()) {
                 sts.add(new Statement(sa.id, sa.value, sa.valueQid,
-                        new ArrayList<>(sa.qualifiers.values())));
+                        new ArrayList<>(sa.qualifiers.values()), sa.rank));
             }
             props.add(new Property(pa.pid, pa.label, sts));
         }
@@ -201,8 +245,18 @@ public final class EntityStatementSummary {
         }
     }
 
+    /** wikibase:PreferredRank → "preferred"; blank when the query did not bind it. */
+    private static String rank(String iri) {
+        if (iri == null || iri.isBlank()) return "";
+        String tail = iri.substring(Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1);
+        return tail.endsWith("Rank")
+                ? tail.substring(0, tail.length() - 4).toLowerCase(java.util.Locale.ROOT)
+                : "";
+    }
+
     private static final class StAgg {
         String id;
+        String rank = "";
         String value;
         String valueQid;
         final Map<String, Qualifier> qualifiers = new LinkedHashMap<>();

@@ -122,7 +122,12 @@ public final class SemanticConvergence {
         for (iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
             long fetchedBefore = api == null ? 0 : api.facts().fetchedDocuments();
             long hitsBefore = api == null ? 0 : api.facts().cacheHits();
-            int stamped = ReferentClassStamp.apply(model, pool);
+            // References are graph members even when they are not top-level roots. A
+            // source replay can make such a nested member eligible as the owner of a
+            // second field, so every convergence pass stamps the reachable graph, just
+            // as field loading, kind classification and owned composition already do.
+            int stamped = ReferentClassStamp.apply(model,
+                    wikidata.explore.extract.WikidataObjectGraph.reachable(pool));
             PopulationSubclassClassifier.Result populationSubclasses =
                     PopulationSubclassClassifier.apply(model, pool);
             // Without a client the worklist runs its LOCAL subset: stamping roles,

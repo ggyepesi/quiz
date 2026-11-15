@@ -38,10 +38,25 @@ class RelationRoutesInputTest {
                 preview);
     }
 
+    /** The dialog used to check only each step's direction, so it accepted a route
+     *  starting at a qualifier that configuration then refused. */
+    @Test void anInvalidStepOrderIsShownBeforeTheRoutesAreUsed() {
+        var model = new RelationRoutesInput.RouteTableModel(WikidataRelationRouteSpec.parse("""
+                [{"id":"r","label":"R","steps":[
+                   {"relation":"P40","direction":"OUTGOING"}]}]
+                """).routes());
+        model.setValueAt(datasource.wikidata.WikidataRouteRelation.Kind.QUALIFIER, 0, 2);
+
+        assertEquals("Not valid yet: Wikidata relation route 'R', step 1: Qualifier P40 "
+                        + "requires a statement node but the previous step yields entity",
+                RelationRoutesInput.preview(model));
+    }
+
     @Test void anInvalidDirectionIsShownBeforeTheRoutesAreUsed() {
         var model = new RelationRoutesInput.RouteTableModel(WikidataRelationRouteSpec.parse("""
                 [{"id":"r","label":"R","steps":[
-                   {"relation":"statement:P40","direction":"OUTGOING"}]}]
+                   {"relation":"statement:P40","direction":"OUTGOING"},
+                   {"relation":"qualifier:P3831","direction":"OUTGOING"}]}]
                 """).routes());
         model.setValueAt(datasource.graph.GraphTraversalDirection.INCOMING, 0, 4);
 

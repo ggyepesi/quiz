@@ -655,6 +655,10 @@ public class FieldSourcePanel extends JPanel {
         return propertyPidField;
     }
 
+    javax.swing.JTextField pendingFieldNameField() {
+        return fieldNameField;
+    }
+
     javax.swing.JComboBox<SourceContext> sourceContextBox() {
         return sourceContextBox;
     }
@@ -722,6 +726,104 @@ public class FieldSourcePanel extends JPanel {
         updateRecommendation();
         refreshOwnedComponentControls();
         refreshGraphExpansionControl();
+    }
+
+    /** The field-source editor owns this hand-off: discovery produces a neutral typed
+     * route, while this method decides whether and where it may be stored. */
+    String relationRouteTargetName() {
+        GeneratedClassModel owner = ownerClass();
+        return field == null ? "" : (owner == null ? "" : owner.className() + ".")
+                + field.name();
+    }
+
+    String relationRouteUnavailableReason() {
+        if (field == null) return "Select an entity-list field first.";
+        GeneratedClassModel owner = ownerClass();
+        if (owner == null) return "The selected field does not belong to this project.";
+        if (owner.isImported()) {
+            return "This field is imported; add the route in " + owner.importedFrom() + ".";
+        }
+        if (field.type() != FieldType.ENTITY
+                || field.cardinality() != FieldCardinality.COLLECTION
+                || field.entityClassName().isBlank()) {
+            return "Relation routes fill a list of references to a configured class.";
+        }
+        datasource.api.SourceRecipe recipe = storedDatasourceRecipe();
+        if (recipe != null && !(datasource.wikidata.WikidataDatasourceProvider.ID
+                        .equals(recipe.providerId())
+                && datasource.wikidata.WikidataDatasourceProvider.RELATION_ROUTES
+                        .equals(recipe.operationId()))) {
+            return "The selected field already uses " + recipe.providerId() + "."
+                    + recipe.operationId() + "; change that source explicitly first.";
+        }
+        FieldSourceMapping source = activeSourceMapping(false);
+        if (recipe == null && source != null && !source.propertyPid().isBlank()) {
+            return "The selected field already reads " + source.propertyPid()
+                    + "; change that source explicitly first.";
+        }
+        return "";
+    }
+
+    void addRelationRoute(datasource.graph.RelationRoute route) {
+        // Discovery is an explicit editor hand-off, not permission to discard edits
+        // already visible in this editor. Flush them before re-reading compatibility
+        // or replacing the controls with the newly configured route.
+        applyEdits();
+        String unavailable = relationRouteUnavailableReason();
+        if (!unavailable.isBlank()) throw new IllegalArgumentException(unavailable);
+        datasource.api.SourceRecipe existing = storedDatasourceRecipe();
+        java.util.List<datasource.graph.RelationRoute> routes = existing == null
+                ? new java.util.ArrayList<>()
+                : new java.util.ArrayList<>(datasource.wikidata.WikidataRelationRouteSpec
+                        .parse(existing.parameter(
+                                datasource.wikidata.WikidataDatasourceProvider.ROUTES_PARAMETER))
+                        .routes());
+        boolean alreadyThere = routes.stream().anyMatch(configured ->
+                configured.steps().equals(route.steps()));
+        if (alreadyThere) {
+            applyStatusLabel.setText("Route already configured on "
+                    + relationRouteTargetName() + ".");
+            return;
+        }
+        routes.add(route);
+        datasource.wikidata.WikidataRelationRouteSpec spec =
+                new datasource.wikidata.WikidataRelationRouteSpec(routes);
+        datasource.api.SourceRecipe recipe = new datasource.api.SourceRecipe(
+                datasource.wikidata.WikidataDatasourceProvider.ID,
+                datasource.wikidata.WikidataDatasourceProvider.RELATION_ROUTES,
+                java.util.Map.of(
+                        datasource.wikidata.WikidataDatasourceProvider.ROUTES_PARAMETER,
+                        spec.toJson()));
+        GeneratedClassModel owner = ownerClass();
+        OwnedComponentSite site = selectedSourceSite();
+        String path = componentFieldPath();
+        datasource.api.SourceBindingTarget target = site == null
+                ? datasource.api.SourceBindingTarget.fieldValue(owner.className(), path,
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE)
+                : datasource.api.SourceBindingTarget.ownedFieldValue(site.targetClass(),
+                        path, site.ownerClass(), site.ownerField(),
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        datasource.api.SourceBinding binding = new datasource.api.SourceBinding(target, recipe);
+        datasource.api.DatasourceOperation operation = recipe.resolve(
+                datasources, datasource.api.BindingScope.FIELD_VALUE);
+        wikidata.explore.model.FieldSourceCompatibility.requireCompatible(
+                binding, operation, field.type(), field.cardinality().isCollection());
+        operation.prepare(binding);
+
+        FieldSourceMapping source = activeSourceMapping(site != null);
+        source.sourceType(FieldSourceType.DATASOURCE);
+        source.propertyPid("");
+        source.propertyLabel("");
+        source.qualifierPid("");
+        source.qualifierLabel("");
+        OwnedFieldSource override = activeOverride(false);
+        if (override == null) FieldSourceBindings.put(field, binding);
+        else FieldSourceBindings.put(override, binding);
+        FieldSourceBindings.synchronizeForSave(projectModel);
+        edit(field);
+        applyStatusLabel.setText("Added route \"" + route.label() + "\" to "
+                + relationRouteTargetName() + ". Save model/domain to keep it.");
+        afterChange.accept(null);
     }
 
     private void showProductionKind(FieldProductionKind kind) {
