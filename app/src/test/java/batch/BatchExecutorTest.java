@@ -139,6 +139,34 @@ class BatchExecutorTest {
         assertTrue(messages.get(0).contains("up to 3 concurrent unit(s)"));
     }
 
+    @Test
+    void aCommittedRefusalFinishesItsWorkEntryAsFailedNotOk() throws Exception {
+        List<String> terminal = new ArrayList<>();
+        BatchProgress progress = (title, request) -> new BatchProgress.Running() {
+            @Override public void done(String summary) { terminal.add("OK: " + summary); }
+            @Override public void failed(String error) { terminal.add("FAILED: " + error); }
+        };
+        record Refused(String failure) implements BatchOutcome { }
+        Refused refused = new Refused("HTTP 404");
+        List<Refused> committed = new ArrayList<>();
+        WorkUnit<Refused> unit = new WorkUnit<>() {
+            @Override public WorkDescriptor descriptor() {
+                return new WorkDescriptor("test", "refused", "refused");
+            }
+            @Override public Refused execute() { return refused; }
+            @Override public List<? extends WorkUnit<Refused>> split() {
+                return List.of();
+            }
+        };
+
+        new BatchExecutor<Refused>(new BatchPolicy(1, 0, 0, false), progress)
+                .run(List.of(unit), (descriptor, value) -> committed.add(value));
+
+        assertEquals(List.of(refused), committed,
+                "the caller still receives the refusal for its partial result");
+        assertEquals(List.of("FAILED: HTTP 404"), terminal);
+    }
+
     private static WorkUnit<String> concurrentUnit(String key, CyclicBarrier barrier) {
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {

@@ -111,7 +111,7 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
                 failures.stream().distinct().toList());
     }
 
-    private <R extends Outcome> void runStage(QueryContext context, String title,
+    private <R extends batch.BatchOutcome> void runStage(QueryContext context, String title,
             List<? extends WorkUnit<R>> units, List<R> values, List<String> failures)
             throws Exception {
         if (units.isEmpty()) return;
@@ -265,18 +265,15 @@ final class ConfiguredRestDiscoveryQuery implements Query<RelatedRecordDiscovery
                         + result.failedWork().size() + " request(s) failed");
     }
 
-    /** A batch value that may carry a refusal the run continues past. */
-    private interface Outcome { String failure(); }
-
     private record SearchOutcome(RelatedRecordSeed seed, List<String> ids, int total,
-            String failure) implements Outcome {
+            String failure) implements batch.BatchOutcome {
         SearchOutcome {
             ids = List.copyOf(ids == null ? List.of() : ids);
             failure = failure == null ? "" : failure;
         }
     }
     private record DetailOutcome(DiscoveredRelatedRecord record, String failure)
-            implements Outcome {
+            implements batch.BatchOutcome {
         DetailOutcome { failure = failure == null ? "" : failure; }
     }
 

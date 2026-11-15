@@ -185,6 +185,12 @@ class ConfiguredRestDiscoveryQueryTest {
         work.LogNode details = steps.get(1);
         assertEquals(work.LogStatus.PARTIAL, details.status());
         assertEquals("1 completed; 1 refused; 0 unavailable", details.summary());
+        work.LogNode refused = details.steps().stream()
+                .filter(node -> node.getDisplayName().contains("record 2"))
+                .findFirst().orElseThrow();
+        assertEquals(work.LogStatus.FAILED, refused.status(),
+                "the refused request itself must not remain OK inside the partial step");
+        assertTrue(refused.summary().contains("HTTP 404"), refused.summary());
     }
 
     private static RelatedRecordSeed seed(String key, String qid, String label) {

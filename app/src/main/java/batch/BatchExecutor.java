@@ -236,7 +236,13 @@ public final class BatchExecutor<R> {
                     throw checkpointError;
                 }
             }
-            result.running().done(result.summary());
+            String terminalFailure = result.value() instanceof BatchOutcome outcome
+                    ? outcome.failure() : "";
+            if (terminalFailure == null || terminalFailure.isBlank()) {
+                result.running().done(result.summary());
+            } else {
+                result.running().failed(terminalFailure);
+            }
             return;
         }
         List<WorkUnit<R>> parts = validateSplit(attempt, result.parts(), knownKeys);

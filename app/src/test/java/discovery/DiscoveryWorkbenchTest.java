@@ -113,13 +113,15 @@ class DiscoveryWorkbenchTest {
             try {
                 javax.swing.JTabbedPane sources = field(workbench, "sources",
                         javax.swing.JTabbedPane.class);
-                int tab = sources.indexOfTab(DiscoveryWorkbench.NOT_INSTALLED);
+                int tab = sources.indexOfTab(DiscoveryWorkbench.NOT_AVAILABLE);
                 assertTrue(tab >= 0);
                 javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
                         sources.getComponentAt(tab);
                 String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
                         .getText();
-                assertTrue(text.startsWith(problem), text);
+                assertTrue(text.startsWith("Not installed:\n\n" + problem), text);
+                assertTrue(text.contains("Correct the listed installation problem and "
+                        + "restart the application"), text);
                 assertTrue(text.contains("other sources are unaffected"), text);
                 assertEquals(DiscoveryWorkbench.Source.PAGEVIEWS.title(),
                         sources.getTitleAt(DiscoveryWorkbench.Source.PAGEVIEWS.ordinal()));
@@ -153,12 +155,14 @@ class DiscoveryWorkbenchTest {
                         javax.swing.JTabbedPane.class);
                 javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
                         sources.getComponentAt(
-                                sources.indexOfTab(DiscoveryWorkbench.NOT_INSTALLED));
+                                sources.indexOfTab(DiscoveryWorkbench.NOT_AVAILABLE));
                 String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
                         .getText();
-                assertTrue(text.startsWith("Metropolitan Museum of Art Collection — "
+                assertTrue(text.startsWith("Installed, but not offered by this workbench:\n\n"
+                        + "Metropolitan Museum of Art Collection — "
                         + "Artifacts tagged with selected entities is not offered: it needs "
                         + "viaf entities"), text);
+                assertTrue(text.contains("No file correction or restart is required."), text);
             } finally {
                 workbench.close();
             }

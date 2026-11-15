@@ -27,7 +27,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private static final int DEFAULT_SAMPLE = 12;
     /** The largest per-run bound of any source; a source with a smaller one says so. */
     private static final int MAXIMUM = 50;
-    static final String NOT_INSTALLED = "Configured datasources — not available";
+    static final String NOT_AVAILABLE = "Configured datasources — not available";
 
     /** The source tabs, in the order they are shown. */
     public enum Source {
@@ -46,7 +46,8 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private final PageviewsDiscoveryPanel pageviews;
     private final java.util.List<RelatedRecordDiscoveryPanel> relatedRecords =
             new java.util.ArrayList<>();
-    private final List<String> configurationProblems;
+    private final List<String> catalogProblems;
+    private final List<String> unavailableOperations;
     private final JTabbedPane sources = new JTabbedPane();
     private final JLabel selectionStatus = new JLabel(" ");
     private boolean closed;
@@ -58,14 +59,15 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
 
     /**
      * @param configurationProblems why configured providers are missing from
-     *                              {@code datasources}; shown, with any operation this
-     *                              workbench cannot offer, where their tabs would be
+     *                              {@code datasources}; kept separate from installed
+     *                              operations this workbench cannot offer
      */
     DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection,
             datasource.api.DatasourceRegistry datasources,
             List<String> configurationProblems) {
         super(new BorderLayout(6, 6));
-        List<String> problems = new java.util.ArrayList<>(configurationProblems);
+        this.catalogProblems = List.copyOf(configurationProblems);
+        List<String> unavailable = new java.util.ArrayList<>();
         TransformController domain =
                 new TransformController(model, new quiz.transform.app.DomainSaver());
         selection = new BoundedInstanceSelection(domain,
@@ -89,7 +91,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
                 List<String> namespaces = related.inputReferences().stream()
                         .map(datasource.api.SourceReferenceSchema::namespace).toList();
                 if (!namespaces.contains(datasource.EntityRef.WIKIDATA)) {
-                    problems.add(provider.displayName() + " — " + related.displayName()
+                    unavailable.add(provider.displayName() + " — " + related.displayName()
                             + " is not offered: it needs " + String.join(", ", namespaces)
                             + " entities, and this workbench selects instances by Wikidata "
                             + "QID.");
@@ -99,7 +101,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
                         domain, selection, provider, related));
             }
         }
-        this.configurationProblems = List.copyOf(problems);
+        this.unavailableOperations = List.copyOf(unavailable);
         build();
         populate(initialSelection);
     }
@@ -116,14 +118,25 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         sources.addTab(Source.COMMONS.title(), commons);
         sources.addTab(Source.PAGEVIEWS.title(), pageviews);
         relatedRecords.forEach(panel -> sources.addTab(panel.title(), panel));
-        if (!configurationProblems.isEmpty()) {
-            JTextArea problems = new JTextArea(String.join("\n\n", configurationProblems)
-                    + "\n\nThe other sources are unaffected. Correct the file and restart "
-                    + "the application to install it.");
+        if (!catalogProblems.isEmpty() || !unavailableOperations.isEmpty()) {
+            List<String> sections = new java.util.ArrayList<>();
+            if (!catalogProblems.isEmpty()) {
+                sections.add("Not installed:\n\n" + String.join("\n\n", catalogProblems)
+                        + "\n\nCorrect the listed installation problem and restart the "
+                        + "application to install it.");
+            }
+            if (!unavailableOperations.isEmpty()) {
+                sections.add("Installed, but not offered by this workbench:\n\n"
+                        + String.join("\n\n", unavailableOperations)
+                        + "\n\nThey are installed, but this workbench cannot supply their "
+                        + "input. No file correction or restart is required.");
+            }
+            JTextArea problems = new JTextArea(String.join("\n\n", sections)
+                    + "\n\nThe other sources are unaffected.");
             problems.setEditable(false);
             problems.setLineWrap(true);
             problems.setWrapStyleWord(true);
-            sources.addTab(NOT_INSTALLED, new JScrollPane(problems));
+            sources.addTab(NOT_AVAILABLE, new JScrollPane(problems));
         }
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,

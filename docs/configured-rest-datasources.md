@@ -38,7 +38,8 @@ detail requests run with the configured bounded concurrency. One unavailable req
 the result `PARTIAL` and names the failed work; records already read remain visible. A
 server-side status (429, 5xx) is retried on the batch budget first. A status the server will
 not reconsider (another 4xx) is not retried and costs only that one request, whether it
-answered a seed's search or a detail record; its step closes `PARTIAL` and counts it as refused.
+answered a seed's search or a detail record. The refused request is marked failed, while its
+enclosing stage closes `PARTIAL` and counts it as refused.
 
 ## Supported grammar
 
