@@ -52,6 +52,10 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     public static final String INHERITED_INCOMING_RELATION_COUNT =
             "inherited-incoming-relation-count";
     public static final String FAMILY_COMPUTED_FIELD = "wikidata-computed-field";
+    public static final String RELATION_ROUTES = "relation-routes";
+    public static final String FAMILY_RELATION_ROUTE_FIELD =
+            "wikidata-relation-route-field";
+    public static final String ROUTES_PARAMETER = "routes";
     /** The article a Wikipedia operation needs to say anything about this entity. */
     public static final String SITELINK = "sitelink";
     public static final String SOURCE_FIELD = "wikidataSource";
@@ -133,6 +137,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                             new ParameterDescriptor("conditionValues", "Allowed qualifier values",
                                     ParameterDescriptor.Kind.TEXT, false, "", List.of(),
                                     "Space-separated QIDs the qualifier must have."))),
+            new RelationRoutesOffering(),
             new ComputedFieldOffering(SITELINK_COUNT, "Sitelink count", List.of()),
             new ComputedFieldOffering(INCOMING_RELATION_COUNT,
                     "Incoming relation count", List.of(
@@ -255,6 +260,35 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
 
     public record ComputedFieldSpec(Kind kind, String propertyPid) {
         public enum Kind { SITELINKS, INCOMING_RELATION, INHERITED_INCOMING_RELATION }
+    }
+
+    private record RelationRoutesOffering() implements DatasourceOperation {
+        @Override public String id() { return RELATION_ROUTES; }
+        @Override public String displayName() { return "Bounded relation routes"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID);
+        }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(new ParameterDescriptor(ROUTES_PARAMETER, "Routes",
+                    ParameterDescriptor.Kind.RELATION_ROUTES, true, "", List.of(),
+                    "Finite ordered relation routes. Configure them with the route editor; "
+                            + "no route repeats or follows an implicit closure."));
+        }
+        @Override public PreparedSourceOperation prepare(
+                datasource.api.SourceBinding binding) {
+            WikidataRelationRouteSpec spec = WikidataRelationRouteSpec.parse(
+                    binding.recipe().parameter(ROUTES_PARAMETER));
+            String summary = spec.routes().stream()
+                    .map(route -> route.label() + " (" + route.steps().size() + " step(s))")
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return new PreparedSourceOperation(FAMILY_RELATION_ROUTE_FIELD,
+                    "Wikidata relation routes", PreparedSourceOperation.Execution.ACQUIRE,
+                    "Follow " + spec.routes().size() + " bounded route(s)",
+                    java.util.Map.of("routes", summary,
+                            "output", binding.target().className() + "."
+                                    + binding.target().fieldPath()), spec);
+        }
     }
 
     private record ComputedFieldOffering(

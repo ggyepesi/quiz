@@ -112,6 +112,14 @@ public class FakeWikidataApiClient extends WikidataApiClient {
     }
 
     @Override
+    public Map<String, List<ApiStatement>> getStatements(
+            List<String> entityQids, String statementPid,
+            List<String> qualifierPids, BatchLog batchLog,
+            StatementDetail detail) {
+        return getStatements(entityQids, statementPid, qualifierPids, batchLog);
+    }
+
+    @Override
     public Map<String, Map<String, List<ApiStatement>>> getStatementsByProperty(
             List<String> entityQids, List<String> statementPids, BatchLog batchLog) {
         Map<String, Map<String, List<ApiStatement>>> out = new LinkedHashMap<>();
@@ -128,5 +136,24 @@ public class FakeWikidataApiClient extends WikidataApiClient {
             List<String> entityQids, List<String> statementPids, BatchLog batchLog) {
         return new PartialStatements(
                 getStatementsByProperty(entityQids, statementPids, batchLog), 0, List.of());
+    }
+
+    @Override
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids, BatchLog batchLog,
+            StatementBatchCommitter committer) throws Exception {
+        Map<String, Map<String, List<ApiStatement>>> values =
+                getStatementsByProperty(entityQids, statementPids, batchLog);
+        (committer == null ? StatementBatchCommitter.NONE : committer)
+                .commit(entityQids == null ? List.of() : List.copyOf(entityQids), values);
+        return new PartialStatements(values, 0, List.of());
+    }
+
+    @Override
+    public PartialStatements getStatementsByPropertyPartial(
+            List<String> entityQids, List<String> statementPids, BatchLog batchLog,
+            StatementBatchCommitter committer, StatementDetail detail) throws Exception {
+        return getStatementsByPropertyPartial(
+                entityQids, statementPids, batchLog, committer);
     }
 }

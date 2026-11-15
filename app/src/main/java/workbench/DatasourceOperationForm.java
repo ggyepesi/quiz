@@ -120,7 +120,7 @@ public final class DatasourceOperationForm extends JPanel {
             for (ParameterDescriptor parameter : choice.operation().parameters()) {
                 String value = stored.getOrDefault(parameter.key(), "");
                 if (value.isBlank()) value = parameter.defaultValue();
-                JComponent input = input(parameter, value);
+                JComponent input = input(parameter, value, choice.provider().id());
                 inputs.put(parameter.key(), input);
                 c.gridx = 0;
                 c.weightx = 0;
@@ -144,7 +144,8 @@ public final class DatasourceOperationForm extends JPanel {
         parameters.repaint();
     }
 
-    private JComponent input(ParameterDescriptor parameter, String value) {
+    private JComponent input(
+            ParameterDescriptor parameter, String value, String providerId) {
         return switch (parameter.kind()) {
             case BOOLEAN -> {
                 JCheckBox box = new JCheckBox();
@@ -159,6 +160,8 @@ public final class DatasourceOperationForm extends JPanel {
                 box.addActionListener(event -> changed.run());
                 yield box;
             }
+            case RELATION_ROUTES -> new RelationRoutesInput(
+                    providerId, value, changed);
             default -> {
                 JTextField field = new JTextField(value, 16);
                 field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -184,6 +187,7 @@ public final class DatasourceOperationForm extends JPanel {
             return selected == null ? "" : selected.toString();
         }
         if (input instanceof JTextField field) return field.getText().trim();
+        if (input instanceof RelationRoutesInput routes) return routes.value();
         return "";
     }
 

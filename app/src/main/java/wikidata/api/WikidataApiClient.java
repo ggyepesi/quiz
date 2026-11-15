@@ -935,6 +935,18 @@ public class WikidataApiClient {
             List<String> entityQids, String statementPid,
             List<String> qualifierPids, BatchLog batchLog) throws Exception {
 
+        return getStatements(entityQids, statementPid, qualifierPids, batchLog,
+                StatementDetail.FULL);
+    }
+
+    /** The same batched statement acquisition with an explicit retention shape.
+     * {@link StatementDetail#RANKED} deliberately retains somevalue/novalue statements:
+     * a qualifier can carry the useful entity even when the mainsnak has no value. */
+    public Map<String, List<ApiStatement>> getStatements(
+            List<String> entityQids, String statementPid,
+            List<String> qualifierPids, BatchLog batchLog,
+            StatementDetail detail) throws Exception {
+
         Map<String, List<ApiStatement>> out = new LinkedHashMap<>();
         if (entityQids == null || statementPid == null || statementPid.isBlank()) {
             return out;
@@ -945,7 +957,8 @@ public class WikidataApiClient {
         List<WorkUnit<Map<String, List<ApiStatement>>>> roots = new ArrayList<>();
         for (int i = 0; i < clean.size(); i += ENTITY_BATCH_SIZE) {
             roots.add(statementUnit(List.copyOf(clean.subList(i,
-                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), statementPid, quals));
+                    Math.min(i + ENTITY_BATCH_SIZE, clean.size()))), statementPid, quals,
+                    detail));
         }
         BatchExecutor<Map<String, List<ApiStatement>>> executor = new BatchExecutor<>(
                 BatchPolicy.defaults().withResume(false), batchProgress(batchLog),
@@ -1125,6 +1138,12 @@ public class WikidataApiClient {
 
     private WorkUnit<Map<String, List<ApiStatement>>> statementUnit(
             List<String> qids, String statementPid, List<String> qualifierPids) {
+        return statementUnit(qids, statementPid, qualifierPids, StatementDetail.FULL);
+    }
+
+    private WorkUnit<Map<String, List<ApiStatement>>> statementUnit(
+            List<String> qids, String statementPid, List<String> qualifierPids,
+            StatementDetail detail) {
         return new WorkUnit<>() {
             @Override public WorkDescriptor descriptor() {
                 String ids = String.join(",", qids);
@@ -1139,16 +1158,16 @@ public class WikidataApiClient {
                 Map<String, List<ApiStatement>> result = new LinkedHashMap<>();
                 parseStatements(getEntitiesBatchWithRetry(qids, true,
                         List.of(statementPid), Set.of()), statementPid,
-                        StatementDetail.FULL, result);
+                        detail, result);
                 return result;
             }
             @Override public List<? extends WorkUnit<Map<String, List<ApiStatement>>>> split() {
                 if (qids.size() < 2) return List.of();
                 int middle = qids.size() / 2;
                 return List.of(statementUnit(qids.subList(0, middle), statementPid,
-                                qualifierPids),
+                                qualifierPids, detail),
                         statementUnit(qids.subList(middle, qids.size()), statementPid,
-                                qualifierPids));
+                                qualifierPids, detail));
             }
         };
     }

@@ -68,6 +68,7 @@ class PipelineFlowsCharacterizationTest {
         // had been settling them all along.
         PHASES.put("SnapshotEntityKindClassifier.apply", "semantic-classify-only");
         PHASES.put("OwnedComponents.apply", "semantic-owned-only");
+        PHASES.put("applyWithSemanticReplay(", "external-evidence");
         PHASES.put("ExternalSourceAcquisition.apply", "external-evidence");
         PHASES.put("Canonicalization.apply", "canonicalize");
         PHASES.put("ModelAggregates.apply", "aggregate");
@@ -153,18 +154,14 @@ class PipelineFlowsCharacterizationTest {
         assertFalse(order.contains("semantic-classify-only"), order.toString());
     }
 
-    /**
-     * The single-class preview omits the semantic worklist entirely.
-     *
-     * <p>Its own comment says so and explains why — parts would be empty here. The
-     * design's answer is that a preview differs by scope and limits, never by dropping a
-     * phase, and that this method disappears into a bounded request.
-     */
-    @Test void theSingleClassPreviewOmitsTheSemanticWorklist() throws IOException {
+    /** The single-class preview uses the same staged external acquisition as Generate
+     * and Enrich, so entity-valued source results can re-enter semantic convergence. It
+     * still omits finalization because preview has bounded inspection scope. */
+    @Test void theSingleClassPreviewUsesStagedExternalAcquisition() throws IOException {
         List<String> order = phasesIn("GenerationPipeline.java", "public GenerationRun fullRun(\n            GeneratedProjectModel snapshot,\n            int depth,\n            WikidataSparqlClient client,\n            GenerationLog log,\n            wikidata.api.WikidataApiClient entityApi,\n            work.CancellationToken cancellation,\n            datasource.api.SourceExecutionPlan sourcePlan,\n            WikidataSparqlClient dbpedia)",
                 "public GenerationRun remap(");
 
-        assertFalse(order.contains("semantic"), order.toString());
+        assertTrue(order.contains("external-evidence"), order.toString());
         assertFalse(order.contains("finalize"), order.toString());
     }
 

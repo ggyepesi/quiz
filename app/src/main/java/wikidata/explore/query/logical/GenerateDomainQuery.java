@@ -362,8 +362,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     phase(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                             wikidata.explore.generation.StandardExternalSourceFamilies
                                     .describe(sourcePlan));
-                    wikidata.explore.generation.ExternalSourceAcquisition.Result external =
-                            wikidata.explore.generation.ExternalSourceAcquisition.apply(
+                    wikidata.explore.generation.ExternalSourceAcquisition.Applied acquired =
+                            wikidata.explore.generation.ExternalSourceAcquisition
+                                    .applyWithSemanticReplay(
                                     project, pool, sourcePlan,
                                     wikidata.explore.generation.StandardExternalSourceFamilies
                                             .services(WikidataAccess.sparql(
@@ -372,7 +373,19 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                                     context, Datasource.DBPEDIA), entityApi),
                                     genLog, context.cancellation(),
                                     wikidata.explore.generation.ExternalSourceAcquisition
-                                            .FailurePolicy.STRICT);
+                                            .FailurePolicy.STRICT,
+                                    completedReferentLoads.values(), qualityTracker);
+                    wikidata.explore.generation.ExternalSourceAcquisition.Result external =
+                            acquired.sources();
+                    if (!external.complete()) {
+                        qualityTracker.failed("external-source",
+                                String.join("; ", external.failures()));
+                    }
+                    convergence = wikidata.explore.generation.SemanticConvergence.combine(
+                            convergence, acquired.semantic());
+                    completedReferentLoads.clear();
+                    completedReferentLoads.putAll(convergence.completedDeclarations());
+                    loadedReferentFields = convergence.loadedFields();
                     String acquiredExternal = external.acquiredSummary();
                     if (!acquiredExternal.isBlank()) {
                         progress(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,

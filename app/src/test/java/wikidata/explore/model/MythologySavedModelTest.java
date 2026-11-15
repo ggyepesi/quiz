@@ -102,4 +102,31 @@ class MythologySavedModelTest {
                 GeneratedProjectModelValidator.validate(model).format());
     }
 
+    @Test void characterChildrenUnionDirectAndQualifiedGroupMembers()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/mythology/mythology.model.json"));
+        GeneratedFieldModel children = model.findClass("Character").fields().stream()
+                .filter(field -> "child".equals(field.name()))
+                .findFirst().orElseThrow();
+        var binding = children.sourceBindings().stream()
+                .filter(value -> value.target().slot()
+                        == SourceBindingSlot.PRIMARY_FIELD_VALUE)
+                .findFirst().orElseThrow();
+
+        assertEquals("wikidata", binding.recipe().providerId());
+        assertEquals("relation-routes", binding.recipe().operationId());
+        var spec = datasource.wikidata.WikidataRelationRouteSpec.parse(
+                binding.recipe().parameter("routes"));
+        assertEquals(java.util.List.of(
+                        "Direct child: OUTGOING P40",
+                        "Child by father: INCOMING P22",
+                        "Members of qualified child group: OUTGOING statement:P40, "
+                                + "OUTGOING qualifier:P3831, OUTGOING P527"),
+                spec.routes().stream().map(route -> route.label() + ": "
+                        + route.steps().stream().map(step -> step.direction() + " "
+                                + step.relation().relationId())
+                        .collect(java.util.stream.Collectors.joining(", "))).toList());
+    }
+
 }

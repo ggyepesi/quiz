@@ -51,4 +51,22 @@ class DatasourceOperationFormTest {
 
         assertNull(form.recipe());
     }
+
+    @Test void relationRoutesRoundTripThroughTheStructuralParameterControl() {
+        DatasourceOperationForm form = new DatasourceOperationForm(
+                datasource.Datasources.standard(),
+                wikidata.explore.model.FieldSourceBindings::registryOnly);
+        String routes = """
+                [{"id":"direct","label":"Direct child","steps":[
+                  {"relation":"P40","direction":"OUTGOING"}]}]
+                """;
+        SourceRecipe stored = new SourceRecipe("wikidata", "relation-routes",
+                Map.of("routes", routes));
+
+        form.show(stored);
+
+        assertEquals(datasource.wikidata.WikidataRelationRouteSpec.parse(routes).routes(),
+                datasource.wikidata.WikidataRelationRouteSpec.parse(
+                        form.recipe().parameter("routes")).routes());
+    }
 }

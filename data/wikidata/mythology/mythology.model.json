@@ -207,8 +207,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P40",
-        "propertyLabel" : "child",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -228,7 +228,7 @@
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
+        "sourceType" : "DATASOURCE"
       },
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
@@ -243,13 +243,10 @@
         },
         "recipe" : {
           "providerId" : "wikidata",
-          "operationId" : "property-value",
+          "operationId" : "relation-routes",
           "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "child",
-            "property" : "P40",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
+            "@class" : "java.util.ImmutableCollections$Map1",
+            "routes" : "[{\"id\":\"direct-child\",\"label\":\"Direct child\",\"steps\":[{\"relation\":\"P40\",\"direction\":\"OUTGOING\"}]},{\"id\":\"child-by-father\",\"label\":\"Child by father\",\"steps\":[{\"relation\":\"P22\",\"direction\":\"INCOMING\"}]},{\"id\":\"qualified-child-group\",\"label\":\"Members of qualified child group\",\"steps\":[{\"relation\":\"statement:P40\",\"direction\":\"OUTGOING\"},{\"relation\":\"qualifier:P3831\",\"direction\":\"OUTGOING\"},{\"relation\":\"P527\",\"direction\":\"OUTGOING\"}]}]"
           }
         }
       } ] ],
@@ -757,8 +754,8 @@
         "@class" : "wikidata.explore.model.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
-        "propertyPid" : "P40",
-        "propertyLabel" : "child",
+        "propertyPid" : "",
+        "propertyLabel" : "",
         "qualifierPid" : "",
         "qualifierLabel" : "",
         "subjectField" : "",
@@ -778,7 +775,7 @@
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
-        "sourceType" : "SPARQL"
+        "sourceType" : "DATASOURCE"
       },
       "sourceBindings" : [ "java.util.ArrayList", [ {
         "target" : {
@@ -793,13 +790,10 @@
         },
         "recipe" : {
           "providerId" : "wikidata",
-          "operationId" : "property-value",
+          "operationId" : "relation-routes",
           "parameters" : {
-            "@class" : "java.util.ImmutableCollections$MapN",
-            "label" : "child",
-            "property" : "P40",
-            "sourceType" : "SPARQL",
-            "valueLanguage" : ""
+            "@class" : "java.util.ImmutableCollections$Map1",
+            "routes" : "[{\"id\":\"direct-child\",\"label\":\"Direct child\",\"steps\":[{\"relation\":\"P40\",\"direction\":\"OUTGOING\"}]},{\"id\":\"child-by-father\",\"label\":\"Child by father\",\"steps\":[{\"relation\":\"P22\",\"direction\":\"INCOMING\"}]},{\"id\":\"qualified-child-group\",\"label\":\"Members of qualified child group\",\"steps\":[{\"relation\":\"statement:P40\",\"direction\":\"OUTGOING\"},{\"relation\":\"qualifier:P3831\",\"direction\":\"OUTGOING\"},{\"relation\":\"P527\",\"direction\":\"OUTGOING\"}]}]"
           }
         }
       } ] ],

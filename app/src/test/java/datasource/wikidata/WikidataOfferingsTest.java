@@ -5,6 +5,9 @@ import datasource.api.DatasourceOperation;
 import datasource.api.DatasourceProvider;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceRecipe;
+import datasource.api.SourceBinding;
+import datasource.api.SourceBindingSlot;
+import datasource.api.SourceBindingTarget;
 import datasource.api.acquisition.ClassPopulationOperation;
 import datasource.api.acquisition.PopulationRequest;
 import org.junit.jupiter.api.Test;
@@ -147,5 +150,32 @@ class WikidataOfferingsTest {
         assertEquals(new datasource.api.acquisition.RelationCondition("P972",
                         List.of(datasource.EntityRef.wikidata("Q499138"))),
                 catalogue.relationCondition());
+    }
+
+    @Test void relationRoutesArePreparedOnceAsTypedFiniteSteps() {
+        String routes = """
+                [{"id":"direct","label":"Direct child","steps":[
+                  {"relation":"P40","direction":"OUTGOING"}]},
+                 {"id":"qualified-group","label":"Named child group","steps":[
+                  {"relation":"statement:P40","direction":"OUTGOING"},
+                  {"relation":"qualifier:P3831","direction":"OUTGOING"},
+                  {"relation":"P527","direction":"OUTGOING"}]}]
+                """;
+        DatasourceOperation operation = offering(WikidataDatasourceProvider.RELATION_ROUTES);
+        var prepared = operation.prepare(new SourceBinding(
+                SourceBindingTarget.fieldValue("Character", "children",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("wikidata", "relation-routes",
+                        Map.of("routes", routes))));
+        WikidataRelationRouteSpec spec = prepared.configuration(
+                WikidataRelationRouteSpec.class);
+
+        assertEquals(datasource.api.PreparedSourceOperation.Execution.ACQUIRE,
+                prepared.execution());
+        assertEquals(2, spec.routes().size());
+        assertEquals(List.of("statement:P40", "qualifier:P3831", "P527"),
+                spec.routes().get(1).steps().stream()
+                        .map(step -> step.relation().relationId()).toList());
+        assertEquals(spec.routes(), WikidataRelationRouteSpec.parse(spec.toJson()).routes());
     }
 }

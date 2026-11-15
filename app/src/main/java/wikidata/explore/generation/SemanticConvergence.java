@@ -46,6 +46,26 @@ public final class SemanticConvergence {
             List<LoadedDeclaration> unresolvedLoads,
             Set<String> unresolvedKindQids) { }
 
+    /** Combines consecutive passes over one pool. The later pass was seeded with the
+     * earlier pass's completed declarations, so its coverage map is authoritative;
+     * counters and audit instances describe work done by both passes. */
+    public static Result combine(Result first, Result later) {
+        if (first == null) return later;
+        if (later == null) return first;
+        List<WikidataDynamicObject> components = new ArrayList<>(
+                first.ownedComponentsCreated());
+        components.addAll(later.ownedComponentsCreated());
+        List<WikidataDynamicObject> kinds = new ArrayList<>(first.newlyClassifiedKinds());
+        kinds.addAll(later.newlyClassifiedKinds());
+        return new Result(first.iterations() + later.iterations(),
+                first.loadedFields() + later.loadedFields(),
+                first.classifiedKinds() + later.classifiedKinds(),
+                first.ownedCreated() + later.ownedCreated(),
+                List.copyOf(components), List.copyOf(kinds),
+                later.completedDeclarations(), later.unresolvedLoads(),
+                later.unresolvedKindQids());
+    }
+
     private SemanticConvergence() { }
 
     public static Result apply(

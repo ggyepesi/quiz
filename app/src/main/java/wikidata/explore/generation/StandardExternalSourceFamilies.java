@@ -38,8 +38,46 @@ public final class StandardExternalSourceFamilies {
 
     public static ExternalSourceFamilyRegistry create() {
         return new ExternalSourceFamilyRegistry(List.of(
-                new WikidataComputed(), new Dbpedia(), new Categories(),
+                new WikidataRelationRoutes(), new WikidataComputed(), new Dbpedia(), new Categories(),
                 new ArticleIntroductions(), new Infobox(), new Pageviews()));
+    }
+
+    private record WikidataRelationRoutes() implements ExternalSourceFamily {
+        @Override public String id() {
+            return datasource.wikidata.WikidataDatasourceProvider
+                    .FAMILY_RELATION_ROUTE_FIELD;
+        }
+        @Override public String displayName() { return "Wikidata relation routes"; }
+        @Override public boolean producesEntityReferences() { return true; }
+        @Override public int summaryOrder() { return 4; }
+        @Override public boolean configured(datasource.api.SourceExecutionPlan plan) {
+            return plan != null && plan.acquires(id());
+        }
+        @Override public Outcome empty() {
+            return new Outcome(id(), 0, "0 relation-route value(s)", summaryOrder());
+        }
+        @Override public Outcome acquire(Context context) throws Exception {
+            wikidata.api.WikidataApiClient api = context.services().find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.api.WikidataApiClient.class).orElse(null);
+            wikidata.WikidataSparqlClient sparql = context.services().find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.WikidataSparqlClient.class).orElse(null);
+            WikidataRelationRouteFieldAcquisition.Result result =
+                    WikidataRelationRouteFieldAcquisition.apply(
+                            context.model(), context.pool(), context.plan(), api, sparql,
+                            context.log(), context.cancellation());
+            String coverage = result.incomplete().isEmpty()
+                    && result.unavailable().isEmpty() ? ""
+                    : ", " + result.incomplete().size() + " incomplete and "
+                            + result.unavailable().size() + " unavailable adjacency node(s)";
+            List<String> warnings = result.complete() ? List.of() : List.of(
+                    "Wikidata relation routes retained the values that were returned, but "
+                            + result.incomplete().size() + " adjacency node(s) were incomplete "
+                            + "and " + result.unavailable().size() + " were unavailable.");
+            return new Outcome(id(), result.values(), result.values()
+                    + " relation-route value(s)" + coverage, summaryOrder(), warnings);
+        }
     }
 
     private record WikidataComputed() implements ExternalSourceFamily {

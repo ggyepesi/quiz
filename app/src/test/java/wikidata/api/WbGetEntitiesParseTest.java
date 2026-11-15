@@ -346,6 +346,26 @@ class WbGetEntitiesParseTest {
         assertTrue(stmts.get(1).qualifier("P805").isEmpty());
     }
 
+    @Test void rankedStatementRetentionKeepsAValuelessClaimWithUsefulQualifier()
+            throws Exception {
+        String json = """
+                {"entities":{"Q22878":{"id":"Q22878","claims":{"P40":[
+                  {"id":"Q22878$unknown-child","rank":"normal","mainsnak":{
+                    "snaktype":"somevalue"},"qualifiers":{"P3831":[{
+                    "snaktype":"value","datavalue":{"type":"wikibase-entityid",
+                    "value":{"id":"Q37737651"}}}]}}]}}}}
+                """;
+        Map<String, List<WikidataApiClient.ApiStatement>> out = new LinkedHashMap<>();
+
+        WikidataApiClient.parseStatements(new ObjectMapper().readTree(json), "P40",
+                WikidataApiClient.StatementDetail.RANKED, out);
+
+        assertEquals(1, out.get("Q22878").size());
+        assertEquals("", out.get("Q22878").getFirst().value());
+        assertEquals(List.of("Q37737651"),
+                out.get("Q22878").getFirst().qualifier("P3831"));
+    }
+
     @Test void aValueOnlyStatementUsesTruthyRankAndRetainsItsDatavalueType()
             throws Exception {
         String json = """

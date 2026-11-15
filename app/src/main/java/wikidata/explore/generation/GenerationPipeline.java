@@ -413,11 +413,17 @@ public class GenerationPipeline {
                         : "; additional published QIDs were acquired.\n"));
         }
 
+        // The preview runs no semantic convergence for ordinary entity fields, so a family
+        // that adds entity references is not replayed through it here either: replaying
+        // would load and stamp referents, and materialize the owned parts the note below
+        // leaves out of the preview, for this one source only.
         ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
                 snapshot, dynamicObjects, sourcePlan,
                 StandardExternalSourceFamilies.services(client, dbpedia, entityApi), log, cancellation,
                 ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
                 java.util.Set.of(
+                        datasource.wikidata.WikidataDatasourceProvider
+                                .FAMILY_RELATION_ROUTE_FIELD,
                         datasource.wikidata.WikidataDatasourceProvider.FAMILY_COMPUTED_FIELD,
                         datasource.dbpedia.DbpediaDatasourceProvider.FAMILY_FIELD,
                         datasource.wikipedia.WikipediaDatasourceProvider
@@ -740,12 +746,17 @@ public class GenerationPipeline {
                         + convergence.ownedCreated() + " owned part(s)");
         steps.started(GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                 "Acquire " + StandardExternalSourceFamilies.describe(sourcePlan));
-        ExternalSourceAcquisition.Result external = ExternalSourceAcquisition.apply(
+        ExternalSourceAcquisition.Applied acquired =
+                ExternalSourceAcquisition.applyWithSemanticReplay(
                 snapshot, pool, sourcePlan,
                 StandardExternalSourceFamilies.services(
                         wikidataSparql, dbpediaClient, entityApi),
                 sink, cancellation,
-                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL);
+                ExternalSourceAcquisition.FailurePolicy.CONTINUE_OPTIONAL,
+                convergence.completedDeclarations().values(), quality);
+        ExternalSourceAcquisition.Result external = acquired.sources();
+        convergence = SemanticConvergence.combine(convergence, acquired.semantic());
+        loaded = convergence.loadedFields();
 
         // Finalization is deliberately after semantic convergence: names, expectations
         // and vocabularies describe the final classes/fields rather than iteration one.

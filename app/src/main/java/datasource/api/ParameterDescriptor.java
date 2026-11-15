@@ -13,7 +13,11 @@ public record ParameterDescriptor(
         String help,
         SourceReferenceSchema referenceSchema) {
 
-    public enum Kind { TEXT, INTEGER, BOOLEAN, CHOICE, DISCOVERED_VALUE, REFERENCE }
+    public enum Kind {
+        TEXT, INTEGER, BOOLEAN, CHOICE, DISCOVERED_VALUE, REFERENCE,
+        /** A finite ordered list of graph routes, edited structurally rather than as JSON. */
+        RELATION_ROUTES
+    }
 
     public ParameterDescriptor(
             String key, String label, Kind kind, boolean required,

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
+import wikidata.api.FakeWikidataApiClient;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -55,6 +56,47 @@ class WikidataGraphAdjacencyAcquisitionTest {
 
         assertEquals(GraphAdjacencyCoverage.UNAVAILABLE,
                 store.adjacencyKnowledge(position, demand));
+    }
+
+    @Test void aStatementAndItsQualifierRemainSeparateTraversableEdges()
+            throws Exception {
+        EntityRef laocoon = EntityRef.wikidata("Q101");
+        GraphRelation statementRelation =
+                new GraphRelation("wikidata", "statement:P40");
+        GraphRelation roleRelation =
+                new GraphRelation("wikidata", "qualifier:P3831");
+        List<String> statementRequests = new ArrayList<>();
+        FakeWikidataApiClient api = new FakeWikidataApiClient() {
+            @Override public Map<String, List<ApiStatement>> getStatements(
+                    List<String> entityQids, String statementPid,
+                    List<String> qualifierPids, BatchLog batchLog,
+                    StatementDetail detail) {
+                statementRequests.add(statementPid + " " + entityQids);
+                return super.getStatements(entityQids, statementPid, qualifierPids,
+                        batchLog, detail);
+            }
+        }.statement("Q101", "P40", "Q101$P40-1", "Q201",
+                Map.of("P3831", List.of("Q301")));
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        WikidataGraphAdjacencyAcquisition acquisition =
+                new WikidataGraphAdjacencyAcquisition(api, null, null, null);
+
+        GraphAdjacencyDemand statements = new GraphAdjacencyDemand(List.of(laocoon),
+                statementRelation, GraphTraversalDirection.OUTGOING);
+        acquisition.acquire(store, statements);
+        EntityRef statement = (EntityRef) store.adjacent(statements).edges().get(0).target();
+        GraphAdjacencyDemand roles = new GraphAdjacencyDemand(List.of(statement),
+                roleRelation, GraphTraversalDirection.OUTGOING);
+        acquisition.acquire(store, roles);
+
+        assertEquals("wikidata-statement", statement.namespace());
+        assertEquals("Q101$P40-1", store.adjacent(statements).edges().get(0)
+                .provenanceId());
+        assertEquals(List.of(EntityRef.wikidata("Q301")), store.adjacent(roles).edges()
+                .stream().map(edge -> (EntityRef) edge.target()).toList());
+        assertEquals("Q101$P40-1", store.adjacent(roles).edges().get(0).provenanceId());
+        assertEquals(List.of("P40 [Q101]"), statementRequests,
+                "the qualifier is read from the statement response, not requested again");
     }
 
     @Test void everyCompletedOutgoingBatchIsUsableAfterRestart() throws Exception {
@@ -175,7 +217,8 @@ class WikidataGraphAdjacencyAcquisitionTest {
                         .validateRelations(List.of(
                                 new GraphRelation("wikidata", "P279"), foreign)));
 
-        assertTrue(refused.getMessage().contains("requires a Wikidata property relation"),
+        assertTrue(refused.getMessage().contains(
+                        "requires a property, statement:PID or qualifier:PID relation"),
                 refused.getMessage());
     }
 
@@ -198,5 +241,30 @@ class WikidataGraphAdjacencyAcquisitionTest {
                 store.adjacencyKnowledge(position, demand));
         assertTrue(WikidataGraphAdjacencyAcquisition.incomingQuery(
                 subclass, List.of(position)).contains("?subject wdt:P279 ?value"));
+    }
+
+    /** An incoming edge used to carry no statement id, so a route that reached an entity
+     *  through it could not name the claim that made it true. */
+    @Test void anIncomingEdgeCarriesTheStatementThatStatesIt() throws Exception {
+        EntityRef laocoon = EntityRef.wikidata("Q101");
+        GraphRelation father = new GraphRelation("wikidata", "P22");
+        FakeWikidataSparqlClient sparql = new FakeWikidataSparqlClient().row(Map.of(
+                "subject", "http://www.wikidata.org/entity/Q201",
+                "value", "http://www.wikidata.org/entity/Q101",
+                "statement", "http://www.wikidata.org/entity/statement/"
+                        + "Q201-4A2B-11EF-ABCD"));
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(List.of(laocoon), father,
+                GraphTraversalDirection.INCOMING);
+
+        new WikidataGraphAdjacencyAcquisition(null, sparql, null, null).acquire(store, demand);
+
+        assertEquals(List.of("Q201$4A2B-11EF-ABCD"), store.adjacent(demand).edges().stream()
+                .map(edge -> edge.provenanceId()).toList());
+        String query = WikidataGraphAdjacencyAcquisition.incomingQuery(father,
+                List.of(laocoon));
+        assertTrue(query.contains("?subject wdt:P22 ?value .")
+                && query.contains("?subject p:P22 ?statement .")
+                && query.contains("?statement ps:P22 ?value ."), query);
     }
 }

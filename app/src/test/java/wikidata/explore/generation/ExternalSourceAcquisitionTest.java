@@ -26,7 +26,8 @@ class ExternalSourceAcquisitionTest {
                 ExternalSourceAcquisition.FailurePolicy.STRICT);
 
         assertEquals(0, result.values());
-        assertEquals("0 Wikidata computed value(s), 0 category membership(s), "
+        assertEquals("0 relation-route value(s), 0 Wikidata computed value(s), "
+                        + "0 category membership(s), "
                         + "0 article text value(s), 0 infobox value(s), "
                         + "0 DBpedia value(s), 0 pageview value(s)",
                 result.summary());
@@ -123,6 +124,77 @@ class ExternalSourceAcquisitionTest {
         assertTrue(!quality.complete(),
                 "a class preview reports the same continued acquisition failure as Enrich");
         assertEquals(result.failures(), quality.warnings());
+    }
+
+    @Test void retainedPartialFamilyResultRemainsVisibleToRunCompleteness()
+            throws Exception {
+        ExternalSourceFamily partial = new ExternalSourceFamily() {
+            @Override public String id() { return "partial"; }
+            @Override public String displayName() { return "Partial source"; }
+            @Override public boolean configured(SourceExecutionPlan plan) { return true; }
+            @Override public Outcome empty() {
+                return new Outcome(id(), 0, "0 partial values", 1);
+            }
+            @Override public Outcome acquire(Context context) {
+                return new Outcome(id(), 3, "3 partial values", 1,
+                        List.of("One adjacency page was incomplete."));
+            }
+        };
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(), Datasources.standard());
+
+        ExternalSourceAcquisition.Result result = ExternalSourceAcquisition.apply(
+                new GeneratedProjectModel(), List.of(), plan,
+                datasource.api.SourceRuntimeServices.empty(), GenerationLog.NOOP,
+                new work.CancellationToken(),
+                ExternalSourceAcquisition.FailurePolicy.STRICT,
+                new ExternalSourceFamilyRegistry(List.of(partial)), Set.of("partial"));
+
+        assertEquals(3, result.values());
+        assertTrue(!result.complete());
+        assertEquals(List.of("One adjacency page was incomplete."), result.failures());
+    }
+
+    /** The replay used to name the relation-route family. Any family declaring that it
+     *  produces entity references now runs first and is settled before the others. */
+    @Test void aFamilyThatProducesEntityReferencesIsSettledBeforeTheOthers()
+            throws Exception {
+        List<String> order = new java.util.ArrayList<>();
+        ExternalSourceFamily references = family("references", true, order);
+        ExternalSourceFamily text = family("text", false, order);
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(), Datasources.standard());
+
+        ExternalSourceAcquisition.Applied applied =
+                ExternalSourceAcquisition.applyWithSemanticReplay(
+                        new GeneratedProjectModel(), new java.util.ArrayList<>(), plan,
+                        datasource.api.SourceRuntimeServices.empty(), GenerationLog.NOOP,
+                        new work.CancellationToken(),
+                        ExternalSourceAcquisition.FailurePolicy.STRICT, List.of(), null,
+                        new ExternalSourceFamilyRegistry(List.of(text, references)),
+                        Set.of("text", "references"));
+
+        assertEquals(List.of("references", "text"), order);
+        assertTrue(applied.semantic() != null,
+                "the references it added are settled through semantic convergence");
+        assertEquals(2, applied.sources().values());
+    }
+
+    private static ExternalSourceFamily family(String id, boolean producesReferences,
+            List<String> order) {
+        return new ExternalSourceFamily() {
+            @Override public String id() { return id; }
+            @Override public String displayName() { return id; }
+            @Override public boolean producesEntityReferences() {
+                return producesReferences;
+            }
+            @Override public boolean configured(SourceExecutionPlan plan) { return true; }
+            @Override public Outcome empty() { return new Outcome(id, 0, "", 1); }
+            @Override public Outcome acquire(Context context) {
+                order.add(id);
+                return new Outcome(id, 1, "1 " + id, 1);
+            }
+        };
     }
 
     private static GenerationLog log(java.util.List<String> messages) {

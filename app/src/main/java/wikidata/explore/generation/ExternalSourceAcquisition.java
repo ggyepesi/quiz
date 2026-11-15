@@ -20,6 +20,87 @@ public final class ExternalSourceAcquisition {
 
     public enum FailurePolicy { STRICT, CONTINUE_OPTIONAL }
 
+    /** External acquisition plus the semantic work unlocked by entity-valued results. */
+    public record Applied(Result sources, SemanticConvergence.Result semantic) { }
+
+    public static Applied applyWithSemanticReplay(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            SourceExecutionPlan plan,
+            SourceRuntimeServices services,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            FailurePolicy failurePolicy,
+            java.util.Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            GenerationQualityTracker quality,
+            Set<String> selectedFamilyIds) throws Exception {
+        return applyWithSemanticReplay(model, pool, plan, services, log, cancellation,
+                failurePolicy, alreadyLoaded, quality, StandardExternalSourceFamilies.create(),
+                selectedFamilyIds);
+    }
+
+    static Applied applyWithSemanticReplay(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            SourceExecutionPlan plan,
+            SourceRuntimeServices services,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            FailurePolicy failurePolicy,
+            java.util.Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            GenerationQualityTracker quality,
+            ExternalSourceFamilyRegistry registry,
+            Set<String> selectedFamilyIds) throws Exception {
+        Set<String> selected = selectedFamilyIds == null
+                ? registry.families().stream().map(ExternalSourceFamily::id)
+                        .collect(java.util.stream.Collectors.toCollection(
+                                java.util.LinkedHashSet::new))
+                : new java.util.LinkedHashSet<>(selectedFamilyIds);
+        Set<String> producing = registry.families().stream()
+                .filter(ExternalSourceFamily::producesEntityReferences)
+                .map(ExternalSourceFamily::id).filter(selected::contains)
+                .collect(java.util.stream.Collectors.toCollection(
+                        java.util.LinkedHashSet::new));
+        Result route = producing.isEmpty()
+                ? new Result(List.of(), List.of())
+                : apply(model, pool, plan, services, log, cancellation, failurePolicy,
+                        registry, producing);
+        SemanticConvergence.Result semantic = null;
+        if (route.values() > 0) {
+            wikidata.api.WikidataApiClient api = services == null ? null : services.find(
+                    datasource.wikidata.WikidataDatasourceProvider.ID,
+                    wikidata.api.WikidataApiClient.class).orElse(null);
+            if (log != null) log.message("Entity-valued sources added references; "
+                    + "settling their configured classes and fields before continuing.\n");
+            semantic = SemanticConvergence.apply(model, pool, api, log, alreadyLoaded,
+                    quality, plan);
+        }
+        selected.removeAll(producing);
+        Result remaining = selected.isEmpty()
+                ? new Result(List.of(), List.of())
+                : apply(model, pool, plan, services, log, cancellation, failurePolicy,
+                        registry, selected);
+        List<ExternalSourceFamily.Outcome> outcomes = new ArrayList<>(route.outcomes());
+        outcomes.addAll(remaining.outcomes());
+        List<String> failures = new ArrayList<>(route.failures());
+        failures.addAll(remaining.failures());
+        return new Applied(new Result(outcomes, failures), semantic);
+    }
+
+    public static Applied applyWithSemanticReplay(
+            GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool,
+            SourceExecutionPlan plan,
+            SourceRuntimeServices services,
+            GenerationLog log,
+            work.CancellationToken cancellation,
+            FailurePolicy failurePolicy,
+            java.util.Collection<wikidata.explore.extract.LoadedDeclaration> alreadyLoaded,
+            GenerationQualityTracker quality) throws Exception {
+        return applyWithSemanticReplay(model, pool, plan, services, log, cancellation,
+                failurePolicy, alreadyLoaded, quality, null);
+    }
+
     public static Result apply(GeneratedProjectModel model,
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
             SourceRuntimeServices services,
@@ -68,7 +149,9 @@ public final class ExternalSourceAcquisition {
                 continue;
             }
             try {
-                outcomes.add(family.acquire(context));
+                ExternalSourceFamily.Outcome outcome = family.acquire(context);
+                outcomes.add(outcome);
+                failures.addAll(outcome.warnings());
             } catch (CancellationException | InterruptedException cancelled) {
                 throw cancelled;
             } catch (Exception failure) {

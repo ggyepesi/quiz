@@ -34,6 +34,7 @@ import java.util.Set;
 /** Acquires Wikidata adjacency into the shared graph store in either direction. */
 public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAcquirer {
     private static final String PROVIDER = "wikidata";
+    private static final String STATEMENT_NAMESPACE = "wikidata-statement";
     private static final int ENTITY_BATCH_SIZE = 50;
     private static final int REVERSE_BATCH_SIZE = 50;
 
@@ -41,6 +42,11 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
     private final WikidataSparqlClient sparql;
     private final GenerationLog log;
     private final CancellationToken cancellation;
+    /** Statements a statement step read, by GUID. The entity response that produced a
+     * statement node already carries all of its qualifiers, so a following qualifier step
+     * reads them here instead of requesting the same entities and property again. */
+    private final Map<String, WikidataApiClient.ApiStatement> retainedStatements =
+            new java.util.HashMap<>();
 
     public WikidataGraphAdjacencyAcquisition(
             WikidataApiClient api,
@@ -57,6 +63,14 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
             LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception {
         if (store == null || demand == null) {
             throw new IllegalArgumentException("Graph store and adjacency demand are required");
+        }
+        if (statementProperty(demand.relation()) != null) {
+            acquireStatements(store, demand);
+            return;
+        }
+        if (qualifierProperty(demand.relation()) != null) {
+            acquireQualifiers(store, demand);
+            return;
         }
         requireWikidata(demand.relation(), demand.nodes());
         if (demand.nodes().isEmpty()) return;
@@ -78,11 +92,18 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
                 .distinct()
                 .toList();
         for (GraphAdjacencyDemand demand : requested) {
-            requireWikidata(demand.relation(), demand.nodes());
+            if (statementProperty(demand.relation()) != null
+                    || qualifierProperty(demand.relation()) != null) {
+                acquire(store, demand);
+            } else {
+                requireWikidata(demand.relation(), demand.nodes());
+            }
         }
         Map<EntityRef, LinkedHashSet<GraphRelation>> outgoingByNode =
                 new LinkedHashMap<>();
         for (GraphAdjacencyDemand demand : requested) {
+            if (statementProperty(demand.relation()) != null
+                    || qualifierProperty(demand.relation()) != null) continue;
             if (demand.direction() == GraphTraversalDirection.INCOMING) {
                 acquireIncoming(store, demand);
                 continue;
@@ -103,6 +124,133 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
         for (Map.Entry<List<GraphRelation>, List<EntityRef>> group
                 : nodesByMissingRelations.entrySet()) {
             acquireOutgoing(store, group.getValue(), group.getKey());
+        }
+    }
+
+    /** Exposes statements as graph nodes so a following qualifier step retains the
+     * exact statement GUID that made the route true. */
+    private void acquireStatements(
+            LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception {
+        String pid = statementProperty(demand.relation());
+        requireOutgoing(demand, "statement");
+        requireWikidataNodes(demand.nodes());
+        if (api == null) throw new IllegalStateException(
+                "No Wikidata action API is configured for statement graph edges");
+        List<String> qids = demand.nodes().stream().map(EntityRef::id).toList();
+        Map<String, List<WikidataApiClient.ApiStatement>> statements;
+        try (GenerationLog.Group group = log.group(acquisitionTitle(demand))) {
+            statements = api.getStatements(qids, pid, List.of(), group.batchSink(),
+                    WikidataApiClient.StatementDetail.RANKED);
+        }
+        List<GraphEdge> edges = new ArrayList<>();
+        for (EntityRef subject : demand.nodes()) {
+            for (WikidataApiClient.ApiStatement statement
+                    : statements.getOrDefault(subject.id(), List.of())) {
+                EntityRef node = statementNode(pid, subject.id(), statement.id());
+                edges.add(new GraphEdge(subject, demand.relation(), node, statement.id()));
+                retainedStatements.put(statement.id(), statement);
+            }
+        }
+        store.commitAdjacency(demand, edges, GraphAdjacencyCoverage.COMPLETE);
+    }
+
+    /** Reads one qualifier from the exact statement nodes reached by the previous
+     * step. A statement the statement step already read is answered from that response;
+     * the rest are grouped by their mainsnak property and their subjects fetched in
+     * batches by the existing entity client. */
+    private void acquireQualifiers(
+            LocalGraphStore store, GraphAdjacencyDemand demand) throws Exception {
+        String qualifier = qualifierProperty(demand.relation());
+        requireOutgoing(demand, "qualifier");
+        if (api == null) throw new IllegalStateException(
+                "No Wikidata action API is configured for qualifier graph edges");
+        Map<String, List<StatementNode>> byProperty = new LinkedHashMap<>();
+        List<GraphEdge> edges = new ArrayList<>();
+        for (EntityRef node : demand.nodes()) {
+            StatementNode parsed = parseStatementNode(node);
+            WikidataApiClient.ApiStatement retained =
+                    retainedStatements.get(parsed.statementId());
+            if (retained != null) {
+                qualifierEdges(parsed, retained, qualifier, demand.relation(), edges);
+                continue;
+            }
+            byProperty.computeIfAbsent(parsed.property(), ignored -> new ArrayList<>())
+                    .add(parsed);
+        }
+        for (Map.Entry<String, List<StatementNode>> group : byProperty.entrySet()) {
+            List<String> subjects = group.getValue().stream().map(StatementNode::subject)
+                    .distinct().toList();
+            Map<String, List<WikidataApiClient.ApiStatement>> statements;
+            try (GenerationLog.Group logGroup = log.group("Acquire " + qualifier
+                    + " qualifiers from " + group.getValue().size() + " "
+                    + group.getKey() + " statement node(s) — " + subjects.size()
+                    + " subject(s), " + batches(subjects.size(), ENTITY_BATCH_SIZE)
+                    + " initial request(s)")) {
+                statements = api.getStatements(subjects, group.getKey(),
+                        List.of(qualifier), logGroup.batchSink(),
+                        WikidataApiClient.StatementDetail.RANKED);
+            }
+            Map<String, StatementNode> wanted = group.getValue().stream().collect(
+                    java.util.stream.Collectors.toMap(StatementNode::statementId,
+                            value -> value, (first, ignored) -> first, LinkedHashMap::new));
+            for (Map.Entry<String, List<WikidataApiClient.ApiStatement>> subject
+                    : statements.entrySet()) {
+                for (WikidataApiClient.ApiStatement statement : subject.getValue()) {
+                    StatementNode origin = wanted.get(statement.id());
+                    if (origin == null) continue;
+                    retainedStatements.put(statement.id(), statement);
+                    qualifierEdges(origin, statement, qualifier, demand.relation(), edges);
+                }
+            }
+        }
+        store.commitAdjacency(demand, edges, GraphAdjacencyCoverage.COMPLETE);
+    }
+
+    /**
+     * The requests each step of {@code route} makes, in the batch sizes this acquisition
+     * uses, so a route can be judged before it runs. The number of entities a later step
+     * starts from is known only once the earlier step has run.
+     */
+    public static List<String> requestEstimate(datasource.graph.RelationRoute route) {
+        List<String> lines = new ArrayList<>();
+        datasource.wikidata.WikidataRouteRelation previous = null;
+        for (int index = 0; index < route.steps().size(); index++) {
+            datasource.graph.RelationRoute.Step step = route.steps().get(index);
+            datasource.wikidata.WikidataRouteRelation relation =
+                    datasource.wikidata.WikidataRouteRelation.parse(step.relation());
+            String from = index == 0 ? "owners"
+                    : "entities reached by step " + index;
+            String requests;
+            if (relation == null) {
+                requests = "not a Wikidata relation";
+            } else if (relation.kind() == datasource.wikidata.WikidataRouteRelation.Kind.QUALIFIER
+                    && previous != null && previous.kind()
+                    == datasource.wikidata.WikidataRouteRelation.Kind.STATEMENT) {
+                requests = "no request: read from the statements step " + index + " fetched";
+            } else if (relation.kind() == datasource.wikidata.WikidataRouteRelation.Kind.PROPERTY
+                    && step.direction() == GraphTraversalDirection.INCOMING) {
+                requests = "1 SPARQL query per " + REVERSE_BATCH_SIZE + " " + from;
+            } else {
+                requests = "1 Wikidata entity request per " + ENTITY_BATCH_SIZE + " " + from;
+            }
+            lines.add("Step " + (index + 1) + " — "
+                    + (step.direction() == GraphTraversalDirection.INCOMING
+                            ? "incoming " : "outgoing ")
+                    + (relation == null ? step.relation().relationId()
+                            : relation.kind() + " " + relation.pid())
+                    + ": " + requests);
+            previous = relation;
+        }
+        return List.copyOf(lines);
+    }
+
+    private static void qualifierEdges(StatementNode origin,
+            WikidataApiClient.ApiStatement statement, String qualifier,
+            GraphRelation relation, List<GraphEdge> edges) {
+        for (String value : statement.qualifier(qualifier)) {
+            if (!WikidataIds.isQid(value)) continue;
+            edges.add(new GraphEdge(origin.ref(), relation,
+                    EntityRef.wikidata(value), statement.id()));
         }
     }
 
@@ -260,10 +408,10 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
     }
 
     private static void requireWikidataRelation(GraphRelation relation) {
-        if (relation == null || !PROVIDER.equals(relation.providerId())
-                || !WikidataIds.isPid(relation.relationId())) {
+        if (datasource.wikidata.WikidataRouteRelation.parse(relation) == null) {
             throw new IllegalArgumentException(
-                    "Wikidata graph acquisition requires a Wikidata property relation: "
+                    "Wikidata graph acquisition requires a property, statement:PID or "
+                            + "qualifier:PID relation: "
                             + relation);
         }
     }
@@ -280,13 +428,79 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
         }
     }
 
+    private static void requireWikidataNodes(Collection<EntityRef> nodes) {
+        for (EntityRef node : nodes) {
+            if (node == null || !EntityRef.WIKIDATA.equals(node.namespace())
+                    || !WikidataIds.isQid(node.id())) {
+                throw new IllegalArgumentException(
+                        "Wikidata statement acquisition requires Wikidata QIDs: " + node);
+            }
+        }
+    }
+
+    private static void requireOutgoing(GraphAdjacencyDemand demand, String kind) {
+        if (demand.direction() != GraphTraversalDirection.OUTGOING) {
+            throw new IllegalArgumentException(
+                    "Wikidata " + kind + " relations support outgoing traversal only");
+        }
+    }
+
+    private static String statementProperty(GraphRelation relation) {
+        return routePid(relation, datasource.wikidata.WikidataRouteRelation.Kind.STATEMENT);
+    }
+
+    private static String qualifierProperty(GraphRelation relation) {
+        return routePid(relation, datasource.wikidata.WikidataRouteRelation.Kind.QUALIFIER);
+    }
+
+    private static String routePid(GraphRelation relation,
+            datasource.wikidata.WikidataRouteRelation.Kind kind) {
+        datasource.wikidata.WikidataRouteRelation step =
+                datasource.wikidata.WikidataRouteRelation.parse(relation);
+        return step != null && step.kind() == kind ? step.pid() : null;
+    }
+
+    private static EntityRef statementNode(String property, String subject, String id) {
+        return new EntityRef(STATEMENT_NAMESPACE,
+                property + "|" + subject + "|" + id);
+    }
+
+    private static StatementNode parseStatementNode(EntityRef node) {
+        if (node == null || !STATEMENT_NAMESPACE.equals(node.namespace())) {
+            throw new IllegalArgumentException(
+                    "Wikidata qualifier acquisition requires statement nodes: " + node);
+        }
+        String[] parts = node.id().split("\\|", 3);
+        if (parts.length != 3 || !WikidataIds.isPid(parts[0])
+                || !WikidataIds.isQid(parts[1]) || parts[2].isBlank()) {
+            throw new IllegalArgumentException("Invalid Wikidata statement node: " + node);
+        }
+        return new StatementNode(parts[0], parts[1], parts[2], node);
+    }
+
+    private record StatementNode(
+            String property, String subject, String statementId, EntityRef ref) { }
+
+    /** Truthy incoming edges, each with the statement that states it, so an edge
+     *  reached this way carries the same statement id as an outgoing one. */
     static String incomingQuery(GraphRelation relation, List<EntityRef> objects) {
+        String pid = relation.relationId();
         StringBuilder query = new StringBuilder(
-                "SELECT DISTINCT ?subject ?value WHERE {\n  VALUES ?value {");
+                "SELECT DISTINCT ?subject ?value ?statement WHERE {\n  VALUES ?value {");
         for (EntityRef object : objects) query.append(" wd:").append(object.id());
-        return query.append(" }\n  ?subject wdt:")
-                .append(relation.relationId()).append(" ?value .\n}")
+        return query.append(" }\n  ?subject wdt:").append(pid).append(" ?value .\n")
+                .append("  ?subject p:").append(pid).append(" ?statement .\n")
+                .append("  ?statement ps:").append(pid).append(" ?value .\n}")
                 .toString();
+    }
+
+    /** A WDQS statement IRI ends in the GUID with its first "$" written as "-". */
+    static String statementGuid(String iri) {
+        if (iri == null || iri.isBlank()) return "";
+        String tail = iri.substring(iri.lastIndexOf('/') + 1);
+        int dash = tail.indexOf('-');
+        if (dash <= 0 || !WikidataIds.isQid(tail.substring(0, dash))) return "";
+        return tail.substring(0, dash) + "$" + tail.substring(dash + 1);
     }
 
     private static final class IncomingUnit implements WorkUnit<List<GraphEdge>> {
@@ -318,7 +532,8 @@ public final class WikidataGraphAdjacencyAcquisition implements GraphAdjacencyAc
                 String value = binding.qid("value");
                 if (!WikidataIds.isQid(subject) || !WikidataIds.isQid(value)) continue;
                 GraphEdge edge = new GraphEdge(EntityRef.wikidata(subject), relation,
-                        EntityRef.wikidata(value), "");
+                        EntityRef.wikidata(value),
+                        statementGuid(binding.value("statement")));
                 edges.putIfAbsent(subject + "\u0000" + value, edge);
             }
             return List.copyOf(edges.values());
