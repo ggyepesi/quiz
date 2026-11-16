@@ -81,6 +81,15 @@ class EgyptianGodsSavedModelTest {
         assertEquals("wikipedia", summarySource.recipe().providerId());
         assertEquals("article-introduction", summarySource.recipe().operationId());
         assertEquals("LEAD_SENTENCE", summarySource.recipe().parameter("projection"));
+        GeneratedFieldModel symbol = fields.get("symbol");
+        assertEquals(FieldType.TEXT, symbol.type());
+        assertEquals(FieldSourceType.WIKIPEDIA_INFOBOX, symbol.mapping().sourceType());
+        assertEquals("Rendered.Symbol", symbol.mapping().propertyPid());
+        var symbolSource = FieldSourceBindings.binding(
+                symbol, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        assertEquals("wikipedia", symbolSource.recipe().providerId());
+        assertEquals("infobox-parameter", symbolSource.recipe().operationId());
+        assertEquals("Rendered.Symbol", symbolSource.recipe().parameter("property"));
         for (String relation : java.util.List.of("domain", "iconographicSymbol",
                 "associatedAnimal", "symbolizedBy",
                 "father", "mother", "spouse", "child", "sibling", "partOf",

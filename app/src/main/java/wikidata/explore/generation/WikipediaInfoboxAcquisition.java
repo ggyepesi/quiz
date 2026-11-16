@@ -60,14 +60,12 @@ public final class WikipediaInfoboxAcquisition {
             SourceExecutionPlan sourcePlan) throws Exception {
         List<Declaration> declarations = sourcePlan == null
                 ? declarations(model) : declarations(model, sourcePlan);
-        if (declarations.isEmpty()) return new Result(0, 0, 0);
+        if (declarations.isEmpty()) return new Result(0, 0, 0, List.of());
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
             if (object != null && WikidataIds.isQid(object.qid())
-                    && declarations.stream().anyMatch(d -> FieldSourceTargeting.applies(
-                            model, object, d.owner(), d.target())
-                    && !answered(object, d)
-                    && (!d.fillField() || object.get(d.field().name()) == null))) {
+                    && declarations.stream().anyMatch(d ->
+                            needsAcquisition(model, object, d))) {
                 targets.computeIfAbsent(object.qid(), ignored -> new ArrayList<>()).add(object);
             }
         }
@@ -77,6 +75,7 @@ public final class WikipediaInfoboxAcquisition {
         var pages = new java.util.concurrent.atomic.AtomicInteger();
         var values = new java.util.concurrent.atomic.AtomicInteger();
         var batches = new java.util.concurrent.atomic.AtomicInteger();
+        Map<String, FieldOutcome> outcomes = new LinkedHashMap<>();
         List<String> titles = List.copyOf(titleTargets.keySet());
         boolean needsRendered = declarations.stream().anyMatch(Declaration::rendered);
         try (GenerationLog.Group group = log.group("Acquire native Wikipedia infoboxes — "
@@ -94,13 +93,14 @@ public final class WikipediaInfoboxAcquisition {
                             Math.min(titles.size(), from + BATCH))), group, fetcher));
                 }
             }
-            new batch.BatchExecutor<Map<String, Acquired>>(
+            List<batch.WorkDescriptor> failed =
+                    new batch.BatchExecutor<Map<String, Acquired>>(
                     batch.BatchPolicy.defaults().withResume(false), batchProgress(group),
                     wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
                     // How hard a run may work is one policy; Wikipedia is not exempt
                     // from the network profile the reader chose for Wikidata.
                     batch.BatchCheckpointStore.NONE, api.entityConcurrency())
-                    .run(units, (descriptor, result) -> {
+                    .runBestEffort(units, (descriptor, result) -> {
                         result.forEach((title, answer) -> {
                             List<WikidataDynamicObject> copies = titleTargets.get(title);
                             if (copies == null || copies.isEmpty()) return;
@@ -113,45 +113,112 @@ public final class WikipediaInfoboxAcquisition {
                             // was acquired.
                             java.util.Set<String> supplied = new java.util.LinkedHashSet<>();
                             for (WikidataDynamicObject object : copies) {
+                                List<Declaration> pending = pendingFieldDeclarations(
+                                        model, object, declarations);
                                 // One source document belongs to every in-memory view of
                                 // this entity. Keeping it on only the first QID copy made
                                 // provenance depend on registry/carrier history.
                                 object.infoboxEvidence(acquired,
                                         answer != null && answer.parametersAnswered(),
                                         answer != null && answer.renderedAnswered());
+                                List<String> objectSupplied = List.of();
                                 if (acquired != null) {
-                                    supplied.addAll(fill(model, object, declarations, acquired));
+                                    objectSupplied = fill(object, pending, acquired);
+                                    supplied.addAll(objectSupplied);
                                 }
+                                recordOutcomes(object, pending, objectSupplied, outcomes);
                             }
                             values.addAndGet(supplied.size());
                         });
                         batches.incrementAndGet();
                     });
+            for (batch.WorkDescriptor descriptor : failed) {
+                String title = descriptor.parameters().get("title");
+                if (title == null) {
+                    title = descriptor.parameters().get("titles");
+                }
+                if (title == null) continue;
+                for (String failedTitle : title.split("\\|")) {
+                    List<WikidataDynamicObject> copies = titleTargets.get(failedTitle);
+                    if (copies == null) continue;
+                    for (WikidataDynamicObject object : copies) {
+                        recordFailedOutcomes(model, object, declarations, outcomes,
+                                "Wikipedia did not return " + failedTitle);
+                    }
+                }
+            }
         }
         log.message("Wikipedia infoboxes: " + values.get() + " value(s) from " + pages.get()
                 + " page(s), " + batches.get() + " batch(es).\n");
-        return new Result(pages.get(), values.get(), batches.get());
+        return new Result(pages.get(), values.get(), batches.get(),
+                List.copyOf(outcomes.values()));
+    }
+
+    /** Records only fields that were pending when this article acquisition began.
+     * {@link #fill} is the one interpretation and reports which of those it supplied. */
+    private static void recordOutcomes(WikidataDynamicObject object,
+            List<Declaration> pending, List<String> supplied,
+            Map<String, FieldOutcome> outcomes) {
+        for (Declaration declaration : pending) {
+            OutcomeState state = supplied.contains(declarationKey(declaration))
+                    ? OutcomeState.VALUE : OutcomeState.ANSWERED_EMPTY;
+            FieldOutcome outcome = new FieldOutcome(object.qid(), object.getDisplayName(),
+                    object.identityTypeName(), declaration.owner().className(),
+                    declaration.field().name(), state, "");
+            outcomes.put(outcome.key(), outcome);
+        }
+    }
+
+    private static void recordFailedOutcomes(GeneratedProjectModel model,
+            WikidataDynamicObject object, List<Declaration> declarations,
+            Map<String, FieldOutcome> outcomes, String message) {
+        for (Declaration declaration : declarations) {
+            if (!declaration.fillField()
+                    || !needsAcquisition(model, object, declaration)) continue;
+            FieldOutcome outcome = new FieldOutcome(object.qid(), object.getDisplayName(),
+                    object.identityTypeName(), declaration.owner().className(),
+                    declaration.field().name(), OutcomeState.FAILED, message);
+            outcomes.putIfAbsent(outcome.key(), outcome);
+        }
     }
 
     /** Interpretation is a read of the acquired evidence, never of the response: a value
      *  the run keeps must be one the recorded document supports. */
-    private static List<String> fill(GeneratedProjectModel model,
-            WikidataDynamicObject object, List<Declaration> declarations,
+    private static List<String> fill(WikidataDynamicObject object,
+            List<Declaration> pending,
             InfoboxParameters acquired) {
         List<String> filled = new ArrayList<>();
-        for (Declaration declaration : declarations) {
-            if (!FieldSourceTargeting.applies(
-                    model, object, declaration.owner(), declaration.target())
-                    || !declaration.fillField()
-                    || object.get(declaration.field().name()) != null) continue;
+        for (Declaration declaration : pending) {
             String value = acquired.valueOf(
                     InfoboxParameters.Key.parse(declaration.parameter()));
             if (value != null && !value.isBlank()) {
                 object.put(declaration.field().name(), value);
-                filled.add(declaration.owner().className() + "." + declaration.field().name());
+                filled.add(declarationKey(declaration));
             }
         }
         return filled;
+    }
+
+    private static List<Declaration> pendingFieldDeclarations(
+            GeneratedProjectModel model, WikidataDynamicObject object,
+            List<Declaration> declarations) {
+        return declarations.stream()
+                .filter(Declaration::fillField)
+                .filter(declaration -> needsAcquisition(model, object, declaration))
+                .toList();
+    }
+
+    private static boolean needsAcquisition(GeneratedProjectModel model,
+            WikidataDynamicObject object, Declaration declaration) {
+        return FieldSourceTargeting.applies(
+                model, object, declaration.owner(), declaration.target())
+                && !answered(object, declaration)
+                && (!declaration.fillField()
+                    || object.get(declaration.field().name()) == null);
+    }
+
+    private static String declarationKey(Declaration declaration) {
+        return declaration.owner().className() + "." + declaration.field().name();
     }
 
     private static batch.WorkUnit<Map<String, Acquired>> unit(
@@ -367,5 +434,38 @@ public final class WikipediaInfoboxAcquisition {
     }
     private record Acquired(InfoboxParameters evidence, boolean parametersAnswered,
                             boolean renderedAnswered) { }
-    public record Result(int pages, int values, int batches) { }
+    public enum OutcomeState { VALUE, ANSWERED_EMPTY, FAILED }
+
+    /** One configured field's observable acquisition result for one source entity.
+     *  The durable facts remain on the entity itself: retained evidence/value for VALUE,
+     *  an answered flag for ANSWERED_EMPTY, and no answered flag for FAILED. */
+    public record FieldOutcome(String qid, String instance, String identityType,
+            String className,
+            String field, OutcomeState state, String message) {
+        public FieldOutcome {
+            qid = qid == null ? "" : qid;
+            instance = instance == null ? "" : instance;
+            identityType = identityType == null ? "" : identityType;
+            className = className == null ? "" : className;
+            field = field == null ? "" : field;
+            message = message == null ? "" : message;
+        }
+
+        private String key() {
+            return identityType + "\n" + qid + "\n" + className + "\n" + field;
+        }
+    }
+
+    public record Result(int pages, int values, int batches,
+                         List<FieldOutcome> outcomes) {
+        public Result {
+            outcomes = outcomes == null ? List.of() : List.copyOf(outcomes);
+        }
+
+        public long count(OutcomeState state) {
+            return outcomes.stream().filter(outcome -> outcome.state() == state).count();
+        }
+
+        public boolean complete() { return count(OutcomeState.FAILED) == 0; }
+    }
 }

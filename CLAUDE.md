@@ -112,6 +112,9 @@ construct per thing produced:
    retry, cancellation and query-log path executes it. Discovery renders those source-native
    records read-only through ObjectView. Turning one into a modeled class, population or field
    relation remains a separate explicit construct; a label match never makes that decision.
+   External field acquisition distinguishes value supplied, source examined without the
+   configured value, and provider failure. An examined-empty answer is durable source evidence;
+   a provider failure remains retryable and makes the run partial, never an ordinary empty field.
    A datasource field may union explicitly authored finite relation routes. Each route is an
    ordered list of typed graph steps; there is no implicit repetition or closure. Execution batches
    each hop across the current frontier, retains the concrete paths that produced its terminal

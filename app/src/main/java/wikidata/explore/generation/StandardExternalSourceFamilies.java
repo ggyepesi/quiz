@@ -199,8 +199,17 @@ public final class StandardExternalSourceFamilies {
             WikipediaInfoboxAcquisition.Result result = WikipediaInfoboxAcquisition.apply(
                     context.model(), context.pool(), context.log(), context.cancellation(),
                     client, context.plan());
+            List<String> warnings = result.complete() ? List.of() : List.of(
+                    "Wikipedia infobox acquisition failed for "
+                            + result.count(WikipediaInfoboxAcquisition.OutcomeState.FAILED)
+                            + " configured field target(s); examined-empty fields remain "
+                            + "separate from provider failures.");
             return new Outcome(id(), result.values(),
-                    result.values() + " infobox value(s)", summaryOrder());
+                    result.values() + " infobox value(s), "
+                            + result.count(WikipediaInfoboxAcquisition.OutcomeState.ANSWERED_EMPTY)
+                            + " examined empty, "
+                            + result.count(WikipediaInfoboxAcquisition.OutcomeState.FAILED)
+                            + " failed", summaryOrder(), warnings);
         }
     }
 

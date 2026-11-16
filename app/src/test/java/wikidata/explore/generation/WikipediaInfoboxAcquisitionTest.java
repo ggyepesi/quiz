@@ -312,6 +312,82 @@ class WikipediaInfoboxAcquisitionTest {
                 .map(datasource.evidence.WikipediaArticle.ArticleLink::targetTitle).toList());
     }
 
+    /** A provider failure is not an empty answer. The completed articles keep their
+     * values/answers, while the failed one remains eligible for a later Enrich. */
+    @Test void valueExaminedEmptyAndProviderFailureStayThreeDifferentOutcomes()
+            throws Exception {
+        GeneratedProjectModel model = model("Rendered.Symbol");
+        List<WikidataDynamicObject> objects = films(3);
+
+        var result = WikipediaInfoboxAcquisition.apply(model, objects,
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(), uri -> {
+                    String page = java.net.URLDecoder.decode(uri.getRawQuery(),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                    if (page.contains("Film 1")) {
+                        return renderedResponse("Film 1", 11, "{{Infobox deity}}", """
+                                <table class="infobox"><tbody><tr>
+                                  <th class="infobox-label">Symbol</th>
+                                  <td class="infobox-data">was sceptre</td>
+                                </tr></tbody></table>
+                                """);
+                    }
+                    if (page.contains("Film 2")) {
+                        return renderedResponse("Film 2", 12, "{{Infobox deity}}", """
+                                <table class="infobox"><tbody><tr>
+                                  <th class="infobox-label">Parents</th>
+                                  <td class="infobox-data">Ra</td>
+                                </tr></tbody></table>
+                                """);
+                    }
+                    throw new objectview.utils.UrlOpener.HttpStatusException(
+                            503, uri.toURL());
+                });
+
+        assertEquals("was sceptre", objects.get(0).get("country"));
+        assertTrue(objects.get(0).renderedInfoboxAnswered());
+        assertNull(objects.get(1).get("country"));
+        assertTrue(objects.get(1).renderedInfoboxAnswered(),
+                "the requested row was examined and absent");
+        assertNull(objects.get(2).get("country"));
+        assertFalse(objects.get(2).renderedInfoboxAnswered(),
+                "a provider failure must remain retryable, not become an empty answer");
+        assertEquals(1, result.count(WikipediaInfoboxAcquisition.OutcomeState.VALUE));
+        assertEquals(1, result.count(
+                WikipediaInfoboxAcquisition.OutcomeState.ANSWERED_EMPTY));
+        assertEquals(1, result.count(WikipediaInfoboxAcquisition.OutcomeState.FAILED));
+        assertFalse(result.complete());
+    }
+
+    @Test void aPrefilledFieldIsNotReportedAsSuppliedWhenAnotherFieldTriggersTheRead()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var country = movie.addField("country", FieldType.TEXT, FieldCardinality.SINGLE);
+        country.ensureFallbackMapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        country.fallbackMapping().propertyPid("Infobox film.country");
+        var runtime = movie.addField("runtime", FieldType.TEXT, FieldCardinality.SINGLE);
+        runtime.ensureFallbackMapping().sourceType(FieldSourceType.WIKIPEDIA_INFOBOX);
+        runtime.fallbackMapping().propertyPid("Infobox film.runtime");
+        model.rootClass(movie);
+        WikidataDynamicObject object = films(1).getFirst();
+        object.put("country", "Existing value");
+
+        var result = WikipediaInfoboxAcquisition.apply(model, List.of(object),
+                GenerationLog.NOOP, new work.CancellationToken(), new SitelinkClient(),
+                uri -> response("Film 1", 7,
+                        "{{Infobox film|runtime=143 minutes}}"));
+
+        assertEquals("Existing value", object.get("country"));
+        assertEquals("143 minutes", object.get("runtime"));
+        assertEquals(1, result.values());
+        assertEquals(List.of("runtime"), result.outcomes().stream()
+                .map(WikipediaInfoboxAcquisition.FieldOutcome::field).toList(),
+                "only the field pending before this article read has an outcome");
+        assertEquals(1, result.count(WikipediaInfoboxAcquisition.OutcomeState.VALUE));
+        assertEquals(0, result.count(
+                WikipediaInfoboxAcquisition.OutcomeState.ANSWERED_EMPTY));
+    }
+
     private static String digestOf(String wikitext) throws Exception {
         List<WikidataDynamicObject> objects = films(1);
         WikipediaInfoboxAcquisition.apply(model(), objects, GenerationLog.NOOP,

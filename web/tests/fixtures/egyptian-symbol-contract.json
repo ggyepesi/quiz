@@ -1,0 +1,39 @@
+{
+  "domains": [
+    { "name": "Egyptian Gods", "types": ["EgyptianDeity"] }
+  ],
+  "list": [
+    { "id": "Q1268", "name": "Amun", "type": "EgyptianDeity" },
+    { "id": "Q47534", "name": "Anubis", "type": "EgyptianDeity" }
+  ],
+  "details": {
+    "Q1268": {
+      "id": "Q1268",
+      "name": "Amun",
+      "type": "EgyptianDeity",
+      "fields": [
+        {
+          "name": "wikipediaSource",
+          "kind": "link",
+          "label": "Amun",
+          "url": "https://en.wikipedia.org/wiki/Amun"
+        },
+        { "name": "symbol", "kind": "text", "value": "was sceptre" }
+      ]
+    },
+    "Q47534": {
+      "id": "Q47534",
+      "name": "Anubis",
+      "type": "EgyptianDeity",
+      "fields": [
+        {
+          "name": "wikipediaSource",
+          "kind": "link",
+          "label": "Anubis",
+          "url": "https://en.wikipedia.org/wiki/Anubis"
+        },
+        { "name": "symbol", "kind": "text", "value": "" }
+      ]
+    }
+  }
+}
