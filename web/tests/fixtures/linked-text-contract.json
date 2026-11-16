@@ -1,0 +1,83 @@
+{
+  "domains": [
+    {
+      "name": "Sources",
+      "types": [
+        "Statement"
+      ]
+    }
+  ],
+  "list": [
+    {
+      "id": "Q1$child",
+      "name": "Statement",
+      "type": "Statement"
+    }
+  ],
+  "details": {
+    "Q1$child": {
+      "id": "Q1$child",
+      "name": "Statement",
+      "type": "Statement",
+      "fields": [
+        {
+          "name": "source",
+          "kind": "linked-text",
+          "value": "Q1 — P40 → Child (Q2)",
+          "links": [
+            {
+              "text": "Q1",
+              "url": "https://www.wikidata.org/wiki/Q1"
+            },
+            {
+              "text": " — "
+            },
+            {
+              "text": "P40",
+              "url": "https://www.wikidata.org/wiki/Property:P40"
+            },
+            {
+              "text": " → "
+            },
+            {
+              "text": "Child (Q2)",
+              "url": "https://www.wikidata.org/wiki/Q2"
+            }
+          ]
+        },
+        {
+          "name": "references",
+          "kind": "refs",
+          "refs": [
+            {
+              "name": "Q3 — P31 → Q5",
+              "type": "WikidataStatementSource",
+              "links": [
+                {
+                  "text": "Q3",
+                  "url": "https://www.wikidata.org/wiki/Q3"
+                },
+                {
+                  "text": " — "
+                },
+                {
+                  "text": "P31",
+                  "url": "https://www.wikidata.org/wiki/Property:P31"
+                },
+                {
+                  "text": " → "
+                },
+                {
+                  "text": "Q5",
+                  "url": "https://www.wikidata.org/wiki/Q5"
+                }
+              ]
+            }
+          ],
+          "size": 1,
+          "open": false
+        }
+      ]
+    }
+  }
+}

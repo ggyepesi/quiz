@@ -22,20 +22,31 @@ public record ViewableView(
         String type,
         List<Field> fields) {
 
-    /** A chip. {@code inline} is the embedded expansion for an object that is not
+    /** One run of visible text; a non-null URL makes only this run clickable. */
+    public record LinkPart(String text, String url) {}
+
+    /** A chip. {@code links} partitions its visible name into independently linked and
+     * plain runs; {@code url} remains the single-destination form. {@code inline} is
+     * the embedded expansion for an object that is not
      *  fetched by id; null for an entity, whose chip fetches lazily. {@code via} is set
      *  on a collection member's chip: the member renders under its collection's config,
      *  so the fetch names the card whose config that is and the config path below it.
      *  A chip with neither id nor inline is a caption alone. */
     public record Ref(String id, String name, String type, String thumb,
-                      ViewableView inline, Via via, String url) {
+                      ViewableView inline, Via via, String url,
+                      List<LinkPart> links) {
         public Ref(String id, String name, String type, String thumb, ViewableView inline) {
-            this(id, name, type, thumb, inline, null, null);
+            this(id, name, type, thumb, inline, null, null, null);
         }
 
         public Ref(String id, String name, String type, String thumb,
                    ViewableView inline, Via via) {
-            this(id, name, type, thumb, inline, via, null);
+            this(id, name, type, thumb, inline, via, null, null);
+        }
+
+        public Ref(String id, String name, String type, String thumb,
+                   ViewableView inline, Via via, String url) {
+            this(id, name, type, thumb, inline, via, url, null);
         }
     }
 
@@ -49,6 +60,7 @@ public record ViewableView(
      *   <li>{@code text}   — {@code value}</li>
      *   <li>{@code list}   — {@code values} (collection of scalars)</li>
      *   <li>{@code link}   — {@code label} + {@code url}</li>
+     *   <li>{@code linked-text} — {@code value} + independently linked {@code links}</li>
      *   <li>{@code ref}    — {@code ref} (single nested Viewable)</li>
      *   <li>{@code refs}   — {@code refs} (collection/map of Viewables)</li>
      *   <li>{@code inline} — {@code nodes} (fully expanded nested views)</li>
@@ -70,57 +82,73 @@ public record ViewableView(
             List<Ref> refs,
             List<ViewableView> nodes,
             Integer size,
-            Boolean open) {
+            Boolean open,
+            List<LinkPart> links) {
 
         public Field(String name, String kind, String value, List<String> values,
                      String label, String url, Ref ref, List<Ref> refs,
                      List<ViewableView> nodes) {
-            this(name, kind, value, values, label, url, ref, refs, nodes, null, null);
+            this(name, kind, value, values, label, url, ref, refs, nodes,
+                    null, null, null);
         }
 
         /** This field as a collection of {@code size} members that starts unfolded
          *  when {@code open}. */
         public Field collection(int size, boolean open) {
             return new Field(name, kind, value, values, label, url, ref, refs, nodes,
-                    size, open);
+                    size, open, links);
         }
 
         public static Field empty(String name) {
-            return new Field(name, "empty", null, null, null, null, null, null, null);
+            return new Field(name, "empty", null, null, null, null, null, null, null,
+                    null, null, null);
         }
 
         public static Field text(String name, String value) {
-            return new Field(name, "text", value, null, null, null, null, null, null);
+            return new Field(name, "text", value, null, null, null, null, null, null,
+                    null, null, null);
+        }
+
+        public static Field linkedText(String name, String value, List<LinkPart> links) {
+            return new Field(name, "linked-text", value, null, null, null,
+                    null, null, null, null, null, links);
         }
 
         public static Field list(String name, List<String> values) {
-            return new Field(name, "list", null, values, null, null, null, null, null);
+            return new Field(name, "list", null, values, null, null, null, null, null,
+                    null, null, null);
         }
 
         public static Field link(String name, String label, String url) {
-            return new Field(name, "link", null, null, label, url, null, null, null);
+            return new Field(name, "link", null, null, label, url, null, null, null,
+                    null, null, null);
         }
 
         /** {@code url} points at the backend image endpoint that serves bytes. */
         public static Field image(String name, String url) {
-            return new Field(name, "image", null, null, null, url, null, null, null);
+            return new Field(name, "image", null, null, null, url, null, null, null,
+                    null, null, null);
         }
 
         /** A collection of images; {@code values} are the per-image endpoint URLs. */
         public static Field images(String name, List<String> urls) {
-            return new Field(name, "images", null, urls, null, null, null, null, null);
+            return new Field(name, "images", null, urls, null, null, null, null, null,
+                    null, null, null);
         }
 
         public static Field ref(String name, Ref ref) {
-            return new Field(name, "ref", null, null, null, null, ref, null, null);
+            return new Field(name, "ref", null, null, null, null, ref, null, null,
+                    null, null, null);
         }
 
         public static Field refs(String name, List<Ref> refs) {
-            return new Field(name, "refs", null, null, null, null, null, refs, null);
+            return new Field(name, "refs", null, null, null, null, null, refs, null,
+                    null, null, null);
         }
 
         public static Field inline(String name, List<ViewableView> nodes) {
-            return new Field(name, "inline", null, null, null, null, null, null, nodes);
+            return new Field(name, "inline", null, null, null, null, null, null, nodes,
+                    null, null, null);
         }
     }
 }

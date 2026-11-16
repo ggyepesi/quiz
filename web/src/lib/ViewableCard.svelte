@@ -3,6 +3,7 @@
   import ViewableChip from './ViewableChip.svelte';
   import Self from './ViewableCard.svelte';
   import ZoomableImage from './ZoomableImage.svelte';
+  import LinkedText from './LinkedText.svelte';
   import { assetUrl } from './api.js';
 
   let { view, heading = false, depth = 0 } = $props();
@@ -44,6 +45,8 @@
             <!-- folded: name (size) alone; empty: the field name alone -->
           {:else if f.kind === 'text'}
             {f.value}
+          {:else if f.kind === 'linked-text'}
+            <LinkedText parts={f.links} text={f.value} />
           {:else if f.kind === 'list'}
             <span class="chips">
               {#each f.values as v}<span class="tag">{v}</span>{/each}

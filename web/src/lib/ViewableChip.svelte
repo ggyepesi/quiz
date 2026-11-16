@@ -1,6 +1,7 @@
 <script>
   import { getViewable, assetUrl } from './api.js';
   import ViewableCard from './ViewableCard.svelte';
+  import LinkedText from './LinkedText.svelte';
 
   let { ref, depth = 0 } = $props();
 
@@ -29,7 +30,9 @@
 {#if !ref.id && !ref.inline}
 <span class="chip plain">
   {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
-  {#if ref.url}
+  {#if ref.links?.length}
+    <span class="name" title={ref.name}><LinkedText parts={ref.links} text={ref.name} /></span>
+  {:else if ref.url}
     <a class="name" href={ref.url} target="_blank" rel="noreferrer" title={ref.name}>{ref.name} ↗</a>
   {:else}
     <span class="name" title={ref.name}>{ref.name}</span>
@@ -37,11 +40,23 @@
 </span>
 {:else}
 <div class="chip" class:open>
-  <button class="head" onclick={toggle}>
-    <span class="tri" class:open>▸</span>
-    {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
-    <span class="name" title={ref.name}>{ref.name}</span>
-  </button>
+  {#if ref.links?.length}
+    <div class="head linked-head">
+      <button class="disclosure" onclick={toggle} aria-label={open ? 'collapse' : 'expand'}>
+        <span class="tri" class:open>▸</span>
+      </button>
+      {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
+      <span class="name" title={ref.name}>
+        <LinkedText parts={ref.links} text={ref.name} onPlain={toggle} />
+      </span>
+    </div>
+  {:else}
+    <button class="head" onclick={toggle}>
+      <span class="tri" class:open>▸</span>
+      {#if ref.thumb}<img class="avatar" src={assetUrl(ref.thumb)} alt="" loading="lazy" />{/if}
+      <span class="name" title={ref.name}>{ref.name}</span>
+    </button>
+  {/if}
 
   {#if open}
     <div class="body">
@@ -82,6 +97,15 @@
     font-weight: 500;
   }
   .head:hover { background: var(--chip-hover); }
+  .linked-head:hover { background: var(--chip-hover); }
+  .disclosure {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+  }
 
   .tri {
     color: var(--faint);

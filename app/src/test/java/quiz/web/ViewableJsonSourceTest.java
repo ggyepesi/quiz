@@ -35,8 +35,16 @@ class ViewableJsonSourceTest {
         assertEquals("refs", source.kind());
         assertEquals("Q28 — P1411 → Best Actor (Q103916)",
                 source.refs().getFirst().name());
-        assertEquals("https://www.wikidata.org/wiki/Q28#P1411",
-                source.refs().getFirst().url());
+        assertNull(source.refs().getFirst().url(),
+                "the complete triple must not pretend to have one destination");
+        assertEquals(java.util.Arrays.asList(
+                        "https://www.wikidata.org/wiki/Q28",
+                        null,
+                        "https://www.wikidata.org/wiki/Property:P1411",
+                        null,
+                        "https://www.wikidata.org/wiki/Q103916"),
+                source.refs().getFirst().links().stream()
+                        .map(ViewableView.LinkPart::url).toList());
         ViewableView.Field exact = source.refs().getFirst().inline().fields().stream()
                 .filter(field -> "statementJson".equals(field.name()))
                 .findFirst().orElseThrow();

@@ -5,6 +5,7 @@
   import FieldPicker from '$lib/FieldPicker.svelte';
   import ImageCarousel from '$lib/ImageCarousel.svelte';
   import ZoomableImage from '$lib/ZoomableImage.svelte';
+  import { isTextualKind } from '$lib/fieldKinds.js';
 
   // config
   let domains = $state([]);
@@ -95,7 +96,7 @@
       const p = (img ?? fields[0])?.name;
       promptFields = p ? [p] : [];
       const txt = fields.find(
-        (f) => !promptFields.includes(f.name) && (f.kind === 'text' || f.kind === 'refs' || f.kind === 'list')
+        (f) => !promptFields.includes(f.name) && (isTextualKind(f.kind) || f.kind === 'refs' || f.kind === 'list')
       );
       const a = (txt ?? fields.find((f) => !promptFields.includes(f.name)) ?? fields[0])?.name;
       answerFields = a ? [a] : [];

@@ -7,6 +7,7 @@ import objectview.ViewableAdapter;
 import objectview.annotations.DisplayField;
 import objectview.annotations.Hidden;
 import objectview.annotations.Link;
+import objectview.field.LinkedTextSequence;
 import wikidata.WikidataIds;
 
 import java.net.URLEncoder;
@@ -36,12 +37,11 @@ public final class WikidataStatementSource extends ViewableAdapter
     private final Map<String, List<String>> qualifiers;
     private final List<Reference> references;
 
-    /** Human-readable statement identity. It is the ordinary DISPLAY field, so a
-     * collapsed/default statement is already a link rather than a plain triple. */
+    /** Human-readable statement identity. Each entity/property run owns its own link;
+     * plain separators and a literal object remain ordinary searchable text. */
     @DisplayField
-    @Link
     @JsonIgnore
-    private final String source;
+    private final LinkedTextSequence source;
 
     @Link
     @JsonIgnore
@@ -92,7 +92,12 @@ public final class WikidataStatementSource extends ViewableAdapter
         this.statementValue = WikidataIds.isQid(object) ? null : object;
         this.guid = linked(this.statement, statementUrl());
         this.statementJson = statementUrl();
-        this.source = linked(getDisplayName(), subjectPropertyUrl());
+        this.source = LinkedTextSequence.of(
+                linkedPart(this.subject, subjectUrl()),
+                LinkedTextSequence.text(" — "),
+                linkedPart(this.property, propertyUrl()),
+                LinkedTextSequence.text(" → "),
+                linkedPart(displayedObject(), objectUrl()));
     }
 
     /** A statement for which only its identity/triple is available. */
@@ -173,18 +178,9 @@ public final class WikidataStatementSource extends ViewableAdapter
                 .replace("+", "%20");
     }
 
-    /** Human Wikidata page containing the statement, opened at its property group. */
-    public String subjectPropertyUrl() {
-        String url = subjectUrl();
-        return url.isBlank() || !WikidataIds.isPid(property)
-                ? url : url + "#" + property;
-    }
-
     @Override public String getIdentifier() { return statement; }
 
-    @Override public String getDisplayName() {
-        return subject + " — " + property + " → " + displayedObject();
-    }
+    @Override public String getDisplayName() { return source.text(); }
 
     @Override public String getReferenceLabel() { return getDisplayName(); }
 
@@ -222,6 +218,12 @@ public final class WikidataStatementSource extends ViewableAdapter
 
     private static String linked(String label, String url) {
         return url == null || url.isBlank() ? null : clean(label) + "|" + url;
+    }
+
+    private static LinkedTextSequence.Part linkedPart(String label, String url) {
+        return url == null || url.isBlank()
+                ? LinkedTextSequence.text(clean(label))
+                : LinkedTextSequence.link(clean(label), url);
     }
 
     private static String canonicalQid(String value) {

@@ -622,7 +622,8 @@ public final class ViewableJson {
                     object.caption() == null
                             ? objectview.render.ReferenceRow.NAVIGATION_LABEL
                             : object.caption(),
-                    target.typeName(), thumb(object), null);
+                    target.typeName(), thumb(object), null, null, object.captionUrl(),
+                    linkParts(object));
         }
 
         private static ViewableView.Field backReference(String name,
@@ -644,6 +645,10 @@ public final class ViewableJson {
             RenderExecutor.Level object = decision.object();
             if (!object.hasBody()) {
                 if (object.caption() == null) return ViewableView.Field.empty(name);
+                if (object.linkedCaption() != null) {
+                    return ViewableView.Field.linkedText(
+                            name, object.caption(), linkParts(object));
+                }
                 return object.captionUrl() == null
                         ? ViewableView.Field.text(name, object.caption())
                         : ViewableView.Field.link(
@@ -659,7 +664,7 @@ public final class ViewableJson {
                             target.getIdentifier(), chip, target.typeName(), thumb(object),
                             null, new ViewableView.Via(root.typeName(),
                                     root.getIdentifier(), decision.at().path().toString()),
-                            object.captionUrl()));
+                            object.captionUrl(), linkParts(object)));
                 }
                 // A value object has no pool address to fetch, but folding must not
                 // discard its configured body. Carry the same projection inline; the
@@ -733,16 +738,27 @@ public final class ViewableJson {
             if (!object.hasBody()) {
                 return object.caption() == null ? null : new ViewableView.Ref(
                         null, caption, target.typeName(), thumb(object), null,
-                        null, object.captionUrl());
+                        null, object.captionUrl(), linkParts(object));
             }
             if (navigable(target) && root != null) {
                 return new ViewableView.Ref(target.getIdentifier(), caption,
                         target.typeName(), thumb(object), null,
                         new ViewableView.Via(root.typeName(), root.getIdentifier(),
-                                member.at().path().toString()), object.captionUrl());
+                                member.at().path().toString()), object.captionUrl(),
+                        linkParts(object));
             }
             return new ViewableView.Ref(null, caption, target.typeName(), thumb(object),
-                    nested(object, member.at(), ancestors), null, object.captionUrl());
+                    nested(object, member.at(), ancestors), null, object.captionUrl(),
+                    linkParts(object));
+        }
+
+        private static List<ViewableView.LinkPart> linkParts(
+                RenderExecutor.Level object) {
+            if (object.linkedCaption() == null) return null;
+            return object.linkedCaption().parts().stream()
+                    .map(part -> new ViewableView.LinkPart(
+                            part.text(), part.linked() ? part.url() : null))
+                    .toList();
         }
 
         /** The avatar of a chip: its first ticked media field. An unticked field is
@@ -766,6 +782,13 @@ public final class ViewableJson {
      * alike. Scalar values, including both booleans, are rendered literally. */
     private static ViewableView.Field leaf(Viewable owner, FieldRef fr, Object value) {
         String name = fr.name();
+        if (value instanceof objectview.field.LinkedTextSequence linked) {
+            return ViewableView.Field.linkedText(name, linked.text(),
+                    linked.parts().stream()
+                            .map(part -> new ViewableView.LinkPart(part.text(),
+                                    part.linked() ? part.url() : null))
+                            .toList());
+        }
         String media = mediaUrl(owner, name, value);
         if (media != null) return ViewableView.Field.image(name, media);
         if (fr.link() && value instanceof String s && !s.isBlank()) {

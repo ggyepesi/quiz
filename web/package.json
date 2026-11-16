@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "vite build && playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@sveltejs/adapter-auto": "^3.3.1",
     "@sveltejs/kit": "^2.8.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

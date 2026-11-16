@@ -102,7 +102,7 @@ public class ViewableHttpServer {
         // independently instead of serially on one thread.
         server.setExecutor(exec);
         server.start();
-        System.out.println("Viewable API on http://localhost:" + port + "/api/types");
+        System.out.println("Viewable API on http://localhost:" + port() + "/api/types");
     }
 
     // Registers a context with request logging.
@@ -124,6 +124,14 @@ public class ViewableHttpServer {
         if (server != null) {
             server.stop(0);
         }
+    }
+
+    /** The bound port, including the operating-system-selected port after {@code start(0)}.
+     *  Exposed so contract tests can exercise the real HTTP boundary without reserving a
+     *  fixed port or racing another process. */
+    public int port() {
+        if (server == null) throw new IllegalStateException("Server has not been started");
+        return server.getAddress().getPort();
     }
 
     /**

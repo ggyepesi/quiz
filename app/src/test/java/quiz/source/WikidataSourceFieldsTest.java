@@ -51,6 +51,11 @@ class WikidataSourceFieldsTest {
         assertTrue(statements.annotatedReference());
         assertEquals(List.of(statement), fields.read("wikidataStatements"));
         FieldSet statementFields = FieldSet.of(statement);
+        objectview.field.LinkedTextSequence caption = assertInstanceOf(
+                objectview.field.LinkedTextSequence.class,
+                statementFields.read("source"));
+        assertEquals(statement.getDisplayName(), caption.text(),
+                "the linked caption is the one statement display-name derivation");
         assertTrue(statementFields.field("statementSubject").link());
         assertTrue(statementFields.field("statementProperty").link());
         assertTrue(statementFields.field("statementObject").link());
@@ -118,7 +123,8 @@ class WikidataSourceFieldsTest {
         assertEquals(List.of(evidence), fields.read("wikidataStatements"));
     }
 
-    @Test void theDefaultStatementCaptionLinksToTheClaimOnWikidata() throws Exception {
+    @Test void theDefaultStatementCaptionLinksSubjectPropertyAndObjectIndependently()
+            throws Exception {
         var statement = new WikidataStatementSource(
                 "Q22878$child", "Q22878", "P40", "Q12748409",
                 "Antiphantes");
@@ -140,8 +146,12 @@ class WikidataSourceFieldsTest {
         javax.swing.SwingUtilities.invokeAndWait(() -> rendered[0] =
                 new objectview.render.Card(entity, entityView, context, false));
 
-        assertNotNull(findLink(rendered[0],
-                "https://www.wikidata.org/wiki/Q22878#P40"));
+        objectview.render.TextRow caption = findLinkedText(rendered[0], 3);
+        assertNotNull(caption);
+        assertEquals(List.of(
+                "https://www.wikidata.org/wiki/Q22878",
+                "https://www.wikidata.org/wiki/Property:P40",
+                "https://www.wikidata.org/wiki/Q12748409"), caption.linkedUrls());
     }
 
     @Test void theDefaultSourceCaptionKeepsItsWikidataLink() throws Exception {
@@ -278,6 +288,19 @@ class WikidataSourceFieldsTest {
         if (root instanceof java.awt.Container container) {
             for (java.awt.Component child : container.getComponents()) {
                 objectview.render.LinkRow found = findLink(child, url);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static objectview.render.TextRow findLinkedText(
+            java.awt.Component root, int links) {
+        if (root instanceof objectview.render.TextRow row
+                && row.linkedUrls().size() == links) return row;
+        if (root instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) {
+                objectview.render.TextRow found = findLinkedText(child, links);
                 if (found != null) return found;
             }
         }
