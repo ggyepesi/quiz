@@ -9,9 +9,7 @@ import datasource.schema.FieldType;
 import wikidata.WikidataIds;
 
 import aux.SplitPaneUtils;
-import objectview.render.GroupMembersView;
 import objectview.render.RenderContext;
-import objectview.view.SearchableView;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -96,8 +94,8 @@ public class ModelBuilderFrame extends JFrame {
     // demand in their own panel from the instances window.
     private java.util.List<NameCollision> lastCollisions = java.util.List.of();
     private JFrame nameCollisionsWindow;
-    /** The currently selected collision's ordinary instance browser. */
-    private SearchableView nameCollisionMembersView;
+    /** The searchable collision list and its selected ordinary instance browser. */
+    private NameCollisionInspectionPanel nameCollisionInspection;
 
     private final JButton nameCollisionsButton =
             new JButton("Name collisions");
@@ -2285,27 +2283,11 @@ public class ModelBuilderFrame extends JFrame {
             showAndFocus(nameCollisionsWindow);
             return;
         }
-        if (nameCollisionMembersView != null) nameCollisionMembersView.dispose();
-        NameCollision root = NameCollision.root(lastCollisions);
         RenderContext context = new RenderContext();
         context.setInPlaceNavigation(true);
         context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
-        GroupMembersView grouped = new GroupMembersView(root, group -> {
-            if (nameCollisionMembersView != null) nameCollisionMembersView.dispose();
-            java.util.List<objectview.Viewable> members =
-                    new java.util.ArrayList<>(group.getMembers());
-            nameCollisionMembersView = SearchableView.builder(members)
-                    .sample(members.isEmpty() ? null : members.getFirst())
-                    .renderContext(context)
-                    .collapsible(true)
-                    .columns(1)
-                    .emptyMessage("Select a colliding name.")
-                    .build();
-            return nameCollisionMembersView;
-        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true);
-        grouped.groups().setStatusText(
-                "Select a shared name to inspect its distinct instances");
-        if (!lastCollisions.isEmpty()) grouped.selectGroup(lastCollisions.getFirst(), true);
+        if (nameCollisionInspection != null) nameCollisionInspection.close();
+        nameCollisionInspection = new NameCollisionInspectionPanel(lastCollisions, context);
 
         if (nameCollisionsWindow == null || !nameCollisionsWindow.isDisplayable()) {
             nameCollisionsWindow = new JFrame("Name collisions");
@@ -2314,16 +2296,16 @@ public class ModelBuilderFrame extends JFrame {
             nameCollisionsWindow.setLocationByPlatform(true);
         }
         nameCollisionsWindow.getContentPane().removeAll();
-        nameCollisionsWindow.add(grouped, BorderLayout.CENTER);
+        nameCollisionsWindow.add(nameCollisionInspection, BorderLayout.CENTER);
         nameCollisionsWindow.revalidate();
         nameCollisionsWindow.repaint();
         showAndFocus(nameCollisionsWindow);
     }
 
     private void discardNameCollisionInspection() {
-        if (nameCollisionMembersView != null) {
-            nameCollisionMembersView.dispose();
-            nameCollisionMembersView = null;
+        if (nameCollisionInspection != null) {
+            nameCollisionInspection.close();
+            nameCollisionInspection = null;
         }
         if (nameCollisionsWindow != null) {
             nameCollisionsWindow.dispose();

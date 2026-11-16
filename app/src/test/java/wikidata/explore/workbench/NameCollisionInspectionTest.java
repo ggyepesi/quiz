@@ -2,14 +2,20 @@ package wikidata.explore.workbench;
 
 import objectview.Viewable;
 import objectview.ViewableAdapter;
+import objectview.render.RenderContext;
+import objectview.render.RenderingMode;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.extract.WikidataDynamicObject;
 import wikidata.explore.generation.NameCollisions;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class NameCollisionInspectionTest {
@@ -36,7 +42,7 @@ class NameCollisionInspectionTest {
                 "a same-QID instance of another logical type must not be substituted");
     }
 
-    @Test void collisionGroupContainsTheActualInstancesRatherThanCaptionShells() {
+    @Test void collisionRowContainsTheActualInstancesRatherThanCaptionShells() {
         StubViewable first = new StubViewable(
                 "Q97183299", "Constellation", "Gladii Electorales Saxonici");
         StubViewable second = new StubViewable(
@@ -45,9 +51,41 @@ class NameCollisionInspectionTest {
         NameCollision collision = new NameCollision(
                 "Constellation", "Gladii Electorales Saxonici", List.of(first, second));
 
-        assertEquals("Gladii Electorales Saxonici — Constellation",
-                collision.getDisplayName());
-        assertEquals(List.of(first, second), List.copyOf(collision.getMembers()));
+        assertEquals("Gladii Electorales Saxonici", collision.getDisplayName());
+        assertEquals("Constellation", collision.className());
+        assertEquals(2, collision.instances());
+        assertEquals(List.of(first, second), collision.entities());
+    }
+
+    @Test void collisionNamesAreAlphabeticalSearchableRowsAndSelectionChangesMembers()
+            throws Exception {
+        StubViewable lycusMember = new StubViewable("Q2", "Character", "Lycus");
+        StubViewable agenorMember = new StubViewable("Q1", "Character", "Agenor");
+        NameCollision lycus = new NameCollision(
+                "Character", "Lycus", List.of(lycusMember));
+        NameCollision agenor = new NameCollision(
+                "Character", "Agenor", List.of(agenorMember));
+        AtomicReference<NameCollisionInspectionPanel> panel = new AtomicReference<>();
+
+        SwingUtilities.invokeAndWait(() -> panel.set(new NameCollisionInspectionPanel(
+                List.of(lycus, agenor), new RenderContext())));
+        try {
+            assertEquals(List.of("Agenor", "Lycus"), panel.get().collisions().stream()
+                    .map(NameCollision::name).toList());
+            assertEquals(RenderingMode.TABLE, panel.get().collisionView().mode());
+            assertNotNull(panel.get().collisionView().search(),
+                    "collision names themselves must have ObjectView search controls");
+            assertEquals(agenor, panel.get().selectedCollision());
+            assertEquals(List.of(agenorMember), panel.get().membersView().cardList()
+                    .getVirtualList().items());
+
+            SwingUtilities.invokeAndWait(() -> panel.get().selectForInspection(lycus));
+            assertEquals(lycus, panel.get().selectedCollision());
+            assertEquals(List.of(lycusMember), panel.get().membersView().cardList()
+                    .getVirtualList().items());
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
     }
 
     private static WikidataDynamicObject dynamic(
