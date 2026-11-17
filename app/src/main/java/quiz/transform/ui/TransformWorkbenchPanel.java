@@ -76,6 +76,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private JComponent experimentInstancesView;
     private JComponent experimentSelectedView;
     private JTabbedPane experimentTabs;
+    // Field selection and All / Present / Missing rebuild the member view. The instance
+    // scope is an independent user choice, so that rebuild must restore the tab the user
+    // last selected instead of returning to Selected for experiment every time.
+    private int experimentTabIndex = 1;
     private JButton experimentFetchButton;
     private JButton experimentArticleFetchButton;
     private boolean experimentActive;
@@ -276,6 +280,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         experimentSelection.clear();
         shuffled.stream().limit((int) count.getValue()).forEach(this::addExperimentInstance);
         experimentActive = true;
+        // A new random sample is the one operation that deliberately reveals the result.
+        experimentTabIndex = 1;
         render();
     }
 
@@ -2190,10 +2196,23 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 values -> selectedExperimentInstances = values, value -> null);
         selected.add(experimentSelectedView, BorderLayout.CENTER);
         tabs.addTab("Selected for experiment — " + sample.size(), selected);
+        bindExperimentTabSelection(tabs, experimentTabIndex,
+                selectedIndex -> experimentTabIndex = selectedIndex);
         experimentTabs = tabs;
-        tabs.setSelectedIndex(1);
         panel.add(tabs, BorderLayout.CENTER);
         return panel;
+    }
+
+    /** Keep the independent instance-scope choice while field-scope changes rebuild the
+     *  two experiment tabs. The panel-owned index is the one source of truth: the new
+     *  control restores it, then every explicit tab change writes it back. */
+    static void bindExperimentTabSelection(JTabbedPane tabs, int rememberedIndex,
+            java.util.function.IntConsumer selectionChanged) {
+        if (tabs.getTabCount() == 0) return;
+        int restored = Math.max(0, Math.min(rememberedIndex, tabs.getTabCount() - 1));
+        tabs.setSelectedIndex(restored);
+        selectionChanged.accept(restored);
+        tabs.addChangeListener(event -> selectionChanged.accept(tabs.getSelectedIndex()));
     }
 
     private void updateExperimentSelectionUi() {

@@ -224,6 +224,33 @@ class TransformWorkbenchFilterGroupTest {
         panel.close();
     }
 
+    @Test void fieldScopeRebuildKeepsTheLastExperimentTabTheUserSelected() {
+        java.util.concurrent.atomic.AtomicInteger remembered =
+                new java.util.concurrent.atomic.AtomicInteger(1);
+        JTabbedPane first = experimentTabs();
+
+        TransformWorkbenchPanel.bindExperimentTabSelection(
+                first, remembered.get(), remembered::set);
+        assertEquals(1, first.getSelectedIndex(),
+                "a newly started experiment initially reveals its selected sample");
+
+        first.setSelectedIndex(0);
+        assertEquals(0, remembered.get(),
+                "the panel remembers an explicit switch to Instances");
+        JTabbedPane afterFieldSelection = experimentTabs();
+        TransformWorkbenchPanel.bindExperimentTabSelection(
+                afterFieldSelection, remembered.get(), remembered::set);
+        assertEquals(0, afterFieldSelection.getSelectedIndex(),
+                "selecting a field or All/Present/Missing must keep Instances active");
+
+        afterFieldSelection.setSelectedIndex(1);
+        JTabbedPane afterAnotherFieldSelection = experimentTabs();
+        TransformWorkbenchPanel.bindExperimentTabSelection(
+                afterAnotherFieldSelection, remembered.get(), remembered::set);
+        assertEquals(1, afterAnotherFieldSelection.getSelectedIndex(),
+                "the same rebuild must also preserve Selected for experiment");
+    }
+
     @Test void newlyAddedFilterGroupBecomesTheActiveVisibleGroup() {
         TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
                 new ReflectionDomain(List.of(new State("France"), new State("Germany"))));
@@ -245,6 +272,13 @@ class TransformWorkbenchFilterGroupTest {
         quiz.transform.DynamicViewable value = new quiz.transform.DynamicViewable(id, label);
         value.type("Position");
         return value;
+    }
+
+    private static JTabbedPane experimentTabs() {
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Instances", new JPanel());
+        tabs.addTab("Selected for experiment", new JPanel());
+        return tabs;
     }
 
 
