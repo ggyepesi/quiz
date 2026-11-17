@@ -28,6 +28,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import workbench.ExploreByExamplePanel;
 import workbench.SelectionsButton;
@@ -142,6 +143,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private Consumer<GeneratedFieldModel> onFieldAddedFromTool =
             field -> {};
     private Consumer<ClassSampleResult> onClassSample = ignored -> {};
+    private Function<WorkbenchSelections.Entity, String> onUseMembershipType =
+            ignored -> "No membership editor is connected.";
 
     public ModelSourceWorkbenchPanel(
             GeneratedProjectModel projectModel) {
@@ -166,8 +169,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         this.propertyPanel.selections(selections);
         this.entityRelationPanel.selections(selections);
         this.discoveryPanel.selections(selections);
+        this.subclassDiscoveryPanel.selections(selections);
         this.subclassDiscoveryPanel.onAddMembershipTarget(
                 this::addMembershipTargetFromExplorer);
+        this.subclassDiscoveryPanel.onUseMembershipType(
+                value -> onUseMembershipType.apply(value));
         this.ownedClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.aggregateClassPanel.afterChange(ignored -> afterChange.accept(null));
         this.graphConstraintsPanel.afterChange(ignored -> afterChange.accept(null));
@@ -296,6 +302,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void onClassSample(Consumer<ClassSampleResult> consumer) {
         onClassSample = consumer == null ? ignored -> {} : consumer;
+    }
+
+    /** The surrounding frame owns the one mutation used by every discovery surface to
+     *  replace a Source class's leading membership type. */
+    public void onUseMembershipType(
+            Function<WorkbenchSelections.Entity, String> handler) {
+        onUseMembershipType = handler == null
+                ? ignored -> "No membership editor is connected." : handler;
     }
 
     public void onGraphSelection(Consumer<Object> consumer) {
@@ -1126,7 +1140,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 "Discover",
                 discoveryPanel);
         wikidataTools.addTab(
-                "Subclasses",
+                "Membership",
                 subclassDiscoveryPanel);
         wikidataTools.addTab(
                 "Graph patterns",

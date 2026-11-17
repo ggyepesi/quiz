@@ -115,18 +115,18 @@ public final class SparqlQueries {
         int n = Math.max(1, limit);
 
         return """
-               SELECT ?type ?typeLabel ?nNew ?examples WHERE {
+               SELECT ?type ?typeLabel ?nMembers ?example ?examples WHERE {
                  {
-                   SELECT ?type (COUNT(?c) AS ?nNew) (SAMPLE(?c) AS ?example) WHERE {
+                   SELECT ?type (COUNT(?c) AS ?nMembers) (SAMPLE(?c) AS ?example) WHERE {
                      ?type wdt:P279 wd:%s .
                      ?c wdt:P31 ?type .
                    }
                    GROUP BY ?type
-                   ORDER BY DESC(?nNew)
+                   ORDER BY DESC(?nMembers)
                    LIMIT %d
                  }
                %s}
-               ORDER BY DESC(?nNew)
+               ORDER BY DESC(?nMembers)
                """.formatted(base, n, LabelService.serviceBinding(null,
                        "    ?type rdfs:label ?typeLabel .\n"
                                + "    ?example rdfs:label ?examples .\n"));

@@ -11,7 +11,6 @@ import wikidata.explore.model.EntityKindRule;
 import wikidata.explore.model.CanonicalSpec;
 import wikidata.explore.model.StatementClassSource;
 import wikidata.explore.model.VocabularySelection;
-import wikidata.explore.query.result.TableQueryResult;
 
 import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
@@ -279,8 +278,8 @@ class ModelSourceWorkbenchPanelTest {
         assertTrue(entityRelations >= 0, "Entity relations tab is present");
         assertInstanceOf(EntityRelationDiscoveryPanel.class,
                 wikidata.getComponentAt(entityRelations));
-        int subclasses = wikidata.indexOfTab("Subclasses");
-        assertTrue(subclasses >= 0, "subclass discovery belongs to Explorer tools");
+        int subclasses = wikidata.indexOfTab("Membership");
+        assertTrue(subclasses >= 0, "membership discovery belongs to Explorer tools");
         assertInstanceOf(SubclassDiscoveryPanel.class,
                 wikidata.getComponentAt(subclasses));
         int discover = wikidata.indexOfTab("Discover");
@@ -314,16 +313,16 @@ class ModelSourceWorkbenchPanelTest {
         panel.edit(position);
 
         SubclassDiscoveryPanel explorer = panel.subclassDiscoveryPanel();
-        explorer.accept(new TableQueryResult(
-                List.of("subclassLabel", "newCount", "examples", "subclass"),
-                List.of(List.of("historical position", "84320",
-                        "king; mayor; governor", "Q189290"))));
+        explorer.acceptSubtypes(List.of(new wikidata.explore.query.result.MembershipTypeCandidate(
+                "Q189290", "historical position",
+                wikidata.explore.query.result.MembershipTypeCandidate.Origin.DIRECT_SUBTYPE,
+                "Q4164871", 0, 0, 0, 84320, List.of())));
         SwingUtilities.invokeAndWait(() -> { });
 
         assertEquals(List.of("Q4164871"), position.membership().qids(),
                 "viewing discovery results must not alter Source configuration");
         SwingUtilities.invokeAndWait(() -> {
-            explorer.selectRows(0);
+            explorer.selectRows(1);
             explorer.addSelectedRows();
         });
 

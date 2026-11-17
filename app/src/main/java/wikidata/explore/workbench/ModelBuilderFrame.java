@@ -1374,6 +1374,7 @@ public class ModelBuilderFrame extends JFrame {
         ex.onAddSeedQids(qids -> addSeedQids(qids, false));
         ex.onAddRelationTargets(this::addRelationTargets);
         ex.onUseAsSourceQid(this::useSourceQid);
+        sourceWorkbench.onUseMembershipType(this::useMembershipType);
 
         CategorySeedPanel cat = sourceWorkbench.categoryPanel();
         cat.onUseAsSourceQid(this::useSourceQid);
@@ -3279,15 +3280,38 @@ public class ModelBuilderFrame extends JFrame {
         }
     }
 
-    // Make the given entity the selected class's membership type. Shared by the
-    // WikiProject and Explore panels. It wrote instanceMapping.sourceQid, which a
-    // class's membership no longer lives in, so the action set a field nothing reads
-    // and the class stayed unbounded.
+    // Membership discovery is narrower than the general source-QID action: its preview
+    // describes P31 membership, so it refuses to replace seeds, selections or another
+    // relation. Pending editor values are applied before that decision is made.
+    private String useMembershipType(workbench.WorkbenchSelections.Entity value) {
+        sourceWorkbench.applyEdits();
+        GeneratedClassModel clazz = activeClass();
+        EntityBound.Kind kind = clazz.membership().kind();
+        if (kind != EntityBound.Kind.UNBOUNDED && kind != EntityBound.Kind.RELATION) {
+            return kind == EntityBound.Kind.EXPLICIT
+                    ? "The class uses explicit seed QIDs; they were not replaced."
+                    : "The class uses a named selection; it was not replaced.";
+        }
+        if (kind == EntityBound.Kind.RELATION
+                && (!"P31".equalsIgnoreCase(clazz.membership().relationPid())
+                        || clazz.membership().qualifierCondition() != null)) {
+            return "The class does not use a plain P31 membership; it was not replaced.";
+        }
+        setSourceQid(clazz, value.qid(), value.label());
+        return "";
+    }
+
     private void useSourceQid(String qid, String label) {
+        sourceWorkbench.applyEdits();
+        setSourceQid(activeClass(), qid, label);
+    }
+
+    // The one mutation shared by Membership, WikiProject, Explore and Category tools.
+    // It used to write instanceMapping.sourceQid, a field membership no longer reads.
+    private void setSourceQid(GeneratedClassModel c, String qid, String label) {
         if (qid == null || !WikidataIds.isQid(qid)) {
             return;
         }
-        GeneratedClassModel c = activeClass();
         // Replaces the LEADING target and keeps the rest, which is what this did when
         // the leading one was its own field: the editor still shows the first target as
         // "Wikidata type" and the others as "Also include types".

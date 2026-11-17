@@ -1,11 +1,18 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ModelBuilder Configuration Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&amp;family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
 <style>
 /* Layout: a reference manual. A sticky contents rail on wide screens, one reading column, tables in their own scroll boxes. */
 :root {
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   --bg: #f6f7f5;
   --surface: #ffffff;
   --ink: #1d2523;
@@ -21,6 +28,9 @@
   --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --s1: 0.8125rem; --s2: 0.9375rem; --s3: 1.0625rem; --s4: 1.375rem; --s5: 1.875rem; --s6: 2.625rem;
 }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+img { max-width: 100%; }
+[hidden]:not([hidden=until-found i]) { display: none !important; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #121716; --surface: #1a2120; --ink: #e3e9e6; --muted: #9aa8a3; --rule: #2e3836;
@@ -113,6 +123,8 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
 }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 </style>
+</head>
+<body>
 
 <div class="shell">
   <nav class="toc" aria-label="Contents">
@@ -143,6 +155,8 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
           <li><a href="#history">History</a></li>
           <li><a href="#solar">Solar System</a></li>
           <li><a href="#myth">Mythology</a></li>
+          <li><a href="#egyptian">Egyptian Gods</a></li>
+          <li><a href="#movies">Movies</a></li>
           <li><a href="#periodic">Periodic Table</a></li>
         </ol>
       </li>
@@ -289,6 +303,13 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
           <li><b><span class="ui">Represent matching entities as</span>:</b> reclassify each fetched instance by evidence after acquisition.</li>
           <li><b>Extras:</b> aliases as additional names, and an English Wikipedia source link.</li>
         </ul>
+        <h4>Discovering the membership type</h4>
+        <p>The <span class="ui">Explorer tools → Wikidata → Membership</span> tab has two starts that lead to the same candidate list:</p>
+        <ul>
+          <li><b>From broad type:</b> find or enter a broad class, then inspect its direct P279 subtypes. Each candidate reports its direct P31 member count and an example.</li>
+          <li><b>From examples:</b> choose known entities, or reuse an entity selection, then find their common direct and inherited P31/P279 types. Coverage says how many examples support each candidate and how many use it as their direct P31 type.</li>
+        </ul>
+        <p><span class="ui">Preview selected type members</span> counts only to a visible ceiling and shows a searchable ObjectView sample. Its read-only <span class="ui">Class membership includes subclasses</span> setting is the selected class's real setting, so preview and generation use the same closure. Finding, selecting and previewing never edit the class. On an unbounded class, <span class="ui">Use selected as membership type</span> creates a P31 membership; on an existing plain P31 membership it replaces the leading type and keeps the other types and subclass setting. It refuses explicit QIDs, named selections, other relations and qualified relations rather than changing their membership kind. <span class="ui">Add selected as additional membership types</span> appends candidates only to an existing plain P31 membership.</p>
       </div>
 
       <div class="construct" id="statement">
@@ -333,7 +354,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
           <li><b>Next nodes:</b> an ordered path. Each step has a property, a direction and optional equivalent alternative edges. A step may name an admission population (<span class="ui">Admit and expand</span>).</li>
           <li><b>Evidence:</b> relations from a node and tests on what they reach, with a policy for incomplete evidence.</li>
           <li><b>Result:</b> All, Accepted, Review and Rejected tabs. Manual accept or reject is stored as a separate mark and never rewrites the original result.</li>
-          <li><b><span class="ui">Apply result</span>:</b> <em>narrows</em> the output class to the accepted population, or <em>adds</em> memberships to it. <span class="ui">Repeat until no new instances are found</span> computes a closure.</li>
+          <li><b><span class="ui">Apply result</span>:</b> <em>Narrows</em> removes rejected entities only from the output class, not from the shared object pool or their other classes. <em>Adds</em> gives accepted entities the output-class membership. If an accepted additive identity has not been acquired yet, it remains pending for a later Generate step; a build with no later acquisition stops incomplete instead of publishing a QID-only shell. <span class="ui">Repeat until no new instances are found</span> computes a closure.</li>
         </ul>
       </div>
     </section>
@@ -350,7 +371,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
             <tr><td>Count</td><td>Single or collection</td></tr>
             <tr><td>Direction</td><td>Outgoing from the instance, or incoming (stars that are <em>part of</em> a constellation)</td></tr>
             <tr><td>Property</td><td>A PID, optionally a qualifier of a statement, and <span class="ui">Only statements where</span> a qualifier is one of a set</td></tr>
-            <tr><td>Source</td><td>Implemented now: SPARQL, DBpedia, Wikipedia infobox, sitelink count, incoming count and inherited incoming count. Wikidata API, Wikipedia category, WikiProject, Commons, backlinks and manual are reserved source types, not currently implemented field-acquisition choices.</td></tr>
+            <tr><td>Source</td><td>Implemented now: Wikidata SPARQL/property acquisition; configured datasource recipes, including relation routes; DBpedia; Wikipedia infobox and the article introduction, lead paragraph and lead sentence projections; sitelink count, incoming count and inherited incoming count. Wikidata API, Wikipedia category, WikiProject, Commons, backlinks and manual remain reserved source types where the catalogue does not offer a field-acquisition operation.</td></tr>
             <tr><td>Refine</td><td><span class="ui">Required</span> (drops entities without the field), numeric filter such as ≤ 6.0, allowed values, sort a collection by a field, unit, value language</td></tr>
             <tr><td>Edge membership</td><td>Use the target class's own membership for this edge, or drop it</td></tr>
             <tr><td>Display</td><td>Auto, inline, or reference</td></tr>
@@ -385,6 +406,7 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
         <li><b>Entity-kind rules:</b> map P31 evidence to a modelled kind, for example Person when <code>P31 = Q5</code>.</li>
         <li><b>Represented-as rules:</b> turn a placeholder class into a concrete one per instance. A Laureate is represented as a Person when the evidence says so. An instance that fails the evidence keeps its placeholder class; it is neither dropped nor given a class it does not have.</li>
       </ul>
+      <p><b>Transformed class:</b> a reproducible class population produced from another class by an ordered, saved transformation. The output class owns one <code>TransformationClassSource</code> and its materialized typed artifact; its base class contributes schema but never fallback membership. TransformApp and ModelBuilder invoke the same headless transformation configuration rather than storing a second filter or copied QID population.</p>
     </section>
 
     <section id="selections">
@@ -400,27 +422,29 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
       <h2>Which domain uses what</h2>
       <div class="tablebox">
         <table class="matrix">
-          <thead><tr><th>Option</th><th>Constellations</th><th>Nobel</th><th>Oscars</th><th>History</th><th>Solar System</th><th>Mythology</th><th>Periodic</th></tr></thead>
+          <thead><tr><th>Option</th><th>Constellations</th><th>Nobel</th><th>Oscars</th><th>History</th><th>Solar System</th><th>Mythology</th><th>Egyptian Gods</th><th>Movies</th><th>Periodic</th></tr></thead>
           <tbody>
-            <tr><td>Source class</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td></tr>
-            <tr><td>Statement class</td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Owned class</td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td></tr>
-            <tr><td>Aggregate class</td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr><td>Graph class</td><td></td><td></td><td></td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Imports</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
-            <tr><td>Extends</td><td><span class="dot imp" aria-label="imported"></span></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
-            <tr><td>Subclass condition</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
-            <tr><td>Represented as</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Vocabulary selection</td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Population selection</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Invert / Union</td><td></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td></tr>
-            <tr><td>Companion match</td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td><td></td></tr>
-            <tr><td>Required / numeric filter</td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td></td></tr>
-            <tr><td>Self-reference</td><td><span class="dot" aria-label="yes"></span></td><td></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td><td><span class="dot" aria-label="yes"></span></td><td></td></tr>
+            <tr><td>Source class</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr>
+            <tr><td>Statement class</td><td></td><td>●</td><td>●</td><td>●</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Owned class</td><td>○</td><td>○</td><td>○</td><td>●</td><td>○</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Aggregate class</td><td></td><td>●</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Graph class</td><td></td><td></td><td></td><td>○</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Imports</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Extends</td><td>○</td><td></td><td></td><td>●</td><td>●</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Subclass condition</td><td></td><td></td><td></td><td>●</td><td>●</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Represented as</td><td>●</td><td>●</td><td>●</td><td>●</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Vocabulary selection</td><td></td><td>●</td><td>●</td><td>●</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Population selection</td><td></td><td></td><td></td><td>●</td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Invert / Union</td><td></td><td></td><td></td><td>●</td><td>●</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Companion match</td><td></td><td></td><td>●</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>Required / numeric filter</td><td>●</td><td>●</td><td>●</td><td>●</td><td></td><td></td><td>●</td><td>●</td><td></td></tr>
+            <tr><td>Self-reference</td><td>●</td><td></td><td></td><td>●</td><td></td><td>●</td><td>●</td><td></td><td></td></tr>
+            <tr><td>Wikipedia field source</td><td></td><td></td><td></td><td></td><td></td><td>●</td><td>●</td><td></td><td>●</td></tr>
+            <tr><td>Configured datasource / route</td><td></td><td></td><td></td><td></td><td></td><td>●</td><td></td><td></td><td></td></tr>
           </tbody>
         </table>
       </div>
-      <p class="legend"><span><span class="dot"></span> declared in the domain</span><span><span class="dot imp"></span> used through an imported model</span></p>
+      <p class="legend"><span>● declared in the domain</span><span>○ used through an imported model</span></p>
     </section>
 
     <section id="domains">
@@ -492,18 +516,34 @@ footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
 
       <article class="domain" id="myth">
         <h3>Mythology</h3>
-        <div class="uses"><span class="tag">self-reference</span><span class="tag">notable only</span></div>
+        <div class="uses"><span class="tag">self-reference</span><span class="tag">notable only</span><span class="tag">datasource route</span><span class="tag">Wikipedia article</span></div>
         <ul>
-          <li><b>Character</b>: P31 in four mythological-character classes, notable only, limit 5,000. <code>father</code>, <code>mother</code> and <code>child</code> all point back at Character.</li>
-          <li><b>Episode</b>: P31 Q63143903, with <code>characters</code> through P674.</li>
+          <li><b>Character</b>: P31 in four mythological-character classes, notable only, limit 5,000. <code>father</code>, <code>mother</code> and <code>child</code> all point back at Character. The child field uses the configured Wikidata relation-route operation: direct P40, incoming P22 and the qualified child-group path through statement P40, qualifier P3831 and P527.</li>
+          <li><b>Episode</b>: P31 Q63143903, with <code>characters</code> through P674. Its summary is the Wikipedia article introduction; article-passage fields preserve longer narrative evidence separately.</li>
           <li>The cyclic fields only link members that another construct supplies. They never grow the population along the cycle.</li>
         </ul>
       </article>
 
+      <article class="domain" id="egyptian">
+        <h3>Egyptian Gods</h3>
+        <div class="uses"><span class="tag">Wikipedia lead sentence</span><span class="tag">Wikipedia infobox</span><span class="tag">self-reference</span><span class="tag">notable only</span></div>
+        <ul>
+          <li><b>EgyptianDeity</b>: P31 Q146083 and its subclasses, requiring an English label and Wikipedia article.</li>
+          <li>Wikidata supplies identity, image, domain, family relations and related entities. The Wikipedia lead sentence supplies <code>summary</code>; the rendered <code>Symbol</code> infobox parameter supplies <code>symbol</code>.</li>
+          <li>Each configured Wikipedia field records three distinct acquisition outcomes: value supplied, article examined with no value, or provider failure. An examined-empty field stays empty; a failure marks the run partial and is never rewritten as ordinary absence.</li>
+        </ul>
+      </article>
+
+      <article class="domain" id="movies">
+        <h3>Movies</h3>
+        <div class="uses"><span class="tag">source class</span><span class="tag">required relation</span><span class="tag">notable only</span></div>
+        <p><b>Movies</b> uses P31 Q11424 with a sitelink-ranked limit. Required narrative locations (P840) bound the population; publication date (P577), director (P57), screenwriter (P58) and composer (P86) provide the question and answer fields.</p>
+      </article>
+
       <article class="domain" id="periodic">
         <h3>Periodic Table</h3>
-        <div class="uses"><span class="tag">source only</span></div>
-        <p>The plain case: one source class (<code>P31 = Q11344</code>) with thirteen simple properties, from symbol and atomic number to melting point and discoverer. A complete quiz domain can be built from membership and fields alone.</p>
+        <div class="uses"><span class="tag">source only</span><span class="tag">Wikipedia infobox</span></div>
+        <p>One source class (<code>P31 = Q11344</code>) combines Wikidata properties such as symbol, atomic number, melting point and discoverer with Wikipedia infobox values for group, period, block, electrons per shell and name origin. A complete quiz domain can be built from membership and fields alone.</p>
       </article>
     </section>
 

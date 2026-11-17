@@ -6,7 +6,7 @@ import wikidata.WikidataBinding;
 import wikidata.explore.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.query.result.TableQueryResult;
+import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.template.sparql.SparqlQueries;
 
 import java.util.ArrayList;
@@ -17,11 +17,11 @@ import wikidata.explore.query.core.WikidataAccess;
 
 /**
  * Lists the direct subclasses of a class's membership type, each with the
- * number of NEW instances it would add (entities not already members) and a
- * few examples — so the user can pick which subtype QIDs to add to a class's
- * multi-QID membership ("Also include types") and see the impact first.
+ * number of entities whose direct P31 type is that subclass and one example.
+ * The shared preview query separately shows the effective population with or
+ * without P279 descendants before the user changes the class.
  */
-public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
+public class DiscoverSubtypesQuery implements Query<List<MembershipTypeCandidate>> {
 
     private final String baseQid;
     private final int limit;
@@ -38,7 +38,7 @@ public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
 
     @Override
     public String skeleton() {
-        return "subclasses (P279) of the membership type + count of new instances";
+        return "direct subclasses (P279) + their direct P31 member count";
     }
 
     @Override
@@ -49,7 +49,7 @@ public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
     }
 
     @Override
-    public TableQueryResult execute(QueryContext context) throws Exception {
+    public List<MembershipTypeCandidate> execute(QueryContext context) throws Exception {
         String sparql = SparqlQueries.discoverMembershipSubtypes(baseQid, limit);
 
         return context.step(
@@ -60,36 +60,42 @@ public class DiscoverSubtypesQuery implements Query<TableQueryResult> {
                 step -> {
                     step.request(sparql);
 
-                    List<List<Object>> rows = new ArrayList<>();
+                    List<MembershipTypeCandidate> rows = new ArrayList<>();
                     for (WikidataBinding b : WikidataAccess.sparql(context, Datasource.WIKIDATA).query(sparql)) {
                         String qid = b.qid("type");
                         if (qid == null || !WikidataIds.isQid(qid)) {
                             continue;
                         }
                         String label = b.value("typeLabel");
-                        String nNew = b.value("nNew");
+                        String nMembers = b.value("nMembers");
                         String examples = b.value("examples");
-                        rows.add(List.of(
-                                label == null || label.isBlank() ? qid : label,
-                                nNew == null ? "" : nNew,
-                                examples == null ? "" : examples,
-                                qid));
+                        String exampleQid = b.qid("example");
+                        List<MembershipTypeCandidate.Member> sample =
+                                WikidataIds.isQid(exampleQid)
+                                        ? List.of(new MembershipTypeCandidate.Member(
+                                                exampleQid, examples)) : List.of();
+                        rows.add(new MembershipTypeCandidate(qid, label,
+                                MembershipTypeCandidate.Origin.DIRECT_SUBTYPE, baseQid,
+                                0, 0, 0, number(nMembers), sample));
                     }
 
                     step.summary(rows.size() + " subtypes");
-                    return new TableQueryResult(
-                            List.of("Subtype", "Adds", "Examples", "QID"),
-                            rows);
+                    return List.copyOf(rows);
                 });
     }
 
+    private static long number(String value) {
+        try { return value == null ? -1 : Long.parseLong(value); }
+        catch (NumberFormatException ignored) { return -1; }
+    }
+
     @Override
-    public int rowCount(TableQueryResult result) {
+    public int rowCount(List<MembershipTypeCandidate> result) {
         return result == null ? 0 : result.size();
     }
 
     @Override
-    public String summary(TableQueryResult result) {
+    public String summary(List<MembershipTypeCandidate> result) {
         return rowCount(result) + " subtypes";
     }
 }
