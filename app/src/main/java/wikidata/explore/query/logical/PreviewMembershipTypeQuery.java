@@ -14,16 +14,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-/** Counts up to a visible ceiling and samples members of one candidate type. */
+/** Counts to a visible ceiling and shows complete small or capped large memberships. */
 public final class PreviewMembershipTypeQuery implements Query<MembershipTypePreview> {
     public static final int COUNT_BOUND = 1_000;
-    public static final int SAMPLE_LIMIT = 50;
+    public static final int MEMBER_LIMIT = 200;
     private final String qid;
+    private final String label;
     private final boolean includeSubclasses;
 
     public PreviewMembershipTypeQuery(String qid, boolean includeSubclasses) {
+        this(qid, "", includeSubclasses);
+    }
+
+    public PreviewMembershipTypeQuery(String qid, String label,
+            boolean includeSubclasses) {
         if (!WikidataIds.isQid(qid)) throw new IllegalArgumentException("Choose a type QID.");
         this.qid = qid;
+        this.label = label == null ? "" : label;
         this.includeSubclasses = includeSubclasses;
     }
 
@@ -37,7 +44,7 @@ public final class PreviewMembershipTypeQuery implements Query<MembershipTypePre
         return Map.of("typeQid", qid,
                 "includeSubclasses", Boolean.toString(includeSubclasses),
                 "countBound", Integer.toString(COUNT_BOUND),
-                "sampleLimit", Integer.toString(SAMPLE_LIMIT));
+                "memberLimit", Integer.toString(MEMBER_LIMIT));
     }
 
     @Override public MembershipTypePreview execute(QueryContext context) throws Exception {
@@ -53,10 +60,13 @@ public final class PreviewMembershipTypeQuery implements Query<MembershipTypePre
                             : count + " members");
                     return count;
                 });
-        List<MembershipTypeCandidate.Member> members = context.step(
-                "Fetch up to " + SAMPLE_LIMIT + " members of " + qid,
+        int memberLimit = Math.min(MEMBER_LIMIT, Math.min(bounded, COUNT_BOUND));
+        List<MembershipTypeCandidate.Member> members = memberLimit == 0
+                ? List.of() : context.step(
+                "Fetch " + (bounded <= MEMBER_LIMIT ? "all " : "up to ")
+                        + memberLimit + " preview member(s) of " + qid,
                 "SPARQL", skeleton(), parameters(), step -> {
-                    String request = membersSparql(qid, relation, SAMPLE_LIMIT);
+                    String request = membersSparql(qid, relation, memberLimit);
                     step.request(request);
                     List<MembershipTypeCandidate.Member> values = new ArrayList<>();
                     for (WikidataBinding row : WikidataAccess
@@ -69,10 +79,10 @@ public final class PreviewMembershipTypeQuery implements Query<MembershipTypePre
                     values.sort(Comparator.comparing(
                             MembershipTypeCandidate.Member::label,
                             String.CASE_INSENSITIVE_ORDER));
-                    step.summary(values.size() + " representative member(s)");
+                    step.summary(values.size() + " preview member(s)");
                     return List.copyOf(values);
                 });
-        return new MembershipTypePreview(qid, includeSubclasses,
+        return new MembershipTypePreview(qid, label, includeSubclasses,
                 Math.min(bounded, COUNT_BOUND), bounded > COUNT_BOUND, members);
     }
 
@@ -108,7 +118,10 @@ public final class PreviewMembershipTypeQuery implements Query<MembershipTypePre
     }
     @Override public String summary(MembershipTypePreview result) {
         if (result == null) return "0 members";
+        boolean complete = !result.countCapped()
+                && result.members().size() == result.boundedCount();
         return (result.countCapped() ? result.boundedCount() + "+" : result.boundedCount())
-                + " members; " + result.members().size() + " shown";
+                + " members; " + (complete ? "showing all " : "showing ")
+                + result.members().size();
     }
 }

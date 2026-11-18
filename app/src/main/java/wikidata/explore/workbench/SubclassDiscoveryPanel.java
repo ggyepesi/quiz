@@ -8,8 +8,10 @@ import wikidata.explore.model.GeneratedClassModel;
 import wikidata.explore.query.logical.DiscoverCommonMembershipTypesQuery;
 import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.logical.PreviewMembershipTypeQuery;
+import wikidata.explore.query.logical.SearchWikidataTextQuery;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.result.MembershipTypePreview;
+import wikidata.explore.query.result.WikidataTextSearchResult;
 import wikidata.explore.query.swing.SwingQueryRunner;
 import wikidata.explore.rule.RuleNode;
 import wikidata.ui.WikidataLinks;
@@ -32,7 +34,6 @@ import javax.swing.WindowConstants;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dialog;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -56,8 +57,11 @@ final class SubclassDiscoveryPanel extends JPanel {
     private final JButton findBroadType = new JButton("Find broad type…");
     private final JButton runSubtypes = new JButton("Find direct subtypes");
     private final JButton findExample = new JButton("Find example…");
-    private final JButton findCommonTypes = new JButton("Find common types");
+    private final JButton findCommonTypes = new JButton("Find types shared by examples");
     private final JButton removeExamples = new JButton("Remove selected examples");
+    private final JTextField textPhrase = new JTextField(24);
+    private final JButton searchText = new JButton("Find exact phrase");
+    private final JButton addTextExamples = new JButton("Add selected as examples");
     private final JButton cancel = new JButton("Cancel");
     private final JButton preview = new JButton("Preview selected type members");
     private final JButton use = new JButton("Use selected as membership type");
@@ -65,14 +69,22 @@ final class SubclassDiscoveryPanel extends JPanel {
     private final JCheckBox previewDescendants =
             new JCheckBox("Class membership includes subclasses", false);
     private final JLabel status = new JLabel(" ");
+    private final JTabbedPane workflowStages = new JTabbedPane();
+    private final JTabbedPane starts = new JTabbedPane();
     private final JPanel examplesHolder = new JPanel(new BorderLayout());
     private final JPanel selectionsHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JPanel candidatesHolder = new JPanel(new BorderLayout());
+    private final JPanel textResultsHolder = new JPanel(new BorderLayout());
+    private final JPanel candidateActions = new JPanel(
+            new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 2));
     private final LinkedHashMap<String, WorkbenchSelections.Entity> examples =
             new LinkedHashMap<>();
     private List<MembershipEntityViewable> selectedExamples = List.of();
     private List<MembershipTypeCandidateViewable> candidates = List.of();
     private List<MembershipTypeCandidateViewable> selectedCandidates = List.of();
+    private List<MembershipEntityViewable> textResults = List.of();
+    private List<MembershipEntityViewable> selectedTextResults = List.of();
+    private JComponent exampleView;
     private JComponent candidateView;
     private SwingQueryRunner runner;
     private WorkbenchSelections selections;
@@ -92,33 +104,38 @@ final class SubclassDiscoveryPanel extends JPanel {
     SubclassDiscoveryPanel() {
         super(new BorderLayout(6, 6));
 
-        JTabbedPane starts = new JTabbedPane();
         starts.addTab("From broad type", broadTypePanel());
         starts.addTab("From examples", examplesPanel());
-        starts.setPreferredSize(new Dimension(760, 210));
-        add(starts, BorderLayout.NORTH);
+        starts.addTab("From indexed text", textSearchPanel());
+        workflowStages.addTab("1. Starting points", starts);
 
-        candidatesHolder.setBorder(BorderFactory.createTitledBorder("Candidate membership types"));
-        showCandidates(List.of());
-        add(candidatesHolder, BorderLayout.CENTER);
+        showCandidates(List.of(), false);
+        workflowStages.addTab("2. Candidate membership types", candidatesHolder);
+        workflowStages.setEnabledAt(1, false);
+        workflowStages.addChangeListener(event -> updateActions());
+        add(workflowStages, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new objectview.utils.swing.WrapLayout(
-                FlowLayout.LEFT, 6, 2));
         preview.setEnabled(false);
         use.setEnabled(false);
         add.setEnabled(false);
         previewDescendants.setEnabled(false);
-        actions.add(previewDescendants);
-        actions.add(preview);
-        actions.add(use);
-        actions.add(add);
-        actions.add(cancel);
-        actions.add(status);
-        add(actions, BorderLayout.SOUTH);
+        candidateActions.add(previewDescendants);
+        candidateActions.add(preview);
+        candidateActions.add(use);
+        candidateActions.add(add);
+        JPanel runState = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        runState.add(cancel);
+        runState.add(status);
+        JPanel south = new JPanel(new BorderLayout());
+        south.add(candidateActions, BorderLayout.NORTH);
+        south.add(runState, BorderLayout.SOUTH);
+        add(south, BorderLayout.SOUTH);
 
         findBroadType.addActionListener(event -> chooseBroadType());
         findExample.addActionListener(event -> chooseExample());
         removeExamples.addActionListener(event -> removeSelectedExamples());
+        addTextExamples.addActionListener(event -> addTextResultsAsExamples());
+        textPhrase.addActionListener(event -> searchText.doClick());
         use.addActionListener(event -> useSelected());
         add.addActionListener(event -> addSelected());
         cancel.setEnabled(false);
@@ -134,6 +151,29 @@ final class SubclassDiscoveryPanel extends JPanel {
             }
         });
         updateActions();
+    }
+
+    private JComponent textSearchPanel() {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        JPanel header = new JPanel(new BorderLayout(4, 4));
+        header.add(new JLabel("<html>Search Wikidata's indexed entity text: labels, "
+                + "descriptions, aliases in every language and some statements.<br>"
+                + "The match may not appear in the English columns. Text hits nominate "
+                + "examples; they do not establish membership.</html>"),
+                BorderLayout.NORTH);
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        controls.add(new JLabel("Exact phrase:"));
+        controls.add(textPhrase);
+        controls.add(searchText);
+        addTextExamples.setEnabled(false);
+        controls.add(addTextExamples);
+        header.add(controls, BorderLayout.CENTER);
+        panel.add(header, BorderLayout.NORTH);
+        textResultsHolder.add(new JLabel("No text search has been run."),
+                BorderLayout.CENTER);
+        panel.add(textResultsHolder, BorderLayout.CENTER);
+        return panel;
     }
 
     private JComponent broadTypePanel() {
@@ -155,13 +195,18 @@ final class SubclassDiscoveryPanel extends JPanel {
     private JComponent examplesPanel() {
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        JPanel header = new JPanel(new BorderLayout(4, 4));
+        header.add(new JLabel("<html>One example is enough to find its direct and inherited "
+                + "types. Add more examples only to rank the types they share; adding an "
+                + "example does not configure the class.</html>"), BorderLayout.NORTH);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         actions.add(findExample);
         actions.add(selectionsHolder);
         removeExamples.setEnabled(false);
         actions.add(removeExamples);
         actions.add(findCommonTypes);
-        panel.add(actions, BorderLayout.NORTH);
+        header.add(actions, BorderLayout.CENTER);
+        panel.add(header, BorderLayout.NORTH);
         showExamples();
         panel.add(examplesHolder, BorderLayout.CENTER);
         return panel;
@@ -187,6 +232,8 @@ final class SubclassDiscoveryPanel extends JPanel {
                 failure -> showError("Subtype discovery failed", failure));
         runner.wireButton(findCommonTypes, this::acceptCommonTypes, this::commonTypesQuery,
                 failure -> showError("Common-type discovery failed", failure));
+        runner.wireButton(searchText, this::acceptTextResults, this::textSearchQuery,
+                failure -> showError("Wikidata text search failed", failure));
         runner.wireButton(preview, this::acceptPreview, this::previewQuery,
                 failure -> showError("Membership preview failed", failure));
         runner.onRunningChanged(ignored -> updateActions());
@@ -327,6 +374,16 @@ final class SubclassDiscoveryPanel extends JPanel {
                         value.qid(), value.label(), value.description())).toList());
     }
 
+    private SearchWikidataTextQuery textSearchQuery() {
+        String phrase = textPhrase.getText() == null ? "" : textPhrase.getText().strip();
+        if (phrase.isBlank()) {
+            status.setText("Enter an exact Wikidata entity-text phrase.");
+            return null;
+        }
+        status.setText("Searching Wikidata for the exact phrase “" + phrase + "”…");
+        return new SearchWikidataTextQuery(phrase);
+    }
+
     private PreviewMembershipTypeQuery previewQuery() {
         MembershipTypeCandidateViewable selected = oneSelectedCandidate();
         if (selected == null) {
@@ -335,9 +392,11 @@ final class SubclassDiscoveryPanel extends JPanel {
         }
         String qid = selected.candidate().qid();
         status.setText("Counting up to " + PreviewMembershipTypeQuery.COUNT_BOUND
-                + " and fetching up to " + PreviewMembershipTypeQuery.SAMPLE_LIMIT
-                + " members of " + qid + "…");
-        return new PreviewMembershipTypeQuery(qid, previewDescendants.isSelected());
+                + " members of " + qid + "; populations up to "
+                + PreviewMembershipTypeQuery.MEMBER_LIMIT
+                + " will be shown completely…");
+        return new PreviewMembershipTypeQuery(qid, selected.candidate().label(),
+                previewDescendants.isSelected());
     }
 
     void acceptSubtypes(List<MembershipTypeCandidate> result) {
@@ -351,7 +410,7 @@ final class SubclassDiscoveryPanel extends JPanel {
                         0, 0, 0, -1, List.of()));
             }
             if (result != null) all.addAll(result);
-            showCandidates(all);
+            showCandidates(all, true);
             status.setText((result == null ? 0 : result.size())
                     + " direct subtype(s) found; the selected broad type is also offered.");
         });
@@ -359,18 +418,82 @@ final class SubclassDiscoveryPanel extends JPanel {
 
     void acceptCommonTypes(List<MembershipTypeCandidate> result) {
         SwingUtilities.invokeLater(() -> {
-            showCandidates(result == null ? List.of() : result);
+            showCandidates(result == null ? List.of() : result, true);
             status.setText((result == null ? 0 : result.size())
                     + " candidate type(s) found from " + queriedExampleCount
                     + " example(s).");
         });
     }
 
+    void acceptTextResults(WikidataTextSearchResult result) {
+        SwingUtilities.invokeLater(() -> {
+            selectedTextResults = List.of();
+            textResults = result == null ? List.of() : result.candidates().stream()
+                    .map(MembershipEntityViewable::new).toList();
+            textResultsHolder.removeAll();
+            if (textResults.isEmpty()) {
+                textResultsHolder.add(new JLabel("No exact text matches found."),
+                        BorderLayout.CENTER);
+            } else {
+                textResultsHolder.add(SearchableView.builder(textResults)
+                        .mode(RenderingMode.TABLE)
+                        .sample(textResults.getFirst())
+                        .valueLinker(WikidataLinks.valueLinker())
+                        .selectionSetListener(selected -> {
+                            selectedTextResults = selected.stream()
+                                    .filter(MembershipEntityViewable.class::isInstance)
+                                    .map(MembershipEntityViewable.class::cast).toList();
+                            updateActions();
+                        }).build(), BorderLayout.CENTER);
+            }
+            textResultsHolder.revalidate();
+            textResultsHolder.repaint();
+            String count = result == null ? "0" : result.countText();
+            status.setText(count + " text candidate(s) found; select those that should "
+                    + "become membership examples.");
+            updateActions();
+        });
+    }
+
+    private void addTextResultsAsExamples() {
+        int newCount = additionalTextExampleCount();
+        if (examples.size() + newCount > DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES) {
+            status.setText("Could not add " + newCount + " new example(s): that would make "
+                    + (examples.size() + newCount) + "; choose at most "
+                    + DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES + ".");
+            updateActions();
+            return;
+        }
+        int before = examples.size();
+        for (MembershipEntityViewable viewable : selectedTextResults) {
+            MembershipTypeCandidate.Member member = viewable.member();
+            WorkbenchSelections.Entity entity = new WorkbenchSelections.Entity(
+                    member.qid(), member.label(), member.description());
+            examples.put(member.qid(), entity);
+            if (selections != null) {
+                selections.entity(member.qid(), member.label(), member.description());
+            }
+        }
+        int added = examples.size() - before;
+        int alreadyPresent = selectedTextResults.size() - added;
+        showExamples();
+        starts.setSelectedIndex(1);
+        String duplicateText = alreadyPresent == 0 ? ""
+                : " " + alreadyPresent + " selected candidate(s) were already examples.";
+        status.setText(exampleStatus("Added " + added + " new text candidate(s) as examples."
+                + duplicateText));
+    }
+
+    private int additionalTextExampleCount() {
+        return (int) selectedTextResults.stream().map(MembershipEntityViewable::qid)
+                .distinct().filter(qid -> !examples.containsKey(qid)).count();
+    }
+
     private void acceptPreview(MembershipTypePreview result) {
         SwingUtilities.invokeLater(() -> {
             status.setText(previewSummary(result));
             JDialog dialog = new JDialog(quiz.ui.Dialogs.owner(this),
-                    "Membership preview — " + result.qid(),
+                    "Membership preview — " + typeName(result),
                     Dialog.ModalityType.MODELESS);
             dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
             dialog.add(previewView(result));
@@ -402,9 +525,18 @@ final class SubclassDiscoveryPanel extends JPanel {
     static String previewSummary(MembershipTypePreview result) {
         String count = result.countCapped()
                 ? result.boundedCount() + "+" : Integer.toString(result.boundedCount());
-        return count + " member(s)"
+        boolean complete = !result.countCapped()
+                && result.members().size() == result.boundedCount();
+        return typeName(result) + ": " + count + " member(s)"
                 + (result.includeSubclasses() ? " including subclasses" : " by direct P31")
-                + "; showing " + result.members().size() + ".";
+                + (complete ? "; showing all " + result.members().size() + "."
+                : "; preview limit " + PreviewMembershipTypeQuery.MEMBER_LIMIT
+                        + ", showing " + result.members().size() + ".");
+    }
+
+    private static String typeName(MembershipTypePreview result) {
+        return result.label().isBlank() || result.label().equals(result.qid())
+                ? result.qid() : result.label() + " (" + result.qid() + ")";
     }
 
     private void setExamples(List<WorkbenchSelections.Entity> selected) {
@@ -421,7 +553,7 @@ final class SubclassDiscoveryPanel extends JPanel {
                     + "; remove " + (examples.size()
                     - DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES) + ".";
         }
-        return prefix + " Click Find common types; nothing is configured yet.";
+        return prefix + " Click Find types shared by examples; nothing is configured yet.";
     }
 
     private void showExamples() {
@@ -433,9 +565,9 @@ final class SubclassDiscoveryPanel extends JPanel {
                                 value.qid(), value.label(), value.description())))
                 .toList();
         if (values.isEmpty()) {
-            examplesHolder.add(new JLabel("No examples selected."), BorderLayout.NORTH);
+            exampleView = new JLabel("No examples selected.");
         } else {
-            examplesHolder.add(SearchableView.builder(values)
+            exampleView = SearchableView.builder(values)
                     .mode(RenderingMode.TABLE)
                     .sample(values.getFirst())
                     .valueLinker(WikidataLinks.valueLinker())
@@ -444,8 +576,9 @@ final class SubclassDiscoveryPanel extends JPanel {
                                 .filter(MembershipEntityViewable.class::isInstance)
                                 .map(MembershipEntityViewable.class::cast).toList();
                         updateActions();
-                    }).build(), BorderLayout.CENTER);
+                    }).build();
         }
+        examplesHolder.add(exampleView, BorderLayout.CENTER);
         removeExamples.setEnabled(false);
         examplesHolder.revalidate();
         examplesHolder.repaint();
@@ -458,13 +591,17 @@ final class SubclassDiscoveryPanel extends JPanel {
         status.setText(examples.size() + " example(s) remain; nothing is configured.");
     }
 
-    private void showCandidates(List<MembershipTypeCandidate> found) {
+    private void showCandidates(List<MembershipTypeCandidate> found,
+            boolean discoveryComplete) {
         selectedCandidates = List.of();
         candidates = found == null ? List.of() : found.stream()
                 .map(MembershipTypeCandidateViewable::new).toList();
         candidatesHolder.removeAll();
         if (candidates.isEmpty()) {
-            candidateView = new JLabel("Run broad-type or example-driven discovery.");
+            candidateView = new JLabel(discoveryComplete
+                    ? "No candidate membership types found. Return to Starting points to try "
+                            + "different examples or a different broad type."
+                    : "Candidate membership types will appear here after discovery.");
         } else {
             candidateView = SearchableView.builder(candidates)
                     .mode(RenderingMode.TABLE)
@@ -478,6 +615,10 @@ final class SubclassDiscoveryPanel extends JPanel {
                     }).build();
         }
         candidatesHolder.add(candidateView, BorderLayout.CENTER);
+        if (workflowStages.getTabCount() > 1) {
+            workflowStages.setEnabledAt(1, discoveryComplete);
+            if (discoveryComplete) workflowStages.setSelectedIndex(1);
+        }
         candidatesHolder.revalidate();
         candidatesHolder.repaint();
         updateActions();
@@ -528,6 +669,14 @@ final class SubclassDiscoveryPanel extends JPanel {
         boolean running = runner != null && runner.isRunning();
         findBroadType.setEnabled(!running);
         findExample.setEnabled(!running);
+        searchText.setEnabled(!running);
+        textPhrase.setEnabled(!running);
+        boolean textExamplesFit = examples.size() + additionalTextExampleCount()
+                <= DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES;
+        addTextExamples.setEnabled(!running && !selectedTextResults.isEmpty()
+                && textExamplesFit);
+        addTextExamples.setToolTipText(textExamplesFit ? null
+                : "Adding these candidates would exceed the 20-example limit.");
         rootQid.setEnabled(!running);
         selectionsHolder.setEnabled(!running);
         for (Component component : selectionsHolder.getComponents()) {
@@ -546,9 +695,14 @@ final class SubclassDiscoveryPanel extends JPanel {
                                 + " examples; " + examples.size() + " are selected."
                         : null);
         MembershipTypeCandidateViewable one = oneSelectedCandidate();
-        preview.setEnabled(!running && one != null);
-        use.setEnabled(!running && usable && one != null);
-        add.setEnabled(!running && addable && !selectedCandidates.isEmpty());
+        boolean candidatesVisible = workflowStages.getTabCount() > 1
+                && workflowStages.getSelectedIndex() == 1;
+        candidateActions.setVisible(candidatesVisible);
+        cancel.setVisible(running);
+        preview.setEnabled(!running && candidatesVisible && one != null);
+        use.setEnabled(!running && candidatesVisible && usable && one != null);
+        add.setEnabled(!running && candidatesVisible && addable
+                && !selectedCandidates.isEmpty());
     }
 
     private void showError(String title, Exception failure) {
@@ -572,7 +726,13 @@ final class SubclassDiscoveryPanel extends JPanel {
     String useRefusal() { return use.getToolTipText(); }
     String statusText() { return status.getText(); }
     JComponent candidateView() { return candidateView; }
+    JComponent exampleView() { return exampleView; }
+    JTabbedPane workflowStages() { return workflowStages; }
+    JTabbedPane startingPointTabs() { return starts; }
     int exampleCount() { return examples.size(); }
+    int textResultCount() { return textResults.size(); }
+    boolean addTextExamplesEnabled() { return addTextExamples.isEnabled(); }
+    JTextField textPhrase() { return textPhrase; }
     void setExamplesForTest(List<WorkbenchSelections.Entity> values) { setExamples(values); }
     void selectRows(int... selected) {
         List<MembershipTypeCandidateViewable> chosen = new ArrayList<>();
@@ -584,4 +744,13 @@ final class SubclassDiscoveryPanel extends JPanel {
     }
     void addSelectedRows() { addSelected(); }
     void useSelectedRow() { useSelected(); }
+    void selectTextRows(int... selected) {
+        List<MembershipEntityViewable> chosen = new ArrayList<>();
+        for (int row : selected) {
+            if (row >= 0 && row < textResults.size()) chosen.add(textResults.get(row));
+        }
+        selectedTextResults = List.copyOf(chosen);
+        updateActions();
+    }
+    void addSelectedTextRowsAsExamples() { addTextResultsAsExamples(); }
 }

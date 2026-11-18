@@ -214,6 +214,11 @@ public class ExploreByExamplePanel extends JPanel {
     public void entityPicker(String useButtonLabel, boolean relationPanelNeeded) {
         String label = useButtonLabel == null || useButtonLabel.isBlank()
                 ? "Use selected entity" : useButtonLabel;
+        if (!relationPanelNeeded) {
+            openQidButton.setText("Load QID");
+            openQidButton.setToolTipText(
+                    "Verify the typed QID and make it available to " + label);
+        }
         useSourceButton.setText(label);
         useSourceButton.setToolTipText("Assign the selected entity");
         addTargetsButton.setVisible(false);

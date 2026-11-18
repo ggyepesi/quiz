@@ -2,9 +2,10 @@ package wikidata.explore.query.result;
 
 import java.util.List;
 
-/** Bounded count and representative members for one candidate membership type. */
+/** Bounded count and members for one candidate membership type. */
 public record MembershipTypePreview(
         String qid,
+        String label,
         boolean includeSubclasses,
         int boundedCount,
         boolean countCapped,
@@ -12,6 +13,7 @@ public record MembershipTypePreview(
 
     public MembershipTypePreview {
         qid = qid == null ? "" : qid;
+        label = label == null ? "" : label;
         members = members == null ? List.of() : List.copyOf(members);
     }
 }

@@ -6,10 +6,12 @@ import wikidata.explore.model.GeneratedClassModel;
 import objectview.view.SearchableView;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.result.MembershipTypePreview;
+import wikidata.explore.query.result.WikidataTextSearchResult;
 
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Graphics2D;
@@ -22,6 +24,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SubclassDiscoveryPanelTest {
@@ -118,6 +121,109 @@ class SubclassDiscoveryPanelTest {
         assertEquals(List.of("Q63143903|episode in Greek mythology"), used);
     }
 
+    @Test void textMatchesOnlyBecomeExamplesAfterTheExplicitAddAction()
+            throws Exception {
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+        onEdt(() -> panel.showClass(new GeneratedClassModel("Episode")));
+
+        panel.acceptTextResults(new WikidataTextSearchResult(5_000, List.of(
+                new MembershipTypeCandidate.Member("Q105821782", "Fall of Troy",
+                        "mythical event, part of Trojan War"),
+                new MembershipTypeCandidate.Member("Q28019644", "Diana and Callisto",
+                        "mythical event in Greek mythology"))));
+        flushEdt();
+        onEdt(() -> panel.startingPointTabs().setSelectedIndex(2));
+        render(panel, "target/ui-artifacts/membership-text-candidates.png");
+
+        assertEquals(2, panel.textResultCount());
+        assertTrue(panel.statusText().contains("first 2 of 5000"));
+        assertEquals(0, panel.exampleCount(),
+                "finding text must not silently change examples or class membership");
+        assertFalse(panel.addTextExamplesEnabled());
+
+        onEdt(() -> {
+            panel.selectTextRows(0, 1);
+            panel.addSelectedTextRowsAsExamples();
+        });
+
+        assertEquals(2, panel.exampleCount());
+        assertEquals(1, panel.startingPointTabs().getSelectedIndex(),
+                "the explicit hand-off reveals the examples it added");
+        assertTrue(panel.statusText().contains("nothing is configured yet"));
+    }
+
+    @Test void textCandidatesAlreadyPresentAreNotCountedAsNewExamples()
+            throws Exception {
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+        workbench.WorkbenchSelections.Entity fallOfTroy =
+                new workbench.WorkbenchSelections.Entity(
+                "Q105821782", "Fall of Troy");
+        onEdt(() -> panel.setExamplesForTest(List.of(fallOfTroy)));
+        panel.acceptTextResults(new WikidataTextSearchResult(1, List.of(
+                new MembershipTypeCandidate.Member("Q105821782", "Fall of Troy"))));
+        flushEdt();
+
+        onEdt(() -> {
+            panel.selectTextRows(0);
+            panel.addSelectedTextRowsAsExamples();
+        });
+
+        assertEquals(1, panel.exampleCount());
+        assertTrue(panel.statusText().contains("Added 0 new"));
+        assertTrue(panel.statusText().contains("already examples"));
+    }
+
+    @Test void textCandidatesCannotPushExamplesPastTheTwentyExampleLimit()
+            throws Exception {
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+        List<workbench.WorkbenchSelections.Entity> existing = java.util.stream.IntStream
+                .rangeClosed(1, 20)
+                .mapToObj(index -> new workbench.WorkbenchSelections.Entity(
+                        "Q" + index, "Example " + index)).toList();
+        onEdt(() -> panel.setExamplesForTest(existing));
+        panel.acceptTextResults(new WikidataTextSearchResult(1, List.of(
+                new MembershipTypeCandidate.Member("Q21", "Example 21"))));
+        flushEdt();
+        onEdt(() -> panel.selectTextRows(0));
+
+        assertFalse(panel.addTextExamplesEnabled());
+        onEdt(panel::addSelectedTextRowsAsExamples);
+        assertEquals(20, panel.exampleCount());
+        assertTrue(panel.statusText().contains("Could not add 1 new example"));
+    }
+
+    @Test void startingPointsAndCandidatesUseTheWholeWindowOneStageAtATime()
+            throws Exception {
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+
+        assertSame(panel.workflowStages(),
+                ((BorderLayout) panel.getLayout()).getLayoutComponent(BorderLayout.CENTER));
+        assertEquals(0, panel.workflowStages().getSelectedIndex());
+        assertFalse(panel.workflowStages().isEnabledAt(1),
+                "the empty candidate stage must not compete with example entry");
+
+        onEdt(() -> panel.setExamplesForTest(List.of(
+                new workbench.WorkbenchSelections.Entity(
+                        "Q3088950", "Cleaning the Augean stables"),
+                new workbench.WorkbenchSelections.Entity(
+                        "Q2937680", "Capture of Cerberus"))));
+        onEdt(() -> panel.startingPointTabs().setSelectedIndex(1));
+        assertInstanceOf(SearchableView.class, panel.exampleView(),
+                "examples keep ObjectView search and scrolling in the full start stage");
+        render(panel, "target/ui-artifacts/membership-examples.png");
+
+        panel.acceptCommonTypes(List.of(new MembershipTypeCandidate(
+                "Q63143903", "episode in Greek mythology",
+                MembershipTypeCandidate.Origin.COMMON_TYPE, "",
+                2, 2, 2, -1, List.of())));
+        flushEdt();
+
+        assertTrue(panel.workflowStages().isEnabledAt(1));
+        assertEquals(1, panel.workflowStages().getSelectedIndex(),
+                "finished discovery reveals its result instead of stacking two search views");
+        render(panel, "target/ui-artifacts/membership-candidates.png");
+    }
+
     @Test void explicitAndSelectionMembershipCannotBeReplacedByUse() throws Exception {
         for (GeneratedClassModel configured : List.of(
                 withMembership(EntityBound.explicit(List.of("Q3088950"))),
@@ -182,7 +288,7 @@ class SubclassDiscoveryPanelTest {
 
     @Test void membershipPreviewUsesObjectViewAndStatesItsBound() {
         MembershipTypePreview result = new MembershipTypePreview(
-                "Q63143903", true, 1000, true,
+                "Q63143903", "episode in Greek mythology", true, 1000, true,
                 List.of(new MembershipTypeCandidate.Member(
                         "Q3088950", "Cleaning the Augean stables")));
 
@@ -192,6 +298,10 @@ class SubclassDiscoveryPanelTest {
         assertTrue(SubclassDiscoveryPanel.previewSummary(result).contains("1000+"));
         assertTrue(SubclassDiscoveryPanel.previewSummary(result)
                 .contains("including subclasses"));
+        assertTrue(SubclassDiscoveryPanel.previewSummary(result)
+                .contains("episode in Greek mythology (Q63143903)"));
+        assertTrue(SubclassDiscoveryPanel.previewSummary(result)
+                .contains("preview limit 200"));
     }
 
     private static MembershipTypeCandidate candidate(String qid, String label) {

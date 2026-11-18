@@ -86,7 +86,8 @@ class DiscoverCommonMembershipTypesQueryTest {
         assertTrue(failure.getMessage().contains("at most 20"));
     }
 
-    @Test void previewCountsToACeilingThenFetchesOnlyFiftyMembers() throws Exception {
+    @Test void aLargePopulationPreviewCountsToACeilingAndCapsItsMembers()
+            throws Exception {
         try (WikidataSparqlClient sparql = new PreviewClient()) {
             var result = new PreviewMembershipTypeQuery("Q63143903", true)
                     .execute(WikidataAccess.of(sparql, null).bind());
@@ -98,6 +99,18 @@ class DiscoverCommonMembershipTypesQueryTest {
         }
     }
 
+    @Test void aSmallPopulationPreviewFetchesEveryMember() throws Exception {
+        try (WikidataSparqlClient sparql = new SmallPreviewClient()) {
+            var result = new PreviewMembershipTypeQuery(
+                    "Q63143903", "episode in Greek mythology", false)
+                    .execute(WikidataAccess.of(sparql, null).bind());
+
+            assertEquals(60, result.boundedCount());
+            assertEquals(60, result.members().size());
+            assertEquals("episode in Greek mythology", result.label());
+        }
+    }
+
     private static final class PreviewClient extends WikidataSparqlClient {
         private PreviewClient() { super("MembershipPreviewTest/1.0"); }
 
@@ -106,8 +119,8 @@ class DiscoverCommonMembershipTypesQueryTest {
                 return List.of(new WikidataBinding(Map.of("count", "1001")));
             }
             assertTrue(query.contains("wdt:P31/wdt:P279* wd:Q63143903"));
-            assertTrue(query.contains("LIMIT 50"));
-            assertTrue(query.indexOf("LIMIT 50")
+            assertTrue(query.contains("LIMIT 200"));
+            assertTrue(query.indexOf("LIMIT 200")
                     < query.indexOf("SERVICE wikibase:label"));
             assertTrue(!query.contains("ORDER BY"),
                     "the bounded member sample is sorted locally, not by WDQS");
@@ -115,6 +128,24 @@ class DiscoverCommonMembershipTypesQueryTest {
                     "member", "http://www.wikidata.org/entity/Q3088950",
                     "memberLabel", "Cleaning the Augean stables",
                     "memberDescription", "episode in Greek mythology")));
+        }
+    }
+
+    private static final class SmallPreviewClient extends WikidataSparqlClient {
+        private SmallPreviewClient() { super("SmallMembershipPreviewTest/1.0"); }
+
+        @Override public List<WikidataBinding> query(String query) {
+            if (query.contains("COUNT(?member)")) {
+                return List.of(new WikidataBinding(Map.of("count", "60")));
+            }
+            assertTrue(query.contains("LIMIT 60"),
+                    "the member query should use the known complete small count");
+            return java.util.stream.IntStream.rangeClosed(1, 60)
+                    .mapToObj(index -> new WikidataBinding(Map.of(
+                            "member", "http://www.wikidata.org/entity/Q" + index,
+                            "memberLabel", "Episode " + index,
+                            "memberDescription", "episode in Greek mythology")))
+                    .toList();
         }
     }
 }

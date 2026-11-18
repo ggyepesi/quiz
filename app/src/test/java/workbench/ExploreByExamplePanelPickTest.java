@@ -64,6 +64,15 @@ class ExploreByExamplePanelPickTest {
         assertNotNull(button(panel, "Explore selected entity relations"));
     }
 
+    @Test void anEntityOnlyPickerCallsItsQidActionLoadRatherThanExploreRelations() {
+        ExploreByExamplePanel panel = new ExploreByExamplePanel();
+
+        panel.entityPicker("Use selected entity", false);
+
+        assertNotNull(button(panel, "Load QID"));
+        assertNull(button(panel, "Explore QID relations"));
+    }
+
     private static JButton button(Container root, String text) {
         for (Component component : root.getComponents()) {
             if (component instanceof JButton button && text.equals(button.getText())) return button;

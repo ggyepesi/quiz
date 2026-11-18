@@ -234,6 +234,86 @@ public class WikidataApiClient {
         return results;
     }
 
+    /**
+     * Finds item candidates whose indexed Wikidata entity text contains an exact phrase.
+     *
+     * <p>{@code wbsearchentities} is the right operation for resolving a known label or
+     * alias, but it does not search descriptions reliably. MediaWiki's full-text index does.
+     * This operation deliberately quotes the phrase, bounds the result, and then resolves
+     * the ranked QIDs through {@code wbgetentities} so callers receive ordinary English
+     * labels and descriptions rather than search-result snippets.
+     *
+     * <p>The result is discovery evidence, not a membership decision: indexed text can be
+     * stale, translated, or mention the phrase for a different reason.
+     */
+    public EntityTextSearchResult searchEntityText(String phrase, int limit) throws Exception {
+        String exact = exactTextPhrase(phrase);
+        if (exact.isBlank()) return new EntityTextSearchResult(0, List.of());
+
+        int boundedLimit = Math.max(1, Math.min(limit, 50));
+        Map<String, String> searchParams = new LinkedHashMap<>();
+        searchParams.put("action", "query");
+        searchParams.put("list", "search");
+        searchParams.put("srsearch", encode("\"" + exact + "\""));
+        searchParams.put("srnamespace", "0");
+        searchParams.put("srlimit", Integer.toString(boundedLimit));
+        searchParams.put("format", "json");
+        JsonNode searchRoot = get(WIKIDATA_API, searchParams);
+        long totalHits = searchRoot.path("query").path("searchinfo")
+                .path("totalhits").asLong(0);
+
+        List<String> qids = new ArrayList<>();
+        for (JsonNode hit : searchRoot.path("query").path("search")) {
+            String qid = hit.path("title").asText("");
+            if (WikidataIds.isQid(qid) && !qids.contains(qid)) qids.add(qid);
+        }
+        if (qids.isEmpty()) return new EntityTextSearchResult(totalHits, List.of());
+
+        Map<String, String> entityParams = new LinkedHashMap<>();
+        entityParams.put("action", "wbgetentities");
+        entityParams.put("ids", String.join("%7C", qids));
+        entityParams.put("props", "labels%7Cdescriptions");
+        entityParams.put("languages", encodePipes(
+                wikidata.WikidataLanguageDefaults.apiLanguages()));
+        entityParams.put("format", "json");
+        JsonNode entities = get(WIKIDATA_API, entityParams).path("entities");
+
+        List<SearchResult> results = new ArrayList<>();
+        for (String qid : qids) {
+            JsonNode entity = entities.path(qid);
+            if (entity.isMissingNode() || entity.has("missing")) continue;
+            String label = preferredTerm(entity.path("labels"));
+            String description = preferredTerm(entity.path("descriptions"));
+            results.add(new SearchResult(qid, label.isBlank() ? qid : label,
+                    description, "https://www.wikidata.org/wiki/" + qid));
+        }
+        return new EntityTextSearchResult(Math.max(totalHits, results.size()), results);
+    }
+
+    static String exactTextPhrase(String phrase) {
+        String exact = phrase == null ? "" : phrase.strip();
+        if (exact.length() >= 2 && exact.startsWith("\"") && exact.endsWith("\"")) {
+            exact = exact.substring(1, exact.length() - 1).strip();
+        }
+        return exact;
+    }
+
+    private static String preferredTerm(JsonNode terms) {
+        String value = terms.path(wikidata.WikidataLanguageDefaults.CODE)
+                .path("value").asText("");
+        return value.isBlank() ? terms.path("mul").path("value").asText("") : value;
+    }
+
+    /** Ranked bounded hits plus the index's complete hit count. */
+    public record EntityTextSearchResult(long totalHits, List<SearchResult> hits) {
+        public EntityTextSearchResult {
+            totalHits = Math.max(0, totalHits);
+            hits = hits == null ? List.of() : List.copyOf(hits);
+        }
+
+        public boolean capped() { return totalHits > hits.size(); }
+    }
+
     public record SearchResult(
             String qid,
             String label,
