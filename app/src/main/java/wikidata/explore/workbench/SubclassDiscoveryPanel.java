@@ -92,6 +92,7 @@ final class SubclassDiscoveryPanel extends JPanel {
     private Function<WorkbenchSelections.Entity, String> onUseMembershipType =
             ignored -> "No membership editor is connected.";
     private String selectedClassName = "";
+    private GeneratedClassModel populationClass;
     private String broadTypeQid = "";
     private String broadTypeLabel = "";
     private String queriedBroadTypeQid = "";
@@ -254,6 +255,7 @@ final class SubclassDiscoveryPanel extends JPanel {
         boolean editableSource = clazz != null
                 && clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
                 && !clazz.isImported();
+        populationClass = editableSource ? clazz : null;
         EntityBound.Kind membershipKind = clazz == null
                 ? EntityBound.Kind.UNBOUNDED : clazz.membership().kind();
         boolean plainTypeMembership = clazz != null
@@ -391,12 +393,17 @@ final class SubclassDiscoveryPanel extends JPanel {
             return null;
         }
         String qid = selected.candidate().qid();
+        RuleNode classRule = populationClass == null
+                ? null : wikidata.explore.rule.RuleTreeCompiler.compileClass(populationClass);
         status.setText("Counting up to " + PreviewMembershipTypeQuery.COUNT_BOUND
                 + " members of " + qid + "; populations up to "
                 + PreviewMembershipTypeQuery.MEMBER_LIMIT
-                + " will be shown completely…");
+                + " will be shown completely"
+                + (classRule == null ? "" : ", then counting those that pass "
+                        + classRule.name() + "'s population filters")
+                + "…");
         return new PreviewMembershipTypeQuery(qid, selected.candidate().label(),
-                previewDescendants.isSelected());
+                previewDescendants.isSelected(), classRule);
     }
 
     void acceptSubtypes(List<MembershipTypeCandidate> result) {
@@ -508,8 +515,9 @@ final class SubclassDiscoveryPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         panel.add(new JLabel(previewSummary(result)), BorderLayout.NORTH);
-        List<MembershipEntityViewable> members = result.members().stream()
-                .map(MembershipEntityViewable::new).toList();
+        List<PreviewMemberViewable> members = result.members().stream()
+                .map(member -> new PreviewMemberViewable(member, result.classFilters()))
+                .toList();
         if (members.isEmpty()) {
             panel.add(new JLabel("No members found."), BorderLayout.CENTER);
         } else {
@@ -531,7 +539,28 @@ final class SubclassDiscoveryPanel extends JPanel {
                 + (result.includeSubclasses() ? " including subclasses" : " by direct P31")
                 + (complete ? "; showing all " + result.members().size() + "."
                 : "; preview limit " + PreviewMembershipTypeQuery.MEMBER_LIMIT
-                        + ", showing " + result.members().size() + ".");
+                        + ", showing " + result.members().size() + ".")
+                + classFilterSummary(result);
+    }
+
+    /** What the selected class itself would generate from this type. */
+    static String classFilterSummary(MembershipTypePreview result) {
+        MembershipTypePreview.ClassFilters filters = result.classFilters();
+        if (filters == null) return "";
+        if (!filters.checked()) {
+            return " " + filters.className() + " applies no population filter beyond its "
+                    + "type" + limitNote(filters, result.boundedCount()) + ".";
+        }
+        String kept = filters.capped() ? filters.count() + "+"
+                : Integer.toString(filters.count());
+        return " " + kept + " pass " + filters.className() + "'s population filters ("
+                + String.join("; ", filters.filters()) + ")"
+                + limitNote(filters, filters.count()) + ".";
+    }
+
+    private static String limitNote(MembershipTypePreview.ClassFilters filters, int count) {
+        return filters.classLimit() > 0 && count > filters.classLimit()
+                ? "; its class limit keeps " + filters.classLimit() : "";
     }
 
     private static String typeName(MembershipTypePreview result) {

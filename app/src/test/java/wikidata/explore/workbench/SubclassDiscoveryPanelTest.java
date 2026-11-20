@@ -304,6 +304,42 @@ class SubclassDiscoveryPanelTest {
                 .contains("preview limit 200"));
     }
 
+    @Test void previewSummaryNamesWhatTheClassItselfWouldKeepAndWhichMembersGo() {
+        List<MembershipTypeCandidate.Member> members = new ArrayList<>();
+        for (int i = 1; i <= 60; i++) {
+            members.add(new MembershipTypeCandidate.Member("Q" + i, "Episode " + i));
+        }
+        java.util.Set<String> passing = new java.util.HashSet<>();
+        for (int i = 1; i <= 16; i++) passing.add("Q" + i);
+        MembershipTypePreview result = new MembershipTypePreview(
+                "Q63143903", "episode in Greek mythology", false, 60, false, members,
+                new MembershipTypePreview.ClassFilters("Episode",
+                        List.of("English Wikipedia article required"), 200, 16, false,
+                        passing));
+
+        String summary = SubclassDiscoveryPanel.previewSummary(result);
+
+        assertTrue(summary.contains("60 member(s) by direct P31; showing all 60."), summary);
+        assertTrue(summary.contains("16 pass Episode's population filters "
+                + "(English Wikipedia article required)."), summary);
+        assertEquals(PreviewMemberViewable.KEPT, new PreviewMemberViewable(
+                members.getFirst(), result.classFilters()).inClass());
+        assertEquals(PreviewMemberViewable.REMOVED, new PreviewMemberViewable(
+                members.getLast(), result.classFilters()).inClass());
+    }
+
+    @Test void previewSummaryReportsWhenTheClassLimitWouldCutTheFilteredPopulation() {
+        MembershipTypePreview result = new MembershipTypePreview(
+                "Q5", "human", false, 1000, true, List.of(),
+                new MembershipTypePreview.ClassFilters("Person",
+                        List.of("label required (en)"), 200, 1000, true,
+                        java.util.Set.of()));
+
+        assertTrue(SubclassDiscoveryPanel.previewSummary(result)
+                .contains("1000+ pass Person's population filters (label required (en)); "
+                        + "its class limit keeps 200."));
+    }
+
     private static MembershipTypeCandidate candidate(String qid, String label) {
         return new MembershipTypeCandidate(qid, label,
                 MembershipTypeCandidate.Origin.DIRECT_SUBTYPE, "Q4164871",
