@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The overlay: manual overrides, rules/external only fill absent fields, and the
@@ -169,51 +170,31 @@ class CorrectionsTest {
         assertEquals("421", loaded.sourceId());
     }
 
-    @Test void fieldSourceRecipeRoundTripsAndReplacesItsOwnProvider(@TempDir Path dir)
+    /** Category evidence used to be a Transform curation override. It is authored only
+     * in ModelBuilder now: an old sidecar must neither shadow the model nor survive the
+     * next save as apparently live configuration. */
+    @Test void legacyCategoryOverridesAreRetiredAtTheSidecarBoundary(@TempDir Path dir)
             throws Exception {
         File file = dir.resolve("movies.curation.json").toFile();
-        ManualCuration curation = new ManualCuration(file);
-        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
-                "Movies", "locations", "Films set in <value>",
-                wikidata.explore.model.CategoryCandidatePolicy.REVIEW));
-        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
-                "Movies", "locations", "Films shot in <value>",
-                wikidata.explore.model.CategoryCandidatePolicy.EVIDENCE_ONLY));
-        curation.save();
+        java.nio.file.Files.writeString(file.toPath(), """
+                {
+                  "sourceRecipes" : [ {
+                    "type" : "Movies",
+                    "field" : "locations",
+                    "provider" : "wikipedia-category",
+                    "parameters" : {
+                      "pattern" : "Films set in <value>",
+                      "policy" : "REVIEW"
+                    }
+                  } ]
+                }
+                """);
 
         ManualCuration loaded = new ManualCuration(file).load();
-        assertEquals(1, loaded.sourceRecipes().size());
-        FieldSourceRecipe reloaded = loaded.sourceRecipe(
-                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY);
-        assertEquals("Films shot in <value>", reloaded.parameter(FieldSourceRecipe.PATTERN));
-        assertEquals("Films shot in <value>", reloaded.categoryRule().pattern());
-        assertEquals(wikidata.explore.model.CategoryCandidatePolicy.EVIDENCE_ONLY,
-                reloaded.categoryRule().policy());
-    }
-
-    @Test void aRecipeWithAnUnreadablePolicyStaysReadableAsTheReviewedDefault() {
-        FieldSourceRecipe recipe = new FieldSourceRecipe(
-                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY,
-                java.util.Map.of(FieldSourceRecipe.PATTERN, "Films set in <value>",
-                        FieldSourceRecipe.POLICY, "NONSENSE"));
-
-        assertEquals(wikidata.explore.model.CategoryCandidatePolicy.REVIEW,
-                recipe.categoryRule().policy(),
-                "a hand-edited sidecar must still render; promotion is what refuses it");
-    }
-
-    @Test void removingARecipeSurvivesTheSaveBoundary(@TempDir Path dir) throws Exception {
-        File file = dir.resolve("movies.curation.json").toFile();
-        ManualCuration curation = new ManualCuration(file);
-        curation.putSourceRecipe(FieldSourceRecipe.wikipediaCategory(
-                "Movies", "locations", "Films set in <value>",
-                wikidata.explore.model.CategoryCandidatePolicy.REVIEW));
-        curation.save();
-
-        curation.removeSourceRecipe(
-                "Movies", "locations", FieldSourceRecipe.WIKIPEDIA_CATEGORY);
-        curation.save();
-
-        assertTrue(new ManualCuration(file).load().sourceRecipes().isEmpty());
+        assertTrue(loaded.sourceRecipes().isEmpty(),
+                "a retired override must not shadow the model-authored category rule");
+        loaded.save();
+        assertFalse(java.nio.file.Files.readString(file.toPath())
+                .contains("wikipedia-category"));
     }
 }

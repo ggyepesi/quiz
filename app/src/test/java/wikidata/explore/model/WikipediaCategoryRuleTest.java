@@ -33,11 +33,9 @@ class WikipediaCategoryRuleTest {
         assertEquals("Q146", rule.match("Category:Cat goddesses").valueQid());
     }
 
-    /** #463: the model rule, the provider record and the recipe parameters were converted
-     *  separately by the curation recipe and the field binding, which differed in small
-     *  ways. Both now write and read through the rule itself, so a rule saved either way
-     *  reads back the same — and an incomplete mapping is dropped the same way. */
-    @Test void theCurationRecipeAndTheFieldBindingRoundTripOneRule() {
+    /** #463: the model rule and provider record convert through the rule itself, so an
+     * incomplete exact mapping is dropped the same way on every model read. */
+    @Test void theFieldBindingRoundTripsOneModelOwnedRule() {
         WikipediaCategoryRule rule = new WikipediaCategoryRule();
         rule.pattern("<value> deities");
         rule.policy(CategoryCandidatePolicy.EVIDENCE_ONLY);
@@ -45,21 +43,25 @@ class WikipediaCategoryRuleTest {
         rule.mappings().add(new WikipediaCategoryMapping("Cat goddesses", "Q146"));
         rule.mappings().add(new WikipediaCategoryMapping("Unmapped group", ""));
 
-        var recipe = quiz.curation.FieldSourceRecipe.wikipediaCategory(
-                "EgyptianDeity", "animal", rule);
-        WikipediaCategoryRule viaRecipe = recipe.categoryRule();
+        var binding = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "EgyptianDeity", "animal",
+                        datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe(
+                        datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        datasource.wikipedia.WikipediaCategoryDiscoveryOperation.ID,
+                        rule.recipeParameters()));
         GeneratedFieldModel field = new GeneratedClassModel("EgyptianDeity").addField(
                 "animal", datasource.schema.FieldType.ENTITY, FieldCardinality.COLLECTION);
-        FieldSourceBindings.put(field, recipe.binding());
+        FieldSourceBindings.put(field, binding);
         WikipediaCategoryRule viaBinding = field.wikipediaCategoryRule();
 
-        for (WikipediaCategoryRule read : java.util.List.of(viaRecipe, viaBinding)) {
-            assertEquals(rule.pattern(), read.pattern());
-            assertEquals(rule.policy(), read.policy());
-            assertEquals(java.util.List.of(new WikipediaCategoryMapping("Cat gods", "Q146"),
-                    new WikipediaCategoryMapping("Cat goddesses", "Q146")), read.mappings());
-        }
-        assertEquals(recipe.binding().recipe().parameters(), rule.recipeParameters());
+        assertEquals(rule.pattern(), viaBinding.pattern());
+        assertEquals(rule.policy(), viaBinding.policy());
+        assertEquals(java.util.List.of(new WikipediaCategoryMapping("Cat gods", "Q146"),
+                new WikipediaCategoryMapping("Cat goddesses", "Q146")),
+                viaBinding.mappings());
+        assertEquals(binding.recipe().parameters(), rule.recipeParameters());
     }
 
     /** The forcing side: the provider record is built only by the rule's own conversion. */

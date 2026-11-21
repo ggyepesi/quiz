@@ -9,6 +9,7 @@ import wikidata.explore.model.FieldSourceType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FieldSourceRecipeCodecTest {
@@ -54,19 +55,12 @@ class FieldSourceRecipeCodecTest {
     }
 
     @Test void legacyRecipesExposeAProviderNeutralBinding() {
-        FieldSourceRecipe category = FieldSourceRecipe.wikipediaCategory(
-                "Movie", "locations", "Films set in <value>", null);
         FieldSourceRecipe infobox = FieldSourceRecipe.additionalSource(
                 "Movie", "locations", FieldSourceType.WIKIPEDIA_INFOBOX.name(),
                 "Infobox film.country", "Country");
         FieldSourceRecipe dbpedia = FieldSourceRecipe.additionalSource(
                 "Movie", "locations", FieldSourceType.DBPEDIA.name(), "country", "Country");
 
-        assertEquals("wikipedia", category.recipe().providerId());
-        assertEquals("category", category.recipe().operationId());
-        assertEquals(SourceBindingTarget.fieldValue(
-                "Movie", "locations", SourceBindingSlot.CATEGORY_EVIDENCE),
-                category.binding().target());
         assertTrue(infobox.binding().sameTarget(dbpedia.binding()),
                 "alternative providers occupy one fallback slot");
         assertEquals("wikipedia", infobox.recipe().providerId());
@@ -113,22 +107,16 @@ class FieldSourceRecipeCodecTest {
                 "Movie", "locations", "SOME_LATER_SOURCE", "whatever", "")));
     }
 
-    @Test void aCategoryRuleIsNotAnAdditionalSource() {
-        assertNull(FieldSourceRecipeCodec.mapping(FieldSourceRecipe.wikipediaCategory(
-                "Movie", "locations", "Films set in <value>", null)));
-    }
+    @Test void categoryEvidenceCannotBecomeACurationOverrideAgain() {
+        var binding = new datasource.api.SourceBinding(
+                SourceBindingTarget.fieldValue("Movie", "locations",
+                        SourceBindingSlot.CATEGORY_EVIDENCE),
+                new datasource.api.SourceRecipe("wikipedia", "category",
+                        java.util.Map.of("pattern", "Films set in <value>")));
 
-    @Test void exactCategoryMappingsSurviveTheSharedCurationRecipe() {
-        var rule = new wikidata.explore.model.WikipediaCategoryRule();
-        rule.mappings().add(new wikidata.explore.model.WikipediaCategoryMapping(
-                "Falcon deities", "Q43489"));
-
-        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaCategory(
-                "EgyptianDeity", "iconographicSymbol", rule);
-
-        assertEquals(rule.mappings(), recipe.categoryRule().mappings());
-        assertEquals("1", recipe.parameter(
-                datasource.wikipedia.WikipediaCategoryDiscoveryOperation.MAPPING_COUNT));
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> new FieldSourceRecipe(binding));
+        assertTrue(failure.getMessage().contains("ModelBuilder"));
     }
 
     /** The whole point of #108: the choice must still be there the next time the dataset

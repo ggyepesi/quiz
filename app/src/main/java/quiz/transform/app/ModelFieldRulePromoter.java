@@ -140,52 +140,10 @@ final class ModelFieldRulePromoter {
             return FieldRulePromoter.PromotionPreview.ineligible(
                     "Select a reusable source recipe.");
         }
-        if (FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
-            return inspectCategory(recipe, model);
-        }
         if (infobox(recipe)) return inspectInfobox(recipe, model);
         if (infoboxLinks(recipe)) return inspectInfoboxLinks(recipe, model);
         return FieldRulePromoter.PromotionPreview.ineligible(
                 "This source recipe cannot currently be promoted into a model field.");
-    }
-
-    private FieldRulePromoter.PromotionPreview inspectCategory(
-            FieldSourceRecipe recipe, GeneratedProjectModel model) {
-        if (!FieldSourceRecipe.WIKIPEDIA_CATEGORY.equals(recipe.provider())) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "This is not a Wikipedia category recipe.");
-        }
-        GeneratedClassModel owner = model.findClass(recipe.type());
-        GeneratedFieldModel field = findField(owner, recipe.field());
-        if (owner == null || field == null) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "The model must already declare " + recipe.type() + "." + recipe.field() + ".");
-        }
-        datasource.wikipedia.WikipediaDatasourceProvider.CategoryRule providerRule =
-                datasource.wikipedia.WikipediaDatasourceProvider.categoryRule(
-                        recipe.binding());
-        if (providerRule == null) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "Configure one <value> category pattern or at least one exact "
-                            + "category-to-QID mapping.");
-        }
-        String policy = providerRule.policy();
-        try {
-            wikidata.explore.model.CategoryCandidatePolicy.valueOf(policy);
-        } catch (RuntimeException invalid) {
-            return FieldRulePromoter.PromotionPreview.ineligible("Unknown category policy: " + policy);
-        }
-        wikidata.explore.model.WikipediaCategoryRule candidate = recipe.categoryRule();
-        wikidata.explore.model.WikipediaCategoryRule declared = field.wikipediaCategoryRule();
-        String previous = categorySummary(declared);
-        if (sameCategoryRule(declared, candidate)) {
-            return FieldRulePromoter.PromotionPreview.ineligible(
-                    "The model already contains this category recipe.");
-        }
-        return new FieldRulePromoter.PromotionPreview(true,
-                previous.isBlank() ? "Add category source recipe" : "Update category source recipe",
-                modelFile.getAbsolutePath(), recipe.type(), recipe.field(), "",
-                "Wikipedia category", "", categorySummary(candidate), false, previous);
     }
 
     private static boolean infobox(FieldSourceRecipe recipe) {
@@ -353,27 +311,6 @@ final class ModelFieldRulePromoter {
         String property = binding.recipe().parameter(FieldSourceRecipe.PROPERTY);
         return binding.recipe().providerId() + " / " + binding.recipe().operationId()
                 + (property.isBlank() ? "" : " / " + property);
-    }
-
-    private static boolean sameCategoryRule(
-            wikidata.explore.model.WikipediaCategoryRule left,
-            wikidata.explore.model.WikipediaCategoryRule right) {
-        return left != null && right != null
-                && left.pattern().equals(right.pattern())
-                && left.policy() == right.policy()
-                && new java.util.HashSet<>(left.mappings())
-                        .equals(new java.util.HashSet<>(right.mappings()));
-    }
-
-    private static String categorySummary(
-            wikidata.explore.model.WikipediaCategoryRule rule) {
-        if (rule == null || !rule.configured()) return "";
-        java.util.List<String> parts = new java.util.ArrayList<>();
-        if (rule.patternConfigured()) parts.add(rule.pattern());
-        if (!rule.mappings().isEmpty()) {
-            parts.add(rule.mappings().size() + " exact mapping(s)");
-        }
-        return String.join(" + ", parts);
     }
 
     private FieldRulePromoter.PromotionPreview inspect(
