@@ -22,9 +22,11 @@ final class WikipediaLinkedReferenceResolver {
 
     record Match(Viewable candidate, Link link) { }
 
-    record Resolution(List<Match> matches, int resolvedLinks) {
+    record Resolution(List<Match> matches, int resolvedLinks, List<Link> unresolvedLinks) {
         Resolution {
             matches = matches == null ? List.of() : List.copyOf(matches);
+            unresolvedLinks = unresolvedLinks == null
+                    ? List.of() : List.copyOf(unresolvedLinks);
         }
     }
 
@@ -73,39 +75,44 @@ final class WikipediaLinkedReferenceResolver {
             java.util.function.BiPredicate<Link, Viewable> admissible)
             throws Exception {
         if (links == null || links.isEmpty() || byQid.isEmpty()) {
-            return new Resolution(List.of(), 0);
+            return new Resolution(List.of(), 0,
+                    links == null ? List.of() : links);
         }
         java.util.function.BiPredicate<Link, Viewable> accepts = admissible == null
                 ? (link, candidate) -> true : admissible;
         LinkedHashMap<String, Match> matches = new LinkedHashMap<>();
-        LinkedHashMap<String, WikimediaEntityLookup.EntityRecord> lookedUp =
-                new LinkedHashMap<>();
-        int resolvedLinks = 0;
+        LinkedHashMap<Link, Viewable> directMatches = new LinkedHashMap<>();
+        java.util.ArrayList<Link> unresolved = new java.util.ArrayList<>();
         for (Link link : links) {
             if (link == null || link.targetTitle().isBlank()) continue;
             List<Viewable> direct = byArticleTitle.getOrDefault(
                     key(link.targetTitle()), List.of()).stream()
                     .filter(candidate -> accepts.test(link, candidate)).toList();
-            Viewable candidate = direct.size() == 1 ? direct.getFirst() : null;
-            if (candidate == null && lookup != null) {
-                WikimediaEntityLookup.EntityRecord entity = lookedUp.get(link.targetTitle());
-                if (!lookedUp.containsKey(link.targetTitle())) {
-                    entity = lookup.byWikipediaTitle(link.targetTitle()).execute(context);
-                    lookedUp.put(link.targetTitle(), entity);
-                }
-                if (entity != null) {
-                    candidate = byQid.get(entity.qid());
-                    if (candidate != null && !accepts.test(link, candidate)) {
-                        candidate = null;
-                    }
-                }
+            if (direct.size() == 1) directMatches.put(link, direct.getFirst());
+            else unresolved.add(link);
+        }
+        Map<String, String> resolvedTitles = lookup == null || unresolved.isEmpty()
+                ? Map.of() : lookup.qidsByWikipediaTitles(unresolved.stream()
+                        .map(Link::targetTitle).distinct().toList()).execute(context);
+        int resolvedLinks = 0;
+        java.util.ArrayList<Link> unresolvedLinks = new java.util.ArrayList<>();
+        for (Link link : links) {
+            if (link == null || link.targetTitle().isBlank()) continue;
+            Viewable candidate = directMatches.get(link);
+            if (candidate == null) {
+                String resolvedQid = resolvedTitles.get(link.targetTitle());
+                candidate = resolvedQid == null ? null : byQid.get(resolvedQid);
+                if (candidate != null && !accepts.test(link, candidate)) candidate = null;
             }
             if (candidate != null) {
                 resolvedLinks++;
                 matches.putIfAbsent(candidate.getIdentifier(), new Match(candidate, link));
+            } else {
+                unresolvedLinks.add(link);
             }
         }
-        return new Resolution(List.copyOf(matches.values()), resolvedLinks);
+        return new Resolution(List.copyOf(matches.values()), resolvedLinks,
+                List.copyOf(unresolvedLinks));
     }
 
     static List<Link> introductionLinks(

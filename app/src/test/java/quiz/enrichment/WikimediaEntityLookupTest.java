@@ -9,6 +9,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WikimediaEntityLookupTest {
 
+    @Test void resolvesSeveralWikipediaRedirectsWithOneRequest() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger requests =
+                new java.util.concurrent.atomic.AtomicInteger();
+        WikimediaEntityLookup lookup = new WikimediaEntityLookup(uri -> {
+            requests.incrementAndGet();
+            assertTrue(uri.toString().contains("titles=Wesir%7CRe"), uri.toString());
+            return """
+                    {"query":{
+                      "redirects":[
+                        {"from":"Wesir","to":"Osiris"},
+                        {"from":"Re","to":"Ra"}
+                      ],
+                      "pages":[
+                        {"title":"Osiris","pageprops":{"wikibase_item":"Q46491"}},
+                        {"title":"Ra","pageprops":{"wikibase_item":"Q2831"}}
+                      ]
+                    }}
+                    """;
+        });
+
+        var resolved = lookup.qidsByWikipediaTitles(java.util.List.of("Wesir", "Re"))
+                .execute(new QueryContext());
+
+        assertEquals(1, requests.get(), "titles share one batch request");
+        assertEquals("Q46491", resolved.get("Wesir"));
+        assertEquals("Q2831", resolved.get("Re"));
+    }
+
     @Test void readsSeveralEntitiesWithOneRequest() throws Exception {
         java.util.concurrent.atomic.AtomicInteger requests =
                 new java.util.concurrent.atomic.AtomicInteger();

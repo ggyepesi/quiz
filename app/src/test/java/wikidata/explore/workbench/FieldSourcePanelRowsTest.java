@@ -104,6 +104,48 @@ class FieldSourcePanelRowsTest {
                 reopened.infoboxEvidenceKeyField().getText());
     }
 
+    @Test void aReferenceCollectionCanPersistArticleTableColumnLinkEvidence() {
+        GeneratedFieldModel members = field("members", FieldType.ENTITY,
+                FieldProductionKind.AUTO, "Deity");
+        members.cardinality(FieldCardinality.COLLECTION);
+        GeneratedProjectModel project = projectContaining(members, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(members);
+
+        JComboBox<?> candidates = comboContainingLabel(panel,
+                "Loaded target instances linked from one article table column");
+        selectLabel(candidates,
+                "Loaded target instances linked from one article table column");
+        panel.tableEvidenceSectionField().setText("Description > List of names");
+        panel.tableEvidenceNameField().setText("Assessors");
+        panel.tableEvidenceColumnField().setText("Name of the deity");
+        assertTrue(visibleRowLabels(panel).contains("Article section path:"));
+        assertTrue(visibleRowLabels(panel).contains("Table caption/name:"));
+        assertTrue(visibleRowLabels(panel).contains("Table column:"));
+        button(panel, "Apply field source").doClick();
+
+        var binding = wikidata.explore.model.FieldSourceBindings.binding(members,
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var spec = datasource.wikipedia.WikipediaDatasourceProvider
+                .articleTableColumnLinks(binding);
+        assertEquals("Description > List of names", spec.sectionPath());
+        assertEquals("Assessors", spec.table());
+        assertEquals("Name of the deity", spec.column());
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(members);
+        assertEquals("Loaded target instances linked from one article table column",
+                comboContainingLabel(reopened,
+                        "Loaded target instances linked from one article table column")
+                        .getSelectedItem().toString());
+        assertEquals("Description > List of names",
+                reopened.tableEvidenceSectionField().getText());
+        assertEquals("Assessors", reopened.tableEvidenceNameField().getText());
+        assertEquals("Name of the deity", reopened.tableEvidenceColumnField().getText());
+    }
+
     @Test void oneTextValueCanPersistBoundedWikipediaArticlePassages() {
         GeneratedFieldModel narrative = field("narrativeText", FieldType.TEXT,
                 FieldProductionKind.AUTO, "");

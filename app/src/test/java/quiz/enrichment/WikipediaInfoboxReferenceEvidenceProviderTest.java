@@ -65,8 +65,8 @@ class WikipediaInfoboxReferenceEvidenceProviderTest {
         WikipediaInfoboxReferenceEvidenceProvider provider =
                 new WikipediaInfoboxReferenceEvidenceProvider(
                         "Rendered.Parents", List.of(osiris), uri -> """
-                        {"entities":{"Q46491":{"id":"Q46491",
-                        "labels":{"en":{"language":"en","value":"Osiris"}}}}}
+                        {"query":{"pages":[{"title":"Osiris",
+                        "pageprops":{"wikibase_item":"Q46491"}}]}}
                         """);
 
         EnrichmentProposal proposal = provider.discover(request(List.of(), infobox))

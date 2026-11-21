@@ -51,6 +51,8 @@ public class FieldSourcePanel extends JPanel {
         NONE("None"),
         INTRODUCTION_MENTIONS("Loaded target instances mentioned in the introduction"),
         INFOBOX_ROW_LINKS("Loaded target instances linked from a rendered infobox row"),
+        TABLE_COLUMN_LINKS(
+                "Loaded target instances linked from one article table column"),
         ARTICLE_PASSAGES("Bounded passages from the full article"),
         ARTICLE_PASSAGE_INSTANCES(
                 "One target instance per bounded article passage");
@@ -62,6 +64,9 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<CandidateEvidenceChoice> candidateEvidenceBox =
             new JComboBox<>(CandidateEvidenceChoice.values());
     private final JTextField infoboxEvidenceKeyField = new JTextField(24);
+    private final JTextField tableEvidenceSectionField = new JTextField(28);
+    private final JTextField tableEvidenceNameField = new JTextField(24);
+    private final JTextField tableEvidenceColumnField = new JTextField(24);
     private final JComboBox<String> passageTextFieldBox = new JComboBox<>();
     private final JComboBox<String> passageSourceFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
@@ -88,6 +93,9 @@ public class FieldSourcePanel extends JPanel {
     private FormRow passageTextFieldRow;
     private FormRow passageSourceFieldRow;
     private FormRow infoboxEvidenceKeyRow;
+    private FormRow tableEvidenceSectionRow;
+    private FormRow tableEvidenceNameRow;
+    private FormRow tableEvidenceColumnRow;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -671,6 +679,18 @@ public class FieldSourcePanel extends JPanel {
         return infoboxEvidenceKeyField;
     }
 
+    javax.swing.JTextField tableEvidenceSectionField() {
+        return tableEvidenceSectionField;
+    }
+
+    javax.swing.JTextField tableEvidenceNameField() {
+        return tableEvidenceNameField;
+    }
+
+    javax.swing.JTextField tableEvidenceColumnField() {
+        return tableEvidenceColumnField;
+    }
+
     javax.swing.JComboBox<String> passageSourceFieldBox() {
         return passageSourceFieldBox;
     }
@@ -1003,6 +1023,9 @@ public class FieldSourcePanel extends JPanel {
         datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                 passageSpec = datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstances(binding);
+        datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
+                tableSpec = datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableColumnLinks(binding);
         CandidateEvidenceChoice choice =
                 datasource.wikipedia.WikipediaDatasourceProvider
                         .articleIntroductionMentions(binding)
@@ -1010,6 +1033,9 @@ public class FieldSourcePanel extends JPanel {
                 : datasource.wikipedia.WikipediaDatasourceProvider
                         .infoboxRowLinkOperation(binding)
                 ? CandidateEvidenceChoice.INFOBOX_ROW_LINKS
+                : datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableColumnLinkOperation(binding)
+                ? CandidateEvidenceChoice.TABLE_COLUMN_LINKS
                 : datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
@@ -1019,6 +1045,9 @@ public class FieldSourcePanel extends JPanel {
                 : CandidateEvidenceChoice.NONE;
         infoboxEvidenceKeyField.setText(choice == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
                 && binding != null ? binding.recipe().parameter("property") : "");
+        tableEvidenceSectionField.setText(tableSpec == null ? "" : tableSpec.sectionPath());
+        tableEvidenceNameField.setText(tableSpec == null ? "" : tableSpec.table());
+        tableEvidenceColumnField.setText(tableSpec == null ? "" : tableSpec.column());
         refreshPassageInstanceFields(passageSpec);
         candidateEvidenceBox.setSelectedItem(choice);
         refreshCandidateEvidenceApplicability();
@@ -1082,6 +1111,10 @@ public class FieldSourcePanel extends JPanel {
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
         applicable(infoboxEvidenceKeyRow,
                 selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS);
+        boolean tableColumn = selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS;
+        applicable(tableEvidenceSectionRow, tableColumn);
+        applicable(tableEvidenceNameRow, tableColumn);
+        applicable(tableEvidenceColumnRow, tableColumn);
         applicable(passageTextFieldRow, passageInstances);
         applicable(passageSourceFieldRow, passageInstances);
         passageTextFieldBox.setEnabled(referenceCollection);
@@ -1100,6 +1133,8 @@ public class FieldSourcePanel extends JPanel {
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .infoboxRowLinkOperation(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableColumnLinkOperation(existing)
+                || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(existing);
@@ -1112,6 +1147,9 @@ public class FieldSourcePanel extends JPanel {
                             .ARTICLE_INTRODUCTION_MENTIONS;
             case INFOBOX_ROW_LINKS ->
                     datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_ROW_LINKS;
+            case TABLE_COLUMN_LINKS ->
+                    datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_TABLE_COLUMN_LINKS;
             case ARTICLE_PASSAGES ->
                     datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_PASSAGES;
@@ -1130,6 +1168,14 @@ public class FieldSourcePanel extends JPanel {
                         selectedText(passageSourceFieldBox))
                 : selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
                 ? java.util.Map.of("property", infoboxEvidenceKeyField.getText().trim())
+                : selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS
+                ? java.util.Map.of(
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_SECTION,
+                        tableEvidenceSectionField.getText().trim(),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_NAME,
+                        tableEvidenceNameField.getText().trim(),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_COLUMN,
+                        tableEvidenceColumnField.getText().trim())
                 : java.util.Map.of();
         String existingOperation = existing == null ? "" : existing.recipe().operationId();
         java.util.Map<String, String> existingParameters = existing == null
@@ -1424,6 +1470,18 @@ public class FieldSourcePanel extends JPanel {
                         + "Rendered.Parents.");
         infoboxEvidenceKeyRow = FormRow.add(form, c, y++,
                 "Infobox value key:", infoboxEvidenceKeyField);
+        tableEvidenceSectionField.setToolTipText(
+                "Exact heading path shown by Wikipedia Discovery, separated by >.");
+        tableEvidenceNameField.setToolTipText(
+                "Optional exact table caption/name; blank uses matching tables in the section.");
+        tableEvidenceColumnField.setToolTipText(
+                "Exact header of the column whose links nominate loaded target instances.");
+        tableEvidenceSectionRow = FormRow.add(form, c, y++,
+                "Article section path:", tableEvidenceSectionField);
+        tableEvidenceNameRow = FormRow.add(form, c, y++,
+                "Table caption/name:", tableEvidenceNameField);
+        tableEvidenceColumnRow = FormRow.add(form, c, y++,
+                "Table column:", tableEvidenceColumnField);
         passageTextFieldRow = FormRow.add(form, c, y++,
                 "Passage goes into:", passageTextFieldBox);
         passageSourceFieldRow = FormRow.add(form, c, y++,

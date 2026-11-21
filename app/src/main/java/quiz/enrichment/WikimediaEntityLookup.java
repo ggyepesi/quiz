@@ -10,6 +10,7 @@ import work.QueryContext;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -175,6 +176,142 @@ public final class WikimediaEntityLookup {
             }
             @Override public int rowCount(EntityRecord result) { return result == null ? 0 : 1; }
         };
+    }
+
+    /**
+     * Resolves Wikipedia titles in the configured language to Wikidata QIDs in
+     * API-sized batches. The MediaWiki query supplies normalized and redirect mappings,
+     * so callers receive an answer under the exact title they asked for rather than
+     * having to guess the final article title.
+     */
+    public Query<Map<String, String>> qidsByWikipediaTitles(Collection<String> titles) {
+        List<String> requested = titles == null ? List.of() : titles.stream()
+                .filter(java.util.Objects::nonNull).map(String::trim)
+                .filter(value -> !value.isBlank()).distinct().toList();
+        return new Query<>() {
+            @Override public String purpose() {
+                return "Resolve Wikipedia links to Wikidata entities";
+            }
+
+            @Override public String skeleton() {
+                return WikidataLanguageDefaults.wikipediaSite()
+                        + " pageprops in batches of 50, following redirects";
+            }
+
+            @Override public String queryType() { return "Wikipedia API"; }
+
+            @Override public String description() {
+                return "Resolve linked article titles without one request per link";
+            }
+
+            @Override public Map<String, String> parameters() {
+                return Map.of("titles", Integer.toString(requested.size()),
+                        "batchSize", "50");
+            }
+
+            @Override public Map<String, String> execute(QueryContext context)
+                    throws Exception {
+                if (requested.isEmpty()) return Map.of();
+                List<batch.WorkUnit<Map<String, String>>> units = new ArrayList<>();
+                for (int from = 0; from < requested.size(); from += 50) {
+                    units.add(wikipediaTitleUnit(List.copyOf(requested.subList(
+                            from, Math.min(requested.size(), from + 50))), context));
+                }
+                LinkedHashMap<String, String> resolved = new LinkedHashMap<>();
+                new batch.BatchExecutor<Map<String, String>>(
+                        batch.BatchPolicy.defaults().withResume(false),
+                        batch.BatchProgress.NOOP)
+                        .run(units, (descriptor, result) -> resolved.putAll(result));
+                return Map.copyOf(resolved);
+            }
+
+            @Override public int rowCount(Map<String, String> result) {
+                return result == null ? 0 : result.size();
+            }
+
+            @Override public String summary(Map<String, String> result) {
+                int count = rowCount(result);
+                return count + " of " + requested.size()
+                        + " Wikipedia title(s) resolved to Wikidata entities";
+            }
+        };
+    }
+
+    private batch.WorkUnit<Map<String, String>> wikipediaTitleUnit(
+            List<String> titles, QueryContext context) {
+        URI uri = wikipediaTitleUri(titles);
+        return new batch.WorkUnit<>() {
+            @Override public batch.WorkDescriptor descriptor() {
+                String joined = String.join("|", titles);
+                return new batch.WorkDescriptor("wikipedia-title-qids",
+                        "wikipedia-title-qids:" + joined,
+                        "Resolve " + titles.size() + " Wikipedia title(s)",
+                        Map.of("titles", joined));
+            }
+
+            @Override public String request() { return uri.toString(); }
+
+            @Override public Map<String, String> execute() throws Exception {
+                return context.step("Resolve " + titles.size() + " Wikipedia title(s)",
+                        "Wikipedia API", "pageprops.wikibase_item + redirects",
+                        Map.of("titles", Integer.toString(titles.size())), step -> {
+                            step.request(uri.toString());
+                            Map<String, String> result = parseWikipediaTitleQids(
+                                    MAPPER.readTree(fetcher.fetch(uri)), titles);
+                            step.summary(result.size() + " of " + titles.size()
+                                    + " title(s) resolved");
+                            return result;
+                        });
+            }
+
+            @Override public List<? extends batch.WorkUnit<Map<String, String>>> split() {
+                if (titles.size() < 2) return List.of();
+                int middle = titles.size() / 2;
+                return List.of(
+                        wikipediaTitleUnit(titles.subList(0, middle), context),
+                        wikipediaTitleUnit(titles.subList(middle, titles.size()), context));
+            }
+        };
+    }
+
+    static Map<String, String> parseWikipediaTitleQids(
+            JsonNode root, List<String> requested) {
+        LinkedHashMap<String, String> aliases = new LinkedHashMap<>();
+        for (JsonNode normalized : root.path("query").path("normalized")) {
+            aliases.put(normalized.path("from").asText(""),
+                    normalized.path("to").asText(""));
+        }
+        for (JsonNode redirect : root.path("query").path("redirects")) {
+            aliases.put(redirect.path("from").asText(""),
+                    redirect.path("to").asText(""));
+        }
+        LinkedHashMap<String, String> pages = new LinkedHashMap<>();
+        for (JsonNode page : root.path("query").path("pages")) {
+            if (page.path("missing").asBoolean(false)) continue;
+            String title = page.path("title").asText("");
+            String qid = page.path("pageprops").path("wikibase_item").asText("");
+            if (!title.isBlank() && WikidataIds.isQid(qid)) pages.put(title, qid);
+        }
+        LinkedHashMap<String, String> result = new LinkedHashMap<>();
+        for (String requestedTitle : requested == null ? List.<String>of() : requested) {
+            String actual = requestedTitle;
+            for (int hop = 0; hop < 8 && aliases.containsKey(actual); hop++) {
+                actual = aliases.get(actual);
+            }
+            String qid = pages.get(actual);
+            if (WikidataIds.isQid(qid)) result.put(requestedTitle, qid);
+        }
+        return Map.copyOf(result);
+    }
+
+    private static URI wikipediaTitleUri(List<String> titles) {
+        String joined = String.join("|", titles == null ? List.of() : titles);
+        String encoded = java.net.URLEncoder.encode(joined,
+                java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+        return URI.create("https://" + WikidataLanguageDefaults.CODE
+                + ".wikipedia.org/w/api.php?action=query"
+                + "&prop=pageprops&ppprop=wikibase_item&redirects=1"
+                + "&format=json&formatversion=2&titles=" + encoded);
     }
 
     /** Resolve the English labels of properties/entities (P- or Q-ids) in one

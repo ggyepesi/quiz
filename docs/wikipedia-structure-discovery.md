@@ -89,6 +89,27 @@ source structure. It neither interprets the values nor creates or saves a Transf
 Coverage always uses the explicit selected article count as its denominator. Failed or
 missing articles remain visible rather than silently shrinking the population.
 
+## Configured table-column link evidence
+
+A reference-list field may explicitly configure the Wikipedia datasource operation
+`article-table-column-links` in its candidate-evidence slot. Its parameters are:
+
+- the exact section heading path shown by Wikipedia Discovery;
+- an optional exact table caption/name; and
+- the exact column header whose retained links are candidates.
+
+Execution reads the retained `WikipediaArticle` hierarchy, including row and column spans. It
+does not search flattened article text and does not assign meaning to an unconfigured table.
+The selected links may propose only already-loaded instances of the field's declared target
+class. Unlinked cell text and links to unloaded entities are reported but create no identity.
+Every proposal retains the article revision, structural location and cell text and requires
+explicit review in TransformApp.
+
+This operation is additive evidence beside the field's primary source. For example,
+`DeityGroup.members` can keep its Wikidata relation routes as primary values while a configured
+column of the Assessors of Maat article proposes additional loaded `EgyptianDeity` members.
+The two sources are not merged into an order-dependent primary-source rule.
+
 ## Boundary
 
 - No article-link crawl.

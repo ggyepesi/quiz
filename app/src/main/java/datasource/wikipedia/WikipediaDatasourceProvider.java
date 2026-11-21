@@ -32,6 +32,13 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String FAMILY_INFOBOX_FIELD = "wikipedia-infobox-field";
     /** Links retained in one rendered infobox row, proposed as typed references. */
     public static final String INFOBOX_ROW_LINKS = "infobox-row-links";
+    /** Links from one explicitly selected column of a retained article table. */
+    public static final String ARTICLE_TABLE_COLUMN_LINKS = "article-table-column-links";
+    public static final String FAMILY_ARTICLE_TABLE_COLUMN_LINKS =
+            "wikipedia-article-table-column-links";
+    public static final String TABLE_SECTION = "section";
+    public static final String TABLE_NAME = "table";
+    public static final String TABLE_COLUMN = "column";
     /** The article's lead text, without later sections. */
     public static final String ARTICLE_INTRODUCTION = "article-introduction";
     public static final String ARTICLE_TEXT_PROJECTION = "projection";
@@ -59,6 +66,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             new WikipediaCategoryDiscoveryOperation(),
             new InfoboxParameter(),
             new InfoboxRowLinks(),
+            new ArticleTableColumnLinks(),
             new ArticleIntroduction(),
             new ArticleIntroductionMentions(),
             new ArticlePassages(),
@@ -141,6 +149,63 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                             "operation", "Retain its linked Wikipedia article targets",
                             "output", "Propose loaded target-class instances for review"),
                     new InfoboxValueSpec(parameter, false), articleCorrespondence());
+        }
+    }
+
+    /** A structured table column is authored source structure, but its links still
+     * nominate references for review; they never admit or mutate model instances. */
+    private record ArticleTableColumnLinks() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_TABLE_COLUMN_LINKS; }
+        @Override public String displayName() { return "Article table-column links"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(
+                    new ParameterDescriptor(TABLE_SECTION, "Section path",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Exact heading path shown by Wikipedia Discovery, separated by >."),
+                    new ParameterDescriptor(TABLE_NAME, "Table caption or name",
+                            ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                            "Optional exact table caption/name; blank uses every matching table in the section."),
+                    new ParameterDescriptor(TABLE_COLUMN, "Column header",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Exact header of the column whose retained links are reviewed."));
+        }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(
+                    SourceValueKind.ENTITY_REFERENCE, datasource.EntityRef.WIKIDATA);
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            ArticleTableColumnLinkSpec spec = new ArticleTableColumnLinkSpec(
+                    binding.recipe().parameter(TABLE_SECTION),
+                    binding.recipe().parameter(TABLE_NAME),
+                    binding.recipe().parameter(TABLE_COLUMN));
+            return new PreparedSourceOperation(FAMILY_ARTICLE_TABLE_COLUMN_LINKS,
+                    "Wikipedia article table-column links",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review typed links from " + spec.description(),
+                    java.util.Map.of(
+                            "input", "One retained versioned structured Wikipedia article per selected member",
+                            "operation", "Select the configured section, table and column without reparsing flattened text",
+                            "output", "Propose links that resolve to loaded instances of the field's target class"),
+                    spec, articleCorrespondence());
+        }
+    }
+
+    public record ArticleTableColumnLinkSpec(
+            String sectionPath, String table, String column) {
+        public ArticleTableColumnLinkSpec {
+            sectionPath = sectionPath == null ? "" : sectionPath.trim();
+            table = table == null ? "" : table.trim();
+            column = column == null ? "" : column.trim();
+        }
+        public boolean configured() {
+            return !sectionPath.isBlank() && !column.isBlank();
+        }
+        public String description() {
+            return "section ‘" + sectionPath + "’"
+                    + (table.isBlank() ? "" : ", table ‘" + table + "’")
+                    + ", column ‘" + column + "’";
         }
     }
 
@@ -364,6 +429,28 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         SourceRecipe recipe = binding.recipe();
         return recipe != null && ID.equals(recipe.providerId())
                 && INFOBOX_ROW_LINKS.equals(recipe.operationId());
+    }
+
+    public static ArticleTableColumnLinkSpec articleTableColumnLinks(
+            SourceBinding binding) {
+        if (!articleTableColumnLinkOperation(binding)) return null;
+        SourceRecipe recipe = binding.recipe();
+        ArticleTableColumnLinkSpec spec = new ArticleTableColumnLinkSpec(
+                recipe.parameter(TABLE_SECTION), recipe.parameter(TABLE_NAME),
+                recipe.parameter(TABLE_COLUMN));
+        return spec.configured() ? spec : null;
+    }
+
+    /** Whether this is the operation, including an incomplete recipe the editor shows. */
+    public static boolean articleTableColumnLinkOperation(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_TABLE_COLUMN_LINKS.equals(recipe.operationId());
     }
 
     public static boolean articleIntroduction(SourceBinding binding) {
