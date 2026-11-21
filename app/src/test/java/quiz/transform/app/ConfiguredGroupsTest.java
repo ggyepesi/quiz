@@ -66,6 +66,23 @@ class ConfiguredGroupsTest {
         assertEquals(List.of(fixture.member()), List.copyOf(binding.root().getMembers()));
     }
 
+    @Test void aLoadedDomainCanFindTheExistingGroupClassAdapter() {
+        Fixture fixture = fixture();
+        List<objectview.viewconfig.DomainGroupRoot> roots = ConfiguredGroups.rootBindings(
+                fixture.model(), List.of(fixture.group(), fixture.member()));
+
+        ConfiguredGroups.Binding binding = ConfiguredGroups.bindingForGroupClass(
+                roots, "DeityGroup");
+
+        assertNotNull(binding);
+        assertEquals("Deity", binding.memberClass());
+        objectview.group.ViewableGroup<?> ennead =
+                binding.root().getChildren().iterator().next();
+        assertEquals(fixture.group(), ennead.getKeyRef(),
+                "selecting a group node selects its configured group entity");
+        assertEquals(List.of(fixture.member()), List.copyOf(ennead.getMembers()));
+    }
+
     @Test void equallyNamedConfiguredClassNodesKeepTheirModelIdentity() {
         Fixture fixture = fixture();
         GeneratedClassModel second = new GeneratedClassModel("OtherDeityGroup");

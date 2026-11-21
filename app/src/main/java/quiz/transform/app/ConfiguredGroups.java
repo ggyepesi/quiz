@@ -67,9 +67,41 @@ public final class ConfiguredGroups {
                     ? groupClass.className() : groupClass.declarationId();
             result.add(new Binding(groupClass.className(), memberField.entityClassName(),
                     new ConfiguredClassGroup(
-                            identity, rootName(groupClass), groups, allMembers)));
+                            identity, rootName(groupClass), groupClass.className(),
+                            memberField.entityClassName(), groups, allMembers)));
         }
         return List.copyOf(result);
+    }
+
+    /** The already-materialized configured group-class root in a loaded domain. This
+     * is the one discovery path for consumers that show a group class itself: they must
+     * not reinterpret its member field or rebuild another group adapter. */
+    public static Binding bindingForGroupClass(
+            Collection<objectview.viewconfig.DomainGroupRoot> roots,
+            String groupClass) {
+        if (roots == null || groupClass == null || groupClass.isBlank()) return null;
+        java.util.Set<ViewableGroup<?>> seen = java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<>());
+        for (objectview.viewconfig.DomainGroupRoot root : roots) {
+            Binding found = findBinding(root == null ? null : root.root(), groupClass, seen);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private static Binding findBinding(
+            ViewableGroup<?> group, String groupClass,
+            java.util.Set<ViewableGroup<?>> seen) {
+        if (group == null || !seen.add(group)) return null;
+        if (group instanceof ConfiguredClassGroup configured
+                && groupClass.equals(configured.groupClass)) {
+            return new Binding(configured.groupClass, configured.memberClass, configured);
+        }
+        for (ViewableGroup<?> child : group.getChildren()) {
+            Binding found = findBinding(child, groupClass, seen);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     /**
@@ -175,7 +207,7 @@ public final class ConfiguredGroups {
         }
         @Override public boolean isPart() { return entity.isPart(); }
         @Override public Role getRole() { return Role.BUCKET; }
-        @Override public Viewable getKeyRef() { return null; }
+        @Override public Viewable getKeyRef() { return entity; }
         @Override public Collection<? extends ViewableGroup<Viewable>> getChildren() {
             return List.of();
         }
@@ -215,14 +247,18 @@ public final class ConfiguredGroups {
             implements ViewableGroup<Viewable>, ConfiguredGroup {
         private final String identity;
         private final String label;
+        private final String groupClass;
+        private final String memberClass;
         private final List<ViewableGroup<Viewable>> groups;
         private final List<Viewable> members;
 
         private ConfiguredClassGroup(
-                String identity, String label,
+                String identity, String label, String groupClass, String memberClass,
                 List<ViewableGroup<Viewable>> groups, List<Viewable> members) {
             this.identity = identity;
             this.label = label;
+            this.groupClass = groupClass;
+            this.memberClass = memberClass;
             this.groups = List.copyOf(groups);
             this.members = List.copyOf(members);
         }

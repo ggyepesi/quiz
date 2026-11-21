@@ -5,6 +5,7 @@ import objectview.Viewable;
 import objectview.group.DefaultViewableGroup;
 import objectview.group.ViewableGroup;
 import objectview.render.GroupMembersView;
+import objectview.render.RenderContext;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import quiz.source.WikipediaSource;
@@ -175,15 +176,20 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
             count += addStructuralFacet(root, "HTML elements", analysis.blockKinds());
         }
         String className = selection.className();
+        RenderContext groupAndMembers = new RenderContext();
+        SearchableView[] activeMembers = new SearchableView[1];
         structuralGroupsView = new GroupMembersView(root, group -> {
+            if (activeMembers[0] != null) activeMembers[0].dispose();
             JPanel members = new JPanel(new BorderLayout(4, 4));
             members.setBorder(BorderFactory.createTitledBorder(
                     group.getDisplayName() + " — " + group.getMembers().size()
                             + " matching instance(s)"));
-            members.add(selection.instanceView(new ArrayList<>(group.getMembers()), className,
-                    ignored -> { }), BorderLayout.CENTER);
+            activeMembers[0] = selection.instanceView(
+                    new ArrayList<>(group.getMembers()), className,
+                    ignored -> { }, groupAndMembers);
+            members.add(activeMembers[0], BorderLayout.CENTER);
             return members;
-        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true);
+        }, JSplitPane.HORIZONTAL_SPLIT, false, 0.28, true, groupAndMembers);
         structuralGroupsView.groups().setStatusText(count == 0
                 ? "Fetch or analyze articles to discover structural groups"
                 : "Select a read-only structural group; nothing here is saved");

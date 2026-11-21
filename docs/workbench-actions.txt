@@ -27,7 +27,7 @@
     button: Restore Order
     button: View Config...
     button: Highlight Fields
-  button: Show fields
+  button: Show group fields
   button: Show group rule  (disabled)
   button: Show type spec
   button: Add facet group
@@ -81,7 +81,7 @@
     button: Restore Order
     button: View Config...
     button: Highlight Fields
-  button: Show fields
+  button: Show group fields
   button: Show group rule  (disabled)
   button: Show type spec
   button: Show instances

@@ -1,6 +1,10 @@
 package quiz.transform.ui;
 
 import objectview.Viewable;
+import objectview.group.MultiRootGroup;
+import objectview.group.ViewableGroup;
+import objectview.render.GroupMembersView;
+import objectview.render.RenderContext;
 import objectview.view.SearchableView;
 import wikidata.explore.extract.WikidataDynamicObject;
 
@@ -67,6 +71,7 @@ public final class BoundedInstanceSelection {
     private List<WikidataDynamicObject> selectedInSample = List.of();
     private SearchableView instancesView;
     private SearchableView selectedView;
+    private quiz.transform.app.ConfiguredGroups.Binding configuredGroupClass;
     /** The sources whose work over the selection is running now. */
     private final java.util.Set<Object> running = new java.util.HashSet<>();
 
@@ -195,7 +200,22 @@ public final class BoundedInstanceSelection {
     /** An ObjectView of instances of {@code className}, rendered with its schema. */
     public SearchableView instanceView(List<? extends Viewable> values, String className,
             java.util.function.Consumer<List<Viewable>> selection) {
-        return SearchableView.builder(values)
+        return instanceView(values, className, selection, null);
+    }
+
+    /** As {@link #instanceView(List, String, java.util.function.Consumer)}, using the
+     * host's render context so references in a neighbouring group card navigate to these
+     * top-level instance cards. */
+    public SearchableView instanceView(List<? extends Viewable> values, String className,
+            java.util.function.Consumer<List<Viewable>> selection,
+            RenderContext renderContext) {
+        return instanceView(values, className, selection, renderContext, true);
+    }
+
+    private SearchableView instanceView(List<? extends Viewable> values, String className,
+            java.util.function.Consumer<List<Viewable>> selection,
+            RenderContext renderContext, boolean searchControls) {
+        SearchableView.Builder builder = SearchableView.builder(values)
                 .sample(className == null ? null : domain.configSample(className))
                 .hiddenFields(className == null ? java.util.Set.of()
                         : domain.structuralFields(className))
@@ -203,15 +223,19 @@ public final class BoundedInstanceSelection {
                 .fieldSchemas(value -> domain.renderedFieldSchema(value, className))
                 .typeSchemas(domain::fieldSchema)
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
-                .selectionSetListener(chosen -> {
+                .renderContext(renderContext)
+                .inlineControls(searchControls)
+                .collapsible(true);
+        if (selection != null) {
+            builder.selectionSetListener(chosen -> {
                     selection.accept(chosen.stream()
                             .filter(Viewable.class::isInstance)
                             .map(Viewable.class::cast).toList());
                     updateControls();
                     host.updateActions();
-                })
-                .collapsible(true)
-                .build();
+                });
+        }
+        return builder.build();
     }
 
     private void showType(String className) {
@@ -219,9 +243,29 @@ public final class BoundedInstanceSelection {
         selected.clear();
         selectedInClass = List.of();
         selectedInSample = List.of();
-        instancesView = instanceView(classMembers, className,
-                values -> selectedInClass = dynamic(values));
-        replace(instancesHolder, instancesView);
+        configuredGroupClass = quiz.transform.app.ConfiguredGroups.bindingForGroupClass(
+                domain.domain().groupRootBindings(), className);
+        if (configuredGroupClass == null) {
+            instancesView = instanceView(classMembers, className,
+                    values -> selectedInClass = dynamic(values));
+            replace(instancesHolder, instancesView);
+        } else {
+            ViewableGroup<?> groupRoot = groupRoot(configuredGroupClass, classMembers,
+                    configuredGroupClass.root().getDisplayName());
+            if (groupRoot == null) {
+                // A malformed binding must not make its class uninspectable. Validation
+                // reports the mismatch; the ordinary instance view remains usable.
+                configuredGroupClass = null;
+                instancesView = instanceView(classMembers, className,
+                        values -> selectedInClass = dynamic(values));
+                replace(instancesHolder, instancesView);
+            } else {
+                instancesView = null;
+                replace(instancesHolder, groupClassView(groupRoot,
+                        configuredGroupClass.memberClass(),
+                        values -> selectedInClass = dynamic(values)));
+            }
+        }
         rebuildSelectedView();
         host.selectionChanged("The class changed. Select instances before fetching.");
         host.status(classMembers.size() + " " + className + " instance(s) " + eligibility
@@ -287,7 +331,8 @@ public final class BoundedInstanceSelection {
     private void removeSelectedInstances() {
         List<WikidataDynamicObject> removed = List.copyOf(selectedInSample);
         removed.forEach(selected::remove);
-        if (selectedView != null) selectedView.removeViewables(removed);
+        if (configuredGroupClass != null) rebuildSelectedView();
+        else if (selectedView != null) selectedView.removeViewables(removed);
         selectedInSample = List.of();
         tabs.setTitleAt(1, selectedTitle());
         if (!removed.isEmpty()) {
@@ -301,6 +346,17 @@ public final class BoundedInstanceSelection {
     }
 
     private void rebuildSelectedView() {
+        if (configuredGroupClass != null) {
+            selectedView = null;
+            ViewableGroup<?> root = groupRoot(configuredGroupClass,
+                    selected.values(), "Selected " + className());
+            replace(selectedHolder, root == null
+                    ? new JLabel("   No " + className() + " instances selected.")
+                    : groupClassView(root, configuredGroupClass.memberClass(),
+                            values -> selectedInSample = dynamic(values)));
+            tabs.setTitleAt(1, selectedTitle());
+            return;
+        }
         selectedView = instanceView(new ArrayList<>(selected.values()), className(),
                 values -> selectedInSample = dynamic(values));
         replace(selectedHolder, selectedView);
@@ -309,6 +365,65 @@ public final class BoundedInstanceSelection {
 
     private String selectedTitle() {
         return "Selected " + selectedNoun + " — " + selected.size();
+    }
+
+    /** One configured group-class tree beside the ordinary cards of the selected
+     * group's declared member class. The tree selects group entities for this bounded
+     * source run; the member cards are inspection/navigation targets only. */
+    private JComponent groupClassView(
+            ViewableGroup<?> root, String memberClass,
+            java.util.function.Consumer<List<Viewable>> groupSelection) {
+        RenderContext shared = new RenderContext();
+        SearchableView[] activeMembers = new SearchableView[1];
+        GroupMembersView grouped = new GroupMembersView(root, group -> {
+            if (activeMembers[0] != null) activeMembers[0].dispose();
+            activeMembers[0] = instanceView(
+                    new ArrayList<>(group.getMembers()), memberClass,
+                    null, shared, false);
+            return activeMembers[0];
+        },
+                JSplitPane.HORIZONTAL_SPLIT, false, 0.31, true, shared);
+        grouped.groups().setMultipleSelectionEnabled(true);
+        grouped.setSelectionSetHandler(groups -> {
+            List<Viewable> entities = groups.stream()
+                    .map(ViewableGroup::getKeyRef)
+                    .filter(java.util.Objects::nonNull)
+                    .map(Viewable.class::cast)
+                    .toList();
+            groupSelection.accept(entities);
+            updateControls();
+            host.updateActions();
+        });
+        grouped.groups().setStatusText(
+                "Select groups with Ctrl/Command-click; the lead group's "
+                        + memberClass + " members appear beside them");
+        grouped.selectGroup(root, true);
+        return grouped;
+    }
+
+    /** Restrict one configured group-class root to the eligible/selected group entities
+     * while preserving the already-materialized group adapters and their fields. */
+    private static ViewableGroup<?> groupRoot(
+            quiz.transform.app.ConfiguredGroups.Binding binding,
+            java.util.Collection<WikidataDynamicObject> groupEntities,
+            String label) {
+        if (binding == null) return null;
+        java.util.Set<WikidataDynamicObject> allowed = java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<>());
+        if (groupEntities != null) allowed.addAll(groupEntities);
+        List<ViewableGroup<?>> groups = new ArrayList<>();
+        for (ViewableGroup<?> group : binding.root().getChildren()) {
+            if (group.getKeyRef() instanceof WikidataDynamicObject entity
+                    && allowed.contains(entity)) {
+                groups.add(group);
+            }
+        }
+        if (groups.isEmpty()) return null;
+        java.util.Set<Viewable> seen = java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<>());
+        List<Viewable> members = groups.stream().flatMap(group -> group.getMembers().stream())
+                .map(Viewable.class::cast).filter(seen::add).toList();
+        return MultiRootGroup.container(groups, label, members);
     }
 
     private void updateControls() {
