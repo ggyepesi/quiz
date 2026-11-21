@@ -84,7 +84,7 @@ There is no packaged launcher yet; run the entry points from your IDE against th
 | | |
 |---|---|
 | `wikidata.explore.workbench.ModelBuilderMain` | the modelling workbench |
-| `quiz.datasource.app.DataSourceApp` | load identities and field values from configured external sources, then review and apply them |
+| `datasourceapp.DataSourceApp` | load identities and field values from configured external sources, then review and apply them |
 | `quiz.transform.app.TransformApp` | local grouping, transformations and manual edits over a generated snapshot |
 | `discovery.DiscoveryApp` | bounded source discovery over one instance selection, with explicit promotion of reusable findings into ModelBuilder configuration |
 | `quiz.web.ViewableServerMain` | the API for the web client — port 7070, first argument overrides |
