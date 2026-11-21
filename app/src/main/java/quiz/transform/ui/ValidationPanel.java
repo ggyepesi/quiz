@@ -94,9 +94,7 @@ public final class ValidationPanel extends JPanel {
     private final JButton fieldSourceButton = new JButton("Choose Wikidata source…");
     private final JButton fieldSourceDbpediaButton = new JButton("Choose Wikipedia fallback…");
     private final JButton wikipediaEvidenceButton = new JButton("Find text evidence…");
-    private final JButton wikipediaCategoryButton = new JButton("Configure category source…");
-    private final JButton promoteWikipediaCategoryButton = new JButton("Promote to model…");
-    private final JButton clearWikipediaCategoryButton = new JButton("Clear override");
+    private final JLabel categoryRelationLabel = new JLabel();
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
@@ -142,6 +140,7 @@ public final class ValidationPanel extends JPanel {
     // Re-render the owning view after an accepted enrichment writes a correction.
     private final Runnable onCurated;
     private final IdentityResolutionLauncher identityResolver;
+    private final WorkbenchPurpose purpose;
     private List<Viewable> drilledInstances = List.of();
     private List<Viewable> selectedCards = List.of();
     // null = ordinary field-gap drill; true/false = identified/unresolved identity drill.
@@ -160,34 +159,23 @@ public final class ValidationPanel extends JPanel {
      *  the QID so Explore makes the probe target unambiguous. */
     private record ExploreSeed(String qid, String label) {}
 
-    public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner) {
-        this(domain, null, queryRunner, null, null);
-    }
-
-    public ValidationPanel(DomainModel domain, SwingQueryRunner queryRunner, Runnable onCurated) {
-        this(domain, null, queryRunner, onCurated, null);
-    }
-
     /** Validate {@code instances} — the SHOWN view (filtered + grouped members of the
      *  selected class); null falls back to the whole domain pool. The domain is still
-     *  used for schema, field union, and curation. */
-    public ValidationPanel(DomainModel domain,
-                           Collection<? extends Viewable> instances,
-                           SwingQueryRunner queryRunner, Runnable onCurated) {
-        this(domain, instances, queryRunner, onCurated, null);
-    }
-
+     *  used for schema, field union, and curation. {@code purpose} says which
+     *  application's actions the pane offers. */
     public ValidationPanel(
             DomainModel domain,
             Collection<? extends Viewable> instances,
             SwingQueryRunner queryRunner,
             Runnable onCurated,
-            IdentityResolutionLauncher identityResolver) {
+            IdentityResolutionLauncher identityResolver,
+            WorkbenchPurpose purpose) {
         super(new BorderLayout(6, 6));
         this.domain = domain;
         this.fieldSourceChoices = new quiz.curation.FieldSourceChoices(domain);
         this.onCurated = onCurated == null ? () -> { } : onCurated;
         this.identityResolver = identityResolver;
+        this.purpose = java.util.Objects.requireNonNull(purpose);
         this.staging = CurationStaging.forCuration(curationStore());
         // Query clients have application lifetime and explicit ownership. A panel must use
         // its owner's runner rather than constructing endpoint clients it cannot close.
@@ -215,7 +203,9 @@ public final class ValidationPanel extends JPanel {
         // The Unnamed count is actionable: pressing it selects that field and switches
         // to the scope those members live in, so the report and the repair are reached
         // from the same place instead of requiring the reader to know a filter exists.
-        coverageColumns.onRepairNames(this::showUnnamedReferences);
+        if (this.purpose.showsDatasourceActions()) {
+            coverageColumns.onRepairNames(this::showUnnamedReferences);
+        }
         coverage = new ViewConfigEditor(new ViewConfig(), (Viewable) null, coverageColumns);
         coverage.setChangeListener(this::onFieldSelected);
 
@@ -227,13 +217,7 @@ public final class ValidationPanel extends JPanel {
                         + "the fallback source for values Wikidata lacks");
         fieldSourceDbpediaButton.addActionListener(e -> chooseDbpediaSourceForSelected());
         wikipediaEvidenceButton.addActionListener(e -> findWikipediaEvidence());
-        wikipediaCategoryButton.addActionListener(e -> configureWikipediaCategorySource());
-        promoteWikipediaCategoryButton.addActionListener(e -> promoteWikipediaCategorySource());
-        clearWikipediaCategoryButton.addActionListener(e -> clearWikipediaCategorySource());
-        clearWikipediaCategoryButton.setToolTipText(
-                "Drop this dataset's category override and fall back to the model's rule");
         queryRunner.registerRunButton(checkButton);
-        queryRunner.registerRunButton(wikipediaCategoryButton);
         findDataRunner.registerRunButton(checkButton);
         findDataRunner.registerRunButton(wikipediaEvidenceButton);
         exploreIdentityButton.addActionListener(e -> exploreIdentity());
@@ -299,15 +283,17 @@ public final class ValidationPanel extends JPanel {
         bar.add(new JLabel("Values:"));
         bar.add(scopeCombo);
         bar.add(status);
-        bar.add(identityStatus);
-        bar.add(showIdentifiedButton);
-        bar.add(showUnresolvedButton);
-        bar.add(showUnnamedButton);
+        if (this.purpose.showsDatasourceActions()) {
+            bar.add(identityStatus);
+            bar.add(showIdentifiedButton);
+            bar.add(showUnresolvedButton);
+            bar.add(showUnnamedButton);
+        }
         // Apply is a transaction-level action, not an action of the currently visible
         // field drill. Keep it reachable even when a filter has zero rows or the user
         // navigates to another type after staging an edit.
         bar.add(applyButton);
-        bar.add(cancelProcessButton);
+        if (this.purpose.showsDatasourceActions()) bar.add(cancelProcessButton);
 
         JPanel top = new JPanel(new BorderLayout());
         top.add(bar, BorderLayout.NORTH);
@@ -375,13 +361,13 @@ public final class ValidationPanel extends JPanel {
         remove(split);
         JPanel summary = new JPanel(
                 new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 4));
-        summary.add(new JLabel("Curating:"));
+        summary.add(new JLabel(purpose.showsDatasourceActions() ? "Loading:" : "Editing:"));
         summary.add(new JLabel(type + "." + field));
         if (scopeDescription != null && !scopeDescription.isBlank()) {
             summary.add(new JLabel("· " + scopeDescription));
         }
         summary.add(applyButton);
-        summary.add(cancelProcessButton);
+        if (purpose.showsDatasourceActions()) summary.add(cancelProcessButton);
         add(summary, BorderLayout.NORTH);
         add(instancesHolder, BorderLayout.CENTER);
         revalidate();
@@ -717,10 +703,12 @@ public final class ValidationPanel extends JPanel {
     private void populateCurateActions(JPanel target) {
         DomainField field = selectedDomainField();
         boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
+        boolean sourceActions = purpose.showsDatasourceActions();
+        boolean localActions = purpose.showsTransformActions();
 
         batchTargetLabel.setToolTipText(
                 "Click one card, or Ctrl/Cmd-click several cards, to limit batch actions");
-        target.add(headerLine(batchTargetLabel));
+        if (sourceActions) target.add(headerLine(batchTargetLabel));
 
         // Wikidata: identity is datasource-dependent, so it sits with the Wikidata source;
         // the property is what yields this field's value.
@@ -734,11 +722,12 @@ public final class ValidationPanel extends JPanel {
         }
         if (!media) {
             updateFieldSourceButton();   // "Source: population (P1082)…" or "Choose Wikidata source…"
+            makeSourceBindingsReadOnly();
             wikidata.add(headerLine(new JLabel("Property"), fieldSourceButton));
         }
-        target.add(wikidata);
+        if (sourceActions) target.add(wikidata);
 
-        if (!media) {
+        if (sourceActions && !media) {
             // Wikipedia (DBpedia) fallback: consulted only where Wikidata has no value.
             // Media has no text-property fallback (an image comes from P18, not an infobox
             // property you pick), so the fallback block is data-only.
@@ -753,10 +742,9 @@ public final class ValidationPanel extends JPanel {
             target.add(fallback);
 
             JPanel articleEvidence = titledBlock("Wikipedia article evidence");
-            updateWikipediaCategoryButtons();
+            makeCategoryRelationReadOnly();
             articleEvidence.add(headerLine(new JLabel("Category relation"),
-                    wikipediaCategoryButton, promoteWikipediaCategoryButton,
-                    clearWikipediaCategoryButton));
+                    categoryRelationLabel));
             quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
                     configuredCandidateEvidence(selectedFieldType, selectedFieldPath);
             datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
@@ -826,7 +814,7 @@ public final class ValidationPanel extends JPanel {
         // wherever the selected field HAS such references — gating it behind the
         // matching scope hid the cure from the column that reports the disease.
         int repairable = unnamedTargets().size();
-        if (repairable > 0) {
+        if (sourceActions && repairable > 0) {
             JPanel names = titledBlock("Names");
             resolveNamesButton.setText("Resolve " + repairable + " name"
                                                + (repairable == 1 ? "" : "s") + "…");
@@ -853,16 +841,19 @@ public final class ValidationPanel extends JPanel {
         checkButton.setToolTipText(media
                 ? "Fetch images for these members from Wikidata (P18) / Wikimedia Commons"
                 : "Fetch values for these members from the configured source(s)");
-        target.add(headerLine(checkButton));
+        if (sourceActions) target.add(headerLine(checkButton));
 
         // The by-hand path, kept visually separate from the source-driven load.
-        JPanel manual = titledBlock("Or set one manually");
-        manual.add(headerLine(new JLabel("Selected:"), selectedLabel));
-        if (!media) {
-            addValueButton.setVisible(field != null && field.collection());
-            manual.add(headerLine(manualValue, setValueButton, addValueButton));
+        if (localActions) {
+            JPanel manual = titledBlock("Set manually");
+            manual.setName("local.field.actions");
+            manual.add(headerLine(new JLabel("Selected:"), selectedLabel));
+            if (!media) {
+                addValueButton.setVisible(field != null && field.collection());
+                manual.add(headerLine(manualValue, setValueButton, addValueButton));
+            }
+            target.add(manual);
         }
-        target.add(manual);
 
         target.revalidate();
         target.repaint();
@@ -1317,6 +1308,62 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
+    /** DataSourceApp executes the model's saved bindings; it does not become a second
+     * field-source editor. The disabled controls name exactly what will be used, asked
+     * through the same declared bindings validation and execution read: a field whose
+     * primary source is a datasource operation is configured even with no property. */
+    private void makeSourceBindingsReadOnly() {
+        FieldKey key = new FieldKey(selectedFieldType, selectedFieldPath);
+        fieldSourceButton.setEnabled(false);
+        fieldSourceDbpediaButton.setEnabled(false);
+        fieldSourceButton.setToolTipText("Configure this field source in ModelBuilder");
+        fieldSourceDbpediaButton.setToolTipText(
+                "Configure this fallback source in ModelBuilder");
+        fieldSourceButton.setText(configuredSource(sourceFor(key),
+                declaredBinding(datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                "Source: ", "Not configured in ModelBuilder"));
+        fieldSourceDbpediaButton.setText(configuredSource(fallbackSourceFor(key),
+                declaredBinding(datasource.api.SourceBindingSlot.FALLBACK_FIELD_VALUE),
+                "Fallback: ", "No configured fallback"));
+    }
+
+    private void makeCategoryRelationReadOnly() {
+        wikidata.explore.model.WikipediaCategoryRule effective =
+                selectedFieldType == null || selectedFieldPath == null ? null
+                        : domain.wikipediaCategoryRule(selectedFieldType, selectedFieldPath);
+        categoryRelationLabel.setText(effective != null && effective.configured()
+                ? "Model: " + workbench.WikipediaCategoryRuleEditor.summary(effective)
+                : "No category relation configured");
+        categoryRelationLabel.setToolTipText("Configure category relations in ModelBuilder");
+    }
+
+    private datasource.api.SourceBinding declaredBinding(
+            datasource.api.SourceBindingSlot slot) {
+        quiz.curation.FieldRulePromoter ruleModel =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        return ruleModel == null || selectedFieldType == null || selectedFieldPath == null
+                ? null : ruleModel.declaredBinding(selectedFieldType, selectedFieldPath, slot);
+    }
+
+    /** A property mapping names its property; any other declared binding names its
+     *  registered datasource operation. Nothing configured says so. */
+    static String configuredSource(FieldSourceMapping mapping,
+            datasource.api.SourceBinding binding, String prefix, String none) {
+        if (mapping != null && !mapping.propertyPid().isBlank()) {
+            String label = mapping.propertyLabel().isBlank()
+                    ? mapping.propertyPid() : mapping.propertyLabel();
+            return prefix + label + " (" + mapping.propertyPid() + ")";
+        }
+        if (binding == null || binding.recipe() == null) return none;
+        try {
+            return prefix + binding.recipe().resolve(datasource.Datasources.standard())
+                    .displayName();
+        } catch (IllegalArgumentException unknown) {
+            return prefix + binding.recipe().providerId() + " · "
+                    + binding.recipe().operationId();
+        }
+    }
+
     /** The first missing member that carries (or resolves to) a QID — the sample entity
      *  whose properties the picker lists. */
     private ExploreSeed sampleForSourceDiscovery(quiz.curation.ManualCuration curation) {
@@ -1400,14 +1447,7 @@ public final class ValidationPanel extends JPanel {
 
     private wikidata.explore.model.WikipediaCategoryRule effectiveWikipediaCategoryRule(
             String ownerType, String field) {
-        quiz.curation.ManualCuration curation = curationStore();
-        quiz.curation.FieldSourceRecipe override = curation == null ? null
-                : curation.sourceRecipe(ownerType, field,
-                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_CATEGORY);
-        // The recipe decides what it means (FieldSourceRecipe.categoryRule); promotion
-        // reads the same one, so what is previewed here is what gets written there.
-        return override != null ? override.categoryRule()
-                : domain.wikipediaCategoryRule(ownerType, field);
+        return domain.wikipediaCategoryRule(ownerType, field);
     }
 
     /** One lookup of the model-authored candidate rule, shared by its explanation and
@@ -1470,120 +1510,6 @@ public final class ValidationPanel extends JPanel {
                         datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
         return datasource.wikipedia.WikipediaDatasourceProvider
                 .articlePassageInstances(binding);
-    }
-
-    private quiz.curation.FieldSourceRecipe wikipediaCategoryRecipe() {
-        quiz.curation.ManualCuration curation = curationStore();
-        return curation == null || selectedFieldType == null || selectedFieldPath == null
-                ? null : curation.sourceRecipe(selectedFieldType, selectedFieldPath,
-                        quiz.curation.FieldSourceRecipe.WIKIPEDIA_CATEGORY);
-    }
-
-    private void configureWikipediaCategorySource() {
-        if (selectedFieldType == null || selectedFieldPath == null) return;
-        quiz.curation.ManualCuration curation = curationStore();
-        if (curation == null) {
-            JOptionPane.showMessageDialog(this, "This domain has no curation sidecar.");
-            return;
-        }
-        List<String> qids = new ArrayList<>();
-        for (Viewable member : actionInstances()) {
-            String qid = resolvedQid(member,
-                    EnrichmentSources.collect(member, concreteType(member), curation));
-            if (isQid(qid) && !qids.contains(qid)) qids.add(qid);
-            if (qids.size() >= 12) break;
-        }
-        if (qids.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No selected/sample instance has a Wikidata identity.");
-            editWikipediaCategorySource(curation, null);
-            return;
-        }
-        workbench.WikipediaCategoryPicker.findForEntities(
-                this, queryRunner, qids, observed ->
-                        editWikipediaCategorySource(curation, observed));
-    }
-
-    private void editWikipediaCategorySource(
-            quiz.curation.ManualCuration curation, String observedCategory) {
-        wikidata.explore.model.WikipediaCategoryRule current =
-                effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
-        wikidata.explore.model.WikipediaCategoryRule edited =
-                workbench.WikipediaCategoryRuleEditor.edit(
-                        this, current, observedCategory);
-        if (edited == null) return;
-        curation.putSourceRecipe(quiz.curation.FieldSourceRecipe.wikipediaCategory(
-                selectedFieldType, selectedFieldPath, edited));
-        updateWikipediaCategoryButtons();
-        JOptionPane.showMessageDialog(this,
-                "The curation override is ready. Use Find Wikipedia evidence to preview "
-                        + "its effect; Save writes it to the curation sidecar.");
-    }
-
-    private void updateWikipediaCategoryButtons() {
-        quiz.curation.FieldSourceRecipe override = wikipediaCategoryRecipe();
-        wikidata.explore.model.WikipediaCategoryRule effective =
-                selectedFieldType == null || selectedFieldPath == null ? null
-                        : effectiveWikipediaCategoryRule(selectedFieldType, selectedFieldPath);
-        wikipediaCategoryButton.setText(effective != null && effective.configured()
-                ? (override == null ? "Model: " : "Override: ")
-                        + workbench.WikipediaCategoryRuleEditor
-                                .summary(effective) + "…"
-                : "Configure category source…");
-        boolean promotable = override != null
-                && domain.capability(quiz.curation.FieldRulePromoter.class) != null;
-        promoteWikipediaCategoryButton.setVisible(promotable);
-        promoteWikipediaCategoryButton.setEnabled(promotable);
-        clearWikipediaCategoryButton.setVisible(override != null);
-        clearWikipediaCategoryButton.setEnabled(override != null);
-    }
-
-    /** An override SHADOWS the model's rule, so without this the model can never be heard
-     *  again on this field — including the rule just promoted into it. */
-    private void clearWikipediaCategorySource() {
-        quiz.curation.ManualCuration curation = curationStore();
-        quiz.curation.FieldSourceRecipe override = wikipediaCategoryRecipe();
-        if (curation == null || override == null) return;
-        if (JOptionPane.showConfirmDialog(this,
-                "Drop the category override for " + selectedFieldType + "."
-                        + selectedFieldPath + "?\n\nThe model's own rule, if it has one, "
-                        + "applies again. Save writes the removal to the sidecar.",
-                "Clear category override", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
-        curation.removeSourceRecipe(override.type(), override.field(), override.provider());
-        updateWikipediaCategoryButtons();
-    }
-
-    private void promoteWikipediaCategorySource() {
-        quiz.curation.FieldSourceRecipe recipe = wikipediaCategoryRecipe();
-        quiz.curation.FieldRulePromoter promoter =
-                domain.capability(quiz.curation.FieldRulePromoter.class);
-        if (recipe == null || promoter == null) return;
-        quiz.curation.FieldRulePromoter.PromotionPreview preview =
-                promoter.previewPromotion(recipe);
-        if (!preview.eligible()) {
-            JOptionPane.showMessageDialog(this, preview.reason(),
-                    "Cannot promote source", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        String message = "<html><div style='width: 480px'><b>Promote category source to "
-                + preview.targetType() + "." + preview.field() + "?</b><br><br>Pattern: "
-                + recipe.parameter(quiz.curation.FieldSourceRecipe.PATTERN)
-                + "<br>Model: " + preview.modelPath() + " (Save writes it; nothing is written now)"
-                + "<br><br>The override stays until you Clear it, and keeps shadowing the "
-                + "model; future generation and enrichment will use this rule.</div></html>";
-        if (JOptionPane.showConfirmDialog(this, new JLabel(message), "Promote to ModelBuilder",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
-                != JOptionPane.OK_OPTION) return;
-        try {
-            promoter.promote(recipe);
-            updateWikipediaCategoryButtons();
-            JOptionPane.showMessageDialog(this, "Category source promoted into the working"
-                    + " model. Save to write it to " + preview.modelPath() + ".");
-        } catch (Exception failure) {
-            JOptionPane.showMessageDialog(this, "Promotion failed: " + failure.getMessage(),
-                    "Promotion failed", JOptionPane.ERROR_MESSAGE);
-        }
     }
 
     /** Reviews configured evidence from versioned Wikipedia prose. This is deliberately

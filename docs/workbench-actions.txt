@@ -1,0 +1,114 @@
+== TRANSFORM workbench ==
+  button: Query logs…
+  button: Cancel request  (disabled)
+  label: Class:
+  combo
+  button: New field…
+  box: Field — pick one (a reference's nested fields are indented below it)
+    label: Show:
+    button: All 1
+    button: Missing —  (disabled)
+    button: Present —  (disabled)
+  label: Operator:
+  combo
+  label: Value:
+  combo
+  label: and:
+  button: Add filter group  (disabled)
+  box: Members of All State · 1
+    button: Edit field…  (disabled)
+    button: Analyze relations…  (disabled)
+    label: ▼ Search / sort / view
+    button: ← Back  (disabled)
+    button: Search Config...
+    box: Search
+    button: Sort Config...
+    button: Sort
+    button: Restore Order
+    button: View Config...
+    button: Highlight Fields
+  button: Show fields
+  button: Show group rule  (disabled)
+  button: Show type spec
+  button: Add facet group
+  button: Add relation closure group…
+  button: Add type-spec group
+  button: Add manual group
+  button: Create subclass from group
+  button: Remove
+  button: Show instances
+
+== TRANSFORM field pane - State.name ==
+  label: Editing:
+  label: State.name
+  button: Save staged changes  (disabled)
+  box: Set manually
+    label: Selected:
+    label: No instance selected
+    button: Set / replace  (disabled)
+  label: ▼ Search / sort / view
+  button: ← Back  (disabled)
+  button: Search Config...
+  box: Search
+  button: Sort Config...
+  button: Sort
+  button: Restore Order
+  button: View Config...
+  button: Highlight Fields
+
+== DATASOURCE workbench ==
+  button: Query logs…
+  button: Cancel request  (disabled)
+  button: Cancel identity process  (disabled)
+  label: Class:
+  combo
+  box: Field — pick one (a reference's nested fields are indented below it)
+    label: Show:
+    button: All 1
+    button: Missing —  (disabled)
+    button: Present —  (disabled)
+  box: Members of All State · 1
+    button: Load field…  (disabled)
+    button: Identities…  (disabled)
+    button: Experimental source inspection…  (disabled)
+    button: Wikipedia discovery…  (disabled)
+    label: ▼ Search / sort / view
+    button: ← Back  (disabled)
+    button: Search Config...
+    box: Search
+    button: Sort Config...
+    button: Sort
+    button: Restore Order
+    button: View Config...
+    button: Highlight Fields
+  button: Show fields
+  button: Show group rule  (disabled)
+  button: Show type spec
+  button: Show instances
+
+== DATASOURCE field pane - State.name ==
+  label: Loading:
+  label: State.name
+  button: Save staged changes  (disabled)
+  button: Cancel Find Data  (disabled)
+  box: Wikidata
+    label: Property
+    button: Not configured in ModelBuilder  (disabled)
+  box: Wikipedia fallback
+    label: Infobox property
+    button: No configured fallback  (disabled)
+  box: Wikipedia article evidence
+    label: Category relation
+    label: No category relation configured
+    label: Existing values
+    button: Find text evidence…
+  button: Load values ↗
+  label: ▼ Search / sort / view
+  button: ← Back  (disabled)
+  button: Search Config...
+  box: Search
+  button: Sort Config...
+  button: Sort
+  button: Restore Order
+  button: View Config...
+  button: Highlight Fields

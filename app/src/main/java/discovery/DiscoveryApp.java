@@ -3,7 +3,8 @@ package discovery;
 import quiz.transform.app.DomainCatalog;
 import quiz.transform.ui.DomainNavigator;
 
-/** Entry point for bounded, read-only source discovery over a saved project. */
+/** Entry point for bounded source discovery over a saved project. Inspection is
+ * read-only; an explicit promotion action may update ModelBuilder configuration. */
 public final class DiscoveryApp {
     private DiscoveryApp() { }
 

@@ -10,9 +10,33 @@ import wikidata.explore.extract.WikidataDynamicObject;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ValidationPanelTest {
+
+    /** DataSourceApp showed "Not configured in ModelBuilder" for DeityGroup.members, whose
+     *  primary source is relation routes: it asked only for a property. A declared
+     *  datasource binding is configured and is named by its registered operation. */
+    @Test void aFieldWhosePrimarySourceIsADatasourceOperationReadsAsConfigured() {
+        datasource.api.SourceBinding routes = new datasource.api.SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue("DeityGroup", "members",
+                        datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikidata", "relation-routes",
+                        java.util.Map.of("routes", "[]")));
+
+        assertEquals("Source: Bounded relation routes", ValidationPanel.configuredSource(
+                null, routes, "Source: ", "Not configured in ModelBuilder"));
+        assertEquals("Not configured in ModelBuilder", ValidationPanel.configuredSource(
+                null, null, "Source: ", "Not configured in ModelBuilder"));
+        wikidata.explore.model.FieldSourceMapping property =
+                new wikidata.explore.model.FieldSourceMapping();
+        property.propertyPid("P1082");
+        property.propertyLabel("population");
+        assertEquals("Source: population (P1082)", ValidationPanel.configuredSource(
+                property, null, "Source: ", "Not configured in ModelBuilder"));
+    }
 
     @Test void baseTypeCountIncludesSubtypeInstances() {
         WikidataDynamicObject state = object("Q1", "State");

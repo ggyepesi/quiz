@@ -7,10 +7,11 @@ Wikipedia Discovery answers the question that comes before field configuration:
 > What repeated, inspectable source structure exists across these selected articles,
 > and what exact examples support it?
 
-It is the read-only **Wikipedia articles** tab of the Discovery workbench
-(`docs/discovery-workbench.md`). It does not infer domain facts, add fields, edit the
-model, or create instances. A promising result may later be promoted explicitly to an
-ordinary datasource recipe; the discovery application is not a second extraction path.
+It is the bounded **Wikipedia articles** tab of the Discovery workbench
+(`docs/discovery-workbench.md`). Inspection does not infer domain facts, add fields, edit
+the model, or create instances. A promising result may be promoted only by a separate,
+explicit action to an ordinary datasource recipe in the working ModelBuilder configuration;
+the discovery application is not a second extraction path.
 
 ## Reused owners
 
@@ -32,7 +33,7 @@ read from that response, so they always describe the same revision (#461).
 ## First bounded workflow
 
 1. Run `discovery.DiscoveryApp` and open one saved project through the shared domain
-   chooser, or press TransformApp's Wikipedia discovery action, which hands over its
+   chooser, or press DataSourceApp's Wikipedia discovery action, which hands over its
    selected instances and opens this tab.
 2. Choose a class whose loaded instances have Wikidata QIDs.
 3. Start with a random selection of at most 50 instances.
@@ -103,7 +104,7 @@ does not search flattened article text and does not assign meaning to an unconfi
 The selected links may propose only already-loaded instances of the field's declared target
 class. Unlinked cell text and links to unloaded entities are reported but create no identity.
 Every proposal retains the article revision, structural location and cell text and requires
-explicit review in TransformApp.
+explicit review in DataSourceApp.
 
 This operation is additive evidence beside the field's primary source. For example,
 `DeityGroup.members` can keep its Wikidata relation routes as primary values while a configured

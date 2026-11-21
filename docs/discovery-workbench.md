@@ -1,6 +1,6 @@
 # Discovery workbench
 
-`discovery.DiscoveryApp` opens one read-only workbench over a saved project. It answers
+`discovery.DiscoveryApp` opens one bounded workbench over a saved project. It answers
 "what could this source add to these instances?" before anything is configured.
 
 ## One selection, one tab per source
@@ -24,8 +24,11 @@ selection larger than a source's bound disables that source's run and names how 
 remove. While any source runs, the selection is locked; one source finishing does not
 unlock it under another that is still running.
 
-Moving between tabs never asks for the instances again, and no tab changes the project.
-TransformApp's Wikipedia discovery action opens this same workbench with its selected
+Moving between tabs never asks for the instances again and inspecting results never changes
+the project. An explicit promotion offered by a source tab may add its reusable finding to
+the working ModelBuilder configuration; its separate Save action states the project file that
+will be written.
+DataSourceApp's Wikipedia discovery action opens this same workbench with its selected
 instances handed over, on the Wikipedia tab.
 
 The first three tabs are code-backed source workflows. Further bounded related-record tabs are

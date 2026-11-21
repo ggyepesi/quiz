@@ -281,7 +281,6 @@ class TransformWorkbenchFilterGroupTest {
         return tabs;
     }
 
-
     /** A disabled path command says what would enable it, not one fixed sentence. */
     @org.junit.jupiter.api.Test void theClosurePathCommandSaysWhyItIsUnavailable() {
         org.junit.jupiter.api.Assertions.assertEquals(

@@ -46,6 +46,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private static final int INITIAL_FIELDS_PANE_WIDTH = 420;
 
     private final TransformController controller;
+    private final WorkbenchPurpose purpose;
 
     // The domain this workbench was opened for (e.g. "countries"), offered as the
     // default when re-saving, so an edit-and-save round-trips over the original.
@@ -148,16 +149,25 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     public TransformWorkbenchPanel(DomainModel domain) {
-        this(domain, null, null);
+        this(domain, null, null, WorkbenchPurpose.TRANSFORM);
     }
 
     public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer) {
-        this(domain, writer, null);
+        this(domain, writer, null, WorkbenchPurpose.TRANSFORM);
     }
 
     public TransformWorkbenchPanel(DomainModel domain, DomainWriter writer, String domainName) {
+        this(domain, writer, domainName, WorkbenchPurpose.TRANSFORM);
+    }
+
+    public TransformWorkbenchPanel(
+            DomainModel domain,
+            DomainWriter writer,
+            String domainName,
+            WorkbenchPurpose purpose) {
         this.controller = new TransformController(domain, writer);
         this.domainName = domainName;
+        this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
         setLayout(new BorderLayout(8, 8));
 
         // Build the action owner first. ViewStepsPanel seeds the initial class and may
@@ -206,12 +216,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         queries.runner().cancelAction(requestClient::cancelCurrentQuery);
         top.add(cancelQueryButton);
         resolveRunner.registerCancelButton(cancelIdentityButton);
-        top.add(cancelIdentityButton);
+        // Identity resolution reads an external source, so only DataSourceApp runs it.
+        if (purpose.showsDatasourceActions()) top.add(cancelIdentityButton);
         toolbar.add(top);
 
         quiz.curation.Curatable c =
                 controller.domain().capability(quiz.curation.Curatable.class);
-        if (c != null && c.curation() != null) {
+        if (purpose.showsTransformActions() && c != null && c.curation() != null) {
             JPanel curationActions = new JPanel(new objectview.utils.swing.WrapLayout(
                     FlowLayout.LEFT, 4, 2));
             curationActions.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -230,7 +241,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 controller, this::render, this::addFilterGroup,
                 () -> renderedScope == null
                         ? java.util.List.of() : renderedScope.baseMembers(),
-                this::applyFieldScope, this::addNewField);
+                this::applyFieldScope, this::addNewField, purpose);
         left.add(viewStepsPanel, BorderLayout.CENTER);
 
         return left;
@@ -517,21 +528,25 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }).toList();
     }
 
-    /** The right header describes the visible instances and hosts two actions on them: curate
-     *  the selected field (in-pane) and an Identities button (which opens a small panel with
-     *  resolve / save / forget). The left panel picks field + scope; the header acts on it. */
+    /** The right header describes the visible instances and hosts the actions belonging to
+     * this application. Both purposes use the same selected class/group/field scope. */
     private JComponent buildRight() {
         JPanel right = new JPanel(new BorderLayout(4, 4));
         JPanel scope = new JPanel(new BorderLayout(8, 2));
         scope.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         JPanel main = new JPanel(new BorderLayout(8, 2));
         main.add(scopeStatus, BorderLayout.CENTER);
-        curateFieldButton.setToolTipText(
-                "Fill the field selected on the left for the visible instances (in this pane)");
+        curateFieldButton.setName("field.action");
+        curateFieldButton.setText(purpose.showsDatasourceActions()
+                ? "Load field…" : "Edit field…");
+        curateFieldButton.setToolTipText(purpose.showsDatasourceActions()
+                ? "Load the field selected on the left from its configured data source"
+                : "Edit the field selected on the left for the visible instances");
         curateFieldButton.setEnabled(false);
         curateFieldButton.addActionListener(e -> openFieldCuration());
         identitiesButton.setToolTipText(
                 "Resolve Wikidata identities for the visible instances");
+        identitiesButton.setName("datasource.identities");
         identitiesButton.setEnabled(false);
         identitiesButton.addActionListener(e -> openIdentityActions());
         saveIdentitiesButton.setToolTipText(
@@ -543,11 +558,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         forgetIdentitiesButton.addActionListener(e -> forgetStagedIdentities());
         forgetIdentitiesButton.setVisible(false);
         experimentSelectionButton.setEnabled(false);
+        experimentSelectionButton.setName("datasource.inspect");
         experimentSelectionButton.addActionListener(e -> startInstanceExperiment());
         wikipediaDiscoveryButton.setEnabled(false);
+        wikipediaDiscoveryButton.setName("datasource.wikipedia");
         wikipediaDiscoveryButton.addActionListener(e -> openWikipediaDiscovery());
         analyzeRelationsButton.setToolTipText(
                 "Measure self-referencing fields over the instances currently shown");
+        analyzeRelationsButton.setName("transform.analyzeRelations");
         analyzeRelationsButton.setEnabled(false);
         analyzeRelationsButton.addActionListener(e -> analyzeRelations());
         showClosurePathButton.setToolTipText(
@@ -557,9 +575,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         showClosurePathButton.addActionListener(e -> showSelectedClosurePath());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         actions.add(curateFieldButton);
-        actions.add(identitiesButton);
-        actions.add(forgetIdentitiesButton);
-        actions.add(saveIdentitiesButton);
+        if (purpose.showsDatasourceActions()) {
+            actions.add(identitiesButton);
+            actions.add(forgetIdentitiesButton);
+            actions.add(saveIdentitiesButton);
+        }
         main.add(actions, BorderLayout.EAST);
         scope.add(main, BorderLayout.NORTH);
         // These labels are deliberately explicit and can exceed the initial right-pane
@@ -568,9 +588,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // actually needs, so every instance action is visible on the default layout.
         JPanel instanceActions = new JPanel(
                 instanceActionsLayout());
-        instanceActions.add(experimentSelectionButton);
-        instanceActions.add(wikipediaDiscoveryButton);
-        instanceActions.add(analyzeRelationsButton);
+        if (purpose.showsDatasourceActions()) {
+            instanceActions.add(experimentSelectionButton);
+            instanceActions.add(wikipediaDiscoveryButton);
+        } else {
+            instanceActions.add(analyzeRelationsButton);
+        }
         instanceActions.add(showClosurePathButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
         instanceScopeHeader = scope;
@@ -910,7 +933,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
 
 
-    /** Curate the field selected on the left for the visible instances, in-pane: swap the
+    /** Act on the field selected on the left for the visible instances, in-pane: swap the
      *  cards for the fixed-target {@link ValidationPanel} scoped to exactly the shown members.
      *  No window — "Back to cards" re-renders. The left panel already established field +
      *  scope, so this never re-asks class/field/scope. */
@@ -918,7 +941,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         DomainField field = selectedField;
         RenderedScope scope = renderedScope;
         if (field == null) {
-            JOptionPane.showMessageDialog(this, "Select a field on the left to curate.");
+            JOptionPane.showMessageDialog(this, "Select a field on the left.");
             return;
         }
         if (scope == null || scope.visibleMembers().isEmpty()) {
@@ -932,7 +955,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
                 // Identity from the curation drill opens the ONE identity panel, scoped to
                 // the drilled instances — not a direct batch run.
-                this::openScopedIdentities);
+                this::openScopedIdentities, purpose);
         String scopeLabel = scope.visibleMembers().size() + " selected "
                 + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
                 + " · " + fieldScope;
@@ -942,7 +965,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         back.addActionListener(e -> render());
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         bar.add(back);
-        bar.add(new JLabel("Curating " + field.displayPath()));
+        bar.add(new JLabel((purpose.showsDatasourceActions() ? "Loading " : "Editing ")
+                + field.displayPath()));
 
         renderHolder.removeAll();
         renderHolder.add(bar, BorderLayout.NORTH);
@@ -1145,8 +1169,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 + (nonEntities == 0 ? "" : " · " + nonEntities + " derived/owned")
                 + (unknownKind == 0 ? "" : " · " + unknownKind + " unknown kind"));
 
-        curateFieldButton.setText(selectedField == null ? "Curate field…"
-                : "Curate " + selectedField.displayPath() + "…");
+        String action = purpose.showsDatasourceActions() ? "Load" : "Edit";
+        curateFieldButton.setText(selectedField == null ? action + " field…"
+                : action + " " + selectedField.displayPath() + "…");
         curateFieldButton.setEnabled(selectedField != null && !scope.visibleMembers().isEmpty());
 
         // Resolution acts on the visible scope, so it needs one; the staging controls beside
@@ -1840,17 +1865,19 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             ruleDetails.setEnabled(group instanceof quiz.transform.ProducedGroup);
             updateClosurePathAction();
         });
-        groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
-        groups.addControl("Add relation closure group…",
-                () -> addRelationClosureGroup(selectedType, root));
-        groups.addControl("Add type-spec group", () -> addTypeSpecGroup(selectedType, root));
         groups.addControl("Show type spec", this::showSelectedTypeSpec);
-        // "Add filter group" is NOT here: its condition is composed on the field panel's
-        // operator row, and a control that commits a rule edited elsewhere reads as
-        // unrelated to it. Facet and manual groups ask for their own input, so they stay.
-        groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
-        groups.addControl("Create subclass from group", this::createSubclassFromSelection);
-        groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
+        if (purpose.showsTransformActions()) {
+            groups.addControl("Add facet group", () -> addFacetGroup(selectedType, root));
+            groups.addControl("Add relation closure group…",
+                    () -> addRelationClosureGroup(selectedType, root));
+            groups.addControl("Add type-spec group", () -> addTypeSpecGroup(selectedType, root));
+            // "Add filter group" is NOT here: its condition is composed on the field
+            // panel's operator row, and a control that commits a rule edited elsewhere
+            // reads as unrelated to it. Facet and manual groups ask for their own input.
+            groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
+            groups.addControl("Create subclass from group", this::createSubclassFromSelection);
+            groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
+        }
         selectedGroup = root instanceof quiz.transform.EditableGroup editable
                 ? editable : null;
         objectview.group.ViewableGroup<?> initial = activeGroup != null
@@ -2817,9 +2844,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** Build + show the workbench frame and RETURN it (EDT-only), so a caller can track
      *  it (e.g. to focus an already-open domain instead of reloading). */
     public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
-        JFrame f = new JFrame("Transform Workbench — " + title);
+        return openFrame(domain, title, writer, WorkbenchPurpose.TRANSFORM);
+    }
+
+    /** Open the same scoped workbench with external acquisition/review actions. */
+    public static JFrame openDatasourceFrame(
+            DomainModel domain, String title, DomainWriter writer) {
+        return openFrame(domain, title, writer, WorkbenchPurpose.DATASOURCE);
+    }
+
+    private static JFrame openFrame(
+            DomainModel domain, String title, DomainWriter writer, WorkbenchPurpose purpose) {
+        JFrame f = new JFrame((purpose.showsDatasourceActions()
+                ? "DataSource Workbench — " : "Transform Workbench — ") + title);
         f.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        TransformWorkbenchPanel panel = new TransformWorkbenchPanel(domain, writer, title);
+        TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
+                domain, writer, title, purpose);
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {

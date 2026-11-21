@@ -411,7 +411,17 @@ construct per thing produced:
    *(Trigger: a local mapping/rendering defect would otherwise require another Wikidata run.)*
 
 23. **A delivered project is a headlessly executable artifact build.** ModelBuilder and
-   TransformApp edit and inspect declarations; neither application is the execution boundary.
+   the interactive workbenches edit and inspect declarations; none is the execution boundary.
+   Application ownership is explicit: ModelBuilder authors source configuration;
+   DiscoveryApp inspects possible source structure without changing the project merely by
+   browsing it, and may explicitly promote a discovered reusable source into that same
+   ModelBuilder configuration;
+   DataSourceApp runs external identity/field acquisition and review; TransformApp performs
+   local grouping, transformation and manual edits over the loaded object graph. DataSourceApp
+   and TransformApp currently reuse the same class/group/field scope implementation by opening
+   one purpose-parameterized workbench panel; that is not yet an extracted scope component.
+   They invoke the same headless processes; neither application drives the other and no
+   acquisition or transformation runner is copied.
    Generation, graph run, graph-decision application, transformation, population publication
    and project save are elementary operations accepting compiled configuration and explicit
    typed inputs. A thin Make-style coordinator orders them by named artifact dependencies,

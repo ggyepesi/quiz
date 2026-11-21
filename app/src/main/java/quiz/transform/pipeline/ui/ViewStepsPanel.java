@@ -15,6 +15,7 @@ import objectview.field.FieldKind;
 import quiz.curation.ScopeFilter;
 import quiz.transform.ui.FieldCoverageColumns;
 import quiz.transform.ui.TransformController;
+import quiz.transform.ui.WorkbenchPurpose;
 
 import javax.swing.*;
 import java.awt.*;
@@ -40,6 +41,7 @@ public final class ViewStepsPanel extends JPanel {
             ? extends java.util.Collection<? extends Viewable>> workingSet;
     // Declaring a new field acts on the selected class, so its button sits by the Class row.
     private final Runnable onNewField;
+    private final WorkbenchPurpose purpose;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<String> selectionCombo = new JComboBox<>();
@@ -89,6 +91,19 @@ public final class ViewStepsPanel extends JPanel {
                     ? extends java.util.Collection<? extends Viewable>> workingSet,
             java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
             Runnable onNewField) {
+        this(controller, listener, filterGroupCreator, workingSet,
+                onSelectionChanged, onNewField, WorkbenchPurpose.TRANSFORM);
+    }
+
+    public ViewStepsPanel(
+            TransformController controller,
+            Listener listener,
+            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
+            java.util.function.Supplier<
+                    ? extends java.util.Collection<? extends Viewable>> workingSet,
+            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
+            Runnable onNewField,
+            WorkbenchPurpose purpose) {
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
@@ -96,6 +111,7 @@ public final class ViewStepsPanel extends JPanel {
         this.onSelectionChanged = onSelectionChanged == null
                 ? (f, s) -> { } : onSelectionChanged;
         this.onNewField = onNewField == null ? () -> { } : onNewField;
+        this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
         // The same coverage contributor is used here and in curation. It describes the
         // current group; it does not decide which part of that group is visible.
         this.coverageColumns = new FieldCoverageColumns(
@@ -144,14 +160,17 @@ public final class ViewStepsPanel extends JPanel {
 
         add(memberRow(), BorderLayout.NORTH);
 
-        JSplitPane split = new JSplitPane(
-                JSplitPane.VERTICAL_SPLIT,
-                fieldBlock(),
-                stepsBlock()
-        );
-        split.setResizeWeight(0.45);
-
-        add(split, BorderLayout.CENTER);
+        if (this.purpose.showsTransformActions()) {
+            JSplitPane split = new JSplitPane(
+                    JSplitPane.VERTICAL_SPLIT,
+                    fieldBlock(),
+                    stepsBlock()
+            );
+            split.setResizeWeight(0.45);
+            add(split, BorderLayout.CENTER);
+        } else {
+            add(fieldBlock(), BorderLayout.CENTER);
+        }
 
         reloadOperators(FieldKind.UNKNOWN);
         filterOperator.addActionListener(e -> updateFilterValueEnablement());
@@ -211,10 +230,13 @@ public final class ViewStepsPanel extends JPanel {
             p.add(new JLabel("∩"));
             p.add(secondSelectionCombo);
         }
-        // "New field…" sits with the class it declares a field on.
-        JButton newField = new JButton("New field…");
-        newField.addActionListener(e -> onNewField.run());
-        p.add(newField);
+        if (purpose.showsTransformActions()) {
+            // "New field…" sits with the class it declares a field on.
+            JButton newField = new JButton("New field…");
+            newField.setName("transform.newField");
+            newField.addActionListener(e -> onNewField.run());
+            p.add(newField);
+        }
         return p;
     }
 

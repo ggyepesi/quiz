@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -149,6 +150,23 @@ class ViewStepsPanelSelectionTest {
         assertNotNull(selected.get());
         assertEquals("capitals", selected.get().field());
         assertEquals(ScopeFilter.ALL, scope.get());
+    }
+
+    @Test
+    void datasourceScopeSelectsFieldsWithoutOfferingTransformAuthoringControls() {
+        TransformController controller = new TransformController(
+                new ReflectionDomain(List.of(new State("France"))), null);
+        AtomicReference<DomainField> selected = new AtomicReference<>();
+        ViewStepsPanel panel = new ViewStepsPanel(
+                controller, () -> { }, (name, condition) -> { }, List::of,
+                (field, filter) -> selected.set(field), () -> { },
+                quiz.transform.ui.WorkbenchPurpose.DATASOURCE);
+
+        panel.selectField("capitals", ScopeFilter.MISSING);
+
+        assertNotNull(selected.get(), "the shared field scope remains available");
+        assertNull(findNamed(panel, "transform.newField", javax.swing.JButton.class));
+        assertNull(findNamed(panel, "filter.addGroup", javax.swing.JButton.class));
     }
 
     private static void layoutTree(java.awt.Container root) {
