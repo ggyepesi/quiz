@@ -17,6 +17,12 @@ import java.util.function.Function;
  */
 public interface ProcessWorkflowAction<R, D> {
     String id();
+    /**
+     * What this action acts on, when one action id can be started for different targets
+     * (one graph of several, one selection of instances). An open workflow window is
+     * reused only for the same id and subject.
+     */
+    default String subject() { return ""; }
     ProcessWorkflowPlan plan();
     /** Optional executable pipeline shown consistently in Plan, Running and Results. */
     default ProcessWorkflowPipeline pipeline() { return null; }

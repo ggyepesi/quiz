@@ -26,7 +26,7 @@ class IdentityLinksTest {
         @Override public String identityTypeName() { return stable; }
         @Override public Set<String> directClassNames() { return classes; }
         @Override public objectview.field.FieldSet fields() {
-            return objectview.field.FieldSet.of(this);
+            return objectview.field.FieldSet.standard(this);
         }
     }
 

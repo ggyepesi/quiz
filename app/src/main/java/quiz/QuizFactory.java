@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.prefs.Preferences;
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
 
 public class QuizFactory {
 
@@ -546,14 +545,11 @@ public class QuizFactory {
                                         JLabel categoryFieldNotice) {
         JButton createQuizButton = new JButton("Create quiz");
         createQuizButton.addActionListener(e -> {
-            DefaultMutableTreeNode node =
-                    (DefaultMutableTreeNode) rootView.getTree().getLastSelectedPathComponent();
             if (group.getSelection() == null) {
                 JOptionPane.showMessageDialog(quizFrame, "Quiz type is not selected.");
                 return;
             }
-            ViewableGroup<?> selectedGroup = node == null ? null
-                    : rootView.getViewableGroup(node);
+            ViewableGroup<?> selectedGroup = rootView.selectedGroup();
 
             // Read the editor only after applying the current quiz/group policy. This
             // keeps creation and the visible list of allowed fields on one answer.

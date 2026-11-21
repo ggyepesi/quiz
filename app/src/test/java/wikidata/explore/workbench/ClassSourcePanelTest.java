@@ -10,6 +10,7 @@ import wikidata.explore.generation.DomainSave;
 import datasource.api.SourceBindingSlot;
 
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JTextArea;
 import javax.imageio.ImageIO;
@@ -31,6 +32,152 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 // statement source. Everything it cannot see must survive its apply, because the
 // Statement editor is the single editor of those declarations.
 class ClassSourcePanelTest {
+
+    /** Where a class's instances come from is one choice. It used to be the Wikidata
+     * triple plus a separate "Alternative population source" row: both looked configured,
+     * and a membership written later by another tool silently won over the category
+     * the editor still showed. */
+    @Test void aWikipediaCategoryIsChosenAsThePopulationSourceInsteadOfTheTriple() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        ClassSourcePanel panel = panelFor(group);
+        panel.edit(group);
+        JComboBox<?> source = named(panel, "class.populationSource", JComboBox.class);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        workbench.DatasourceOperationForm form = named(panel,
+                "class.alternativePopulationSource",
+                workbench.DatasourceOperationForm.class);
+
+        assertEquals(0, source.getSelectedIndex(), "a new class is populated from Wikidata");
+        assertTrue(triple.isVisible());
+        assertFalse(form.isVisible(), "no second population control is shown beside it");
+
+        selectCategoryMembers(source);
+        assertFalse(triple.isVisible(), "the triple is not shown for a category population");
+        assertTrue(form.isVisible());
+        named(form, "datasource.parameter.category", javax.swing.JTextField.class)
+                .setText("Category:Groups of Egyptian deities");
+        named(form, "datasource.parameter.limit", javax.swing.JTextField.class)
+                .setText("100");
+        panel.applyEdits();
+
+        assertEquals("category-members", group.populationSource().operationId());
+        assertEquals("Category:Groups of Egyptian deities",
+                group.populationSource().parameter("category"));
+        assertFalse(group.membership().bounded());
+        assertTrue(group.seedQids().isEmpty());
+
+        panel.edit(group);
+        assertTrue(source.getSelectedItem() instanceof workbench.DatasourceOperationForm.Choice,
+                "reopening the class shows the chosen source, not the triple");
+        assertEquals("Category:Groups of Egyptian deities",
+                named(form, "datasource.parameter.category", javax.swing.JTextField.class)
+                        .getText());
+
+        source.setSelectedIndex(0);
+        panel.applyEdits();
+        assertNull(ClassSourceBindings.alternativePopulationSource(group),
+                "choosing the Wikidata triple again removes the category population");
+    }
+
+    /** Apply discards the Wikidata membership a category replaces, so the panel says
+     * so before Apply instead of only in a tooltip; a class without one gets no note. */
+    @Test void choosingACategoryNamesTheWikidataMembershipItWillReplace() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        group.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", java.util.List.of("Q20830276"), true));
+        ClassSourcePanel panel = panelFor(group);
+        panel.edit(group);
+        JComboBox<?> source = named(panel, "class.populationSource", JComboBox.class);
+        javax.swing.JLabel note = named(panel, "class.populationSource.replaces",
+                javax.swing.JLabel.class);
+        assertFalse(note.isVisible(), "nothing is replaced while the triple is chosen");
+
+        selectCategoryMembers(source);
+        assertTrue(note.isVisible());
+        assertTrue(note.getText().contains("replaces its Wikidata membership"),
+                note.getText());
+    }
+
+    @Test void aPropertyWithoutObjectsIsNotAMembershipToReplace() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        ClassSourcePanel panel = panelFor(group);
+        panel.edit(group);
+        find(panel, TripleEditor.class).propertyPid("P279", "");
+
+        selectCategoryMembers(named(
+                panel, "class.populationSource", JComboBox.class));
+
+        assertFalse(named(panel, "class.populationSource.replaces", JLabel.class)
+                .isVisible(), "a property alone is stored unbounded, so nothing is replaced");
+    }
+
+    @Test void replacementWarningReadsTheVisibleDraftNotOnlyTheStoredClass() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        ClassSourcePanel panel = panelFor(group);
+        panel.edit(group);
+        TripleEditor triple = find(panel, TripleEditor.class);
+        triple.objectQids(List.of("Q20830276"));
+        TextBackedEditor seeds = (TextBackedEditor) named(
+                panel, "class.seedQids", javax.swing.JComponent.class);
+        seeds.storage().setText("Q233458 Q188236");
+
+        selectCategoryMembers(named(
+                panel, "class.populationSource", JComboBox.class));
+
+        JLabel note = named(panel, "class.populationSource.replaces", JLabel.class);
+        assertTrue(note.isVisible());
+        assertTrue(note.getText().contains(
+                "Wikidata membership and 2 seed QID(s)"), note.getText());
+        assertFalse(group.membership().bounded(),
+                "inspection of the draft must not mutate the stored model");
+        assertTrue(group.seedQids().isEmpty());
+    }
+
+    /** The other side: a Wikidata membership written while a category is chosen does
+     * not become a second, silently winning answer. */
+    @Test void aChosenDatasourceRemainsThePopulationWhateverMembershipIsStored() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        datasource.api.SourceRecipe category = new datasource.api.SourceRecipe(
+                "wikipedia", "category-members",
+                java.util.Map.of("category", "Category:Groups of Egyptian deities",
+                        "limit", "100"));
+        ClassSourceBindings.alternativePopulationSource(group, category);
+        group.membership(wikidata.explore.model.EntityBound.relation(
+                "P31", List.of("Q20830276"), false));
+
+        assertEquals(category, group.populationSource(),
+                "generation reads the chosen datasource, the same answer the editor shows");
+    }
+
+    private static void selectCategoryMembers(JComboBox<?> source) {
+        for (int index = 0; index < source.getItemCount(); index++) {
+            Object item = source.getItemAt(index);
+            if (item instanceof workbench.DatasourceOperationForm.Choice choice
+                    && "category-members".equals(choice.operation().id())) {
+                source.setSelectedIndex(index);
+                return;
+            }
+        }
+        throw new AssertionError("category-members is not offered as a population source");
+    }
+
+    @Test void groupSemanticsAreAnExplicitPersistedClassChoice() {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        group.addField("members", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION)
+                .entityClassName("Deity");
+        ClassSourcePanel panel = panelFor(group);
+        panel.edit(group);
+        JComboBox<?> choice = named(panel, "class.groupMembersField", JComboBox.class);
+
+        assertEquals("(not a group)", choice.getSelectedItem());
+        choice.setSelectedItem("members");
+        panel.applyEdits();
+
+        assertEquals("members", group.groupSpec().membersField());
+        panel.edit(group);
+        assertEquals("members", choice.getSelectedItem());
+    }
 
     @Test void inspectingASubclassDoesNotInvalidateSavedInstances() {
         GeneratedClassModel position = new GeneratedClassModel("Position");
@@ -283,6 +430,34 @@ class ClassSourcePanelTest {
             }
         }
         throw new AssertionError("No " + type.getSimpleName());
+    }
+
+    private static <T extends Component> T named(
+            Component component, String name, Class<T> type) {
+        if (type.isInstance(component) && name.equals(component.getName())) {
+            return type.cast(component);
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                T found = namedOrNull(child, name, type);
+                if (found != null) return found;
+            }
+        }
+        throw new AssertionError("No " + type.getSimpleName() + " named " + name);
+    }
+
+    private static <T extends Component> T namedOrNull(
+            Component component, String name, Class<T> type) {
+        if (type.isInstance(component) && name.equals(component.getName())) {
+            return type.cast(component);
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                T found = namedOrNull(child, name, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private static <T extends Component> T findOrNull(Component component, Class<T> type) {

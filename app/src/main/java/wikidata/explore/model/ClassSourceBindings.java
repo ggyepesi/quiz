@@ -87,7 +87,7 @@ public final class ClassSourceBindings {
         if (project != null) {
             replace(clazz, SourceBindingSlot.CLASS_POPULATION, population(
                     clazz.className(),
-                    PopulationSourceBindings.fromLegacy(clazz, project)));
+                    PopulationSourceBindings.effective(clazz, project)));
         }
         if (clazz.classKind() == ClassKind.SOURCE) {
             // A legacy class has no name bindings at all. Materialize the historical
@@ -182,6 +182,30 @@ public final class ClassSourceBindings {
 
     public static SourceBinding articleCorrespondence(GeneratedClassModel clazz) {
         return binding(clazz, SourceBindingSlot.ARTICLE_CORRESPONDENCE);
+    }
+
+    /** The explicitly chosen non-Wikidata population producer, if any. */
+    public static datasource.api.SourceRecipe alternativePopulationSource(
+            GeneratedClassModel clazz) {
+        if (clazz == null) return null;
+        datasource.api.SourceRecipe recipe = clazz.declaredPopulationSource();
+        return recipe == null || WikidataDatasourceProvider.ID.equals(recipe.providerId())
+                ? null : recipe;
+    }
+
+    /** Replaces the class's ordinary Wikidata population with another provider. */
+    public static void alternativePopulationSource(
+            GeneratedClassModel clazz, datasource.api.SourceRecipe recipe) {
+        if (clazz == null) return;
+        if (recipe == null) {
+            PopulationSourceBindings.clearAlternative(clazz);
+            return;
+        }
+        if (WikidataDatasourceProvider.ID.equals(recipe.providerId())) {
+            throw new IllegalArgumentException(
+                    "The alternative population source must not be Wikidata");
+        }
+        clazz.populationSource(recipe);
     }
 
     /** Explicitly exposes the entity's English Wikipedia article as provenance. */

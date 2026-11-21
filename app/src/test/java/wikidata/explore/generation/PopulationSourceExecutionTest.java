@@ -8,6 +8,9 @@ import datasource.api.SourceBindingSlot;
 import datasource.api.SourceValueKind;
 import datasource.api.SourceValueSchema;
 import datasource.api.acquisition.ClassPopulationOperation;
+import datasource.api.acquisition.AcquiredPopulation;
+import datasource.api.acquisition.AcquiringClassPopulationOperation;
+import datasource.api.acquisition.PopulationAcquisition;
 import datasource.api.acquisition.PopulationRequest;
 import datasource.api.SourceBinding;
 import datasource.api.SourceBindingTarget;
@@ -29,6 +32,62 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PopulationSourceExecutionTest {
+
+    @Test void aSelfAcquiredPopulationBecomesTheExactOrdinaryRootSet() throws Exception {
+        AcquiringClassPopulationOperation operation = new AcquiringClassPopulationOperation() {
+            @Override public PopulationAcquisition acquisition(SourceRecipe recipe) {
+                return new PopulationAcquisition(EntityRef.WIKIDATA, "Example category",
+                        new work.Query<AcquiredPopulation>() {
+                            @Override public String purpose() { return "Acquire examples"; }
+                            @Override public String skeleton() { return "bounded examples"; }
+                            @Override public Map<String, String> parameters() {
+                                return Map.of();
+                            }
+                            @Override public AcquiredPopulation execute(
+                                    work.QueryContext context) {
+                                return new AcquiredPopulation(List.of(
+                                        EntityRef.wikidata("Q1"),
+                                        EntityRef.wikidata("Q2")),
+                                        List.of("Unresolved page"));
+                            }
+                            @Override public int rowCount(AcquiredPopulation result) {
+                                return result.members().size();
+                            }
+                        });
+            }
+            @Override public String id() { return "acquired"; }
+            @Override public String displayName() { return "Acquired"; }
+            @Override public BindingScope scope() { return BindingScope.CLASS_POPULATION; }
+            @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+            @Override public SourceValueSchema outputSchema() {
+                return SourceValueSchema.collection(
+                        SourceValueKind.ENTITY_REFERENCE, EntityRef.WIKIDATA);
+            }
+        };
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.classPopulation("Example"),
+                new SourceRecipe("test", "acquired", Map.of()));
+        SourceExecutionPlan.Step step = new SourceExecutionPlan.Step(
+                binding, operation, SourceExecutionPlan.Mode.ACQUISITION);
+        PopulationSourceExecution.Resolution pending =
+                new PopulationSourceExecution.Resolution(
+                        PopulationSourceExecution.Resolution.Kind.LOCAL_ACQUISITION,
+                        List.of(), List.of(), step, "");
+        java.util.ArrayList<String> messages = new java.util.ArrayList<>();
+
+        PopulationSourceExecution.Resolution acquired = pending.acquire(
+                new work.QueryContext(), new wikidata.explore.extract.GenerationLog() {
+                    @Override public void message(String text) { messages.add(text); }
+                    @Override public void subquery(
+                            String title, String request, String summary) { }
+                });
+        RuleNode root = new RuleNode("Example", "example");
+        acquired.apply(root);
+
+        assertEquals(List.of("Q1", "Q2"), List.copyOf(root.includedQids()));
+        assertTrue(messages.stream().anyMatch(message ->
+                message.contains("Unresolved page")));
+    }
 
     @Test void relationBindingOwnsMembershipWhileModelConstraintsSurvive() {
         RuleNode node = new RuleNode("Movie", "movie");

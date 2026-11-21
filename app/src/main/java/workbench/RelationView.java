@@ -1,8 +1,8 @@
 package workbench;
 
 import objectview.Viewable;
+import objectview.ViewableAdapter;
 import objectview.annotations.DisplayField;
-import objectview.field.FieldSet;
 
 /**
  * One relation of an explored entity, modelled as a {@link Viewable} so the Explore panel can
@@ -15,7 +15,7 @@ import objectview.field.FieldSet;
  * {@code number}, {@code date} or {@code text} — so a literal property (population, area) is
  * distinguishable at a glance from an entity relation, and the list can be filtered by it.
  */
-public final class RelationView implements Viewable {
+public final class RelationView extends ViewableAdapter {
 
     private final String kind;
     private final int count;
@@ -50,5 +50,4 @@ public final class RelationView implements Viewable {
 
     @Override public String getDisplayName() { return label; }
 
-    @Override public FieldSet fields() { return FieldSet.of(this); }
 }

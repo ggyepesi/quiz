@@ -38,6 +38,8 @@
     text: []
     label: Extends:
     combo: 4 item(s)
+  label: Population source:
+  combo: 2 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
     label: Instances produced: Person
     label: Restrict to these subject QIDs:
@@ -103,6 +105,8 @@
       button: Down  (disabled)
       label: Available:
       combo: 3 item(s)
+  label: Group members field:
+  combo: 1 item(s)
   label: Represent matching entities as:
   piece: OrderedChoiceList
     list
@@ -527,7 +531,7 @@
       button: Set  (disabled)
       button: Cancel  (disabled)
     combo: 2 item(s)
-    combo: 4 item(s)
+    combo: 5 item(s)
     ids: []
       text: []
       button: Set  (disabled)

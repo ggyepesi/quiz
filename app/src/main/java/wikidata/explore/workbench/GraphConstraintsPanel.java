@@ -43,7 +43,9 @@ final class GraphConstraintsPanel extends JPanel {
 
     private enum TestKind {
         HAS_VALUE("has a value"), REACHES_ENTITY("reaches QID"),
-        REACHES_UNDER("reaches QID or anything under it"), HAS_NO_VALUE("has no value");
+        REACHES_UNDER("reaches QID or anything under it"),
+        NODE_IS_UNDER("node is QID or anything under it"),
+        HAS_NO_VALUE("has no value");
         private final String label;
         TestKind(String label) { this.label = label; }
         @Override public String toString() { return label; }
@@ -133,6 +135,9 @@ final class GraphConstraintsPanel extends JPanel {
     /** The relation that generalises the tested entity — P279 for a subclass hierarchy. */
     private final JTextField testViaField = new JTextField(6);
     private final DefaultListModel<GraphNodeCondition> testsModel = new DefaultListModel<>();
+    // The form does not show the evidence condition's name, so editing a node must keep
+    // the saved one rather than write a default the reader never saw.
+    private String loadedEvidenceName = "";
     private final JList<GraphNodeCondition> testsList = new JList<>(testsModel);
     private final JComboBox<GraphEvidenceCondition.ReviewDisposition> reviewBox =
             reviewBox();
@@ -272,6 +277,9 @@ final class GraphConstraintsPanel extends JPanel {
             DynamicViewable summary) {
         return new ProcessWorkflowAction<>() {
             @Override public String id() { return "discover-graph"; }
+            @Override public String subject() {
+                return graphClass == null ? "" : graphClass.declarationId();
+            }
             @Override public ProcessWorkflowPipeline pipeline() { return pipeline; }
             @Override public java.util.function.Function<Object, String> valueLinker() {
                 return WikidataLinks.valueLinker();
@@ -400,6 +408,7 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void clearNodeControls() {
+        loadedEvidenceName = "";
         nodesList.clearSelection();
         edgePidField.setText("");
         directionBox.setSelectedItem(DirectionChoice.OUT);
@@ -859,12 +868,17 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void refreshTestQidState() {
-        // Both reaching tests name the entity they look for; only the generalising one
+        // The target-QID tests name the entity they look for; only the generalising ones
         // also needs the relation that generalises it.
         Object kind = testKindBox.getSelectedItem();
         testQidField.setEnabled(
-                kind == TestKind.REACHES_ENTITY || kind == TestKind.REACHES_UNDER);
-        testViaField.setEnabled(kind == TestKind.REACHES_UNDER);
+                kind == TestKind.REACHES_ENTITY || kind == TestKind.REACHES_UNDER
+                        || kind == TestKind.NODE_IS_UNDER);
+        testViaField.setEnabled(
+                kind == TestKind.REACHES_UNDER || kind == TestKind.NODE_IS_UNDER);
+        boolean followsProperty = kind != TestKind.NODE_IS_UNDER;
+        testPidField.setEnabled(followsProperty);
+        testDirectionBox.setEnabled(followsProperty);
     }
 
     private void addEvidencePath() {
@@ -891,6 +905,25 @@ final class GraphConstraintsPanel extends JPanel {
     }
 
     private void addTest() {
+        TestKind kind = (TestKind) testKindBox.getSelectedItem();
+        if (kind == TestKind.NODE_IS_UNDER) {
+            String qid = cleanQid(testQidField.getText());
+            String via = cleanPid(testViaField.getText());
+            if (!WikidataIds.isQid(qid)) {
+                status("Enter the QID the evidence node must be or generalise to", true);
+                return;
+            }
+            if (!WikidataIds.isPid(via)) {
+                status("Enter the property that generalises it, for example P279", true);
+                return;
+            }
+            GraphNodeCondition condition = GraphNodeIsUnder.of(
+                    EntityRef.wikidata(qid), new GraphRelation(PROVIDER, via));
+            if (!elements(testsModel).contains(condition)) testsModel.addElement(condition);
+            testQidField.setText("");
+            status("Draft changed; Apply graph to save it.", false);
+            return;
+        }
         String pid = cleanPid(testPidField.getText());
         if (!WikidataIds.isPid(pid)) {
             status("Enter the property tested on the evidence entity", true);
@@ -898,7 +931,6 @@ final class GraphConstraintsPanel extends JPanel {
         }
         GraphRelation relation = new GraphRelation(PROVIDER, pid);
         GraphNodeCondition condition;
-        TestKind kind = (TestKind) testKindBox.getSelectedItem();
         GraphTraversalDirection direction = selectedDirection(testDirectionBox).direction;
         if (kind == TestKind.REACHES_ENTITY || kind == TestKind.REACHES_UNDER) {
             String qid = cleanQid(testQidField.getText());
@@ -942,6 +974,16 @@ final class GraphConstraintsPanel extends JPanel {
             testKindBox.setSelectedItem(TestKind.REACHES_ENTITY);
             relation = value.relation(); direction = value.direction();
             testQidField.setText(value.entity().id());
+        } else if (condition instanceof GraphRelationReachesUnder value) {
+            testKindBox.setSelectedItem(TestKind.REACHES_UNDER);
+            relation = value.relation(); direction = value.direction();
+            testQidField.setText(value.entity().id());
+            testViaField.setText(value.via().relationId());
+        } else if (condition instanceof GraphNodeIsUnder value) {
+            testKindBox.setSelectedItem(TestKind.NODE_IS_UNDER);
+            relation = value.via(); direction = GraphTraversalDirection.OUTGOING;
+            testQidField.setText(value.entity().id());
+            testViaField.setText(value.via().relationId());
         } else {
             status("This condition cannot yet be edited in the form.", true);
             testsModel.add(index, condition);
@@ -973,6 +1015,7 @@ final class GraphConstraintsPanel extends JPanel {
             status(missingOutputClass(node.populationClass()), true);
         }
         GraphEvidenceCondition evidence = node.evidenceCondition();
+        loadedEvidenceName = evidence == null ? "" : evidence.name();
         replace(evidenceModel, evidence == null ? List.of() : evidence.evidencePaths());
         replace(testsModel, evidence == null ? List.of() : evidence.tests());
         reviewBox.setSelectedItem(evidence == null
@@ -992,7 +1035,9 @@ final class GraphConstraintsPanel extends JPanel {
                     "Add both an evidence relation and an evidence test, or leave both empty");
         }
         GraphEvidenceCondition evidence = evidenceModel.isEmpty() ? null
-                : new GraphEvidenceCondition("Node evidence", elements(evidenceModel),
+                : new GraphEvidenceCondition(
+                        loadedEvidenceName.isBlank() ? "Node evidence" : loadedEvidenceName,
+                        elements(evidenceModel),
                         elements(testsModel), reviewDisposition());
         GraphDiscoveryConfiguration.NodeUse use = use(targetUseBox);
         GeneratedClassModel targetClass = selectedClass(targetClassBox);
@@ -1548,6 +1593,12 @@ final class GraphConstraintsPanel extends JPanel {
         } else if (condition instanceof GraphRelationReaches reaches) {
             label = reaches.entity().id();
             result = "Accept when reached";
+        } else if (condition instanceof GraphRelationReachesUnder reaches) {
+            label = reaches.entity().id();
+            result = "Accept when reached directly or below it";
+        } else if (condition instanceof GraphNodeIsUnder under) {
+            label = under.entity().id();
+            result = "Accept when this node is the entity or below it";
         } else {
             label = "Evidence test";
             result = "Configured condition";
@@ -1565,6 +1616,12 @@ final class GraphConstraintsPanel extends JPanel {
         }
         if (condition instanceof GraphRelationReaches reaches) {
             return edgeLabel(reaches.relation(), reaches.direction());
+        }
+        if (condition instanceof GraphRelationReachesUnder reaches) {
+            return edgeLabel(reaches.relation(), reaches.direction());
+        }
+        if (condition instanceof GraphNodeIsUnder under) {
+            return "is or " + edgeLabel(under.via(), GraphTraversalDirection.OUTGOING);
         }
         return "test";
     }

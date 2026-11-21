@@ -3,6 +3,8 @@ package wikidata.explore.workbench;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.model.EntityBound;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
+import wikidata.explore.model.ClassSourceBindings;
 import objectview.view.SearchableView;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.result.MembershipTypePreview;
@@ -37,7 +39,7 @@ class SubclassDiscoveryPanelTest {
         List<String> added = new ArrayList<>();
         onEdt(() -> {
             panel.onAddMembershipTarget(added::add);
-            panel.showClass(position);
+            panel.showClass(project(position), position);
         });
 
         panel.acceptSubtypes(List.of(candidate("Q189290", "historical position")));
@@ -70,7 +72,7 @@ class SubclassDiscoveryPanelTest {
         List<String> added = new ArrayList<>();
         onEdt(() -> {
             panel.onAddMembershipTarget(added::add);
-            panel.showClass(unbounded);
+            panel.showClass(project(unbounded), unbounded);
         });
         assertTrue(panel.statusText().contains("has no membership relation yet"),
                 "selecting the class already says what it is missing: "
@@ -93,7 +95,7 @@ class SubclassDiscoveryPanelTest {
         SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
         List<String> used = new ArrayList<>();
         onEdt(() -> {
-            panel.showClass(episode);
+            panel.showClass(project(episode), episode);
             panel.onUseMembershipType(value ->
                     {
                         used.add(value.qid() + "|" + value.label());
@@ -124,7 +126,8 @@ class SubclassDiscoveryPanelTest {
     @Test void textMatchesOnlyBecomeExamplesAfterTheExplicitAddAction()
             throws Exception {
         SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
-        onEdt(() -> panel.showClass(new GeneratedClassModel("Episode")));
+        GeneratedClassModel episode = new GeneratedClassModel("Episode");
+        onEdt(() -> panel.showClass(project(episode), episode));
 
         panel.acceptTextResults(new WikidataTextSearchResult(5_000, List.of(
                 new MembershipTypeCandidate.Member("Q105821782", "Fall of Troy",
@@ -229,7 +232,7 @@ class SubclassDiscoveryPanelTest {
                 withMembership(EntityBound.explicit(List.of("Q3088950"))),
                 withMembership(EntityBound.vocabulary("CuratedEpisodes")))) {
             SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
-            onEdt(() -> panel.showClass(configured));
+            onEdt(() -> panel.showClass(project(configured), configured));
             panel.acceptCommonTypes(List.of(new MembershipTypeCandidate(
                     "Q63143903", "episode in Greek mythology",
                     MembershipTypeCandidate.Origin.COMMON_TYPE, "",
@@ -247,7 +250,7 @@ class SubclassDiscoveryPanelTest {
         GeneratedClassModel configured = withMembership(
                 EntityBound.relation("P279", List.of("Q24336466"), false));
         SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
-        onEdt(() -> panel.showClass(configured));
+        onEdt(() -> panel.showClass(project(configured), configured));
         panel.acceptCommonTypes(List.of(candidate("Q63143903",
                 "episode in Greek mythology")));
         flushEdt();
@@ -259,6 +262,27 @@ class SubclassDiscoveryPanelTest {
         assertTrue(panel.addRefusal().contains("plain P31"));
     }
 
+    @Test void anExternalPopulationDisablesWikidataMembershipActionsUpFront()
+            throws Exception {
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        ClassSourceBindings.alternativePopulationSource(group,
+                new datasource.api.SourceRecipe("wikipedia", "category-members",
+                        java.util.Map.of("category",
+                                "Category:Groups of Egyptian deities", "limit", "100")));
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+        onEdt(() -> panel.showClass(project(group), group));
+        assertTrue(panel.statusText().contains("wikipedia — category-members"));
+        panel.acceptCommonTypes(List.of(candidate("Q20830276",
+                "group of mythical characters")));
+        flushEdt();
+        onEdt(() -> panel.selectRows(0));
+
+        assertFalse(panel.useEnabled());
+        assertFalse(panel.addEnabled());
+        assertTrue(panel.useRefusal().contains("wikipedia — category-members"));
+        assertEquals(panel.useRefusal(), panel.addRefusal());
+    }
+
     @Test void previewSubclassClosureIsTheReadOnlyClassSetting() throws Exception {
         GeneratedClassModel direct = withMembership(
                 EntityBound.relation("P31", List.of("Q63143903"), false));
@@ -266,11 +290,38 @@ class SubclassDiscoveryPanelTest {
                 EntityBound.relation("P31", List.of("Q63143903"), true));
         SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
 
-        onEdt(() -> panel.showClass(direct));
+        onEdt(() -> panel.showClass(project(direct), direct));
         assertFalse(panel.previewIncludesSubclasses());
-        onEdt(() -> panel.showClass(recursive));
+        onEdt(() -> panel.showClass(project(recursive), recursive));
         assertTrue(panel.previewIncludesSubclasses());
         assertFalse(panel.previewSubclassSettingEditable());
+    }
+
+    @Test void membershipPreviewCompilesInheritedPopulationFiltersInProjectContext()
+            throws Exception {
+        GeneratedClassModel base = new GeneratedClassModel("BaseEpisode");
+        base.instanceMapping().requireSitelink(true);
+        wikidata.explore.model.GeneratedFieldModel sourceText = base.addField(
+                "sourceText", datasource.schema.FieldType.STRING,
+                wikidata.explore.model.FieldCardinality.SINGLE);
+        sourceText.required(true);
+        sourceText.mapping().propertyPid("P1476");
+
+        GeneratedClassModel episode = new GeneratedClassModel("Episode");
+        episode.baseClassName("BaseEpisode");
+        GeneratedProjectModel project = project(base);
+        project.addClass(episode);
+        SubclassDiscoveryPanel panel = new SubclassDiscoveryPanel();
+
+        onEdt(() -> panel.showClass(project, episode));
+
+        wikidata.explore.rule.RuleNode rule = panel.populationRule();
+        assertTrue(rule.requireSitelink(),
+                "preview must use the inherited instance mapping generation uses");
+        assertEquals(List.of("sourceText"), rule.includedFields().stream()
+                .filter(field -> !field.optional())
+                .map(wikidata.explore.rule.RuleIncludedField::fieldName).toList(),
+                "preview must use inherited required fields generation uses");
     }
 
     @Test void moreThanTwentyExamplesAreRefusedRatherThanSilentlyDropped()
@@ -350,6 +401,12 @@ class SubclassDiscoveryPanelTest {
         GeneratedClassModel episode = new GeneratedClassModel("Episode");
         episode.membership(membership);
         return episode;
+    }
+
+    private static GeneratedProjectModel project(GeneratedClassModel root) {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(root);
+        return project;
     }
 
     private static boolean contains(Container root, Class<?> type) {

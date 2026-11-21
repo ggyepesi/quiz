@@ -1001,6 +1001,9 @@ public final class ValidationPanel extends JPanel {
                 quiz.enrichment.ResolveNamesProcess.Name> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return "resolve-reference-names"; }
+                    @Override public String subject() {
+                        return field + " " + String.join(" ", unnamed);
+                    }
                     @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                         return new process.swing.workflow.ProcessWorkflowPlan(
                                 "Resolve names", "Fetch names for exactly these referenced entities.",

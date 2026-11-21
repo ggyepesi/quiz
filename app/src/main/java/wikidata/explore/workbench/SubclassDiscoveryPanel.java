@@ -5,6 +5,7 @@ import objectview.view.SearchableView;
 import wikidata.WikidataIds;
 import wikidata.explore.model.EntityBound;
 import wikidata.explore.model.GeneratedClassModel;
+import wikidata.explore.model.GeneratedProjectModel;
 import wikidata.explore.query.logical.DiscoverCommonMembershipTypesQuery;
 import wikidata.explore.query.logical.DiscoverSubtypesQuery;
 import wikidata.explore.query.logical.PreviewMembershipTypeQuery;
@@ -92,6 +93,7 @@ final class SubclassDiscoveryPanel extends JPanel {
     private Function<WorkbenchSelections.Entity, String> onUseMembershipType =
             ignored -> "No membership editor is connected.";
     private String selectedClassName = "";
+    private GeneratedProjectModel populationProject;
     private GeneratedClassModel populationClass;
     private String broadTypeQid = "";
     private String broadTypeLabel = "";
@@ -250,11 +252,12 @@ final class SubclassDiscoveryPanel extends JPanel {
                 ? ignored -> "No membership editor is connected." : handler;
     }
 
-    void showClass(GeneratedClassModel clazz) {
+    void showClass(GeneratedProjectModel project, GeneratedClassModel clazz) {
         selectedClassName = clazz == null ? "" : clazz.className();
         boolean editableSource = clazz != null
                 && clazz.classKind() == wikidata.explore.model.ClassKind.SOURCE
                 && !clazz.isImported();
+        populationProject = editableSource ? project : null;
         populationClass = editableSource ? clazz : null;
         EntityBound.Kind membershipKind = clazz == null
                 ? EntityBound.Kind.UNBOUNDED : clazz.membership().kind();
@@ -262,11 +265,18 @@ final class SubclassDiscoveryPanel extends JPanel {
                 && membershipKind == EntityBound.Kind.RELATION
                 && "P31".equalsIgnoreCase(clazz.membership().relationPid())
                 && clazz.membership().qualifierCondition() == null;
-        usable = editableSource && (membershipKind == EntityBound.Kind.UNBOUNDED
+        String populationSourceRefusal =
+                PopulationSourceEditing.wikidataMembershipRefusal(clazz);
+        boolean wikidataPopulation = populationSourceRefusal.isEmpty();
+        usable = editableSource && wikidataPopulation
+                && (membershipKind == EntityBound.Kind.UNBOUNDED
                 || plainTypeMembership);
-        addable = editableSource && plainTypeMembership;
-        useRefusal = useRefusal(clazz, editableSource, membershipKind);
-        addRefusal = membershipKind == EntityBound.Kind.UNBOUNDED
+        addable = editableSource && wikidataPopulation && plainTypeMembership;
+        useRefusal = wikidataPopulation
+                ? useRefusal(clazz, editableSource, membershipKind)
+                : populationSourceRefusal;
+        addRefusal = !wikidataPopulation ? populationSourceRefusal
+                : membershipKind == EntityBound.Kind.UNBOUNDED
                 ? ADD_NEEDS_A_RELATION
                 : plainTypeMembership ? ""
                 : "Additional membership types require an editable plain P31 membership.";
@@ -393,8 +403,7 @@ final class SubclassDiscoveryPanel extends JPanel {
             return null;
         }
         String qid = selected.candidate().qid();
-        RuleNode classRule = populationClass == null
-                ? null : wikidata.explore.rule.RuleTreeCompiler.compileClass(populationClass);
+        RuleNode classRule = populationRule();
         status.setText("Counting up to " + PreviewMembershipTypeQuery.COUNT_BOUND
                 + " members of " + qid + "; populations up to "
                 + PreviewMembershipTypeQuery.MEMBER_LIMIT
@@ -404,6 +413,14 @@ final class SubclassDiscoveryPanel extends JPanel {
                 + "…");
         return new PreviewMembershipTypeQuery(qid, selected.candidate().label(),
                 previewDescendants.isSelected(), classRule);
+    }
+
+    /** The same effective class rule generation compiles, including inherited
+     * membership settings and required fields from the containing project. */
+    RuleNode populationRule() {
+        return populationClass == null ? null
+                : wikidata.explore.rule.RuleTreeCompiler.compileClass(
+                        populationClass, populationProject);
     }
 
     void acceptSubtypes(List<MembershipTypeCandidate> result) {

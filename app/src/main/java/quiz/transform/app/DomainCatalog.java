@@ -142,17 +142,19 @@ public final class DomainCatalog {
         DomainModel base =
                 compile(model, pool, loaded.fieldGraph(), loaded.roleSelections());
         // Carry the curation store so the workbench can offer a "Curate…" action.
+        java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
+                new java.util.ArrayList<>();
+        loaded.groupRootBindings().forEach(binding -> {
+            objectview.group.ViewableGroup<?> root =
+                    DynamicViewableGroup.adapt(binding.root());
+            if (root != null) savedGroupRoots.add(
+                    new objectview.viewconfig.DomainGroupRoot(binding.memberType(), root));
+        });
+        // A saved TransformApp root holds only what was authored there; the model's
+        // configured groups are rebuilt from this load's instances and added beside it.
         java.util.List<objectview.viewconfig.DomainGroupRoot> groupRoots =
-                loaded.groupRootBindings().stream()
-                        .flatMap(binding -> {
-                            objectview.group.ViewableGroup<?> root =
-                                    DynamicViewableGroup.adapt(binding.root());
-                            return root == null ? java.util.stream.Stream.empty()
-                                    : java.util.stream.Stream.of(
-                                            new objectview.viewconfig.DomainGroupRoot(
-                                                    binding.memberType(), root));
-                        })
-                        .toList();
+                ConfiguredGroups.combine(
+                        base.groupRootBindings(), savedGroupRoots);
         java.util.List<objectview.Viewable> memberRoots = new java.util.ArrayList<>();
         memberRoots.addAll(loaded.memberRoots());
         for (WikidataDynamicObject value : curatedInstances) {

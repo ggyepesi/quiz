@@ -99,4 +99,65 @@ class PopulationSourceBindingTest {
             assertTrue(file.delete() || !file.exists());
         }
     }
+
+    @Test void aSelfAcquiringPopulationRoundTripsWithoutASecondMembershipRule()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        model.rootClass(group);
+        group.populationSource(new SourceRecipe("wikipedia", "category-members",
+                java.util.Map.of(
+                        "category", "Category:Groups of Egyptian deities",
+                        "limit", "100")));
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+
+        String json = store.toJson(model);
+        java.io.File file = java.io.File.createTempFile("category-population", ".json");
+        try {
+            java.nio.file.Files.writeString(file.toPath(), json);
+            GeneratedClassModel loaded = store.load(file).rootClass();
+
+            assertEquals("wikipedia", loaded.populationSource().providerId());
+            assertEquals("category-members", loaded.populationSource().operationId());
+            assertEquals("Category:Groups of Egyptian deities",
+                    loaded.populationSource().parameter("category"));
+            assertFalse(loaded.membership().bounded());
+            assertTrue(loaded.sourceBindings().stream().anyMatch(binding ->
+                    binding.target().slot()
+                            == datasource.api.SourceBindingSlot.CLASS_POPULATION
+                            && "wikipedia".equals(binding.recipe().providerId())));
+        } finally {
+            assertTrue(file.delete() || !file.exists());
+        }
+    }
+
+    @Test void saveKeepsAnAuthoredDatasourcePopulationAndDropsStaleLegacyMembership()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        model.rootClass(group);
+        group.populationSource(new SourceRecipe("wikipedia", "category-members",
+                java.util.Map.of(
+                        "category", "Category:Groups of Egyptian deities",
+                        "limit", "100")));
+        // Simulate a stale path writing the old representation after the authored
+        // datasource was chosen. Saving is the normalization boundary and must not
+        // let that legacy value take over.
+        group.membership(EntityBound.relation("P31", List.of("Q20830276"), true));
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+
+        String json = store.toJson(model);
+        java.io.File file = java.io.File.createTempFile("category-precedence", ".json");
+        try {
+            java.nio.file.Files.writeString(file.toPath(), json);
+            GeneratedClassModel loaded = store.load(file).rootClass();
+
+            assertEquals("wikipedia", loaded.populationSource().providerId());
+            assertEquals("category-members", loaded.populationSource().operationId());
+            assertEquals(EntityBound.Kind.UNBOUNDED, loaded.membership().kind());
+            assertTrue(loaded.seedQids().isEmpty());
+        } finally {
+            assertTrue(file.delete() || !file.exists());
+        }
+    }
 }

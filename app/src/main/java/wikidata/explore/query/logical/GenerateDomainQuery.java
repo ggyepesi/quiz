@@ -165,7 +165,8 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         wikidata.explore.generation.PopulationSourceExecution.Resolution
                                 populationInput =
                                 wikidata.explore.generation.PopulationSourceExecution.resolve(
-                                        project, cls, sourcePlan, materializedInputs);
+                                        project, cls, sourcePlan, materializedInputs)
+                                        .acquire(context, genLog);
                         List<String> supplemental = compiledRun.request()
                                 .supplementalPopulation(cls.className());
                         if (!populationInput.available() && supplemental.isEmpty()) {
@@ -175,8 +176,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                         GeneratedProjectModel rooted = rootedAt(cls.className());
                         RuleNode configuredPlan = populationInput.available()
-                                && (!populationInput.importedMaterialized()
-                                    || !populationInput.qidsRequiringAcquisition().isEmpty())
+                                && populationInput.requiresRootQuery()
                                 ? pipeline.plan(rooted) : null;
                         RuleNode supplementalPlan = supplemental.isEmpty()
                                 ? null : pipeline.plan(rooted);

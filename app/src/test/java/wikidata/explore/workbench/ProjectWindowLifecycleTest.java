@@ -29,7 +29,11 @@ class ProjectWindowLifecycleTest {
                     field + " must close at the project boundary");
         }
         assertTrue(close.contains("getOwnedWindows()"),
-                "modeless plan/running/results dialogs are project-owned too");
+                "modeless dialogs are project-owned too");
+        assertTrue(close.contains("SwingProcessWorkflow")
+                        && close.contains(".openWorkflows(this)"),
+                "plan/running/results workflow frames are not owned windows; the project "
+                        + "boundary must close the ones this frame started");
         assertTrue(close.contains("logWindow.resetForProjectSwitch()"),
                 "query logs must close and forget the old project's rows");
         assertEquals(1, occurrences(source, "projectModel.copyContentsFrom("),
@@ -51,6 +55,12 @@ class ProjectWindowLifecycleTest {
                 "installing on the event thread must not read the model or snapshot");
         assertTrue(synchronizedBuild.contains("markSaved(modelFile)"),
                 "the synchronized editor must agree that it matches the saved build");
+    }
+
+    @Test void preparedRunWindowsHaveARunSpecificSubject() {
+        assertEquals("generation-run:4", ModelBuilderFrame.runWorkflowSubject(4));
+        assertFalse(ModelBuilderFrame.runWorkflowSubject(4)
+                .equals(ModelBuilderFrame.runWorkflowSubject(5)));
     }
 
     private static int occurrences(String value, String sought) {

@@ -42,6 +42,7 @@ public class GeneratedSource implements ViewableSource {
     private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
     private List<WikidataDynamicObject> groupRoots;
     private List<WikidataDynamicObjectJsonStore.LoadedGroupRoot> groupRootBindings = List.of();
+    private List<WikidataDynamicObject> allObjects = List.of();
     private List<WikidataDynamicObject> members;
     private ViewableGroup<?> explicitGroups;
     private boolean explicitGroupsBuilt;
@@ -174,6 +175,7 @@ public class GeneratedSource implements ViewableSource {
             WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
                     store.loadAllWithFieldGraph(file);
             List<WikidataDynamicObject> all = loaded.objects();
+            allObjects = all;
             // The served types' schemas, so the web reads nested types off the field
             // graph rather than off the objects.
             if (loaded.fieldGraph() != null) {
@@ -274,18 +276,28 @@ public class GeneratedSource implements ViewableSource {
     public synchronized ViewableGroup<?> rootGroup() throws Exception {
         if (!explicitGroupsBuilt) {
             members();
-            // One snapshot can hold several member types, each served by its own source.
-            // Serve only the group roots bound to THIS source's type, so a State's group
-            // tree doesn't also surface under a sibling type's source. Legacy snapshots
-            // carry no bindings — serve all roots then, matching the old behaviour.
-            List<WikidataDynamicObject> mine = new ArrayList<>();
+            List<objectview.viewconfig.DomainGroupRoot> saved = new ArrayList<>();
             for (WikidataDynamicObjectJsonStore.LoadedGroupRoot binding : groupRootBindings) {
-                if (type.equals(binding.memberType())) {
-                    mine.add(binding.root());
+                ViewableGroup<?> root = DynamicViewableGroup.adapt(binding.root());
+                if (root != null) {
+                    saved.add(new objectview.viewconfig.DomainGroupRoot(
+                            binding.memberType(), root));
                 }
             }
-            explicitGroups = DynamicViewableGroup.rootsOf(
-                    groupRootBindings.isEmpty() ? groupRoots : mine);
+            List<objectview.viewconfig.DomainGroupRoot> resolved =
+                    quiz.transform.app.ConfiguredGroups.combine(
+                            quiz.transform.app.ConfiguredGroups.rootBindings(
+                                    model, allObjects), saved);
+            explicitGroups = resolved.stream()
+                    .filter(binding -> type.equals(binding.memberType()))
+                    .map(objectview.viewconfig.DomainGroupRoot::root)
+                    .findFirst().orElse(null);
+            // A legacy snapshot has roots but no member-type bindings. Preserve its old
+            // all-roots behavior only when neither a saved nor configured typed root
+            // answers for this source.
+            if (explicitGroups == null && groupRootBindings.isEmpty()) {
+                explicitGroups = DynamicViewableGroup.rootsOf(groupRoots);
+            }
             explicitGroupsBuilt = true;
         }
         return explicitGroups;

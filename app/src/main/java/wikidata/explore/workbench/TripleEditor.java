@@ -557,6 +557,16 @@ final class TripleEditor extends JPanel {
         return new ArrayList<>(object.bound().qids());
     }
 
+    /** Whether the visible source-class triple currently contains a membership draft.
+     * Reads the editor, not the stored class, so a source switch can name exactly what
+     * Apply is about to discard. */
+    boolean hasMembershipDraft() {
+        // A property alone bounds nothing: Apply stores it as unbounded.
+        return !objectQids().isEmpty()
+                || !membershipQualifierProperty.getText().trim().isEmpty()
+                || !membershipQualifierValues.getText().trim().isEmpty();
+    }
+
     /**
      * Re-shows the object QIDs without disturbing the rest of that end.
      *

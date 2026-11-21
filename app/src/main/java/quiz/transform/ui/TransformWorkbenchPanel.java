@@ -309,6 +309,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 List<wikidata.statement.EntityStatementSummary>, Void> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return "discover-wikidata-statements"; }
+                    @Override public String subject() { return String.join(" ", qids); }
                     @Override public process.ProcessWorkflowPipeline pipeline() { return pipeline; }
                     @Override public java.util.function.Function<Object, String> valueLinker() {
                         return wikidata.ui.WikidataLinks.valueLinker();
@@ -400,6 +401,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 quiz.transform.discovery.WikipediaArticleFetchQuery.Result> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return "fetch-structured-wikipedia"; }
+                    @Override public String subject() {
+                        return selected.stream()
+                                .map(wikidata.explore.extract.WikidataDynamicObject::qid)
+                                .collect(java.util.stream.Collectors.joining(" "));
+                    }
                     @Override public process.ProcessWorkflowPipeline pipeline() {
                         return pipeline;
                     }
@@ -702,6 +708,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 quiz.enrichment.ResolveIdentitiesDecision.Resolved> action =
                 new process.swing.workflow.ProcessWorkflowAction<>() {
                     @Override public String id() { return "resolve-identities"; }
+                    @Override public String subject() { return plan.scope(); }
                     @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                         return new process.swing.workflow.ProcessWorkflowPlan(
                                 "Wikidata identities — " + plan.scope(),
@@ -1844,7 +1851,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
         groups.addControl("Create subclass from group", this::createSubclassFromSelection);
         groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
-        groups.getTree().setSelectionRow(0);
         selectedGroup = root instanceof quiz.transform.EditableGroup editable
                 ? editable : null;
         objectview.group.ViewableGroup<?> initial = activeGroup != null
@@ -1862,6 +1868,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (group instanceof quiz.transform.ProducedGroup produced
                 && !produced.problem().isBlank()) {
             status += " — " + produced.problem();
+        }
+        if (group instanceof quiz.transform.ConfiguredGroup) {
+            status += " — configured by the model and read-only here; groups you add go"
+                    + " under the root";
         }
         return status;
     }
@@ -2643,7 +2653,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void createSubclassFromGroup(
             String selectedType, objectview.group.ViewableGroup<?> root) {
-        objectview.group.ViewableGroup<?> source = selectedOrRoot(root);
+        // A configured group is not editable, but its members can still be frozen.
+        objectview.group.ViewableGroup<?> source =
+                root instanceof quiz.transform.ConfiguredGroup ? root : selectedOrRoot(root);
         if (source == null) return;
         JTextField name = new JTextField(18);
         JComboBox<String> base = new JComboBox<>(
@@ -2717,6 +2729,12 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private void removeSelectedGroup(
             String type, objectview.group.ViewableGroup<?> root) {
+        if (activeGroup instanceof quiz.transform.ConfiguredGroup) {
+            JOptionPane.showMessageDialog(this, "\"" + activeGroup.getDisplayName()
+                    + "\" comes from the model's group class. Change or remove it in"
+                    + " ModelBuilder; nothing was removed.");
+            return;
+        }
         quiz.transform.EditableGroup selected = selectedOrRoot(root);
         if (selected == null || selected == root) {
             JOptionPane.showMessageDialog(this, "The root group cannot be removed.");

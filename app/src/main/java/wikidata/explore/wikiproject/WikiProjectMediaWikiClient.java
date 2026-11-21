@@ -70,24 +70,13 @@ public class WikiProjectMediaWikiClient {
     }
 
     public String get(String queryString) throws Exception {
-        if (debug) {
-            System.out.println("WikiProjectMediaWikiClient query |"
-                    + queryString + "|");
-        }
         String url = url(queryString);
         Exception lastFailure = null;
 
         for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
-            throttle();   // a retry is a request too, so it is paced like one
-
             SharedHttpTransport.Response response;
             try {
-                response = transport.get(
-                        URI.create(url),
-                        Map.of("User-Agent", userAgent,
-                               "Accept", "application/json",
-                               "Accept-Encoding", "gzip"),
-                        REQUEST_TIMEOUT);
+                response = requestOnce(queryString);
             } catch (IOException transportFault) {
                 // Only a transport fault reaches here; a refusal this method decides
                 // on is returned by the code path below, never round-tripped through
@@ -100,10 +89,6 @@ public class WikiProjectMediaWikiClient {
 
             int code = response.status();
             String body = new String(response.body(), StandardCharsets.UTF_8);
-            if (debug) {
-                System.out.println("WikiProjectMediaWikiClient responseCode "
-                        + code + " for " + url);
-            }
             if (code >= 200 && code < 300) {
                 return body;
             }
@@ -116,6 +101,43 @@ public class WikiProjectMediaWikiClient {
         throw lastFailure == null
                 ? new IOException("MediaWiki API request failed: " + url)
                 : lastFailure;
+    }
+
+    /**
+     * Issues exactly one request. Observable batch callers own retries so every
+     * attempt appears in their shared progress log instead of being hidden here.
+     */
+    public String getOnce(String queryString) throws Exception {
+        String requestUrl = url(queryString);
+        SharedHttpTransport.Response response = requestOnce(queryString);
+        int code = response.status();
+        String body = new String(response.body(), StandardCharsets.UTF_8);
+        if (code >= 200 && code < 300) return body;
+        objectview.utils.UrlOpener.HttpStatusException status =
+                new objectview.utils.UrlOpener.HttpStatusException(
+                        code, URI.create(requestUrl).toURL());
+        status.initCause(new IOException("MediaWiki API response: " + body));
+        throw status;
+    }
+
+    private SharedHttpTransport.Response requestOnce(String queryString) throws Exception {
+        if (debug) {
+            System.out.println("WikiProjectMediaWikiClient query |"
+                    + queryString + "|");
+        }
+        throttle();
+        String requestUrl = url(queryString);
+        SharedHttpTransport.Response response = transport.get(
+                URI.create(requestUrl),
+                Map.of("User-Agent", userAgent,
+                        "Accept", "application/json",
+                        "Accept-Encoding", "gzip"),
+                REQUEST_TIMEOUT);
+        if (debug) {
+            System.out.println("WikiProjectMediaWikiClient responseCode "
+                    + response.status() + " for " + requestUrl);
+        }
+        return response;
     }
 
     // Wait only the remainder of the interval since the previous request STARTED.

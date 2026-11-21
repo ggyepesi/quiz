@@ -4,6 +4,7 @@ import objectview.Viewable;
 import objectview.field.FieldSet;
 import objectview.group.MultiRootGroup;
 import objectview.group.ViewableGroup;
+import objectview.group.ViewableGroupFields;
 import wikidata.explore.extract.WikidataDynamicObject;
 
 import java.util.ArrayList;
@@ -95,7 +96,7 @@ public final class DynamicViewableGroup implements ViewableGroup<Viewable> {
 
     @Override
     public FieldSet fields() {
-        return object.fields();
+        return ViewableGroupFields.of(this, object.fields());
     }
 
     @Override

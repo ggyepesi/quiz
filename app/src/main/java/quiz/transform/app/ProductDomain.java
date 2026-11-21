@@ -34,6 +34,7 @@ public final class ProductDomain implements DomainModel, SchemaView {
     // (which holds the declared model). Null = no schema view.
     private final SchemaView schemaView;
     private final java.util.Map<String, List<Viewable>> selections;
+    private final List<objectview.viewconfig.DomainGroupRoot> groupRoots;
 
     public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
                          Class<? extends Viewable> universe, SchemaView schemaView) {
@@ -43,12 +44,20 @@ public final class ProductDomain implements DomainModel, SchemaView {
     public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
                          Class<? extends Viewable> universe, SchemaView schemaView,
                          java.util.Map<String, List<Viewable>> selections) {
+        this(schema, pool, universe, schemaView, selections, List.of());
+    }
+
+    public ProductDomain(ProductSchema schema, Collection<? extends Viewable> pool,
+                         Class<? extends Viewable> universe, SchemaView schemaView,
+                         java.util.Map<String, List<Viewable>> selections,
+                         List<objectview.viewconfig.DomainGroupRoot> groupRoots) {
         this.schema = schema;
         this.pool = pool;
         this.universe = universe;
         this.schemaView = schemaView;
         this.selections = selections == null ? java.util.Map.of()
                 : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(selections));
+        this.groupRoots = groupRoots == null ? List.of() : List.copyOf(groupRoots);
     }
 
     @Override public javax.swing.JComponent schemaView() {
@@ -110,6 +119,9 @@ public final class ProductDomain implements DomainModel, SchemaView {
     }
 
     @Override public Collection<? extends Viewable> instances() { return pool; }
+    @Override public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
+        return groupRoots;
+    }
     @Override public List<String> selectionNames() { return List.copyOf(selections.keySet()); }
     @Override public List<Viewable> selectionMembers(String name) {
         return selections.getOrDefault(name, List.of());

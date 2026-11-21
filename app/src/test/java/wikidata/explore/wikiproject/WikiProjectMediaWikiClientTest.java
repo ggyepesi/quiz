@@ -86,6 +86,35 @@ class WikiProjectMediaWikiClientTest {
         assertEquals(2, stub.calls.get(), "429 is retried rather than surfaced raw");
     }
 
+    @Test void anObservableCallerCanOwnRetriesOneAttemptAtATime() {
+        Stub stub = new Stub(503, "temporarily unavailable");
+        SharedHttpTransport transport = transportOver(stub);
+        WikiProjectMediaWikiClient client =
+                new WikiProjectMediaWikiClient("test", 0, transport);
+
+        objectview.utils.UrlOpener.HttpStatusException failure = assertThrows(
+                objectview.utils.UrlOpener.HttpStatusException.class,
+                () -> client.getOnce("q"));
+
+        assertEquals(1, stub.calls.get(), "getOnce must not hide another attempt");
+        assertEquals(batch.BatchFailure.UNAVAILABLE,
+                batch.FailureClassifier.standard().classify(failure).failure());
+    }
+
+    @Test void anObservableCallerDoesNotRetryARejectedRequest() {
+        Stub stub = new Stub(404, "missing");
+        WikiProjectMediaWikiClient client = new WikiProjectMediaWikiClient(
+                "test", 0, transportOver(stub));
+
+        objectview.utils.UrlOpener.HttpStatusException failure = assertThrows(
+                objectview.utils.UrlOpener.HttpStatusException.class,
+                () -> client.getOnce("q"));
+
+        assertEquals(1, stub.calls.get());
+        assertEquals(batch.BatchFailure.FATAL,
+                batch.FailureClassifier.standard().classify(failure).failure());
+    }
+
     /** A transport over a stubbed {@link HttpClient}: the real SharedHttpTransport
      *  and the real client status policy run, nothing reaches the network. */
     private static SharedHttpTransport transportOver(Stub stub) {

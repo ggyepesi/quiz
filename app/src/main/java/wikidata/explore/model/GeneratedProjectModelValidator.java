@@ -66,6 +66,8 @@ public final class GeneratedProjectModelValidator {
             validateInfoboxRowLinks(clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
+            validateGroupClass(project, clazz, problems);
+            validateAlternativePopulationSource(clazz, problems);
             if (clazz.reifiesStatements()) {
                 validateStatementClass(
                         project,
@@ -75,6 +77,53 @@ public final class GeneratedProjectModelValidator {
         }
 
         return new ValidationResult(problems);
+    }
+
+    private static void validateGroupClass(
+            GeneratedProjectModel project,
+            GeneratedClassModel clazz,
+            List<Problem> problems) {
+        GroupClassSpec spec = clazz.groupSpec();
+        if (spec == null) return;
+        GeneratedFieldModel members = clazz.effectiveFields(project).stream()
+                .filter(field -> field != null
+                        && spec.membersField().equals(field.name()))
+                .findFirst().orElse(null);
+        if (members == null) {
+            problems.add(Problem.error(clazz.className(),
+                    "Group members field '" + spec.membersField()
+                            + "' does not exist."));
+            return;
+        }
+        if (members.type() != FieldType.ENTITY
+                || members.cardinality() != FieldCardinality.COLLECTION
+                || members.entityClassName().isBlank()) {
+            problems.add(Problem.error(clazz.className(),
+                    "Group members field '" + spec.membersField()
+                            + "' must be a list of instances of a configured class."));
+        }
+    }
+
+    private static void validateAlternativePopulationSource(
+            GeneratedClassModel clazz, List<Problem> problems) {
+        datasource.api.SourceRecipe recipe =
+                ClassSourceBindings.alternativePopulationSource(clazz);
+        if (recipe == null) return;
+        try {
+            datasource.api.DatasourceOperation operation = recipe.resolve(
+                    datasource.Datasources.standard(),
+                    datasource.api.BindingScope.CLASS_POPULATION);
+            datasource.api.PreparedSourceOperation prepared = operation.prepare(
+                    new datasource.api.SourceBinding(
+                            datasource.api.SourceBindingTarget.classPopulation(
+                                    clazz.className()), recipe));
+            if (prepared.execution()
+                    != datasource.api.PreparedSourceOperation.Execution.ACQUIRE) {
+                problems.add(Problem.error(clazz.className(), prepared.description()));
+            }
+        } catch (IllegalArgumentException invalid) {
+            problems.add(Problem.error(clazz.className(), invalid.getMessage()));
+        }
     }
 
     /**

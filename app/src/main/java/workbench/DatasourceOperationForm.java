@@ -44,12 +44,27 @@ public final class DatasourceOperationForm extends JPanel {
      */
     public DatasourceOperationForm(DatasourceRegistry registry,
             Predicate<SourceRecipe> offered) {
+        this(registry, BindingScope.FIELD_VALUE, offered);
+    }
+
+    /**
+     * Builds the same provider-declared form for one binding scope. The hosting editor
+     * decides the model site; this component only shows operations valid at that site.
+     */
+    public DatasourceOperationForm(
+            DatasourceRegistry registry,
+            BindingScope scope,
+            Predicate<SourceRecipe> offered) {
         super(new BorderLayout(4, 4));
+        operations.setName("datasource.operation");
+        BindingScope requested = scope == null ? BindingScope.FIELD_VALUE : scope;
+        Predicate<SourceRecipe> filter = offered == null ? recipe -> true : offered;
         for (DatasourceProvider provider : registry.providers()) {
             for (DatasourceOperation operation : provider.operations()) {
-                if (operation.scope() != BindingScope.FIELD_VALUE
-                        || !operation.outputSchema().kind().bindableToField()) continue;
-                if (!offered.test(new SourceRecipe(provider.id(), operation.id(), Map.of())))
+                if (operation.scope() != requested) continue;
+                if (requested == BindingScope.FIELD_VALUE
+                        && !operation.outputSchema().kind().bindableToField()) continue;
+                if (!filter.test(new SourceRecipe(provider.id(), operation.id(), Map.of())))
                     continue;
                 operations.addItem(new Choice(provider, operation));
             }
@@ -69,6 +84,20 @@ public final class DatasourceOperationForm extends JPanel {
     }
 
     public boolean hasOperations() { return operations.getItemCount() > 0; }
+
+    /** The operations this form offers, in registry order. A host that lets the reader
+     * choose between these and its own non-datasource configuration lists them in its
+     * one chooser instead of building a second list. */
+    public List<Choice> choices() {
+        List<Choice> result = new ArrayList<>();
+        for (int i = 0; i < operations.getItemCount(); i++) result.add(operations.getItemAt(i));
+        return List.copyOf(result);
+    }
+
+    /** Hides this form's own operation list when the host's chooser already decides it. */
+    public void operationChooserVisible(boolean visible) {
+        operations.setVisible(visible);
+    }
 
     /** Shows {@code recipe}, or nothing chosen when it is null or not offered here. */
     public void show(SourceRecipe recipe) {
@@ -121,6 +150,7 @@ public final class DatasourceOperationForm extends JPanel {
                 String value = stored.getOrDefault(parameter.key(), "");
                 if (value.isBlank()) value = parameter.defaultValue();
                 JComponent input = input(parameter, value, choice.provider().id());
+                input.setName("datasource.parameter." + parameter.key());
                 inputs.put(parameter.key(), input);
                 c.gridx = 0;
                 c.weightx = 0;

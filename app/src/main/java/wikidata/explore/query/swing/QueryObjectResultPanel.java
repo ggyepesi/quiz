@@ -46,6 +46,7 @@ public class QueryObjectResultPanel
     private Runnable displayedObjectsListener = () -> { };
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
+    private Map<String, objectview.group.ViewableGroup<?>> configuredGroups = Map.of();
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -88,6 +89,20 @@ public class QueryObjectResultPanel
         holder.removeAll();
         holder.repaint();
         displayedObjectsListener.run();
+    }
+
+    /** The explicit group-class presentations for the result currently being shown. */
+    public void configuredGroups(
+            Collection<quiz.transform.app.ConfiguredGroups.Binding> bindings) {
+        Map<String, objectview.group.ViewableGroup<?>> roots = new LinkedHashMap<>();
+        if (bindings != null) {
+            for (quiz.transform.app.ConfiguredGroups.Binding binding : bindings) {
+                if (binding != null && binding.root() != null) {
+                    roots.put(binding.groupClass(), binding.root());
+                }
+            }
+        }
+        configuredGroups = Collections.unmodifiableMap(roots);
     }
 
     /**
@@ -255,7 +270,8 @@ public class QueryObjectResultPanel
         byType.forEach((name, values) -> displayed.put(name, List.copyOf(values)));
         displayedObjectsByType = Collections.unmodifiableMap(displayed);
 
-        if (peerSections.isEmpty() && byType.size() <= 1) {
+        if (peerSections.isEmpty() && byType.size() <= 1
+                && byType.keySet().stream().noneMatch(configuredGroups::containsKey)) {
             return searchPanelView(result);
         }
         if (peerSections.isEmpty()) return multiView(byType);
@@ -297,9 +313,15 @@ public class QueryObjectResultPanel
         multi.context().setValueLinker(WikidataLinks.valueLinker());
         for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
             List<Viewable> values = entry.getValue();
-            if (!values.isEmpty()) multi.addSection(
-                    sectionTitle(entry.getKey(), values.size()),
-                    values.getFirst().getClass(), capped(values));
+            if (values.isEmpty()) continue;
+            objectview.group.ViewableGroup<?> group = configuredGroups.get(entry.getKey());
+            if (group != null) {
+                multi.addSection(sectionTitle(entry.getKey(), values.size()),
+                        new objectview.render.GroupView(group, multi.context()), capped(values));
+            } else {
+                multi.addSection(sectionTitle(entry.getKey(), values.size()),
+                        values.getFirst().getClass(), capped(values));
+            }
         }
         multi.build(1);
         activeContext = multi.context();

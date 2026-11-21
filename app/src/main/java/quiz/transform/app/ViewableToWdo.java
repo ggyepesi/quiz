@@ -249,6 +249,9 @@ public final class ViewableToWdo {
             return copy;
         }
         if (v instanceof Viewable q) {
+            // The model rebuilds a configured group on every load; a saved copy would
+            // freeze its membership and return beside the rebuilt one.
+            if (q instanceof quiz.transform.ConfiguredGroup) return null;
             WikidataDynamicObject cached = seen.get(q);
             if (cached != null) {
                 return cached;

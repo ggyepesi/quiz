@@ -106,6 +106,15 @@ construct per thing produced:
    discovery must not reparse or flatten it into a competing fact.
    A configuration-defined datasource is still an ordinary registered
    `DatasourceProvider`/`DatasourceOperation`; configuration never starts a parallel runner.
+   A datasource may also produce a bounded class population through an ordinary
+   `CLASS_POPULATION` operation. It returns source identities plus explicitly named source
+   records that could not be resolved; unresolved records never become invented members.
+   Preview and Generate execute that same acquisition query, then ordinary generation
+   materializes the exact resolved identities. A Wikipedia-category population means direct
+   article members only unless recursive subcategory traversal is explicitly configured.
+   When the populated class is a modeled group, the source category may supply its explicit
+   root container, but the configured group-members field remains the one representation of
+   each child group's membership.
    Its first supported grammar is deliberately bounded JSON REST search → detail: exact
    selected source identities enter, explicit per-seed limits cap detail requests, configured
    source evidence proves which returned record relates to which seed, and the shared batch,
@@ -591,6 +600,18 @@ construct per thing produced:
   branch to any requested depth; only an untouched automatic default inherits. Search
   may still find a field hidden by View; navigating to the current hit temporarily
   reveals that path without changing the saved View configuration.
+- **A `ViewableGroup` is an ordinary ObjectView `Viewable`.** Every live, computed,
+  synthetic and snapshot-backed group publishes the same shared field contract; rendering,
+  search, sort, persistence and configuration never reflect an implementation class to
+  rediscover a second shape. Membership, subgroups and an optional group-entity reference
+  are ordinary visible fields; the parent link and group role are structural bookkeeping.
+  A group outline is a compact `JTree` navigation over those same objects, not a separate
+  group-card renderer: its row keeps the group's own-member count and native keyboard
+  navigation, while an explicit disclosure renders the selected group's ordinary ObjectView
+  fields in one shared details area. A modeled group class explicitly names the ordinary
+  collection field that holds its members; neither a class name nor the mere presence of a
+  collection implies group semantics. That declaration changes presentation only—the class's
+  normal configured population producer still decides which group instances exist.
 - **Ask in prose.** Decisions come as a recommendation plus the trade-off, not a multiple-choice
   menu.
 - **Confirm cancellation.** A user-facing Cancel action on running work defaults to keeping the

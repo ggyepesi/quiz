@@ -67,6 +67,11 @@ public class GeneratedClassModel {
     /** Present exactly on a GRAPH class: what it traverses and how it classifies. */
     private GraphClassSource graphSource;
 
+    /** Optional ordinary-view declaration: each instance is a group whose members
+     *  come from this class's configured collection field. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private GroupClassSpec groupSpec;
+
     private int generationDepth = 1;
 
     private final FieldSourceMapping instanceMapping =
@@ -362,6 +367,10 @@ public class GeneratedClassModel {
         return graphSource;
     }
 
+    public GroupClassSpec groupSpec() { return groupSpec; }
+
+    public void groupSpec(GroupClassSpec value) { groupSpec = value; }
+
     /**
      * Assigning a graph source makes this a GRAPH class, and records it.
      *
@@ -618,6 +627,7 @@ public class GeneratedClassModel {
                         : statementSource.copy();
         copy.aggregateSource = aggregateSource == null ? null : aggregateSource.copy();
         copy.graphSource = graphSource == null ? null : graphSource.copy();
+        copy.groupSpec = groupSpec;
         copy.instanceMapping.copyFrom(instanceMapping);
         copy.membership = membership();   // immutable, so shared rather than cloned
         // Shared for the same reason as membership above: a record whose lists are

@@ -65,6 +65,8 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel.constellationDemo();
 
     private GenerationRun lastRun;
+    /** Monotonic identity for windows prepared from {@link #lastRun}. */
+    private long generationRunRevision;
     /** The accepted run known to be identical to the saved snapshot. A generated or
      * transformed replacement is intentionally a different object until Save domain succeeds. */
     private GenerationRun savedGenerationRun;
@@ -339,9 +341,12 @@ public class ModelBuilderFrame extends JFrame {
 
     /** Close every non-modal window whose contents describe the open project. */
     private void closeProjectWindows() {
-        // Plan/running/results workflows are modeless JDialogs owned by this frame.
-        // They are intentionally not held as one field per action, so ownership is
-        // their common lifecycle handle.
+        // Plan/running/results workflows are independent frames (so they can be
+        // minimized) registered to this frame, plus any modeless dialog it owns. They
+        // are intentionally not held as one field per action; the registration and
+        // ownership are their common lifecycle handle.
+        for (Window workflow : process.swing.workflow.SwingProcessWorkflow
+                .openWorkflows(this)) closeWindow(workflow);
         for (Window owned : getOwnedWindows()) closeWindow(owned);
         closeProjectDataWindows();
         logWindow.resetForProjectSwitch();
@@ -583,6 +588,9 @@ public class ModelBuilderFrame extends JFrame {
                             GraphResultPresentation.decorator(result)));
         }
         wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
+        instancesPanel.configuredGroups(
+                quiz.transform.app.ConfiguredGroups.materialize(
+                        projectModel, result.objects()));
         instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
                 inventory.visibleInstances(result.objects()), result.primaryClass(),
                 result.generatedSource(), result.typeOrder(), result.partTypes()), annotations);
@@ -1781,6 +1789,9 @@ public class ModelBuilderFrame extends JFrame {
         refreshProjectPicker();
         refreshProjectKindUi();
         markSaved(modelFile);
+        // A successful build has no Apply/Accept step: it already saved and installed
+        // its output. Completion synchronizes only; the result page names the explicit
+        // Show instances action instead of opening another window on the reader's behalf.
         installSavedInstances(built.snapshot(), built.loaded(), false);
         logWindow.info("Synchronized the completed build from " + modelFile.getPath()
                 + "; the open configuration and instances now match its saved files.\n");
@@ -1822,7 +1833,9 @@ public class ModelBuilderFrame extends JFrame {
                     card, () -> report, false));
         }
         String summary = switch (report.outcome()) {
-            case CURRENT -> "Built: every step is current.";
+            case CURRENT -> "Build completed and saved. The completed build has already "
+                    + "been synchronized into ModelBuilder; there is nothing to accept. "
+                    + "Use Show instances to inspect what it produced.";
             case AWAITING_DECISION -> "Stopped: a graph result is awaiting a decision, and the "
                     + "snapshot was not replaced. Load the built instances, accept or reject "
                     + "the Review entries named in the steps on that graph's tab, save, and "
@@ -1836,7 +1849,8 @@ public class ModelBuilderFrame extends JFrame {
                 java.util.List.of(
                         new process.swing.workflow.ProcessWorkflowResults.Tab<>("Steps", steps),
                         new process.swing.workflow.ProcessWorkflowResults.Tab<>("Files written", files)),
-                null, "Close");
+                null, report.outcome() == wikidata.explore.build.ProjectBuild.State.CURRENT
+                        ? "Close — build already saved" : "Close");
     }
 
     /** Turns the pipeline explanation into a map back to the configuration that
@@ -1990,7 +2004,8 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                graphDiscoveryState(), reviewableEdges(), lastRun.dynamicObjects(),
+                currentRunWorkflowSubject(), graphDiscoveryState(), reviewableEdges(),
+                lastRun.dynamicObjects(),
                 this::applyGraphFrontier, generateDomainButton::doClick);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
@@ -2033,10 +2048,20 @@ public class ModelBuilderFrame extends JFrame {
      * so replacing or clearing it must first release whatever the replacement does not carry.
      */
     private void replaceGenerationRun(GenerationRun next) {
+        GenerationRun previous = lastRun;
         lastRun = wikidata.explore.generation.GenerationRuns.handOver(lastRun, next);
+        if (previous != lastRun) generationRunRevision++;
         if (next == null) savedGenerationRun = null;
         updateRunReportButton();
         sourceWorkbench.refreshDomainOverview();
+    }
+
+    private String currentRunWorkflowSubject() {
+        return runWorkflowSubject(generationRunRevision);
+    }
+
+    static String runWorkflowSubject(long revision) {
+        return "generation-run:" + revision;
     }
 
     private void updateRunReportButton() {
@@ -2053,9 +2078,11 @@ public class ModelBuilderFrame extends JFrame {
         if (report == null) return;
         process.ProcessOutcome<GenerationRun> outcome = process.ProcessOutcome.succeeded(
                 report, report.selfReferenceAudit().description());
+        String reportSubject = currentRunWorkflowSubject();
         process.swing.workflow.PreparedProcessWorkflowAction<GenerationRun, GenerationRun>
                 action = new process.swing.workflow.PreparedProcessWorkflowAction<>() {
             @Override public String id() { return "run-report"; }
+            @Override public String subject() { return reportSubject; }
             @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
                 return new process.swing.workflow.ProcessWorkflowPlan(
                         "Run report", "Inspect the decisions retained with this run.",
@@ -3286,6 +3313,8 @@ public class ModelBuilderFrame extends JFrame {
     private String useMembershipType(workbench.WorkbenchSelections.Entity value) {
         sourceWorkbench.applyEdits();
         GeneratedClassModel clazz = activeClass();
+        String other = PopulationSourceEditing.wikidataMembershipRefusal(clazz);
+        if (!other.isEmpty()) return other;
         EntityBound.Kind kind = clazz.membership().kind();
         if (kind != EntityBound.Kind.UNBOUNDED && kind != EntityBound.Kind.RELATION) {
             return kind == EntityBound.Kind.EXPLICIT
@@ -3303,6 +3332,12 @@ public class ModelBuilderFrame extends JFrame {
 
     private void useSourceQid(String qid, String label) {
         sourceWorkbench.applyEdits();
+        String other = PopulationSourceEditing.wikidataMembershipRefusal(activeClass());
+        if (!other.isEmpty()) {
+            JOptionPane.showMessageDialog(this, other, "Population source",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         setSourceQid(activeClass(), qid, label);
     }
 

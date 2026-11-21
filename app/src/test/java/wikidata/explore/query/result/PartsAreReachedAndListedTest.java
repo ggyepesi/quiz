@@ -29,7 +29,7 @@ class PartsAreReachedAndListedTest {
         // The same name as its owner, which is what a part is called now.
         @Override public String getDisplayName() { return id; }
         @Override public String typeName() { return "Name"; }
-        @Override public FieldSet fields() { return FieldSet.of(this); }
+        @Override public FieldSet fields() { return FieldSet.standard(this); }
     }
 
     static final class Person implements Viewable {
@@ -39,7 +39,7 @@ class PartsAreReachedAndListedTest {
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return id; }
         @Override public String typeName() { return "Person"; }
-        @Override public FieldSet fields() { return FieldSet.of(this); }
+        @Override public FieldSet fields() { return FieldSet.standard(this); }
     }
 
     private static ObjectQueryResult resultWithParts(List<String> parts) {
@@ -87,7 +87,7 @@ class PartsAreReachedAndListedTest {
             @Override public String getIdentifier() { return id; }
             @Override public String getDisplayName() { return id; }
             @Override public String typeName() { return "Position"; }
-            @Override public FieldSet fields() { return FieldSet.of(this); }
+            @Override public FieldSet fields() { return FieldSet.standard(this); }
         }
         RefPerson root = new RefPerson("Q1");
         RefPerson reference = new RefPerson("Q2");

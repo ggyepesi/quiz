@@ -513,7 +513,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
         discoveryPanel.refreshNodeTitle();
         discoveryPanel.refreshRelationRouteTarget();
-        subclassDiscoveryPanel.showClass(classForExplorerMembership());
+        subclassDiscoveryPanel.showClass(projectModel, classForExplorerMembership());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
         reusableSelectionsPanel.setVisible(!(selected instanceof GeneratedClassModel clazz)
@@ -683,7 +683,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 membership.relationPid(), targets, membership.includeDescendants(),
                 membership.qualifierCondition()));
         classSourcePanel.edit(clazz);
-        subclassDiscoveryPanel.showClass(clazz);
+        subclassDiscoveryPanel.showClass(projectModel, clazz);
         afterChange.accept(null);
     }
 

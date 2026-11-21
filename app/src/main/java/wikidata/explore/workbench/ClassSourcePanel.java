@@ -82,6 +82,24 @@ public class ClassSourcePanel extends JPanel {
     // property and the QIDs were three controls over one bound, and the QID row was
     // labelled by asking whether the property was P31.
     private final TripleEditor triple = new TripleEditor();
+    // One answer to "where do this class's instances come from": the Wikidata
+    // population triple, or one other registered class-population operation. The
+    // chooser lists both; only the chosen source's controls are shown, so the triple
+    // and a category can never both look configured.
+    private static final String WIKIDATA_POPULATION = "Wikidata — population triple";
+    private final workbench.DatasourceOperationForm alternativePopulationSource =
+            new workbench.DatasourceOperationForm(
+                    datasource.Datasources.standard(),
+                    datasource.api.BindingScope.CLASS_POPULATION,
+                    recipe -> !datasource.wikidata.WikidataDatasourceProvider.ID.equals(
+                            recipe.providerId()));
+    private final JComboBox<Object> populationSource = new JComboBox<>();
+    private final JLabel populationReplaces = new JLabel();
+    private final JLabel excludeTypesLabel = new JLabel("Exclude instances of:");
+    private final JLabel ownPopulationLimitLabel = new JLabel("Own population limit:");
+    private final JLabel rankByLabel = new JLabel("Rank by:");
+    private final JPanel rankRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    private JComponent excludeTypesRow;
     private final JButton findRelationButton = new JButton("Find…");
     // Lazily-created; the property/item name search uses the Wikidata API.
     private WikidataApiClient api;
@@ -102,6 +120,7 @@ public class ClassSourcePanel extends JPanel {
     // Explicit instance QIDs (curated set, e.g. seeded from a WikiProject /
     // category). With no type above, these alone are the class's instances.
     private final JTextArea seedQidsArea = new JTextArea(3, 18);
+    private final JComponent seedQidsEditor = WikidataIdLines.qidList(seedQidsArea);
 
     private final JTextField searchTextField = new JTextField(18);
     private final JButton searchTypeButton = new JButton("Search");
@@ -128,6 +147,8 @@ public class ClassSourcePanel extends JPanel {
     private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
     private final JCheckBox wikipediaArticleBox =
             new JCheckBox("Add English Wikipedia source link");
+    private static final String NOT_A_GROUP = "(not a group)";
+    private final JComboBox<String> groupMembersField = new JComboBox<>();
     private boolean shownAliases;
     private boolean shownWikipediaArticle;
     private boolean configurationDirty;
@@ -145,6 +166,18 @@ public class ClassSourcePanel extends JPanel {
     public ClassSourcePanel() {
         super(new BorderLayout(4, 4));
         buildUi();
+        alternativePopulationSource.setName("class.alternativePopulationSource");
+        alternativePopulationSource.operationChooserVisible(false);
+        alternativePopulationSource.onChange(() -> configurationDirty = true);
+        populationSource.setName("class.populationSource");
+        seedQidsEditor.setName("class.seedQids");
+        populationSource.addItem(WIKIDATA_POPULATION);
+        alternativePopulationSource.choices().forEach(populationSource::addItem);
+        populationSource.addActionListener(event -> {
+            showChosenPopulationSource();
+            configurationDirty = true;
+        });
+        showChosenPopulationSource();
         watchConfiguration(header);
         watchConfiguration(triple);
         watchConfiguration(representations);
@@ -158,6 +191,7 @@ public class ClassSourcePanel extends JPanel {
         watchConfiguration(rankDescBox);
         watchConfiguration(aliasesBox);
         watchConfiguration(wikipediaArticleBox);
+        watchConfiguration(groupMembersField);
         watchConfiguration(displayNameEditor);
         watchConfiguration(identityEditor);
     }
@@ -210,11 +244,13 @@ public class ClassSourcePanel extends JPanel {
         searchTextField.setText(clazz.className());
 
         populateClassDetails();
+        populateGroupMembersField();
         populateRepresentations();
 
         // The property's label is set AFTER the PID, whose document listener blanks it
         // — a saved relation must still show its name on load.
         triple.show(clazz, projectModel);
+        showPopulationSource(ClassSourceBindings.alternativePopulationSource(clazz));
         excludeTypesField.setText(String.join(" ", m.excludedTypeQids()));
 
         limitSpinner.setValue(Math.max(1, m.limit()));
@@ -260,6 +296,115 @@ public class ClassSourcePanel extends JPanel {
         }
         updateSubclassConditionControls();
         showInheritedPopulationFilter(clazz != null && !clazz.baseClassName().isBlank());
+    }
+
+    /** Selects {@code recipe}'s operation in the one chooser, or the Wikidata triple. */
+    private void showPopulationSource(datasource.api.SourceRecipe recipe) {
+        Object chosen = WIKIDATA_POPULATION;
+        for (workbench.DatasourceOperationForm.Choice choice
+                : alternativePopulationSource.choices()) {
+            if (recipe != null && choice.provider().id().equals(recipe.providerId())
+                    && choice.operation().id().equals(recipe.operationId())) {
+                chosen = choice;
+            }
+        }
+        java.awt.event.ActionListener[] listeners = populationSource.getActionListeners();
+        for (java.awt.event.ActionListener listener : listeners) {
+            populationSource.removeActionListener(listener);
+        }
+        populationSource.setSelectedItem(chosen);
+        for (java.awt.event.ActionListener listener : listeners) {
+            populationSource.addActionListener(listener);
+        }
+        alternativePopulationSource.show(chosen == WIKIDATA_POPULATION ? null : recipe);
+        showChosenPopulationSource();
+    }
+
+    /** Shows only the controls of the chosen population source. The Wikidata-only
+     * query knobs do not apply to another datasource's exact identities, so they are
+     * not shown as if they did. */
+    private void showChosenPopulationSource() {
+        Object chosen = populationSource.getSelectedItem();
+        boolean wikidata = chosen == null || chosen == WIKIDATA_POPULATION;
+        if (!wikidata && chosen instanceof workbench.DatasourceOperationForm.Choice choice) {
+            datasource.api.SourceRecipe current = alternativePopulationSource.recipe();
+            boolean same = current != null
+                    && current.providerId().equals(choice.provider().id())
+                    && current.operationId().equals(choice.operation().id());
+            if (!same) {
+                alternativePopulationSource.show(new datasource.api.SourceRecipe(
+                        choice.provider().id(), choice.operation().id(),
+                        java.util.Map.of()));
+            }
+        } else if (wikidata) {
+            alternativePopulationSource.show(null);
+        }
+        String replaces = wikidata ? "" : replacedWikidataPopulation(
+                triple.hasMembershipDraft(), seedQidsDraft().size());
+        populationReplaces.setText(replaces);
+        populationReplaces.setVisible(!replaces.isEmpty());
+        alternativePopulationSource.setVisible(!wikidata);
+        triple.setVisible(wikidata);
+        excludeTypesLabel.setVisible(wikidata);
+        if (excludeTypesRow != null) excludeTypesRow.setVisible(wikidata);
+        ownPopulationLimitLabel.setVisible(wikidata);
+        limitSpinner.setVisible(wikidata);
+        requireLabelBox.setVisible(wikidata);
+        notableOnlyBox.setVisible(wikidata);
+        rankByLabel.setVisible(wikidata);
+        rankRow.setVisible(wikidata);
+        revalidate();
+        repaint();
+    }
+
+    /** What Apply discards when another datasource replaces the Wikidata population,
+     * or "" when the visible draft has none. Said before Apply, not only in a tooltip. */
+    private static String replacedWikidataPopulation(
+            boolean membership, int seeds) {
+        if (!membership && seeds == 0) return "";
+        String what = membership && seeds > 0
+                ? "its Wikidata membership and " + seeds + " seed QID(s)"
+                : membership ? "its Wikidata membership" : seeds + " seed QID(s)";
+        return "Apply replaces " + what + "; choosing the Wikidata triple again later "
+                + "starts empty.";
+    }
+
+    /** The valid seed identities currently visible in the editor. Apply and its
+     * replacement warning read this same draft. */
+    private java.util.List<String> seedQidsDraft() {
+        java.util.List<String> result = new java.util.ArrayList<>();
+        for (String token : seedQidsArea.getText().trim().split("[,;\\s]+")) {
+            String qid = RuleNode.cleanQid(token);
+            if (WikidataIds.isQid(qid) && !result.contains(qid)) result.add(qid);
+        }
+        return result;
+    }
+
+    private void populateGroupMembersField() {
+        groupMembersField.removeAllItems();
+        groupMembersField.addItem(NOT_A_GROUP);
+        if (clazz == null) return;
+        for (GeneratedFieldModel field : clazz.effectiveFields(projectModel)) {
+            if (field != null
+                    && field.type() == FieldType.ENTITY
+                    && field.cardinality() == wikidata.explore.model.FieldCardinality.COLLECTION) {
+                groupMembersField.addItem(field.name());
+            }
+        }
+        if (clazz.groupSpec() != null) {
+            String configured = clazz.groupSpec().membersField();
+            boolean offered = false;
+            for (int i = 0; i < groupMembersField.getItemCount(); i++) {
+                if (configured.equals(groupMembersField.getItemAt(i))) {
+                    offered = true;
+                    break;
+                }
+            }
+            if (!offered) groupMembersField.addItem(configured);
+            groupMembersField.setSelectedItem(configured);
+        } else {
+            groupMembersField.setSelectedItem(NOT_A_GROUP);
+        }
     }
 
     private void updateSubclassConditionControls() {
@@ -381,6 +526,7 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void buildUi() {
+        groupMembersField.setName("class.groupMembersField");
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
@@ -405,14 +551,28 @@ public class ClassSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(form, y++, header);
 
-        // One order, every kind: the triple, then what identifies an instance,
-        // then what names it. What only this kind has comes after them — its
-        // population knobs, then the tools that fill them.
+        // One order, every kind: the population source (the triple, or the one other
+        // datasource chosen in its place), then what identifies an instance, then what
+        // names it. What only this kind has comes after them — its population knobs,
+        // then the tools that fill them.
+        populationSource.setToolTipText("<html>Where this class's instances come from: "
+                + "the Wikidata population triple, or another registered datasource.<br>"
+                + "Choosing another datasource and pressing Apply clears the Wikidata "
+                + "triple and explicit seed QIDs, which it replaces.</html>");
+        GridBagUtils.labeledRow(form, c, y++, "Population source:", populationSource);
+        populationReplaces.setName("class.populationSource.replaces");
+        GridBagUtils.wideRow(form, y++, populationReplaces);
+        GridBagUtils.wideRow(form, y++, alternativePopulationSource);
         GridBagUtils.wideRow(form, y++, triple);
 
         GridBagUtils.wideRow(form, y++, identityEditor);
 
         GridBagUtils.wideRow(form, y++, displayNameEditor);
+
+        groupMembersField.setToolTipText("Declare each class instance as a group whose "
+                + "members come from the selected list field. This changes presentation, "
+                + "not how the class population is generated.");
+        GridBagUtils.labeledRow(form, c, y++, "Group members field:", groupMembersField);
 
         discriminatorPidField.setToolTipText("Property used to further restrict the "
                 + "instances inherited from the base class; P31 means instance of.");
@@ -445,12 +605,11 @@ public class ClassSourcePanel extends JPanel {
                 + "even if it matched membership.<br>e.g. add Q11688446 (Roman "
                 + "deity) to keep a Greek-character class free of Roman ones. "
                 + "Emitted as FILTER NOT EXISTS.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Exclude instances of:",
-                WikidataIdLines.qidList(excludeTypesField));
+        excludeTypesRow = WikidataIdLines.qidList(excludeTypesField);
+        GridBagUtils.labeledRow(form, c, y++, excludeTypesLabel, excludeTypesRow);
 
 
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        JLabel ownPopulationLimitLabel = new JLabel("Own population limit:");
         ownPopulationLimitLabel.setToolTipText("Applies only to instances discovered "
                 + "from this class's own population source, not to instances represented "
                 + "from another role class.");
@@ -477,10 +636,9 @@ public class ClassSourcePanel extends JPanel {
                 + "Wikipedia language count, a generic importance proxy.<br>Or a "
                 + "<b>number/date field</b> of this class (e.g. brightness, area, "
                 + "population). <b>(none)</b> = arbitrary, ordered by name.</html>");
-        JPanel rankRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rankRow.add(rankByBox);
         rankRow.add(rankDescBox);
-        GridBagUtils.labeledRow(form, c, y++, "Rank by:", rankRow);
+        GridBagUtils.labeledRow(form, c, y++, rankByLabel, rankRow);
 
 
         seedQidsArea.setLineWrap(true);
@@ -491,7 +649,7 @@ public class ClassSourcePanel extends JPanel {
                 + "(e.g. the 12 Olympians); or set a type too, to restrict it. "
                 + "The WikiProject tab's \"Add selected\" fills this.</html>");
         triple.sourceSubjectControl("Restrict to these subject QIDs:",
-                WikidataIdLines.qidList(seedQidsArea));
+                seedQidsEditor);
 
 
         fromPartsButton.setToolTipText("<html>Read the values of a property on an entity "
@@ -877,16 +1035,30 @@ public class ClassSourcePanel extends JPanel {
         m.rankDescending(rankDescBox.isSelected());
 
         clazz.seedQids().clear();
-        for (String tok : seedQidsArea.getText().trim().split("[,;\\s]+")) {
-            String qid = RuleNode.cleanQid(tok);
-            if (WikidataIds.isQid(qid) && !clazz.seedQids().contains(qid)) {
-                clazz.seedQids().add(qid);
-            }
+        clazz.seedQids().addAll(seedQidsDraft());
+
+        datasource.api.SourceRecipe alternative =
+                populationSource.getSelectedItem() == WIKIDATA_POPULATION
+                        || !populationSource.isEnabled()
+                        ? null : alternativePopulationSource.recipe();
+        ClassSourceBindings.alternativePopulationSource(clazz, alternative);
+        if (alternative != null) {
+            // The chosen producer is the population. Keep the controls honest after
+            // Apply: a blank Wikidata triple and seed list, not stale values which no
+            // longer participate in generation.
+            triple.show(clazz, projectModel);
+            seedQidsArea.setText("");
         }
 
         if (projectModel != null) {
             projectModel.representationClasses(clazz, representations.chosen());
         }
+
+        Object selectedGroupField = groupMembersField.getSelectedItem();
+        String groupField = selectedGroupField == null ? ""
+                : selectedGroupField.toString().trim();
+        clazz.groupSpec(groupField.isBlank() || NOT_A_GROUP.equals(groupField)
+                ? null : new wikidata.explore.model.GroupClassSpec(groupField));
 
         titleLabel.setText("Class: " + clazz.className());
         triple.objectQids(clazz.membership().qids());
@@ -949,6 +1121,8 @@ public class ClassSourcePanel extends JPanel {
         // well would be the same fact derived two ways — and the two would agree until
         // a construct's identity regime changed on one side only.
         aliasesBox.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
+        // Only a source class has an independent population to choose a source for.
+        populationSource.setEnabled(hasClass && clazz.classKind() == ClassKind.SOURCE);
         wikipediaArticleBox.setEnabled(
                 hasClass && clazz.classKind() == ClassKind.SOURCE);
     }
@@ -1004,9 +1178,25 @@ public class ClassSourcePanel extends JPanel {
             return;
         }
 
-        summaryLabel.setText(
-                "Current source: items with instance of "
-                        + clazz.instanceMapping().displaySource());
+        datasource.api.SourceRecipe alternative =
+                ClassSourceBindings.alternativePopulationSource(clazz);
+        if (alternative != null) {
+            try {
+                datasource.api.DatasourceOperation operation = alternative.resolve(
+                        datasource.Datasources.standard(),
+                        datasource.api.BindingScope.CLASS_POPULATION);
+                summaryLabel.setText("Current source: "
+                        + operation.prepare(new datasource.api.SourceBinding(
+                                datasource.api.SourceBindingTarget.classPopulation(
+                                        clazz.className()), alternative)).description());
+            } catch (IllegalArgumentException invalid) {
+                summaryLabel.setText("Current source is incomplete: "
+                        + invalid.getMessage());
+            }
+            return;
+        }
+        summaryLabel.setText("Current source: items with instance of "
+                + clazz.instanceMapping().displaySource());
     }
 
     private void clear() {
@@ -1014,6 +1204,7 @@ public class ClassSourcePanel extends JPanel {
         header.show(null);
         searchTextField.setText("");
         triple.show(null, projectModel);
+        showPopulationSource(null);
         representations.show(List.of(), List.of());
         summaryLabel.setText(" ");
         searchModel.setRows(List.of());

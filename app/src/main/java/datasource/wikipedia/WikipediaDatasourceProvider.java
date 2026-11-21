@@ -55,6 +55,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final int MAX_ARTICLE_PASSAGE_CHARACTERS = 20_000;
 
     private final List<DatasourceOperation> operations = List.of(
+            new WikipediaCategoryPopulationOperation(),
             new WikipediaCategoryDiscoveryOperation(),
             new InfoboxParameter(),
             new InfoboxRowLinks(),

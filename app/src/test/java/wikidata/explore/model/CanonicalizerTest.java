@@ -27,7 +27,7 @@ class CanonicalizerTest {
     private record Ref(String id, String label) implements Viewable {
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return label; }
-        @Override public FieldSet fields() { return FieldSet.of(this); }
+        @Override public FieldSet fields() { return FieldSet.standard(this); }
     }
 
     private static Canonicalizer.FieldReader reader(Map<String, Object> values) {

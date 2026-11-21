@@ -16,7 +16,7 @@ definition of done.
 | Object reference | typed snapshot `Ref` | Clean and cycle-safe |
 | Collection | dynamic collection | Mostly clean |
 | Map | dynamic map, keys preserved | Clean (non-`String` keys coerced via `String.valueOf`) |
-| `ViewableGroup` | shared read-only dynamic adapter | Clean |
+| `ViewableGroup` | one shared ordinary `ViewableGroupFields` contract, including the read-only dynamic adapter | Clean |
 | `parent/children/members` | ordinary dynamic references | Clean |
 | One explicit group root | persisted snapshot `groupRoots` | Clean |
 | `GroupView`/`GroupTreeBrowser` | same generic `ViewableGroup` renderer | Clean |

@@ -35,7 +35,7 @@ class MultiTypeResultSharesOneContextTest {
         @Override public String getDisplayName() { return id + " — Structured Name"; }
         @Override public String typeName() { return "Name"; }
         @Override public objectview.field.FieldSet fields() {
-            return objectview.field.FieldSet.of(this);
+            return objectview.field.FieldSet.standard(this);
         }
     }
 
@@ -47,7 +47,7 @@ class MultiTypeResultSharesOneContextTest {
         @Override public String getDisplayName() { return id; }
         @Override public String typeName() { return "Person"; }
         @Override public objectview.field.FieldSet fields() {
-            return objectview.field.FieldSet.of(this);
+            return objectview.field.FieldSet.standard(this);
         }
     }
 
@@ -56,7 +56,7 @@ class MultiTypeResultSharesOneContextTest {
         @Override public String getDisplayName() { return name; }
         @Override public String typeName() { return "NobelPrize"; }
         @Override public objectview.field.FieldSet fields() {
-            return objectview.field.FieldSet.of(this);
+            return objectview.field.FieldSet.standard(this);
         }
     }
 
@@ -65,7 +65,7 @@ class MultiTypeResultSharesOneContextTest {
         @Override public String getDisplayName() { return name; }
         @Override public String typeName() { return "LaureatesWithMotivation"; }
         @Override public objectview.field.FieldSet fields() {
-            return objectview.field.FieldSet.of(this);
+            return objectview.field.FieldSet.standard(this);
         }
     }
 

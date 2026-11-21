@@ -17,6 +17,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The Build action's results say what each step did and why, and how to go on from a stop. */
 class BuildResultsTest {
 
+    @Test void currentBuildSaysItIsAlreadySavedAndNeedsNoAcceptance() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Offices");
+        ProjectBuild.Report report = new ProjectBuild.Report(
+                List.of(), ProjectBuild.State.CURRENT, List.of(),
+                new File("offices.build.json"));
+
+        var results = ModelBuilderFrame.buildResults(project,
+                ProcessOutcome.succeeded(report, "built"));
+
+        assertNull(results.resultDecision());
+        assertTrue(results.summary().contains("completed and saved"), results.summary());
+        assertTrue(results.summary().contains("nothing to accept"), results.summary());
+        assertEquals("Close — build already saved", results.closeVerb());
+    }
+
     @Test void eachStepSaysWhatWasDoneAndWhy() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         project.name("Offices");

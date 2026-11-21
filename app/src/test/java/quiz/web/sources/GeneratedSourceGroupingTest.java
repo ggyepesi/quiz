@@ -109,6 +109,47 @@ class GeneratedSourceGroupingTest {
     }
 
     @Test
+    void aModelConfiguredGroupIsServedWithoutATransformSnapshotRoot(
+            @TempDir Path dir) throws Exception {
+        wikidata.explore.model.GeneratedProjectModel model =
+                new wikidata.explore.model.GeneratedProjectModel();
+        wikidata.explore.model.GeneratedClassModel deity = model.rootClass();
+        deity.className("Deity");
+        wikidata.explore.model.GeneratedClassModel group =
+                new wikidata.explore.model.GeneratedClassModel("DeityGroup");
+        model.addClass(group);
+        wikidata.explore.model.GeneratedFieldModel members = group.addField(
+                "members", datasource.schema.FieldType.ENTITY,
+                wikidata.explore.model.FieldCardinality.COLLECTION);
+        members.entityClassName("Deity");
+        group.groupSpec(new wikidata.explore.model.GroupClassSpec("members"));
+
+        WikidataDynamicObject ra = new WikidataDynamicObject("Q11768", "Ra");
+        ra.type("Deity");
+        ra.directClasses(Set.of("Deity"));
+        WikidataDynamicObject ennead = new WikidataDynamicObject("Q233458", "Ennead");
+        ennead.type("DeityGroup");
+        ennead.directClasses(Set.of("DeityGroup"));
+        ennead.put("members", List.of(ra));
+        File snapshot = dir.resolve("deities.snapshot.json").toFile();
+        File modelFile = dir.resolve("deities.model.json").toFile();
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
+                List.of(ra, ennead), snapshot, model);
+        new wikidata.explore.model.GeneratedProjectModelStore().save(model, modelFile);
+
+        GeneratedSource source = new GeneratedSource("Deity", snapshot, modelFile);
+        objectview.group.ViewableGroup<?> root = source.rootGroup();
+
+        assertNotNull(root);
+        assertEquals("All Deity", root.getDisplayName());
+        objectview.group.ViewableGroup<?> served = root.getChildren().iterator().next()
+                .getChildren().iterator().next();
+        assertEquals("Ennead", served.getDisplayName());
+        assertEquals(List.of("Q11768"), served.getMembers().stream()
+                .map(value -> ((objectview.Viewable) value).getIdentifier()).toList());
+    }
+
+    @Test
     void registerAllDoesNotServeViewableGroupAsItsOwnDataset(
             @TempDir Path dir) throws Exception {
         State austria = new State("Austria");

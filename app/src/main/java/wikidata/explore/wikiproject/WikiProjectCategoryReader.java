@@ -35,6 +35,51 @@ public class WikiProjectCategoryReader {
         this.debug = debug;
     }
 
+    /** One bounded MediaWiki page; continuation is the exact token for the next page. */
+    public record CategoryMemberPage(
+            List<WikiProjectArticle> articles, String continuation) {
+        public CategoryMemberPage {
+            articles = List.copyOf(articles == null ? List.of() : articles);
+            continuation = continuation == null ? "" : continuation;
+        }
+    }
+
+    /** The exact request URL for one page, including its continuation token. */
+    public String categoryMemberRequestUrl(
+            String category, int remaining, int namespace, String continuation) {
+        return WikiProjectMediaWikiClient.url(
+                pageQueryString(category, remaining, namespace, continuation));
+    }
+
+    // The one query for a page, so the URL a log shows is the request that is sent.
+    private static String pageQueryString(
+            String category, int remaining, int namespace, String continuation) {
+        return namespace == 0 || namespace == 14
+                ? buildGeneratedMemberQueryString(
+                        category, remaining, continuation, namespace)
+                : buildQueryString(category, remaining, continuation, namespace);
+    }
+
+    /**
+     * Reads exactly one page with no hidden retry. Population acquisition wraps this
+     * operation in the shared batch executor so attempts and their outcome are visible.
+     */
+    public CategoryMemberPage categoryMemberPage(
+            String category, int remaining, int namespace, String continuation)
+            throws Exception {
+        String json = client.getOnce(
+                pageQueryString(category, remaining, namespace, continuation));
+        if (debug) {
+            System.out.println("WikiProjectCategoryReader page json:");
+            System.out.println(json);
+        }
+        return namespace == 0 || namespace == 14
+                ? new CategoryMemberPage(parsePageObjects(json, category),
+                        nullToEmpty(parseGeneratorContinue(json)))
+                : new CategoryMemberPage(parseMembers(json, category),
+                        nullToEmpty(parseContinue(json)));
+    }
+
     public List<WikiProjectArticle> categoryMembers(
             String category,
             int limit) throws Exception {
@@ -327,5 +372,9 @@ public class WikiProjectCategoryReader {
         return s.replace("\\/", "/")
                 .replace("\\\"", "\"")
                 .replace("\\\\", "\\");
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

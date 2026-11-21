@@ -24,8 +24,22 @@ final class PopulationSourceBindings {
     private PopulationSourceBindings() { }
 
     static SourceRecipe effective(GeneratedClassModel clazz) {
-        SourceRecipe legacy = fromLegacy(clazz);
-        return legacy == null ? clazz.declaredPopulationSource() : legacy;
+        return effective(clazz, null);
+    }
+
+    static SourceRecipe effective(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        // A chosen non-Wikidata source IS the population. It is asked first so that a
+        // Wikidata membership written later by another path can never quietly take over
+        // while the editor, validator and group container still report the other source.
+        SourceRecipe declared = clazz == null ? null : clazz.declaredPopulationSource();
+        if (declared != null
+                && !WikidataDatasourceProvider.ID.equals(declared.providerId())) {
+            return declared;
+        }
+        SourceRecipe own = fromLegacy(clazz);
+        if (own != null) return own;
+        return project == null ? declared : fromLegacy(clazz, project);
     }
 
     static void assign(GeneratedClassModel clazz, SourceRecipe binding) {
@@ -36,14 +50,15 @@ final class PopulationSourceBindings {
             clazz.declaredPopulationSource(null);
             return;
         }
-        if (!WikidataDatasourceProvider.ID.equals(binding.providerId())) {
-            throw new IllegalArgumentException(
-                    "Class population generation does not yet execute provider '"
-                            + binding.providerId() + "'");
-        }
         if (clazz.ownedClass() || clazz.reifiesStatements()) {
             throw new IllegalStateException(
                     "Owned and statement classes cannot declare an independent population");
+        }
+        if (!WikidataDatasourceProvider.ID.equals(binding.providerId())) {
+            clearMembership(clazz);
+            clazz.seedQids().clear();
+            clazz.declaredPopulationSource(binding);
+            return;
         }
         if (WikidataDatasourceProvider.SEED_LIST.equals(binding.operationId())) {
             clearMembership(clazz);
@@ -139,8 +154,18 @@ final class PopulationSourceBindings {
         if (model == null) return;
         for (GeneratedClassModel clazz : model.classes()) {
             if (clazz == null) continue;
-            SourceRecipe derived = fromLegacy(clazz);
             SourceRecipe declared = clazz.declaredPopulationSource();
+            if (declared != null
+                    && !WikidataDatasourceProvider.ID.equals(declared.providerId())) {
+                // The declared provider is the authored population. A stale legacy
+                // membership can be introduced by an older editor or a partially
+                // applied edit, but it must neither replace that source nor survive as
+                // a second population decision in the saved model.
+                clearMembership(clazz);
+                clazz.seedQids().clear();
+                continue;
+            }
+            SourceRecipe derived = fromLegacy(clazz);
             if (derived != null) {
                 clazz.declaredPopulationSource(derived);
             } else if (declared != null
@@ -149,6 +174,16 @@ final class PopulationSourceBindings {
                 // persisted projection; bindings owned by another provider survive.
                 clazz.declaredPopulationSource(null);
             }
+        }
+    }
+
+    /** Return from an alternative provider to the population authored in the class editor. */
+    static void clearAlternative(GeneratedClassModel clazz) {
+        if (clazz == null) return;
+        SourceRecipe declared = clazz.declaredPopulationSource();
+        if (declared != null
+                && !WikidataDatasourceProvider.ID.equals(declared.providerId())) {
+            clazz.declaredPopulationSource(null);
         }
     }
 

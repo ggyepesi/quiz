@@ -2,6 +2,7 @@ package quiz.transform;
 
 import objectview.Viewable;
 import objectview.render.GroupTreeView;
+import objectview.render.Card;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
@@ -140,9 +141,19 @@ class FacetGroupTest {
         SwingUtilities.invokeAndWait(() -> {
             tree.setSize(520, 300);
             layout(tree);
-            tree.getTree().expandRow(1);
+            tree.setGroupExpanded(facet, true);
+            tree.setGroupDetailsExpanded(facet, true);
+            layout(tree);
+            Card details = components(tree, Card.class).getFirst();
+            assertTrue(details.getHeight() > 20,
+                    "the expanded group ObjectView card must receive useful layout bounds: "
+                            + details.getBounds() + ", preferred="
+                            + details.getPreferredSize());
+            assertEquals(0, tree.getTreeScrollPane().getViewport().getViewPosition().y,
+                    "programmatic field expansion must not jump the outline");
         });
-        File artifact = new File("target/ui-artifacts/nobel-prize-category-facet.png");
+        File artifact = new File(
+                "target/ui-artifacts/nobel-prize-category-facet-outline.png");
         assertTrue(artifact.getParentFile().isDirectory() || artifact.getParentFile().mkdirs());
         BufferedImage image = new BufferedImage(520, 300, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
@@ -157,5 +168,15 @@ class FacetGroupTest {
         for (Component child : container.getComponents()) {
             if (child instanceof Container nested) layout(nested);
         }
+    }
+
+    private static <T extends Component> java.util.List<T> components(
+            Container root, Class<T> type) {
+        java.util.List<T> found = new java.util.ArrayList<>();
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) found.add(type.cast(child));
+            if (child instanceof Container nested) found.addAll(components(nested, type));
+        }
+        return found;
     }
 }

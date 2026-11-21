@@ -135,7 +135,8 @@ public class GenerateInstancesQuery
                                     context.cancellation(),
                                     sourcePlan,
                                     WikidataAccess.sparql(context, Datasource.DBPEDIA),
-                                    context.optional(dataset.DomainStorage.class));
+                                    context.optional(dataset.DomainStorage.class),
+                                    context);
 
                     step.summary(run.size() + " objects");
                     return run;

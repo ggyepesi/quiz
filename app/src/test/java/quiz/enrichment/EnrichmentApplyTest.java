@@ -28,7 +28,7 @@ class EnrichmentApplyTest {
         Dyn(String id) { this.id = id; }
         @Override public String getIdentifier() { return id; }
         @Override public String getDisplayName() { return id; }
-        @Override public FieldSet fields() { return FieldSet.of(this); }
+        @Override public FieldSet fields() { return FieldSet.standard(this); }
         @Override public Map<String, Object> dynamicFieldValues() { return map; }
     }
 

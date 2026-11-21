@@ -362,6 +362,22 @@ public class GenerationPipeline {
             datasource.api.SourceExecutionPlan sourcePlan,
             WikidataSparqlClient dbpedia,
             dataset.DomainStorage storage) throws Exception {
+        return fullRun(run, depth, client, log, entityApi, cancellation, sourcePlan,
+                dbpedia, storage, null);
+    }
+
+    /** The same run with the caller's observable context for datasource-owned work. */
+    public GenerationRun fullRun(
+            CompiledPipelineRun run,
+            int depth,
+            WikidataSparqlClient client,
+            GenerationLog log,
+            wikidata.api.WikidataApiClient entityApi,
+            work.CancellationToken cancellation,
+            datasource.api.SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia,
+            dataset.DomainStorage storage,
+            work.QueryContext sourceContext) throws Exception {
 
         if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
         if (run.blocked()) throw new IllegalStateException(run.explain());
@@ -377,14 +393,18 @@ public class GenerationPipeline {
                 ImportedMaterializedPopulationInputs.resolve(snapshot, storage);
         PopulationSourceExecution.Resolution populationInput =
                 PopulationSourceExecution.resolve(
-                        snapshot, snapshot.rootClass(), sourcePlan, materializedInputs);
+                        snapshot, snapshot.rootClass(), sourcePlan, materializedInputs)
+                        .acquire(sourceContext == null
+                                        ? new work.QueryContext().withCancellation(cancellation)
+                                        : sourceContext,
+                                log);
         if (!populationInput.available()) {
             if (log != null) log.message("Preview skipped: "
                     + populationInput.reason() + ".\n");
             GeneratedViewableRuntime runtime = buildRuntime(snapshot);
             return new GenerationRun(snapshot, depth, plan, List.of(), runtime, List.of());
         }
-        populationInput.apply(plan);
+        if (populationInput.requiresRootQuery()) populationInput.apply(plan);
         if (populationInput.importedPopulation() && log != null) {
             log.message("Load imported population "
                     + String.join(", ", populationInput.selectionNames()) + ": "
@@ -400,8 +420,10 @@ public class GenerationPipeline {
             if (!populationInput.qidsRequiringAcquisition().isEmpty()) {
                 dynamicObjects.addAll(extract(client, plan, depth, log));
             }
-        } else {
+        } else if (populationInput.requiresRootQuery()) {
             dynamicObjects = extract(client, plan, depth, log);
+        } else {
+            dynamicObjects = new java.util.ArrayList<>();
         }
         if (populationInput.importedMaterialized() && log != null) {
             log.message("Load published materialized population "

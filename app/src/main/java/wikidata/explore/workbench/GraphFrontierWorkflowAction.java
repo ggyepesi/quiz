@@ -27,6 +27,7 @@ final class GraphFrontierWorkflowAction
     record Decision(String patternId, String targetClass, String qid) { }
 
     private final GraphDiscoveryState state;
+    private final String subject;
     private final Map<String, WikidataDynamicObject> byQid;
     private final Consumer<List<Decision>> apply;
     private final Runnable afterApply;
@@ -38,11 +39,13 @@ final class GraphFrontierWorkflowAction
      *  caller supplies the current set instead of the ledger remembering it. */
     private final List<datasource.graph.GraphEdgeDefinition> edges;
 
-    GraphFrontierWorkflowAction(GraphDiscoveryState state,
+    GraphFrontierWorkflowAction(String subject,
+                                GraphDiscoveryState state,
                                 List<datasource.graph.GraphEdgeDefinition> edges,
                                 Collection<WikidataDynamicObject> objects,
                                 Consumer<List<Decision>> apply,
                                 Runnable afterApply) {
+        this.subject = subject == null ? "" : subject;
         this.state = Objects.requireNonNull(state, "state");
         this.edges = edges == null ? List.of() : List.copyOf(edges);
         this.apply = Objects.requireNonNull(apply, "apply");
@@ -61,6 +64,8 @@ final class GraphFrontierWorkflowAction
     }
 
     @Override public String id() { return "graph-frontier"; }
+
+    @Override public String subject() { return subject; }
 
     /** Expanding independent frontier nodes is intentionally safe as one model edit. */
     @Override public boolean multipleResultSelection() { return true; }

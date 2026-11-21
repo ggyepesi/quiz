@@ -35,13 +35,14 @@ class GraphFrontierWorkflowActionTest {
 
         AtomicBoolean continued = new AtomicBoolean();
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                state, List.of(pattern), List.of(holding),
+                "generation-run:7", state, List.of(pattern), List.of(holding),
                 ignored -> { }, () -> continued.set(true));
         var results = action.results(ProcessOutcome.succeeded(state, "ready"));
 
         assertEquals(1, results.tabs().get(1).cards().size());
         assertEquals("Q253779", ((WikidataDynamicObject) results.tabs().get(1)
                 .cards().getFirst().view()).qid());
+        assertEquals("generation-run:7", action.subject());
         action.afterApply();
         assertEquals(true, continued.get());
     }

@@ -98,7 +98,7 @@ class PanelLayoutIsCheckedInTest {
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
-            Files.writeString(golden, actual.toString());
+            Files.writeString(golden, actual.toString().stripTrailing() + "\n");
         }
         // The artifact describes components and order; the number of blank lines after
         // its final component is not panel structure.
@@ -108,7 +108,7 @@ class PanelLayoutIsCheckedInTest {
             // The diff is the point, and an assertion message is not where anyone can
             // read a 300-line one.
             Path seen = golden.resolveSibling("panel-layout.actual.txt");
-            Files.writeString(seen, actual.toString());
+            Files.writeString(seen, actual.toString().stripTrailing() + "\n");
             assertEquals(checkedIn, rendered,
                     "the editors no longer look like " + golden + "; diff it against "
                             + seen + ", then re-run with -Dpanel.layout.write=true to "

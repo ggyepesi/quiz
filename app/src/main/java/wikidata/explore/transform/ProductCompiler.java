@@ -144,9 +144,16 @@ public final class ProductCompiler {
         // The schema view is built lazily (only if the user opens it) and captures
         // the declared model so it can show ModelClass ↔ ProductClass side by side.
         // ProductDomain is generic — the wikidata universe is supplied here.
+        java.util.List<objectview.viewconfig.DomainGroupRoot> groupRoots =
+                configuredGroupRoots(model, pool);
         return new ProductDomain(schema, pool, WikidataDynamicObject.class,
                 () -> new quiz.transform.app.ProductSchemaInspector(model, schema),
-                roleSelections);
+                roleSelections, groupRoots);
+    }
+
+    private static List<objectview.viewconfig.DomainGroupRoot> configuredGroupRoots(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
+        return quiz.transform.app.ConfiguredGroups.rootBindings(model, pool);
     }
 
     private static void materializeConfiguredInstanceFields(

@@ -3,6 +3,7 @@ package quiz.transform;
 import objectview.Viewable;
 import objectview.group.ViewableGroup;
 import objectview.group.ViewableGroupAdapter;
+import objectview.group.ViewableGroupFields;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -163,51 +164,35 @@ public class EditableGroup extends ViewableGroupAdapter {
         copy.setKeyRef(source.getKeyRef());
         copy.replaceMembers(source.getMembers());
         for (ViewableGroup<?> child : source.getChildren()) {
-            copy.addGroup(copyOf(child, domain, seen));
+            // A configured group stays the model's live group: copying it would turn
+            // its member list into a manual group that Save then freezes.
+            if (child instanceof ConfiguredGroup) {
+                copy.putChild(cast(child));
+            } else {
+                copy.addGroup(copyOf(child, domain, seen));
+            }
         }
         return copy;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ViewableGroup<Viewable> cast(ViewableGroup<?> group) {
+        return (ViewableGroup<Viewable>) group;
     }
 
     protected Map<String, Object> ruleFields() { return Map.of(); }
 
     @Override public objectview.field.FieldSet fields() {
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put("children", getChildren());
-        values.put("members", getMembers());
-        values.put("parent", getParent());
         values.put("groupName", name);
-        values.put("role", getRole().name());
-        if (getKeyRef() != null) values.put("keyRef", getKeyRef());
         values.putAll(ruleFields());
-        return new objectview.field.FieldSet() {
+        objectview.field.FieldSet persistedRuleFields = new objectview.field.FieldSet() {
             @Override public List<objectview.field.FieldRef> fields() {
                 List<objectview.field.FieldRef> refs = new java.util.ArrayList<>();
-                refs.add(objectview.field.FieldRef.described(
-                        "children", objectview.field.FieldKind.COLLECTION,
-                        objectview.field.FieldKind.REFERENCE, "Collection<ViewableGroup>",
-                        true, true, "ViewableGroup", true, false,
-                        false, false, "", true));
-                refs.add(objectview.field.FieldRef.described(
-                        "members", objectview.field.FieldKind.COLLECTION,
-                        objectview.field.FieldKind.REFERENCE, "Collection<Viewable>",
-                        true, true, null, true, false,
-                        false, false, "", true));
-                refs.add(objectview.field.FieldRef.described(
-                        "parent", objectview.field.FieldKind.REFERENCE,
-                        objectview.field.FieldKind.REFERENCE, "ViewableGroup",
-                        true, false, "ViewableGroup", true, false,
-                        false, false, "", true));
-                refs.add(objectview.field.FieldRef.of(
+                refs.add(objectview.field.FieldRef.withStructural(
+                        objectview.field.FieldRef.of(
                         "groupName", objectview.field.FieldKind.TEXT, "String",
-                        false, false, true));
-                refs.add(objectview.field.FieldRef.of(
-                        "role", objectview.field.FieldKind.TEXT, "String",
-                        false, false, true));
-                refs.add(objectview.field.FieldRef.described(
-                        "keyRef", objectview.field.FieldKind.REFERENCE,
-                        objectview.field.FieldKind.REFERENCE, "Viewable",
-                        true, false, null, true, true,
-                        false, false, "", true));
+                        false, false, true), true));
                 refs.addAll(ruleFieldRefs());
                 return List.copyOf(refs);
             }
@@ -217,6 +202,7 @@ public class EditableGroup extends ViewableGroupAdapter {
                 throw new UnsupportedOperationException("read-only group fields");
             }
         };
+        return ViewableGroupFields.of(this, persistedRuleFields);
     }
 
     private static String text(Object value) {

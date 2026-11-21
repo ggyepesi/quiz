@@ -14,7 +14,7 @@ import process.swing.SwingProcessRunner;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -22,9 +22,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -35,6 +35,14 @@ import java.util.function.Consumer;
 
 /** One Plan → Running → Results → Apply Swing skeleton for every curation action. */
 public final class SwingProcessWorkflow {
+    private static final String WORKFLOW_PROPERTY =
+            SwingProcessWorkflow.class.getName() + ".workflow";
+
+    /** What an open workflow window is: which action, on what, for which owner window,
+     * and how far its lifecycle has progressed. */
+    record Registration(String id, String subject, Window owner,
+                        java.util.function.Supplier<ProcessWorkflowState.Stage> stage) { }
+
     private SwingProcessWorkflow() { }
 
     /** A failure dialog must always say what failed, even for JDK exceptions whose
@@ -65,19 +73,91 @@ public final class SwingProcessWorkflow {
         return hasPipeline ? 0 : -1;
     }
 
-    public static <R, D> JDialog start(
+    public static <R, D> JFrame start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action) {
         return start(owner, runner, action, null);
     }
 
-    public static <R, D> JDialog start(
+    public static <R, D> JFrame start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
             Consumer<ModelReference> navigateReference) {
+        Window ownerWindow = SwingUtilities.getWindowAncestor(owner);
+        JFrame existing = existingWorkflow(ownerWindow, action.id(), action.subject());
+        if (existing != null) {
+            if (!holdsWork(registration(existing))) {
+                // A Plan page was computed from an earlier request; replace it rather
+                // than show the reader a plan for configuration that has since changed.
+                existing.dispose();
+            } else {
+                return SwingWindowActivation.showAndFocus(existing);
+            }
+        }
         Session<R, D> session = new Session<>(owner, runner, action, navigateReference);
         ProcessOutcome<R> prepared = action.preparedOutcome();
         if (prepared == null) session.showPlan();
         else session.review(prepared);
-        return SwingWindowActivation.showAndFocus(session.dialog);
+        return SwingWindowActivation.showAndFocus(session.window);
+    }
+
+    /** One visible lifecycle per user action on one subject. A completed workflow may
+     * still hold an unapplied result, so runner-idle is not permission to open another
+     * window for the same action and subject; a different subject is a different
+     * lifecycle (running graph B never re-focuses graph A's results). */
+    private static JFrame existingWorkflow(Window owner, String actionId, String subject) {
+        for (Window candidate : Window.getWindows()) {
+            if (candidate instanceof JFrame frame
+                    && sameWorkflow(actionId, subject, registration(frame),
+                            frame.isDisplayable(), owner)) {
+                return frame;
+            }
+        }
+        return null;
+    }
+
+    /** Every open workflow window started from {@code owner}. Workflow windows are
+     * independent frames (so they can be minimized), so their owner's project boundary
+     * closes them through this list rather than {@code getOwnedWindows()}. */
+    public static List<Window> openWorkflows(Window owner) {
+        List<Window> result = new ArrayList<>();
+        for (Window candidate : Window.getWindows()) {
+            Registration registration = candidate instanceof JFrame frame
+                    ? registration(frame) : null;
+            if (registration != null && candidate.isDisplayable()
+                    && registration.owner() == owner) {
+                result.add(candidate);
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static Registration registration(JFrame frame) {
+        return frame.getRootPane().getClientProperty(WORKFLOW_PROPERTY)
+                instanceof Registration registration ? registration : null;
+    }
+
+    static boolean sameWorkflow(String requestedId, String requestedSubject,
+                                Registration stored, boolean displayable,
+                                Window requestedOwner) {
+        return displayable && stored != null
+                && requestedId != null && !requestedId.isBlank()
+                && requestedId.equals(stored.id())
+                && clean(requestedSubject).equals(clean(stored.subject()))
+                && sameOwner(requestedOwner, stored.owner());
+    }
+
+    static boolean sameOwner(Object requestedOwner, Object storedOwner) {
+        return requestedOwner == storedOwner;
+    }
+
+    /** Running, reviewing or applying: the window holds work a new request must not
+     * silently discard. A Plan page holds none. */
+    static boolean holdsWork(Registration registration) {
+        return registration != null
+                && registration.stage().get() != ProcessWorkflowState.Stage.PLAN;
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value;
     }
 
     private static final class Session<R, D> {
@@ -88,7 +168,7 @@ public final class SwingProcessWorkflow {
         // What this action's apply does, for the buttons and the confirmation — set
         // when the results arrive, since only the action knows.
         String applyVerb = "Apply";
-        final JDialog dialog;
+        final JFrame window;
         final ProcessWorkflowPipeline pipeline;
         final ProcessWorkflowPipelinePanel pipelinePanel;
         boolean reviewingPrepared;
@@ -102,20 +182,37 @@ public final class SwingProcessWorkflow {
             if (pipelinePanel != null) {
                 pipelinePanel.onNavigateReference(navigateReference);
             }
-            dialog = new JDialog(SwingUtilities.getWindowAncestor(owner),
-                    action.plan().title(), Dialog.ModalityType.MODELESS);
-            dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-            dialog.addWindowListener(new WindowAdapter() {
+            Window workflowOwner = SwingUtilities.getWindowAncestor(owner);
+            window = new JFrame(action.plan().title());
+            window.getRootPane().putClientProperty(WORKFLOW_PROPERTY, new Registration(
+                    action.id(), action.subject(), workflowOwner, state::stage));
+            window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            if (workflowOwner != null) {
+                // An independent frame is not disposed with its owner; the workflow
+                // still belongs to the window that started it.
+                WindowAdapter ownerClosed = new WindowAdapter() {
+                    @Override public void windowClosed(WindowEvent event) {
+                        window.dispose();
+                    }
+                };
+                workflowOwner.addWindowListener(ownerClosed);
+                window.addWindowListener(new WindowAdapter() {
+                    @Override public void windowClosed(WindowEvent event) {
+                        workflowOwner.removeWindowListener(ownerClosed);
+                    }
+                });
+            }
+            window.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosing(WindowEvent event) {
                     if (closeAllowed(state.stage(), () ->
                             SwingCancellationConfirmation.requestForVisibleRun(
-                                    dialog, runner::cancel))) {
-                        dialog.dispose();
+                                    window, runner::cancel))) {
+                        window.dispose();
                     }
                 }
             });
-            dialog.setSize(new Dimension(940, 700));
-            dialog.setLocationRelativeTo(owner);
+            window.setSize(new Dimension(940, 700));
+            window.setLocationRelativeTo(owner);
         }
 
         void showPlan() {
@@ -144,7 +241,7 @@ public final class SwingProcessWorkflow {
             JButton execute = new JButton(plan.executable()
                     ? "Execute" : plan.noWorkMessage());
             execute.setEnabled(plan.executable());
-            cancel.addActionListener(e -> dialog.dispose());
+            cancel.addActionListener(e -> window.dispose());
             execute.addActionListener(e -> execute());
             panel.add(buttons(cancel, execute), BorderLayout.SOUTH);
             install(plan.title(), panel);
@@ -160,7 +257,7 @@ public final class SwingProcessWorkflow {
                     : pipelinePanel, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel process");
             SwingCancellationConfirmation.wire(
-                    cancel, dialog, runner::isRunning, runner::cancel);
+                    cancel, window, runner::isRunning, runner::cancel);
             panel.add(buttons(cancel), BorderLayout.SOUTH);
             // The window is named for what the reader started, not for whichever
             // component is currently talking. Expanding graph-frontier nodes runs a
@@ -176,7 +273,7 @@ public final class SwingProcessWorkflow {
                                 failureMessage(error));
                         JOptionPane.showMessageDialog(owner,
                                 "Process failed: " + failureMessage(error));
-                        dialog.dispose();
+                        window.dispose();
                     });
         }
 
@@ -210,10 +307,10 @@ public final class SwingProcessWorkflow {
                 String message = failed ? failedOutcomeMessage(outcome)
                         : outcome.error() != null ? failureMessage(outcome.error())
                         : "No result was produced.";
-                JOptionPane.showMessageDialog(dialog, message,
+                JOptionPane.showMessageDialog(window, message,
                         failed ? "Process failed" : "No result",
                         failed ? JOptionPane.ERROR_MESSAGE : JOptionPane.WARNING_MESSAGE);
-                dialog.dispose();
+                window.dispose();
                 return;
             }
             ProcessWorkflowResults<D> results;
@@ -244,7 +341,7 @@ public final class SwingProcessWorkflow {
             boolean wholeResult = results != null && results.resultDecision() != null;
             JButton accept = new JButton(wholeResult
                     ? results.applyVerb() : "Accept completed result");
-            close.addActionListener(e -> dialog.dispose());
+            close.addActionListener(e -> window.dispose());
             List<ProcessWorkflowResults.Card<D>> safe = results == null ? List.of()
                     : results.tabs().stream().flatMap(tab -> tab.cards().stream())
                             .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
@@ -326,7 +423,7 @@ public final class SwingProcessWorkflow {
             syncApplyToTab.run();
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton(results.closeVerb());
-            close.addActionListener(e -> dialog.dispose());
+            close.addActionListener(e -> window.dispose());
             applySelected.addActionListener(e -> apply(selected.get()));
             // Offered only when some result opted into it. A workflow whose every
             // decision is deliberate marks none — expanding the whole graph frontier
@@ -461,7 +558,7 @@ public final class SwingProcessWorkflow {
                 JOptionPane.showMessageDialog(owner,
                         wholeResult ? applyVerb + " completed."
                                 : applyVerb + ": " + decisions.size() + " decision(s).");
-                dialog.dispose();
+                window.dispose();
             } catch (Exception error) {
                 state.retryApply();
                 JOptionPane.showMessageDialog(owner,
@@ -512,9 +609,9 @@ public final class SwingProcessWorkflow {
         }
 
         private void install(String title, JPanel panel) {
-            dialog.setTitle(title);
-            dialog.setContentPane(panel);
-            dialog.revalidate(); dialog.repaint();
+            window.setTitle(title);
+            window.setContentPane(panel);
+            window.revalidate(); window.repaint();
         }
 
         private static JPanel buttons(JButton... values) {

@@ -2,6 +2,8 @@ package wikidata.explore.generation;
 
 import datasource.api.BindingScope;
 import datasource.api.SourceExecutionPlan;
+import datasource.api.acquisition.AcquiredPopulation;
+import datasource.api.acquisition.PopulationAcquisition;
 import datasource.api.acquisition.PopulationRequest;
 import wikidata.WikidataIds;
 import wikidata.explore.model.RuleDirection;
@@ -24,7 +26,14 @@ public final class PopulationSourceExecution {
             Kind kind, List<String> qids, List<String> selectionNames,
             SourceExecutionPlan.Step step, String reason,
             List<WikidataDynamicObject> materializedObjects) {
-        public enum Kind { LOCAL_SOURCE, IMPORTED_POPULATION, IMPORTED_MATERIALIZED, NONE }
+        public enum Kind {
+            LOCAL_SOURCE,
+            LOCAL_ACQUISITION,
+            LOCAL_ACQUIRED,
+            IMPORTED_POPULATION,
+            IMPORTED_MATERIALIZED,
+            NONE
+        }
 
         public Resolution(Kind kind, List<String> qids, List<String> selectionNames,
                 SourceExecutionPlan.Step step, String reason) {
@@ -43,6 +52,19 @@ public final class PopulationSourceExecution {
         public boolean available() { return kind != Kind.NONE; }
         public boolean importedPopulation() { return kind == Kind.IMPORTED_POPULATION; }
         public boolean importedMaterialized() { return kind == Kind.IMPORTED_MATERIALIZED; }
+        public boolean pendingAcquisition() { return kind == Kind.LOCAL_ACQUISITION; }
+
+        /** Whether this resolved population still has identities for Wikidata to materialize. */
+        public boolean requiresRootQuery() {
+            return switch (kind) {
+                case LOCAL_SOURCE -> true;
+                case LOCAL_ACQUISITION -> throw new IllegalStateException(
+                        "Population source must be acquired before planning its root query");
+                case LOCAL_ACQUIRED, IMPORTED_POPULATION -> !qids.isEmpty();
+                case IMPORTED_MATERIALIZED -> !qidsRequiringAcquisition().isEmpty();
+                case NONE -> false;
+            };
+        }
         public List<String> qidsRequiringAcquisition() {
             if (!importedMaterialized()) return qids;
             java.util.Set<String> materialized = materializedObjects.stream()
@@ -57,12 +79,58 @@ public final class PopulationSourceExecution {
                 // rule is already compiled, so there is nothing to adapt.
                 case LOCAL_SOURCE -> step == null
                         ? root : PopulationSourceExecution.apply(root, step);
+                case LOCAL_ACQUISITION -> throw new IllegalStateException(
+                        "Population source must be acquired before it is applied");
+                case LOCAL_ACQUIRED -> PopulationSourceExecution.applyExact(root, qids);
                 case IMPORTED_POPULATION -> PopulationSourceExecution.applyExact(root, qids);
                 case IMPORTED_MATERIALIZED -> PopulationSourceExecution.applyExact(
                         root, qidsRequiringAcquisition());
                 case NONE -> throw new IllegalStateException(
                         reason.isBlank() ? "No class population input" : reason);
             };
+        }
+
+        /**
+         * Executes a self-acquiring population operation once, then returns the exact
+         * identities which the ordinary extraction rule will materialize.
+         */
+        public Resolution acquire(
+                work.QueryContext context,
+                wikidata.explore.extract.GenerationLog log) throws Exception {
+            if (!pendingAcquisition()) return this;
+            PopulationAcquisition acquisition = step == null ? null
+                    : step.prepared().configuration(PopulationAcquisition.class);
+            if (acquisition == null) {
+                throw new IllegalStateException("Population acquisition is not prepared");
+            }
+            work.QueryContext runContext = context == null
+                    ? new work.QueryContext() : context;
+            AcquiredPopulation result = acquisition.query().execute(runContext);
+            List<String> resolved = new java.util.ArrayList<>();
+            for (datasource.EntityRef member : result.members()) {
+                if (member == null || !acquisition.namespace().equals(member.namespace())) {
+                    throw new IllegalStateException("Population source "
+                            + acquisition.displayName() + " returned an identity outside "
+                            + acquisition.namespace());
+                }
+                if (!datasource.EntityRef.WIKIDATA.equals(member.namespace())
+                        || !WikidataIds.isQid(member.id())) {
+                    throw new IllegalStateException("Generation cannot materialize population "
+                            + "identity " + member.qualifiedId());
+                }
+                if (!resolved.contains(member.id())) resolved.add(member.id());
+            }
+            if (log != null) {
+                log.message("Load " + acquisition.displayName() + ": "
+                        + resolved.size() + " resolved Wikidata QID(s); "
+                        + result.unresolvedSourceRecords().size()
+                        + " source record(s) without a Wikidata QID were not added.\n");
+                if (!result.unresolvedSourceRecords().isEmpty()) {
+                    log.message("Unresolved source records: "
+                            + String.join(", ", result.unresolvedSourceRecords()) + ".\n");
+                }
+            }
+            return new Resolution(Kind.LOCAL_ACQUIRED, resolved, List.of(), step, "");
         }
     }
 
@@ -134,11 +202,17 @@ public final class PopulationSourceExecution {
                     "no population source is configured");
         }
         PopulationRequest request = localStep.prepared().configuration(PopulationRequest.class);
-        return request == null
+        if (request != null) {
+            return new Resolution(
+                    Resolution.Kind.LOCAL_SOURCE, List.of(), List.of(), localStep, "");
+        }
+        PopulationAcquisition acquisition = localStep.prepared()
+                .configuration(PopulationAcquisition.class);
+        return acquisition == null
                 ? new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                         localStep.prepared().description())
-                : new Resolution(
-                        Resolution.Kind.LOCAL_SOURCE, List.of(), List.of(), localStep, "");
+                : new Resolution(Resolution.Kind.LOCAL_ACQUISITION,
+                        List.of(), List.of(), localStep, "");
     }
 
     public static RuleNode apply(RuleNode root, SourceExecutionPlan.Step step) {
