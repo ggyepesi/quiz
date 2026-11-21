@@ -65,7 +65,9 @@ public final class GeneratedProjectModelStore {
             @JsonSubTypes.Type(value = GraphRelationExists.class, name = "relation-exists"),
             @JsonSubTypes.Type(value = GraphRelationReaches.class, name = "relation-reaches"),
             @JsonSubTypes.Type(value = datasource.graph.constraint.GraphRelationReachesUnder.class,
-                    name = "relation-reaches-under")
+                    name = "relation-reaches-under"),
+            @JsonSubTypes.Type(value = datasource.graph.constraint.GraphNodeIsUnder.class,
+                    name = "node-is-under")
     })
     private abstract static class GraphNodeConditionJson { }
 

@@ -52,6 +52,47 @@ class GraphNodeConditionsTest {
         assertEquals(List.of(edge), result.witnessEdges());
     }
 
+    @Test void nodeIsUnderAcceptsTheNamedNodeAndItsDescendants() {
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        EntityRef target = entity("group-of-characters");
+        EntityRef descendant = entity("deity-group");
+        GraphRelation subclass = new GraphRelation("catalogue", "subclass");
+        store.addEdges(List.of(new GraphEdge(
+                descendant, subclass, target, "test")));
+        store.markCoverage(new GraphAdjacencyDemand(
+                        List.of(descendant), subclass, GraphTraversalDirection.OUTGOING),
+                GraphAdjacencyCoverage.COMPLETE);
+
+        GraphNodeIsUnder condition = GraphNodeIsUnder.of(target, subclass);
+
+        assertEquals(GraphNodeConditions.Decision.MATCHED,
+                GraphNodeConditions.evaluate(store, target, condition).decision(),
+                "the named type itself must not need a self-edge");
+        assertEquals(GraphNodeConditions.Decision.MATCHED,
+                GraphNodeConditions.evaluate(store, descendant, condition).decision());
+    }
+
+    @Test void nodeIsUnderReviewsUnknownHierarchyAndRejectsKnownNonMatch() {
+        InMemoryGraphStore store = new InMemoryGraphStore();
+        EntityRef target = entity("group-of-characters");
+        EntityRef unknown = entity("unknown");
+        EntityRef other = entity("other");
+        GraphRelation subclass = new GraphRelation("catalogue", "subclass");
+        store.markCoverage(new GraphAdjacencyDemand(
+                        List.of(unknown), subclass, GraphTraversalDirection.OUTGOING),
+                GraphAdjacencyCoverage.UNAVAILABLE);
+        store.markCoverage(new GraphAdjacencyDemand(
+                        List.of(other), subclass, GraphTraversalDirection.OUTGOING),
+                GraphAdjacencyCoverage.COMPLETE);
+
+        GraphNodeIsUnder condition = GraphNodeIsUnder.of(target, subclass);
+
+        assertEquals(GraphNodeConditions.Decision.REVIEW,
+                GraphNodeConditions.evaluate(store, unknown, condition).decision());
+        assertEquals(GraphNodeConditions.Decision.NOT_MATCHED,
+                GraphNodeConditions.evaluate(store, other, condition).decision());
+    }
+
     private static EntityRef entity(String id) {
         return new EntityRef("catalogue", id);
     }

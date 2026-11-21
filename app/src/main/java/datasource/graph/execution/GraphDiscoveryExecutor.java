@@ -200,6 +200,8 @@ public final class GraphDiscoveryExecutor {
                 // supply it says so before the run is paid for rather than mid-way.
                 if (test instanceof datasource.graph.constraint.GraphRelationReachesUnder under) {
                     relations.add(under.via());
+                } else if (test instanceof datasource.graph.constraint.GraphNodeIsUnder under) {
+                    relations.add(under.via());
                 }
             });
         }
@@ -253,21 +255,33 @@ public final class GraphDiscoveryExecutor {
             GraphEvidenceCondition condition,
             List<EntityRef> evidence) throws Exception {
         for (var test : condition.tests()) {
-            if (!(test instanceof datasource.graph.constraint.GraphRelationReachesUnder under)) {
+            datasource.graph.GraphRelation via;
+            int maximumDepth;
+            List<EntityRef> frontier;
+            LinkedHashSet<EntityRef> seen = new LinkedHashSet<>();
+            if (test instanceof datasource.graph.constraint.GraphRelationReachesUnder under) {
+                via = under.via();
+                maximumDepth = under.maximumDepth();
+                frontier = new java.util.ArrayList<>();
+                GraphAdjacencyDemand reached = new GraphAdjacencyDemand(
+                        evidence, under.relation(), under.direction());
+                store.adjacent(reached).edges().stream()
+                        .map(edge -> edge.entityEndpoint(under.direction()))
+                        .filter(java.util.Objects::nonNull)
+                        .filter(seen::add)
+                        .forEach(frontier::add);
+            } else if (test instanceof datasource.graph.constraint.GraphNodeIsUnder under) {
+                via = under.via();
+                maximumDepth = under.maximumDepth();
+                frontier = evidence.stream().filter(seen::add)
+                        .collect(java.util.stream.Collectors.toCollection(
+                                java.util.ArrayList::new));
+            } else {
                 continue;
             }
-            LinkedHashSet<EntityRef> seen = new LinkedHashSet<>();
-            List<EntityRef> frontier = new java.util.ArrayList<>();
-            GraphAdjacencyDemand reached = new GraphAdjacencyDemand(
-                    evidence, under.relation(), under.direction());
-            store.adjacent(reached).edges().stream()
-                    .map(edge -> edge.entityEndpoint(under.direction()))
-                    .filter(java.util.Objects::nonNull)
-                    .filter(seen::add)
-                    .forEach(frontier::add);
-            for (int hop = 0; hop < under.maximumDepth() && !frontier.isEmpty(); hop++) {
+            for (int hop = 0; hop < maximumDepth && !frontier.isEmpty(); hop++) {
                 GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
-                        frontier, under.via(), GraphTraversalDirection.OUTGOING);
+                        frontier, via, GraphTraversalDirection.OUTGOING);
                 acquireMissing(store, acquirer, demand);
                 List<EntityRef> next = new java.util.ArrayList<>();
                 for (GraphEdge edge : store.adjacent(demand).edges()) {

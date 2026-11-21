@@ -5,7 +5,9 @@ import datasource.graph.GraphDiscoveryConfiguration;
 import datasource.graph.GraphRelation;
 import datasource.graph.GraphTraversalDirection;
 import datasource.graph.constraint.GraphEvidenceCondition;
+import datasource.graph.constraint.GraphNodeCondition;
 import datasource.graph.constraint.GraphPath;
+import datasource.graph.constraint.GraphNodeIsUnder;
 import datasource.graph.constraint.GraphRelationReaches;
 import datasource.graph.constraint.GraphRelationReachesUnder;
 import org.junit.jupiter.api.Test;
@@ -95,6 +97,42 @@ class GraphDiscoveryConfigurationPersistenceTest {
         assertEquals("Q7275", under.entity().id());
         assertEquals("P279", under.via().relationId());
         assertEquals(GraphRelationReachesUnder.DEFAULT_MAXIMUM_DEPTH, under.maximumDepth());
+    }
+
+    @Test void aNodeGeneralisationTestSurvivesBeingSavedAndReloaded() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Mythology");
+        project.rootClass(new GeneratedClassModel("Deity"));
+        GeneratedClassModel graph = new GeneratedClassModel("DeityGroupDiscovery");
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Deity",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P527"),
+                        GraphTraversalDirection.INCOMING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION, "DeityGroup",
+                        new GraphEvidenceCondition("Group type",
+                                List.of(GraphPath.direct(
+                                        new GraphRelation("wikidata", "P31"),
+                                        GraphTraversalDirection.OUTGOING)),
+                                List.of(GraphNodeIsUnder.of(
+                                        EntityRef.wikidata("Q20830276"),
+                                        new GraphRelation("wikidata", "P279"))),
+                                GraphEvidenceCondition.ReviewDisposition
+                                        .EXCLUDE_AND_REPORT)))));
+        project.addClass(new GeneratedClassModel("DeityGroup"));
+        project.addClass(graph);
+
+        Path file = temp.resolve("node-generalisation.model.json");
+        GeneratedProjectModelStore store = new GeneratedProjectModelStore();
+        store.save(project, file.toFile());
+
+        GraphNodeCondition restored = store.load(file.toFile())
+                .findClass("DeityGroupDiscovery").graphSource().nextNodes().getFirst()
+                .evidenceCondition().tests().getFirst();
+        GraphNodeIsUnder under = assertInstanceOf(GraphNodeIsUnder.class, restored);
+        assertEquals("Q20830276", under.entity().id());
+        assertEquals("P279", under.via().relationId());
     }
 
     @Test void aNodeAdmissionPopulationSurvivesBeingSavedAndReloaded() throws Exception {

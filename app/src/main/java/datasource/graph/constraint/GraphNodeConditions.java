@@ -20,6 +20,9 @@ final class GraphNodeConditions {
         if (condition == null) {
             return new Evaluation(Decision.MATCHED, List.of(), List.of(), null);
         }
+        if (condition instanceof GraphNodeIsUnder under) {
+            return nodeGeneralisation(store, node, under);
+        }
         GraphRelation relation;
         GraphTraversalDirection direction;
         if (condition instanceof GraphRelationAbsent absent) {
@@ -107,19 +110,48 @@ final class GraphNodeConditions {
 
     private enum Reach { YES, NO, UNKNOWN }
 
+    private static Evaluation nodeGeneralisation(
+            LocalGraphStore store, EntityRef node, GraphNodeIsUnder under) {
+        if (under.entity().equals(node)) {
+            return new Evaluation(Decision.MATCHED, List.of(), List.of(), null);
+        }
+        GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
+                List.of(node), under.via(), GraphTraversalDirection.OUTGOING);
+        GraphAdjacencyResult adjacent = store.adjacent(demand);
+        GraphAdjacencyCoverage coverage = store.adjacencyKnowledge(node, demand);
+        GraphAdjacencyObservation observation = new GraphAdjacencyObservation(
+                node, under.via(), GraphTraversalDirection.OUTGOING, coverage);
+        Reach reach = reaches(store, node, under.entity(), under.via(),
+                under.maximumDepth());
+        return switch (reach) {
+            case YES -> new Evaluation(
+                    Decision.MATCHED, adjacent.edges(), adjacent.edges(), observation);
+            case NO -> new Evaluation(
+                    Decision.NOT_MATCHED, adjacent.edges(), List.of(), observation);
+            case UNKNOWN -> new Evaluation(
+                    Decision.REVIEW, adjacent.edges(), List.of(), observation);
+        };
+    }
+
     /** Breadth-first over the generalising relation, bounded by the configured depth and
      *  by what the store already knows. Visited nodes are kept by identity of reference
      *  so a hierarchy that is a DAG — which P279 is — is not walked twice. */
     private static Reach reaches(
             LocalGraphStore store, EntityRef start, GraphRelationReachesUnder under) {
-        if (under.entity().equals(start)) return Reach.YES;
+        return reaches(store, start, under.entity(), under.via(), under.maximumDepth());
+    }
+
+    private static Reach reaches(
+            LocalGraphStore store, EntityRef start, EntityRef target,
+            GraphRelation via, int maximumDepth) {
+        if (target.equals(start)) return Reach.YES;
         java.util.Set<EntityRef> visited = new java.util.LinkedHashSet<>();
         List<EntityRef> frontier = List.of(start);
         visited.add(start);
         boolean complete = true;
-        for (int depth = 0; depth < under.maximumDepth() && !frontier.isEmpty(); depth++) {
+        for (int depth = 0; depth < maximumDepth && !frontier.isEmpty(); depth++) {
             GraphAdjacencyDemand demand = new GraphAdjacencyDemand(
-                    frontier, under.via(), GraphTraversalDirection.OUTGOING);
+                    frontier, via, GraphTraversalDirection.OUTGOING);
             GraphAdjacencyResult step = store.adjacent(demand);
             for (EntityRef node : frontier) {
                 if (store.adjacencyKnowledge(node, demand)
@@ -131,7 +163,7 @@ final class GraphNodeConditions {
             for (GraphEdge edge : step.edges()) {
                 EntityRef reached = edge.entityEndpoint(GraphTraversalDirection.OUTGOING);
                 if (reached == null) continue;
-                if (under.entity().equals(reached)) return Reach.YES;
+                if (target.equals(reached)) return Reach.YES;
                 if (visited.add(reached)) next.add(reached);
             }
             frontier = next;
