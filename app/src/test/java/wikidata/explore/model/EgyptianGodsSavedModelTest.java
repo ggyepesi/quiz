@@ -116,5 +116,18 @@ class EgyptianGodsSavedModelTest {
         assertTrue(preview.contains("Member field \"symbolizedBy\"")
                 && preview.contains("wdt:P4878"), preview);
         assertTrue(preview.contains("schema:about"), preview);
+
+        GeneratedClassModel deityGroup = model.findClass("DeityGroup");
+        GeneratedFieldModel members = deityGroup.fields().stream()
+                .filter(value -> value.name().equals("members"))
+                .findFirst().orElseThrow();
+        var tableEvidence = FieldSourceBindings.binding(
+                members, SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var tableSpec = datasource.wikipedia.WikipediaDatasourceProvider
+                .articleTableColumnLinks(tableEvidence);
+        assertEquals("Description > List of names, provenances and tasks (Wilkinson et al)",
+                tableSpec.sectionPath());
+        assertEquals("", tableSpec.table());
+        assertEquals("Name of the deity", tableSpec.column());
     }
 }

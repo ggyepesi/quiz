@@ -2682,6 +2682,27 @@
             "routes" : "[{\"id\":\"listed-members\",\"label\":\"Listed members\",\"steps\":[{\"relation\":\"P527\",\"direction\":\"OUTGOING\"}]},{\"id\":\"members-part-of-group\",\"label\":\"Members with part of group\",\"steps\":[{\"relation\":\"P361\",\"direction\":\"INCOMING\"}]},{\"id\":\"members-of-group\",\"label\":\"Members of group\",\"steps\":[{\"relation\":\"P463\",\"direction\":\"INCOMING\"}]}]"
           }
         }
+      }, {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "DeityGroup",
+          "fieldPath" : "members",
+          "slot" : "CANDIDATE_EVIDENCE",
+          "classDeclarationId" : "decl:6184ac84-21fa-4382-86ee-220f84220e21",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "article-table-column-links",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$MapN",
+            "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+            "table" : "",
+            "column" : "Name of the deity"
+          }
+        }
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],
