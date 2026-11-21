@@ -1397,10 +1397,286 @@
       "labelLanguage" : "en",
       "primaryListField" : ""
     }
+  }, {
+    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:e162e603-5661-4c9a-b485-9558682fc7cc",
+    "className" : "DeityGroup",
+    "baseClassName" : "",
+    "discriminatorPid" : "",
+    "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "graphSource" : null,
+    "groupSpec" : {
+      "membersField" : "members"
+    },
+    "generationDepth" : 0,
+    "instanceMapping" : {
+      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "",
+      "propertyPid" : "",
+      "propertyLabel" : "",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 2,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "members",
+      "type" : "ENTITY",
+      "entityClassName" : "Character",
+      "entityDeclarationId" : "decl:6855b6c6-7281-3672-8ede-23028371da6a",
+      "unclassedEntity" : false,
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE",
+      "required" : false,
+      "filterOperator" : null,
+      "filterValue" : null,
+      "edgeMembership" : "INHERIT",
+      "sortFieldName" : "",
+      "sortDescending" : false,
+      "unit" : "",
+      "mapping" : {
+        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "sourceQid" : "",
+        "sourceLabel" : "",
+        "propertyPid" : "",
+        "propertyLabel" : "",
+        "qualifierPid" : "",
+        "qualifierLabel" : "",
+        "subjectField" : "",
+        "matchValueField" : "",
+        "matchRoleField" : "",
+        "inverseField" : "",
+        "direction" : "ROOT_TO_ITEM",
+        "requireLabel" : true,
+        "labelLanguage" : "en",
+        "valueLanguage" : "",
+        "requireSitelink" : false,
+        "limit" : 200,
+        "rankBy" : "",
+        "rankDescending" : true,
+        "productionKind" : "DELAYED_ENTITY_FIELD",
+        "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+        "sourceType" : "DATASOURCE"
+      },
+      "sourceBindings" : [ "java.util.ArrayList", [ {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "DeityGroup",
+          "fieldPath" : "members",
+          "slot" : "PRIMARY_FIELD_VALUE",
+          "classDeclarationId" : "decl:e162e603-5661-4c9a-b485-9558682fc7cc",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikidata",
+          "operationId" : "relation-routes",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$Map1",
+            "routes" : "[{\"id\":\"listed-members\",\"label\":\"Listed members\",\"steps\":[{\"relation\":\"P527\",\"direction\":\"OUTGOING\"}]},{\"id\":\"members-part-of-group\",\"label\":\"Members with part of group\",\"steps\":[{\"relation\":\"P361\",\"direction\":\"INCOMING\"}]},{\"id\":\"members-of-group\",\"label\":\"Members of group\",\"steps\":[{\"relation\":\"P463\",\"direction\":\"INCOMING\"}]}]"
+          }
+        }
+      } ] ],
+      "fields" : [ "java.util.ArrayList", [ ] ]
+    } ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationMode" : "GENERATED",
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "DeityGroup",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:e162e603-5661-4c9a-b485-9558682fc7cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "DeityGroup",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:e162e603-5661-4c9a-b485-9558682fc7cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "DeityGroup",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:e162e603-5661-4c9a-b485-9558682fc7cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
+  }, {
+    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:36bfc44c-e736-497b-9c7d-6ff45a3f25f1",
+    "className" : "DeityGroupDiscovery",
+    "classKind" : "GRAPH",
+    "graphSource" : {
+      "startNode" : {
+        "qidSourceClass" : "Character",
+        "populationSelection" : "",
+        "use" : "INTERMEDIATE_ONLY",
+        "populationSelectionId" : ""
+      },
+      "nextNodes" : [ "java.util.ImmutableCollections$ListN", [ {
+        "property" : {
+          "providerId" : "wikidata",
+          "relationId" : "P527"
+        },
+        "directionFromPrevious" : "INCOMING",
+        "use" : "CLASS_POPULATION",
+        "populationClass" : "DeityGroup",
+        "evidenceCondition" : {
+          "name" : "Group of mythical characters",
+          "evidencePaths" : [ "java.util.ImmutableCollections$List12", [ {
+            "relation" : {
+              "providerId" : "wikidata",
+              "relationId" : "P31"
+            },
+            "direction" : "OUTGOING",
+            "maximumDepth" : 1,
+            "selection" : "ALL",
+            "condition" : null
+          } ] ],
+          "tests" : [ "java.util.ImmutableCollections$List12", [ {
+            "kind" : "node-is-under",
+            "entity" : {
+              "namespace" : "wikidata",
+              "id" : "Q20830276"
+            },
+            "via" : {
+              "providerId" : "wikidata",
+              "relationId" : "P279"
+            },
+            "maximumDepth" : 4
+          } ] ],
+          "reviewDisposition" : "EXCLUDE_AND_REPORT"
+        },
+        "alternativeEdges" : [ "java.util.ImmutableCollections$ListN", [ {
+          "property" : {
+            "providerId" : "wikidata",
+            "relationId" : "P361"
+          },
+          "direction" : "OUTGOING"
+        }, {
+          "property" : {
+            "providerId" : "wikidata",
+            "relationId" : "P463"
+          },
+          "direction" : "OUTGOING"
+        } ] ],
+        "populationOperation" : "ADD",
+        "repeatUntilStable" : false,
+        "admissionPopulationSelection" : "",
+        "admissionPopulationSelectionId" : ""
+      } ] ]
+    },
+    "generationDepth" : 1,
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationMode" : "GENERATED"
   } ] ],
   "selections" : [ "java.util.ArrayList", [ ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
   "imports" : [ "java.util.ArrayList", [ ] ],
-  "buildOperations" : [ "java.util.ArrayList", [ ] ]
+  "buildOperations" : [ "java.util.ArrayList", [ {
+    "declarationId" : "decl:dc10d6f2-1ab1-4bbb-aad2-e985a02b046e",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:b955f647-61da-4d3b-87c7-35ef31cf3bb3",
+    "kind" : "RUN_GRAPH_CONSTRAINT",
+    "targetDeclarationId" : "decl:36bfc44c-e736-497b-9c7d-6ff45a3f25f1"
+  }, {
+    "declarationId" : "decl:635627ca-f288-4255-be37-d72b55744ba9",
+    "kind" : "APPLY_GRAPH_DECISIONS",
+    "targetDeclarationId" : "decl:36bfc44c-e736-497b-9c7d-6ff45a3f25f1"
+  }, {
+    "declarationId" : "decl:86b137a8-2cc1-4b6f-91bd-4baa21d2a824",
+    "kind" : "GENERATE_PROJECT"
+  }, {
+    "declarationId" : "decl:f1da3977-a7a4-4696-8faf-dab20aadd96b",
+    "kind" : "SAVE_PROJECT_RESULT"
+  } ] ]
 }

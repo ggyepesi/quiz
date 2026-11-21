@@ -5,6 +5,16 @@
     "name" : "EgyptianDeity",
     "kind" : "CLASS",
     "artifact" : "egyptiangods.snapshot.json"
+  }, {
+    "declarationId" : "decl:6184ac84-21fa-4382-86ee-220f84220e21",
+    "name" : "DeityGroup",
+    "kind" : "CLASS",
+    "artifact" : "egyptiangods.snapshot.json"
+  }, {
+    "declarationId" : "decl:75ecb40e-dc63-4ab0-ae08-d684f22b62db",
+    "name" : "DeityGroupDiscovery",
+    "kind" : "GRAPH",
+    "artifact" : "deitygroupdiscovery.graph.snapshot.json"
   } ],
-  "snapshotSignature" : "model-v2:10fbe6ec11982e5d8e7f520d1793eedbf5324ea7188f4bd37b8c40df93887a70"
+  "snapshotSignature" : "model-v2:89c9e74e669bdd0ed0782d1b905c94af746e0113b7f10377e381074c164602a8"
 }
