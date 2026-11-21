@@ -24,6 +24,9 @@ import java.util.Map;
 
 /** Interactive, compact block view of a {@link ProcessWorkflowPipeline}. */
 public final class ProcessWorkflowPipelinePanel extends JPanel {
+    private static final int PHASE_BLOCK_WIDTH = 190;
+    private static final int PHASE_BLOCK_HEIGHT = 108;
+
     private final ProcessWorkflowPipeline pipeline;
     private final JPanel graph = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
     private final JPanel details = new JPanel();
@@ -73,7 +76,9 @@ public final class ProcessWorkflowPipelinePanel extends JPanel {
             for (int i = 0; i < snapshot.size(); i++) {
                 ProcessWorkflowPipeline.Phase phase = snapshot.get(i).phase();
                 JButton block = new JButton();
-                block.setPreferredSize(new Dimension(190, 72));
+                // A phase shows its title, status/elapsed time, and current summary. Titles and
+                // summaries may each wrap, so the old 72-pixel block clipped Generate/Build steps.
+                block.setPreferredSize(new Dimension(PHASE_BLOCK_WIDTH, PHASE_BLOCK_HEIGHT));
                 block.addActionListener(e -> select(phase.id()));
                 blocks.put(phase.id(), block);
                 graph.add(block);
