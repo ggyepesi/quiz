@@ -107,8 +107,7 @@ public final class FieldSourceBindings {
             throw new IllegalArgumentException(
                     "A contextual binding belongs to its owned-field source override");
         }
-        field.sourceBindings().removeIf(existing -> existing.sameTarget(binding));
-        field.sourceBindings().add(binding);
+        replaceInPlace(field.sourceBindings(), binding);
         projectLegacy(field, binding);
     }
 
@@ -119,9 +118,23 @@ public final class FieldSourceBindings {
             throw new IllegalArgumentException(
                     "An owned-field source needs a contextual field-value binding");
         }
-        field.sourceBindings().removeIf(existing -> existing.sameTarget(binding));
-        field.sourceBindings().add(binding);
+        replaceInPlace(field.sourceBindings(), binding);
         projectLegacy(field, binding);
+    }
+
+    /** A binding for an existing target keeps that target's place, so re-applying an
+     *  unchanged editor leaves the saved order of a field's sources as it was. */
+    private static void replaceInPlace(List<SourceBinding> bindings, SourceBinding binding) {
+        for (int i = 0; i < bindings.size(); i++) {
+            if (bindings.get(i).sameTarget(binding)) {
+                bindings.set(i, binding);
+                for (int later = bindings.size() - 1; later > i; later--) {
+                    if (bindings.get(later).sameTarget(binding)) bindings.remove(later);
+                }
+                return;
+            }
+        }
+        bindings.add(binding);
     }
 
     public static SourceBinding binding(

@@ -40,6 +40,32 @@ class FieldSourceBindingsTest {
                 .CategoryMapping("Road movies", "Q25110269")), category.mappings());
     }
 
+    /** Re-applying the field editor re-puts its primary datasource binding. Appending it
+     *  moved DeityGroup.members' routes behind its table evidence, so selecting the field
+     *  and saving reordered the model without anyone changing it. */
+    @Test void reapplyingABindingKeepsItsPlaceAmongTheFieldsOtherSources() {
+        GeneratedProjectModel model = model();
+        GeneratedFieldModel field = model.rootClass().fields().getFirst();
+        SourceBinding primary = new SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "locations", SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new datasource.api.SourceRecipe("wikidata", "relation-routes",
+                        java.util.Map.of("routes", "[]")));
+        SourceBinding evidence = new SourceBinding(
+                datasource.api.SourceBindingTarget.fieldValue(
+                        "Movie", "locations", SourceBindingSlot.CANDIDATE_EVIDENCE),
+                new datasource.api.SourceRecipe("wikipedia", "article-table-column-links",
+                        java.util.Map.of("section", "Cast", "column", "Name")));
+        field.sourceBindings().add(primary);
+        field.sourceBindings().add(evidence);
+
+        SourceBinding reapplied = new SourceBinding(primary.target(), primary.recipe());
+        FieldSourceBindings.put(field, reapplied);
+
+        assertEquals(List.of(reapplied, evidence), field.sourceBindings());
+        assertSame(reapplied, field.sourceBindings().getFirst());
+    }
+
     @Test void aTypedFallbackProjectsToTheExistingExecutionModel() {
         GeneratedProjectModel model = model();
         GeneratedFieldModel field = model.rootClass().fields().getFirst();
