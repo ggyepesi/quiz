@@ -1,410 +1,185 @@
-# Configuration Tree and Dependency Graph UI
+# Datasource Bindings in the Construct Tree
 
 ## Status
 
-Proposed on 2026-11-21. This document defines the new configuration user interface over the
-existing ModelBuilder constructs: a selectable configuration tree, contextual step editor and
-discovery support, plus an optional dependency-graph view. It does not introduce a second
-persisted configuration format. The first forcing case is `DeityGroup.members`, whose
-population, Wikidata routes, Wikipedia table evidence, discovery, review and output are
-currently configured in separate parts of the UI.
+Proposed on 2026-11-21, revised the same day after review (#533). Nothing in this construct-tree
+slice is implemented.
+This document specifies one slice: showing every stored datasource binding of a field in
+ModelBuilder's existing construct tree. It does not claim to show every way a field can be
+produced: inverse, union, statement-end, owned-component and other derived productions remain
+the field editor's responsibility in this slice. Later directions are listed, not designed,
+and one navigation decision is left open on purpose (see **Open decisions**).
 
-This design complements [ModelBuilder Constructs](modelbuilder-constructs.md),
+Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
-[Discovery Workbench](discovery-workbench.md), and
+[Discovery Workbench](discovery-workbench.md),
 [Parameterized Generation Pipeline](parameterized-generation-pipeline.md).
 
 ## Problem
 
-The saved model is increasingly capable, but the editor exposes its capabilities as flat or
-loosely related controls. A field may now have:
+A field can now have several datasource bindings at once, each in its own binding slot: a
+primary value source, a fallback, category evidence and candidate evidence. The forcing case is
+`DeityGroup.members` in Egyptian gods. Its primary values come from three Wikidata relation
+routes, and a Wikipedia article table column proposes additional members as candidate evidence
+for review.
 
-- a declared type and cardinality;
-- a primary datasource operation;
-- a fallback source;
-- candidate evidence which requires review;
-- routes, filters, bounds or source-specific parameters;
-- contextual discovery actions;
-- validation and preview;
-- downstream transformations or publication.
-
-Each control can be correct while the complete workflow remains hard to see. A user should not
-have to remember that a Wikipedia structure is discovered in one panel, authored as candidate
-evidence in another, executed from TransformApp, and applied only after review.
-
-The problem is not a lack of another workflow language. The existing model already owns the
-decisions. The missing construct is one readable projection of those decisions and of the
-valid next actions.
+Nothing shows both together. The construct tree stops at the field; the field editor shows the
+primary source in one section and the candidate evidence in another, behind a chooser. A user
+cannot see at a glance that the field has two sources, which one is primary, or that the second
+one only proposes values for review.
 
 ## Decision
 
-The primary configuration UI is a **typed configuration-plan tree** derived from the working
-model. An optional read-only dependency graph presents the same plan when the question is
-"what depends on this?". The tree is the editor because exact fields, operations, parameters,
-bounds and conditions are hierarchical and are difficult to edit reliably in a graph.
+ModelBuilder's construct tree (`SingleRootClassModelPanel`) already shows
+project › class › field › child field, plus vocabularies/populations and uses. **The field
+node gains one child per stored datasource binding configured at that field.** There is no
+second tree and no new window.
 
 ```text
-working model constructs
-        |
-        v
-typed ConfigurationPlan
-        |-------------------|---------------------|
-        v                   v                     v
-tree editor        dependency overview      validation/build plan
+▾ DeityGroup
+  ▾ members → EgyptianDeity[]
+      Primary values · Wikidata relation routes (3)
+      Candidate evidence · Wikipedia article table column
+  ▸ …other fields
 ```
 
-`ConfigurationPlan` is not serialized. Every editable node points to the declaration and
-source binding which owns the fact. Applying an edit changes that existing owner through its
-existing editor/service. Recompiling the plan immediately reconstructs the tree.
-
-## Window layout
-
-The configuration window has one stable layout instead of opening unrelated editors for each
-kind of construct:
-
-```text
-┌ Project / construct breadcrumb ─────────────────────────────────────────────┐
-│ Egyptian Gods › DeityGroup › members                         Valid, unsaved │
-├ Configuration ───────────────┬ Selected step ───────────────────────────────┤
-│                              │ Field: members → EgyptianDeity[]             │
-│ ▾ DeityGroup                 │                                              │
-│   ▸ Population               │ Candidate evidence                          │
-│   ▸ Identity                 │ Wikipedia article table column               │
-│   ▾ members                  │                                              │
-│     ✓ Type                   │ Section: [Description > List of names…     ] │
-│     ✓ Primary values         │ Table:   [(any table)                      ] │
-│     ▾ Candidate evidence     │ Column:  [Name of the deity                ] │
-│       ✓ Wikipedia table      │                                              │
-│       ◇ Discover structure   │ [Inspect examples] [Discover…] [Preview…]   │
-│       ○ Review results       │                                              │
-│     ▸ Output                 │ This proposes loaded EgyptianDeity instances │
-│                              │ for review; it creates no identities.        │
-├ Latest preview / discovery / review ───────────────────────────────────────┤
-│ 42 rows · 38 loaded targets · 4 unresolved: …                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-The left side answers **where am I in the configuration?** The right side answers **what does
-this step do, what is configured, and what can I do next?** The bottom area contains the latest
-bounded result for the selected node; it is not a second configuration editor.
-
-The divider is resizable. The tree remains usable at its minimum width, while the selected-step
-panel receives the remaining space. Long values wrap or use their normal specialized editor;
-they do not widen the whole window.
-
-## Selection and editing behavior
-
-Single selection in the tree changes only the selected-step panel. It never applies a change,
-starts discovery, fetches a source, or discards pending edits. If the current editor is dirty,
-navigation retains its draft and marks that node as modified; an explicit Apply or Revert acts
-on that node. Saving the project flushes valid applied edits through the existing project save
-path and names the exact file.
-
-Each selected-step panel has the same shape:
-
-1. the concept and its effective value;
-2. the owner of that value;
-3. status and an exact reason;
-4. the typed editor, when editable;
-5. explicit inspect, discover, preview or execute actions;
-6. the consequence of Apply, including what will be replaced.
-
-An inherited or imported value remains visible at the place where it affects the selected
-construct. Its owner is named, and editing navigates to that owner instead of creating a local
-shadow silently.
-
-## Offering possible substeps
-
-The tree contains configured steps and valid unconfigured possibilities. Possible substeps use
-a visually distinct state and explain why they are offered. For example, an entity-list field
-with a declared target class may offer:
-
-```text
-Add source or evidence…
-├─ Primary values
-│  ├─ Wikidata property
-│  ├─ Wikidata relation routes
-│  └─ Configured datasource operation…
-├─ Fallback values
-│  └─ Wikipedia infobox value
-└─ Candidate evidence
-   ├─ Introduction links/mentions
-   ├─ Rendered infobox-row links
-   └─ Article table-column links
-```
-
-Choices come from datasource operation metadata and field compatibility, not a menu maintained
-independently from execution. Inapplicable choices are normally absent. If showing one is useful
-for learning, it is disabled with the concrete missing requirement, such as “requires an Entity
-list with a declared target class.”
-
-Choosing a possibility creates an explicit draft node. It does not yet replace the existing
-binding. The selected-step panel states the source slot and previous value before Apply.
-
-## Discovery within the selected step
-
-Discovery is contextual to the step being configured. For a Wikipedia table-column source:
-
-```text
-Discover structure…
-  1. Choose or reuse a bounded instance sample.
-  2. Fetch only the explicitly selected articles.
-  3. Show their retained section → table → column hierarchy in ObjectView.
-  4. Select one structural pattern and inspect coverage/examples.
-  5. Use as configuration — copies section/table/column into the draft.
-  6. Preview — shows which loaded typed instances it would propose.
-```
-
-The discovery result is shown under its configuration node and may be reopened while the window
-stays open. It does not appear as another unrelated modal workflow. Existing discovery
-workbenches remain the implementation owner and can still open in their full form; the selected
-node supplies their scope and receives only an explicitly chosen recipe.
-
-## Preview, execution and review
-
-These are separate actions and separate node states:
-
-- **Preview** runs the configured operation with declared preview bounds and changes nothing.
-- **Execute** runs the ordinary generation/enrichment/build operation.
-- **Review** accepts or rejects candidate evidence.
-- **Apply configuration** changes the working model but performs none of the above.
-- **Save project** writes the working model and reports the exact file.
-
-The latest result remains attached to its node, including elapsed time, counts, partial/failure
-status, source requests and unresolved examples. Closing or switching nodes does not make a
-running operation disappear; its status remains visible in the tree and the shared executor
-window can be reopened.
-
-## Tree and graph switch
-
-The main navigation offers **Tree** and **Dependencies** tabs over the same selected node and
-the same compiled plan:
-
-```text
-[Tree] [Dependencies]
-```
-
-The dependency graph contains only semantic dependencies—produces, consumes, bounds, imports,
-transforms and publishes. It does not draw every field as an edge by default. Selecting a graph
-node selects the corresponding tree node and opens the same selected-step panel. Editing occurs
-only through that panel, never directly by dragging graph nodes or edges.
-
-## Example
-
-The Egyptian-deity group configuration should read as one workflow:
-
-```text
-DeityGroup
-├─ Population
-│  └─ Wikipedia category: Groups of Egyptian deities
-├─ Identity
-│  └─ Wikipedia article → Wikidata entity
-├─ Field: members → EgyptianDeity[]
-│  ├─ Primary values
-│  │  └─ Wikidata relation routes
-│  │     ├─ group P527 member
-│  │     ├─ member P361 group
-│  │     └─ member P463 group
-│  ├─ Candidate evidence
-│  │  └─ Wikipedia article table column
-│  │     ├─ Section: Description > List of names, provenances and tasks…
-│  │     ├─ Table: any table in that section
-│  │     └─ Column: Name of the deity
-│  ├─ Discovery
-│  │  ├─ Inspect example articles
-│  │  ├─ Discover sections, tables and columns
-│  │  └─ Preview links resolving to loaded EgyptianDeity instances
-│  └─ Review
-│     └─ Accept or reject proposed members
-└─ Output
-   └─ Configured ViewableGroup instances
-```
-
-The tree makes the distinction between primary values and candidate evidence visible. The
-Wikipedia table cannot silently replace the Wikidata relation routes and cannot create a deity
-which is not already a loaded instance of the declared target class.
-
-## Plan nodes
-
-Every node has:
-
-- a stable key derived from declaration IDs, field paths, binding slots and operation IDs;
-- a kind;
-- an owner reference to the existing construct;
-- a concise explanation derived from that construct;
-- a status and exact reason;
-- zero or more allowed actions;
-- child nodes in semantic execution order, not Swing layout order.
-
-Initial node kinds are:
-
-```text
-PROJECT
-CLASS
-POPULATION
-IDENTITY
-FIELD
-PRIMARY_SOURCE
-FALLBACK_SOURCE
-CANDIDATE_EVIDENCE
-CONDITION_OR_BOUND
-DISCOVERY
-PREVIEW
-REVIEW
-TRANSFORMATION
-GRAPH_CONSTRAINT
-PUBLICATION_OR_OUTPUT
-```
-
-This list describes presentation roles. It does not duplicate model enums. A primary source
-node, for example, points to a `SourceBinding` in `PRIMARY_FIELD_VALUE`; a transformed class
-points to its existing `TransformationClassSource`.
-
-## Status
-
-Status answers what is true now, not merely which controls contain text:
-
-- **Configured** — the owning construct is valid.
-- **Required choice missing** — execution cannot proceed and the missing choice is named.
-- **Optional** — no value is configured and none is required.
-- **Discovery available** — an explicit bounded discovery action can offer choices.
-- **Preview available** — the current configuration can be inspected without mutation.
-- **Needs review** — evidence exists but cannot become data without a decision.
-- **Invalid** — validation failed, with the owning construct and reason.
-- **Produces no values** — a successful bounded preview/run answered empty.
-- **Stale** — a materialized artifact no longer matches its producing configuration.
-
-Statuses come from existing validators, compilers, previews, build manifests and review stores.
-The plan must not reimplement their rules. If a rule cannot currently be obtained from its
-owner, that owner is improved before the tree displays the status.
-
-## Actions
-
-Selecting a node shows only actions which are valid for that node and current model state.
-Actions fall into four explicit categories:
-
-1. **Inspect** — show explanation, retained source evidence or dependencies. Never mutates.
-2. **Discover** — run a bounded source query and present candidates. Never applies a candidate.
-3. **Configure** — open the existing typed editor with the exact owning construct selected.
-4. **Execute** — preview, generate, enrich, review or build through the shared execution path.
-
-No selection starts network work. No discovery result changes the model until the user invokes
-an explicit action such as **Use as source**, and that action states exactly which construct
-and parameters it will replace.
-
-## Discovery support
-
-Datasource operations describe the discoveries which can help configure them. The plan should
-not contain a growing switch over provider IDs. A datasource operation may advertise contextual
-helpers such as:
-
-```text
-article-table-column-links
-  requires: an example with an English Wikipedia article
-  offers:
-    inspect retained article structure
-    choose exact section path
-    choose optional table caption/name
-    choose exact column header
-    preview typed loaded targets
-```
-
-Discovery results retain their source structure and provenance. A choice copies only the
-provider-neutral parameters into the existing `SourceRecipe`. The result object itself never
-becomes hidden configuration.
-
-## Tree and graph
-
-The tree and graph answer different questions:
-
-- The tree answers **what is configured here and what may I do next?**
-- The graph answers **what consumes, produces or depends on this construct?**
-
-The graph is read-only initially. Its nodes use the same plan-node keys and statuses, and
-selecting a graph node selects the corresponding tree node. It must not introduce a separate
-graph-specific derivation of sources or dependencies.
-
-## Relation to existing views
-
-The plan should factor together, not replace locally:
-
-- ModelBuilder's construct tree and field/source editors;
-- the effective-class explanation;
-- the Explorer and Wikipedia Discovery workbenches;
-- TransformApp's validation, evidence and review actions;
-- the generation/build execution plan and log.
-
-The existing editors remain the first editing surfaces. The configuration tree initially
-navigates to them with the correct construct selected. Editors can be embedded node-by-node
-later only when the shared edit service is already independent of their Swing panel.
-
-## Proposed API boundary
-
-```text
-ConfigurationPlanCompiler
-  compile(GeneratedProjectModel, ProjectArtifacts, ReviewState)
-      -> ConfigurationPlan
-
-ConfigurationPlan
-  roots
-  node(stableKey)
-  dependencies
-
-ConfigurationPlanNode
-  key
-  kind
-  owner
-  explanation
-  status
-  actions
-  children
-
-ConfigurationPlanAction
-  availability and reason
-  effect description
-  existing command/editor/executor reference
-```
-
-The compiler delegates to existing model compilation and validation. It may assemble results;
-it may not infer an alternative source binding, class population or execution policy.
-
-## Incremental delivery
-
-1. **Read-only field-source slice.** Project `DeityGroup.members` and comparable fields into a
-   tree showing type, primary source, candidate evidence and exact parameters. Add navigation
-   to the existing editors and discovery workbench.
-2. **Status and action ownership.** Replace UI-local enablement rules with reusable action
-   availability plus a human reason, then consume it from both old controls and tree nodes.
-3. **Class population and identity.** Add class population, article correspondence, bounds and
-   preview nodes.
-4. **Execution and review.** Link tree nodes to the same preview/generate/enrich/review commands
-   used today and show their latest outcomes.
-5. **Project pipeline.** Add transformations, graph constraints, publications and artifacts.
-6. **Dependency graph.** Render the already-compiled node dependencies as an optional overview.
-
-The first milestone deliberately does not redesign every editor. It proves that the plan is a
-faithful projection and that one user-visible workflow no longer has to be reconstructed from
-several panels.
-
-## Forcing tests
-
-- A configuration-plan node and the existing field editor resolve the same source binding and
-  parameters for every binding slot.
-- Selecting or expanding any node performs no model mutation and no network request.
-- Every enabled action has an owner and an explanation; every disabled action has a reason.
-- Applying an edit through the existing editor and recompiling changes the corresponding node,
-  with no second state to synchronize.
-- Renaming a class preserves nodes connected by declaration ID.
-- The `DeityGroup.members` tree displays both Wikidata primary routes and Wikipedia table
-  candidate evidence, never collapsing one into the other.
-- Preview and execution consume the same compiled source recipe; preview differs only by its
-  declared bounds.
+- A source node shows its slot, its datasource operation and a short summary of its
+  parameters. The full parameters appear in the field editor; the tree does not repeat them.
+- Provider and operation names, parameter labels and parameter summaries come from the
+  `DatasourceRegistry` operation and its `ParameterDescriptor`s. The tree never switches on
+  provider or operation IDs. Where descriptors cannot summarize a recipe, for example the
+  route count of `relation-routes`, whose routes are one JSON parameter, `DatasourceOperation`
+  gains a recipe-summary method that the operation implements. The tree does not decode a
+  recipe itself.
+- Source nodes come before child-field nodes and look different from them. A source is not a
+  field and must never be mistaken for one.
+- A stored binding has a node even when validation says that its recipe is incomplete. A slot
+  with no binding has no node. The tree shows what is stored, not what could be configured and
+  not a second opinion about whether the recipe is valid.
+- Selecting a source node opens the existing field editor for its field, with that exact
+  binding site and slot scrolled into view. Selecting is inspection only: it never applies an
+  edit, starts discovery or fetches anything (directive 10).
+- Editing happens in the field editor exactly as today. After Apply, the tree rebuilds from
+  the model, so there is no second state to keep in step.
+- A direct source node's key is its target class's declaration id, field path and binding slot.
+  A contextual owned-field source additionally includes the production site's owner-class
+  declaration id and owner-field path. Keys therefore survive class renames without making
+  two production sites collide.
+
+### Source-node selection and editor ownership
+
+A source node is navigation metadata, not a new model construct and not an editor owner.
+`ModelSourceWorkbenchPanel.selected` remains the `GeneratedFieldModel` whose editor is open.
+Selecting a source node therefore resolves to two separate inputs:
+
+1. the field editor which owns the binding; and
+2. the exact binding target and slot which that editor reveals.
+
+For a direct binding, the editor owner is the target field. For a contextual owned-field
+binding, the editor owner is the ownership/production-site field, because that is where its
+override is authored; the revealed target still names the owned class and owned field.
+The source-node presentation object is never passed to `changeSelection` as though it were a
+class or field. If its owner field is already open, selection only calls the field editor's
+reveal operation.
+
+Navigation to another editor follows the construct tree's existing rule, unchanged by this
+slice: `changeSelection` applies the open editor before showing the next one. Whether that
+silent apply should become an explicit **Apply / Discard / Stay** choice is open decision 1
+(#535). It is a rule for every editor, not source-node behavior. This slice works under either
+rule: a source node under the field already open only reveals a binding and replaces no
+editor. There are no per-node drafts.
+
+### One source of the slot list
+
+Source nodes are read through one read-only binding-site inventory owned by
+`FieldSourceBindings`, the same construct which supplies bindings to validation and execution.
+It includes:
+
+- a field's direct `sourceBindings()` in stored order; and
+- every `OwnedFieldSource.sourceBindings()` configured at that field's owned-component
+  production sites, in stored production-site and binding order.
+
+The inventory returns the binding together with the field editor that owns its configuration.
+The tree must not walk owned overrides or interpret legacy mappings separately.
+
+Precondition: in memory, a field's bindings can lag its legacy mapping until Save runs
+`FieldSourceBindings.synchronizeForSave`. Apply must first keep the binding inventory current,
+so the tree, validation and `ModelSourceExecutionPlan.compileStored` immediately see the same
+configuration without Save. That fix belongs in `FieldSourceBindings`; the tree does not
+compensate or synchronize as a side effect of rendering. It is the first step, committed on
+its own before any tree work, because every editor that still writes a legacy mapping must
+update its binding on Apply.
+
+### What stays as it is
+
+- Save still explicitly applies the active editor before writing, and navigation keeps the
+  existing apply-on-navigation rule until open decision 1 is settled.
+- Discovery, preview, generation, enrichment and review keep their current entry points.
+  The tree adds none of them in this slice.
+- Nothing about the tree is saved in `model.json`.
+
+## Forcing tests and artifact
+
+- **Checked-in render.** Add the source nodes of every shipped model's fields to a
+  checked-in text render, beside `docs/panel-layout.txt`, enforced the same way as
+  `PanelLayoutIsCheckedInTest`. A reordered, missing or collapsed slot then shows up in
+  review, not only as a passing suite (directive 16).
+- **One inventory.** For every field of every shipped model, the source nodes equal the
+  `FieldSourceBindings` binding-site inventory in its declared order: same targets, ownership
+  contexts, slots and operations.
+- **Apply before Save.** Change each legacy-backed primary/fallback/category editor in turn and
+  press Apply without Save. The tree and `ModelSourceExecutionPlan.compileStored` immediately
+  report the same replacement binding.
+- **Both sources visible.** `DeityGroup.members` shows its Wikidata routes as Primary values
+  and its table column as Candidate evidence, as two nodes.
+- **Contextual source visible.** A field producing an owned component shows every configured
+  owned-field override with its target field and production-site context; equal slots at two
+  sites have different keys.
+- **Inspection only.** Selecting or expanding any node of any shipped model changes nothing
+  in the model and makes no network request. Selecting a source node under the field already
+  open never applies or rebuilds that editor; it only reveals the binding.
+- **Editor ownership.** Selecting a direct or contextual source node leaves the workbench's
+  selected object equal to the owning `GeneratedFieldModel` and reveals the exact binding; a
+  source-node presentation object is never recorded as the editor owner.
+- **Rename.** Renaming a target or context class keeps its source nodes and their selection.
+
+## Open decisions
+
+These are not settled by this document and must be agreed before work that depends on them.
+
+1. **Pending edits on navigation (#535).** Today, selecting another node applies the open
+   editor silently. The alternative is an explicit **Apply changes / Discard changes / Stay
+   here** choice, which directive 10 argues for. It needs an exact unapplied-changes check for
+   every editor; only `ClassSourcePanel` has one today. This slice keeps the existing rule.
+
+## Execution and review home
+
+Datasource bindings and candidate evidence are configured in ModelBuilder, inspected without
+mutation in DiscoveryApp, and run/reviewed in DataSourceApp over a loaded project. TransformApp
+owns local grouping, transformations and manual edits only. DataSourceApp and TransformApp share
+the class/group/field scope UI and invoke the same headless processes; neither drives the other.
+The construct tree may therefore navigate to configuration or read-only discovery, but Execute
+and Review belong to DataSourceApp and must remain explicit actions there.
+
+## Possible later directions
+
+Listed so they are not lost; none is designed or agreed, and each needs its own forcing case.
+
+- Class-level nodes for population source and identity (the article correspondence).
+- An **Add source or evidence…** action on a field, offering only operations compatible with
+  the field's type, taken from datasource operation metadata.
+- Contextual discovery launched from a source node, scoped by it, returning only an explicitly
+  chosen recipe.
+- Showing the latest preview or run result for a source node, from the existing result stores.
+- A read-only dependency view (produces, consumes, bounds, imports, transforms, publishes) over
+  the same nodes.
 
 ## Non-goals
 
-- A general-purpose workflow language.
-- A graph editor for exact source parameters.
-- Persisting Swing layout, expanded nodes or plan status in `model.json`.
-- Automatically accepting discovery results.
-- Hiding the concrete filename, datasource operation, selection or artifact involved in an
-  action.
+- A second construct tree or a separate configuration window.
+- A workflow language or a graph editor for source parameters.
+- Unconfigured possibilities shown as tree nodes.
+- Persisting expansion, selection or status in `model.json`.
+- Automatically accepting discovery or evidence results.
+- Presenting inverse, union, statement-end, owned-component or other non-datasource field
+  production as datasource-binding nodes.
