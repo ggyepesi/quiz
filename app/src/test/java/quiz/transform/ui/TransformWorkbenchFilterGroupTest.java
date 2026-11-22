@@ -14,7 +14,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,53 +48,21 @@ class TransformWorkbenchFilterGroupTest {
                 "the default-width action row must report the height of wrapped buttons");
     }
 
-    @Test void wikipediaDiscoveryConsumesOnlyAnExplicitSingleClassSelection() {
+    @Test void discoveryOpensForTheVisibleClassBeforeAnyCardsAreSelected() {
         var maat = new wikidata.explore.extract.WikidataDynamicObject("Q170471", "Maat");
         maat.type("EgyptianDeity");
         maat.enwikiTitle("Maat");
-        java.util.function.Predicate<objectview.Viewable> deity = value ->
-                value.directClassNames().contains("EgyptianDeity");
 
-        assertEquals("Select one or more instance cards to inspect on Wikipedia",
-                TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                        "EgyptianDeity", List.of(), deity));
-        assertEquals("Choose one logical class before opening Wikipedia Discovery",
-                TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                        TransformController.ALL_ENTITIES, List.of(maat), ignored -> true));
-        assertNull(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                "EgyptianDeity", List.of(maat), deity));
-
-        var achilles = new wikidata.explore.extract.WikidataDynamicObject(
-                "Q41746", "Achilles");
-        achilles.type("Character");
-        achilles.enwikiTitle("Achilles");
-        assertTrue(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                "EgyptianDeity", List.of(maat, achilles), deity)
-                .contains("do not belong"));
-
-        var unnamedArticle = new wikidata.explore.extract.WikidataDynamicObject(
-                "Q1", "No article");
-        unnamedArticle.type("EgyptianDeity");
-        assertTrue(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                "EgyptianDeity", List.of(unnamedArticle), deity)
-                .contains("no English Wikipedia article"));
-    }
-
-    @Test void anOversizedExplicitSelectionIsHandedOverWholeForManualReduction() {
-        List<Viewable> selected = java.util.stream.IntStream.range(0,
-                        wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES + 1)
-                .mapToObj(index -> {
-                    var value = new wikidata.explore.extract.WikidataDynamicObject(
-                            "Q" + (index + 1), "Deity " + index);
-                    value.type("EgyptianDeity");
-                    value.enwikiTitle("Deity " + index);
-                    return (Viewable) value;
-                }).toList();
-
-        assertNull(TransformWorkbenchPanel.wikipediaDiscoveryUnavailable(
-                "EgyptianDeity", selected,
-                value -> value.directClassNames().contains("EgyptianDeity")),
-                "TransformApp must not silently sample or truncate an explicit selection");
+        assertEquals("Choose one logical class before opening Discovery",
+                TransformWorkbenchPanel.discoveryUnavailable(
+                        TransformController.ALL_ENTITIES, List.of(maat)));
+        assertEquals("No currently shown instance has a Wikidata QID",
+                TransformWorkbenchPanel.discoveryUnavailable(
+                        "State", List.of(new State("France"))));
+        assertNull(TransformWorkbenchPanel.discoveryUnavailable(
+                "EgyptianDeity", List.of(maat)),
+                "Add selection belongs to the Discovery workbench, so opening it must not "
+                        + "require a prior card selection");
     }
 
     @Test void relationEquivalenceClassesUseTheSameGroupsAsTheMainWorkbench() {
@@ -207,50 +174,6 @@ class TransformWorkbenchFilterGroupTest {
         assertFalse(TransformWorkbenchPanel.withoutWikidataLabel(new State("France")));
     }
 
-    @Test void experimentSelectionMarksExistingInstanceCardsWithoutCopyingTheList() {
-        State france = new State("France");
-        TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
-                new ReflectionDomain(List.of(france)));
-
-        assertNull(panel.experimentMark(france));
-        // Reflection State has no Wikidata source, so it cannot be marked accidentally.
-        panel.addExperimentInstance(france);
-        assertNull(panel.experimentMark(france));
-
-        var qid = new wikidata.explore.extract.WikidataDynamicObject("Q142", "France");
-        qid.type("Country");
-        panel.addExperimentInstance(qid);
-        assertNotNull(panel.experimentMark(qid));
-        panel.close();
-    }
-
-    @Test void fieldScopeRebuildKeepsTheLastExperimentTabTheUserSelected() {
-        java.util.concurrent.atomic.AtomicInteger remembered =
-                new java.util.concurrent.atomic.AtomicInteger(1);
-        JTabbedPane first = experimentTabs();
-
-        TransformWorkbenchPanel.bindExperimentTabSelection(
-                first, remembered.get(), remembered::set);
-        assertEquals(1, first.getSelectedIndex(),
-                "a newly started experiment initially reveals its selected sample");
-
-        first.setSelectedIndex(0);
-        assertEquals(0, remembered.get(),
-                "the panel remembers an explicit switch to Instances");
-        JTabbedPane afterFieldSelection = experimentTabs();
-        TransformWorkbenchPanel.bindExperimentTabSelection(
-                afterFieldSelection, remembered.get(), remembered::set);
-        assertEquals(0, afterFieldSelection.getSelectedIndex(),
-                "selecting a field or All/Present/Missing must keep Instances active");
-
-        afterFieldSelection.setSelectedIndex(1);
-        JTabbedPane afterAnotherFieldSelection = experimentTabs();
-        TransformWorkbenchPanel.bindExperimentTabSelection(
-                afterAnotherFieldSelection, remembered.get(), remembered::set);
-        assertEquals(1, afterAnotherFieldSelection.getSelectedIndex(),
-                "the same rebuild must also preserve Selected for experiment");
-    }
-
     @Test void newlyAddedFilterGroupBecomesTheActiveVisibleGroup() {
         TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
                 new ReflectionDomain(List.of(new State("France"), new State("Germany"))));
@@ -272,13 +195,6 @@ class TransformWorkbenchFilterGroupTest {
         quiz.transform.DynamicViewable value = new quiz.transform.DynamicViewable(id, label);
         value.type("Position");
         return value;
-    }
-
-    private static JTabbedPane experimentTabs() {
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Instances", new JPanel());
-        tabs.addTab("Selected for experiment", new JPanel());
-        return tabs;
     }
 
     /** A disabled path command says what would enable it, not one fixed sentence. */

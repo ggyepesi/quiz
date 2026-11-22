@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,14 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class BoundedInstanceSelectionGuardTest {
 
     private static final Path SOURCES = Path.of("src/main/java");
-    /** Known copies not yet moved onto the shared control. This list only shrinks. */
-    private static final Map<String, Integer> NOT_YET_SHARED = Map.of(
-            // TransformApp's experimental source inspection: its own instance/selected tabs.
-            "quiz/transform/ui/TransformWorkbenchPanel.java", 1);
-
     @Test void onlyTheSharedSelectionBuildsTheSampleAndSelectionControls()
             throws IOException {
-        Map<String, Integer> remainingCopies = new java.util.TreeMap<>();
+        java.util.Map<String, Integer> remainingCopies = new java.util.TreeMap<>();
         try (Stream<Path> files = Files.walk(SOURCES)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java"))
                     .toList()) {
@@ -41,10 +35,10 @@ class BoundedInstanceSelectionGuardTest {
             }
         }
 
-        assertEquals(NOT_YET_SHARED, remainingCopies,
-                "select instances through BoundedInstanceSelection; when a known copy "
-                        + "is removed, lower its measured baseline instead of silently "
-                        + "leaving the whole file exempt");
+        assertEquals(java.util.Map.of(), remainingCopies,
+                "every discovery source selects instances through "
+                        + "BoundedInstanceSelection; no copied Add/sample controls are "
+                        + "allowed");
     }
 
     private static int occurrences(String text, String part) {

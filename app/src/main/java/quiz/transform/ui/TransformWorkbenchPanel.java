@@ -62,29 +62,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JButton identitiesButton = new JButton("Identities…");
     private final JButton saveIdentitiesButton = new JButton("Save staged identities");
     private final JButton forgetIdentitiesButton = new JButton("Forget staged");
-    private final JButton experimentSelectionButton =
-            new JButton("Experimental source inspection…");
+    private final JButton wikidataDiscoveryButton =
+            new JButton("Wikidata discovery…");
     private final JButton wikipediaDiscoveryButton =
             new JButton("Wikipedia discovery…");
     private final JButton analyzeRelationsButton =
             new JButton("Analyze relations…");
     private final JButton showClosurePathButton =
             new JButton("Show path to selected instance…");
-    private final java.util.LinkedHashMap<String, Viewable> experimentSelection =
-            new java.util.LinkedHashMap<>();
     private List<Viewable> selectedInstances = List.of();
-    private List<Viewable> selectedExperimentInstances = List.of();
-    private JComponent experimentInstancesView;
-    private JComponent experimentSelectedView;
-    private JTabbedPane experimentTabs;
-    // Field selection and All / Present / Missing rebuild the member view. The instance
-    // scope is an independent user choice, so that rebuild must restore the tab the user
-    // last selected instead of returning to Selected for experiment every time.
-    private int experimentTabIndex = 1;
-    private JButton experimentFetchButton;
-    private JButton experimentArticleFetchButton;
-    private boolean experimentActive;
-    private discovery.DiscoveryWorkbench.OpenedWindow wikipediaDiscovery;
+    private discovery.DiscoveryWorkbench.OpenedWindow discoveryWindow;
     private JPanel instanceScopeHeader;
     private quiz.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
@@ -113,10 +100,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     // session's query context + log window, so its searches show in "Query logs…".
     private final SwingProcessRunner resolveRunner = new SwingProcessRunner(
             queries.runner().context(), queries.runner().logListener(), process.ProcessInputHandler.unsupported());
-    private final SwingProcessRunner experimentRunner = new SwingProcessRunner(
-            queries.runner().context(), queries.runner().logListener(),
-            process.ProcessInputHandler.unsupported());
-
     private ViewStepsPanel viewStepsPanel;
 
     // Bumped on every render() (EDT-only). A background render swaps its cards in
@@ -168,6 +151,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         this.controller = new TransformController(domain, writer);
         this.domainName = domainName;
         this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
+        scopeStatus.setName("instance.scope.status");
         setLayout(new BorderLayout(8, 8));
 
         // Build the action owner first. ViewStepsPanel seeds the initial class and may
@@ -178,8 +162,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JComponent right = buildRight();
         JComponent left = buildLeft();
         add(workspaceSplit(left, right), BorderLayout.CENTER);
-
-        experimentRunner.onRunningChanged(ignored -> updateExperimentSelectionUi());
 
         // ViewStepsPanel seeds the controller (and mirrors it into its controls);
         // render the seeded result once the panel is wired.
@@ -265,269 +247,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return split;
     }
 
-    private void startInstanceExperiment() {
-        RenderedScope scope = renderedScope;
-        if (scope == null || scope.visibleMembers().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No instances are currently shown.");
-            return;
-        }
-        List<Viewable> eligible = scope.visibleMembers().stream()
-                .filter(value -> quiz.source.SourceIdentities.wikidataQid(value) != null)
-                .toList();
-        if (eligible.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "None of the currently shown instances has a Wikidata source.");
-            return;
-        }
-        JSpinner count = new JSpinner(new SpinnerNumberModel(
-                Math.min(5, eligible.size()), 1, eligible.size(), 1));
-        int configured = JOptionPane.showConfirmDialog(this, count,
-                "Random starting sample size", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-        if (configured != JOptionPane.OK_OPTION) return;
-
-        List<Viewable> shuffled = new ArrayList<>(eligible);
-        java.util.Collections.shuffle(shuffled);
-        experimentSelection.clear();
-        shuffled.stream().limit((int) count.getValue()).forEach(this::addExperimentInstance);
-        experimentActive = true;
-        // A new random sample is the one operation that deliberately reveals the result.
-        experimentTabIndex = 1;
-        render();
-    }
-
-    private void startWikidataStatementDiscovery(List<Viewable> selection) {
-        if (experimentRunner.isRunning()) {
-            JOptionPane.showMessageDialog(this,
-                    "Wikidata statement discovery is already running.");
-            return;
-        }
-        List<Viewable> selected = List.copyOf(selection);
-        List<String> qids = selected.stream()
-                .map(quiz.source.SourceIdentities::wikidataQid)
-                .filter(java.util.Objects::nonNull).distinct().toList();
-        List<Viewable> loaded = controller.domain().instances().stream()
-                .map(Viewable.class::cast).toList();
-        var query = new quiz.transform.discovery.WikidataStatementDiscoveryQuery(qids);
-        var pipeline = new process.ProcessWorkflowPipeline(List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        "fetch-statements", "Fetch all Wikidata statements and qualifiers",
-                        "Run one bounded statement query for each confirmed QID.",
-                        List.of("Selected QIDs: " + String.join(", ", qids),
-                                "Loaded-domain instances are reused as entity values.",
-                                "Other entity values contain only wikidataSource."))));
-        process.swing.workflow.ProcessWorkflowAction<
-                List<wikidata.statement.EntityStatementSummary>, Void> action =
-                new process.swing.workflow.ProcessWorkflowAction<>() {
-                    @Override public String id() { return "discover-wikidata-statements"; }
-                    @Override public String subject() { return String.join(" ", qids); }
-                    @Override public process.ProcessWorkflowPipeline pipeline() { return pipeline; }
-                    @Override public java.util.function.Function<Object, String> valueLinker() {
-                        return wikidata.ui.WikidataLinks.valueLinker();
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                        return new process.swing.workflow.ProcessWorkflowPlan(
-                                "Discover Wikidata statements",
-                                "Fetch every Wikidata property, statement value and qualifier "
-                                        + "for these " + qids.size() + " confirmed instances. "
-                                + "This makes no changes and saves no files.",
-                                List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                        "Will fetch", experimentPreviews(selected))))
-                                .withoutPipelineTab();
-                    }
-                    @Override public process.Process<
-                            List<wikidata.statement.EntityStatementSummary>> process() {
-                        return new process.Process<>() {
-                            @Override public process.ProcessPlan plan() {
-                                return new process.ProcessPlan(query.purpose(),
-                                        query.description(), query.parameters());
-                            }
-                            @Override public process.ProcessOutcome<
-                                    List<wikidata.statement.EntityStatementSummary>> execute(
-                                            process.ProcessContext context) {
-                                pipeline.start("fetch-statements", query.purpose());
-                                var outcome = context.run(
-                                        new process.QuerySubprocess<>(query));
-                                pipeline.finish(outcome.status(), outcome.summary());
-                                return outcome;
-                            }
-                        };
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowResults<Void> results(
-                            process.ProcessOutcome<
-                                    List<wikidata.statement.EntityStatementSummary>> outcome) {
-                        List<wikidata.explore.extract.WikidataDynamicObject> values =
-                                quiz.transform.discovery.WikidataStatementDiscoveryResult
-                                        .materialize(outcome.result(), loaded);
-                        List<process.swing.workflow.ProcessWorkflowResults.Card<Void>> cards =
-                                values.stream().map(value ->
-                                        new process.swing.workflow.ProcessWorkflowResults.Card<Void>(
-                                                value, () -> null, false)).toList();
-                        return new process.swing.workflow.ProcessWorkflowResults<>(
-                                "Discovered Wikidata statements", outcome.summary(), "Close",
-                                List.of(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                        "Instances", cards,
-                                        quiz.transform.discovery.WikidataStatementDiscoveryResult
-                                                .unionSample(values))));
-                    }
-                    @Override public void apply(List<Void> decisions) { }
-                };
-        process.swing.workflow.SwingProcessWorkflow.start(
-                this, experimentRunner, action);
-    }
-
-    private void startWikipediaArticleFetch(List<Viewable> selection) {
-        if (experimentRunner.isRunning()) {
-            JOptionPane.showMessageDialog(this,
-                    "Another selected-instance experiment is already running.");
-            return;
-        }
-        java.util.LinkedHashMap<String, wikidata.explore.extract.WikidataDynamicObject>
-                selectedByQid = new java.util.LinkedHashMap<>();
-        for (Viewable value : selection) {
-            if (value instanceof wikidata.explore.extract.WikidataDynamicObject object
-                    && !object.qid().isBlank()) {
-                selectedByQid.putIfAbsent(object.qid(), object);
-            }
-        }
-        List<wikidata.explore.extract.WikidataDynamicObject> selected =
-                List.copyOf(selectedByQid.values());
-        if (selected.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "None of the selected instances carries a Wikidata entity identity.");
-            return;
-        }
-        var query = new quiz.transform.discovery.WikipediaArticleFetchQuery(selected);
-        var pipeline = new process.ProcessWorkflowPipeline(List.of(
-                new process.ProcessWorkflowPipeline.Phase(
-                        "fetch-articles", "Fetch structured Wikipedia articles",
-                        "Read the retained English-Wikipedia correspondence for each "
-                                + "confirmed instance and preserve its source structure.",
-                        selected.stream().map(value -> value.qid() + " — "
-                                + (value.enwikiTitle().isBlank()
-                                ? "no English Wikipedia article"
-                                : value.enwikiTitle())).toList())));
-        process.swing.workflow.ProcessWorkflowAction<
-                List<quiz.transform.discovery.WikipediaArticleFetchQuery.Result>,
-                quiz.transform.discovery.WikipediaArticleFetchQuery.Result> action =
-                new process.swing.workflow.ProcessWorkflowAction<>() {
-                    @Override public String id() { return "fetch-structured-wikipedia"; }
-                    @Override public String subject() {
-                        return selected.stream()
-                                .map(wikidata.explore.extract.WikidataDynamicObject::qid)
-                                .collect(java.util.stream.Collectors.joining(" "));
-                    }
-                    @Override public process.ProcessWorkflowPipeline pipeline() {
-                        return pipeline;
-                    }
-                    @Override public boolean multipleResultSelection() { return true; }
-                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                        ProjectBacking backing = controller.domain()
-                                .capability(ProjectBacking.class);
-                        String save = backing == null ? "Save domain will persist the result."
-                                : "Save " + backing.projectKind().toString().toLowerCase()
-                                + " will write the retained articles into\n"
-                                + backing.snapshotFile().getPath() + ".";
-                        return new process.swing.workflow.ProcessWorkflowPlan(
-                                "Fetch structured Wikipedia articles",
-                                "Fetch exactly " + selected.size()
-                                        + " selected English Wikipedia article(s). Keep headings, "
-                                        + "paragraphs, list items, tables, internal links and "
-                                        + "categories for inspection. This run does not infer "
-                                        + "fields and writes no file. After review, Keep changes "
-                                        + "the loaded instances in memory. " + save,
-                                List.of(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                        "Will fetch", experimentPreviews(selected))))
-                                .withoutPipelineTab();
-                    }
-                    @Override public process.Process<List<
-                            quiz.transform.discovery.WikipediaArticleFetchQuery.Result>>
-                            process() {
-                        return new process.QuerySubprocess<>(query);
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowResults<
-                            quiz.transform.discovery.WikipediaArticleFetchQuery.Result> results(
-                            process.ProcessOutcome<List<
-                                    quiz.transform.discovery.WikipediaArticleFetchQuery.Result>>
-                                    outcome) {
-                        List<process.swing.workflow.ProcessWorkflowResults.Card<
-                                quiz.transform.discovery.WikipediaArticleFetchQuery.Result>>
-                                acquired = outcome.result().stream()
-                                .filter(quiz.transform.discovery.WikipediaArticleFetchQuery.Result
-                                        ::available)
-                                .map(result -> new process.swing.workflow.ProcessWorkflowResults
-                                        .Card<quiz.transform.discovery
-                                                .WikipediaArticleFetchQuery.Result>(
-                                        new quiz.source.WikipediaSource(
-                                                result.title(), result.article()),
-                                        () -> result, true)).toList();
-                        List<process.swing.workflow.ProcessWorkflowResults.Card<
-                                quiz.transform.discovery.WikipediaArticleFetchQuery.Result>>
-                                unavailable = outcome.result().stream()
-                                .filter(result -> !result.available())
-                                .map(result -> new process.swing.workflow.ProcessWorkflowResults
-                                        .Card<quiz.transform.discovery
-                                                .WikipediaArticleFetchQuery.Result>(
-                                        articleFetchFailure(result), () -> null, false)).toList();
-                        List<process.swing.workflow.ProcessWorkflowResults.Tab<
-                                quiz.transform.discovery.WikipediaArticleFetchQuery.Result>> tabs =
-                                new ArrayList<>();
-                        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                "Fetched articles", acquired));
-                        if (!unavailable.isEmpty()) {
-                            tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                                    "Unavailable", unavailable));
-                        }
-                        return new process.swing.workflow.ProcessWorkflowResults<>(
-                                "Structured Wikipedia articles", outcome.summary(),
-                                "Keep in loaded instances", tabs, null,
-                                "Close without keeping");
-                    }
-                    @Override public void apply(List<quiz.transform.discovery
-                            .WikipediaArticleFetchQuery.Result> decisions) {
-                        java.util.Map<String, datasource.evidence.WikipediaArticle> byQid =
-                                decisions.stream().filter(result -> result.article() != null)
-                                .collect(java.util.stream.Collectors.toMap(
-                                        result -> result.instance().qid(),
-                                        quiz.transform.discovery.WikipediaArticleFetchQuery.Result
-                                                ::article,
-                                        (first, ignored) -> first,
-                                        java.util.LinkedHashMap::new));
-                        List<Viewable> changed = controller.domain().instances().stream()
-                                .filter(wikidata.explore.extract.WikidataDynamicObject.class
-                                        ::isInstance)
-                                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
-                                .filter(value -> byQid.containsKey(value.qid()))
-                                .peek(value -> value.wikipediaArticleEvidence(
-                                        byQid.get(value.qid()), true))
-                                .map(Viewable.class::cast).toList();
-                        refreshViewables(experimentSelectedView, changed);
-                        refreshViewables(experimentInstancesView, changed);
-                    }
-                };
-        process.swing.workflow.SwingProcessWorkflow.start(this, experimentRunner, action);
-    }
-
-    private static Viewable articleFetchFailure(
-            quiz.transform.discovery.WikipediaArticleFetchQuery.Result result) {
-        var view = new wikidata.explore.extract.WikidataDynamicObject(
-                result.instance().qid(), result.instance().getDisplayName());
-        view.type("WikipediaArticleFetch");
-        if (!result.title().isBlank()) view.dynamicFields().put("article", result.title());
-        view.dynamicFields().put("result", result.problem());
-        return view;
-    }
-
-    private static List<Viewable> experimentPreviews(List<? extends Viewable> values) {
-        return values.stream().map(value -> {
-            String qid = quiz.source.SourceIdentities.wikidataQid(value);
-            var preview = new wikidata.explore.extract.WikidataDynamicObject(
-                    qid, value.getDisplayName());
-            preview.type("WikidataStatementSample");
-            return (Viewable) preview;
-        }).toList();
-    }
-
     /** The right header describes the visible instances and hosts the actions belonging to
      * this application. Both purposes use the same selected class/group/field scope. */
     private JComponent buildRight() {
@@ -557,12 +276,14 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Discard the staged identities — nothing has been written yet");
         forgetIdentitiesButton.addActionListener(e -> forgetStagedIdentities());
         forgetIdentitiesButton.setVisible(false);
-        experimentSelectionButton.setEnabled(false);
-        experimentSelectionButton.setName("datasource.inspect");
-        experimentSelectionButton.addActionListener(e -> startInstanceExperiment());
+        wikidataDiscoveryButton.setEnabled(false);
+        wikidataDiscoveryButton.setName("datasource.wikidata");
+        wikidataDiscoveryButton.addActionListener(e -> openDiscovery(
+                discovery.DiscoveryWorkbench.Source.WIKIDATA));
         wikipediaDiscoveryButton.setEnabled(false);
         wikipediaDiscoveryButton.setName("datasource.wikipedia");
-        wikipediaDiscoveryButton.addActionListener(e -> openWikipediaDiscovery());
+        wikipediaDiscoveryButton.addActionListener(e -> openDiscovery(
+                discovery.DiscoveryWorkbench.Source.WIKIPEDIA));
         analyzeRelationsButton.setToolTipText(
                 "Measure self-referencing fields over the instances currently shown");
         analyzeRelationsButton.setName("transform.analyzeRelations");
@@ -589,7 +310,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JPanel instanceActions = new JPanel(
                 instanceActionsLayout());
         if (purpose.showsDatasourceActions()) {
-            instanceActions.add(experimentSelectionButton);
+            instanceActions.add(wikidataDiscoveryButton);
             instanceActions.add(wikipediaDiscoveryButton);
         } else {
             instanceActions.add(analyzeRelationsButton);
@@ -903,10 +624,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      * Keeping the window open is the default; discarding is an explicit choice that names
      * each edit it loses.
      */
-    /** Whether an open Wikipedia Discovery window may close with this workbench. Its
+    /** Whether an open Discovery window may close with this workbench. Its
      *  running fetch is kept unless the user confirms stopping it. */
-    boolean confirmCloseWikipediaDiscovery() {
-        var opened = wikipediaDiscovery;
+    boolean confirmCloseDiscovery() {
+        var opened = discoveryWindow;
         return opened == null || !opened.window().isDisplayable()
                 || opened.workbench().requestStopRun(this);
     }
@@ -1020,6 +741,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // to describe the render.
         scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
         identitiesButton.setEnabled(false);
+        wikidataDiscoveryButton.setEnabled(false);
         wikipediaDiscoveryButton.setEnabled(false);
         analyzeRelationsButton.setEnabled(false);
 
@@ -1039,8 +761,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 try {
                     objectview.group.ViewableGroup<?> root = get();
                     renderHolder.removeAll();
-                    renderHolder.add(groupView(
-                            root, memberType(root, type), generation, type),
+                    quiz.transform.app.ConfiguredGroups.Binding configuredGroupClass =
+                            quiz.transform.app.ConfiguredGroups.bindingForGroupClass(
+                                    controller.domain().groupRootBindings(), type);
+                    renderHolder.add(configuredGroupClass == null
+                                    ? groupView(root, memberType(root, type), generation, type)
+                                    : configuredGroupClassView(
+                                            configuredGroupClass, generation, type),
                             BorderLayout.CENTER);
                     updateScopeStatus();
                 } catch (Exception ex) {
@@ -1133,7 +860,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (scope == null) {
             curateFieldButton.setEnabled(false);
             identitiesButton.setEnabled(false);
-            experimentSelectionButton.setEnabled(false);
+            wikidataDiscoveryButton.setEnabled(false);
             wikipediaDiscoveryButton.setEnabled(false);
             analyzeRelationsButton.setEnabled(false);
             return;
@@ -1178,92 +905,92 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // it stay available even when the scope is empty (they act on what is already staged).
         boolean hasResolvable = !identitySubjects.resolvable().isEmpty();
         identitiesButton.setEnabled(curation != null && hasResolvable);
-        experimentSelectionButton.setEnabled(scope.visibleMembers().stream()
-                .anyMatch(value -> quiz.source.SourceIdentities.wikidataQid(value) != null));
-        updateWikipediaDiscoveryAction();
+        updateDiscoveryActions();
         analyzeRelationsButton.setEnabled(!relationsFor(scope.selectedType()).isEmpty());
     }
 
-    private void updateWikipediaDiscoveryAction() {
+    private void updateDiscoveryActions() {
         RenderedScope scope = renderedScope;
-        String unavailable = scope == null
+        String wikidataUnavailable = scope == null
                 ? "Wait for the current instance scope to finish rendering"
-                : wikipediaDiscoveryUnavailable(scope.selectedType(), selectedInstances,
-                        value -> controller.isInstanceOf(value, scope.selectedType()));
-        wikipediaDiscoveryButton.setEnabled(unavailable == null);
-        wikipediaDiscoveryButton.setToolTipText(unavailable == null
-                ? "Open the shared Wikipedia Discovery workbench with exactly "
-                        + selectedInstances.size() + " selected "
-                        + scope.selectedType() + " instance(s)"
-                        + (selectedInstances.size()
-                                <= wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES
-                                ? "" : "; remove at least "
-                                + (selectedInstances.size()
-                                - wikipedia.discovery.WikipediaDiscoveryQuery.MAX_ARTICLES)
-                                + " there before fetching")
-                : unavailable);
+                : discoveryUnavailable(scope.selectedType(), scope.visibleMembers());
+        wikidataDiscoveryButton.setEnabled(wikidataUnavailable == null);
+        wikidataDiscoveryButton.setToolTipText(wikidataUnavailable == null
+                ? discoveryTooltip(scope, "Wikidata statements and qualifiers")
+                : wikidataUnavailable);
+        wikipediaDiscoveryButton.setEnabled(wikidataUnavailable == null);
+        wikipediaDiscoveryButton.setToolTipText(wikidataUnavailable == null
+                ? discoveryTooltip(scope, "Wikipedia articles")
+                : wikidataUnavailable);
     }
 
-    /** Why a Transform selection cannot be handed to Wikipedia Discovery. The current
-     * logical class is explicit; names and Java implementation classes are not used to
-     * reconstruct it. */
-    static String wikipediaDiscoveryUnavailable(
-            String selectedType, List<Viewable> selected,
-            java.util.function.Predicate<Viewable> belongsToSelectedType) {
-        if (selected == null || selected.isEmpty()) {
-            return "Select one or more instance cards to inspect on Wikipedia";
-        }
+    private String discoveryTooltip(RenderedScope scope, String source) {
+        java.util.Set<wikidata.explore.extract.WikidataDynamicObject> eligible =
+                scope.visibleMembers().stream()
+                .filter(wikidata.explore.extract.WikidataDynamicObject.class::isInstance)
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .filter(value -> !value.qid().isBlank())
+                .collect(java.util.stream.Collectors.toCollection(
+                        java.util.LinkedHashSet::new));
+        long selected = selectedInstances.stream()
+                .filter(wikidata.explore.extract.WikidataDynamicObject.class::isInstance)
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .filter(eligible::contains)
+                .count();
+        return "Open the shared Discovery workbench for " + source + " with "
+                + eligible.size() + " currently shown " + scope.selectedType()
+                + " instance(s) available and " + selected
+                + " currently selected. Add selection, Remove selection and the selected "
+                + "count are the same controls used by DiscoveryApp.";
+    }
+
+    static String discoveryUnavailable(String selectedType, List<Viewable> visible) {
         if (selectedType == null || selectedType.isBlank()
                 || TransformController.ALL_ENTITIES.equals(selectedType)) {
-            return "Choose one logical class before opening Wikipedia Discovery";
+            return "Choose one logical class before opening Discovery";
         }
-        long outside = selected.stream().filter(value -> belongsToSelectedType == null
-                || !belongsToSelectedType.test(value)).count();
-        if (outside > 0) {
-            return outside + " selected instance(s) do not belong to the current "
-                    + selectedType + " class";
-        }
-        long incompatible = selected.stream().filter(value ->
-                !(value instanceof wikidata.explore.extract.WikidataDynamicObject)).count();
-        if (incompatible > 0) {
-            return incompatible + " selected instance(s) do not carry retained Wikipedia "
-                    + "source data";
-        }
-        long withoutArticle = selected.stream()
+        boolean any = visible != null && visible.stream()
+                .filter(wikidata.explore.extract.WikidataDynamicObject.class::isInstance)
                 .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
-                .filter(value -> value.enwikiTitle().isBlank()).count();
-        if (withoutArticle > 0) {
-            return withoutArticle + " selected instance(s) have no English Wikipedia "
-                    + "article correspondence";
-        }
-        return null;
+                .anyMatch(value -> !value.qid().isBlank());
+        return any ? null : "No currently shown instance has a Wikidata QID";
     }
 
-    private void openWikipediaDiscovery() {
+    /** Opens the one Discovery workbench over the exact scope this workbench shows.
+     *  The source choice changes only the active tab; selection, counts and Add/Remove
+     *  controls are all owned by {@link BoundedInstanceSelection}. */
+    private void openDiscovery(discovery.DiscoveryWorkbench.Source sourceTab) {
         RenderedScope scope = renderedScope;
         String unavailable = scope == null ? "No rendered instance scope."
-                : wikipediaDiscoveryUnavailable(scope.selectedType(), selectedInstances,
-                        value -> controller.isInstanceOf(value, scope.selectedType()));
+                : discoveryUnavailable(scope.selectedType(), scope.visibleMembers());
         if (unavailable != null) {
             JOptionPane.showMessageDialog(this, unavailable,
-                    "Wikipedia discovery", JOptionPane.INFORMATION_MESSAGE);
+                    "Discovery", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        if (wikipediaDiscovery != null && wikipediaDiscovery.window().isDisplayable()) {
+        if (discoveryWindow != null && discoveryWindow.window().isDisplayable()) {
             // Its model edits are this workbench's own pending changes, kept and guarded
             // here; replacing the window loses only a running fetch.
-            if (!wikipediaDiscovery.workbench().requestStopRun(this)) {
-                wikipediaDiscovery.window().toFront();
-                wikipediaDiscovery.window().requestFocus();
+            if (!discoveryWindow.workbench().requestStopRun(this)) {
+                discoveryWindow.window().toFront();
+                discoveryWindow.window().requestFocus();
                 return;
             }
-            wikipediaDiscovery.window().dispose();
-            wikipediaDiscovery = null;
+            discoveryWindow.window().dispose();
+            discoveryWindow = null;
         }
-        List<wikidata.explore.extract.WikidataDynamicObject> selection =
-                selectedInstances.stream()
-                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast).toList();
-        String source = "TransformApp";
+        List<wikidata.explore.extract.WikidataDynamicObject> available =
+                scope.visibleMembers().stream()
+                        .filter(wikidata.explore.extract.WikidataDynamicObject.class::isInstance)
+                        .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                        .filter(value -> !value.qid().isBlank()).distinct().toList();
+        java.util.Set<wikidata.explore.extract.WikidataDynamicObject> availableSet =
+                new java.util.LinkedHashSet<>(available);
+        List<wikidata.explore.extract.WikidataDynamicObject> selection = selectedInstances.stream()
+                .filter(wikidata.explore.extract.WikidataDynamicObject.class::isInstance)
+                .map(wikidata.explore.extract.WikidataDynamicObject.class::cast)
+                .filter(availableSet::contains).distinct().toList();
+        String source = "DataSourceApp";
         if (selectedField != null && fieldScope != ScopeFilter.ALL) {
             source += " — " + selectedField.displayPath() + " "
                     + (fieldScope == ScopeFilter.MISSING ? "missing" : "present");
@@ -1276,14 +1003,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 : domainName == null || domainName.isBlank()
                         ? scope.selectedType() : domainName;
         var initial = new discovery.DiscoveryWorkbench.InitialSelection(
-                scope.selectedType(), selection, source);
-        wikipediaDiscovery = discovery.DiscoveryWorkbench.openWindow(
-                controller.domain(), title, initial, this,
-                discovery.DiscoveryWorkbench.Source.WIKIPEDIA);
-        var opened = wikipediaDiscovery;
+                scope.selectedType(), available, selection, source);
+        discoveryWindow = discovery.DiscoveryWorkbench.openWindow(
+                controller.domain(), title, initial, this, sourceTab);
+        var opened = discoveryWindow;
         opened.window().addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosed(java.awt.event.WindowEvent event) {
-                if (wikipediaDiscovery == opened) wikipediaDiscovery = null;
+                if (discoveryWindow == opened) discoveryWindow = null;
             }
         });
     }
@@ -1737,23 +1463,21 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** A flat result: members grouped by type — a single searchable instance view
      *  for one type, or a per-class {@link MultiView} for several. */
     private JComponent flatView(List<Viewable> members, String type) {
-        java.util.function.Consumer<List<Viewable>> selectionListener = flatSelectionListener;
-        java.util.function.Function<Viewable, JComponent> cardDecorator = flatCardDecorator;
+        return flatView(members, type, null);
+    }
+
+    private JComponent flatView(
+            List<Viewable> members,
+            String type,
+            objectview.render.RenderContext renderContext) {
+        java.util.function.Consumer<List<Viewable>> selectionListener = this::selectInstances;
+        java.util.function.Function<Viewable, JComponent> cardDecorator = ignored -> null;
         boolean oneHierarchy = type != null && members.stream()
                 .allMatch(member -> controller.isInstanceOf(member, type));
         if (oneHierarchy) {
             Viewable sample = controller.configSample(type);
             java.util.List<objectview.search.SearchPanel.SubtypeConfig> subtypes =
-                    new java.util.ArrayList<>();
-            for (String subtype : controller.subtypesOf(type)) {
-                java.util.Set<String> additional = controller.additionalFields(subtype);
-                if (additional.isEmpty()) continue;
-                subtypes.add(new objectview.search.SearchPanel.SubtypeConfig(
-                        subtype, controller.baseType(subtype),
-                        controller.configSample(subtype),
-                        controller.fieldTypes(subtype), additional,
-                        member -> controller.isInstanceOf(member, subtype)));
-            }
+                    controller.subtypeConfigs(type);
             return objectview.view.SearchableView.builder(members)
                     .sample(sample)
                     .hiddenFields(controller.structuralFields(type))
@@ -1761,6 +1485,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, type))
                     .typeSchemas(controller::fieldSchema)
                     .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
+                    .renderContext(renderContext)
                     .subtypeConfigs(subtypes)
                     .configState(instanceConfigsByType.get(type))
                     .configListener(config -> instanceConfigsByType.put(type, config))
@@ -1789,6 +1514,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     .fieldSchemas(q -> controller.renderedFieldSchema(q, renderedType))
                     .typeSchemas(controller::fieldSchema)
                     .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
+                    .renderContext(renderContext)
                     .configState(instanceConfigsByType.get(renderedType))
                     .configListener(config ->
                             instanceConfigsByType.put(renderedType, config))
@@ -1886,6 +1612,69 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         return grouped;
     }
 
+    /**
+     * A modeled group class is selected as groups, not repeated as ordinary instance
+     * cards, in both workbench purposes. The tree selection is the scope of this
+     * workbench's actions; the parallel cards are the selected lead group's members and
+     * exist only for inspection/navigation.
+     */
+    private JComponent configuredGroupClassView(
+            quiz.transform.app.ConfiguredGroups.Binding binding,
+            int generation,
+            String selectedType) {
+        objectview.render.RenderContext shared = new objectview.render.RenderContext();
+        shared.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
+        GroupMembersView grouped = new GroupMembersView(binding.root(), group ->
+                configuredGroupMembersPanel("Members of " + group.getDisplayName(),
+                        new ArrayList<>(group.getMembers()), binding.memberClass(), shared),
+                JSplitPane.HORIZONTAL_SPLIT, false, 0.31, true, shared);
+        GroupTreeView groups = grouped.groups();
+        groups.setMultipleSelectionEnabled(true);
+        activeShow = grouped::showGroup;
+        grouped.setSelectionHandler(group -> {
+            activeGroup = group;
+            groups.setStatusText(group.getKeyRef() == null
+                    ? "Select one or more modeled groups; the selected group instances "
+                            + "are what this workbench's actions apply to"
+                    : "Selected group: " + group.getDisplayName()
+                            + " — this group instance is what this workbench's actions "
+                            + "apply to");
+        });
+        grouped.setSelectionSetHandler(selected -> {
+            selectInstances(List.of());
+            List<Viewable> groupInstances = selected.stream()
+                    .map(objectview.group.ViewableGroup::getKeyRef)
+                    .filter(Viewable.class::isInstance)
+                    .map(Viewable.class::cast)
+                    .filter(value -> controller.isInstanceOf(value, selectedType))
+                    .distinct().toList();
+            List<Viewable> shown = applyFieldScope(groupInstances);
+            renderedScope = new RenderedScope(
+                    generation, selectedType, groupInstances, shown);
+            if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet();
+            updateScopeStatus();
+        });
+        groups.setStatusText("Select one or more modeled groups; the selected group "
+                + "instances are what this workbench's actions apply to");
+        objectview.group.ViewableGroup<?> initial = binding.root();
+        for (objectview.group.ViewableGroup<?> child : binding.root().getChildren()) {
+            if (child.getKeyRef() != null) {
+                initial = child;
+                break;
+            }
+        }
+        grouped.selectGroup(initial, true);
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        // This header owns the actions for the selected modeled group instances. Keep it
+        // over the whole tree/member view: putting it in the member pane would make the
+        // datasource action look as though it targeted the inspected deity members.
+        if (instanceScopeHeader != null) {
+            panel.add(instanceScopeHeader, BorderLayout.NORTH);
+        }
+        panel.add(grouped, BorderLayout.CENTER);
+        return panel;
+    }
+
     private static String selectedGroupStatus(
             objectview.group.ViewableGroup<?> group) {
         if (group == null) return " ";
@@ -1936,7 +1725,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void selectInstances(List<Viewable> values) {
         selectedInstances = values == null ? List.of() : List.copyOf(values);
         updateClosurePathAction();
-        updateWikipediaDiscoveryAction();
+        updateDiscoveryActions();
     }
 
     /** Why the path cannot be shown for this selection, or null when it can. A disabled
@@ -2163,194 +1952,20 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (instanceScopeHeader != null) {
             panel.add(instanceScopeHeader, BorderLayout.NORTH);
         }
-        if (!experimentActive) {
-            panel.add(flatView(members, type, values -> {
-                        selectInstances(values);
-                    },
-                    this::experimentMark), BorderLayout.CENTER);
-            return panel;
-        }
-        JTabbedPane tabs = new JTabbedPane();
-        JPanel instances = new JPanel(new BorderLayout(4, 4));
-        JPanel instanceActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        JButton add = new JButton("Add selection");
-        add.addActionListener(e -> {
-            List<Viewable> added = new ArrayList<>();
-            for (Viewable value : selectedInstances) {
-                String qid = quiz.source.SourceIdentities.wikidataQid(value);
-                if (qid != null && !experimentSelection.containsKey(qid)) {
-                    addExperimentInstance(value);
-                    added.add(value);
-                }
-            }
-            appendViewables(experimentSelectedView, added);
-            refreshViewables(experimentInstancesView, added);
-            updateExperimentSelectionUi();
-        });
-        instanceActions.add(add);
-        instances.add(instanceActions, BorderLayout.NORTH);
-        experimentInstancesView = flatView(members, type,
-                values -> {
-                    selectInstances(values);
-                }, this::experimentMark);
-        instances.add(experimentInstancesView, BorderLayout.CENTER);
-        tabs.addTab("Instances", instances);
-        List<Viewable> sample = List.copyOf(experimentSelection.values());
-        JPanel selected = new JPanel(new BorderLayout(4, 4));
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        JButton remove = new JButton("Remove selection");
-        remove.addActionListener(e -> {
-            List<Viewable> removed = List.copyOf(selectedExperimentInstances);
-            removed.forEach(value ->
-                    experimentSelection.remove(quiz.source.SourceIdentities.wikidataQid(value)));
-            removeViewables(experimentSelectedView, removed);
-            refreshViewables(experimentInstancesView, removed);
-            updateExperimentSelectionUi();
-        });
-        JButton fetch = new JButton("Fetch statements and qualifiers");
-        experimentFetchButton = fetch;
-        fetch.setEnabled(!sample.isEmpty());
-        fetch.addActionListener(e -> startWikidataStatementDiscovery(
-                List.copyOf(experimentSelection.values())));
-        JButton fetchArticles = new JButton("Fetch structured Wikipedia articles");
-        experimentArticleFetchButton = fetchArticles;
-        fetchArticles.setEnabled(!sample.isEmpty());
-        fetchArticles.addActionListener(e -> startWikipediaArticleFetch(
-                List.copyOf(experimentSelection.values())));
-        actions.add(remove);
-        PopulationSelectionStore selectionStore =
-                controller.domain().capability(PopulationSelectionStore.class);
-        if (selectionStore != null) {
-            JButton createSelection = new JButton("Create population selection…");
-            createSelection.addActionListener(
-                    e -> createPopulationSelection(selectionStore, type));
-            actions.add(createSelection);
-        }
-        actions.add(fetch);
-        actions.add(fetchArticles);
-        selected.add(actions, BorderLayout.NORTH);
-        experimentSelectedView = flatView(sample, type,
-                values -> selectedExperimentInstances = values, value -> null);
-        selected.add(experimentSelectedView, BorderLayout.CENTER);
-        tabs.addTab("Selected for experiment — " + sample.size(), selected);
-        bindExperimentTabSelection(tabs, experimentTabIndex,
-                selectedIndex -> experimentTabIndex = selectedIndex);
-        experimentTabs = tabs;
-        panel.add(tabs, BorderLayout.CENTER);
+        panel.add(flatView(members, type), BorderLayout.CENTER);
         return panel;
     }
 
-    /** Keep the independent instance-scope choice while field-scope changes rebuild the
-     *  two experiment tabs. The panel-owned index is the one source of truth: the new
-     *  control restores it, then every explicit tab change writes it back. */
-    static void bindExperimentTabSelection(JTabbedPane tabs, int rememberedIndex,
-            java.util.function.IntConsumer selectionChanged) {
-        if (tabs.getTabCount() == 0) return;
-        int restored = Math.max(0, Math.min(rememberedIndex, tabs.getTabCount() - 1));
-        tabs.setSelectedIndex(restored);
-        selectionChanged.accept(restored);
-        tabs.addChangeListener(event -> selectionChanged.accept(tabs.getSelectedIndex()));
+    private JComponent configuredGroupMembersPanel(
+            String scope,
+            List<Viewable> members,
+            String type,
+            objectview.render.RenderContext renderContext) {
+        JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createTitledBorder(scope + " · " + members.size()));
+        panel.add(flatView(members, type, renderContext), BorderLayout.CENTER);
+        return panel;
     }
-
-    private void updateExperimentSelectionUi() {
-        int count = experimentSelection.size();
-        if (experimentTabs != null && experimentTabs.getTabCount() > 1) {
-            experimentTabs.setTitleAt(1, "Selected for experiment — " + count);
-        }
-        boolean enabled = count > 0 && !experimentRunner.isRunning();
-        if (experimentFetchButton != null) experimentFetchButton.setEnabled(enabled);
-        if (experimentArticleFetchButton != null) {
-            experimentArticleFetchButton.setEnabled(enabled);
-        }
-    }
-
-    private void createPopulationSelection(PopulationSelectionStore store, String className) {
-        List<String> qids = experimentSelection.keySet().stream().toList();
-        if (qids.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No instances are selected for the experiment.");
-            return;
-        }
-        String proposed = className + "Selection";
-        String name = JOptionPane.showInputDialog(this,
-                "Selection name:", proposed);
-        if (name == null) return;
-        name = name.trim();
-        if (name.isBlank()) {
-            JOptionPane.showMessageDialog(this, "Enter a selection name.");
-            return;
-        }
-        // The same operation, words and confirmation as ModelBuilder's: it changes the
-        // working model, and Save is what writes it — named here, with its file.
-        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
-        String kind = project == null ? "domain"
-                : project.projectKind().toString().toLowerCase();
-        String description = "Create population selection \"" + name + "\" from "
-                + qids.size() + " selected " + className + " instances.\n\n"
-                + "Save " + kind + " will write it to\n" + store.modelFile().getPath() + ".";
-        if (!quiz.ui.Dialogs.confirmPersistence(
-                this, "Create population selection", description)) return;
-        try {
-            store.createPopulationSelection(name, className, qids);
-            JOptionPane.showMessageDialog(this, "Created population selection " + name
-                            + " with " + qids.size() + " " + className + " QIDs. Use \"Save "
-                            + kind + "\" to persist it.",
-                    "Population selection created", JOptionPane.INFORMATION_MESSAGE);
-        } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(),
-                    "Population selection not created", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private static void appendViewables(
-            JComponent view, java.util.Collection<? extends Viewable> values) {
-        if (view instanceof objectview.view.SearchableView searchable) {
-            searchable.appendViewables(values);
-        } else if (view instanceof MultiView multi) {
-            multi.appendViewables(values);
-        }
-    }
-
-    private static void removeViewables(
-            JComponent view, java.util.Collection<? extends Viewable> values) {
-        if (view instanceof objectview.view.SearchableView searchable) {
-            searchable.removeViewables(values);
-        } else if (view instanceof MultiView multi) {
-            multi.removeViewables(values);
-        }
-    }
-
-    private static void refreshViewables(
-            JComponent view, java.util.Collection<? extends Viewable> values) {
-        if (view instanceof objectview.view.SearchableView searchable) {
-            searchable.refreshViewables(values);
-        } else if (view instanceof MultiView multi) {
-            multi.refreshViewables(values);
-        }
-    }
-
-    void addExperimentInstance(Viewable value) {
-        String qid = quiz.source.SourceIdentities.wikidataQid(value);
-        if (qid != null) experimentSelection.putIfAbsent(qid, value);
-    }
-
-    JComponent experimentMark(Viewable value) {
-        String qid = quiz.source.SourceIdentities.wikidataQid(value);
-        if (qid == null || !experimentSelection.containsKey(qid)) return null;
-        JLabel mark = new JLabel("selected for experiment");
-        mark.setForeground(new Color(45, 105, 55));
-        return mark;
-    }
-
-    private JComponent flatView(List<Viewable> members, String type,
-            java.util.function.Consumer<List<Viewable>> selection,
-            java.util.function.Function<Viewable, JComponent> decoration) {
-        this.flatSelectionListener = selection;
-        this.flatCardDecorator = decoration;
-        return flatView(members, type);
-    }
-
-    private java.util.function.Consumer<List<Viewable>> flatSelectionListener = ignored -> { };
-    private java.util.function.Function<Viewable, JComponent> flatCardDecorator = value -> null;
 
     private quiz.transform.EditableGroup selectedOrRoot(
             objectview.group.ViewableGroup<?> root) {
@@ -2863,7 +2478,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                if (!panel.confirmCloseWikipediaDiscovery()
+                if (!panel.confirmCloseDiscovery()
                         || !panel.confirmCloseWithUnsavedModelChanges()) {
                     return;   // keep the window open
                 }
@@ -2900,11 +2515,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         closed = true;
         queries.runner().cancel();
         resolveRunner.cancel();
-        experimentRunner.cancel();
-        if (wikipediaDiscovery != null) {
-            wikipediaDiscovery.window().dispose();
-            wikipediaDiscovery.workbench().close();
-            wikipediaDiscovery = null;
+        if (discoveryWindow != null) {
+            discoveryWindow.window().dispose();
+            discoveryWindow.workbench().close();
+            discoveryWindow = null;
         }
         requestClient.close();
         queryFactory.close();

@@ -17,6 +17,7 @@ selection:
 | Commons depictions | Structured Data on Commons depiction scenes (`docs/commons-structured-data-discovery.md`) | 20 QIDs |
 | Wikipedia pageviews | English Wikipedia views by human readers over complete months | 50 articles |
 | Metropolitan Museum artifacts | Met Egyptian Art records whose subject tag names the selected exact Wikidata entity (`docs/configured-rest-datasources.md`) | 10 entities, 20 candidate IDs each |
+| Wikidata statements and qualifiers | every property, statement value and qualifier for the selected QIDs | 50 instances, queried in batches of 10 QIDs |
 
 A source that needs more than a QID (an English Wikipedia article) counts the selected
 instances it cannot read and says so; it never narrows the selection for the others. A
@@ -28,10 +29,14 @@ Moving between tabs never asks for the instances again and inspecting results ne
 the project. An explicit promotion offered by a source tab may add its reusable finding to
 the working ModelBuilder configuration; its separate Save action states the project file that
 will be written.
-DataSourceApp's Wikipedia discovery action opens this same workbench with its selected
-instances handed over, on the Wikipedia tab.
+DataSourceApp's Wikidata and Wikipedia discovery actions open this same workbench on the
+corresponding source tab. The available cards are exactly the instances currently shown in
+DataSourceApp. Its currently selected cards are handed over as the initial selection; with no
+cards selected the workbench starts at **Selected entities — 0**, and the ordinary **Add
+selection**, **Remove selection**, selected-count and random-sample controls remain available.
 
-The first three tabs are code-backed source workflows. Further bounded related-record tabs are
+The Wikipedia, Commons, Pageviews and Wikidata tabs are code-backed source workflows. Further
+bounded related-record tabs are
 discovered from the datasource registry. Their result records, source fields and limits come
 from checked-in datasource configuration; the workbench does not name or branch on Met.
 

@@ -1,4 +1,4 @@
-package datasourceapp;
+package quiz.datasource.app;
 
 import quiz.transform.app.DomainCatalog;
 import quiz.transform.app.DomainSaver;

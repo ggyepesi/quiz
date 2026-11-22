@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`datasourceapp.DataSourceApp` is the interactive home for reading external sources into a
+`quiz.datasource.app.DataSourceApp` is the interactive home for reading external sources into a
 loaded project. It resolves identities, loads configured field values, inspects source data and
 reviews proposals before applying them. It does not define a second acquisition pipeline.
 
@@ -29,7 +29,7 @@ reader, review model or apply path is duplicated.
 
 ## First workflow
 
-1. Run `datasourceapp.DataSourceApp` from the `app` module.
+1. Run `quiz.datasource.app.DataSourceApp` from the `app` module.
 2. Load a saved model or domain through the shared project chooser.
 3. Select a class, optional named selection or group, and a field.
 4. Choose All, Present or Missing to state the exact instance scope.
@@ -37,6 +37,8 @@ reader, review model or apply path is duplicated.
 6. Review and apply proposals through the existing process result UI.
 7. Use **Save model/domain** to persist the applied values and project state.
 
-Identity resolution, experimental source inspection and Wikipedia discovery are also scoped to
-the currently shown instances. Merely selecting a field, group or instance never starts a
-request or changes the project.
+Identity resolution and both discovery actions are also scoped to the currently shown
+instances. Wikidata and Wikipedia discovery open the same Discovery workbench used by
+DiscoveryApp, with the same Add selection, Remove selection, selected-count and random-sample
+controls. Merely selecting a field, group or instance never starts a request or changes the
+project.

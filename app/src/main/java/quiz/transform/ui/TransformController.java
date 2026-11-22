@@ -171,6 +171,24 @@ public final class TransformController {
         return domain.additionalFields(subtype);
     }
 
+    /** The per-subclass View configurations for a list typed by {@code type}. A base
+     *  class may declare few or no fields of its own (DeityGroupMember), so its members'
+     *  own fields reach the view only through these. Every instance view of a class
+     *  hierarchy uses this one list. */
+    public List<objectview.search.SearchPanel.SubtypeConfig> subtypeConfigs(String type) {
+        if (type == null || ALL_ENTITIES.equals(type)) return List.of();
+        List<objectview.search.SearchPanel.SubtypeConfig> subtypes = new java.util.ArrayList<>();
+        for (String subtype : subtypesOf(type)) {
+            Set<String> additional = additionalFields(subtype);
+            if (additional.isEmpty()) continue;
+            subtypes.add(new objectview.search.SearchPanel.SubtypeConfig(
+                    subtype, baseType(subtype), configSample(subtype),
+                    fieldTypes(subtype), additional,
+                    member -> isInstanceOf(member, subtype)));
+        }
+        return List.copyOf(subtypes);
+    }
+
     /** The explicit group root paired with the selected member type. */
     public objectview.group.ViewableGroup<?> groupRoot(String type) {
         if (ALL_ENTITIES.equals(type)) {

@@ -72,6 +72,10 @@ public final class BoundedInstanceSelection {
     private SearchableView instancesView;
     private SearchableView selectedView;
     private quiz.transform.app.ConfiguredGroups.Binding configuredGroupClass;
+    /** A contextual caller may restrict discovery to the exact instances it shows.
+     *  Standalone Discovery leaves this null and offers every eligible domain class. */
+    private String scopedClass;
+    private List<WikidataDynamicObject> scopedMembers;
     /** The sources whose work over the selection is running now. */
     private final java.util.Set<Object> running = new java.util.HashSet<>();
 
@@ -139,9 +143,14 @@ public final class BoundedInstanceSelection {
      * first. Returns false when no class qualifies; the owner explains that.
      */
     public boolean populate(String requestedClass) {
-        for (String candidate : domain.types()) {
-            if (TransformController.ALL_ENTITIES.equals(candidate)) continue;
-            if (!eligibleMembers(candidate).isEmpty()) type.addItem(candidate);
+        type.removeAllItems();
+        if (scopedClass != null) {
+            if (!eligibleMembers(scopedClass).isEmpty()) type.addItem(scopedClass);
+        } else {
+            for (String candidate : domain.types()) {
+                if (TransformController.ALL_ENTITIES.equals(candidate)) continue;
+                if (!eligibleMembers(candidate).isEmpty()) type.addItem(candidate);
+            }
         }
         if (type.getItemCount() == 0) {
             updateControls();
@@ -155,6 +164,20 @@ public final class BoundedInstanceSelection {
         // setSelectedItem fires showType only when the item changes.
         if (classMembers.isEmpty()) showType(className());
         return true;
+    }
+
+    /**
+     * Offers one logical class and exactly the instances already visible in the calling
+     * workbench. The same Add/Remove/sample/count UI is then used by contextual and
+     * standalone discovery; only the available scope differs.
+     */
+    public boolean populateScoped(String className,
+            List<WikidataDynamicObject> availableInstances) {
+        scopedClass = className == null ? "" : className.trim();
+        scopedMembers = availableInstances == null ? List.of()
+                : availableInstances.stream().filter(java.util.Objects::nonNull)
+                .filter(eligible).distinct().toList();
+        return !scopedClass.isBlank() && populate(scopedClass);
     }
 
     /**
@@ -220,6 +243,7 @@ public final class BoundedInstanceSelection {
                 .hiddenFields(className == null ? java.util.Set.of()
                         : domain.structuralFields(className))
                 .fieldTypes(className == null ? null : domain.fieldTypes(className))
+                .subtypeConfigs(domain.subtypeConfigs(className))
                 .fieldSchemas(value -> domain.renderedFieldSchema(value, className))
                 .typeSchemas(domain::fieldSchema)
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
@@ -275,6 +299,9 @@ public final class BoundedInstanceSelection {
     }
 
     private List<WikidataDynamicObject> eligibleMembers(String className) {
+        if (scopedClass != null) {
+            return scopedClass.equals(className) ? scopedMembers : List.of();
+        }
         return domain.domain().instancesOf(className).stream()
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast)

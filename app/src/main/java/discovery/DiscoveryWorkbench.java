@@ -33,7 +33,8 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     public enum Source {
         WIKIPEDIA("Wikipedia articles"),
         COMMONS("Commons depictions"),
-        PAGEVIEWS("Wikipedia pageviews");
+        PAGEVIEWS("Wikipedia pageviews"),
+        WIKIDATA("Wikidata statements and qualifiers");
 
         private final String title;
         Source(String title) { this.title = title; }
@@ -44,6 +45,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private final WikipediaDiscoveryPanel wikipedia;
     private final CommonsDiscoveryPanel commons;
     private final PageviewsDiscoveryPanel pageviews;
+    private final WikidataStatementDiscoveryPanel wikidata;
     private final java.util.List<RelatedRecordDiscoveryPanel> relatedRecords =
             new java.util.ArrayList<>();
     private final List<String> catalogProblems;
@@ -82,6 +84,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         wikipedia = new WikipediaDiscoveryPanel(domain, selection);
         commons = new CommonsDiscoveryPanel(domain, selection);
         pageviews = new PageviewsDiscoveryPanel(selection);
+        wikidata = new WikidataStatementDiscoveryPanel(domain, selection);
         for (datasource.api.DatasourceProvider provider : datasources.providers()) {
             for (datasource.api.DatasourceOperation operation : provider.operations()) {
                 if (!(operation instanceof datasource.api.discovery.RelatedRecordDiscoveryOperation
@@ -117,6 +120,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         sources.addTab(Source.WIKIPEDIA.title(), wikipedia);
         sources.addTab(Source.COMMONS.title(), commons);
         sources.addTab(Source.PAGEVIEWS.title(), pageviews);
+        sources.addTab(Source.WIKIDATA.title(), wikidata);
         relatedRecords.forEach(panel -> sources.addTab(panel.title(), panel));
         if (!catalogProblems.isEmpty() || !unavailableOperations.isEmpty()) {
             List<String> sections = new java.util.ArrayList<>();
@@ -150,12 +154,22 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
 
     private void populate(InitialSelection initial) {
         String requested = initial == null ? null : initial.className();
-        if (!selection.populate(requested)) {
+        boolean populated = initial != null && !initial.availableInstances().isEmpty()
+                ? selection.populateScoped(requested, initial.availableInstances())
+                : selection.populate(requested);
+        if (!populated) {
             selectionStatus.setText("This project has no class instances with Wikidata "
                     + "QIDs. No discovery source can read anything.");
             return;
         }
         if (initial == null || !initial.className().equals(selection.className())) return;
+        if (initial.instances().isEmpty()) {
+            selectionStatus.setText("Showing exactly " + initial.availableInstances().size()
+                    + " " + initial.className() + " instance(s) from " + initial.origin()
+                    + ". Select cards and press Add selection, or start a random sample. "
+                    + "0 are selected; nothing has been requested.");
+            return;
+        }
         int omitted = selection.seed(initial.instances(), "The selected instances came "
                 + "from " + initial.origin() + ". Run a source to produce results.");
         selectionStatus.setText("Received exactly " + selection.size() + " selected "
@@ -176,6 +190,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     public WikipediaDiscoveryPanel wikipedia() { return wikipedia; }
     public CommonsDiscoveryPanel commons() { return commons; }
     public PageviewsDiscoveryPanel pageviews() { return pageviews; }
+    public WikidataStatementDiscoveryPanel wikidata() { return wikidata; }
     List<RelatedRecordDiscoveryPanel> relatedRecords() {
         return List.copyOf(relatedRecords);
     }
@@ -183,7 +198,8 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     /** Whether every running source may stop; keeping each is the default. */
     public boolean requestStopRun(Component owner) {
         if (!(wikipedia.requestStopRun(owner) && commons.requestStopRun(owner)
-                && pageviews.requestStopRun(owner))) return false;
+                && pageviews.requestStopRun(owner)
+                && wikidata.requestStopRun(owner))) return false;
         for (RelatedRecordDiscoveryPanel panel : relatedRecords) {
             if (!panel.requestStopRun(owner)) return false;
         }
@@ -192,7 +208,8 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
 
     /** Stops running sources, then asks about configuration this window owns. */
     public boolean requestClose(Component owner) {
-        if (!(commons.requestStopRun(owner) && pageviews.requestStopRun(owner))) return false;
+        if (!(commons.requestStopRun(owner) && pageviews.requestStopRun(owner)
+                && wikidata.requestStopRun(owner))) return false;
         for (RelatedRecordDiscoveryPanel panel : relatedRecords) {
             if (!panel.requestStopRun(owner)) return false;
         }
@@ -205,15 +222,27 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         wikipedia.close();
         commons.close();
         pageviews.close();
+        wikidata.close();
         relatedRecords.forEach(RelatedRecordDiscoveryPanel::close);
     }
 
     /** Explicit handoff from another view. The source view supplies the logical class
      *  and instances; discovery never reconstructs that selection from names. */
     public record InitialSelection(
-            String className, List<WikidataDynamicObject> instances, String origin) {
+            String className,
+            List<WikidataDynamicObject> availableInstances,
+            List<WikidataDynamicObject> instances,
+            String origin) {
+        public InitialSelection(String className,
+                List<WikidataDynamicObject> instances, String origin) {
+            this(className, List.of(), instances, origin);
+        }
+
         public InitialSelection {
             className = className == null ? "" : className.trim();
+            availableInstances = availableInstances == null ? List.of()
+                    : availableInstances.stream().filter(java.util.Objects::nonNull)
+                    .distinct().toList();
             instances = instances == null ? List.of()
                     : instances.stream().filter(java.util.Objects::nonNull)
                     .distinct().toList();

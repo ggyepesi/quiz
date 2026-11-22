@@ -70,7 +70,7 @@
   box: Members of All State · 1
     button: Load field…  (disabled)
     button: Identities…  (disabled)
-    button: Experimental source inspection…  (disabled)
+    button: Wikidata discovery…  (disabled)
     button: Wikipedia discovery…  (disabled)
     label: ▼ Search / sort / view
     button: ← Back  (disabled)

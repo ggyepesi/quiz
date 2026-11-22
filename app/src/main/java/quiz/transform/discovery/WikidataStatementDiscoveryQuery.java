@@ -14,7 +14,7 @@ import java.util.Map;
 /** The ModelBuilder statement inspection query, applied to an explicit instance sample. */
 public final class WikidataStatementDiscoveryQuery
         implements Query<List<EntityStatementSummary>> {
-    static final int BATCH_SIZE = 10;
+    public static final int BATCH_SIZE = 10;
     private final List<String> qids;
 
     public WikidataStatementDiscoveryQuery(List<String> qids) {

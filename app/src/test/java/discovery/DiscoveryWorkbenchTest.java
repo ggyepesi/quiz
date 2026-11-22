@@ -42,6 +42,9 @@ class DiscoveryWorkbenchTest {
                         "Commons reads every selected QID");
                 assertEquals("Read views of 1 selected article",
                         field(workbench.pageviews(), "fetch", JButton.class).getText());
+                assertEquals("Fetch statements and qualifiers for 2 selected instances",
+                        field(workbench.wikidata(), "fetch", JButton.class).getText(),
+                        "Wikidata inspection reads the same shared selection");
                 assertEquals(1, workbench.relatedRecords().size());
                 JButton met = field(workbench.relatedRecords().getFirst(),
                         "fetch", JButton.class);
@@ -49,6 +52,33 @@ class DiscoveryWorkbenchTest {
                         met.getText());
                 assertTrue(met.getToolTipText().contains("at most 20 search result(s)"));
                 assertTrue(met.getToolTipText().contains("project is not changed"));
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
+    @Test void aContextualWorkbenchUsesTheExactVisibleScopeAndStillOffersAddSelection()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject maat = deity("Q170471", "Maat", "Maat");
+            WikidataDynamicObject ra = deity("Q2831", "Ra", "Ra");
+            WikidataDynamicObject anubis = deity("Q47534", "Anubis", "Anubis");
+            DiscoveryWorkbench workbench = workbench(domain(maat, ra, anubis),
+                    new DiscoveryWorkbench.InitialSelection(
+                            "EgyptianDeity", List.of(maat, ra), List.of(),
+                            "DataSourceApp — symbol missing"));
+            try {
+                assertEquals(0, workbench.selection().size());
+                assertEquals(2, ((List<?>) field(workbench.selection(), "classMembers",
+                        List.class)).size(),
+                        "the available cards are exactly the calling workbench's scope");
+                assertEquals("Selected entities — 0",
+                        workbench.selection().tabs().getTitleAt(1),
+                        "the shared selection reports its exact count before sampling");
+                assertEquals("Add selection",
+                        field(workbench.selection(), "addSelection", JButton.class).getText(),
+                        "manual Add selection is present without starting a sample");
             } finally {
                 workbench.close();
             }

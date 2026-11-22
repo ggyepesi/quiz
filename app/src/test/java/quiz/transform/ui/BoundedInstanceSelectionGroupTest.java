@@ -72,6 +72,61 @@ class BoundedInstanceSelectionGroupTest {
         });
     }
 
+    /** Egyptian gods types DeityGroup.members by a base with no fields of its own. The
+     *  member cards then showed only what that empty base declares, because this view
+     *  built no per-subclass configuration; the deities' own fields must reach it. */
+    @Test void membersTypedByAFieldlessBaseKeepTheirSubclassFields() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass().className("DeityGroupMember");
+        GeneratedClassModel deityClass = new GeneratedClassModel("Deity");
+        deityClass.baseClassName("DeityGroupMember");
+        model.addClass(deityClass);
+        GeneratedClassModel groupClass = new GeneratedClassModel("DeityGroup");
+        model.addClass(groupClass);
+        groupClass.addField("members", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("DeityGroupMember");
+        groupClass.groupSpec(new GroupClassSpec("members"));
+
+        WikidataDynamicObject deity = new WikidataDynamicObject("Q1", "Ra");
+        deity.type("Deity");
+        deity.directClasses(java.util.Set.of("Deity"));
+        deity.put("epithet", "the sun");
+        WikidataDynamicObject group = new WikidataDynamicObject("Q2", "Ennead");
+        group.type("DeityGroup");
+        group.directClasses(java.util.Set.of("DeityGroup"));
+        group.put("members", List.of(deity));
+        List<Viewable> pool = List.of(group, deity);
+        ProductDomain domain = new ProductDomain(
+                new ProductSchema(List.of(
+                        new ProductClass("DeityGroupMember", "DeityGroupMember",
+                                null, true, List.of()),
+                        new ProductClass("Deity", "Deity", "DeityGroupMember", true,
+                                List.of(new ProductField("epithet", "String",
+                                        false, false, "", false))),
+                        new ProductClass("DeityGroup", "DeityGroup", List.of(
+                                new ProductField("members", "List<DeityGroupMember>",
+                                        true, true, "DeityGroupMember", false)))),
+                        List.of("DeityGroupMember", "Deity", "DeityGroup")),
+                pool, Viewable.class, null, java.util.Map.of(),
+                ConfiguredGroups.rootBindings(model, pool));
+
+        SwingUtilities.invokeAndWait(() -> {
+            BoundedInstanceSelection selection = new BoundedInstanceSelection(
+                    new TransformController(domain, null), new NoOpHost(),
+                    20, 5, "groups", ignored -> true, "are configured groups");
+            assertTrue(selection.populate("DeityGroup"));
+            GroupMembersView available = find(
+                    (Container) selection.tabs().getComponentAt(0), GroupMembersView.class);
+            assertNotNull(available);
+            objectview.view.SearchableView members = find(
+                    (Container) available.getComponent(0),
+                    objectview.view.SearchableView.class);
+            assertNotNull(members, "the lead group's members are shown beside the tree");
+            assertTrue(members.configState().subtypeView().containsKey("Deity"),
+                    "a Deity member is configured with its own fields, not only the base's");
+        });
+    }
+
     private static Fixture fixture() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         GeneratedClassModel deityClass = model.rootClass();
