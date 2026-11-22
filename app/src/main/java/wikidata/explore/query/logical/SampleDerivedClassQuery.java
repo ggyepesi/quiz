@@ -1,21 +1,21 @@
 package wikidata.explore.query.logical;
 
 import wikidata.WikidataIds;
-import wikidata.explore.compiled.CompiledAggregateSource;
-import wikidata.explore.compiled.CompiledClass;
-import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.compiled.ProjectModelCompiler;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.generation.SemanticConvergence;
-import wikidata.explore.model.ClassDependencies;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.ProductionChain;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.compile.CompiledAggregateSource;
+import domain.compile.CompiledClass;
+import domain.compile.CompiledProjectModel;
+import domain.compile.ProjectModelCompiler;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+import domain.build.SemanticConvergence;
+import domain.config.ClassDependencies;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.ProductionChain;
+import wikidata.query.core.WikidataAccess;
 import wikidata.explore.query.result.ClassSampleResult;
-import wikidata.explore.transform.ModelAggregates;
-import wikidata.explore.transform.ModelStatementReifications;
+import domain.compile.transform.ModelAggregates;
+import domain.compile.transform.ModelStatementReifications;
 import work.Query;
 import work.QueryContext;
 
@@ -110,9 +110,9 @@ public final class SampleDerivedClassQuery implements Query<ClassSampleResult> {
         GeneratedClassModel population = chain.population();
         // Compiled once, through the owner of that decision: a sample that cannot be
         // planned says so with the model's own validation report, before it fetches.
-        wikidata.explore.generation.CompiledPipelineRun run =
-                wikidata.explore.generation.CompiledPipelineRun.compile(
-                        wikidata.explore.generation.PipelineRequest.sampleClass(
+        domain.build.CompiledPipelineRun run =
+                domain.build.CompiledPipelineRun.compile(
+                        domain.build.PipelineRequest.sampleClass(
                                 snapshot, className, limit));
         if (run.blocked()) throw new IllegalStateException(run.explain());
         CompiledProjectModel compiled = run.model();

@@ -1,0 +1,387 @@
+package domain.compile.transform;
+
+import domain.config.EntityBound;
+import org.junit.jupiter.api.Test;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.FieldCardinality;
+import domain.config.FieldProductionKind;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.MembershipPattern;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+
+class OwnedComponentsTest {
+
+    /** A part takes the owner's identity and display name. Its class and production
+     *  site already identify the component; a humanized field label is UI context, not
+     *  part of an instance name. */
+    @Test void aPartDefaultsToItsOwnersDisplayName() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+
+        OwnedComponents.apply(project, List.of(person), null, null);
+
+        WikidataDynamicObject name = (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Q42", name.getIdentifier(), "the owner's identity");
+        assertEquals("Douglas Adams", name.getDisplayName());
+        org.junit.jupiter.api.Assertions.assertTrue(name.isPart(),
+                "and it is a part: never served as a dataset of its own");
+    }
+
+    @Test void ownerFieldCreatesASeparateSameQidComponent() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+
+        OwnedComponents.Result result = OwnedComponents.apply(
+                project, List.of(person), null, null);
+
+        assertEquals(1, result.created());
+        WikidataDynamicObject name = (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Q42", name.getIdentifier());
+        assertEquals("Name", name.typeName());
+        assertEquals("Name@Person.structuredName", name.typeKey());
+        assertSame(person, name.get(
+                        domain.config.OwnedClassSemantics.OWNER_FIELD),
+                "the owned instance points back to the instance that produced it");
+        assertSame(name, result.components().get(0));
+        assertEquals(MembershipPattern.OWNED_COMPONENT,
+                MembershipPattern.of(project.findClass("Name"), project));
+    }
+
+    @Test void subclassInstancesUseTheDeclaringOwnerSiteOnlyOnce() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel employee = new GeneratedClassModel("Employee");
+        employee.baseClassName("Person");
+        project.addClass(employee);
+        WikidataDynamicObject value = entity("Q1", "Ada", "Employee");
+
+        OwnedComponents.Result result = OwnedComponents.apply(
+                project, List.of(value), null, null);
+
+        assertEquals(1, result.components().size());
+        assertEquals("Name@Person.structuredName",
+                ((WikidataDynamicObject) value.get("structuredName")).typeKey());
+    }
+
+    @Test void oneOwnedClassKeepsTheConcreteOwnerAtEachProductionSite() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel organization = new GeneratedClassModel("Organization");
+        GeneratedFieldModel officialName = organization.addField(
+                "officialName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        officialName.entityClassName("Name");
+        officialName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(organization);
+        WikidataDynamicObject person = entity("Q1", "Ada", "Person");
+        WikidataDynamicObject company = entity("Q2", "Example Ltd", "Organization");
+
+        OwnedComponents.apply(project, List.of(person, company), null, null);
+
+        WikidataDynamicObject personalName =
+                (WikidataDynamicObject) person.get("structuredName");
+        WikidataDynamicObject organizationName =
+                (WikidataDynamicObject) company.get("officialName");
+        assertSame(person, personalName.get("owner"));
+        assertSame(company, organizationName.get("owner"));
+        assertEquals("Name@Person.structuredName", personalName.typeKey());
+        assertEquals("Name@Organization.officialName", organizationName.typeKey());
+    }
+
+    @Test void remapCopiesPreviouslyLoadedComponentFields() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject previousPerson = entity("Q42", "Douglas", "Person");
+        WikidataDynamicObject previousName = entity("Q42", "Douglas", "Name");
+        previousName.typeKey("Name@Person.structuredName");
+        previousName.put("givenName", entity("Q1", "Douglas", "GivenName"));
+        previousPerson.put("structuredName", previousName);
+        WikidataDynamicObject freshPerson = entity("Q42", "Douglas", "Person");
+
+        OwnedComponents.apply(project, List.of(freshPerson),
+                List.of(previousPerson), null);
+
+        WikidataDynamicObject remapped =
+                (WikidataDynamicObject) freshPerson.get("structuredName");
+        assertEquals("Douglas",
+                ((WikidataDynamicObject) remapped.get("givenName")).getDisplayName());
+    }
+
+    /** A component owns a component in turn. ONE pass must materialize the whole chain:
+     *  when the candidates were snapshotted before the first component existed, the
+     *  nested one appeared only on the next generation, whose pool already held its
+     *  owner — present after a remap, missing after a generate. */
+    @Test void aComponentOwnedByAComponentIsMaterializedInTheSamePass() {
+        GeneratedProjectModel project = project();
+        GeneratedFieldModel nested = project.findClass("Name").addField(
+                "pronunciation", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nested.entityClassName("Pronunciation");
+        nested.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel pronunciationClass =
+                new GeneratedClassModel("Pronunciation");
+        pronunciationClass.ownedClass(true);
+        project.addClass(pronunciationClass);
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+
+        OwnedComponents.Result result = OwnedComponents.apply(
+                project, List.of(person), null, null);
+
+        WikidataDynamicObject name = (WikidataDynamicObject) person.get("structuredName");
+        WikidataDynamicObject pronunciation =
+                (WikidataDynamicObject) name.get("pronunciation");
+        assertEquals(2, result.created());
+        assertEquals("Pronunciation@Name.pronunciation", pronunciation.typeKey());
+        // The owner's identity runs the whole way down: every component in a chain
+        // loads its properties from the same entity.
+        assertEquals("Q42", pronunciation.getIdentifier());
+    }
+
+    /** Identity is invariant along a chain and a site produces one component per
+     *  identity, so the rounds converge even on a model the validator would reject. */
+    @Test void aCyclicOwnershipModelStillTerminates() {
+        GeneratedProjectModel project = project();
+        GeneratedFieldModel birthName = project.findClass("Name").addField(
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        birthName.entityClassName("Name");
+        birthName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+
+        OwnedComponents.Result result = OwnedComponents.apply(
+                project, List.of(entity("Q42", "Douglas Adams", "Person")), null, null);
+
+        // Name@Person.structuredName, then Name@Name.birthName once — coming round
+        // again, the site finds its own component under the same identity.
+        assertEquals(2, result.created());
+        assertEquals(2, result.components().size(),
+                "a reused component is reported once even when revisited by a later round");
+    }
+
+    /** The part's name is DERIVED from the owner's label and the site. A repaired label
+     *  must reach it: a derived value that never refreshes is stale data wearing the
+     *  appearance of current data. */
+    @Test void aReusedPartFollowsARepairedOwnerLabel() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Duglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Duglas Adams", part.getDisplayName());
+
+        person.name("Douglas Adams");   // the label is corrected
+        OwnedComponents.Result again = OwnedComponents.apply(
+                project, List.of(person), null, null);
+
+        assertEquals(0, again.created(), "the same component, not a second one");
+        assertSame(part, person.get("structuredName"));
+        assertEquals("Douglas Adams", part.getDisplayName());
+    }
+
+    /**
+     * #115. The reuse branch above only settles a repaired label because composition
+     * RAN AGAIN. It does not run again after final label hydration, which is two phases
+     * later — so on the Oscars domain ten parts kept names like
+     * {@code "Q312674"} while their owner read "Giorgio Moroder".
+     * Settling the names is what closes that window, and it must not need a whole
+     * composition pass to do it.
+     */
+    @Test void aPartFollowsAnOwnerLabelResolvedAfterCompositionClosed() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q312674", "Q312674", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        assertEquals("Q312674", part.getDisplayName());
+
+        person.name("Giorgio Moroder");   // hydrated in a LATER phase
+
+        assertEquals(1, OwnedComponents.recomposeNames(project, List.of(person)));
+        assertEquals("Giorgio Moroder", part.getDisplayName());
+        assertSame(part, person.get("structuredName"), "settled, not replaced");
+    }
+
+    /**
+     * The owner label is the DEFAULT name, not a rule outranking the model.
+     *
+     * <p>{@code DomainFinalization} canonicalizes and then settles part names.
+     * Canonicalization skips only LABEL mode, not owned classes — so a part class named
+     * by a field or a template had that name applied and then overwritten two lines
+     * later in the same finalization. The configuration was authorable and silently
+     * discarded, and the two rules agreed only because no editor offered a way to
+     * configure one.
+     */
+    @Test void aPartClassThatNamesItselfKeepsThatNameWhenNamesAreSettled() {
+        GeneratedProjectModel project = project();
+        domain.config.CanonicalSpec spec =
+                project.findClass("Name").canonical();
+        spec.displayNameMode(
+                domain.config.CanonicalSpec.DisplayNameMode.TEMPLATE);
+        spec.displayNameTemplate("{given}");
+
+        WikidataDynamicObject person = entity("Q312674", "Q312674", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        part.name("Giorgio");            // what canonicalization made of the template
+        person.name("Giorgio Moroder");  // the owner's label, hydrated later
+
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)),
+                "the class says how it is named, so nothing disagrees");
+        assertEquals("Giorgio", part.getDisplayName());
+    }
+
+    /** The count says how many disagreed, so a pass over settled names must report
+     *  none — otherwise the number measures how often it ran. */
+    @Test void settlingNamesThatAlreadyAgreeChangesNothing() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)));
+        assertEquals(0, OwnedComponents.recomposeNames(project, List.of(person)));
+    }
+
+    /**
+     * #117. Ten Oscars parts were served whose owner was not: entities reached as bare
+     * QID references, stamped Person by kind classification, given a part by
+     * composition, and never served themselves. A part is a view OF its owner, so one
+     * without an owner is a card about somebody the dataset does not contain — and it is
+     * why Name reported more colliding labels than Person.
+     */
+    @Test void aPartWhoseOwnerIsNotServedIsFound() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+
+        assertEquals(List.of(), OwnedComponents.orphanedParts(
+                        project, List.of(person, part)),
+                "served beside its owner, which is the ordinary case");
+        assertEquals(List.of(part), OwnedComponents.orphanedParts(
+                        project, List.of(part)),
+                "the same part, with its owner absent from the pool");
+    }
+
+    /**
+     * Composition is not the only way in. A prune runs after it and can take an owner
+     * away, leaving a part that was perfectly well-formed when it was made — which is
+     * why the check belongs after the prunes rather than at composition.
+     */
+    @Test void aPartIsOrphanedByLosingItsOwnerAfterwards() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(person, (WikidataDynamicObject) person.get("structuredName")));
+
+        assertEquals(0, OwnedComponents.orphanedParts(project, pool).size());
+        pool.remove(person);   // a prune, after composition was already correct
+
+        assertEquals(1, OwnedComponents.orphanedParts(project, pool).size());
+    }
+
+    /** An owner may be an instance of a SUBCLASS of the class the site names, and the
+     *  type key names the declaring class — so identity alone cannot answer it. */
+    @Test void aSubclassInstanceStillOwnsItsPart() {
+        GeneratedProjectModel project = project();
+        GeneratedClassModel employee = new GeneratedClassModel("Employee");
+        employee.baseClassName("Person");
+        project.addClass(employee);
+        WikidataDynamicObject owner = entity("Q42", "Douglas Adams", "Employee");
+        OwnedComponents.apply(project, List.of(owner), null, null);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) owner.get("structuredName");
+
+        assertEquals(List.of(),
+                OwnedComponents.orphanedParts(project, List.of(owner, part)));
+    }
+
+    /**
+     * A generation composes owned values more than once — kinds settle, new owners
+     * appear, and composition runs again over a pool that already holds parts. Each
+     * owner must still end with ONE part per site: the run that lost this produced two
+     * birth names for every person (13,726 for 6,853), because a pass in between had
+     * rewritten the parts' type keys and the reuse lookup no longer matched.
+     */
+    @Test void composingAgainOverAPoolThatAlreadyHasPartsAddsNothing() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        java.util.List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(person));
+
+        OwnedComponents.Result first = OwnedComponents.apply(project, pool, null, null);
+        first.addTo(pool);
+        Object part = person.get("structuredName");
+
+        OwnedComponents.Result second = OwnedComponents.apply(project, pool, null, null);
+        second.addTo(pool);
+
+        assertEquals(0, second.created(), "the second pass finds the work already done");
+        assertSame(part, person.get("structuredName"), "and leaves the same part in place");
+        assertEquals(1, pool.stream().filter(WikidataDynamicObject::isPart).count(),
+                "one part per owner, however many passes ran");
+    }
+
+    /** Gamma Scuti has neither P575 nor P61. Discovery still has to exist during
+     * acquisition so those fields can be asked for, but the owner reference alone must
+     * not turn that loading shell into a saved Discovery instance. */
+    @Test void aPartWithNoConfiguredNonOwnerValueIsRemovedAfterAcquisition() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.Result composed =
+                OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(person));
+        composed.addTo(pool);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+
+        assertEquals(List.of(part), OwnedComponents.pruneValuelessParts(project, pool));
+        org.junit.jupiter.api.Assertions.assertNull(person.get("structuredName"));
+        assertEquals(List.of(person), pool);
+    }
+
+    @Test void aPartWithAConfiguredValueSurvivesFinalization() {
+        GeneratedProjectModel project = project();
+        WikidataDynamicObject person = entity("Q42", "Douglas Adams", "Person");
+        OwnedComponents.Result composed =
+                OwnedComponents.apply(project, List.of(person), null, null);
+        List<WikidataDynamicObject> pool = new java.util.ArrayList<>(List.of(person));
+        composed.addTo(pool);
+        WikidataDynamicObject part =
+                (WikidataDynamicObject) person.get("structuredName");
+        part.put("givenName", entity("Q1", "Douglas", "GivenName"));
+
+        assertEquals(List.of(), OwnedComponents.pruneValuelessParts(project, pool));
+        assertSame(part, person.get("structuredName"));
+        assertEquals(2, pool.size());
+    }
+
+    private static GeneratedProjectModel project() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("people");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel name = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        name.entityClassName("Name");
+        name.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel component = new GeneratedClassModel("Name");
+        component.ownedClass(true);
+        GeneratedFieldModel given = component.addField(
+                "givenName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        given.entityClassName("GivenName");
+        given.mapping().propertyPid("P735");
+        project.rootClass(person);
+        project.addClass(component);
+        return project;
+    }
+
+    private static WikidataDynamicObject entity(String id, String name, String type) {
+        WikidataDynamicObject value = new WikidataDynamicObject(id, name);
+        value.type(type);
+        value.typeKey(type);
+        return value;
+    }
+}

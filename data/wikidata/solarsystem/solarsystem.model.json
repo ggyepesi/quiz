@@ -1,9 +1,9 @@
 {
-  "@class": "wikidata.explore.model.GeneratedProjectModel",
+  "@class": "domain.config.GeneratedProjectModel",
   "name": "Solar System",
   "projectKind": "DOMAIN",
   "rootClass": {
-    "@class": "wikidata.explore.model.GeneratedClassModel",
+    "@class": "domain.config.GeneratedClassModel",
     "declarationId": "decl:86a4ab27-cb49-45ce-a30f-0d0117c3a00f",
     "className": "SolarSystem",
     "baseClassName": "",
@@ -19,7 +19,7 @@
     "graphSource": null,
     "generationDepth": 1,
     "instanceMapping": {
-      "@class": "wikidata.explore.model.FieldSourceMapping",
+      "@class": "domain.config.FieldSourceMapping",
       "sourceQid": "",
       "sourceLabel": "",
       "propertyPid": "",
@@ -72,7 +72,7 @@
       "java.util.ArrayList",
       [
         {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "@class": "domain.config.GeneratedFieldModel",
           "name": "image",
           "type": "IMAGE",
           "entityClassName": "",
@@ -87,7 +87,7 @@
           "sortDescending": false,
           "unit": "",
           "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "@class": "domain.config.FieldSourceMapping",
             "sourceQid": "",
             "sourceLabel": "",
             "propertyPid": "P18",
@@ -259,7 +259,7 @@
       ]
     ],
     "canonical": {
-      "@class": "wikidata.explore.model.CanonicalSpec",
+      "@class": "domain.config.CanonicalSpec",
       "keyFields": [
         "java.util.ArrayList",
         []
@@ -269,7 +269,7 @@
       },
       "missingKeyPolicy": "INCOMPLETE_GROUP",
       "duplicatePolicy": [
-        "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+        "domain.config.CanonicalSpec$DuplicatePolicy",
         "KEEP_ONE"
       ],
       "displayNameMode": "LABEL",
@@ -284,7 +284,7 @@
     "java.util.ArrayList",
     [
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:86a4ab27-cb49-45ce-a30f-0d0117c3a00f",
         "className": "SolarSystem",
         "baseClassName": "",
@@ -300,7 +300,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -353,7 +353,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "image",
               "type": "IMAGE",
               "entityClassName": "",
@@ -368,7 +368,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P18",
@@ -540,7 +540,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -550,7 +550,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -561,7 +561,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:116e1293-2eb4-40e9-af2d-910111f33a8f",
         "className": "Sun",
         "baseClassName": "CelestialBody",
@@ -578,7 +578,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -631,7 +631,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "solarSystem",
               "type": "ENTITY",
               "entityClassName": "SolarSystem",
@@ -647,7 +647,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P361",
@@ -804,7 +804,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -814,7 +814,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -825,7 +825,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:6b4c73eb-cd37-4780-a9c9-cdc4683bec18",
         "className": "Planet",
         "baseClassName": "CelestialBody",
@@ -842,7 +842,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -895,7 +895,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "parentBody",
               "type": "ENTITY",
               "entityClassName": "Sun",
@@ -911,7 +911,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P397",
@@ -982,7 +982,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "planetType",
               "type": "ENTITY",
               "entityClassName": "PlanetType",
@@ -998,7 +998,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P31",
@@ -1070,7 +1070,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "moons",
               "type": "ENTITY",
               "entityClassName": "Moon",
@@ -1086,7 +1086,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "",
@@ -1130,7 +1130,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "moonKinds",
               "type": "ENTITY",
               "entityClassName": "MoonKind",
@@ -1146,7 +1146,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "",
@@ -1190,7 +1190,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "allMoons",
               "type": "ENTITY",
               "entityClassName": "Moon",
@@ -1206,7 +1206,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "",
@@ -1350,7 +1350,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1360,7 +1360,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1371,7 +1371,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:133088cd-a639-4cf2-8862-bc311d10a066",
         "className": "Moon",
         "baseClassName": "CelestialBody",
@@ -1390,7 +1390,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -1452,7 +1452,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "parentBody",
               "type": "ENTITY",
               "entityClassName": "Planet",
@@ -1468,7 +1468,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P397",
@@ -1546,7 +1546,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "moonKind",
               "type": "ENTITY",
               "entityClassName": "MoonKind",
@@ -1562,7 +1562,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "",
@@ -1606,7 +1606,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "orbitalPeriod",
               "type": "NUMBER",
               "entityClassName": "",
@@ -1621,7 +1621,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P2146",
@@ -1778,7 +1778,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1788,7 +1788,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1799,7 +1799,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:60eea04e-a549-481e-bff1-1775135513b8",
         "className": "PlanetType",
         "baseClassName": "",
@@ -1815,7 +1815,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -1971,7 +1971,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1981,7 +1981,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1992,7 +1992,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:4362ae1f-32f5-4bbe-aee2-c9eb82b535dc",
         "className": "MoonKind",
         "baseClassName": "",
@@ -2008,7 +2008,7 @@
         "graphSource": null,
         "generationDepth": 1,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -2061,7 +2061,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "parentBody",
               "type": "ENTITY",
               "entityClassName": "Planet",
@@ -2077,7 +2077,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P397",
@@ -2148,7 +2148,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "moons",
               "type": "ENTITY",
               "entityClassName": "Moon",
@@ -2164,7 +2164,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P31",
@@ -2336,7 +2336,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -2346,7 +2346,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",

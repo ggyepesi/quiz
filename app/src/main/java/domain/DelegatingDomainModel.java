@@ -34,12 +34,12 @@ public abstract class DelegatingDomainModel implements DomainModel {
         this.base = Objects.requireNonNull(base, "A wrapping domain needs something to wrap");
     }
 
-    @Override public wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
+    @Override public domain.config.WikipediaCategoryRule wikipediaCategoryRule(
             String type, String field) {
         return base.wikipediaCategoryRule(type, field);
     }
 
-    @Override public wikidata.explore.model.EntityKindRule entityKindRule(String className) {
+    @Override public domain.config.EntityKindRule entityKindRule(String className) {
         return base.entityKindRule(className);
     }
 

@@ -1,0 +1,405 @@
+package domain.compile.codegen;
+
+import org.junit.jupiter.api.Test;
+import domain.config.GeneratedClassModel;
+import domain.config.StatementClassSource;
+import domain.config.EntityKindRule;
+import domain.config.FieldCardinality;
+import domain.config.FieldRenderMode;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedProjectModel;
+import domain.config.ClassSourceBindings;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class GeneratedViewableSourceTypeTest {
+    private final GeneratedViewableSourceGenerator generator =
+            new GeneratedViewableSourceGenerator("generated.test");
+
+    @Test void entityClassExtendsTheNeutralGeneratedEntityBase() {
+        String source = generator.sourceFor(new GeneratedClassModel("Country"));
+
+        assertTrue(source.contains("extends domain.provenance.GeneratedEntity"));
+        assertFalse(source.contains("public String qid"));
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikidata source\")"));
+        assertTrue(source.contains("public java.util.List<objectview.Viewable> wikidataSource"));
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikidata statements\")"));
+        assertTrue(source.contains("public java.util.List<objectview.Viewable> wikidataStatements"));
+        assertFalse(source.contains("wikidataRelationRouteMatches"),
+                "coverage exists only when a relation route is configured");
+    }
+
+    @Test void relationRoutesDeclareStructuredOperationVisibleCoverage() {
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        var children = character.addField(
+                "children", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        children.entityClassName("Character");
+        domain.config.FieldSourceBindings.put(children,
+                new domain.datasource.api.SourceBinding(
+                        domain.datasource.api.SourceBindingTarget.fieldValue(
+                                "Character", "children",
+                                domain.datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                        new domain.datasource.api.SourceRecipe("wikidata", "relation-routes",
+                                java.util.Map.of("routes", "[{\"id\":\"direct\","
+                                        + "\"steps\":[{\"relation\":\"P40\","
+                                        + "\"direction\":\"OUTGOING\"}]}]"))));
+
+        String source = generator.sourceFor(character);
+
+        assertTrue(source.contains("@objectview.annotations.Label("
+                + "\"Wikidata relation route matches\")"));
+        assertTrue(source.contains("FieldRole.NONE"));
+        assertTrue(source.contains("public java.util.List<"
+                + "domain.provenance.WikidataRelationRouteMatch> "
+                + "wikidataRelationRouteMatches"));
+    }
+
+    @Test void inlineRenderModeSurvivesCodeGeneration() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var birthName = person.addField(
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        birthName.entityClassName("Name");
+        birthName.renderMode(FieldRenderMode.INLINE);
+
+        String source = generator.sourceFor(person);
+
+        assertTrue(source.contains("import objectview.annotations.Inline;"));
+        assertTrue(source.contains("@Inline\n    public objectview.Viewable birthName"));
+    }
+
+    @Test void statementClassAlsoExtendsGeneratedEntityNotAnEntityBase() {
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+
+        String source = generator.sourceFor(nomination);
+
+        // A statement is not an entity: it extends the neutral base, its
+        // statement/property provenance living in the anchor, not a superclass.
+        assertTrue(source.contains("extends domain.provenance.GeneratedEntity"));
+        assertFalse(source.contains("extends domain.provenance.WikidataSource"));
+        assertFalse(source.contains("public String qid"));
+        assertTrue(source.contains("FieldRole.PROVENANCE"));
+    }
+
+    @Test void anotherDatasourceCanDeclareItsOwnInstanceFieldThroughTheSamePath() {
+        domain.datasource.api.DatasourceInstanceField audit =
+                new domain.datasource.api.DatasourceInstanceField() {
+                    @Override public String name() { return "catalogSource"; }
+                    @Override public String label() { return "Catalog source"; }
+                    @Override public domain.datasource.api.SourceValueSchema valueSchema() {
+                        return new domain.datasource.api.SourceValueSchema(
+                                domain.datasource.api.SourceValueKind.URL, false, "");
+                    }
+                    @Override public Object value(Object source) { return "https://example.test"; }
+                };
+        domain.datasource.api.DatasourceProvider provider =
+                new domain.datasource.api.DatasourceProvider() {
+                    @Override public String id() { return "catalog"; }
+                    @Override public String displayName() { return "Catalog"; }
+                    @Override public List<? extends domain.datasource.api.DatasourceOperation>
+                            operations() { return List.of(); }
+                    @Override public List<? extends domain.datasource.api.DatasourceInstanceField>
+                            instanceFields() { return List.of(audit); }
+                };
+        GeneratedClassModel item = new GeneratedClassModel("Item");
+        item.sourceBindings().add(new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.classIdentity("Item"),
+                new domain.datasource.api.SourceRecipe("catalog", "identity", java.util.Map.of())));
+        var customGenerator = new GeneratedViewableSourceGenerator(
+                "generated.test", new domain.datasource.api.DatasourceRegistry(List.of(provider)));
+
+        String source = customGenerator.sourceFor(item);
+
+        assertTrue(source.contains("@objectview.annotations.Label(\"Catalog source\")"));
+        assertTrue(source.contains("public String catalogSource"));
+        assertFalse(source.contains("wikidataSource"));
+    }
+
+    @Test void configuredWikipediaCorrespondenceIsARealLinkedSourceField()
+            throws Exception {
+        GeneratedClassModel body = new GeneratedClassModel("CelestialBody");
+        ClassSourceBindings.wikipediaArticle(body, true);
+
+        String source = generator.sourceFor(body);
+
+        assertTrue(source.contains("@objectview.annotations.Label(\"Wikipedia source\")"));
+        assertTrue(source.contains("public objectview.Viewable wikipediaSource"));
+
+        var dynamic = new domain.runtime.WikidataDynamicObject("Q525", "Sun");
+        dynamic.type("CelestialBody");
+        dynamic.enwikiTitle("Sun");
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(body)) {
+            objectview.Viewable mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(List.of(dynamic)).getFirst();
+            Object article = objectview.field.FieldSet.of(mapped).read("wikipediaSource");
+            assertTrue(article instanceof domain.provenance.WikipediaSource);
+            assertEquals("https://en.wikipedia.org/wiki/Sun",
+                    ((domain.provenance.WikipediaSource) article).url());
+        }
+    }
+
+    @Test void aStatementRetainsItsWikidataOccurrenceLink() throws Exception {
+        GeneratedClassModel fact = new GeneratedClassModel("Fact");
+        fact.statementSource(new StatementClassSource("P31"));
+        fact.addField("subject", FieldType.STRING, FieldCardinality.SINGLE);
+        fact.canonical().keyFields().add("subject");
+        var statement = new domain.runtime.WikidataDynamicObject(
+                "Q28$67ADCA97-2FF9-43AD-A4DC-0349086680AC", "statement fact");
+        statement.type("Fact");
+        statement.put("subject", "Hungary");
+        var source = new domain.provenance.WikidataStatementSource(
+                statement.getIdentifier(), "Q28", "P31", "Q6256", "country");
+        statement.addWikidataStatementSource(source);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(fact)) {
+            domain.provenance.GeneratedEntity mapped = (domain.provenance.GeneratedEntity)
+                    new GeneratedViewableMapper(runtime).mapRoots(List.of(statement)).getFirst();
+
+            assertEquals(List.of("wikidata:Q28$67ADCA97-2FF9-43AD-A4DC-0349086680AC"),
+                    mapped.occurrenceIdentities());
+            assertEquals(List.of(source), mapped.wikidataStatementSources());
+            objectview.field.FieldRef sourceField = objectview.field.FieldSet.of(mapped)
+                    .field("wikidataStatements");
+            assertEquals("Wikidata statements", sourceField.label());
+            assertEquals(objectview.field.FieldRole.PROVENANCE, sourceField.role());
+            assertEquals(List.of(), objectview.field.FieldSet.of(mapped)
+                    .read("wikidataSource"));
+            assertEquals("https://www.wikidata.org/wiki/Q28", mapped.getUrl());
+        }
+    }
+
+    @Test void generatedEntityAndStatementSourcesCompileAndMaterialize() throws Exception {
+        GeneratedClassModel country = new GeneratedClassModel("Country");
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(country)) {
+            domain.runtime.WikidataDynamicObject source =
+                    new domain.runtime.WikidataDynamicObject("Q28", "Hungary");
+            source.type("Country");
+            source.aliases(java.util.List.of("Magyarország"));
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(source)).getFirst();
+            assertTrue(mapped instanceof domain.provenance.GeneratedEntity);
+            assertEquals("Q28", ((objectview.Viewable) mapped).getIdentifier());
+            Object provenance = objectview.field.FieldSet.of((objectview.Viewable) mapped)
+                    .read("wikidataSource");
+            assertEquals("Q28", ((domain.provenance.WikidataSource)
+                    ((java.util.List<?>) provenance).getFirst()).qid());
+            java.lang.reflect.Field aliases = mapped.getClass()
+                    .getDeclaredField("alternateNames");
+            assertEquals(java.util.List.of("Magyarország"),
+                    aliases.get(mapped));
+        }
+
+        GeneratedClassModel statementClass = new GeneratedClassModel("Fact");
+        statementClass.statementSource(new StatementClassSource("P31"));
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(statementClass)) {
+            domain.runtime.WikidataDynamicObject statement =
+                    new domain.runtime.WikidataDynamicObject(
+                            "Q28$statement-guid", "statement fact");
+            statement.type("Fact");
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(statement)).getFirst();
+            assertEquals("Q28$statement-guid",
+                    ((objectview.Viewable) mapped).getIdentifier());
+        }
+    }
+
+    @Test void repeatedEntityProjectionsUnionDatasourceSourcesInTheirGeneratedField()
+            throws Exception {
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        var superClasses = position.addField(
+                "superClasses", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        superClasses.entityClassName("Position");
+
+        // The same entity first arrives as an untyped field reference, then as its
+        // root. This is the shape of Historical Positions: P279 connects members of
+        // the population to other members before those members are mapped as roots.
+        var referenced = new domain.runtime.WikidataDynamicObject(
+                "Q1", "Referenced position");
+        var owner = new domain.runtime.WikidataDynamicObject("Q2", "Owner");
+        owner.type("Position");
+        owner.put("superClasses", java.util.List.of(referenced));
+        var root = new domain.runtime.WikidataDynamicObject(
+                "Q1", "Referenced position");
+        root.type("Position");
+        root.addWikidataStatementSource(new domain.provenance.WikidataStatementSource(
+                "Q2$67ADCA97-2FF9-43AD-A4DC-0349086680AC",
+                "Q2", "P279", "Q1", "Position"));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(position)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(owner, root));
+
+            assertEquals(2, mapped.size());
+            Object sources = objectview.field.FieldSet.of(mapped.get(1))
+                    .read("wikidataSource");
+            assertEquals(java.util.List.of(new domain.provenance.WikidataSource("Q1")),
+                    sources);
+            Object statements = objectview.field.FieldSet.of(mapped.get(1))
+                    .read("wikidataStatements");
+            assertEquals(1, ((java.util.List<?>) statements).size());
+            assertTrue(((java.util.List<?>) statements).getFirst()
+                    instanceof domain.provenance.WikidataStatementSource);
+        }
+    }
+
+    @Test void aSourceContentKeyReducesCandidatesAndRetainsEverySourceIdentity()
+            throws Exception {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("modeledName", FieldType.STRING, FieldCardinality.SINGLE);
+        person.addField("roles", FieldType.STRING, FieldCardinality.COLLECTION);
+        person.canonical().keyFields().add("modeledName");
+
+        var first = new domain.runtime.WikidataDynamicObject("Q1", "First");
+        first.type("Person");
+        first.put("modeledName", "same person");
+        first.put("roles", new java.util.ArrayList<>(java.util.List.of("writer")));
+        var second = new domain.runtime.WikidataDynamicObject("Q2", "Second");
+        second.type("Person");
+        second.put("modeledName", "same person");
+        second.put("roles", new java.util.ArrayList<>(java.util.List.of("director")));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(person)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(first, second));
+
+            assertEquals(1, mapped.size(), "the modeled key, not QID, defines instances");
+            domain.provenance.GeneratedEntity canonical =
+                    (domain.provenance.GeneratedEntity) mapped.getFirst();
+            assertEquals(java.util.List.of("wikidata:Q1", "wikidata:Q2"),
+                    canonical.sourceIdentities(),
+                    "reduction must not discard identities needed to revisit the sources");
+            assertEquals("https://www.wikidata.org/wiki/Q1", canonical.getUrl(),
+                    "a modeled identity must not make its retained source unreachable");
+            java.lang.reflect.Field roles = canonical.getClass().getField("roles");
+            assertEquals(java.util.List.of("director", "writer"), roles.get(canonical));
+        }
+    }
+
+    @Test void repeatedProjectionsRetainOneWikidataSourcePerQid() throws Exception {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+
+        var root = new domain.runtime.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        root.type("Person");
+        var firstReference = new domain.runtime.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        firstReference.type("Person");
+        var secondReference = new domain.runtime.WikidataDynamicObject(
+                "Q71231", "Charles the Bald");
+        secondReference.type("Person");
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(person)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(root, firstReference, secondReference));
+
+            assertEquals(1, mapped.size());
+            Object sources = objectview.field.FieldSet.of(mapped.getFirst())
+                    .read("wikidataSource");
+            assertEquals(java.util.List.of(new domain.provenance.WikidataSource("Q71231")),
+                    sources);
+        }
+    }
+
+    @Test void anExplicitAliasOptOutRemovesTheFieldAndDoesNotCopyCachedAliases()
+            throws Exception {
+        GeneratedClassModel country = new GeneratedClassModel("Country");
+        domain.config.ClassSourceBindings.synchronize(country);
+        domain.config.ClassSourceBindings.aliases(country, false);
+
+        String sourceCode = generator.sourceFor(country);
+        assertFalse(sourceCode.contains("alternateNames"));
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(country)) {
+            domain.runtime.WikidataDynamicObject source =
+                    new domain.runtime.WikidataDynamicObject("Q28", "Hungary");
+            source.type("Country");
+            source.aliases(java.util.List.of("Magyarország"));
+            Object mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(source)).getFirst();
+            assertFalse(java.util.Arrays.stream(mapped.getClass().getFields())
+                    .anyMatch(field -> "alternateNames".equals(field.getName())));
+        }
+    }
+
+    @Test void roleReferenceMapsToTheClassifiedKindInstance() throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel nomination = project.rootClass();
+        nomination.className("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        var nomineeField = nomination.addField(
+                "nominee", FieldType.ENTITY, FieldCardinality.SINGLE);
+        nomineeField.entityClassName("Nominee");
+        nomineeField.mapping().qualifierPid("P2453");
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        project.addClass(nominee);
+        project.addClass(new GeneratedClassModel("Person"));
+        project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        project.representationClasses(nominee, java.util.List.of("Person"));
+
+        domain.runtime.WikidataDynamicObject person =
+                new domain.runtime.WikidataDynamicObject("Q1", "Person One");
+        person.type("Person");
+        person.typeKey("Person");
+        domain.runtime.WikidataDynamicObject atom =
+                new domain.runtime.WikidataDynamicObject("Q1$guid", "Person One");
+        atom.type("Nomination");
+        atom.put("nominee", person);
+
+        try (GeneratedViewableRuntime runtime =
+                     new GeneratedViewableRuntimeBuilder().build(project)) {
+            java.util.List<objectview.Viewable> mapped = new GeneratedViewableMapper(runtime)
+                    .mapRoots(java.util.List.of(atom, person));
+            Object nominationInstance = mapped.getFirst();
+            java.lang.reflect.Field field = nominationInstance.getClass()
+                    .getDeclaredField("nominee");
+            field.setAccessible(true);
+            Object referenced = field.get(nominationInstance);
+
+            assertEquals(runtime.forType("Person").generatedClass(), referenced.getClass());
+            assertTrue(referenced == mapped.get(1), "field and Person tab share one instance");
+        }
+    }
+
+    @Test void roleWithProducerAdmittedRepresentationsUsesAPolymorphicCarrier() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel constellation = project.rootClass();
+        constellation.className("Constellation");
+        var discoveryField = constellation.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        discoveryField.entityClassName("Discovery");
+        discoveryField.mapping().productionKind(
+                domain.config.FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel celestialBody = new GeneratedClassModel("CelestialBody");
+        var bodyDiscovery = celestialBody.addField(
+                "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+        bodyDiscovery.entityClassName("Discovery");
+        bodyDiscovery.mapping().productionKind(
+                domain.config.FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel owner = new GeneratedClassModel("Owner");
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        project.addClass(celestialBody);
+        project.addClass(owner);
+        project.addClass(discovery);
+        domain.config.OwnedClassSemantics.synchronizeOwnerReferences(project);
+        project.representationClasses(owner, java.util.List.of("Constellation"));
+
+        String source = generator.sourceFor(discovery, project);
+
+        assertTrue(source.contains("public objectview.Viewable owner"),
+                "Owner remains the semantic field type while its Java carrier accepts "
+                        + "the configured concrete owner cards");
+    }
+}

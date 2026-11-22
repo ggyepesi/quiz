@@ -30,14 +30,14 @@ public interface DomainModel {
 
     /** Optional additive Wikipedia-category recipe declared by the producing model. */
     @Declared
-    default wikidata.explore.model.WikipediaCategoryRule wikipediaCategoryRule(
+    default domain.config.WikipediaCategoryRule wikipediaCategoryRule(
             String type, String field) { return null; }
 
     /** How the producing model decides that an entity IS a {@code className} — normally
      *  its P31 values. Null when the model declares no kind rule for that class, which
      *  admits everything: what a class means is the model's to say. */
     @Declared
-    default wikidata.explore.model.EntityKindRule entityKindRule(String className) {
+    default domain.config.EntityKindRule entityKindRule(String className) {
         return null;
     }
 

@@ -1,6 +1,6 @@
 package wikidata.explore.wikiproject;
 
-import datasource.http.SharedHttpTransport;
+import domain.datasource.http.SharedHttpTransport;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

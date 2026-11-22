@@ -1,0 +1,125 @@
+package domain.build;
+
+import domain.datasource.Datasources;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceBindingSlot;
+import domain.datasource.api.SourceBindingTarget;
+import domain.datasource.api.SourceExecutionPlan;
+import domain.datasource.api.SourceRecipe;
+import org.junit.jupiter.api.Test;
+import wikidata.WikidataBinding;
+import wikidata.WikidataSparqlClient;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class DBpediaFieldAcquisitionTest {
+
+    @Test void resolvedBindingDrivesAcquisitionWithoutTheLegacyMapping() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        movie.addField("country", FieldType.STRING, FieldCardinality.SINGLE);
+        model.rootClass(movie);
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.fieldValue("Movie", "country",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("dbpedia", "property",
+                        Map.of("property", "country")));
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard());
+        WikidataDynamicObject object = new WikidataDynamicObject("Q1", "Film");
+        object.type("Movie");
+
+        try (FakeClient client = new FakeClient()) {
+            DBpediaFieldAcquisition.Result result = DBpediaFieldAcquisition.apply(
+                    model, List.of(object), plan, client, GenerationLog.NOOP);
+
+            assertEquals("Sierra Leone", object.get("country"));
+            assertEquals(1, result.fields());
+            assertEquals(1, result.values());
+            assertTrue(client.query.contains("dbp:country"));
+        }
+    }
+
+    @Test void unsupportedNestedBindingIsSkippedWithoutAbortingTheRun() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var details = movie.addField("details", FieldType.ENTITY,
+                FieldCardinality.SINGLE);
+        details.fields().add(new domain.config.GeneratedFieldModel(
+                "country", FieldType.STRING, FieldCardinality.SINGLE));
+        model.rootClass(movie);
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(List.of(new SourceBinding(
+                SourceBindingTarget.fieldValue("Movie", "details.country",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("dbpedia", "property",
+                        Map.of("property", "country")))), Datasources.standard());
+        WikidataDynamicObject object = new WikidataDynamicObject("Q1", "Film");
+        object.type("Movie");
+
+        try (FakeClient client = new FakeClient()) {
+            DBpediaFieldAcquisition.Result result = DBpediaFieldAcquisition.apply(
+                    model, List.of(object), plan, client, GenerationLog.NOOP);
+
+            assertEquals(0, result.fields());
+            assertEquals(0, result.values());
+            assertEquals("", client.query);
+        }
+    }
+
+    @Test void contextualBindingFillsOnlyItsOwnedProductionSite() throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        discovery.addField("wording", FieldType.STRING, FieldCardinality.SINGLE);
+        model.rootClass(discovery);
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.ownedFieldValue("Discovery", "wording",
+                        "Person", "discovery",
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new SourceRecipe("dbpedia", "property",
+                        Map.of("property", "wording")));
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(binding), Datasources.standard());
+        WikidataDynamicObject personPart = part("Q1", "Discovery@Person.discovery");
+        WikidataDynamicObject organisationPart =
+                part("Q1", "Discovery@Organisation.discovery");
+
+        try (FakeClient client = new FakeClient()) {
+            DBpediaFieldAcquisition.apply(model,
+                    List.of(personPart, organisationPart), plan, client,
+                    GenerationLog.NOOP);
+        }
+
+        assertEquals("Sierra Leone", personPart.get("wording"));
+        assertEquals(null, organisationPart.get("wording"));
+    }
+
+    private static WikidataDynamicObject part(String qid, String typeKey) {
+        WikidataDynamicObject value = new WikidataDynamicObject(qid, "Part");
+        value.type("Discovery");
+        value.part(true);
+        value.typeKey(typeKey);
+        return value;
+    }
+
+    private static final class FakeClient extends WikidataSparqlClient {
+        private String query = "";
+        private FakeClient() { super("test", 1, "https://example.test/sparql"); }
+        @Override public List<WikidataBinding> query(String sparql) {
+            query = sparql;
+            return List.of(new WikidataBinding(Map.of(
+                    "wd", "http://www.wikidata.org/entity/Q1",
+                    "val", "Sierra Leone")));
+        }
+    }
+}

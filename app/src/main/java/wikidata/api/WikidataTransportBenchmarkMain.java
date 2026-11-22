@@ -1,6 +1,6 @@
 package wikidata.api;
 
-import datasource.http.SharedHttpTransport;
+import domain.datasource.http.SharedHttpTransport;
 
 import java.net.URI;
 import java.net.http.HttpClient;

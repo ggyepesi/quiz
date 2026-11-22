@@ -70,7 +70,7 @@ public class QuizCategorize extends Quiz {
             ViewConfig source, ViewableGroup<?> categoryRoot, TypeShape shape) {
         ViewConfig result = ViewConfigDesugar.selection(
                 source == null ? new ViewConfig() : source, shape);
-        quiz.transform.FacetGroup.fieldPathOf(categoryRoot)
+        domain.transform.FacetGroup.fieldPathOf(categoryRoot)
                 .ifPresent(path -> exclude(result, path, 0));
         return result;
     }

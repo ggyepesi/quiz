@@ -1,15 +1,15 @@
 package quiz.web.sources;
 
-import datasource.schema.FieldType;
+import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
-import wikidata.explore.model.ClassKind;
-import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.config.ClassKind;
+import domain.config.FieldCardinality;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -41,15 +41,15 @@ class AGraphConstraintIsNotQuizContentTest {
         GeneratedClassModel validity = new GeneratedClassModel("OfficeValidity");
         validity.classKind(ClassKind.GRAPH);
         validity.addField("Graph decision", FieldType.STRING, FieldCardinality.SINGLE);
-        validity.graphSource(new wikidata.explore.model.GraphClassSource(
-                new datasource.graph.GraphDiscoveryConfiguration.StartNode(
+        validity.graphSource(new domain.config.GraphClassSource(
+                new domain.datasource.graph.GraphDiscoveryConfiguration.StartNode(
                         "Office", "",
-                        datasource.graph.GraphDiscoveryConfiguration.NodeUse
+                        domain.datasource.graph.GraphDiscoveryConfiguration.NodeUse
                                 .INTERMEDIATE_ONLY),
-                List.of(new datasource.graph.GraphDiscoveryConfiguration.NextNode(
-                        new datasource.graph.GraphRelation("wikidata", "P31"),
-                        datasource.graph.GraphTraversalDirection.OUTGOING,
-                        datasource.graph.GraphDiscoveryConfiguration.NodeUse
+                List.of(new domain.datasource.graph.GraphDiscoveryConfiguration.NextNode(
+                        new domain.datasource.graph.GraphRelation("wikidata", "P31"),
+                        domain.datasource.graph.GraphTraversalDirection.OUTGOING,
+                        domain.datasource.graph.GraphDiscoveryConfiguration.NodeUse
                                 .CLASS_POPULATION,
                         "Office", null))));
         project.addClass(validity);

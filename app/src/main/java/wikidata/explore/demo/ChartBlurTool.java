@@ -1,8 +1,8 @@
 package wikidata.explore.demo;
 
 import quiz.ocr.ChartTextBlurrer;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
 import java.nio.file.Files;

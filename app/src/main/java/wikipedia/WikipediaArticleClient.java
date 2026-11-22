@@ -2,11 +2,11 @@ package wikipedia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datasource.evidence.ContentDigest;
-import datasource.evidence.ArticleIntroduction;
-import datasource.evidence.InfoboxParameters;
-import datasource.evidence.SourceDocument;
-import datasource.evidence.WikipediaArticle;
+import domain.datasource.evidence.ContentDigest;
+import domain.datasource.evidence.ArticleIntroduction;
+import domain.datasource.evidence.InfoboxParameters;
+import domain.datasource.evidence.SourceDocument;
+import domain.datasource.evidence.WikipediaArticle;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import work.Query;

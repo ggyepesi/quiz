@@ -1,20 +1,20 @@
 package wikidata.explore.query.logical;
 
-import datasource.EntityRef;
-import datasource.graph.GraphDiscoveryConfiguration;
-import datasource.graph.execution.GraphDiscoveryExecutor;
-import datasource.graph.store.GraphStoreProvider;
-import datasource.graph.store.InMemoryGraphStore;
-import datasource.graph.store.LocalGraphStore;
-import datasource.persistence.PersistentGraphStore;
+import domain.datasource.EntityRef;
+import domain.datasource.graph.GraphDiscoveryConfiguration;
+import domain.datasource.graph.execution.GraphDiscoveryExecutor;
+import domain.datasource.graph.store.GraphStoreProvider;
+import domain.datasource.graph.store.InMemoryGraphStore;
+import domain.datasource.graph.store.LocalGraphStore;
+import domain.datasource.persistence.PersistentGraphStore;
 import wikidata.WikidataIds;
 import wikidata.api.WikidataEntityLabelResolver;
-import wikidata.explore.generation.WikidataGraphAdjacencyAcquisition;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.PopulationSelection;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.build.WikidataGraphAdjacencyAcquisition;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.PopulationSelection;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import work.Query;
 import work.QueryContext;
 
@@ -82,7 +82,7 @@ public final class ConfiguredGraphDiscoveryQuery
                     : loadedInstances.stream().map(objectview.Viewable.class::cast).toList())
                     .stream()
                     .filter(instance -> instance.directClassNames().contains(startClass))
-                    .map(quiz.source.SourceIdentities::wikidataQid)
+                    .map(domain.provenance.SourceIdentities::wikidataQid)
                     .filter(java.util.Objects::nonNull).toList();
         }
         start = qids.stream()
@@ -176,7 +176,7 @@ public final class ConfiguredGraphDiscoveryQuery
     private Result result(
             GraphDiscoveryExecutor.Result graph,
             wikidata.api.WikidataApiClient api,
-            wikidata.explore.extract.GenerationLog log,
+            domain.runtime.GenerationLog log,
             work.LogStep step) throws Exception {
         LinkedHashSet<String> ids = new LinkedHashSet<>();
         graph.start().forEach(entity -> ids.add(entity.id()));

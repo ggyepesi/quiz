@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "Person",
     "itemVar" : "person",
     "sourceQid" : "",
@@ -18,12 +18,12 @@
     "membershipQid" : "",
     "membershipFilterIncludesDescendants" : false,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "birthName",
       "propertyPid" : "P1477",
       "propertyLabel" : "birth name",
@@ -34,7 +34,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "nativeName",
       "propertyPid" : "P1559",
       "propertyLabel" : "name in native language",
@@ -45,7 +45,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "pseudonyms",
       "propertyPid" : "P742",
       "propertyLabel" : "pseudonym",
@@ -56,7 +56,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "dateOfBirth",
       "propertyPid" : "P569",
       "propertyLabel" : "date of birth",
@@ -67,7 +67,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "dateOfDeath",
       "propertyPid" : "P570",
       "propertyLabel" : "date of death",
@@ -78,7 +78,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "type",
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",
@@ -89,7 +89,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "spouse",
       "propertyPid" : "P26",
       "propertyLabel" : "spouse",
@@ -100,7 +100,7 @@
       "membershipPid" : "",
       "membershipQid" : ""
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "image",
       "propertyPid" : "P18",
       "propertyLabel" : "image",

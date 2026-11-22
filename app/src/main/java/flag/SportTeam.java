@@ -2,7 +2,7 @@ package flag;
 
 import objectview.media.ImagePane;
 import objectview.annotations.DisplayField;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 // seemingly unused fields are used via reflection
 public class SportTeam extends ManualEntity {

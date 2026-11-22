@@ -14,7 +14,7 @@ turning discovery into a second extraction path.
 
 ## First bounded workflow
 
-1. Run `discovery.DiscoveryApp` from the `app` module.
+1. Run `domain.datasource.discovery.app.DiscoveryApp` from the `app` module.
 2. Open a saved generated project through the shared saved-project navigator.
 3. Choose a class whose loaded instances have Wikidata QIDs.
 4. Start a random sample, then add or remove instances in the workbench's two ObjectView

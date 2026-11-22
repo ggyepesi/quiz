@@ -1,9 +1,9 @@
 {
-  "@class" : "wikidata.explore.model.GeneratedProjectModel",
+  "@class" : "domain.config.GeneratedProjectModel",
   "name" : "oscarnominations",
   "projectKind" : "DOMAIN",
   "rootClass" : {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7",
     "className" : "Nomination",
     "baseClassName" : "",
@@ -35,7 +35,7 @@
     },
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "P1411",
@@ -70,7 +70,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "category",
       "type" : "ENTITY",
       "entityClassName" : "OscarCategories",
@@ -86,7 +86,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -115,7 +115,7 @@
       "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "forWork",
       "type" : "ENTITY",
       "entityClassName" : "ForWork",
@@ -131,7 +131,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -160,7 +160,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "nominee",
       "type" : "ENTITY",
       "entityClassName" : "Nominee",
@@ -176,7 +176,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -206,7 +206,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "won",
       "type" : "BOOLEAN",
       "entityClassName" : "",
@@ -221,7 +221,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P166",
@@ -269,7 +269,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "ceremony",
       "type" : "ENTITY",
       "entityClassName" : "Ceremony",
@@ -285,7 +285,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -316,13 +316,13 @@
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
@@ -332,7 +332,7 @@
   },
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:346dde41-301d-3033-a01f-cc83e32ea1f7",
     "className" : "Nomination",
     "baseClassName" : "",
@@ -364,7 +364,7 @@
     },
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "P1411",
@@ -399,7 +399,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "category",
       "type" : "ENTITY",
       "entityClassName" : "OscarCategories",
@@ -415,7 +415,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -444,7 +444,7 @@
       "sourceBindings" : [ "java.util.ArrayList", [ ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "forWork",
       "type" : "ENTITY",
       "entityClassName" : "ForWork",
@@ -460,7 +460,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -489,7 +489,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "nominee",
       "type" : "ENTITY",
       "entityClassName" : "Nominee",
@@ -505,7 +505,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -535,7 +535,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "won",
       "type" : "BOOLEAN",
       "entityClassName" : "",
@@ -550,7 +550,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P166",
@@ -598,7 +598,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "ceremony",
       "type" : "ENTITY",
       "entityClassName" : "Ceremony",
@@ -614,7 +614,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -645,13 +645,13 @@
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "category", "forWork", "nominee", "ceremony" ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "nominee",
       "displayNameTemplate" : "",
@@ -659,7 +659,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:e7f4a5f4-c9f8-3f0c-9e7e-eb321bc86a7d",
     "className" : "Nominee",
     "baseClassName" : "",
@@ -670,7 +670,7 @@
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -705,7 +705,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "type",
       "type" : "ENTITY",
       "entityClassName" : "NomineeType",
@@ -721,7 +721,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P31",
@@ -817,13 +817,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -831,7 +831,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:921a0486-9545-3a45-83fa-cbb40fc7d04c",
     "className" : "ForWork",
     "baseClassName" : "",
@@ -842,7 +842,7 @@
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -877,7 +877,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "genre",
       "type" : "ENTITY",
       "entityClassName" : "WorkGenre",
@@ -893,7 +893,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P136",
@@ -989,13 +989,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -1003,7 +1003,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:bef0ee68-1fe0-325d-a559-cfa37624b6b8",
     "className" : "Ceremony",
     "baseClassName" : "",
@@ -1014,7 +1014,7 @@
     "classKind" : "SOURCE",
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -1049,7 +1049,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "year",
       "type" : "DATE",
       "entityClassName" : "",
@@ -1064,7 +1064,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P585",
@@ -1160,13 +1160,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -1175,18 +1175,18 @@
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ {
-    "@class" : "wikidata.explore.model.VocabularySelection",
+    "@class" : "domain.config.VocabularySelection",
     "name" : "OscarCategories",
     "declarationId" : "decl:d325c38c-7b36-300d-9f17-91391aa1771a",
     "kind" : "VOCABULARY",
     "valueQids" : [ "java.util.ArrayList", [ "Q102427", "Q103360", "Q103618", "Q103916", "Q105304", "Q106291", "Q106301", "Q106800", "Q107258", "Q111332", "Q112243", "Q131520", "Q1425151", "Q1699048", "Q2032630", "Q277536", "Q277751", "Q281939", "Q3298549", "Q393686", "Q3451157", "Q487136", "Q488651", "Q489705", "Q498690", "Q501004", "Q3886463", "Q3886464", "Q3886486", "Q4671338", "Q22117120", "Q727328", "Q21995139", "Q21995136", "Q21995338", "Q22120066", "Q22120095", "Q22235305", "Q22235329", "Q22253131", "Q22253133", "Q22335251", "Q22344608", "Q22752734", "Q22752811", "Q22752868", "Q22917729", "Q830079", "Q844273", "Q917808", "Q8250869", "Q137423654", "Q31193514", "Q8624", "Q41417", "Q111210907", "Q8610", "Q8636", "Q116197098" ] ]
   }, {
-    "@class" : "wikidata.explore.model.VocabularySelection",
+    "@class" : "domain.config.VocabularySelection",
     "name" : "NomineeType",
     "declarationId" : "decl:aa66b987-573a-35ac-bac9-ca70bdbe3814",
     "kind" : "VOCABULARY"
   }, {
-    "@class" : "wikidata.explore.model.VocabularySelection",
+    "@class" : "domain.config.VocabularySelection",
     "name" : "WorkGenre",
     "declarationId" : "decl:224408ea-69d7-3271-97d2-69a2e4471488",
     "kind" : "VOCABULARY"

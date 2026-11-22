@@ -12,7 +12,7 @@ import java.util.TreeMap;
  * Candidates in, instances out: partition by the configured key, reduce every other
  * field by its configured rule.
  *
- * <p>One engine, for every construct and every datasource. There were four — statement
+ * <p>One engine, for every construct and every domain.datasource. There were four — statement
  * dedup preferring the work-anchored copy, aggregate grouping, owned composition and the
  * class-kind branch in Canonicalizer — which is why "union the laureates while requiring
  * the category to agree" could not be said at all: each path had its own fixed idea of

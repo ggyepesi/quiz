@@ -316,8 +316,8 @@ Limitation: single sourceQid, not additionalTypeQids (multi-QID follow-up).
 Every card painted its raw `qid` row + `wikidataUrl` link at the top — noise.
 Introduced a small provenance abstraction instead of just hiding them:
 
-- `quiz.source.Source extends Viewable` (`sourceId()`/`url()`/`kind()`) +
-  `quiz.source.WikidataSource` (QID + wiki URL, displayName "Wikidata",
+- `domain.provenance.Source extends Viewable` (`sourceId()`/`url()`/`kind()`) +
+  `domain.provenance.WikidataSource` (QID + wiki URL, displayName "Wikidata",
   typeName "Source"). Different backends → different `Source` impls with
   different internals (future DBpedia/SerpApi), same interface.
 - `WikidataDynamicObject`: `qid` + `wikidataUrl` marked `@NotViewableField`
@@ -550,7 +550,7 @@ JSON IO). Principle: don't bend the load to the desired output; load expressivel
 then **project** to view structures via constructs, then **present** via viewconfig.
 
 ### Transform — `invert` on the dynamic pool (DONE, #63)
-`wikidata.explore.transform.{InvertConstruct, TransformEngine}`. Operates on the
+`domain.compile.transform.{InvertConstruct, TransformEngine}`. Operates on the
 snapshot `WikidataDynamicObject` pool: `invert(sourceType.refField →
 targetType.backRefField)` stamps each referenced object with `targetType` and
 adds a back-reference list. Materialized in the pool → `GeneratedSource.registerAll`
@@ -839,7 +839,7 @@ Toward "see properties per target qid, grouped" (the field-discovery vision).
 The "By target" view already gives each membership target's property profile +
 the property→targets inverse index (step 1). Step 2 clusters those targets by
 profile similarity into candidate `extends` subclasses.
-- **`wikidata.explore.analysis.SubclassClustering`** (pure, unit-tested): Jaccard
+- **`domain.analysis.SubclassClustering`** (pure, unit-tested): Jaccard
   similarity over each target's pid-set, agglomerative **average-linkage** — start
   one cluster per target, merge the most-similar pair while avg similarity ≥ a
   threshold. Average linkage (vs single) resists chaining; O(n³) is fine at ~50
@@ -1018,7 +1018,7 @@ probes. NOT yet built — awaiting go-ahead.
 
 ## Structural-decision abstraction: the model-builder explains itself (first slice)
 Built the "teaching script" as data — the guided workflow surfaced per class.
-- `wikidata.explore.advisor`: `DecisionContext` (pure model+transform state, no
+- `domain.workbench.advisor`: `DecisionContext` (pure model+transform state, no
   network: pattern/relational/targetCount/hasTypeField/hasSubclass/hasFacetOnField/
   qualifiersLoaded/reified), `StructuralDecision` (record: question, tool, hint,
   applies, resolved), `DecisionCatalog` (the ~7 ordered decisions = membership →

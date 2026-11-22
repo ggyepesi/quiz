@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import objectview.annotations.DisplayField;
 import java.util.List;
 
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 public class NobelPrize extends ManualEntity {
     public static enum Domain {

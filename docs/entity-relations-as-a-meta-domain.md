@@ -189,7 +189,7 @@ for Cytoscape. Adding `Position.jurisdiction` must change the Viewable/ViewConfi
 another line that manually copies jurisdiction into the DTO's `details` map.
 
 That is what let GraphStream be replaced by Cytoscape in one file, and it keeps
-`datasource.graph` — the candidate open-source boundary — free of any of it.
+`domain.datasource.graph` — the candidate open-source boundary — free of any of it.
 
 ## Why this is one direction
 

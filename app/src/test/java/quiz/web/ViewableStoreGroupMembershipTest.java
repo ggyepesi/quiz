@@ -1,8 +1,8 @@
 package quiz.web;
 
 import org.junit.jupiter.api.Test;
-import quiz.group.ViewableGroup;
-import quiz.transform.DynamicViewable;
+import domain.group.ViewableGroup;
+import domain.transform.DynamicViewable;
 
 import java.util.Collection;
 import java.util.List;

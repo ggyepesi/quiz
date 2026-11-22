@@ -1,7 +1,7 @@
 package wikidata.explore;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.FieldCardinality;
+import domain.config.FieldCardinality;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

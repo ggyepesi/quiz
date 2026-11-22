@@ -3,7 +3,7 @@ package language;
 import objectview.annotations.Minor;
 import objectview.annotations.DisplayField;
 import objectview.annotations.Numeric;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 import objectview.annotations.Reference;
 
 import java.util.ArrayList;

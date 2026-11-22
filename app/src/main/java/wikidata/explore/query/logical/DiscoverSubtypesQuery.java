@@ -3,17 +3,17 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.MembershipTypeCandidate;
-import wikidata.explore.query.template.sparql.SparqlQueries;
+import wikidata.query.template.sparql.SparqlQueries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Lists the direct subclasses of a class's membership type, each with the

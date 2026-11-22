@@ -9,8 +9,8 @@ import java.util.TreeMap;
 import aux.Constants;
 import aux.UploadURLParser;
 import aux.UrlReader;
-import quiz.group.ViewableGroup;
-import quiz.group.GroupReader;
+import domain.group.ViewableGroup;
+import domain.group.GroupReader;
 
 public class ReadFlagGroups {
     static boolean readImage = false;

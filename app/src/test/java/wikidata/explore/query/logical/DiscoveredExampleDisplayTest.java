@@ -1,7 +1,7 @@
 package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.query.template.sparql.SparqlQueries;
+import wikidata.query.template.sparql.SparqlQueries;
 
 import java.util.List;
 

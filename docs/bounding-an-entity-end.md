@@ -56,7 +56,7 @@ the same question asked at the other end.
 
 ## The construct already exists, one layer down
 
-`datasource.api.acquisition.PopulationSelection` is a provider-neutral bounded set of
+`domain.datasource.api.acquisition.PopulationSelection` is a provider-neutral bounded set of
 entities, and it already models the alternatives as mutually exclusive **and enforces it**:
 
 ```java
@@ -144,7 +144,7 @@ place it may be corrected.
 There are two classes with this name, and they are **not redundant** — they sit at
 different layers:
 
-| | `wikidata.explore.model.PopulationSelection` | `datasource.api.acquisition.PopulationSelection` |
+| | `domain.config.PopulationSelection` | `domain.datasource.api.acquisition.PopulationSelection` |
 |---|---|---|
 | what | an AUTHORED `Selection` the modeller names and saves | a RESOLVED instruction handed to a provider |
 | holds | a class name + explicit instance QIDs | `Kind` + `relationId` + `values` + `includeDescendants` |
@@ -153,12 +153,12 @@ different layers:
 
 So the layering is right and the note above depends on it — authored form compiles into
 acquisition form. **The problem is only the shared name.** It is already costing: four
-places in `app/src/main` must write `datasource.api.acquisition.PopulationSelection` in
+places in `app/src/main` must write `domain.datasource.api.acquisition.PopulationSelection` in
 full because the short name is taken, and at a glance no reference tells you which layer
 it belongs to. That is the vocabulary rule's exact failure mode — one name, two things.
 
 **Rename the datasource one**, not the model one, for a checkable reason: selections
-persist by fully-qualified class name (`"@class": "wikidata.explore.model.
+persist by fully-qualified class name (`"@class": "domain.config.
 VocabularySelection"` appears in every saved model), so renaming the model-side class
 would break saved models the moment one exists. The datasource record is never persisted.
 
@@ -172,7 +172,7 @@ model.
 
 ### One thing to check before relying on the model-side one
 
-`wikidata.explore.model.PopulationSelection` is the authored explicit population: TransformApp
+`domain.config.PopulationSelection` is the authored explicit population: TransformApp
 constructs it from a manually edited sample and saves its class-bound QIDs; Graph Constraints
 can select it as the exact reusable start population. It is not a second membership query.
 

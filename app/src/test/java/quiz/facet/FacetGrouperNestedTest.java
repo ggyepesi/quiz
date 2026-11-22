@@ -3,8 +3,8 @@ package quiz.facet;
 import objectview.facet.Facet;
 import objectview.facet.FacetGrouper;
 import org.junit.jupiter.api.Test;
-import quiz.group.ViewableGroup;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.group.ViewableGroup;
+import domain.runtime.WikidataDynamicObject;
 
 import java.util.List;
 

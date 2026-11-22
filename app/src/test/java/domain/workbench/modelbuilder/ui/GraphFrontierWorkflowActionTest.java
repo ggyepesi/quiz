@@ -1,0 +1,55 @@
+package domain.workbench.modelbuilder.ui;
+
+import domain.datasource.EntityRef;
+import domain.datasource.graph.GraphDiscoveryState;
+import domain.datasource.graph.GraphExpansionCoverage;
+import domain.datasource.graph.GraphExpansionPattern;
+import domain.datasource.graph.GraphRelation;
+import domain.datasource.graph.GraphTraversalDirection;
+import org.junit.jupiter.api.Test;
+import process.ProcessOutcome;
+import domain.runtime.WikidataDynamicObject;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class GraphFrontierWorkflowActionTest {
+
+    @Test void nestedReferenceOnlyFrontierNodeStillGetsAResultCard() {
+        GraphRelation relation = new GraphRelation("wikidata", "P39");
+        GraphExpansionPattern pattern = new GraphExpansionPattern(
+                "holding:P39:position", "Person", "Position", relation,
+                "OfficeHolding", "source", "position", GraphTraversalDirection.INCOMING);
+        GraphExpansionCoverage frontier = new GraphExpansionCoverage(pattern.id(),
+                EntityRef.wikidata("Q253779"), relation,
+                GraphTraversalDirection.INCOMING,
+                GraphExpansionCoverage.State.ENCOUNTERED);
+        GraphDiscoveryState state = new GraphDiscoveryState(
+                List.of(pattern), List.of(frontier));
+
+        WikidataDynamicObject position = object("Q253779", "Ban of Croatia", "Position");
+        WikidataDynamicObject holding = object("Q82686$holding", "Holding", "OfficeHolding");
+        holding.put("position", position);
+
+        AtomicBoolean continued = new AtomicBoolean();
+        GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
+                "generation-run:7", state, List.of(pattern), List.of(holding),
+                ignored -> { }, () -> continued.set(true));
+        var results = action.results(ProcessOutcome.succeeded(state, "ready"));
+
+        assertEquals(1, results.tabs().get(1).cards().size());
+        assertEquals("Q253779", ((WikidataDynamicObject) results.tabs().get(1)
+                .cards().getFirst().view()).qid());
+        assertEquals("generation-run:7", action.subject());
+        action.afterApply();
+        assertEquals(true, continued.get());
+    }
+
+    private static WikidataDynamicObject object(String qid, String name, String type) {
+        WikidataDynamicObject object = new WikidataDynamicObject(qid, name);
+        object.type(type);
+        return object;
+    }
+}

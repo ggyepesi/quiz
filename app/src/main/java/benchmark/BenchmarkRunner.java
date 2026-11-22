@@ -4,7 +4,7 @@ import objectview.render.Card;
 import objectview.viewconfig.ViewConfig;
 import oscar.OscarNomination;
 import objectview.viewconfig.ViewConfigAdapter;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import java.awt.*;
 import java.util.ArrayList;

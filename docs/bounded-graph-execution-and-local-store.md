@@ -256,9 +256,9 @@ provenance, never hidden string equality.
 Incubate inside the current repository:
 
 ```text
-datasource.graph.execution   plans, waves, limits and outcomes
-datasource.graph.store       neutral facts, demand, coverage and store contract
-datasource.graph.rdf4j       RDF4J implementations and RDF mapping
+domain.datasource.graph.execution   plans, waves, limits and outcomes
+domain.datasource.graph.store       neutral facts, demand, coverage and store contract
+domain.datasource.graph.rdf4j       RDF4J implementations and RDF mapping
 wikidata.graph               Wikidata demands, acquisition and fact mapping
 ```
 

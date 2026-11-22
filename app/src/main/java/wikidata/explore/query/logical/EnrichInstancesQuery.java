@@ -1,11 +1,11 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.config.GeneratedProjectModel;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.GenerationRun;
-import wikidata.explore.extract.GenerationLog;
+import domain.build.GenerationPipeline;
+import domain.build.GenerationRun;
+import domain.runtime.GenerationLog;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,26 +24,26 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
-    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
-    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
+    private final domain.build.CompiledPipelineRun compiledRun;
+    private final domain.build.GenerationExecutionSettings executionSettings;
 
-    private final wikidata.explore.generation.RunSteps steps;
+    private final domain.build.RunSteps steps;
 
     /** Reporting each step it finishes, so the plan's steps are the run's steps. */
     public EnrichInstancesQuery(
             GenerationRun previousRun,
-            wikidata.explore.generation.CompiledPipelineRun compiledRun,
-            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
-            wikidata.explore.generation.RunSteps steps) {
+            domain.build.CompiledPipelineRun compiledRun,
+            domain.build.GenerationExecutionSettings executionSettings,
+            domain.build.RunSteps steps) {
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.previousRun = previousRun;
         this.compiledRun = compiledRun;
         this.projectModel = compiledRun.request().model();
         this.executionSettings = executionSettings == null
-                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                ? new domain.build.GenerationExecutionSettings()
                 : executionSettings;
         this.steps = steps == null
-                ? wikidata.explore.generation.RunSteps.SILENT : steps;
+                ? domain.build.RunSteps.SILENT : steps;
     }
 
     @Override
@@ -73,10 +73,10 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
     public GenerationRun execute(QueryContext context) throws Exception {
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
-                        projectModel, datasource.Datasources.standard());
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.enrichMessage(
+        domain.datasource.api.SourceExecutionPlan sourcePlan =
+                domain.config.ModelSourceExecutionPlan.synchronizeAndCompile(
+                        projectModel, domain.datasource.Datasources.standard());
+        context.message(domain.config.ModelSourceExecutionPlan.enrichMessage(
                 sourcePlan));
         // A STEP, not a bare message: the log window renders the tree, so a run that only
         // emits text sits at "Running..." saying nothing while its batches come and go.
@@ -90,8 +90,8 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                 step -> {
                     GenerationLog genLog =
                             StepGenerationLog.of(context, step, "enrich");
-                    try (wikidata.explore.query.core.WikidataAccess.RequestLogs requestLogs =
-                            wikidata.explore.query.core.WikidataAccess.logRequests(
+                    try (wikidata.query.core.WikidataAccess.RequestLogs requestLogs =
+                            wikidata.query.core.WikidataAccess.logRequests(
                                     context, genLog)) {
                     genLog.message(executionSettings.resolvedDescription());
                     wikidata.api.WikidataApiClient entityApi =
@@ -102,9 +102,9 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                                     .cancellation(context.cancellation());
                     // The run owns this action-API client, so it is not among the
                     // process-bound SPARQL clients logRequests(...) can attach.
-                    entityApi.log(wikidata.explore.query.core.WikidataAccess
+                    entityApi.log(wikidata.query.core.WikidataAccess
                             .structuredRequestLog(
-                                    wikidata.explore.query.core.Datasource.WIKIDATA, genLog));
+                                    wikidata.query.core.Datasource.WIKIDATA, genLog));
 
                     // Also teed to stdout: a fetch over thousands of entities is
                     // I/O-bound — near-zero CPU for minutes — so the process itself
@@ -112,12 +112,12 @@ public class EnrichInstancesQuery implements Query<GenerationRun> {
                     return new GenerationPipeline().enrich(
                             previousRun, compiledRun, entityApi,
                             genLog, context.cancellation(), steps, sourcePlan,
-                            wikidata.explore.query.core.WikidataAccess.sparql(
+                            wikidata.query.core.WikidataAccess.sparql(
                                     context,
-                                    wikidata.explore.query.core.Datasource.DBPEDIA),
-                            wikidata.explore.query.core.WikidataAccess.sparql(
+                                    wikidata.query.core.Datasource.DBPEDIA),
+                            wikidata.query.core.WikidataAccess.sparql(
                                     context,
-                                    wikidata.explore.query.core.Datasource.WIKIDATA));
+                                    wikidata.query.core.Datasource.WIKIDATA));
                     }
                 });
     }

@@ -1,0 +1,258 @@
+package domain.transform.app;
+
+import domain.runtime.SnapshotDomain;
+
+import domain.datasource.schema.FieldType;
+import domain.datasource.api.SourceBindingSlot;
+import domain.datasource.wikipedia.WikipediaDatasourceProvider;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import domain.curation.Correction;
+import domain.curation.CorrectionPolicy;
+import domain.curation.ManualCuration;
+import domain.curation.FieldSourceRecipe;
+import domain.curation.ValueSource;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.config.FieldCardinality;
+import domain.config.FieldSourceBindings;
+import domain.config.FieldSourceType;
+import domain.config.GeneratedFieldModel;
+import domain.config.RuleDirection;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ModelFieldRulePromoterTest {
+
+    @TempDir Path temp;
+
+    @Test void promotesOneSourcedFieldWithoutConsumingItsCuration() throws Exception {
+        File modelFile = temp.resolve("states.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.name("States");
+        model.rootClass(new GeneratedClassModel("State"));
+        new GeneratedProjectModelStore().save(model, modelFile);
+
+        WikidataDynamicObject state = new WikidataDynamicObject("Q1", "One");
+        state.type("State");
+        state.put("population", 10L);
+        SnapshotDomain base = new SnapshotDomain(List.of(state));
+        ManualCuration curation = new ManualCuration(
+                temp.resolve("states.curation.json").toFile());
+        Correction correction = new Correction(
+                "State", "Q1", "population", 10L, "wikidata", null,
+                CorrectionPolicy.FILL_IF_EMPTY,
+                new ValueSource("Wikidata", "Q1", "P1082",
+                        "population", "ROOT_TO_ITEM",
+                        "https://www.wikidata.org/wiki/Q1"));
+        curation.put("State", "Q1", "population", 10L, "wikidata", null,
+                correction.policy(), correction.source());
+        curation.save();
+        CuratableDomain domain = new CuratableDomain(
+                base, curation, base.memberRoots(), List.of(), modelFile);
+
+        var preview = domain.previewPromotion(correction);
+        assertTrue(preview.eligible(), preview.reason());
+        assertTrue(preview.addsField());
+        domain.promote(correction);
+        assertNull(new GeneratedProjectModelStore().load(modelFile).findClass("State")
+                        .fields().stream().filter(f -> "population".equals(f.name()))
+                        .findFirst().orElse(null),
+                "promotion changes the working model; only Save writes the file (#305)");
+        domain.writeProjectModel();
+
+        var loaded = new GeneratedProjectModelStore().load(modelFile);
+        var promoted = loaded.findClass("State").fields().stream()
+                .filter(field -> "population".equals(field.name()))
+                .findFirst().orElseThrow();
+        assertEquals("P1082", promoted.mapping().propertyPid());
+        assertEquals("population", promoted.mapping().propertyLabel());
+        assertEquals(RuleDirection.ROOT_TO_ITEM,
+                promoted.mapping().direction());
+        assertEquals(1, curation.corrections().size(),
+                "promotion must retain the reviewed per-instance correction");
+        assertFalse(domain.previewPromotion(correction).eligible(),
+                "the same model rule is not offered twice");
+    }
+
+    @Test void refusesAValueWithoutReusablePropertyEvidence() throws Exception {
+        File modelFile = temp.resolve("states.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("State"));
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject state = new WikidataDynamicObject("Q1", "One");
+        state.type("State");
+        state.put("population", 10L);
+        SnapshotDomain base = new SnapshotDomain(List.of(state));
+        CuratableDomain domain = new CuratableDomain(base,
+                new ManualCuration(temp.resolve("x.curation.json").toFile()),
+                base.memberRoots(), List.of(), modelFile);
+        Correction manual = new Correction(
+                "State", "Q1", "population", 10L, "manual", null);
+
+        assertFalse(domain.previewPromotion(manual).eligible());
+        assertTrue(domain.previewPromotion(manual).reason().contains("source"));
+    }
+
+    @Test void promotesAnObservedInfoboxKeyIntoTheChosenFieldSourceSlot()
+            throws Exception {
+        CuratableDomain domain = deities(field -> field.mapping().propertyPid("P1080"));
+        File modelFile = temp.resolve("deities.model.json").toFile();
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaInfobox(
+                "EgyptianDeity", "symbol",
+                SourceBindingSlot.FALLBACK_FIELD_VALUE,
+                "Rendered.Symbol", "Wikipedia infobox value");
+
+        var preview = domain.previewPromotion(recipe);
+        assertTrue(preview.eligible(), preview.reason());
+        assertEquals("Wikipedia infobox fallback", preview.sourceKind());
+        domain.promote(recipe);
+        assertNull(new GeneratedProjectModelStore().load(modelFile)
+                        .findClass("EgyptianDeity").fields().getFirst().fallbackMapping(),
+                "configuration changes the working model; Save remains the writer");
+        assertEquals(List.of("Configured EgyptianDeity.symbol from Wikipedia "
+                        + "infobox fallback Rendered.Symbol"),
+                domain.unsavedModelChanges());
+
+        domain.writeProjectModel();
+
+        var promoted = new GeneratedProjectModelStore().load(modelFile)
+                .findClass("EgyptianDeity").fields().getFirst();
+        assertEquals(FieldSourceType.WIKIPEDIA_INFOBOX,
+                promoted.fallbackMapping().sourceType());
+        assertEquals("Rendered.Symbol", promoted.fallbackMapping().propertyPid());
+        assertEquals("P1080", promoted.mapping().propertyPid(),
+                "a fallback leaves the primary source as it was");
+        FieldSourceRecipe sameSourceWithAnotherLabel = FieldSourceRecipe.wikipediaInfobox(
+                "EgyptianDeity", "symbol",
+                SourceBindingSlot.FALLBACK_FIELD_VALUE,
+                "Rendered.Symbol", "Observed symbol row");
+        assertFalse(domain.previewPromotion(sameSourceWithAnotherLabel).eligible(),
+                "the same provider, operation, slot and key is one source; its label "
+                        + "must not make discovery offer it twice");
+    }
+
+    /**
+     * Acquisition stores an infobox value's text as it is. In an entity list,
+     * "Ra, Thoth" would stand where references belong — a flattened second reading of
+     * a row whose links name the actual entities.
+     */
+    @Test void anInfoboxValueIsNotOfferedForAnEntityOrListField() throws Exception {
+        File modelFile = temp.resolve("parents.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        deity.addField("parents", FieldType.ENTITY,
+                FieldCardinality.COLLECTION);
+        deity.addField("epithets", FieldType.STRING,
+                FieldCardinality.COLLECTION);
+        model.rootClass(deity);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject horus = new WikidataDynamicObject("Q841", "Horus");
+        horus.type("EgyptianDeity");
+        SnapshotDomain base = new SnapshotDomain(List.of(horus));
+        CuratableDomain domain = new CuratableDomain(base,
+                new ManualCuration(temp.resolve("parents.curation.json").toFile()),
+                base.memberRoots(), List.of(), modelFile);
+
+        for (String field : List.of("parents", "epithets")) {
+            var preview = domain.previewPromotion(FieldSourceRecipe.wikipediaInfobox(
+                    "EgyptianDeity", field,
+                    SourceBindingSlot.FALLBACK_FIELD_VALUE,
+                    "Rendered.Parents", "Wikipedia infobox value"));
+            assertFalse(preview.eligible(), field);
+            assertTrue(preview.reason().contains("single String or Text field"),
+                    preview.reason());
+        }
+    }
+
+    @Test void renderedInfoboxLinksCanBecomeCandidateEvidenceForAnEntityList()
+            throws Exception {
+        File modelFile = temp.resolve("parents.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        var parents = deity.addField("parents", FieldType.ENTITY,
+                FieldCardinality.COLLECTION);
+        parents.entityClassName("EgyptianDeity");
+        model.rootClass(deity);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject maat = new WikidataDynamicObject("Q185101", "Maat");
+        maat.type("EgyptianDeity");
+        SnapshotDomain base = new SnapshotDomain(List.of(maat));
+        CuratableDomain domain = new CuratableDomain(base,
+                new ManualCuration(temp.resolve("parents.curation.json").toFile()),
+                base.memberRoots(), List.of(), modelFile);
+        FieldSourceRecipe recipe = FieldSourceRecipe.wikipediaInfoboxLinks(
+                "EgyptianDeity", "parents", "Rendered.Parents",
+                "Rendered Parents row links");
+
+        var preview = domain.previewPromotion(recipe);
+        assertTrue(preview.eligible(), preview.reason());
+        domain.promote(recipe);
+        domain.writeProjectModel();
+
+        var savedField = new GeneratedProjectModelStore().load(modelFile)
+                .findClass("EgyptianDeity").fields().getFirst();
+        var saved = FieldSourceBindings.binding(savedField,
+                SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertEquals("Rendered.Parents",
+                WikipediaDatasourceProvider.infoboxRowLinks(saved));
+        assertFalse(domain.previewPromotion(recipe).eligible(),
+                "one candidate-evidence source is not offered twice");
+    }
+
+    /** The infobox binding says only kind, key and label; a replaced Wikidata primary's
+     *  qualifier condition and value language must not be saved into it. */
+    @Test void replacingAPrimarySourceLeavesNothingOfThePreviousOneBehind()
+            throws Exception {
+        CuratableDomain domain = deities(field -> {
+            field.mapping().propertyPid("P1080");
+            field.mapping().valueLanguage("en");
+            field.mapping().qualifierCondition(
+                    wikidata.QualifierCondition.of("P518", List.of("Q42")));
+        });
+        domain.promote(FieldSourceRecipe.wikipediaInfobox("EgyptianDeity", "symbol",
+                SourceBindingSlot.PRIMARY_FIELD_VALUE,
+                "Rendered.Symbol", "Wikipedia infobox value"));
+        domain.writeProjectModel();
+
+        var saved = new GeneratedProjectModelStore()
+                .load(temp.resolve("deities.model.json").toFile())
+                .findClass("EgyptianDeity").fields().getFirst();
+        assertEquals(FieldSourceType.WIKIPEDIA_INFOBOX,
+                saved.mapping().sourceType());
+        assertEquals("Rendered.Symbol", saved.mapping().propertyPid());
+        assertNull(saved.mapping().qualifierCondition());
+        assertEquals("", saved.mapping().valueLanguage());
+        var binding = FieldSourceBindings.binding(
+                saved, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+        assertEquals("", binding.recipe().parameter(
+                FieldSourceBindings.CONDITION_QUALIFIER));
+        assertEquals("", binding.recipe().parameter(
+                FieldSourceBindings.VALUE_LANGUAGE));
+    }
+
+    private CuratableDomain deities(
+            java.util.function.Consumer<GeneratedFieldModel> symbol)
+            throws Exception {
+        File modelFile = temp.resolve("deities.model.json").toFile();
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        symbol.accept(deity.addField("symbol", FieldType.STRING,
+                FieldCardinality.SINGLE));
+        model.rootClass(deity);
+        new GeneratedProjectModelStore().save(model, modelFile);
+        WikidataDynamicObject horus = new WikidataDynamicObject("Q841", "Horus");
+        horus.type("EgyptianDeity");
+        SnapshotDomain base = new SnapshotDomain(List.of(horus));
+        return new CuratableDomain(base,
+                new ManualCuration(temp.resolve("deities.curation.json").toFile()),
+                base.memberRoots(), List.of(), modelFile);
+    }
+}

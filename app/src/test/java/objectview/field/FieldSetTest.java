@@ -3,9 +3,9 @@ package objectview.field;
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
 import objectview.ViewableAdapter;
-import quiz.transform.app.ProductClass;
-import quiz.transform.app.ProductField;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.transform.app.ProductClass;
+import domain.transform.app.ProductField;
+import domain.runtime.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

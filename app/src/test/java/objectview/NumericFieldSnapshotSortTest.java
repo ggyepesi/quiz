@@ -6,11 +6,11 @@ import objectview.search.SearchAndSort;
 import objectview.viewconfig.FieldTypeSource;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.extract.SnapshotDomain;
-import quiz.transform.app.ViewableToWdo;
+import domain.runtime.SnapshotDomain;
+import domain.transform.app.ViewableToWdo;
 import domain.DomainModel;
-import quiz.transform.ui.ReflectionDomain;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import domain.transform.ui.ReflectionDomain;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
 import java.util.List;

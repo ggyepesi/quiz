@@ -21,6 +21,27 @@ Universal standards live here. Conventions that apply only to certain files live
   conceptual anchor: Class / Statement / Selection, identity regimes, membership) and
   `serving-the-web-app.md`.
 
+## Package ownership
+
+The product constructed by the modelling toolchain is a **domain**; `quiz` is one consumer
+of that built runtime domain. Consequently `quiz.*` contains only quiz engine, quiz modes and
+quiz-specific presentation. Domain configuration, compilation, datasource acquisition and
+discovery, build, transformation, curation, enrichment, provenance, persistence and their
+workbenches live under `domain.*`. Low-level source protocol clients and shared execution
+infrastructure remain independent roots. See `docs/package-structure.md`.
+
+Every desktop entry point lives in its owner's dedicated `.app` package and ends in `App`;
+reusable Swing code lives in `.ui`. Command-line entry points live in `.cli` and end in
+`Main`. Tests mirror production packages. Do not add compatibility launchers under retired
+packages: update callers, documentation, service declarations and IDE configurations in the
+same move.
+
+Import domain-owned types and use their simple names in executable code; do not use a
+package-qualified `domain.*` type inside a method where a local `domain` or `datasource` can
+shadow the package. A headless owner exposes an intentional public seam to its UI rather than
+co-locating UI with provider internals for package-private access. `.app` classes compose and
+own window lifecycle only; reusable state and actions belong to the operation or `.ui` package.
+
 ## Build and test
 
 Always build through the reactor, never `-pl app` alone:

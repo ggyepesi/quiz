@@ -1,20 +1,20 @@
 package wikidata.explore.query.logical;
 
-import quiz.enrichment.WikimediaEntityLookup;
+import domain.enrichment.WikimediaEntityLookup;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.query.template.sparql.SparqlQueries;
+import wikidata.query.template.sparql.SparqlQueries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /** Discovers observed English Wikipedia categories for supplied or sampled entities.
  * It does not infer a relation pattern; the user chooses an observed category and marks

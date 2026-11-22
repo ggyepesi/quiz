@@ -1,0 +1,418 @@
+package domain.config;
+
+import java.util.List;
+import domain.datasource.schema.FieldType;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ClassImportPlanTest {
+
+    private static GeneratedProjectModel oscarPeople() {
+        GeneratedProjectModel source = new GeneratedProjectModel();
+        source.name("Oscars");
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        source.rootClass(nomination);
+
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.classKind(ClassKind.OWNED);
+        name.addField("givenName", FieldType.STRING, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P735");
+        source.addClass(name);
+
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel structured = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        structured.entityClassName("Name");
+        structured.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        source.addClass(person);
+        source.addSelection(new RoleSelection(
+                "Nominees", "Person", "structuredName"));
+        source.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        OwnedClassSemantics.synchronizeOwnerReferences(source);
+        return source;
+    }
+
+    private static GeneratedProjectModel history() {
+        GeneratedProjectModel target = new GeneratedProjectModel();
+        target.name("History");
+        target.rootClass(new GeneratedClassModel("Event"));
+        return target;
+    }
+
+    @Test void copiesAClassWithItsAuthoredDependencyClosure() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel target = history();
+        ClassImportPlan plan = ClassImportPlan.of(source, target, "Person");
+
+        assertEquals(Set.of("Name"), plan.dependencyClassNames());
+        assertEquals(java.util.List.of("Nominees"),
+                plan.selections().stream().map(Selection::name).toList());
+
+        plan.apply(Set.of("Person", "Name"));
+
+        assertNotNull(target.findClass("Person"));
+        assertNotNull(target.findClass("Name"));
+        assertNotNull(target.findSelection("Nominees"));
+        assertEquals("Name", target.findClass("Person").fields().getFirst()
+                .entityClassName());
+        assertEquals(1, target.entityKindRules().stream()
+                .filter(r -> r.className().equals("Person")).count());
+        assertNotSame(source.findClass("Person"), target.findClass("Person"));
+    }
+
+    @Test void aPopulationSelectionFollowsTheClassWhoseInstancesItNames() {
+        GeneratedProjectModel positions = new GeneratedProjectModel();
+        positions.name("Historical Positions");
+        positions.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        positions.rootClass(new GeneratedClassModel("Position"));
+        PopulationSelection selected = new PopulationSelection("PositionsForHistory");
+        selected.className("Position");
+        selected.instanceQids(java.util.List.of("Q11696", "Q12548"));
+        positions.addSelection(selected);
+
+        GeneratedProjectModel history = history();
+        ClassImportPlan plan = ClassImportPlan.of(positions, history, "Position");
+
+        assertEquals(java.util.List.of("PositionsForHistory"),
+                plan.selections().stream().map(Selection::name).toList());
+        plan.apply(Set.of("Position"), ClassImportPlan.Ownership.IMPORT);
+        PopulationSelection imported = (PopulationSelection)
+                history.findSelection("PositionsForHistory");
+        assertEquals("Position", imported.className());
+        assertEquals(java.util.List.of("Q11696", "Q12548"), imported.instanceQids());
+        assertTrue(imported.isImported());
+    }
+
+    @Test void refusesToCreateADanglingTargetWhenDependencyIsDeselected() {
+        ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), history(), "Person");
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> plan.apply(Set.of("Person")));
+
+        assertTrue(failure.getMessage().contains("Person → Name"));
+    }
+
+    /**
+     * Keeping a dependency this project already has is reached by deselecting it, not
+     * by a policy: what is copied is what is selected. That is the honest form of the
+     * question — the reader sees the class named and chooses — and it is why the
+     * "keep and reuse" option was not worth a control of its own.
+     */
+    @Test void deselectingADependencyKeepsTheOneAlreadyHere() {
+        GeneratedProjectModel target = history();
+        GeneratedClassModel localName = new GeneratedClassModel("Name");
+        localName.classKind(ClassKind.OWNED);
+        localName.addField("local", FieldType.STRING, FieldCardinality.SINGLE);
+        target.addClass(localName);
+        ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), target, "Person");
+
+        plan.apply(Set.of("Person"));
+
+        assertTrue(target.findClass("Name").fields().stream()
+                        .anyMatch(field -> field.name().equals("local")),
+                "the class already here keeps its authored field when a copy did not "
+                        + "select it");
+        assertNotNull(target.findClass("Person"));
+    }
+
+    @Test void replacementPreservesTheTargetsRootPosition() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel target = history();
+        GeneratedClassModel old = new GeneratedClassModel("Person");
+        old.alias("Local person");
+        target.addClass(old);
+
+        ClassImportPlan.of(source, target, "Person").apply(
+                Set.of("Person", "Name"));
+
+        assertNotSame(old, target.findClass("Person"));
+        assertEquals("Event", target.rootClass().className());
+    }
+
+    private static GeneratedProjectModel emptyModel() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.name("People");
+        model.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        return model;
+    }
+
+    /**
+     * The reason models exist: a class configured while building one domain becomes
+     * reusable configuration. Copy is the route, and it does not care that the target
+     * acquires nothing.
+     */
+    @Test void aDomainsClassCanBeCopiedIntoAModel() {
+        GeneratedProjectModel model = emptyModel();
+
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"));
+
+        assertNotNull(model.findClass("Person"));
+        assertNotNull(model.findClass("Name"));
+        assertEquals("Name",
+                model.findClass("Person").fields().getFirst().entityClassName());
+        assertEquals(GeneratedProjectModel.ProjectKind.MODEL, model.projectKind(),
+                "copying configuration in does not turn a model into a domain");
+    }
+
+    /** The derived owner reference makes an Owned class and its owner one closure. */
+    @Test void anOwnedClassCannotBeCopiedWithoutItsOwnerClass() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel model = emptyModel();
+
+        ClassImportPlan plan = ClassImportPlan.of(source, model, "Name");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> plan.apply(Set.of("Name")));
+
+        assertTrue(failure.getMessage().contains("Name → Person"));
+    }
+
+    /**
+     * The Nobel shape: a prize reaches its laureates, a laureate its person, a person its
+     * structured name. One copy takes the whole chain, at any depth — the closure is a
+     * worklist, not a single hop — so "one class at a time" is a choice rather than a
+     * ceiling.
+     */
+    @Test void copyReachesTheWholeChainNotJustTheFirstHop() {
+        GeneratedProjectModel source = oscarPeople();
+
+        GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
+        laureate.addField("person", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        source.addClass(laureate);
+
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.addField("laureates", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Laureate");
+        source.addClass(prize);
+
+        ClassImportPlan plan = ClassImportPlan.of(source, emptyModel(), "NobelPrize");
+
+        assertEquals(Set.of("Laureate", "Person", "Name"), plan.dependencyClassNames(),
+                "three hops from the requested class, all reached");
+
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(source, model, "NobelPrize").apply(
+                Set.of("NobelPrize", "Laureate", "Person", "Name"));
+
+        for (String name : java.util.List.of(
+                "NobelPrize", "Laureate", "Person", "Name")) {
+            assertNotNull(model.findClass(name), name + " arrived");
+        }
+    }
+
+    /**
+     * A copy is the copying project's, entirely. It carries no claim from wherever it
+     * was copied, because copying eases configuring a class that resembles another —
+     * the resemblance is a starting point, not a relationship.
+     */
+    @Test void aCopiedClassBelongsToTheProjectThatCopiedIt() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"));
+
+        assertEquals("", model.findClass("Person").importedFrom());
+        assertFalse(model.findClass("Person").isImported());
+        assertFalse(model.findClass("Name").isImported());
+
+        model.findClass("Name").addField(
+                "nickname", FieldType.STRING, FieldCardinality.SINGLE);
+        assertTrue(model.renameClass("Name", "PersonName"));
+
+        assertEquals(3, model.findClass("PersonName").fields().size(),
+                "a copy keeps its automatic owner reference and is edited like any "
+                        + "class this project wrote itself");
+        assertEquals(2, oscarPeople().findClass("Name").fields().size(),
+                "and the source retains its owner and givenName fields without the "
+                        + "copy's nickname");
+    }
+
+    /**
+     * An import leaves the class owned by the model it names, which is what makes it a
+     * use of that model rather than a duplicate of it.
+     */
+    @Test void anImportedClassStaysOwnedByTheModelItComesFrom() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertEquals("Oscars", model.findClass("Person").importedFrom());
+        assertEquals("Oscars", model.findClass("Name").importedFrom());
+        assertTrue(model.findClass("Person").isImported());
+        assertEquals("Oscars.Person", model.findClass("Person").qualifiedClassName());
+        assertTrue(model.findSelection("Nominees").isImported());
+        assertEquals("Oscars", model.findSelection("Nominees").importedFrom());
+        assertTrue(model.entityKindRules().getFirst().isImported());
+    }
+
+    @Test void anImportedRoleKeepsItsEvidenceBasedRepresentation() {
+        GeneratedProjectModel discovery = emptyModel();
+        discovery.name("Discovery");
+        GeneratedClassModel discoverer = new GeneratedClassModel("Discoverer");
+        discovery.rootClass(discoverer);
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        discovery.addClass(person);
+        discovery.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        discovery.representationClasses(discoverer, List.of("Person"));
+
+        GeneratedProjectModel astronomy = history();
+        ClassImportPlan.of(discovery, astronomy, "Discoverer").apply(
+                Set.of("Discoverer", "Person"), ClassImportPlan.Ownership.IMPORT);
+
+        EntityRepresentationRule imported = astronomy.entityRepresentationRules()
+                .getFirst();
+        assertEquals("Discoverer", imported.roleClassName());
+        assertEquals("Person", imported.representationClassName());
+        assertEquals("Discovery", imported.importedFrom());
+        assertTrue(imported.isImported());
+        assertTrue(astronomy.withoutResolvedImports().entityRepresentationRules().isEmpty(),
+                "the importer persists the model reference, not a duplicate rule");
+    }
+
+    @Test void refreshingAnImportDoesNotReportItsOwnDeclarationsAsCollisions() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel importer = emptyModel();
+        ClassImportPlan.of(source, importer, "Person")
+                .apply(Set.of("Person", "Name"), ClassImportPlan.Ownership.IMPORT);
+
+        ClassImportPlan refresh = ClassImportPlan.of(source, importer, "Person");
+
+        assertTrue(refresh.conflicts(ClassImportPlan.Ownership.IMPORT).isEmpty(),
+                "classes and selections already imported from Oscars are refreshed");
+        assertFalse(refresh.conflicts().isEmpty(),
+                "copy still reports that those names are already present");
+    }
+
+    /** A class this project wrote is owned by nobody else. */
+    @Test void aClassAuthoredHereIsNotImported() {
+        assertEquals("", oscarPeople().findClass("Person").importedFrom());
+        assertFalse(oscarPeople().findClass("Person").isImported());
+    }
+
+    /**
+     * Ownership survives being passed along. Importing a class the source had itself
+     * imported still names the model that owns it — the project in the middle is a
+     * relay, and relaying does not transfer ownership to the relay.
+     */
+    @Test void importedOwnershipNamesTheOwnerNotTheLastHop() {
+        GeneratedProjectModel relay = emptyModel();
+        relay.name("Relay");
+        ClassImportPlan.of(oscarPeople(), relay, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        GeneratedProjectModel destination = emptyModel();
+        destination.name("Nobel");
+        ClassImportPlan.of(relay, destination, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertEquals("Oscars", destination.findClass("Person").importedFrom());
+    }
+
+    /**
+     * Copying an imported class takes the configuration and drops the claim: the result
+     * is an ordinary class of the copying project. Otherwise there would be no way to
+     * take a model's class and then diverge from it.
+     */
+    @Test void copyingAnImportedClassYieldsAnOrdinaryOne() {
+        GeneratedProjectModel relay = emptyModel();
+        relay.name("Relay");
+        ClassImportPlan.of(oscarPeople(), relay, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+        assertTrue(relay.findClass("Name").isImported());
+
+        GeneratedProjectModel destination = emptyModel();
+        destination.name("Nobel");
+        ClassImportPlan.of(relay, destination, "Person")
+                .apply(Set.of("Person", "Name"));
+
+        assertFalse(destination.findClass("Name").isImported(),
+                "a copy claims nothing, whatever it was copied from");
+    }
+
+    /** The model that owns a class is not locked out of its own class. */
+    @Test void theOwningModelStillEditsWhatOthersImport() {
+        GeneratedProjectModel source = oscarPeople();
+        GeneratedProjectModel importer = emptyModel();
+        ClassImportPlan.of(source, importer, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertTrue(importer.findClass("Name").isImported());
+        assertFalse(source.findClass("Name").isImported());
+        assertTrue(source.renameClass("Name", "FullName"));
+    }
+
+    /**
+     * The name is how an imported class names what owns it, so the importing project
+     * cannot change it: renaming Name to PersonName while still pointing at Oscars
+     * would assert a class Oscars does not have.
+     */
+    @Test void anImportedClassCannotBeRenamedByTheProjectThatImportedIt() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertTrue(model.findClass("Name").isImported());
+        assertFalse(model.renameClass("Name", "PersonName"));
+        assertNotNull(model.findClass("Name"), "the class keeps its name");
+        assertNull(model.findClass("PersonName"));
+        assertEquals("Oscars.Name", model.findClass("Name").qualifiedClassName(),
+                "the qualified form still names a class the origin actually has");
+    }
+
+    /**
+     * The class editors call renameClass on every Apply with the name unchanged. That
+     * must stay a no-op success for an imported class, or merely saving one would
+     * report a rename failure.
+     */
+    @Test void savingAnImportedClassUnchangedIsNotARenameFailure() {
+        GeneratedProjectModel model = emptyModel();
+        ClassImportPlan.of(oscarPeople(), model, "Person")
+                .apply(Set.of("Person", "Name"),
+                        ClassImportPlan.Ownership.IMPORT);
+
+        assertTrue(model.renameClass("Name", "Name"),
+                "an unchanged name is a no-op, not a refused rename");
+    }
+
+    /** A class authored here is renamed as it always was. */
+    @Test void aClassAuthoredHereIsStillRenamable() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Nobel");
+        project.rootClass(new GeneratedClassModel("Prize"));
+        project.addClass(new GeneratedClassModel("Ceremony"));
+
+        assertFalse(project.findClass("Ceremony").isImported());
+        assertTrue(project.renameClass("Ceremony", "Edition"));
+        assertNotNull(project.findClass("Edition"));
+    }
+
+    /**
+     * A new project's root class counts as already here. Creating a model named Person
+     * gives it a root class called Person, so pasting Person into it replaces the root —
+     * the case that has to be reported, and the one that reads as a fresh empty model.
+     */
+    @Test void aNewProjectsRootClassIsAConflictLikeAnyOther() {
+        GeneratedProjectModel fresh = new GeneratedProjectModel();
+        fresh.name("Person");
+        fresh.projectKind(GeneratedProjectModel.ProjectKind.MODEL);
+        fresh.rootClass().className("Person");
+
+        ClassImportPlan plan = ClassImportPlan.of(oscarPeople(), fresh, "Person");
+
+        assertEquals(java.util.Set.of("Person"), plan.conflicts(),
+                "the root class is in classes(), so it conflicts like any other");
+        assertEquals(java.util.Set.of("Name"), plan.dependencyClassNames(),
+                "and the dependency is still reported alongside it");
+    }
+}

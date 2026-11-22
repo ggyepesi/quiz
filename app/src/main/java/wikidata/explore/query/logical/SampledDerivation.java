@@ -1,12 +1,12 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.generation.SemanticConvergence;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.core.WikidataAccess;
-import wikidata.explore.transform.ModelAggregates;
+import domain.compile.CompiledProjectModel;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+import domain.build.SemanticConvergence;
+import domain.config.GeneratedProjectModel;
+import wikidata.query.core.WikidataAccess;
+import domain.compile.transform.ModelAggregates;
 import work.QueryContext;
 
 import java.util.List;

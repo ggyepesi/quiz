@@ -1,19 +1,19 @@
 package wikidata.explore.query.logical;
 
-import datasource.graph.GraphDiscoveryConfiguration;
-import datasource.graph.GraphRelation;
-import datasource.graph.GraphTraversalDirection;
-import datasource.graph.store.GraphStoreProvider;
-import datasource.persistence.PersistentGraphStore;
+import domain.datasource.graph.GraphDiscoveryConfiguration;
+import domain.datasource.graph.GraphRelation;
+import domain.datasource.graph.GraphTraversalDirection;
+import domain.datasource.graph.store.GraphStoreProvider;
+import domain.datasource.persistence.PersistentGraphStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.PopulationSelection;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.PopulationSelection;
+import domain.runtime.WikidataDynamicObject;
+import wikidata.query.core.WikidataAccess;
 
 import java.util.List;
 import java.util.Map;
@@ -68,7 +68,7 @@ class ConfiguredGraphDiscoveryQueryTest {
                 WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind());
 
         assertEquals(List.of("Q1"), result.graph().nodes().getFirst().accepted()
-                .stream().map(datasource.EntityRef::id).toList());
+                .stream().map(domain.datasource.EntityRef::id).toList());
         assertEquals(List.of("Q999"), position.seedQids(),
                 "class seeds are acquisition configuration, not the graph input");
         assertEquals(0, position.fields().size());
@@ -121,7 +121,7 @@ class ConfiguredGraphDiscoveryQueryTest {
         assertEquals(acquired.graph(), repeated.graph(),
                 "disk replay supplies the same executor; only acquisition is skipped");
         assertEquals(List.of("Q1"), repeated.graph().nodes().getFirst().accepted()
-                .stream().map(datasource.EntityRef::id).toList());
+                .stream().map(domain.datasource.EntityRef::id).toList());
     }
 
     @Test void aSavedPopulationSelectionIsTheExactGraphStart() {
@@ -192,9 +192,9 @@ class ConfiguredGraphDiscoveryQueryTest {
                 WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind());
 
         assertEquals(List.of("Q2"), result.graph().nodes().getFirst().accepted()
-                .stream().map(datasource.EntityRef::id).toList());
+                .stream().map(domain.datasource.EntityRef::id).toList());
         assertEquals(List.of("Q3"), result.graph().nodes().getFirst().rejected()
-                .stream().map(datasource.EntityRef::id).toList());
+                .stream().map(domain.datasource.EntityRef::id).toList());
         assertEquals("Not in PositionsForHistory",
                 result.graph().nodes().getFirst().classifications().getFirst().reason());
     }
@@ -204,7 +204,7 @@ class ConfiguredGraphDiscoveryQueryTest {
             GraphDiscoveryConfiguration.StartNode start,
             List<GraphDiscoveryConfiguration.NextNode> nodes) {
         GeneratedClassModel graphClass = new GeneratedClassModel(name);
-        graphClass.graphSource(new wikidata.explore.model.GraphClassSource(start, nodes));
+        graphClass.graphSource(new domain.config.GraphClassSource(start, nodes));
         model.addClass(graphClass);
         return graphClass;
     }

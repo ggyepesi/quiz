@@ -2,7 +2,7 @@
 
 Three processes, in this order:
 
-1. **`quiz.web.ViewableServerMain`** — the API, `:7070` by default (first arg overrides).
+1. **`quiz.web.cli.ViewableServerMain`** — the API, `:7070` by default (first arg overrides).
 2. **Vite dev server** — `cd web && npm run dev`, `:5173`. `vite.config.js` sets
    `host: true` (so a phone on the same Wi-Fi can reach it), `allowedHosts: true`,
    and proxies `/api` → `http://localhost:7070`.

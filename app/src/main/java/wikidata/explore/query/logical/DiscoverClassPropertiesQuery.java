@@ -3,21 +3,21 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.DiscoveredProperty;
 import wikidata.explore.query.result.DiscoveredProperty.PropertyKind;
-import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
-import wikidata.explore.query.template.sparql.SparqlQueries;
-import wikidata.explore.rule.RuleNode;
+import wikidata.query.template.rule.RuleNodeQueryBuilder;
+import wikidata.query.template.sparql.SparqlQueries;
+import domain.compile.rule.RuleNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Class-level property discovery: samples N instances of a class, then

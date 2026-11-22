@@ -1,8 +1,8 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.compiled.ProjectModelCompiler;
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.compile.CompiledProjectModel;
+import domain.compile.ProjectModelCompiler;
+import domain.config.GeneratedProjectModel;
 import wikidata.explore.query.result.ClassSampleResult;
 import work.Query;
 import work.QueryContext;
@@ -45,9 +45,9 @@ public final class SampleEffectiveClassQuery implements Query<ClassSampleResult>
         if (snapshot == null) throw new IllegalStateException("No model to sample");
         // Compiled once, through the owner of that decision: a sample that cannot be
         // planned says so with the model's own validation report, before it fetches.
-        wikidata.explore.generation.CompiledPipelineRun run =
-                wikidata.explore.generation.CompiledPipelineRun.compile(
-                        wikidata.explore.generation.PipelineRequest.sampleClass(
+        domain.build.CompiledPipelineRun run =
+                domain.build.CompiledPipelineRun.compile(
+                        domain.build.PipelineRequest.sampleClass(
                                 snapshot, sampledClass, limit));
         if (run.blocked()) throw new IllegalStateException(run.explain());
         CompiledProjectModel compiled = run.model();

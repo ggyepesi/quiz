@@ -1,9 +1,9 @@
 {
-  "@class" : "wikidata.explore.model.GeneratedProjectModel",
+  "@class" : "domain.config.GeneratedProjectModel",
   "name" : "History",
   "projectKind" : "DOMAIN",
   "rootClass" : {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
     "className" : "Person",
     "baseClassName" : "",
@@ -19,7 +19,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "P31",
@@ -54,7 +54,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "structuredName",
       "type" : "ENTITY",
       "entityClassName" : "Name",
@@ -70,7 +70,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -98,7 +98,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "birthName",
       "type" : "STRING",
       "entityClassName" : "",
@@ -113,7 +113,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1477",
@@ -164,7 +164,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "nativeName",
       "type" : "STRING",
       "entityClassName" : "",
@@ -179,7 +179,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1559",
@@ -230,7 +230,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "pseudonyms",
       "type" : "STRING",
       "entityClassName" : "",
@@ -245,7 +245,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P742",
@@ -296,7 +296,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "dateOfBirth",
       "type" : "DATE",
       "entityClassName" : "",
@@ -311,7 +311,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P569",
@@ -362,7 +362,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "offices",
       "type" : "ENTITY",
       "entityClassName" : "OfficeHolding",
@@ -378,7 +378,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -406,7 +406,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "dateOfDeath",
       "type" : "DATE",
       "entityClassName" : "",
@@ -421,7 +421,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P570",
@@ -472,7 +472,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "type",
       "type" : "ENTITY",
       "entityClassName" : "Type",
@@ -488,7 +488,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P31",
@@ -539,7 +539,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "spouse",
       "type" : "ENTITY",
       "entityClassName" : "Person",
@@ -555,7 +555,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P26",
@@ -606,7 +606,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "image",
       "type" : "IMAGE",
       "entityClassName" : "",
@@ -621,7 +621,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P18",
@@ -729,13 +729,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -745,7 +745,7 @@
   },
   "generationDepth" : 1,
   "classes" : [ "java.util.ArrayList", [ {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:0c424aa6-0901-3039-8767-51f5847d294c",
     "className" : "Person",
     "baseClassName" : "",
@@ -761,7 +761,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "P31",
@@ -796,7 +796,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "structuredName",
       "type" : "ENTITY",
       "entityClassName" : "Name",
@@ -812,7 +812,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -840,7 +840,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "birthName",
       "type" : "STRING",
       "entityClassName" : "",
@@ -855,7 +855,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1477",
@@ -906,7 +906,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "nativeName",
       "type" : "STRING",
       "entityClassName" : "",
@@ -921,7 +921,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P1559",
@@ -972,7 +972,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "pseudonyms",
       "type" : "STRING",
       "entityClassName" : "",
@@ -987,7 +987,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P742",
@@ -1038,7 +1038,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "dateOfBirth",
       "type" : "DATE",
       "entityClassName" : "",
@@ -1053,7 +1053,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P569",
@@ -1104,7 +1104,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "offices",
       "type" : "ENTITY",
       "entityClassName" : "OfficeHolding",
@@ -1120,7 +1120,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -1148,7 +1148,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "dateOfDeath",
       "type" : "DATE",
       "entityClassName" : "",
@@ -1163,7 +1163,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P570",
@@ -1214,7 +1214,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "type",
       "type" : "ENTITY",
       "entityClassName" : "Type",
@@ -1230,7 +1230,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P31",
@@ -1281,7 +1281,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "spouse",
       "type" : "ENTITY",
       "entityClassName" : "Person",
@@ -1297,7 +1297,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P26",
@@ -1348,7 +1348,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "image",
       "type" : "IMAGE",
       "entityClassName" : "",
@@ -1363,7 +1363,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P18",
@@ -1471,13 +1471,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -1485,7 +1485,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:d761159a-94c0-3756-82f2-e5ee04978335",
     "className" : "Name",
     "baseClassName" : "",
@@ -1501,7 +1501,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -1536,7 +1536,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "owner",
       "type" : "ENTITY",
       "entityClassName" : "Person",
@@ -1552,7 +1552,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -1580,7 +1580,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "familyName",
       "type" : "ENTITY",
       "entityClassName" : "",
@@ -1595,7 +1595,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P734",
@@ -1646,7 +1646,7 @@
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "givenName",
       "type" : "ENTITY",
       "entityClassName" : "",
@@ -1661,7 +1661,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "P735",
@@ -1714,13 +1714,13 @@
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -1728,7 +1728,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:165da5cb-f6d3-3e77-9ddb-0f874c5c3874",
     "className" : "PositionHolder",
     "baseClassName" : "",
@@ -1744,7 +1744,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -1836,13 +1836,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -1850,7 +1850,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:78d1f433-938c-30c7-a83b-79d0ea736908",
     "className" : "OfficeHolding",
     "baseClassName" : "",
@@ -1895,7 +1895,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "P39",
@@ -1930,7 +1930,7 @@
       "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "source",
       "type" : "ENTITY",
       "entityClassName" : "PositionHolder",
@@ -1946,7 +1946,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -1974,7 +1974,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "position",
       "type" : "ENTITY",
       "entityClassName" : "Position",
@@ -1990,7 +1990,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -2018,7 +2018,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "startDate",
       "type" : "DATE",
       "entityClassName" : "",
@@ -2033,7 +2033,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -2062,7 +2062,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "endDate",
       "type" : "DATE",
       "entityClassName" : "",
@@ -2077,7 +2077,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -2106,7 +2106,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "predecessor",
       "type" : "ENTITY",
       "entityClassName" : "Person",
@@ -2122,7 +2122,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -2150,7 +2150,7 @@
       },
       "fields" : [ "java.util.ArrayList", [ ] ]
     }, {
-      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "@class" : "domain.config.GeneratedFieldModel",
       "name" : "successor",
       "type" : "ENTITY",
       "entityClassName" : "Person",
@@ -2166,7 +2166,7 @@
       "sortDescending" : false,
       "unit" : "",
       "mapping" : {
-        "@class" : "wikidata.explore.model.FieldSourceMapping",
+        "@class" : "domain.config.FieldSourceMapping",
         "sourceQid" : "",
         "sourceLabel" : "",
         "propertyPid" : "",
@@ -2196,13 +2196,13 @@
     } ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ "source", "position", "startDate", "endDate" ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "FIELD",
       "displayNameField" : "source",
       "displayNameTemplate" : "",
@@ -2210,7 +2210,7 @@
       "primaryListField" : ""
     }
   }, {
-    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:54db01dc-a45e-4f5b-9285-030f74b44b51",
     "className" : "ReachablePosition",
     "baseClassName" : "Position",
@@ -2229,7 +2229,7 @@
     "graphSource" : null,
     "generationDepth" : 1,
     "instanceMapping" : {
-      "@class" : "wikidata.explore.model.FieldSourceMapping",
+      "@class" : "domain.config.FieldSourceMapping",
       "sourceQid" : "",
       "sourceLabel" : "",
       "propertyPid" : "",
@@ -2342,13 +2342,13 @@
       }
     } ] ],
     "canonical" : {
-      "@class" : "wikidata.explore.model.CanonicalSpec",
+      "@class" : "domain.config.CanonicalSpec",
       "keyFields" : [ "java.util.ArrayList", [ ] ],
       "reductions" : {
         "@class" : "java.util.LinkedHashMap"
       },
       "missingKeyPolicy" : "INCOMPLETE_GROUP",
-      "duplicatePolicy" : [ "wikidata.explore.model.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
       "displayNameMode" : "LABEL",
       "displayNameField" : "",
       "displayNameTemplate" : "",
@@ -2357,7 +2357,7 @@
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ {
-    "@class" : "wikidata.explore.model.VocabularySelection",
+    "@class" : "domain.config.VocabularySelection",
     "name" : "Type",
     "declarationId" : "decl:4d117d65-fa68-34cc-a770-1c79bb5ed27b",
     "kind" : "VOCABULARY"

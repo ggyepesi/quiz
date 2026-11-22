@@ -1,6 +1,6 @@
 package wikipedia;
 
-import datasource.evidence.WikipediaArticle;
+import domain.datasource.evidence.WikipediaArticle;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

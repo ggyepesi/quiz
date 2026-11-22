@@ -1,6 +1,6 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.extract.GenerationLog;
+import domain.runtime.GenerationLog;
 import work.QueryContext;
 import work.LogNode;
 import work.LogStep;

@@ -1,0 +1,473 @@
+package domain.workbench.modelbuilder.ui;
+
+import org.junit.jupiter.api.Test;
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.VocabularySelection;
+import domain.config.PopulationSelection;
+import domain.config.StatementClassSource;
+
+import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class SingleRootClassModelPanelTest {
+
+    @Test void consecutiveExplicitRenamesUpdateTheSelectedClassNode() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel root = new GeneratedClassModel("HistoricalPositions");
+        project.rootClass(root);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        assertTrue(panel.renameSelectedClassTo("Positions"));
+        assertTrue(panel.renameSelectedClassTo("Position"));
+
+        assertEquals("Position", root.className());
+        assertSame(root, panel.selectedUserObject());
+    }
+
+    @Test void onlyModelLeavesOpenConfigurationEditors() {
+        assertTrue(SingleRootClassModelPanel.isConfigurable(new GeneratedProjectModel()));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                new GeneratedClassModel("NobelPrize")));
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                new VocabularySelection("Categories")));
+    }
+
+    @Test void configurationTreeNamesTheSharedValueDomainsConsistently() {
+        GeneratedProjectModel project = modelWithEdition();
+        project.addSelection(new VocabularySelection("Category"));
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode root =
+                (DefaultMutableTreeNode) tree.getModel().getRoot();
+
+        assertNotNull(nodeFor(root,
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES));
+    }
+
+    /**
+     * A graph constraint is a class, so it is listed among the classes.
+     *
+     * <p>It had a configuration section of its own, which is what limited a project to
+     * one graph: the section held the project's single configuration, so a second
+     * discovery rule could only be had by editing the first and destroying its result.
+     */
+    @Test void aGraphClassIsListedAmongTheClasses() {
+        GeneratedProjectModel project = modelWithEdition();
+        GeneratedClassModel graphClass = new GeneratedClassModel("PositionRelevance");
+        graphClass.classKind(domain.config.ClassKind.GRAPH);
+        project.addClass(graphClass);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode root =
+                (DefaultMutableTreeNode) tree.getModel().getRoot();
+
+        assertTrue(SingleRootClassModelPanel.isConfigurable(graphClass));
+        assertNotNull(nodeFor(root, graphClass),
+                "a graph class is reached where every other class is reached");
+    }
+
+    @Test void aVocabularySelectionSurvivesTreeRefreshAndGetsContextualActions() {
+        GeneratedProjectModel project = modelWithEdition();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        project.addSelection(categories);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(categories);
+        panel.refresh();
+
+        assertSame(categories, panel.selectedUserObject());
+        assertTrue(button(panel, "Rename vocabulary").isEnabled());
+        assertTrue(button(panel, "Add vocabulary").isEnabled());
+        assertFalse(button(panel, "Add field").isEnabled());
+        assertTrue(button(panel, "Remove").isEnabled());
+
+        panel.selectClass(project.rootClass());
+        assertTrue(button(panel, "Rename class").isEnabled());
+        assertTrue(button(panel, "Add class").isEnabled());
+    }
+
+    @Test void anImportedSelectionCannotBeRenamedOrRemovedByTheImporter() {
+        GeneratedProjectModel project = modelWithEdition();
+        VocabularySelection categories = new VocabularySelection("Categories");
+        categories.importedFrom("Shared Vocabularies");
+        project.addSelection(categories);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(categories);
+
+        assertFalse(button(panel, "Rename vocabulary").isEnabled());
+        assertFalse(button(panel, "Remove").isEnabled());
+    }
+
+    @Test void anOwnedPopulationCanBeRemovedAndAnImportedOneCannot() {
+        GeneratedProjectModel project = modelWithEdition();
+        PopulationSelection owned = new PopulationSelection(
+                "PositionWithHoldersPopulation");
+        owned.className("PositionWithHolders");
+        owned.instanceQids(List.of("Q1", "Q2"));
+        project.addSelection(owned);
+        PopulationSelection imported = new PopulationSelection("SharedPositions");
+        imported.className("Position");
+        imported.importedFrom("Historical Positions");
+        project.addSelection(imported);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectSelection(owned);
+        assertTrue(button(panel, "Remove population").isEnabled(),
+                "a population owned here can be deleted and recreated explicitly");
+
+        panel.selectSelection(imported);
+        assertFalse(button(panel, "Remove population").isEnabled(),
+                "an imported population remains owned by its source model");
+    }
+
+    @Test void aConfirmedPopulationRemovalIsImmediatelyPartOfTheWorkingInventory() {
+        GeneratedProjectModel project = modelWithEdition();
+        PopulationSelection population = new PopulationSelection("OldPopulation");
+        population.className("Nomination");
+        population.instanceQids(List.of("Q1"));
+        project.addSelection(population);
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        AtomicInteger changes = new AtomicInteger();
+        panel.onModelChanged(changes::incrementAndGet);
+
+        assertTrue(panel.removeSelection(population));
+
+        assertNull(project.findSelection("OldPopulation"));
+        assertEquals(1, changes.get(),
+                "a later cancelled command must not be the first observer of the removal");
+    }
+
+    private static GeneratedProjectModel modelWithEdition() {
+        GeneratedProjectModel p = new GeneratedProjectModel();
+        GeneratedClassModel nom = new GeneratedClassModel("Nomination");
+        nom.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE);
+        p.addClass(nom);
+        p.rootClass(nom);
+        return p;
+    }
+
+    // Regression: after copyContentsFrom (a load/reload) swaps in FRESH model
+    // objects, refresh() must re-bind the selection to the LIVE new field — not
+    // silently fail on the old identity and leave the editor on an orphan (whose
+    // edits are then lost on save). This is the persistence bug behind edition's
+    // Subject-default/Required not sticking.
+    @Test void refreshRebindsSelectionToLiveObjectAfterModelSwap() {
+        GeneratedProjectModel project = modelWithEdition();
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        GeneratedFieldModel oldEdition = project.rootClass().fields().get(0);
+        panel.selectField(oldEdition);
+        assertSame(oldEdition, panel.selectedUserObject());
+
+        // A fresh model with the SAME names but NEW object instances (what load does).
+        GeneratedProjectModel reloaded = modelWithEdition();
+        GeneratedFieldModel newEdition = reloaded.rootClass().fields().get(0);
+        assertNotNull(newEdition);
+
+        project.copyContentsFrom(reloaded);   // project now holds the NEW objects
+        panel.refresh();
+
+        Object nowSelected = panel.selectedUserObject();
+        assertSame(newEdition, nowSelected,
+                "editor must re-bind to the live (new) edition field, not the orphan");
+    }
+
+    @Test void aTreeRefreshCannotUndoAClassRenameThroughAStaleEditor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrizes");
+        prize.statementSource(new StatementClassSource("P166"));
+        project.rootClass(prize);
+
+        SingleRootClassModelPanel tree = new SingleRootClassModelPanel(project);
+        ModelSourceWorkbenchPanel editor = new ModelSourceWorkbenchPanel(project);
+        editor.edit(prize); // editor still displays NobelPrizes
+        tree.addTreeSelectionListener(event ->
+                editor.changeSelection(tree.selectedUserObject()));
+
+        project.renameClass("NobelPrizes", "NobelPrize");
+        tree.refresh();
+        editor.applyEdits();
+
+        assertEquals("NobelPrize", prize.className(),
+                "a transient empty tree selection must not reapply the old editor name");
+    }
+
+    private static <T extends java.awt.Component> T find(
+            java.awt.Container root, Class<T> type) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (type.isInstance(child)) return type.cast(child);
+            if (child instanceof java.awt.Container container) {
+                T found = findOrNull(container, type);
+                if (found != null) return found;
+            }
+        }
+        throw new AssertionError("No " + type.getSimpleName());
+    }
+
+    private static <T extends java.awt.Component> T findOrNull(
+            java.awt.Container root, Class<T> type) {
+        try { return find(root, type); }
+        catch (AssertionError ignored) { return null; }
+    }
+
+    private static JButton button(java.awt.Container root, String text) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof JButton button && text.equals(button.getText())) return button;
+            if (child instanceof java.awt.Container container) {
+                try { return button(container, text); }
+                catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No button " + text);
+    }
+
+    /**
+     * The tree's root row spelled "Domain:" whatever the project was, so a model created
+     * through New… was labelled as the kind the dialog had just been used to reject. The
+     * kind names itself; nothing else should spell it.
+     */
+    @Test void theTreeRootNamesTheProjectKindItActuallyIs() {
+        for (GeneratedProjectModel.ProjectKind kind
+                : GeneratedProjectModel.ProjectKind.values()) {
+            GeneratedProjectModel project = new GeneratedProjectModel();
+            project.name("People");
+            project.projectKind(kind);
+            project.rootClass(new GeneratedClassModel("Person"));
+
+            SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+            JTree tree = find(panel, JTree.class);
+            DefaultMutableTreeNode root =
+                    (DefaultMutableTreeNode) tree.getModel().getRoot();
+            java.awt.Component rendered = tree.getCellRenderer()
+                    .getTreeCellRendererComponent(tree, root, false, false, false, 0, false);
+
+            assertEquals(kind + ": People", ((javax.swing.JLabel) rendered).getText());
+        }
+    }
+
+    /**
+     * An imported class is owned by the model it comes from and is not edited here. The
+     * class itself stays removable: dropping an import ends the use, which is the one
+     * thing about it this project does decide.
+     */
+    @Test void theEditActionsOfAnImportedClassAreLocked() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("Nobel");
+        project.rootClass(new GeneratedClassModel("Prize"));
+
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        GeneratedFieldModel importedField = imported.addField(
+                "givenName", FieldType.STRING, FieldCardinality.SINGLE);
+        project.addClass(imported);
+
+        GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
+        GeneratedFieldModel myField = mine.addField(
+                "year", FieldType.STRING, FieldCardinality.SINGLE);
+        project.addClass(mine);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton addField = button(panel, "Add field");
+        JButton remove = button(panel, "Remove");
+
+        panel.selectClass(imported);
+        assertFalse(addField.isEnabled(), "cannot add a field to an imported class");
+        assertTrue(remove.isEnabled(), "but the import itself can be dropped");
+
+        panel.selectField(importedField);
+        assertFalse(remove.isEnabled(), "cannot remove an imported class's field");
+
+        panel.selectClass(mine);
+        assertTrue(addField.isEnabled(), "a class this project wrote is unaffected");
+        panel.selectField(myField);
+        assertTrue(remove.isEnabled());
+    }
+
+    @Test void theDerivedOwnerReferenceCannotBeRemoved() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(person);
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        project.addClass(discovery);
+        GeneratedFieldModel owner = discovery.fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow();
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        panel.selectField(owner);
+
+        assertFalse(button(panel, "Remove").isEnabled(),
+                "the class kind owns the derived owner-reference declaration");
+    }
+
+    /**
+     * The name is how an imported class names its owner, so the importing project cannot
+     * change it — not through the tree, and not by typing in the class editor.
+     */
+    @Test void anImportedClassCannotBeRenamedFromTheTree() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
+        GeneratedClassModel mine = new GeneratedClassModel("Ceremony");
+        project.addClass(mine);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton rename = button(panel, "Rename class");
+
+        panel.selectClass(imported);
+        assertFalse(rename.isEnabled(), "an imported class is named by the model that owns it");
+
+        panel.selectClass(mine);
+        assertTrue(rename.isEnabled(), "a class this project wrote renames as before");
+    }
+
+    /** The tree marks an imported class with its owning model; a copy carries no mark. */
+    @Test void theTreeMarksAnImportedClassAndItsOwner() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        assertTrue(renderedTextOf(panel, imported).contains("imported from People"),
+                "the owning model is visible on the class row");
+        assertFalse(renderedTextOf(panel, project.rootClass()).contains("imported"),
+                "a class this project wrote carries no marker");
+    }
+
+    private static String renderedTextOf(
+            SingleRootClassModelPanel panel, Object userObject) {
+        JTree tree = find(panel, JTree.class);
+        DefaultMutableTreeNode node = nodeFor(
+                (DefaultMutableTreeNode) tree.getModel().getRoot(), userObject);
+        assertNotNull(node, "node for " + userObject);
+        return ((JLabel) tree.getCellRenderer().getTreeCellRendererComponent(
+                tree, node, false, true, false, 0, false)).getText();
+    }
+
+    private static DefaultMutableTreeNode nodeFor(
+            DefaultMutableTreeNode from, Object userObject) {
+        if (from.getUserObject() == userObject) return from;
+        for (int i = 0; i < from.getChildCount(); i++) {
+            DefaultMutableTreeNode hit = nodeFor(
+                    (DefaultMutableTreeNode) from.getChildAt(i), userObject);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    /**
+     * The Uses section is present exactly when something is imported, and it
+     * configures nothing — selecting it must not open an editor, because reporting what
+     * a project took from elsewhere is inspection.
+     */
+    @Test void theTreeReportsWhatIsImportedAndOffersNoEditorForIt() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+
+        SingleRootClassModelPanel before = new SingleRootClassModelPanel(project);
+        assertNull(nodeFor((DefaultMutableTreeNode)
+                        find(before, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "nothing imported, so nothing to report");
+
+        GeneratedClassModel imported = new GeneratedClassModel("Name");
+        imported.importedFrom("People");
+        project.addClass(imported);
+        project.addImport(new domain.config.ModelImport(
+                "People", java.util.List.of("Name")));
+
+        SingleRootClassModelPanel after = new SingleRootClassModelPanel(project);
+        DefaultMutableTreeNode uses = nodeFor((DefaultMutableTreeNode)
+                        find(after, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES);
+        assertNotNull(uses, "an imported class puts its owner on the tree");
+        assertEquals(1, uses.getChildCount());
+        assertEquals("People", ((domain.config.ModelUse)
+                ((DefaultMutableTreeNode) uses.getChildAt(0)).getUserObject())
+                .modelName());
+
+        assertFalse(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "Uses reports, it does not configure");
+        assertTrue(SingleRootClassModelPanel.isConfigurable(
+                SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES),
+                "the vocabulary section still opens its editor");
+    }
+
+    /**
+     * Copy, paste and import are separate commands because they are separate acts.
+     * Copy takes the class in front of the reader and asks nothing; paste is where the
+     * decision is; import is not a copy at all.
+     */
+    @Test void copyAndImportAreDistinctCommands() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        assertNotNull(button(panel, "Copy class"));
+        assertNotNull(button(panel, "Paste class…"));
+        assertNotNull(button(panel, "Import class…"));
+    }
+
+    /**
+     * A copy carries no mark, because it belongs to this project and claims nothing.
+     * If a copy were marked, the marking would stop meaning "owned elsewhere".
+     */
+    @Test void aCopiedClassIsNotMarkedAsImported() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        GeneratedClassModel copied = new GeneratedClassModel("Name");
+        project.addClass(copied);
+
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+
+        assertFalse(copied.isImported());
+        assertFalse(renderedTextOf(panel, copied).contains("imported"));
+        assertNull(nodeFor((DefaultMutableTreeNode)
+                        find(panel, JTree.class).getModel().getRoot(),
+                SingleRootClassModelPanel.ConfigurationSection.USES),
+                "a copy is not a use of anything");
+    }
+
+    /** Paste needs something copied, not a class selected — it is not about the tree. */
+    @Test void pasteIsOfferedOnlyWhenSomethingHasBeenCopied() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(new GeneratedClassModel("Prize"));
+        SingleRootClassModelPanel panel = new SingleRootClassModelPanel(project);
+        JButton paste = button(panel, "Paste class…");
+
+        panel.selectClass(project.rootClass());
+        assertFalse(paste.isEnabled(), "nothing copied yet");
+
+        boolean[] copied = {false};
+        panel.pasteAvailable(() -> copied[0]);
+        copied[0] = true;
+        // What the frame does after a copy, and the only thing that re-asks: selecting
+        // the already-selected node fires nothing.
+        panel.refresh();
+
+        assertTrue(paste.isEnabled(), "something copied, so there is something to paste");
+    }
+}

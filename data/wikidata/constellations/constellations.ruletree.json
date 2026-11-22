@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "Constellation",
     "itemVar" : "constellation",
     "sourceQid" : "Q8928",
@@ -20,12 +20,12 @@
     "membershipFilterIncludesDescendants" : false,
     "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "abbreviation",
       "propertyPid" : "P1813",
       "propertyLabel" : "IAU abbreviation",
@@ -38,7 +38,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "area",
       "propertyPid" : "P2046",
       "propertyLabel" : "area (deg2)",
@@ -51,7 +51,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "chart",
       "propertyPid" : "P18",
       "propertyLabel" : "image",
@@ -64,7 +64,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "hemisphere",
       "propertyPid" : "P361",
       "propertyLabel" : "part of",
@@ -77,7 +77,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "namedAfter",
       "propertyPid" : "P138",
       "propertyLabel" : "named after",
@@ -90,7 +90,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "sharesBorderWith",
       "propertyPid" : "P47",
       "propertyLabel" : "shares border with",
@@ -111,10 +111,10 @@
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
     "valueFilters" : [ "java.util.ArrayList", [ ] ],
     "edges" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleEdge",
+      "@class" : "domain.compile.rule.RuleEdge",
       "fieldName" : "stars",
       "childNode" : {
-        "@class" : "wikidata.explore.rule.RuleNode",
+        "@class" : "domain.compile.rule.RuleNode",
         "name" : "BrightStar",
         "itemVar" : "stars",
         "sourceQid" : "",
@@ -133,12 +133,12 @@
           "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q499138" ] ]
         },
         "labelConfig" : {
-          "@class" : "wikidata.explore.rule.RuleLabelConfig",
+          "@class" : "domain.compile.rule.RuleLabelConfig",
           "requireLabel" : true,
           "language" : "en"
         },
         "includedFields" : [ "java.util.ArrayList", [ {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "image",
           "propertyPid" : "P18",
           "propertyLabel" : "image",
@@ -151,7 +151,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "radius",
           "propertyPid" : "P2120",
           "propertyLabel" : "radius",
@@ -164,7 +164,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "diameter",
           "propertyPid" : "P2386",
           "propertyLabel" : "diameter",
@@ -177,7 +177,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "apparentMagnitude",
           "propertyPid" : "P1215",
           "propertyLabel" : "apparent magnitude",
@@ -200,7 +200,7 @@
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
         "valueFilters" : [ "java.util.ArrayList", [ {
-          "@class" : "wikidata.explore.filter.WikidataValueFilter",
+          "@class" : "domain.compile.filter.WikidataValueFilter",
           "fieldName" : "apparentMagnitude",
           "propertyPid" : "P1215",
           "propertyLabel" : "apparent magnitude",
@@ -224,10 +224,10 @@
       },
       "collection" : true
     }, {
-      "@class" : "wikidata.explore.rule.RuleEdge",
+      "@class" : "domain.compile.rule.RuleEdge",
       "fieldName" : "galaxies",
       "childNode" : {
-        "@class" : "wikidata.explore.rule.RuleNode",
+        "@class" : "domain.compile.rule.RuleNode",
         "name" : "Galaxy",
         "itemVar" : "galaxies",
         "sourceQid" : "",
@@ -243,12 +243,12 @@
         "membershipFilterIncludesDescendants" : true,
         "membershipFilterQualifierCondition" : null,
         "labelConfig" : {
-          "@class" : "wikidata.explore.rule.RuleLabelConfig",
+          "@class" : "domain.compile.rule.RuleLabelConfig",
           "requireLabel" : true,
           "language" : "en"
         },
         "includedFields" : [ "java.util.ArrayList", [ {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "image",
           "propertyPid" : "P18",
           "propertyLabel" : "image",
@@ -261,7 +261,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "radius",
           "propertyPid" : "P2120",
           "propertyLabel" : "radius",
@@ -274,7 +274,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "diameter",
           "propertyPid" : "P2386",
           "propertyLabel" : "diameter",
@@ -287,7 +287,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "apparentMagnitude",
           "propertyPid" : "P1215",
           "propertyLabel" : "apparent magnitude",
@@ -303,7 +303,7 @@
             "allowedQids" : [ "java.util.ImmutableCollections$List12", [ "Q4892529" ] ]
           }
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "morphologicalType",
           "propertyPid" : "P223",
           "propertyLabel" : "galaxy morphological type",
@@ -316,7 +316,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "redshift",
           "propertyPid" : "P1090",
           "propertyLabel" : "redshift",
@@ -329,7 +329,7 @@
           "membershipQualifierCondition" : null,
           "qualifierCondition" : null
         }, {
-          "@class" : "wikidata.explore.rule.RuleIncludedField",
+          "@class" : "domain.compile.rule.RuleIncludedField",
           "fieldName" : "distanceFromEarth",
           "propertyPid" : "P2583",
           "propertyLabel" : "distance from Earth",
@@ -349,7 +349,7 @@
         "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
         "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
         "valueFilters" : [ "java.util.ArrayList", [ {
-          "@class" : "wikidata.explore.filter.WikidataValueFilter",
+          "@class" : "domain.compile.filter.WikidataValueFilter",
           "fieldName" : "apparentMagnitude",
           "propertyPid" : "P1215",
           "propertyLabel" : "apparent magnitude",
@@ -362,10 +362,10 @@
           }
         } ] ],
         "edges" : [ "java.util.ArrayList", [ {
-          "@class" : "wikidata.explore.rule.RuleEdge",
+          "@class" : "domain.compile.rule.RuleEdge",
           "fieldName" : "stars",
           "childNode" : {
-            "@class" : "wikidata.explore.rule.RuleNode",
+            "@class" : "domain.compile.rule.RuleNode",
             "name" : "NamedGalaxyStar",
             "itemVar" : "stars",
             "sourceQid" : "",
@@ -381,12 +381,12 @@
             "membershipFilterIncludesDescendants" : true,
             "membershipFilterQualifierCondition" : null,
             "labelConfig" : {
-              "@class" : "wikidata.explore.rule.RuleLabelConfig",
+              "@class" : "domain.compile.rule.RuleLabelConfig",
               "requireLabel" : true,
               "language" : "en"
             },
             "includedFields" : [ "java.util.ArrayList", [ {
-              "@class" : "wikidata.explore.rule.RuleIncludedField",
+              "@class" : "domain.compile.rule.RuleIncludedField",
               "fieldName" : "image",
               "propertyPid" : "P18",
               "propertyLabel" : "image",
@@ -399,7 +399,7 @@
               "membershipQualifierCondition" : null,
               "qualifierCondition" : null
             }, {
-              "@class" : "wikidata.explore.rule.RuleIncludedField",
+              "@class" : "domain.compile.rule.RuleIncludedField",
               "fieldName" : "radius",
               "propertyPid" : "P2120",
               "propertyLabel" : "radius",
@@ -412,7 +412,7 @@
               "membershipQualifierCondition" : null,
               "qualifierCondition" : null
             }, {
-              "@class" : "wikidata.explore.rule.RuleIncludedField",
+              "@class" : "domain.compile.rule.RuleIncludedField",
               "fieldName" : "diameter",
               "propertyPid" : "P2386",
               "propertyLabel" : "diameter",
@@ -425,7 +425,7 @@
               "membershipQualifierCondition" : null,
               "qualifierCondition" : null
             }, {
-              "@class" : "wikidata.explore.rule.RuleIncludedField",
+              "@class" : "domain.compile.rule.RuleIncludedField",
               "fieldName" : "apparentMagnitude",
               "propertyPid" : "P1215",
               "propertyLabel" : "apparent magnitude",
@@ -448,7 +448,7 @@
             "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
             "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
             "valueFilters" : [ "java.util.ArrayList", [ {
-              "@class" : "wikidata.explore.filter.WikidataValueFilter",
+              "@class" : "domain.compile.filter.WikidataValueFilter",
               "fieldName" : "apparentMagnitude",
               "propertyPid" : "P1215",
               "propertyLabel" : "apparent magnitude",

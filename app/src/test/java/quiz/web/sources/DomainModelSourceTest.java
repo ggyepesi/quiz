@@ -2,7 +2,7 @@ package quiz.web.sources;
 
 import org.junit.jupiter.api.Test;
 import objectview.Viewable;
-import quiz.transform.DynamicViewable;
+import domain.transform.DynamicViewable;
 import domain.DomainField;
 import domain.DomainModel;
 import quiz.web.ViewableStore;

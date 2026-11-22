@@ -3,9 +3,9 @@ package wikidata.explore.query.result;
 import objectview.Viewable;
 import objectview.field.FieldSet;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
-import wikidata.explore.model.MembershipPattern;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.config.MembershipPattern;
 
 import java.io.File;
 import java.util.List;

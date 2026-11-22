@@ -1,7 +1,7 @@
 package quiz.web.sources;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import java.util.List;
 import java.util.Map;

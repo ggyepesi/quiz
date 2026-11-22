@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "NobelPrize",
     "itemVar" : "nobelPrize",
     "sourceQid" : "",
@@ -17,7 +17,7 @@
     "membershipPid" : "",
     "membershipQid" : "",
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },

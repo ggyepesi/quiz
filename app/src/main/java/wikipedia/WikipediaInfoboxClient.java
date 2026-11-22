@@ -2,8 +2,8 @@ package wikipedia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datasource.evidence.InfoboxParameters;
-import datasource.evidence.WikipediaFragment;
+import domain.datasource.evidence.InfoboxParameters;
+import domain.datasource.evidence.WikipediaFragment;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import work.Query;

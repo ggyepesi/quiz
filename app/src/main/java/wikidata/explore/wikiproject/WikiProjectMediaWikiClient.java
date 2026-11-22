@@ -1,6 +1,6 @@
 package wikidata.explore.wikiproject;
 
-import datasource.http.SharedHttpTransport;
+import domain.datasource.http.SharedHttpTransport;
 import objectview.utils.RetryAfter;
 
 import java.io.IOException;

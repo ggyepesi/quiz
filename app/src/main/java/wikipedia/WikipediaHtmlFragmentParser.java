@@ -1,8 +1,8 @@
 package wikipedia;
 
-import datasource.evidence.ArticleIntroduction;
-import datasource.evidence.WikipediaArticle;
-import datasource.evidence.WikipediaFragment;
+import domain.datasource.evidence.ArticleIntroduction;
+import domain.datasource.evidence.WikipediaArticle;
+import domain.datasource.evidence.WikipediaFragment;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;

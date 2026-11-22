@@ -4,17 +4,17 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.query.template.sparql.SparqlQueries;
+import wikidata.query.template.sparql.SparqlQueries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Discovers which Wikipedia-infobox (DBpedia {@code dbp:}) properties are

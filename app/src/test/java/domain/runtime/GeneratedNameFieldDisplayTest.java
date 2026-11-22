@@ -1,0 +1,90 @@
+package domain.runtime;
+
+import objectview.field.FieldRef;
+import objectview.field.FieldRole;
+import objectview.field.FieldSchema;
+import org.junit.jupiter.api.Test;
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * A generated model's name field IS the class's display, so a generated snapshot must
+ * carry it as DISPLAY — otherwise TransformApp shows the synthetic "Display label" for a
+ * generated domain (Constellations) while a re-exported reflection domain (countries) shows
+ * its real name. This makes the two paths agree.
+ */
+class GeneratedNameFieldDisplayTest {
+
+    private static FieldRole roleOf(FieldSchema schema, String field) {
+        return schema.fields().stream()
+                .filter(f -> f.name().equals(field))
+                .findFirst().map(FieldRef::role).orElse(null);
+    }
+
+    @Test void generatedNameFieldIsDeclaredAsDisplay() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel star = new GeneratedClassModel("Star");
+        star.fields().add(GeneratedFieldModel.nameField());
+        star.addField("apparentMagnitude", FieldType.STRING, FieldCardinality.SINGLE);
+        project.addClass(star);
+
+        SnapshotFieldGraph.Builder builder = SnapshotFieldGraph.builder();
+        builder.declare(project);
+        SnapshotFieldGraph graph = builder.build();
+        FieldSchema schema = graph.fieldSchema("Star", Set.of());
+
+        assertEquals(FieldRole.DISPLAY, roleOf(schema, "name"),
+                "the model's name field must be the DISPLAY field");
+        assertEquals(FieldRole.NONE, roleOf(schema, "apparentMagnitude"),
+                "an ordinary field is not the display");
+    }
+
+    @Test void generatedDeclarationCannotLeakInternalTypesIntoTheFieldGraph() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel internal = new GeneratedClassModel("__subject_Nomination");
+        project.addClass(internal);
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        nominee.baseClassName("__subject_Nomination");
+        nominee.addField("plumbing", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("__subject_Nomination");
+        project.addClass(nominee);
+
+        SnapshotFieldGraph.Builder builder = SnapshotFieldGraph.builder();
+        builder.declare(project);
+        SnapshotFieldGraph graph = builder.build();
+
+        assertFalse(graph.types.containsKey("__subject_Nomination"));
+        assertNull(graph.types.get("Nominee").baseType,
+                "an internal base name must not survive as a second leak path");
+    }
+
+    @Test void anOwnedClassDeclaresItsDerivedOwnerAsAnOrdinaryReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        project.addClass(name);
+
+        SnapshotFieldGraph.Builder builder = SnapshotFieldGraph.builder();
+        builder.declare(project);
+        FieldRef owner = builder.build().fieldSchema("Name", Set.of()).fields().stream()
+                .filter(field -> field.name().equals("owner"))
+                .findFirst().orElseThrow();
+
+        assertEquals(FieldRole.NONE, owner.role());
+        assertTrue(owner.annotatedReference());
+        assertEquals(domain.config.OwnedClassSemantics.OWNER_ROLE,
+                owner.targetType(),
+                "the schema names the owner role; each value still carries its concrete "
+                        + "owner type");
+    }
+}

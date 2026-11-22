@@ -5,11 +5,11 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Reference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.group.ViewableGroup;
-import quiz.transform.app.ViewableToWdo;
-import quiz.transform.ui.ReflectionDomain;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import domain.group.ViewableGroup;
+import domain.transform.app.ViewableToWdo;
+import domain.transform.ui.ReflectionDomain;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -111,18 +111,18 @@ class GeneratedSourceGroupingTest {
     @Test
     void aModelConfiguredGroupIsServedWithoutATransformSnapshotRoot(
             @TempDir Path dir) throws Exception {
-        wikidata.explore.model.GeneratedProjectModel model =
-                new wikidata.explore.model.GeneratedProjectModel();
-        wikidata.explore.model.GeneratedClassModel deity = model.rootClass();
+        domain.config.GeneratedProjectModel model =
+                new domain.config.GeneratedProjectModel();
+        domain.config.GeneratedClassModel deity = model.rootClass();
         deity.className("Deity");
-        wikidata.explore.model.GeneratedClassModel group =
-                new wikidata.explore.model.GeneratedClassModel("DeityGroup");
+        domain.config.GeneratedClassModel group =
+                new domain.config.GeneratedClassModel("DeityGroup");
         model.addClass(group);
-        wikidata.explore.model.GeneratedFieldModel members = group.addField(
-                "members", datasource.schema.FieldType.ENTITY,
-                wikidata.explore.model.FieldCardinality.COLLECTION);
+        domain.config.GeneratedFieldModel members = group.addField(
+                "members", domain.datasource.schema.FieldType.ENTITY,
+                domain.config.FieldCardinality.COLLECTION);
         members.entityClassName("Deity");
-        group.groupSpec(new wikidata.explore.model.GroupClassSpec("members"));
+        group.groupSpec(new domain.config.GroupClassSpec("members"));
 
         WikidataDynamicObject ra = new WikidataDynamicObject("Q11768", "Ra");
         ra.type("Deity");
@@ -135,7 +135,7 @@ class GeneratedSourceGroupingTest {
         File modelFile = dir.resolve("deities.model.json").toFile();
         new WikidataDynamicObjectJsonStore().saveWithFieldGraph(
                 List.of(ra, ennead), snapshot, model);
-        new wikidata.explore.model.GeneratedProjectModelStore().save(model, modelFile);
+        new domain.config.GeneratedProjectModelStore().save(model, modelFile);
 
         GeneratedSource source = new GeneratedSource("Deity", snapshot, modelFile);
         objectview.group.ViewableGroup<?> root = source.rootGroup();
@@ -246,12 +246,12 @@ class GeneratedSourceGroupingTest {
 
     @Test
     void producedGroupRulesSurviveSnapshotRoundTrip(@TempDir Path dir) throws Exception {
-        quiz.transform.DynamicViewable paris =
-                new quiz.transform.DynamicViewable("Paris", "Paris");
+        domain.transform.DynamicViewable paris =
+                new domain.transform.DynamicViewable("Paris", "Paris");
         paris.type("City");
         paris.put("region", "Europe");
-        quiz.transform.DynamicViewable tokyo =
-                new quiz.transform.DynamicViewable("Tokyo", "Tokyo");
+        domain.transform.DynamicViewable tokyo =
+                new domain.transform.DynamicViewable("Tokyo", "Tokyo");
         tokyo.type("City");
         tokyo.put("region", "Asia");
         DomainModel base = new DomainModel() {
@@ -268,10 +268,10 @@ class GeneratedSourceGroupingTest {
                 return objectview.Viewable.class;
             }
         };
-        quiz.transform.ui.TransformController controller =
-                new quiz.transform.ui.TransformController(base, null);
-        quiz.transform.EditableGroup root =
-                (quiz.transform.EditableGroup) controller.groupRoot("City");
+        domain.transform.ui.TransformController controller =
+                new domain.transform.ui.TransformController(base, null);
+        domain.transform.EditableGroup root =
+                (domain.transform.EditableGroup) controller.groupRoot("City");
         controller.addFacetGroup("City", root, "Regions",
                 new DomainField("City", "region", false, false));
 
@@ -288,19 +288,19 @@ class GeneratedSourceGroupingTest {
 
         var loaded = store.loadAllWithFieldGraph(snapshot);
         objectview.group.ViewableGroup<?> adapted =
-                quiz.transform.app.DynamicViewableGroup.adapt(
+                domain.transform.app.DynamicViewableGroup.adapt(
                         loaded.groupRootBindings().get(0).root());
         assertEquals("facet", adapted.getChildren().iterator().next()
                 .fields().read("producer"));
         assertEquals(java.util.Optional.of(objectview.field.FieldPath.of("region")),
-                quiz.transform.FacetGroup.fieldPathOf(
+                domain.transform.FacetGroup.fieldPathOf(
                         adapted.getChildren().iterator().next()),
                 "the saved group still declares which question field Categorize hides");
-        quiz.transform.EditableGroup restored = quiz.transform.EditableGroup.copyOf(adapted);
-        assertInstanceOf(quiz.transform.FacetGroup.class,
+        domain.transform.EditableGroup restored = domain.transform.EditableGroup.copyOf(adapted);
+        assertInstanceOf(domain.transform.FacetGroup.class,
                 restored.getChildren().iterator().next());
-        quiz.transform.FacetGroup facet =
-                (quiz.transform.FacetGroup) restored.getChildren().iterator().next();
+        domain.transform.FacetGroup facet =
+                (domain.transform.FacetGroup) restored.getChildren().iterator().next();
         assertEquals("region", facet.field());
         assertEquals("Regions", facet.name());
     }

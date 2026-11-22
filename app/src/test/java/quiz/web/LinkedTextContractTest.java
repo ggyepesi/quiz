@@ -6,7 +6,7 @@ import objectview.ViewableAdapter;
 import objectview.annotations.Reference;
 import objectview.field.LinkedTextSequence;
 import org.junit.jupiter.api.Test;
-import quiz.source.WikidataStatementSource;
+import domain.provenance.WikidataStatementSource;
 
 import java.net.URI;
 import java.net.http.HttpClient;

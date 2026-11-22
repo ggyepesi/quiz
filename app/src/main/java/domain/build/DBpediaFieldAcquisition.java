@@ -1,0 +1,87 @@
+package domain.build;
+
+import domain.datasource.api.SourceExecutionPlan;
+import wikidata.WikidataSparqlClient;
+import domain.runtime.DBpediaEnrichment;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ * Applies resolved DBpedia field bindings to every applicable class in a pool.
+ *
+ * <p>This is intentionally broader than the compatibility path it replaced, which
+ * considered only the root class. Generate Domain and Enrich already hold the complete
+ * graph; ignoring a configured source merely because its owner is referenced would make
+ * the execution plan lie.
+ */
+public final class DBpediaFieldAcquisition {
+    private DBpediaFieldAcquisition() { }
+
+    public static Result apply(GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool, SourceExecutionPlan sourcePlan,
+            WikidataSparqlClient dbpedia, GenerationLog log) throws Exception {
+        if (model == null || pool == null || pool.isEmpty() || sourcePlan == null)
+            return new Result(0, 0);
+        GenerationLog sink = log == null ? GenerationLog.NOOP : log;
+        DBpediaEnrichment acquisition = new DBpediaEnrichment();
+        int fields = 0;
+        int values = 0;
+        for (Work work : worklist(model, sourcePlan, sink)) {
+            GeneratedClassModel owner = work.owner();
+            List<WikidataDynamicObject> targets = pool.stream()
+                    .filter(object -> FieldSourceTargeting.applies(
+                            model, object, owner, work.target())).toList();
+            if (targets.isEmpty()) continue;
+            fields++;
+            values += acquisition.enrich(
+                    targets, owner, dbpedia, sink::message, List.of(work.request()));
+        }
+        return new Result(fields, values);
+    }
+
+    private static List<Work> worklist(
+            GeneratedProjectModel model, SourceExecutionPlan sourcePlan, GenerationLog log) {
+        List<Work> result = new ArrayList<>();
+        for (SourceExecutionPlan.Step step :
+                sourcePlan.steps(domain.datasource.api.BindingScope.FIELD_VALUE)) {
+            var spec = step.prepared().configuration(
+                    domain.datasource.dbpedia.DbpediaDatasourceProvider.PropertySpec.class);
+            if (spec == null) continue;
+            GeneratedClassModel owner = model.findClass(step.target().className());
+            if (owner == null) continue;
+            String path = step.target().fieldPath();
+            if (path.contains(".")) {
+                log.message("DBpedia field skipped: " + owner.className() + "." + path
+                        + " — nested paths are not yet supported.\n");
+                continue;
+            }
+            var field = domain.config.OwnedFieldSources.declaredField(
+                    model, owner.className(), path);
+            if (field == null) {
+                log.message("DBpedia field skipped: " + owner.className() + "." + path
+                        + " — the field no longer exists.\n");
+                continue;
+            }
+            if (field.isNameField()) {
+                log.message("DBpedia field skipped: " + owner.className() + "." + path
+                        + " — name fields are supplied by class-name bindings.\n");
+                continue;
+            }
+            result.add(new Work(owner, step.target(),
+                    new DBpediaEnrichment.FieldRequest(field, spec.property(),
+                            spec.fillOnlyMissing())));
+        }
+        return List.copyOf(result);
+    }
+
+    public record Result(int fields, int values) { }
+
+    private record Work(GeneratedClassModel owner,
+            domain.datasource.api.SourceBindingTarget target,
+            DBpediaEnrichment.FieldRequest request) { }
+}

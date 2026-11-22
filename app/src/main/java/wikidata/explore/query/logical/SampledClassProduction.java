@@ -1,21 +1,21 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.compiled.CompiledClass;
-import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.extract.RuleTreeExtractor;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.EntityBound;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.rule.RuleTreeCompiler;
-import wikidata.explore.transform.ModelStatementReifications;
-import wikidata.explore.transform.QualifierLoadConfig;
-import wikidata.explore.transform.QualifierLoader;
-import wikidata.explore.transform.TransformEngine;
+import domain.compile.CompiledClass;
+import domain.compile.CompiledProjectModel;
+import domain.runtime.GenerationLog;
+import domain.runtime.RuleTreeExtractor;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.EntityBound;
+import domain.config.GeneratedProjectModel;
+import domain.config.MembershipPattern;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
+import domain.compile.rule.RuleNode;
+import domain.compile.rule.RuleTreeCompiler;
+import domain.compile.transform.ModelStatementReifications;
+import domain.compile.transform.QualifierLoadConfig;
+import domain.compile.transform.QualifierLoader;
+import domain.compile.transform.TransformEngine;
 import work.QueryContext;
 
 import java.util.ArrayList;

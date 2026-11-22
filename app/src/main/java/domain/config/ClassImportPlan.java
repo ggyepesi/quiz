@@ -1,0 +1,424 @@
+package domain.config;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * An authored class configuration and the model declarations it depends on.
+ * Snapshot objects, observed vocabulary members, counts and curation are not part
+ * of a {@link GeneratedProjectModel}, so they cannot accidentally cross domains.
+ */
+public final class ClassImportPlan {
+
+    // A name already here is replaced, or the whole thing is cancelled — the two
+    // answers an ordinary copy/paste offers. A third, "keep what is here and reuse it",
+    // was a second way to ask the same question, and what it achieved is reached more
+    // plainly by deselecting the dependency or renaming what is here first.
+
+    private final GeneratedProjectModel source;
+    private final GeneratedProjectModel target;
+    private final String requestedClass;
+    private final List<GeneratedClassModel> classes;
+    private final List<Selection> selections;
+    private final List<EntityKindRule> kindRules;
+    private final List<EntityRepresentationRule> representationRules;
+    private final Set<String> conflicts;
+
+    private ClassImportPlan(
+            GeneratedProjectModel source,
+            GeneratedProjectModel target,
+            String requestedClass,
+            List<GeneratedClassModel> classes,
+            List<Selection> selections,
+            List<EntityKindRule> kindRules,
+            List<EntityRepresentationRule> representationRules,
+            Set<String> conflicts) {
+        this.source = source;
+        this.target = target;
+        this.requestedClass = requestedClass;
+        this.classes = List.copyOf(classes);
+        this.selections = List.copyOf(selections);
+        this.kindRules = List.copyOf(kindRules);
+        this.representationRules = List.copyOf(representationRules);
+        this.conflicts = Set.copyOf(conflicts);
+    }
+
+    public static ClassImportPlan of(
+            GeneratedProjectModel source,
+            GeneratedProjectModel target,
+            String className) {
+        if (source == null || target == null) {
+            throw new IllegalArgumentException("Source and target models are required");
+        }
+        GeneratedClassModel requested = source.findClass(className);
+        if (requested == null) {
+            throw new IllegalArgumentException("Source class not found: " + className);
+        }
+
+        LinkedHashMap<String, GeneratedClassModel> closure = new LinkedHashMap<>();
+        ArrayDeque<GeneratedClassModel> pending = new ArrayDeque<>();
+        pending.add(requested);
+        while (!pending.isEmpty()) {
+            GeneratedClassModel clazz = pending.removeFirst();
+            if (closure.putIfAbsent(clazz.className(), clazz) != null) continue;
+            addClassDependency(source, pending, clazz.baseClassName());
+            if (clazz.statementSource() != null) {
+                addClassDependency(source, pending,
+                        clazz.statementSource().sourceClassName());
+            }
+            collectFieldClassDependencies(source, pending, clazz.fields());
+            source.entityRepresentationRules().stream()
+                    .filter(rule -> rule != null
+                            && rule.roleClassName().equals(clazz.className()))
+                    .forEach(rule -> addClassDependency(source, pending,
+                            rule.representationClassName()));
+        }
+
+        LinkedHashSet<String> selectionNames = new LinkedHashSet<>();
+        for (GeneratedClassModel clazz : closure.values()) {
+            if (clazz.statementSource() != null) {
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().subjectBound());
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().objectBound());
+                collectBoundSelection(selectionNames,
+                        clazz.statementSource().discoveryObjectBound());
+            }
+            collectSubclassSelection(selectionNames, clazz.subclassCondition());
+            collectFieldSelections(source, selectionNames, clazz.fields());
+        }
+        // Role selections are declarations over an imported class/field and belong
+        // with that class even when no field points back to the selection by name.
+        for (Selection selection : source.selections()) {
+            if (selection instanceof RoleSelection role
+                    && closure.containsKey(role.ownerClassName())) {
+                selectionNames.add(role.name());
+            } else if (selection instanceof PopulationSelection population
+                    && closure.containsKey(population.className())) {
+                selectionNames.add(population.name());
+            }
+        }
+
+        List<Selection> selections = source.selections().stream()
+                .filter(s -> s != null && selectionNames.contains(s.name()))
+                .toList();
+        List<EntityKindRule> rules = source.entityKindRules().stream()
+                .filter(r -> r != null && closure.containsKey(r.className()))
+                .toList();
+        List<EntityRepresentationRule> representations =
+                source.entityRepresentationRules().stream()
+                        .filter(rule -> rule != null
+                                && closure.containsKey(rule.roleClassName())
+                                && closure.containsKey(
+                                        rule.representationClassName()))
+                        .toList();
+        LinkedHashSet<String> conflicts = new LinkedHashSet<>();
+        closure.keySet().stream().filter(n -> target.findClass(n) != null)
+                .forEach(conflicts::add);
+        selections.stream().map(Selection::name)
+                .filter(n -> target.findSelection(n) != null).forEach(conflicts::add);
+
+        return new ClassImportPlan(source, target, requested.className(),
+                new ArrayList<>(closure.values()), selections, rules,
+                representations, conflicts);
+    }
+
+    public String requestedClass() { return requestedClass; }
+    public List<GeneratedClassModel> classes() { return classes; }
+    public List<Selection> selections() { return selections; }
+    public List<EntityKindRule> kindRules() { return kindRules; }
+    public Set<String> conflicts() { return conflicts; }
+
+    /**
+     * Conflicts for the requested operation. Re-importing a declaration already owned
+     * by the same model is a refresh, not a collision; copy still replaces by name.
+     */
+    public Set<String> conflicts(Ownership ownership) {
+        if (ownership != Ownership.IMPORT) return conflicts;
+        LinkedHashSet<String> refused = new LinkedHashSet<>();
+        for (GeneratedClassModel sourceClass : classes) {
+            GeneratedClassModel existing = target.findClass(sourceClass.className());
+            String owner = sourceClass.isImported()
+                    ? sourceClass.importedFrom() : source.name();
+            if (existing != null && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                refused.add(sourceClass.className());
+            }
+        }
+        for (Selection selection : selections) {
+            Selection existing = target.findSelection(selection.name());
+            String owner = selection.isImported()
+                    ? selection.importedFrom() : source.name();
+            if (existing != null && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                refused.add(selection.name());
+            }
+        }
+        return Set.copyOf(refused);
+    }
+
+    public Set<String> dependencyClassNames() {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        classes.stream().map(GeneratedClassModel::className)
+                .filter(n -> !requestedClass.equals(n)).forEach(names::add);
+        return names;
+    }
+
+    /** Apply selected classes; declarations required by those classes follow them. */
+    /**
+     * Whether the classes land as this project's own or as the source model's.
+     *
+     * <p>These are different acts, not settings of one. COPY eases configuring a class
+     * that resembles another: the result is the copier's, freely editable, with no
+     * lasting relationship. IMPORT uses a model's class where it stands: the class is
+     * shown and referenced here and edited only in the model that owns it.
+     */
+    public enum Ownership { COPY, IMPORT }
+
+    public List<GeneratedClassModel> apply(Set<String> selectedClassNames) {
+        return apply(selectedClassNames, Ownership.COPY);
+    }
+
+    public List<GeneratedClassModel> apply(
+            Set<String> selectedClassNames,
+            Ownership ownership) {
+        LinkedHashSet<String> selected = new LinkedHashSet<>();
+        if (selectedClassNames != null) selected.addAll(selectedClassNames);
+        selected.add(requestedClass);
+        if (ownership == Ownership.IMPORT) {
+            classes.stream().map(GeneratedClassModel::className).forEach(selected::add);
+        }
+        validateSelectedClosure(selected);
+
+        GeneratedProjectModel candidate = target.copy();
+        Set<String> existingErrors = GeneratedProjectModelValidator.validate(target)
+                .errors().stream().map(Object::toString)
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<GeneratedClassModel> imported = new ArrayList<>();
+        LinkedHashMap<String, List<String>> references = new LinkedHashMap<>();
+        for (GeneratedClassModel sourceClass : classes) {
+            if (!selected.contains(sourceClass.className())) continue;
+            String owner = sourceClass.isImported()
+                    ? sourceClass.importedFrom() : source.name();
+            GeneratedClassModel existing = candidate.findClass(sourceClass.className());
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import " + owner + "."
+                        + sourceClass.className() + ": a local or differently owned class "
+                        + "already has that name. Rename or remove it explicitly first.");
+            }
+            GeneratedClassModel copy = sourceClass.copy();
+            // An import is owned by the model it names, and that ownership survives
+            // being passed along: importing a class the source had itself imported
+            // still points at the model that owns it, not at the relay. A copy claims
+            // nothing, so it arrives owned by nobody but this project.
+            if (ownership == Ownership.COPY) {
+                copy.importedFrom("");
+            } else {
+                copy.importedFrom(owner);
+                references.computeIfAbsent(owner, ignored -> new ArrayList<>())
+                        .add(copy.className());
+            }
+            candidate.replaceClass(copy);
+            imported.add(copy);
+        }
+
+        Set<String> requiredSelections = requiredSelectionNames(selected);
+        for (Selection selection : selections) {
+            if (!requiredSelections.contains(selection.name())) continue;
+            Selection existing = candidate.findSelection(selection.name());
+            String owner = selection.isImported()
+                    ? selection.importedFrom() : source.name();
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import " + owner + "."
+                        + selection.name() + ": a local or differently owned selection "
+                        + "already has that name. Rename or remove it explicitly first.");
+            }
+            Selection copy = selection.copy();
+            if (ownership == Ownership.COPY) copy.importedFrom("");
+            else copy.importedFrom(owner);
+            candidate.replaceSelection(copy);
+        }
+        for (EntityKindRule rule : kindRules) {
+            if (!selected.contains(rule.className())) continue;
+            EntityKindRule existing = candidate.entityKindRules().stream()
+                    .filter(item -> item.className().equals(rule.className())
+                            && item.propertyPid().equals(rule.propertyPid()))
+                    .findFirst().orElse(null);
+            String owner = rule.isImported() ? rule.importedFrom() : source.name();
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import the " + owner
+                        + " entity-kind rule for " + rule.className()
+                        + ": a local or differently owned rule already targets it.");
+            }
+            EntityKindRule copy = rule.copy();
+            if (ownership == Ownership.COPY) copy.importedFrom("");
+            else copy.importedFrom(owner);
+            candidate.replaceEntityKindRule(copy);
+        }
+        for (EntityRepresentationRule rule : representationRules) {
+            if (!selected.contains(rule.roleClassName())
+                    || !selected.contains(rule.representationClassName())) continue;
+            String owner = rule.isImported() ? rule.importedFrom() : source.name();
+            EntityRepresentationRule existing = candidate.entityRepresentationRules()
+                    .stream().filter(item -> item.roleClassName().equals(
+                                    rule.roleClassName())
+                            && item.representationClassName().equals(
+                                    rule.representationClassName()))
+                    .findFirst().orElse(null);
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import the " + owner
+                        + " representation " + rule.roleClassName() + " → "
+                        + rule.representationClassName()
+                        + ": a local or differently owned rule already defines it.");
+            }
+            EntityRepresentationRule copy = rule.copy();
+            copy.importedFrom(ownership == Ownership.IMPORT ? owner : "");
+            candidate.replaceEntityRepresentationRule(copy);
+        }
+        if (ownership == Ownership.IMPORT) {
+            references.forEach((owner, names) ->
+                    candidate.addImport(new ModelImport(owner, names)));
+        }
+
+        // Import/copy is an explicit topology change. Refresh the derived, read-only
+        // owner target before validating the candidate, just as load/save do; never
+        // invent the Owner vocabulary class here.
+        OwnedClassSemantics.synchronizeOwnerReferences(candidate);
+
+        List<GeneratedProjectModelValidator.Problem> introduced =
+                GeneratedProjectModelValidator.validate(candidate).errors().stream()
+                        .filter(problem -> !existingErrors.contains(problem.toString()))
+                        .toList();
+        if (!introduced.isEmpty()) {
+            throw new IllegalStateException("The copied fragment would make the model invalid:\n"
+                    + introduced.stream().map(Object::toString)
+                            .collect(java.util.stream.Collectors.joining("\n")));
+        }
+        target.copyContentsFrom(candidate);
+        return List.copyOf(imported);
+    }
+
+    private void validateSelectedClosure(Set<String> selected) {
+        LinkedHashSet<String> missing = new LinkedHashSet<>();
+        for (GeneratedClassModel clazz : classes) {
+            if (!selected.contains(clazz.className())) continue;
+            for (String dependency : directClassDependencies(source, clazz)) {
+                if (!selected.contains(dependency) && target.findClass(dependency) == null) {
+                    missing.add(clazz.className() + " → " + dependency);
+                }
+            }
+        }
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("Select the missing class dependencies:\n"
+                    + String.join("\n", missing));
+        }
+    }
+
+    private Set<String> requiredSelectionNames(Set<String> selected) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        for (GeneratedClassModel clazz : classes) {
+            if (!selected.contains(clazz.className())) continue;
+            if (clazz.statementSource() != null) {
+                collectBoundSelection(names, clazz.statementSource().subjectBound());
+                collectBoundSelection(names, clazz.statementSource().objectBound());
+                collectBoundSelection(names, clazz.statementSource().discoveryObjectBound());
+            }
+            collectSubclassSelection(names, clazz.subclassCondition());
+            collectFieldSelections(source, names, clazz.fields());
+        }
+        for (Selection selection : selections) {
+            if (selection instanceof RoleSelection role
+                    && selected.contains(role.ownerClassName())) names.add(role.name());
+            else if (selection instanceof PopulationSelection population
+                    && selected.contains(population.className())) names.add(population.name());
+        }
+        return names;
+    }
+
+    private static void collectBoundSelection(
+            Set<String> names, EntityBound bound) {
+        if (bound != null && bound.kind() == EntityBound.Kind.VOCABULARY
+                && !bound.selectionName().isBlank()) names.add(bound.selectionName());
+    }
+
+    private static void collectSubclassSelection(
+            Set<String> names, SubclassCondition condition) {
+        if (condition != null && condition.populationBased()
+                && !condition.selectionName().isBlank()) names.add(condition.selectionName());
+    }
+
+    private static Set<String> directClassDependencies(
+            GeneratedProjectModel source, GeneratedClassModel clazz) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (source.findClass(clazz.baseClassName()) != null) names.add(clazz.baseClassName());
+        if (clazz.statementSource() != null
+                && source.findClass(clazz.statementSource().sourceClassName()) != null) {
+            names.add(clazz.statementSource().sourceClassName());
+        }
+        source.entityRepresentationRules().stream()
+                .filter(rule -> rule != null
+                        && rule.roleClassName().equals(clazz.className())
+                        && source.findClass(rule.representationClassName()) != null)
+                .map(EntityRepresentationRule::representationClassName)
+                .forEach(names::add);
+        collectFieldClassNames(source, names, clazz.fields());
+        return names;
+    }
+
+    private static void addClassDependency(
+            GeneratedProjectModel source, ArrayDeque<GeneratedClassModel> pending,
+            String name) {
+        GeneratedClassModel dependency = source.findClass(name);
+        if (dependency != null) pending.add(dependency);
+    }
+
+    private static void collectFieldClassDependencies(
+            GeneratedProjectModel source, ArrayDeque<GeneratedClassModel> pending,
+            List<GeneratedFieldModel> fields) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            addClassDependency(source, pending, field.entityClassName());
+            collectFieldClassDependencies(source, pending, field.fields());
+        }
+    }
+
+    private static void collectFieldClassNames(
+            GeneratedProjectModel source, Set<String> names,
+            List<GeneratedFieldModel> fields) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            if (source.findClass(field.entityClassName()) != null) {
+                names.add(field.entityClassName());
+            }
+            collectFieldClassNames(source, names, field.fields());
+        }
+    }
+
+    private static void collectFieldSelections(
+            GeneratedProjectModel source, Set<String> names,
+            List<GeneratedFieldModel> fields) {
+        if (fields == null) return;
+        for (GeneratedFieldModel field : fields) {
+            if (field == null) continue;
+            if (source.findSelection(field.entityClassName()) != null) {
+                names.add(field.entityClassName());
+            }
+            collectFieldSelections(source, names, field.fields());
+        }
+    }
+}

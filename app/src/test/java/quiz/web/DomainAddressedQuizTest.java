@@ -2,7 +2,7 @@ package quiz.web;
 
 import objectview.Viewable;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import java.util.ArrayList;
 import java.util.Collection;

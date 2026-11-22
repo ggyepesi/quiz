@@ -1,6 +1,6 @@
 package language;
 
-import quiz.group.ViewableGroup;
+import domain.group.ViewableGroup;
 
 import java.util.List;
 import java.util.Map;

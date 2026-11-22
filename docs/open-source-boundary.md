@@ -47,7 +47,7 @@ what the author configured. A `DatasourceProvider` resolves it into a prepared,
 provider-owned operation. The execution plan validates conflicting targets and
 records what will acquire data versus what an existing acquisition pass retains.
 
-The present `datasource.api.SourceExecutionPlan` is the beginning of this seam,
+The present `domain.datasource.api.SourceExecutionPlan` is the beginning of this seam,
 not the finished public API. Today some prepared families still execute at their
 existing Wikidata generation boundaries. Extraction is complete only when the
 engine owns orchestration without duplicating those carefully tuned batching,
@@ -171,7 +171,7 @@ adapter may translate the existing `GeneratedProjectModel` into the headless dom
 definition, but the public engine must not accept that UI-era model directly.
 
 `DomainModel` currently mixes a useful domain contract with declarations referring
-to `wikidata.explore.model`. That is evidence that the persistent domain definition
+to `domain.config`. That is evidence that the persistent domain definition
 and the served/curatable snapshot view still need to be separated before extraction.
 
 ## Extraction sequence

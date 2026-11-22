@@ -1,16 +1,16 @@
 package wikidata.explore.query.logical;
 
-import datasource.schema.FieldType;
+import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.FakeWikidataApiClient;
-import wikidata.explore.model.FieldProductionKind;
-import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.model.VocabularySelection;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.config.FieldProductionKind;
+import domain.config.FieldCardinality;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.StatementClassSource;
+import domain.config.VocabularySelection;
+import wikidata.query.core.WikidataAccess;
 
 import java.util.List;
 import java.util.Map;
@@ -43,7 +43,7 @@ class SampleStatementClassQueryTest {
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
         nomination.canonical().keyFields().addAll(
-                wikidata.explore.model.StatementIdentity.structuralKey(nomination));
+                domain.config.StatementIdentity.structuralKey(nomination));
         project.addClass(nomination);
 
         RecordingSparql sparql = new RecordingSparql();

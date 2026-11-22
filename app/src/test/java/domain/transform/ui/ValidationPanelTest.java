@@ -1,0 +1,172 @@
+package domain.transform.ui;
+
+import objectview.field.FieldPath;
+import org.junit.jupiter.api.Test;
+import domain.curation.ScopeFilter;
+import domain.runtime.SnapshotDomain;
+import domain.runtime.SnapshotFieldGraph;
+import domain.runtime.WikidataDynamicObject;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ValidationPanelTest {
+
+    /** DataSourceApp showed "Not configured in ModelBuilder" for DeityGroup.members, whose
+     *  primary source is relation routes: it asked only for a property. A declared
+     *  datasource binding is configured and is named by its registered operation. */
+    @Test void aFieldWhosePrimarySourceIsADatasourceOperationReadsAsConfigured() {
+        domain.datasource.api.SourceBinding routes = new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.fieldValue("DeityGroup", "members",
+                        domain.datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new domain.datasource.api.SourceRecipe("wikidata", "relation-routes",
+                        java.util.Map.of("routes", "[]")));
+
+        assertEquals("Source: Bounded relation routes", ValidationPanel.configuredSource(
+                null, routes, "Source: ", "Not configured in ModelBuilder"));
+        assertEquals("Not configured in ModelBuilder", ValidationPanel.configuredSource(
+                null, null, "Source: ", "Not configured in ModelBuilder"));
+        domain.config.FieldSourceMapping property =
+                new domain.config.FieldSourceMapping();
+        property.propertyPid("P1082");
+        property.propertyLabel("population");
+        assertEquals("Source: population (P1082)", ValidationPanel.configuredSource(
+                property, null, "Source: ", "Not configured in ModelBuilder"));
+    }
+
+    @Test void baseTypeCountIncludesSubtypeInstances() {
+        WikidataDynamicObject state = object("Q1", "State");
+        WikidataDynamicObject usState = object("Q2", "USState");
+
+        SnapshotFieldGraph graph = new SnapshotFieldGraph();
+        SnapshotFieldGraph.TypeShape stateType =
+                new SnapshotFieldGraph.TypeShape();
+        stateType.name = "State";
+        stateType.member = true;
+        SnapshotFieldGraph.TypeShape usStateType =
+                new SnapshotFieldGraph.TypeShape();
+        usStateType.name = "USState";
+        usStateType.baseType = "State";
+        usStateType.member = true;
+        graph.types.put("State", stateType);
+        graph.types.put("USState", usStateType);
+
+        SnapshotDomain domain = new SnapshotDomain(List.of(state, usState), graph);
+
+        assertEquals(2,
+                ValidationPanel.membersOf(domain, domain.instances(), "State").size());
+        assertEquals(1,
+                ValidationPanel.membersOf(domain, domain.instances(), "USState").size());
+    }
+
+    @Test void selectedFieldUsesExplicitMissingPresentOrAllScope() {
+        WikidataDynamicObject state = object("Q1", "State");
+        WikidataDynamicObject usStateWithDate = object("Q2", "USState");
+        usStateWithDate.put("admissionDate", "1959-01-03");
+        WikidataDynamicObject usStateWithoutDate = object("Q3", "USState");
+
+        SnapshotFieldGraph graph = new SnapshotFieldGraph();
+        SnapshotFieldGraph.TypeShape stateType = new SnapshotFieldGraph.TypeShape();
+        stateType.name = "State";
+        stateType.member = true;
+        SnapshotFieldGraph.TypeShape usStateType = new SnapshotFieldGraph.TypeShape();
+        usStateType.name = "USState";
+        usStateType.baseType = "State";
+        usStateType.member = true;
+        graph.types.put("State", stateType);
+        graph.types.put("USState", usStateType);
+        SnapshotDomain domain = new SnapshotDomain(
+                List.of(state, usStateWithDate, usStateWithoutDate), graph);
+
+        List<WikidataDynamicObject> all =
+                List.of(state, usStateWithDate, usStateWithoutDate);
+        assertEquals(List.of(usStateWithDate), ValidationPanel.membersWithFieldScope(
+                domain, all, "USState", "admissionDate", ScopeFilter.PRESENT));
+        assertEquals(List.of(usStateWithoutDate), ValidationPanel.membersWithFieldScope(
+                domain, all, "USState", "admissionDate", ScopeFilter.MISSING));
+        assertEquals(List.of(usStateWithDate, usStateWithoutDate),
+                ValidationPanel.membersWithFieldScope(
+                        domain, all, "USState", "admissionDate", ScopeFilter.ALL));
+    }
+
+    @Test void coverageOfSubtypeFieldExcludesOrdinaryBaseInstances() {
+        WikidataDynamicObject state = object("Q1", "State");
+        WikidataDynamicObject usStateWithDate = object("Q2", "USState");
+        usStateWithDate.put("admissionDate", "1959-01-03");
+        WikidataDynamicObject usStateWithoutDate = object("Q3", "USState");
+
+        SnapshotFieldGraph graph = new SnapshotFieldGraph();
+        SnapshotFieldGraph.TypeShape stateType = new SnapshotFieldGraph.TypeShape();
+        stateType.name = "State";
+        stateType.member = true;
+        SnapshotFieldGraph.TypeShape usStateType = new SnapshotFieldGraph.TypeShape();
+        usStateType.name = "USState";
+        usStateType.baseType = "State";
+        usStateType.member = true;
+        graph.types.put("State", stateType);
+        graph.types.put("USState", usStateType);
+        SnapshotDomain domain = new SnapshotDomain(
+                List.of(state, usStateWithDate, usStateWithoutDate), graph);
+
+        FieldCoverageColumns columns = new FieldCoverageColumns(
+                domain, () -> "State",
+                () -> List.of(state, usStateWithDate, usStateWithoutDate));
+        FieldCoverageColumns.Coverage coverage =
+                columns.coverage(FieldPath.parse(
+                        "@subtype:USState.admissionDate"));
+
+        assertEquals(2, coverage.eligible());
+        assertEquals(1, coverage.present());
+        assertEquals(1, coverage.missing());
+    }
+
+    @Test void identityCoverageDerivesFromTheStableIdentity() {
+        // A QID identity IS a Wikidata identity; a non-QID key has none. There is no
+        // stored source field — coverage is read from the identity itself.
+        WikidataDynamicObject identified = new WikidataDynamicObject("Q1", "Universe");
+        WikidataDynamicObject unresolved =
+                new WikidataDynamicObject("unresolved", "unresolved");
+
+        assertEquals("Q1", domain.provenance.SourceIdentities.wikidataQid(identified));
+        assertNull(domain.provenance.SourceIdentities.wikidataQid(unresolved));
+    }
+
+    @Test void coverageFansOutMapAndArrayIntermediates() {
+        WikidataDynamicObject first = object("first", "Nested");
+        first.put("value", "present");
+        WikidataDynamicObject root = object("root", "Root");
+        root.put("mapped", java.util.Map.of("first", first));
+        root.put("array", new WikidataDynamicObject[] {first});
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                FieldCoverageColumns.hasValue(
+                        root, FieldPath.parse("mapped.value")));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                FieldCoverageColumns.hasValue(
+                        root, FieldPath.parse("array.value")));
+    }
+
+    @Test void coverageCanBeInvalidatedAfterInPlaceCuration() {
+        WikidataDynamicObject state = object("Q1", "State");
+        List<WikidataDynamicObject> members = List.of(state);
+        SnapshotDomain domain = new SnapshotDomain(members);
+        FieldCoverageColumns columns = new FieldCoverageColumns(
+                domain, () -> "State", () -> members);
+
+        assertEquals(0, columns.coverage(FieldPath.of("capital")).present());
+        state.put("capital", "Example");
+        assertEquals(0, columns.coverage(FieldPath.of("capital")).present());
+        columns.invalidate();
+        assertEquals(1, columns.coverage(FieldPath.of("capital")).present());
+    }
+
+    private static WikidataDynamicObject object(String id, String type) {
+        WikidataDynamicObject object = new WikidataDynamicObject(id, id);
+        object.type(type);
+        return object;
+    }
+}

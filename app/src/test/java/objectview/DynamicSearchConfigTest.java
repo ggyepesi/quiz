@@ -4,7 +4,7 @@ import objectview.field.ViewableFieldPaths;
 import objectview.search.SearchAndSort;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicViewable;
+import domain.transform.DynamicViewable;
 
 import java.util.List;
 import java.util.Map;

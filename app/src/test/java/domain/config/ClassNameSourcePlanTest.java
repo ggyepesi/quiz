@@ -1,0 +1,139 @@
+package domain.config;
+
+import domain.datasource.schema.FieldType;
+
+import domain.datasource.Datasources;
+import org.junit.jupiter.api.Test;
+import wikidata.api.FactDemand;
+import domain.build.GenerationFactDemandPlan;
+
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ClassNameSourcePlanTest {
+
+    @Test void onlySourceClassesDeclareWikidataLabelsAndAliases() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.classKind(ClassKind.OWNED);
+        GeneratedFieldModel structuredName = person.addField(
+                "structuredName", domain.datasource.schema.FieldType.ENTITY, FieldCardinality.SINGLE);
+        structuredName.entityClassName("Name");
+        structuredName.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        model.rootClass(person);
+        model.addClass(name);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+
+        assertEquals(Set.of("Person"), ClassNameSourcePlan.labels(plan));
+        assertEquals(Set.of("Person"), ClassNameSourcePlan.aliases(plan));
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Person")
+                && d.metadata().contains(FactDemand.EntityMetadata.ALIASES)));
+        assertFalse(demands.stream().anyMatch(d -> d.targetClass().equals("Name")
+                && !d.metadata().isEmpty()),
+                "an owned projection derives its name and must not acquire entity aliases");
+    }
+
+    /**
+     * A category or infobox source is read from an ARTICLE, and a QID names one by its
+     * sitelink — so the first acquisition must carry it. Aliases taught this the
+     * expensive way: undemanded, the fact store rightly refused the cached document
+     * and the whole 11,154-subject population was fetched a second time.
+     */
+    @Test void anArticleBackedSourceDemandsTheSitelinkThatNamesIt() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        var country = movie.addField("country", FieldType.STRING, FieldCardinality.SINGLE);
+        // put(), not sourceBindings().add(): compiling a plan re-derives the field-value
+        // slots from the legacy mapping, so a binding merely appended is erased before
+        // the plan sees it. put() back-projects, which is what makes it survive.
+        FieldSourceBindings.put(country, new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.fieldValue("Movie", "country",
+                        domain.datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                new domain.datasource.api.SourceRecipe("wikipedia", "infobox-parameter",
+                        java.util.Map.of("property", "Infobox film.country"))));
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        model.rootClass(movie);
+        model.addClass(person);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Movie")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)),
+                "the class whose field reads an article: " + demands);
+        assertFalse(demands.stream().anyMatch(d -> d.targetClass().equals("Person")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)),
+                "and no other, or every population pays for an article it never reads");
+    }
+
+    @Test void aCategorySourceAlsoDemandsItsArticleCorrespondence() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel movie = new GeneratedClassModel("Movie");
+        // A category relation that produces values reads entities, not text — the
+        // fixture said STRING and nothing checked it until planning began compiling.
+        var location = movie.addField(
+                "location", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        FieldSourceBindings.put(location, new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.fieldValue("Movie", "location",
+                        domain.datasource.api.SourceBindingSlot.CATEGORY_EVIDENCE),
+                new domain.datasource.api.SourceRecipe("wikipedia", "category",
+                        java.util.Map.of("pattern", "Films set in <value>"))));
+        model.rootClass(movie);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Movie")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+    }
+
+    @Test void aConfiguredWikipediaSourceDemandsAndExposesTheCorrespondence() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel body = new GeneratedClassModel("CelestialBody");
+        GeneratedClassModel moon = new GeneratedClassModel("Moon");
+        moon.baseClassName("CelestialBody");
+        model.rootClass(body);
+        model.addClass(moon);
+        ClassSourceBindings.wikipediaArticle(body, true);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+        var demands = GenerationFactDemandPlan.compile(model, plan).all();
+
+        assertEquals(Set.of("CelestialBody", "Moon"),
+                ArticleCorrespondencePlan.classes(model, plan));
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("CelestialBody")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+        assertTrue(demands.stream().anyMatch(d -> d.targetClass().equals("Moon")
+                && d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)));
+    }
+
+    @Test void aMissingPlanDoesNotPretendEveryClassUsesAnArticle() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass(new GeneratedClassModel("Movie"));
+
+        assertFalse(GenerationFactDemandPlan.compile(model).all().stream().anyMatch(d ->
+                        d.metadata().contains(FactDemand.EntityMetadata.SITELINKS)),
+                "legacy name defaults are not evidence of an article-backed source");
+    }
+
+    @Test void anExplicitPlanMayDeclineAliasesWithoutDecliningTheLabel() {
+        var label = new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.classNames(
+                        "Person", domain.datasource.api.SourceBindingSlot.CLASS_LABEL),
+                new domain.datasource.api.SourceRecipe(
+                        domain.datasource.wikidata.WikidataDatasourceProvider.ID,
+                        domain.datasource.wikidata.WikidataDatasourceProvider.LABEL,
+                        java.util.Map.of()));
+        var plan = domain.datasource.api.SourceExecutionPlan.compile(
+                java.util.List.of(label), Datasources.standard());
+
+        assertEquals(Set.of("Person"), ClassNameSourcePlan.labels(plan));
+        assertTrue(ClassNameSourcePlan.aliases(plan).isEmpty());
+    }
+}

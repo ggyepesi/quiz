@@ -3,18 +3,18 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.model.RuleDirection;
-import wikidata.explore.query.core.Datasource;
+import domain.config.RuleDirection;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.transform.QualifierLoadConfig;
+import domain.compile.rule.RuleNode;
+import domain.compile.transform.QualifierLoadConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Generic qualifier discovery for a RELATIONAL membership: sample some members,
@@ -24,7 +24,7 @@ import wikidata.explore.query.core.WikidataAccess;
  * — for Oscars (P1411 → categories) it finds for-work / year / nominee on its own;
  * for awards (P166) it would find year / for-work, for positions (P39)
  * start/end/district, etc. The discovered qualifiers feed a {@link
- * QualifierLoadConfig} (see {@link wikidata.explore.transform.QualifierLoadConfigs}).
+ * QualifierLoadConfig} (see {@link domain.compile.transform.QualifierLoadConfigs}).
  *
  * <p>Restricts the statements to the membership target set (the same QIDs that
  * define membership), so a generic relation like P1411 (also used by BAFTA/Globes)

@@ -1,7 +1,7 @@
 package wikidata.explore.demo.constraint;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.workbench.CachedPropertyViewablePanel;
+import domain.workbench.modelbuilder.ui.CachedPropertyViewablePanel;
 
 import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;

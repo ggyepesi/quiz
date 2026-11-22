@@ -11,9 +11,9 @@ import java.util.TreeSet;
 import language.Language;
 import objectview.annotations.Hidden;
 import objectview.annotations.Reference;
-import quiz.group.ViewableGroup;
+import domain.group.ViewableGroup;
 import objectview.media.ImagePane;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 public class State extends ManualEntity {
     @DisplayField private final String name;

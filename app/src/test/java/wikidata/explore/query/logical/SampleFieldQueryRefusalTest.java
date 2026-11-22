@@ -1,12 +1,12 @@
 package wikidata.explore.query.logical;
 
-import datasource.schema.FieldType;
+import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedFieldModel;
-import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.model.FieldSampleContext;
+import domain.config.FieldCardinality;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.StatementClassSource;
+import domain.config.FieldSampleContext;
 
 import static org.junit.jupiter.api.Assertions.*;
 

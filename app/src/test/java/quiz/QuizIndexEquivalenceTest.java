@@ -103,7 +103,7 @@ class QuizIndexEquivalenceTest {
         Random random = new Random(42L);
         for (int domain = 0; domain < 100; domain++) {
             Map<String, Item> items = randomDomain(random, domain);
-            quiz.group.ViewableGroup selected = new quiz.group.ViewableGroup("selected");
+            domain.group.ViewableGroup selected = new domain.group.ViewableGroup("selected");
             items.values().stream().filter(item -> random.nextBoolean())
                     .forEach(item -> selected.addMember(item, false));
             compare("grouped domain " + domain, items, queryConfig(true), answerConfig(),

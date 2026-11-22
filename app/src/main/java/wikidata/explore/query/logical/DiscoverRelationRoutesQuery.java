@@ -1,15 +1,15 @@
 package wikidata.explore.query.logical;
 
-import datasource.graph.GraphTraversalDirection;
-import datasource.graph.RelationRoute;
-import datasource.wikidata.WikidataRouteRelation;
+import domain.datasource.graph.GraphTraversalDirection;
+import domain.datasource.graph.RelationRoute;
+import domain.datasource.wikidata.WikidataRouteRelation;
 import batch.BatchFailure;
 import wikidata.WikidataBatchFailureClassifier;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
-import wikidata.explore.analysis.RelationRouteDiscovery;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.analysis.RelationRouteDiscovery;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import wikidata.statement.EntityStatementSummary;
 import work.Query;
 import work.QueryContext;

@@ -1,9 +1,9 @@
 package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.runtime.GenerationLog;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import work.QueryContext;
 import work.LogKind;
 import work.LogNode;

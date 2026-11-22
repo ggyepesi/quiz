@@ -2,14 +2,14 @@ package dataset;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import wikidata.explore.model.ClassKind;
-import wikidata.explore.model.ConstructInventory;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.PopulationSelection;
-import wikidata.explore.model.VocabularySelection;
-import wikidata.explore.model.ClassPopulationMode;
-import wikidata.explore.model.BuildOperation;
+import domain.config.ClassKind;
+import domain.config.ConstructInventory;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.PopulationSelection;
+import domain.config.VocabularySelection;
+import domain.config.ClassPopulationMode;
+import domain.config.BuildOperation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

@@ -2,7 +2,7 @@ package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.result.WikidataTextSearchResult;
 

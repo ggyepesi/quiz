@@ -1,15 +1,15 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.core.Datasource;
+import domain.config.GeneratedProjectModel;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.GenerationRun;
+import domain.build.GenerationPipeline;
+import domain.build.GenerationRun;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Expects a snapshot of the project model (see
@@ -20,29 +20,29 @@ public class GenerateInstancesQuery
         implements Query<GenerationRun> {
     private final GeneratedProjectModel projectModel;
     private final int depth;
-    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
-    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
+    private final domain.build.CompiledPipelineRun compiledRun;
+    private final domain.build.GenerationExecutionSettings executionSettings;
 
     public GenerateInstancesQuery(
             GeneratedProjectModel projectModel,
             int depth) {
 
-        this(wikidata.explore.generation.CompiledPipelineRun.compile(
-                        wikidata.explore.generation.PipelineRequest.generateClassPreview(
+        this(domain.build.CompiledPipelineRun.compile(
+                        domain.build.PipelineRequest.generateClassPreview(
                                 projectModel, projectModel.rootClass().className(), depth)),
-                new wikidata.explore.generation.GenerationExecutionSettings(), depth);
+                new domain.build.GenerationExecutionSettings(), depth);
     }
 
     public GenerateInstancesQuery(
-            wikidata.explore.generation.CompiledPipelineRun compiledRun,
-            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
+            domain.build.CompiledPipelineRun compiledRun,
+            domain.build.GenerationExecutionSettings executionSettings,
             int depth) {
 
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.compiledRun = compiledRun;
         this.projectModel = compiledRun.request().model();
         this.executionSettings = executionSettings == null
-                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                ? new domain.build.GenerationExecutionSettings()
                 : executionSettings;
         this.depth = depth;
     }
@@ -73,10 +73,10 @@ public class GenerateInstancesQuery
 
         if (compiledRun.blocked()) throw new IllegalStateException(compiledRun.explain());
 
-        datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
-                        projectModel, datasource.Datasources.standard());
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
+        domain.datasource.api.SourceExecutionPlan sourcePlan =
+                domain.config.ModelSourceExecutionPlan.synchronizeAndCompile(
+                        projectModel, domain.datasource.Datasources.standard());
+        context.message(domain.config.ModelSourceExecutionPlan.generationMessage(
                 sourcePlan));
 
         Map<String, String> stepParams = new LinkedHashMap<>();
@@ -100,8 +100,8 @@ public class GenerateInstancesQuery
                     step.request("Extraction — see sub-queries below.");
 
                     // message -> step request text; subquery -> a child log node.
-                    wikidata.explore.extract.GenerationLog genLog =
-                            new wikidata.explore.extract.GenerationLog() {
+                    domain.runtime.GenerationLog genLog =
+                            new domain.runtime.GenerationLog() {
                                 @Override public void message(String text) {
                                     context.message(text);
                                 }

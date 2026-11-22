@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Set;
 
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.PopulationSourceExecution;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.build.GenerationPipeline;
+import domain.build.PopulationSourceExecution;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.GeneratedProjectModel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

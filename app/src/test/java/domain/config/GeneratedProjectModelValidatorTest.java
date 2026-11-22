@@ -1,0 +1,908 @@
+package domain.config;
+
+import java.util.List;
+import domain.datasource.schema.FieldType;
+
+import org.junit.jupiter.api.Test;
+import domain.transform.FilterOperator;
+import domain.config.GeneratedProjectModelValidator.ValidationResult;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class GeneratedProjectModelValidatorTest {
+
+    @Test void materializedPopulationRequiresAClassOwnedTransformationSource() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.rootClass(input);
+        project.addClass(output);
+
+        ValidationResult missing = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(missing.valid());
+        assertTrue(missing.format().contains(
+                "Materialized transform class has no transformation source"), missing.format());
+
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(input.declarationId(), input.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
+
+    /** isSameOrSubclass is true for a class and itself, so a transformation reading its own
+     *  output passed as "extends its input" while it could never be materialized. */
+    @Test void aTransformationCannotReadItsOwnOutputClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        project.rootClass(input);
+        project.addClass(output);
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(output.declarationId(), output.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.format().contains("cannot read its own output class"),
+                result.format());
+    }
+
+    @Test void generatedPopulationCannotRetainATransformationSource() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel input = new GeneratedClassModel("Position");
+        GeneratedClassModel output = new GeneratedClassModel("PositionWithHolders");
+        output.baseClassName("Position");
+        TransformationClassSource source = new TransformationClassSource();
+        source.inputClassReference(input.declarationId(), input.className());
+        source.addStep(TransformationStep.filter(
+                "holderCount", FilterOperator.GREATER_THAN, 0, null));
+        output.transformationSource(source);
+        project.rootClass(input);
+        project.addClass(output);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.format().contains(
+                "A transformation source requires Materialized transform population"),
+                result.format());
+    }
+
+    @Test void aFieldUnionNamesExistingCompatiblePathsAndACollectionTarget() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel planet = new GeneratedClassModel("Planet");
+        GeneratedClassModel moon = new GeneratedClassModel("Moon");
+        GeneratedClassModel kind = new GeneratedClassModel("MoonKind");
+        project.rootClass(planet);
+        project.addClass(moon);
+        project.addClass(kind);
+        GeneratedFieldModel kinds = planet.addField(
+                "moonKinds", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        kinds.entityClassName("MoonKind");
+        GeneratedFieldModel typed = kind.addField(
+                "moons", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        typed.entityClassName("Moon");
+        GeneratedFieldModel all = planet.addField(
+                "allMoons", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        all.entityClassName("Moon");
+        all.mapping().productionKind(FieldProductionKind.UNION);
+        all.mapping().unionSourcePaths().add("moonKinds.moons");
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("moonKinds.unknown");
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("has no field 'unknown' on MoonKind"));
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("allMoons");
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("reads the field it is producing"));
+
+        all.mapping().unionSourcePaths().clear();
+        all.mapping().unionSourcePaths().add("moonKinds.moons");
+        all.cardinality(FieldCardinality.SINGLE);
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("must produce a collection"));
+    }
+
+    @Test void sourceContentKeyIsValidatedLikeEveryOtherModeledKey() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.classKind(ClassKind.SOURCE);
+        person.addField("canonicalName", FieldType.STRING, FieldCardinality.SINGLE);
+        person.canonical().keyFields().add("canonicalName");
+        project.rootClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), result.format());
+    }
+
+    @Test void representationRequiresAnExplicitTargetAdmission() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("Prize");
+        GeneratedClassModel laureate = new GeneratedClassModel("Laureate");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        project.rootClass(prize);
+        project.addClass(laureate);
+        project.addClass(person);
+        project.representationClasses(laureate, java.util.List.of("Person"));
+
+        ValidationResult missingAdmission = GeneratedProjectModelValidator.validate(project);
+        assertFalse(missingAdmission.valid());
+        assertTrue(missingAdmission.format().contains(
+                "Representation class 'Person' has no configured admission rule"));
+
+        project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+    }
+
+    @Test void monolingualTextRequiresACodeRatherThanAForeignLanguageQid() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        GeneratedFieldModel motivation = prize.addField(
+                "motivation", FieldType.TEXT, FieldCardinality.SINGLE);
+        motivation.mapping().valueLanguage("Q188"); // Swedish language item
+        project.rootClass(prize);
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.errors().stream().anyMatch(problem ->
+                        problem.location().equals("NobelPrize.motivation")
+                                && problem.message().contains("needs its language code")),
+                invalid.format());
+
+        motivation.mapping().valueLanguage("sv");
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                "the literal language code is the valid representation");
+    }
+
+    @Test void entityLanguageProjectionRequiresAQidOrTheDefaultCode() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel givenName = person.addField(
+                "givenName", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        givenName.mapping().valueLanguage("sv");
+        project.rootClass(person);
+
+        assertFalse(GeneratedProjectModelValidator.validate(project).valid());
+
+        givenName.mapping().valueLanguage("Q188");
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                "an entity-valued language projection uses the language entity QID");
+    }
+
+    // The invariant, not an example of it: validation must accept exactly what
+    // generation can resolve. These drifted once — the resolver preferred a property
+    // match and inverted, while validation counted class references alone and called
+    // the same model ambiguous, so a model that generated correctly failed to load.
+    @Test void validationAcceptsExactlyWhatGenerationCanResolve() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        var held = person.addField("held", FieldType.ENTITY, FieldCardinality.SINGLE);
+        held.entityClassName("Position");
+        held.mapping().propertyPid("P39");
+        var sought = person.addField("sought", FieldType.ENTITY, FieldCardinality.SINGLE);
+        sought.entityClassName("Position");
+        sought.mapping().propertyPid("P999");
+        project.addClass(person);
+        project.rootClass(person);
+
+        GeneratedClassModel position = new GeneratedClassModel("Position");
+        var holders = position.addField(
+                "holders", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        holders.entityClassName("Person");
+        holders.mapping().productionKind(FieldProductionKind.INVERT);
+        holders.mapping().propertyPid("P39");
+        project.addClass(position);
+
+        assertEquals(1, domain.compile.transform.ModelInverts.derive(project).size(),
+                "the property match resolves both references to one forward field");
+        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+                        .contains("choose the exact inverse field"),
+                "so validation must not call it ambiguous");
+
+        // Remove what disambiguated them and both sides must refuse together.
+        held.mapping().propertyPid("P999");
+        assertTrue(domain.compile.transform.ModelInverts.derive(project).isEmpty());
+        assertTrue(GeneratedProjectModelValidator.validate(project).format()
+                .contains("choose the exact inverse field"));
+    }
+
+    @Test void ambiguousInverseRequiresTheExactForwardField() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = new GeneratedFieldModel(
+                "offices", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        offices.entityClassName("OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(reference("source", "Person"));
+        holding.fields().add(reference("predecessor", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        ValidationResult ambiguous = GeneratedProjectModelValidator.validate(project);
+        assertTrue(ambiguous.format().contains("choose the exact inverse field"),
+                ambiguous.format());
+
+        offices.mapping().inverseField("source");
+        assertFalse(GeneratedProjectModelValidator.validate(project).format()
+                .contains("choose the exact inverse field"));
+    }
+
+    private static GeneratedFieldModel reference(String name, String target) {
+        GeneratedFieldModel field = new GeneratedFieldModel(
+                name, FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName(target);
+        return field;
+    }
+
+    private static GeneratedProjectModel oscarLikeProject() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("oscar-like");
+
+        project.addClass(new GeneratedClassModel("OscarNominations"));
+
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("OscarNominations", "P1411"));
+        nomination.instanceMapping().propertyPid("P1411");
+        nomination.addField("edition", FieldType.ENTITY, FieldCardinality.SINGLE)
+                  .entityClassName("Edition");
+        nomination.fields().get(nomination.fields().size() - 1).mapping()
+                .productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        nomination.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+        project.addClass(new GeneratedClassModel("Edition"));
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        nomination.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(nomination));
+        project.addClass(nomination);
+        return project;
+    }
+
+    @Test
+    void aBaseClassCycleIsAnError() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.name("cycle");
+        GeneratedClassModel alpha = new GeneratedClassModel("Alpha");
+        alpha.baseClassName("Beta");
+        GeneratedClassModel beta = new GeneratedClassModel("Beta");
+        beta.baseClassName("Alpha");
+        project.addClass(alpha);
+        project.addClass(beta);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream()
+                        .anyMatch(p -> p.message().contains("Class dependency cycle")
+                                && p.message().contains("extends")),
+                "one walker over every kind of class dependency, and the message still "
+                        + "says which kind to go and look at: " + result.format());
+    }
+
+    @Test
+    void unmodeledEntityRefIsAWarningNotABlockingError() {
+        GeneratedProjectModel project = oscarLikeProject();
+        // forWork -> ForWork, which is deliberately unmodeled (renders as a string).
+        project.findClass("Nomination")
+               .addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+               .entityClassName("ForWork");
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), "an unmodeled entity ref must not block the save");
+        assertTrue(result.warnings().stream()
+                         .anyMatch(p -> p.location().equals("Nomination.forWork")),
+                "but it is surfaced as a warning so a real typo stays visible");
+    }
+
+    @Test
+    void dottedTypedPathMatchValueFieldIsAccepted() {
+        GeneratedProjectModel project = oscarLikeProject();
+        // year = edition -> date.year: a typed projection, not a flat field of
+        // Nomination — the structural validator must not try to resolve it locally.
+        GeneratedFieldModel year = project.findClass("Nomination")
+                .addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.mapping().qualifierPid("P585");
+        year.mapping().subjectField("edition");
+        year.mapping().matchValueField("date.year");
+        year.mapping().matchRoleField("category");
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(),
+                "a dotted typed-path match value field is valid: " + result.format());
+    }
+
+    // Enforcement that a fallback policy only applies to a scalar entity qualifier
+    // lives in the reification runtime (ModelStatementReifications.fallbackRoles),
+    // not the validator — the validator only requires a qualifier PID. The
+    // scalar-entity rule itself is covered by StatementFieldSemanticsTest.
+
+    @Test
+    void aMissingQualifierPolicyOnAScalarEntityQualifierIsAccepted() {
+        GeneratedProjectModel project = oscarLikeProject();
+        GeneratedFieldModel edition = project.findClass("Nomination")
+                .addField("edition2", FieldType.ENTITY, FieldCardinality.SINGLE);
+        edition.mapping().qualifierPid("P805");
+        edition.mapping().missingQualifierPolicy(
+                MissingQualifierPolicy.STATEMENT_SUBJECT);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(),
+                "a scalar entity qualifier may carry a policy: " + result.format());
+    }
+
+    @Test
+    void aFlatUnknownMatchValueFieldStillErrors() {
+        GeneratedProjectModel project = oscarLikeProject();
+        // Only dotted paths are exempt — a plain misspelled field is still an error.
+        GeneratedFieldModel year = project.findClass("Nomination")
+                .addField("year", FieldType.DATE, FieldCardinality.SINGLE);
+        year.mapping().qualifierPid("P585");
+        year.mapping().matchValueField("nope");
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid(),
+                "a flat unknown match value field remains a blocking error");
+    }
+
+    @Test void aValidOwnedComponentNeedsNoOwnerConfigurationOnTheTarget() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        GeneratedFieldModel field = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        name.addField("givenName", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P735");
+        project.addClass(person);
+        project.addClass(name);
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), result.format());
+        assertTrue(MembershipPattern.describe(name, project)
+                .contains("Person.structuredName"));
+    }
+
+    @Test void extensionAndOwnedCompositionOfTheSameClassIsRejected() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.baseClassName("Name");
+        GeneratedFieldModel field = person.addField(
+                "structuredName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(name);
+        project.addClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("already is a Name")), result.format());
+    }
+
+    @Test void ownedSelfCycleHasOneClearDiagnostic() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        GeneratedFieldModel field = name.addField(
+                "birthName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        field.entityClassName("Name");
+        field.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertEquals(1, result.errors().stream()
+                .filter(problem -> problem.message().contains("Class dependency cycle")
+                        && problem.message().contains("is owned by"))
+                .count(), result.format());
+        assertFalse(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("through class extension")), result.format());
+    }
+
+    @Test void explicitOwnedClassIsConfiguredBeforeItHasAProducingField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        project.addClass(name);
+        project.addClass(new GeneratedClassModel("Owner"));
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), result.format());
+        assertEquals(MembershipPattern.OWNED_COMPONENT,
+                MembershipPattern.of(name, project));
+        assertTrue(MembershipPattern.describe(name, project)
+                .contains("no producing field yet"));
+    }
+
+    @Test void makingAClassOwnedClearsItsIndependentPopulation() {
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.membership(EntityBound.relation("P31", List.of("Q5"), false));
+        name.seedQids().add("Q42");
+
+        name.ownedClass(true);
+
+        assertTrue(name.instanceMapping().propertyPid().isBlank());
+        assertTrue(name.instanceMapping().sourceQid().isBlank());
+        assertTrue(name.seedQids().isEmpty());
+    }
+
+    @Test void ownedClassExtendsFieldsButNotTheBasePopulation() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel base = new GeneratedClassModel("BaseName");
+        base.ownedClass(true);
+        base.addField("language", FieldType.ENTITY, FieldCardinality.SINGLE);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.baseClassName("BaseName");
+        name.ownedClass(true);
+        project.addClass(base);
+        project.addClass(name);
+        project.addClass(new GeneratedClassModel("Owner"));
+
+        assertEquals(2, name.effectiveFields(project).size(),
+                "the inherited language field and the owned class's owner reference");
+        assertTrue(name.effectiveInstanceMapping(project).sourceQid().isBlank());
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid());
+    }
+
+    @Test void ownedClassCannotExtendAStatementClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel statement = new GeneratedClassModel("Nomination");
+        statement.statementSource(new StatementClassSource("Films", "P1411"));
+        GeneratedClassModel owned = new GeneratedClassModel("Name");
+        owned.baseClassName("Nomination");
+        owned.ownedClass(true);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        statement.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(statement));
+        project.addClass(statement);
+        project.addClass(owned);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only another Owned class")), result.format());
+    }
+
+    /** The owner reference is recognised by its stored production kind. A field the
+     *  author named {@code owner} is theirs: never rewritten, locked or replaced, and
+     *  the collision is reported so it is renamed where it was written. */
+    @Test void anAuthoredFieldNamedOwnerIsNeverTakenForTheOwnerReference() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel produced = person.addField(
+                "name", FieldType.ENTITY, FieldCardinality.SINGLE);
+        produced.entityClassName("Name");
+        produced.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        GeneratedFieldModel authored = name.addField(
+                "owner", FieldType.ENTITY, FieldCardinality.SINGLE);
+        authored.entityClassName("Organisation");
+        authored.renderMode(FieldRenderMode.REFERENCE);
+        name.ownedClass(true);
+        project.rootClass(person);
+        project.addClass(name);
+
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertEquals(List.of(authored), name.fields());
+        assertEquals("Organisation", authored.entityClassName());
+        assertEquals(FieldProductionKind.AUTO, authored.mapping().productionKind());
+        assertFalse(OwnedClassSemantics.isOwnerReferenceField(name, authored));
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("is reserved")), result.format());
+    }
+
+    @Test void everyProducerMustBeAcceptedByTheNamedOwnerRole() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel constellation = new GeneratedClassModel("Constellation");
+        GeneratedClassModel celestialBody = new GeneratedClassModel("CelestialBody");
+        GeneratedClassModel discovery = new GeneratedClassModel("Discovery");
+        discovery.ownedClass(true);
+        for (GeneratedClassModel producer : List.of(constellation, celestialBody)) {
+            GeneratedFieldModel site = producer.addField(
+                    "discovery", FieldType.ENTITY, FieldCardinality.SINGLE);
+            site.entityClassName("Discovery");
+            site.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+            project.addClass(producer);
+        }
+        project.addClass(discovery);
+        project.addClass(new GeneratedClassModel("Owner"));
+        OwnedClassSemantics.synchronizeOwnerReferences(project);
+        project.representationClasses(project.findClass("Owner"),
+                List.of("Constellation"));
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Owner → CelestialBody")), result.format());
+        assertFalse(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Owner → Constellation")), result.format());
+    }
+
+    @Test void anImportedConcreteOwnerTargetRejectsANewUnrelatedProducer() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel organisation = new GeneratedClassModel("Organisation");
+        GeneratedClassModel name = new GeneratedClassModel("Name");
+        name.ownedClass(true);
+        name.importedFrom("People");
+        name.fields().stream()
+                .filter(field -> OwnedClassSemantics.isOwnerReferenceField(name, field))
+                .findFirst().orElseThrow().entityClassName("Person");
+        for (GeneratedClassModel producer : List.of(person, organisation)) {
+            GeneratedFieldModel site = producer.addField(
+                    "name", FieldType.ENTITY, FieldCardinality.SINGLE);
+            site.entityClassName("Name");
+            site.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+            project.addClass(producer);
+        }
+        project.addClass(name);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Person → Organisation")), result.format());
+    }
+
+    @Test void ownedClassCannotExtendASourceClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.addClass(new GeneratedClassModel("BaseName"));
+        GeneratedClassModel owned = new GeneratedClassModel("Name");
+        owned.baseClassName("BaseName");
+        owned.ownedClass(true);
+        project.addClass(owned);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only another Owned class")), result.format());
+    }
+
+    @Test void statementSubjectIsRejectedOutsideAStatementClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel laureate = person.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        laureate.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        project.addClass(person);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("only on a Statement class")), result.format());
+    }
+
+    @Test void statementSubjectDoesNotAcceptAPropertyOrQualifier() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel laureate = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        laureate.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        laureate.mapping().propertyPid("P31");
+        project.addClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("must not declare a property or qualifier")),
+                result.format());
+    }
+
+    @Test void aStatementClassHasAtMostOneExplicitSubjectField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        for (String name : java.util.List.of("laureate", "recipient")) {
+            GeneratedFieldModel subject = prize.addField(
+                    name, FieldType.ENTITY, FieldCardinality.SINGLE);
+            subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        }
+        project.rootClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("at most one Statement subject")),
+                result.format());
+    }
+
+    @Test void aStatementClassHasAtMostOneExplicitObjectField() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel subject = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        for (String name : java.util.List.of("category", "otherCategory")) {
+            prize.addField(name, FieldType.ENTITY, FieldCardinality.SINGLE)
+                    .mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+        }
+        project.rootClass(people);
+        prize.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("at most one Statement object")),
+                result.format());
+    }
+
+    @Test void statementObjectIsSingleValuedWithoutItsOwnProperty() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        GeneratedFieldModel subject = prize.addField(
+                "laureate", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        GeneratedFieldModel object = prize.addField(
+                "category", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        object.mapping().productionKind(FieldProductionKind.STATEMENT_OBJECT);
+        object.mapping().propertyPid("P166");
+        project.rootClass(people);
+        prize.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("must be a single-valued field")),
+                result.format());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("triple declares its property")),
+                result.format());
+    }
+
+    @Test void aStatementClassMustExplicitlyBindItsSubject() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        prize.statementSource(new StatementClassSource("People", "P166"));
+        prize.addField("category", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .mapping().propertyPid("P166");
+        project.rootClass(people);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        prize.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(prize));
+        project.addClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("explicitly expose its subject")), result.format());
+    }
+
+    @Test void aStatementSubjectCannotAssertAnEvidenceAdmittedClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel people = new GeneratedClassModel("People");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.statementSource(new StatementClassSource("People", "P39"));
+        GeneratedFieldModel subject = holding.addField(
+                "source", FieldType.ENTITY, FieldCardinality.SINGLE);
+        subject.entityClassName("Person");
+        subject.mapping().productionKind(FieldProductionKind.STATEMENT_SUBJECT);
+        project.rootClass(people);
+        project.addClass(person);
+        // A statement class states its key; nothing chooses one for it. This is what
+        // the editor offers — the triple's own components — accepted explicitly.
+        holding.canonical().keyFields().addAll(
+                domain.config.StatementIdentity.structuralKey(holding));
+        project.addClass(holding);
+        project.addEntityKindRule(new EntityKindRule("Person", java.util.List.of("Q5")));
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(problem ->
+                problem.message().contains("Target a role class")), result.format());
+    }
+
+    /**
+     * A field that changed type keeps the language it was given, and on a kind of value
+     * that states no language that leftover selects nothing — it is inert, not wrong.
+     * Blocking a run for it would fail models that were correct before the check
+     * existed, so it is reported without stopping anything.
+     */
+    @Test void aLanguageOnAFieldThatCannotUseOneIsReportedWithoutBlocking() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel prize = new GeneratedClassModel("NobelPrize");
+        GeneratedFieldModel awarded = prize.addField(
+                "awarded", FieldType.DATE, FieldCardinality.SINGLE);
+        awarded.mapping().valueLanguage("en");
+        project.rootClass(prize);
+
+        ValidationResult result = GeneratedProjectModelValidator.validate(project);
+
+        assertTrue(result.valid(), "an inert leftover does not stop a generation run");
+        assertTrue(result.problems().stream().anyMatch(problem ->
+                        problem.severity() == GeneratedProjectModelValidator
+                                .Severity.WARNING
+                                && problem.location().equals("NobelPrize.awarded")
+                                && problem.message().contains("ignored on a Date")),
+                result.format());
+    }
+
+    @Test void passageInstanceMappingsMustNameFieldsOfTheDeclaredTargetClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        GeneratedFieldModel episodes = character.addField(
+                "episodes", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        episodes.entityClassName("Episode");
+        GeneratedClassModel episode = new GeneratedClassModel("Episode");
+        episode.addField("summary", FieldType.TEXT, FieldCardinality.SINGLE);
+        GeneratedFieldModel characters = episode.addField(
+                "characters", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        characters.entityClassName("Character");
+        project.rootClass(character);
+        project.addClass(episode);
+        episodes.entityDeclarationId(episode.declarationId());
+        characters.entityDeclarationId(character.declarationId());
+        domain.datasource.api.SourceBindingTarget target = new domain.datasource.api.SourceBindingTarget(
+                domain.datasource.api.BindingScope.FIELD_VALUE, "Character", "episodes",
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                character.declarationId());
+        FieldSourceBindings.put(episodes, new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe("wikipedia",
+                        "article-passage-instances", java.util.Map.of(
+                        "passageTextField", "missingSummary",
+                        "passageSourceField", "characters"))));
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains(
+                "Episode.missingSummary' must be one Text value"), invalid.format());
+
+        FieldSourceBindings.put(episodes, new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe("wikipedia",
+                        "article-passage-instances", java.util.Map.of(
+                        "passageTextField", "summary",
+                        "passageSourceField", "characters"))));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
+
+    @Test void tableRowInstanceMappingMustUseACompatibleConcreteClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        GeneratedClassModel member = new GeneratedClassModel("DeityGroupMember");
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        deity.baseClassName("DeityGroupMember");
+        GeneratedClassModel assessor = new GeneratedClassModel("AssessorOfMaat");
+        assessor.baseClassName("DeityGroupMember");
+        GeneratedFieldModel members = group.addField(
+                "members", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        members.entityClassName("DeityGroupMember");
+        assessor.addField("rowDetails", FieldType.TEXT, FieldCardinality.COLLECTION);
+        GeneratedFieldModel groups = assessor.addField(
+                "groups", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        groups.entityClassName("DeityGroup");
+        GeneratedFieldModel deities = assessor.addField(
+                "deities", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        deities.entityClassName("EgyptianDeity");
+        project.rootClass(group);
+        project.addClass(member);
+        project.addClass(deity);
+        project.addClass(assessor);
+        domain.datasource.api.SourceBindingTarget target = new domain.datasource.api.SourceBindingTarget(
+                domain.datasource.api.BindingScope.FIELD_VALUE, "DeityGroup", "members",
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                group.declarationId());
+        FieldSourceBindings.put(members, new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe("wikipedia",
+                        "article-table-row-instances", java.util.Map.of(
+                        "section", "Description > List of names",
+                        "table", "",
+                        "column", "Name of the deity",
+                        "rowTargetClass", "AssessorOfMaat",
+                        "rowDetailsField", "rowDetails",
+                        "rowSourceField", "groups",
+                        "rowReferencesField", "deities"))));
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+
+        assessor.baseClassName("");
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains(
+                "must be DeityGroupMember or one of its subclasses"), invalid.format());
+    }
+
+    @Test void infoboxLinkEvidenceRequiresARenderedKeyAndTypedEntityList() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        GeneratedFieldModel parents = deity.addField(
+                "parents", FieldType.STRING, FieldCardinality.SINGLE);
+        project.rootClass(deity);
+        domain.datasource.api.SourceBindingTarget target = new domain.datasource.api.SourceBindingTarget(
+                domain.datasource.api.BindingScope.FIELD_VALUE, "EgyptianDeity", "parents",
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                deity.declarationId());
+        FieldSourceBindings.put(parents, new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
+                        java.util.Map.of("property", "Infobox deity.parents"))));
+
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains("list-valued ENTITY field"), invalid.format());
+        assertTrue(invalid.format().contains("Rendered.<label>"), invalid.format());
+
+        parents.type(FieldType.ENTITY);
+        parents.cardinality(FieldCardinality.COLLECTION);
+        parents.entityClassName("EgyptianDeity");
+        FieldSourceBindings.put(parents, new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
+                        java.util.Map.of("property", "Rendered.Parents"))));
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+    }
+}

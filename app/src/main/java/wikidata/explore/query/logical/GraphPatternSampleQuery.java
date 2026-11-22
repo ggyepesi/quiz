@@ -1,11 +1,11 @@
 package wikidata.explore.query.logical;
 
-import datasource.graph.GraphExpansionPattern;
+import domain.datasource.graph.GraphExpansionPattern;
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
 import wikidata.WikimediaInternalTypes;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import work.Query;
 import work.QueryContext;
 

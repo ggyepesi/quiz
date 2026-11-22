@@ -1,0 +1,271 @@
+package domain.compile.transform;
+
+import org.junit.jupiter.api.Test;
+import wikidata.api.FakeWikidataApiClient;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.EntityKindRule;
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.MembershipPattern;
+import domain.config.StatementClassSource;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ReferentKindClassifierTest {
+    @Test void aSelfReferenceDoesNotProduceMoreMembersOfItsOwnEvidenceKind() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.addField("spouse", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Person");
+        model.rootClass(person);
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject spouse = new WikidataDynamicObject("Q2", "a spouse");
+        WikidataDynamicObject existingPerson =
+                new WikidataDynamicObject("Q1", "an existing person");
+        existingPerson.type("Person");
+        existingPerson.put("spouse", List.of(spouse));
+        var api = new FakeWikidataApiClient()
+                .entity("Q2", "a spouse", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(
+                model, List.of(existingPerson), api, null);
+
+        assertEquals(0, result.classified());
+        assertTrue(!spouse.directClassNames().contains("Person"),
+                "a Person self-reference links members; it does not recursively "
+                        + "grow the Person population");
+    }
+
+    @Test void aTwoClassCycleDoesNotNominateEitherPopulationForEvidenceKinds() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel characterClass = new GeneratedClassModel("Character");
+        characterClass.addField("episodes", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Episode");
+        model.rootClass(characterClass);
+        GeneratedClassModel episodeClass = new GeneratedClassModel("Episode");
+        episodeClass.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Character");
+        model.addClass(episodeClass);
+        model.addEntityKindRule(new EntityKindRule("Character", List.of("Q95074")));
+        model.addEntityKindRule(new EntityKindRule("Episode", List.of("Q21191270")));
+
+        WikidataDynamicObject episode = new WikidataDynamicObject("Q2", "an episode");
+        WikidataDynamicObject character = new WikidataDynamicObject("Q1", "a character");
+        character.type("Character");
+        character.put("episodes", List.of(episode));
+        episode.put("characters", List.of(character));
+        var api = new FakeWikidataApiClient()
+                .entity("Q2", "an episode", Map.of("P31", List.of("Q21191270")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(character), api, null);
+
+        assertEquals(0, result.classified());
+        assertTrue(!episode.hasTypeStamp(),
+                "evidence does not matter until an explicit population construct "
+                        + "nominates the cyclic referent");
+    }
+
+    @Test void aDirectEvidenceKindFieldNeedsEvidenceWithoutARepresentationRule() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.addField("predecessor", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Person");
+        model.rootClass(holding);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject human = new WikidataDynamicObject("Q1", "a predecessor");
+        WikidataDynamicObject office = new WikidataDynamicObject("Q2", "an office");
+        WikidataDynamicObject first = new WikidataDynamicObject("Q1$stmt", "first");
+        first.type("OfficeHolding");
+        first.put("predecessor", human);
+        WikidataDynamicObject second = new WikidataDynamicObject("Q2$stmt", "second");
+        second.type("OfficeHolding");
+        second.put("predecessor", office);
+        List<WikidataDynamicObject> pool = List.of(first, second);
+
+        assertEquals(0, ReferentClassStamp.apply(model, pool),
+                "the field declaration nominates candidates; it does not prove Person");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "a predecessor", Map.of("P31", List.of("Q5")))
+                .entity("Q2", "an office", Map.of("P31", List.of("Q4164871")));
+
+        var result = ReferentKindClassifier.apply(model, pool, api, null);
+
+        assertEquals(1, result.classified());
+        assertTrue(human.directClassNames().contains("Person"));
+        assertTrue(!office.directClassNames().contains("Person"),
+                "a value in a Person field does not become Person when its evidence "
+                        + "is not human: " + office.directClassNames());
+    }
+
+    @Test void aLocalSubclassUsesItsImportedBasesAdmission() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel event = new GeneratedClassModel("Event");
+        event.addField("participant", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Participant");
+        model.rootClass(event);
+        GeneratedClassModel role = new GeneratedClassModel("Participant");
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        person.importedFrom("People");
+        person.addField("birthName", FieldType.STRING, FieldCardinality.SINGLE);
+        GeneratedClassModel historicalPerson = new GeneratedClassModel("HistoricalPerson");
+        historicalPerson.baseClassName("Person");
+        historicalPerson.addField("offices", FieldType.STRING, FieldCardinality.COLLECTION);
+        model.addClass(role);
+        model.addClass(person);
+        model.addClass(historicalPerson);
+        EntityKindRule admission = new EntityKindRule("Person", List.of("Q5"));
+        admission.importedFrom("People");
+        model.addEntityKindRule(admission);
+        model.representationClasses(role, List.of("HistoricalPerson"));
+
+        WikidataDynamicObject participant = new WikidataDynamicObject("Q1", "Human");
+        participant.type("Participant");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "Human", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(participant), api, null);
+
+        assertEquals(1, result.classified());
+        assertEquals("HistoricalPerson", participant.typeName());
+        assertEquals(java.util.Set.of("HistoricalPerson"), participant.directClassNames());
+        assertEquals(admission, MembershipPattern.kindRule(historicalPerson, model));
+        assertEquals(List.of("birthName", "offices"), historicalPerson.effectiveFields(model)
+                .stream().map(GeneratedFieldModel::name).toList());
+    }
+
+    @Test void admissionAloneDoesNotChooseARepresentation() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        model.rootClass(nomination);
+        model.addClass(new GeneratedClassModel("Nominee"));
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+
+        WikidataDynamicObject nominee = new WikidataDynamicObject("Q1", "Human");
+        nominee.type("Nominee");
+        var api = new FakeWikidataApiClient()
+                .entity("Q1", "Human", Map.of("P31", List.of("Q5")));
+
+        var result = ReferentKindClassifier.apply(model, List.of(nominee), api, null);
+
+        assertEquals(0, result.classified());
+        assertEquals(java.util.Set.of("Nominee"), nominee.directClassNames());
+    }
+
+    @Test void replacesRoleClassesOnlyWhenEvidenceProvidesAReplacementKind() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        model.rootClass(nomination);
+        GeneratedClassModel nominee = new GeneratedClassModel("Nominee");
+        model.addClass(nominee);
+        model.addClass(new GeneratedClassModel("ForWork"));
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addClass(new GeneratedClassModel("Film"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        model.addEntityKindRule(new EntityKindRule("Film", List.of("Q11424")));
+        model.representationClasses(nominee, List.of("Person", "Film"));
+
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
+        person.type("Nominee");
+        WikidataDynamicObject unknown = new WikidataDynamicObject("Q2", "Unknown");
+        unknown.type("ForWork");
+        WikidataDynamicObject event = new WikidataDynamicObject("Q3$stmt", "Nomination");
+        event.type("Nomination");
+        event.put("nominee", person);
+        event.put("forWork", unknown);
+
+        FakeWikidataApiClient api = new FakeWikidataApiClient()
+                .entity("Q1", "Person", Map.of("P31", List.of("Q5", "Q11424")))
+                .entity("Q2", "Unknown", Map.of());
+        var result = ReferentKindClassifier.apply(model,
+                List.of(event, person, unknown), api, null);
+
+        assertEquals(1, result.classified());
+        assertEquals(0, result.unknown(),
+                "an unconfigured role is outside contextual representation");
+        assertEquals(java.util.Set.of("Person", "Film"), person.directClassNames());
+        assertEquals("Person", person.typeName(),
+                "the first explicit matching representation is the carrier");
+        assertEquals("Person", person.typeKey());
+        assertTrue(unknown.hasTypeStamp(),
+                "an unknown thin referent must remain protected from string collapse");
+        assertEquals(java.util.Set.of("ForWork"), unknown.directClassNames());
+        BareReferenceCollapse.apply(List.of(event, person, unknown));
+        assertTrue(event.get("forWork") instanceof WikidataDynamicObject,
+                "the retained role stamp protects an unknown thin referent on reload");
+        assertEquals(List.of(person), RoleSelections.materialize(model,
+                List.of(event, person, unknown)).get("Nominee [Nomination.nominee]"));
+        assertEquals(List.of(unknown), RoleSelections.materialize(model,
+                List.of(event, person, unknown)).get("ForWork [Nomination.forWork]"));
+    }
+
+    @Test void remoteEvidenceIsRequestedOnlyForProducerScopedRoles() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel nomination = new GeneratedClassModel("Nomination");
+        nomination.statementSource(new StatementClassSource("P1411"));
+        nomination.addField("nominee", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Nominee");
+        nomination.addField("forWork", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("ForWork");
+        model.rootClass(nomination);
+        GeneratedClassModel nomineeClass = new GeneratedClassModel("Nominee");
+        var type = nomineeClass.addField(
+                "type", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        type.mapping().propertyPid("P31");
+        model.addClass(nomineeClass);
+        GeneratedClassModel workClass = new GeneratedClassModel("ForWork");
+        var genre = workClass.addField(
+                "genre", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        genre.mapping().propertyPid("P136");
+        model.addClass(workClass);
+        model.addClass(new GeneratedClassModel("Person"));
+        model.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        model.representationClasses(nomineeClass, List.of("Person"));
+
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "Person");
+        person.type("Nominee");
+        WikidataDynamicObject work = new WikidataDynamicObject("Q2", "Work");
+        work.type("ForWork");
+        WikidataDynamicObject event = new WikidataDynamicObject("Q3$stmt", "Nomination");
+        event.type("Nomination");
+        event.put("nominee", person);
+        event.put("forWork", work);
+
+        class RecordingApi extends FakeWikidataApiClient {
+            List<String> asked = List.of();
+            @Override public PartialEntities getEntityClaimsPartial(
+                    List<String> qids, List<String> pids, BatchLog log) {
+                asked = List.copyOf(qids);
+                return super.getEntityClaimsPartial(qids, pids, log);
+            }
+        }
+        RecordingApi api = new RecordingApi();
+        api.entity("Q1", "Person", Map.of("P31", List.of("Q5")));
+        api.entity("Q2", "Work", Map.of("P31", List.of("Q11424")));
+
+        var result = ReferentKindClassifier.apply(
+                model, List.of(event, person, work), api, null);
+
+        assertEquals(List.of("Q1"), api.asked);
+        assertEquals(1, result.classified());
+        assertEquals(0, result.unknown(), "ForWork is outside the P31 producer scope");
+    }
+}

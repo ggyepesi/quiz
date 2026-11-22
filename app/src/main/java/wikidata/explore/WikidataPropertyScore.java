@@ -1,8 +1,8 @@
 package wikidata.explore;
 
-import wikidata.explore.model.FieldCardinality;
-import wikidata.explore.model.FieldRenderMode;
-import datasource.schema.FieldType;
+import domain.config.FieldCardinality;
+import domain.config.FieldRenderMode;
+import domain.datasource.schema.FieldType;
 
 public class WikidataPropertyScore {
 

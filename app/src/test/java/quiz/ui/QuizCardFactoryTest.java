@@ -77,8 +77,8 @@ class QuizCardFactoryTest {
 
     @Test
     void aDynamicTupleKeepsItsClasslessSchemaConfiguration() {
-        quiz.transform.DynamicViewable dynamic =
-                new quiz.transform.DynamicViewable("Q1", "Dynamic");
+        domain.transform.DynamicViewable dynamic =
+                new domain.transform.DynamicViewable("Q1", "Dynamic");
         dynamic.put("realField", "value");
         ViewConfig source = new ViewConfig();
         source.setAllFields(true);

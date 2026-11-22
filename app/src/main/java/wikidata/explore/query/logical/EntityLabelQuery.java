@@ -1,14 +1,14 @@
 package wikidata.explore.query.logical;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.query.template.sparql.SparqlQueries;
+import wikidata.query.template.sparql.SparqlQueries;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Resolves the English label of one entity. Cheap side lookup — run it

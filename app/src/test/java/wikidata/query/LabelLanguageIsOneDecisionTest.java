@@ -42,8 +42,8 @@ class LabelLanguageIsOneDecisionTest {
      * governs (Wikidata labels), not an exception to it.
      */
     private static final List<String> DBPEDIA_QUERIES = List.of(
-            "quiz/transform/ui/DBpediaLookup.java",
-            "wikidata/explore/extract/DBpediaEnrichment.java");
+            "domain/transform/ui/DBpediaLookup.java",
+            "domain/runtime/DBpediaEnrichment.java");
 
     @Test void noQueryBuilderDecidesTheWikidataLabelLanguageForItself() throws IOException {
         List<String> offenders = new ArrayList<>();

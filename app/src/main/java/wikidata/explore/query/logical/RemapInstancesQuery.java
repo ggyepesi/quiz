@@ -1,10 +1,10 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.config.GeneratedProjectModel;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.GenerationRun;
+import domain.build.GenerationPipeline;
+import domain.build.GenerationRun;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,21 +20,21 @@ public class RemapInstancesQuery
 
     private final GenerationRun previousRun;
     private final GeneratedProjectModel projectModel;
-    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
-    private final wikidata.explore.generation.RunSteps steps;
+    private final domain.build.CompiledPipelineRun compiledRun;
+    private final domain.build.RunSteps steps;
 
     /** Reporting each step it finishes, so the plan's steps are the run's steps. */
     public RemapInstancesQuery(
             GenerationRun previousRun,
-            wikidata.explore.generation.CompiledPipelineRun compiledRun,
-            wikidata.explore.generation.RunSteps steps) {
+            domain.build.CompiledPipelineRun compiledRun,
+            domain.build.RunSteps steps) {
 
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.previousRun = previousRun;
         this.compiledRun = compiledRun;
         this.projectModel = compiledRun.request().model();
         this.steps = steps == null
-                ? wikidata.explore.generation.RunSteps.SILENT : steps;
+                ? domain.build.RunSteps.SILENT : steps;
     }
 
     @Override
@@ -49,8 +49,8 @@ public class RemapInstancesQuery
 
     /** What this Remap can actually apply — asked BEFORE it runs, so the plan can say
      *  which stages will not re-run rather than reporting a success that skipped them. */
-    public wikidata.explore.generation.RemapScope scope() {
-        return wikidata.explore.generation.RemapScope.of(previousRun);
+    public domain.build.RemapScope scope() {
+        return domain.build.RemapScope.of(previousRun);
     }
 
     @Override
@@ -70,9 +70,9 @@ public class RemapInstancesQuery
 
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.remapMessage(
-                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
-                        projectModel, datasource.Datasources.standard())));
+        context.message(domain.config.ModelSourceExecutionPlan.remapMessage(
+                domain.config.ModelSourceExecutionPlan.synchronizeAndCompile(
+                        projectModel, domain.datasource.Datasources.standard())));
 
         context.message("Reusing "
                                 + previousRun.dynamicObjects().size()
@@ -84,7 +84,7 @@ public class RemapInstancesQuery
 
         return new GenerationPipeline().remap(
                 previousRun, compiledRun,
-                wikidata.explore.extract.GenerationLog.of(context::message), steps);
+                domain.runtime.GenerationLog.of(context::message), steps);
     }
 
     @Override

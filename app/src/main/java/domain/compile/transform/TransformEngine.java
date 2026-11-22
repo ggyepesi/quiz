@@ -1,0 +1,923 @@
+package domain.compile.transform;
+
+import wikidata.WikidataSparqlClient;
+import domain.runtime.FieldOrigin;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Applies Transform constructs to a loaded snapshot pool (the
+ * {@link WikidataDynamicObject} qid-pool), materializing new view structures
+ * <i>in place</i>. The augmented pool is then saved + served exactly like a
+ * generated class — {@code GeneratedSource.registerAll} serves every stamped
+ * type, so a construct's output is searchable/sortable/view-configurable with no
+ * extra plumbing.
+ */
+public class TransformEngine {
+
+    // Duplicate reified records dropped by dedup/canonicalize and un-stamped: they
+    // must NOT be served (they'd show as duplicate untyped cards). Collected here so
+    // the caller can also EXCLUDE them from the pool, not just leave them un-typed.
+    private final java.util.Set<WikidataDynamicObject> demoted =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+    /** Reified records dropped as duplicates (un-stamped) — exclude from the pool. */
+    public java.util.Set<WikidataDynamicObject> demoted() {
+        return demoted;
+    }
+
+    // Structured audit of the self-referential phantom drop (#99): one entry per
+    // fully self-referential atom — DROPPED (with the witnessing atom) or KEPT (no
+    // witness) — with the exact identity fields the decision keyed on, so it can be
+    // double-checked in the generation log.
+    private final List<SelfRefFinding> selfRefFindings = new ArrayList<>();
+    private final List<IdentityCollision> identityCollisions = new ArrayList<>();
+    private final List<canonical.KeyedReduction.Conflict> reductionConflicts =
+            new ArrayList<>();
+
+    /** Whether a fully self-referential atom was dropped as a witnessed phantom. */
+    public enum SelfRefDecision { DROPPED, KEPT }
+
+    /**
+     * A structured record of one self-referential-phantom decision (#99): the atom,
+     * the witnessing atom (null when kept), the identity fields the match keyed on,
+     * and a human-readable reason. Its {@link #toString()} is the audit line.
+     */
+    public record SelfRefFinding(SelfRefDecision decision, WikidataDynamicObject atom,
+                                 WikidataDynamicObject witness,
+                                 List<String> identityFields, String reason) {
+        @Override
+        public String toString() {
+            return decision + " self-nomination " + describe(atom)
+                    + (witness != null ? " — witnessed by " + describe(witness) : "")
+                    + " on " + identityFields + " — " + reason;
+        }
+    }
+
+    /** Structured audit of the self-referential phantom drop (#99). */
+    public List<SelfRefFinding> selfReferenceFindings() {
+        return selfRefFindings;
+    }
+
+    /**
+     * Records that two statement records shared a key and became one.
+     *
+     * <p>A key is a decision about grain, and this is that decision's consequence made
+     * visible. It was invisible: the loser was dropped or folded in silently, so a key
+     * too coarse for its data shrank the population with no symptom beyond a smaller
+     * number in counts.tsv. Nobel MEANS to collapse — two laureates sharing one prize
+     * are one award — so this is reported as a fact, never as an error.
+     *
+     * @param kept the record that survived
+     * @param collapsed the record that did not, merged into it or dropped
+     */
+    public record IdentityCollision(String type, String key,
+                                    WikidataDynamicObject kept,
+                                    WikidataDynamicObject collapsed,
+                                    boolean merged) { }
+
+    /** What collapsed on the key in the last call, in encounter order. */
+    public List<IdentityCollision> identityCollisions() {
+        return identityCollisions;
+    }
+
+    /** Fields two candidates disagreed on. Reported, never silently resolved — the old
+     *  merge kept the first of two conflicting scalars and said nothing. */
+    public List<canonical.KeyedReduction.Conflict> reductionConflicts() {
+        return reductionConflicts;
+    }
+
+    /**
+     * Applies a domain's whole Transform to the pool, returning the objects it
+     * created (the reified ones; inverts mutate existing objects in place). The
+     * created objects are also added to {@code pool} so a later save/serve picks
+     * them up.
+     */
+    public List<WikidataDynamicObject> apply(
+            List<WikidataDynamicObject> pool, TransformConfig config) {
+        return apply(pool, config, null, null);
+    }
+
+    /**
+     * Applies a domain's whole Transform. With a non-null {@code client}, any
+     * {@link QualifierLoadConfig}s run FIRST (a Load step that attaches nested
+     * statement objects via {@link QualifierLoader}), so a following
+     * {@code reify(promote)} can lift them into top-level events. The created
+     * objects (statements + reified) are returned and added to {@code pool}.
+     */
+    public List<WikidataDynamicObject> apply(
+            List<WikidataDynamicObject> pool, TransformConfig config,
+            WikidataSparqlClient client, GenerationLog log) {
+        List<WikidataDynamicObject> created = new ArrayList<>();
+        if (pool == null || config == null) {
+            return created;
+        }
+        if (client != null && config.qualifierLoads != null) {
+            QualifierLoader loader = new QualifierLoader();
+            for (QualifierLoadConfig c : config.qualifierLoads) {
+                // Statement objects are attached to their entity; they become
+                // top-level only if a reify(promote) lifts them, so don't add
+                // them to `created` here (avoids double-listing pre-promotion).
+                loader.enrich(pool, c, client, log);
+            }
+        }
+        for (InvertConstruct c : config.inverts) {
+            applyInvert(pool, c);
+        }
+        // applyReify resets demoted/findings per call (so a reused engine can't leak
+        // a prior call's state). Across several reifies we must AGGREGATE, or only the
+        // last reify's demotions/findings would survive on the engine — silently
+        // dropping the earlier ones from the caller's view of what was demoted.
+        // Each reify's category field lives on its paired Load: a QualifierLoadConfig
+        // attaches statements under statementField, which the reify lifts via the
+        // SAME name as its listField (both are "__" + className). So join on that to
+        // give applyReify the reified value field — the phantom witness match keys on
+        // the event slot, not on every incidentally-loaded field.
+        java.util.Map<String, String> valueFieldByList = new java.util.HashMap<>();
+        if (config.qualifierLoads != null) {
+            for (QualifierLoadConfig q : config.qualifierLoads) {
+                if (q != null && q.statementField() != null) {
+                    valueFieldByList.put(q.statementField(), q.valueField());
+                }
+            }
+        }
+        java.util.Set<WikidataDynamicObject> allDemoted =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        List<SelfRefFinding> allFindings = new ArrayList<>();
+        List<IdentityCollision> allCollisions = new ArrayList<>();
+        List<canonical.KeyedReduction.Conflict> allReductionConflicts = new ArrayList<>();
+        for (ReifyConstruct c : config.reifies) {
+            created.addAll(applyReify(pool, c, valueFieldByList.get(c.listField())));
+            allDemoted.addAll(demoted);
+            allFindings.addAll(selfRefFindings);
+            allCollisions.addAll(identityCollisions);
+            allReductionConflicts.addAll(reductionConflicts);
+        }
+        demoted.clear();
+        demoted.addAll(allDemoted);
+        selfRefFindings.clear();
+        selfRefFindings.addAll(allFindings);
+        identityCollisions.clear();
+        identityCollisions.addAll(allCollisions);
+        reductionConflicts.clear();
+        reductionConflicts.addAll(allReductionConflicts);
+        logIdentityCollisions(allCollisions, log);
+        logReductionConflicts(allReductionConflicts, log);
+        return created;
+    }
+
+    private static void logReductionConflicts(
+            List<canonical.KeyedReduction.Conflict> conflicts, GenerationLog log) {
+        if (log == null || conflicts == null || conflicts.isEmpty()) return;
+        java.util.Map<String, List<canonical.KeyedReduction.Conflict>> byType =
+                new java.util.LinkedHashMap<>();
+        for (var conflict : conflicts) {
+            byType.computeIfAbsent(conflict.className(), ignored -> new ArrayList<>())
+                    .add(conflict);
+        }
+        for (var entry : byType.entrySet()) {
+            StringBuilder message = new StringBuilder().append(entry.getKey()).append(": ")
+                    .append(entry.getValue().size())
+                    .append(" field reduction conflict(s); no value was chosen.\n");
+            int shown = 0;
+            for (var conflict : entry.getValue()) {
+                if (shown++ == 5) {
+                    message.append("    +").append(entry.getValue().size() - 5)
+                            .append(" more\n");
+                    break;
+                }
+                message.append("    ").append(conflict.fieldPath()).append(": ")
+                        .append(conflict.left()).append(" vs ")
+                        .append(conflict.right()).append("\n");
+            }
+            log.message(message.toString());
+        }
+    }
+
+    /**
+     * Says, per class, how many records shared a key and what happened to them.
+     *
+     * <p>Stated as a count and not as a problem: a coarse key can be exactly what the
+     * modeller wants — Nobel identifies an award, so two laureates sharing one prize
+     * SHOULD collapse into one record. The same line reading "6 collapsed" on a class
+     * that meant one record per statement is the prompt to add a qualifier to the key.
+     * Either way it was invisible before, and a shrinking population had no symptom.
+     */
+    private static void logIdentityCollisions(
+            List<IdentityCollision> collisions, GenerationLog log) {
+        if (log == null || collisions == null || collisions.isEmpty()) return;
+        java.util.Map<String, List<IdentityCollision>> byType =
+                new java.util.LinkedHashMap<>();
+        for (IdentityCollision collision : collisions) {
+            byType.computeIfAbsent(collision.type(), ignored -> new ArrayList<>())
+                    .add(collision);
+        }
+        for (var entry : byType.entrySet()) {
+            List<IdentityCollision> found = entry.getValue();
+            long merged = found.stream().filter(IdentityCollision::merged).count();
+            StringBuilder message = new StringBuilder()
+                    .append(entry.getKey()).append(": ").append(found.size())
+                    .append(found.size() == 1 ? " record shared" : " records shared")
+                    .append(" an identity and ")
+                    .append(merged == found.size() ? "were merged into it"
+                            : merged == 0 ? "were dropped"
+                            : merged + " merged, " + (found.size() - merged) + " dropped")
+                    .append(". Add a qualifier to the key to keep them apart.\n");
+            int shown = 0;
+            for (IdentityCollision collision : found) {
+                if (shown++ == 5) {
+                    message.append("    +").append(found.size() - 5).append(" more\n");
+                    break;
+                }
+                message.append("    ").append(collision.key()).append("\n");
+            }
+            log.message(message.toString());
+        }
+    }
+
+    /**
+     * Inverts {@code sourceType.refField} into {@code targetType.backRefField}.
+     * For each source object of {@code sourceType}, each referenced object is
+     * stamped {@code targetType} and gains {@code backRefField} += source.
+     */
+    public void applyInvert(Collection<WikidataDynamicObject> pool,
+                            InvertConstruct c) {
+        if (pool == null || c == null
+                || c.sourceType() == null || c.refField() == null
+                || c.targetType() == null || c.backRefField() == null) {
+            return;
+        }
+
+        // Collect sources first: we mutate targets (also in the pool), so iterate
+        // a stable snapshot of the sources.
+        List<WikidataDynamicObject> sources = new ArrayList<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && c.sourceType().equals(o.typeName())) {
+                sources.add(o);
+            }
+        }
+
+        for (WikidataDynamicObject src : sources) {
+            for (WikidataDynamicObject target : referencedObjects(src.get(c.refField()))) {
+                target.type(c.targetType());
+                target.merge(c.backRefField(), src);
+            }
+        }
+    }
+
+    /**
+     * Projects {@code targetType.outField} from a typed PATH on the entity a
+     * reference points to: {@code out ← via.<sourcePath>}. The path can address a
+     * type's views (e.g. {@code date.year}, {@code date.monthDay} via
+     * {@link objectview.utils.Addressable}) — so extraction is the path, not a convention baked
+     * into a construct. The referent's value is authoritative (it OVERWRITES) and
+     * is coerced to the target field's runtime type (an int year → a FlexibleDate).
+     * No query — the referent is already in the pool, resolved by qid to the
+     * field-bearing instance. Returns the number of instances whose {@code
+     * outField} value was set/changed (so callers can report the effect).
+     */
+    public int applyProjection(Collection<WikidataDynamicObject> pool,
+                               String targetType, String viaField,
+                               String sourcePath, String outField) {
+        return applyProjection(pool, targetType, viaField, sourcePath, outField, null);
+    }
+
+    /**
+     * As above, also collecting the records whose field it changed.
+     *
+     * <p>A projection overlays a value read through a reference, so "which records just
+     * changed" is a question with an answer — and the count alone could never give it.
+     * The prior value may be absent or stale.
+     */
+    public int applyProjection(Collection<WikidataDynamicObject> pool,
+                               String targetType, String viaField,
+                               String sourcePath, String outField,
+                               List<WikidataDynamicObject> changedOut) {
+        if (pool == null || targetType == null || viaField == null
+                || sourcePath == null || sourcePath.isBlank() || outField == null) {
+            return 0;
+        }
+        Map<String, WikidataDynamicObject> byQid = new HashMap<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && o.getIdentifier() != null && !o.getIdentifier().isBlank()) {
+                byQid.putIfAbsent(o.getIdentifier(), o);
+            }
+        }
+        Object sample = sampleValue(pool, targetType, outField);
+        int changed = 0;
+        for (WikidataDynamicObject o : pool) {
+            if (o == null || !targetType.equals(o.typeName())) {
+                continue;
+            }
+            WikidataDynamicObject referent = referent(o.get(viaField), byQid);
+            if (referent == null) {
+                continue;
+            }
+            Object value = objectview.field.FieldAccess.getPath(referent, sourcePath);
+            if (value != null) {
+                Object coerced = domain.curation.Corrections.coerce(value, sample);
+                if (!java.util.Objects.equals(coerced, o.get(outField))) {
+                    o.put(outField, coerced);
+                    changed++;
+                    if (changedOut != null) {
+                        changedOut.add(o);
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    // The entity a reference field points to, resolved by qid to the canonical
+    // (field-bearing) instance in the pool — a qualifier-loaded reference may be a
+    // bare copy while the generated one carries the fields.
+    private WikidataDynamicObject referent(Object viaValue,
+                                           Map<String, WikidataDynamicObject> byQid) {
+        for (WikidataDynamicObject ref : referencedObjects(viaValue)) {
+            return ref.getIdentifier() != null && byQid.containsKey(ref.getIdentifier())
+                    ? byQid.get(ref.getIdentifier())
+                    : ref;
+        }
+        return null;
+    }
+
+    // A representative existing value of the target field, so a projected value can
+    // be coerced to the field's runtime type (e.g. an int year → FlexibleDate).
+    private static Object sampleValue(Collection<WikidataDynamicObject> pool,
+                                      String targetType, String outField) {
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && targetType.equals(o.typeName()) && o.get(outField) != null) {
+                return o.get(outField);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Reifies {@code sourceType.listField}: creates a {@code targetType} object
+     * per (source, element) pair, holding the source and element. Created
+     * objects are added to {@code pool} and returned.
+     */
+    public List<WikidataDynamicObject> applyReify(
+            List<WikidataDynamicObject> pool, ReifyConstruct c) {
+        return applyReify(pool, c, null);
+    }
+
+    /**
+     * As {@link #applyReify(List, ReifyConstruct)}, but told the reified statement's
+     * VALUE field (the category, from {@code QualifierLoadConfig.valueField}). That
+     * field is the primary identity of the reified event slot, so the self-referential
+     * phantom witness match keys on it (plus any real role value) rather than on every
+     * incidentally-loaded field. Pass {@code null} to key on the legacy broad context.
+     */
+    public List<WikidataDynamicObject> applyReify(
+            List<WikidataDynamicObject> pool, ReifyConstruct c, String valueField) {
+        // Per-call audit state: reset so a reused engine doesn't carry a prior
+        // call's demotions/findings into this result. Callers that aggregate across
+        // several applyReify calls must collect after each call (see reify()).
+        demoted.clear();
+        selfRefFindings.clear();
+        identityCollisions.clear();
+        reductionConflicts.clear();
+        List<WikidataDynamicObject> created = new ArrayList<>();
+        if (pool == null || c == null || c.sourceType() == null
+                || c.listField() == null || c.targetType() == null) {
+            return created;
+        }
+        List<WikidataDynamicObject> sources = new ArrayList<>();
+        for (WikidataDynamicObject o : pool) {
+            if (o != null && c.sourceType().equals(o.typeName())) {
+                sources.add(o);
+            }
+        }
+        String srcField = c.sourceField() == null || c.sourceField().isBlank()
+                ? c.sourceType().toLowerCase() : c.sourceField();
+        String elField = c.elementField() == null || c.elementField().isBlank()
+                ? "value" : c.elementField();
+
+        // Records that carry an inverse role straight from a qualifier (e.g. a
+        // person's P1686 "for work") — the denormalized copy of a nomination whose
+        // canonical form is the work's own statement. Tracked for canonicalization.
+        java.util.Set<WikidataDynamicObject> hadInverseQual =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+        for (WikidataDynamicObject src : sources) {
+            for (WikidataDynamicObject el : referencedObjects(src.get(c.listField()))) {
+                if (c.promote()) {
+                    // The element is already a rich statement object — lift it in
+                    // place: stamp the target type, add the source back-ref, keep
+                    // its own fields (award, year, …). Flat, not nested.
+                    el.type(c.targetType());
+                    el.put(srcField, src);
+                    // Canonical roles: each role field = its qualifier value ∨ the
+                    // source entity, so a relation denormalized onto both endpoints
+                    // resolves to the SAME (subject, work) on either side.
+                    Object subjectForName = null;
+                    for (ReifyConstruct.Role r : c.roles()) {
+                        if (r == null || r.field() == null || r.field().isBlank()) {
+                            continue;
+                        }
+                        Object raw = r.from() == null || r.from().isBlank()
+                                ? null : el.get(r.from());
+                        Object v = raw == null && r.fallbackToSource() ? src : raw;
+                        if (v != null) {
+                            el.put(r.field(), v);
+                            el.recordOrigin(r.field(), originOf(raw, r));
+                            if (subjectForName == null) {
+                                subjectForName = v;
+                            }
+                        } else {
+                            el.recordOrigin(r.field(), FieldOrigin.MISSING);
+                        }
+                    }
+                    // A participant field is not a fallback and not canonical-copy
+                    // policy: its declared value is the union of two source facts.
+                    for (String field : c.subjectParticipantFields()) {
+                        includeOnce(el, field, src);
+                    }
+                    // "Had an inverse qualifier" (a denormalized copy of a nomination
+                    // whose canonical form is the work's own statement) is a property
+                    // of the recorded origins, not a separate flag: it's true iff some
+                    // role drew from a REAL qualifier. A STATEMENT_VALUE role (the ps:
+                    // value, not an inverse relation) must NOT count.
+                    if (hasQualifierOriginRole(el, c.roles())) {
+                        hadInverseQual.add(el);
+                    }
+                    Object namePrefix = subjectForName != null ? subjectForName : src;
+                    el.name(display(namePrefix) + " — " + el.getDisplayName());
+                    created.add(el);
+                } else {
+                    WikidataDynamicObject n = new WikidataDynamicObject(
+                            src.getIdentifier() + "__" + el.getIdentifier(),
+                            src.getDisplayName() + " — " + el.getDisplayName());
+                    n.type(c.targetType());
+                    n.put(srcField, src);
+                    n.put(elField, el);
+                    created.add(n);
+                }
+            }
+        }
+        // De-denormalize. Two strategies:
+        //  - canonicalize-by-list: the record that carries the shared-award nominee
+        //    list IS the nomination; a record that only carries the inverse role (a
+        //    person's "for work" copy) is dropped; a record with neither makes its
+        //    own subject the sole nominee (work-less / honorary). Captures sharing.
+        //  - dedupBy key: collapse records equal on a key (the legacy path).
+        List<WikidataDynamicObject> result =
+                c.canonicalizesByList()
+                        ? canonicalize(created, c.primaryListField(), srcField,
+                                       hadInverseQual)
+                        : created;
+
+        // The SAME nomination can still arrive from both the work's statement and
+        // the nominee's own back-reference — a person's P1411 "nominated for" with
+        // pq:P1686=work (Katharine Hepburn's 12 Best Actress statements, one per
+        // film). Those copies are identical on the dedup key (category, year,
+        // forWork, nominee) but differ in source, and canonicalize-by-list keeps
+        // both. Collapse them, keeping the WORK-anchored copy: the one whose source
+        // equals a role value (source==forWork), not the nominee's self-copy
+        // (source==the list). Uses the final field values, so it's robust to when
+        // the qualifiers were loaded.
+        if (!c.dedupBy().isEmpty()) {
+            List<WikidataDynamicObject> all = result;
+            result = reduceSelectingWorkAnchoredCarrier(all, c.plan(), srcField,
+                    c.roles(), c.targetType(), identityCollisions, reductionConflicts);
+        }
+
+        // #99: drop WITNESSED self-referential phantom atoms. A fully self-referential
+        // atom (every role field fell back to the subject) is a phantom only when a
+        // WITNESS exists — another atom in the same category whose real qualifier
+        // references this atom's subject, i.e. the genuine record that this one is a
+        // denormalized self-copy of. Without a witness it is a legitimate
+        // self-nomination (a film IS its Best-Picture nominee; an honorary subject IS
+        // the nominee) and is kept. Generic — reads Phase-1 origins, no domain constants.
+        if (c.promote()) {
+            result = dropWitnessedSelfReferences(
+                    result, c, srcField, valueField, selfRefFindings);
+        }
+
+        // Dedup must remove duplicates from the SERVED set, not merely the returned
+        // list. A promoted statement is type-stamped IN PLACE (and is also reachable
+        // from its source's list field + the pool), so a dropped duplicate stays
+        // stamped as the target type and re-surfaces in the snapshot — the served
+        // set is "every pooled object of this type", not just `result`. Un-stamp the
+        // dropped duplicates so only the kept representative is served/listed.
+        if (c.promote() && result.size() < created.size()) {
+            java.util.Set<WikidataDynamicObject> keep =
+                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            keep.addAll(result);
+            java.util.Set<WikidataDynamicObject> dropped =
+                    java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            for (WikidataDynamicObject o : created) {
+                if (!keep.contains(o)) {
+                    o.type(null);   // anonymous referenced child, not a served event
+                    demoted.add(o); // …and drop from the served pool, not just untype
+                    dropped.add(o);
+                }
+            }
+            // Unlink dropped stubs from their source's list field (e.g.
+            // OscarNominations.__Nomination), so they're unreachable and never
+            // serialized/served as duplicate untyped cards.
+            for (WikidataDynamicObject src : sources) {
+                Object lst = src.get(c.listField());
+                if (lst instanceof java.util.Collection<?> col) {
+                    try {
+                        col.removeIf(dropped::contains);
+                    } catch (UnsupportedOperationException immutable) {
+                        src.put(c.listField(), new ArrayList<>(col).stream()
+                                .filter(x -> !dropped.contains(x)).toList());
+                    }
+                }
+            }
+        }
+        pool.addAll(result);
+        return result;
+    }
+
+    /**
+     * Keep one record per nomination using the shared-award nominee list:
+     * <ul>
+     *   <li>has the primary list (≥1 nominee) → <b>canonical</b>, keep;</li>
+     *   <li>no list but carried an inverse role from a qualifier (a "for work"
+     *       copy) → drop (left for the demote pass to un-stamp);</li>
+     *   <li>no list and no inverse qualifier → work-less/honorary, so the subject
+     *       is the sole nominee: set the list to the source and keep.</li>
+     * </ul>
+     */
+    private static List<WikidataDynamicObject> canonicalize(
+            List<WikidataDynamicObject> created, String primaryField, String srcField,
+            java.util.Set<WikidataDynamicObject> hadInverseQual) {
+        List<WikidataDynamicObject> result = new ArrayList<>();
+        for (WikidataDynamicObject o : created) {
+            if (nonEmpty(o.get(primaryField))) {
+                result.add(o);
+            } else if (hadInverseQual.contains(o)) {
+                // denormalized copy — its nomination is the work's own (canonical)
+                // statement; not added, so the demote pass un-stamps it.
+            } else {
+                Object src = o.get(srcField);
+                if (src != null) {
+                    o.put(primaryField, src);
+                }
+                result.add(o);
+            }
+        }
+        return result;
+    }
+
+    /** Subject first, followed by the qualifier values, with entity identity dedup. */
+    private static void includeOnce(
+            WikidataDynamicObject record, String field, Object subject) {
+        if (record == null || subject == null) return;
+        List<Object> combined = new ArrayList<>();
+        combined.add(subject);
+        Object existing = record.get(field);
+        if (existing instanceof Collection<?> values) {
+            for (Object value : values) {
+                if (combined.stream().noneMatch(item -> sameEntity(item, value))) {
+                    combined.add(value);
+                }
+            }
+        } else if (existing != null
+                && combined.stream().noneMatch(item -> sameEntity(item, existing))) {
+            combined.add(existing);
+        }
+        record.put(field, combined);
+    }
+
+    private static boolean nonEmpty(Object v) {
+        if (v == null) {
+            return false;
+        }
+        if (v instanceof Collection<?> col) {
+            return !col.isEmpty();
+        }
+        return true;
+    }
+
+    // ---- #99: witnessed self-referential phantom drop ----
+
+    private static List<WikidataDynamicObject> dropWitnessedSelfReferences(
+            List<WikidataDynamicObject> atoms, ReifyConstruct c, String srcField,
+            String valueField, List<SelfRefFinding> findingsOut) {
+
+        List<WikidataDynamicObject> kept = new ArrayList<>();
+        for (WikidataDynamicObject atom : atoms) {
+            Object subject = atom.get(srcField);
+            if (subject == null
+                    || !isFullySelfReferential(atom, subject, c.roles())) {
+                kept.add(atom);
+                continue;
+            }
+            List<String> identity = identityFields(atom, c, srcField, valueField);
+            if (identity.isEmpty()) {
+                // No field identifies this event slot — can't confirm a witness is
+                // about the SAME event, so keep it (an empty context would match any
+                // subject-referencing atom, a false positive).
+                findingsOut.add(new SelfRefFinding(SelfRefDecision.KEPT, atom, null,
+                        identity, "fully self-referential but nothing identifies its slot"));
+                kept.add(atom);
+                continue;
+            }
+            WikidataDynamicObject witness =
+                    findWitness(atom, subject, atoms, c, identity);
+            if (witness != null) {
+                findingsOut.add(new SelfRefFinding(SelfRefDecision.DROPPED, atom, witness,
+                        identity, "a real record references this subject through a "
+                                + "REFERENCE role on the same slot"));
+                continue;   // a genuine record exists → this is its denormalized self-copy
+            }
+            findingsOut.add(new SelfRefFinding(SelfRefDecision.KEPT, atom, null,
+                    identity, "fully self-referential but no witness on the same slot"));
+            kept.add(atom);
+        }
+        return kept;
+    }
+
+    private static String describe(WikidataDynamicObject o) {
+        return o.getIdentifier() + " \"" + o.getDisplayName() + "\"";
+    }
+
+    /**
+     * A reified atom is fully self-referential when every role field that got a value
+     * fell back to the statement subject — origin {@link FieldOrigin#SUBJECT_FALLBACK}
+     * AND the value actually IS the subject — and none came from a real qualifier or
+     * the statement value. The value check guards against a mislabeled origin.
+     */
+    private static boolean isFullySelfReferential(
+            WikidataDynamicObject atom, Object subject, List<ReifyConstruct.Role> roles) {
+
+        boolean anyFallbackRole = false;
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            FieldOrigin origin = atom.origin(r.field());
+            if (origin == FieldOrigin.QUALIFIER
+                    || origin == FieldOrigin.STATEMENT_VALUE) {
+                return false;   // a real value (qualifier or statement value) anchors it
+            }
+            if (origin == FieldOrigin.SUBJECT_FALLBACK) {
+                if (!sameEntity(atom.get(r.field()), subject)) {
+                    return false;   // labeled a fallback but the value isn't the subject
+                }
+                anyFallbackRole = true;
+            }
+        }
+        return anyFallbackRole;
+    }
+
+    /**
+     * The fields that identify a reified event's slot: the reified value (the
+     * category, {@code valueField}) plus any role the atom anchored on a REAL value.
+     * Incidental loaded qualifiers (song, edition, year) are deliberately excluded —
+     * they vary within one slot and would make a genuine witness look different. When
+     * no {@code valueField} is known, fall back to the legacy broad context (every
+     * field that is not a role, the source, or the element back-ref).
+     */
+    private static List<String> identityFields(
+            WikidataDynamicObject atom, ReifyConstruct c, String srcField,
+            String valueField) {
+
+        java.util.Set<String> roleFields = new java.util.HashSet<>();
+        for (ReifyConstruct.Role r : c.roles()) {
+            if (r != null && r.field() != null && !r.field().isBlank()) {
+                roleFields.add(r.field());
+            }
+        }
+
+        List<String> fields = new ArrayList<>();
+        if (valueField != null && !valueField.isBlank()) {
+            if (!valueField.equals(srcField) && !valueField.equals(c.elementField())
+                    && nonEmpty(atom.get(valueField))) {
+                fields.add(valueField);
+            }
+            for (ReifyConstruct.Role r : c.roles()) {
+                if (r == null || r.field() == null || r.field().isBlank()) {
+                    continue;
+                }
+                FieldOrigin o = atom.origin(r.field());
+                if (o == FieldOrigin.QUALIFIER || o == FieldOrigin.STATEMENT_VALUE) {
+                    fields.add(r.field());
+                }
+            }
+            return fields;
+        }
+
+        // Legacy broad context (no valueField supplied).
+        for (java.util.Map.Entry<String, Object> e : atom.dynamicFields().entrySet()) {
+            String f = e.getKey();
+            if (!roleFields.contains(f) && !f.equals(srcField)
+                    && !f.equals(c.elementField()) && nonEmpty(e.getValue())) {
+                fields.add(f);
+            }
+        }
+        return fields;
+    }
+
+    // The origin of a role's value: a real qualifier (fallback-to-source role with a
+    // present qualifier), the reified statement's own value (a STATEMENT_VALUE role,
+    // fallbackToSource == false), or the subject fallback (absent qualifier).
+    private static FieldOrigin originOf(Object raw, ReifyConstruct.Role r) {
+        if (raw == null) {
+            return FieldOrigin.SUBJECT_FALLBACK;
+        }
+        return r.fallbackToSource()
+                ? FieldOrigin.QUALIFIER
+                : FieldOrigin.STATEMENT_VALUE;
+    }
+
+    // Whether any role on this atom drew from a REAL qualifier (origin QUALIFIER) —
+    // i.e. it is a denormalized inverse copy. Derived from the recorded origins so
+    // there is one source of truth; a STATEMENT_VALUE origin does not count.
+    private static boolean hasQualifierOriginRole(
+            WikidataDynamicObject atom, List<ReifyConstruct.Role> roles) {
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            if (atom.origin(r.field()) == FieldOrigin.QUALIFIER) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // A witness confirms `phantom` is a denormalized self-copy of a genuine record:
+    // another atom that (a) is not itself a fully self-referential phantom, (b)
+    // references the phantom's subject via a REAL (qualifier-origin) REFERENCE role,
+    // and (c) agrees with the phantom on its identity fields (the category and any
+    // real role value). (c) is what keeps a film's legitimate Best-Picture
+    // self-nomination (a different category) from being dropped by a different-slot
+    // witness.
+    private static WikidataDynamicObject findWitness(
+            WikidataDynamicObject phantom, Object subject,
+            List<WikidataDynamicObject> atoms, ReifyConstruct c,
+            List<String> identityFields) {
+
+        for (WikidataDynamicObject w : atoms) {
+            if (w == phantom
+                    || isFullySelfReferential(w, w.get(sourceField(c)), c.roles())) {
+                continue;
+            }
+            if (referencesSubject(w, subject, c.roles())
+                    && agreesOnIdentity(w, phantom, identityFields)) {
+                return w;
+            }
+        }
+        return null;
+    }
+
+    private static String sourceField(ReifyConstruct c) {
+        return c.sourceField() == null || c.sourceField().isBlank()
+                ? c.sourceType().toLowerCase() : c.sourceField();
+    }
+
+    private static boolean referencesSubject(
+            WikidataDynamicObject w, Object subject, List<ReifyConstruct.Role> roles) {
+
+        for (ReifyConstruct.Role r : roles) {
+            if (r == null || r.field() == null || r.field().isBlank()) {
+                continue;
+            }
+            // Only a REFERENCE role counts (e.g. forWork): the witness's work IS the
+            // phantom's subject, so the phantom is its denormalized self-copy. A
+            // witness that merely names the subject through the IDENTITY role (e.g.
+            // nominee) is a DIFFERENT record — see the Diane Warren case (#99).
+            if (r.kind() == domain.config.RoleKind.IDENTITY) {
+                continue;
+            }
+            if (w.origin(r.field()) == FieldOrigin.QUALIFIER
+                    && sameEntity(w.get(r.field()), subject)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // The witness must match the phantom on EVERY identity field (category + any real
+    // role value). Comparing by the phantom's values, not a snapshot, so it stays
+    // correct regardless of when qualifiers were loaded.
+    private static boolean agreesOnIdentity(
+            WikidataDynamicObject w, WikidataDynamicObject phantom,
+            List<String> identityFields) {
+
+        for (String f : identityFields) {
+            if (!sameEntity(w.get(f), phantom.get(f))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean sameEntity(Object a, Object b) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a instanceof WikidataDynamicObject x && b instanceof WikidataDynamicObject y) {
+            return x.getIdentifier() != null && x.getIdentifier().equals(y.getIdentifier());
+        }
+        return a.equals(b);
+    }
+
+    /**
+     * Collapse records equal on {@code keyFields}, preferring the WORK-anchored
+     * copy: the one whose {@code srcField} value equals one of its role values
+     * (e.g. source==forWork — the work's own statement) over a nominee's
+     * denormalized back-reference (source==the nominee). Robust to qualifier-load
+     * timing since it reads final field values, not the reify-time inverse flag.
+     */
+    private static List<WikidataDynamicObject> reduceSelectingWorkAnchoredCarrier(
+            List<WikidataDynamicObject> objs, canonical.CanonicalizationPlan plan,
+            String srcField, List<ReifyConstruct.Role> roles,
+            String type, List<IdentityCollision> collisions,
+            List<canonical.KeyedReduction.Conflict> conflicts) {
+        WikidataCanonicalization.Result result = WikidataCanonicalization.apply(
+                plan, objs, o -> workAnchored(o, srcField, roles));
+        if (collisions != null) {
+            result.canonicalByCandidate().entrySet().stream()
+                    .filter(entry -> entry.getKey() != entry.getValue())
+                    .sorted(java.util.Comparator
+                            .comparing((java.util.Map.Entry<WikidataDynamicObject,
+                                    WikidataDynamicObject> entry) ->
+                                    result.keyByCandidate().getOrDefault(entry.getKey(), ""))
+                            .thenComparing(entry -> java.util.Objects.toString(
+                                    entry.getKey().getIdentifier(), "")))
+                    .forEach(entry -> collisions.add(new IdentityCollision(type,
+                            result.keyByCandidate().getOrDefault(entry.getKey(), ""),
+                            entry.getValue(), entry.getKey(), true)));
+        }
+        if (conflicts != null) conflicts.addAll(result.reduction().conflicts());
+        return result.carriers();
+    }
+
+    // The source is (also) a role value — e.g. source==forWork: the statement sits
+    // on the work, so this is the canonical copy (not a nominee's back-reference).
+    private static boolean workAnchored(
+            WikidataDynamicObject o, String srcField, List<ReifyConstruct.Role> roles) {
+        String src = refQid(o.get(srcField));
+        if (src == null || src.isBlank() || roles == null) {
+            return false;
+        }
+        for (ReifyConstruct.Role r : roles) {
+            if (r != null && r.field() != null && !r.field().isBlank()
+                    && src.equals(refQid(o.get(r.field())))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String refQid(Object v) {
+        return v instanceof WikidataDynamicObject w ? w.getIdentifier() : null;
+    }
+
+    private static String keyOf(WikidataDynamicObject o, List<String> fields) {
+        StringBuilder sb = new StringBuilder();
+        for (String f : fields) {
+            sb.append('|').append(valueKey(o.get(f)));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * The dedup key asks the same question a canonical identity asks — what text does
+     * this value have that means the same thing in a later process — so it asks the
+     * same rule. Its own copy answered it for references and collections but fell
+     * through to toString() for a value type that publishes a canonical form, which is
+     * precisely what that form exists to prevent.
+     */
+    private static String valueKey(Object v) {
+        return domain.config.StableIdentity.of(v);
+    }
+
+    private static String display(Object v) {
+        return v instanceof WikidataDynamicObject w ? w.getDisplayName()
+                : String.valueOf(v);
+    }
+
+    private static List<WikidataDynamicObject> referencedObjects(Object value) {
+        if (value instanceof WikidataDynamicObject w) {
+            return List.of(w);
+        }
+        if (value instanceof Collection<?> col) {
+            List<WikidataDynamicObject> out = new ArrayList<>();
+            for (Object o : col) {
+                if (o instanceof WikidataDynamicObject w) {
+                    out.add(w);
+                }
+            }
+            return out;
+        }
+        return List.of();
+    }
+}

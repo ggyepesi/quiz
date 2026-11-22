@@ -3,24 +3,24 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import objectview.Viewable;
-import wikidata.explore.codegen.GeneratedViewableRuntime;
-import wikidata.explore.extract.GenerationLog;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataObjectRegistry;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.GenerationRun;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.query.core.Datasource;
+import domain.compile.codegen.GeneratedViewableRuntime;
+import domain.runtime.GenerationLog;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataObjectRegistry;
+import domain.build.GenerationPipeline;
+import domain.build.GenerationRun;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
-import wikidata.explore.rule.RuleNode;
+import domain.compile.rule.RuleNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 import wikidata.api.FactDemandPlan;
 
 /**
@@ -34,35 +34,35 @@ import wikidata.api.FactDemandPlan;
 public class GenerateDomainQuery implements Query<GenerationRun> {
 
     private final GeneratedProjectModel project;
-    private final wikidata.explore.generation.CompiledPipelineRun compiledRun;
+    private final domain.build.CompiledPipelineRun compiledRun;
     private final process.ProcessWorkflowPipeline pipelineProgress;
-    private final wikidata.explore.generation.GenerationExecutionSettings executionSettings;
-    private final wikidata.explore.generation.GenerationRecoveryStore recovery;
+    private final domain.build.GenerationExecutionSettings executionSettings;
+    private final domain.build.GenerationRecoveryStore recovery;
 
     public GenerateDomainQuery(GeneratedProjectModel project) {
-        this(wikidata.explore.generation.CompiledPipelineRun.compile(
-                        wikidata.explore.generation.PipelineRequest.generateDomain(project)),
-                null, new wikidata.explore.generation.GenerationExecutionSettings(), null);
+        this(domain.build.CompiledPipelineRun.compile(
+                        domain.build.PipelineRequest.generateDomain(project)),
+                null, new domain.build.GenerationExecutionSettings(), null);
     }
 
     public GenerateDomainQuery(
-            wikidata.explore.generation.CompiledPipelineRun compiledRun,
+            domain.build.CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipelineProgress,
-            wikidata.explore.generation.GenerationExecutionSettings executionSettings) {
+            domain.build.GenerationExecutionSettings executionSettings) {
         this(compiledRun, pipelineProgress, executionSettings, null);
     }
 
     public GenerateDomainQuery(
-            wikidata.explore.generation.CompiledPipelineRun compiledRun,
+            domain.build.CompiledPipelineRun compiledRun,
             process.ProcessWorkflowPipeline pipelineProgress,
-            wikidata.explore.generation.GenerationExecutionSettings executionSettings,
-            wikidata.explore.generation.GenerationRecoveryStore recovery) {
+            domain.build.GenerationExecutionSettings executionSettings,
+            domain.build.GenerationRecoveryStore recovery) {
         if (compiledRun == null) throw new IllegalArgumentException("No compiled pipeline run");
         this.compiledRun = compiledRun;
         this.project = compiledRun.request().model();
         this.pipelineProgress = pipelineProgress;
         this.executionSettings = executionSettings == null
-                ? new wikidata.explore.generation.GenerationExecutionSettings()
+                ? new domain.build.GenerationExecutionSettings()
                 : executionSettings;
         this.recovery = recovery;
     }
@@ -93,10 +93,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         }
         // The plan is the single resolved inventory. Consumers still migrate one
         // operation family at a time at their existing batching/cache boundary.
-        datasource.api.SourceExecutionPlan sourcePlan =
-                wikidata.explore.model.ModelSourceExecutionPlan.synchronizeAndCompile(
-                        project, datasource.Datasources.standard());
-        context.message(wikidata.explore.model.ModelSourceExecutionPlan.generationMessage(
+        domain.datasource.api.SourceExecutionPlan sourcePlan =
+                domain.config.ModelSourceExecutionPlan.synchronizeAndCompile(
+                        project, domain.datasource.Datasources.standard());
+        context.message(domain.config.ModelSourceExecutionPlan.generationMessage(
                 sourcePlan));
         return context.step(
                 "Generate domain \"" + project.name() + "\"",
@@ -112,7 +112,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     try (WikidataAccess.RequestLogs requestLogs =
                             WikidataAccess.logRequests(context, genLog)) {
                     genLog.message(executionSettings.resolvedDescription());
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.PLAN,
+                    phase(domain.build.GenerateDomainPipeline.PLAN,
                             project.classes().size() + " configured classes");
 
                     GenerationPipeline pipeline = new GenerationPipeline();
@@ -139,32 +139,32 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // the runtime, so it holds fully-resolved field models.
                     pipeline.resolveUnits(project, WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog);
 
-                    wikidata.explore.compiled.CompiledProjectModel compiledProject =
+                    domain.compile.CompiledProjectModel compiledProject =
                             compiledRun.model();
-                    wikidata.explore.generation.GenerationState generationState =
-                            new wikidata.explore.generation.GenerationState(
+                    domain.build.GenerationState generationState =
+                            new domain.build.GenerationState(
                                     project, compiledProject, entityApi.facts());
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.PLAN,
+                    completePhase(domain.build.GenerateDomainPipeline.PLAN,
                             "Model compiled");
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.DISCOVER,
+                    phase(domain.build.GenerateDomainPipeline.DISCOVER,
                             project.classes().size() + " configured classes");
 
                     RuleNode rootPlan = null;
                     int classesRun = 0;
                     int childQueryFailures = 0;
                     FactDemandPlan factDemandPlan =
-                            wikidata.explore.generation.GenerationFactDemandPlan.compile(
+                            domain.build.GenerationFactDemandPlan.compile(
                                     project, sourcePlan);
                     dataset.DomainStorage domainStorage = context.optional(
                             dataset.DomainStorage.class);
-                    wikidata.explore.generation.ImportedMaterializedPopulationInputs
+                    domain.build.ImportedMaterializedPopulationInputs
                             materializedInputs =
-                            wikidata.explore.generation.ImportedMaterializedPopulationInputs
+                            domain.build.ImportedMaterializedPopulationInputs
                                     .resolve(project, domainStorage);
                     for (GeneratedClassModel cls : project.classes()) {
-                        wikidata.explore.generation.PopulationSourceExecution.Resolution
+                        domain.build.PopulationSourceExecution.Resolution
                                 populationInput =
-                                wikidata.explore.generation.PopulationSourceExecution.resolve(
+                                domain.build.PopulationSourceExecution.resolve(
                                         project, cls, sourcePlan, materializedInputs)
                                         .acquire(context, genLog);
                         List<String> supplemental = compiledRun.request()
@@ -223,17 +223,17 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                         genLog.message("  -> " + rootsFound + " "
                                 + cls.className() + "\n");
-                        progress(wikidata.explore.generation.GenerateDomainPipeline.DISCOVER,
+                        progress(domain.build.GenerateDomainPipeline.DISCOVER,
                                 classesRun + " root class query(ies) completed");
                     }
 
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.DISCOVER,
+                    completePhase(domain.build.GenerateDomainPipeline.DISCOVER,
                             classesRun + " root class query(ies) completed");
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                    phase(domain.build.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             "Loading statements and qualifiers");
                     String statementPlan = statementAcquisitionPlan(compiledProject);
                     progress(
-                            wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                            domain.build.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             statementPlan);
                     genLog.message("Statement acquisition plan: " + statementPlan + "\n");
                     // STATEMENT-reification classes (e.g. Nomination = the P1411
@@ -249,21 +249,21 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // canonical identity already resolved). Byte-for-byte parity
                     // with the editable-model derivation is proven; the compile also
                     // fails fast if the model is structurally invalid.
-                    wikidata.explore.transform.ModelStatementReifications.AcquisitionReport
+                    domain.compile.transform.ModelStatementReifications.AcquisitionReport
                             statementAcquisition =
-                            wikidata.explore.transform.ModelStatementReifications
+                            domain.compile.transform.ModelStatementReifications
                                     .enrichWithReport(
                                             compiledProject, reifyPool,
                                             WikidataAccess.sparql(context, Datasource.WIKIDATA), genLog,
                                             entityApi, true, factDemandPlan,
                                             context.cancellation());
                     progress(
-                            wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                            domain.build.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             statementAcquisition.summary());
                     completePhase(
-                            wikidata.explore.generation.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
+                            domain.build.GenerateDomainPipeline.ACQUIRE_STATEMENTS,
                             statementAcquisition.summary());
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
+                    phase(domain.build.GenerateDomainPipeline.CONSTRUCT,
                             "Constructing statement records and derived fields");
                     // A source-class-less reify DISCOVERS its subjects, which enrich
                     // added to reifyPool but not to the shared registry. Fold them in
@@ -274,7 +274,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         shared.adoptIfAbsent(o);
                     }
                     List<WikidataDynamicObject> enrichedSnapshot =
-                            wikidata.explore.transform.PoolCopy.deepCopy(shared.values());
+                            domain.compile.transform.PoolCopy.deepCopy(shared.values());
 
                     // The ONE transform sequence (#97). Generate differs from Remap only
                     // in that it FETCHES the companion sets instead of replaying cached
@@ -283,18 +283,18 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // worklist, finalization and materialization all advance it, and each
                     // declares the stage it needs — so the order is checked rather than
                     // trusted to the order these lines happen to be written in.
-                    wikidata.explore.generation.PipelineState runState =
-                            wikidata.explore.generation.PipelineState.over(
-                                    wikidata.explore.generation.GraphCheckpoint.Stage
+                    domain.build.PipelineState runState =
+                            domain.build.PipelineState.over(
+                                    domain.build.GraphCheckpoint.Stage
                                             .NORMALIZED_SOURCE_GRAPH, reifyPool);
-                    wikidata.explore.generation.PipelineContext runContext =
-                            new wikidata.explore.generation.PipelineContext(
+                    domain.build.PipelineContext runContext =
+                            new domain.build.PipelineContext(
                                     compiledRun, entityApi, genLog, context.cancellation());
-                    new wikidata.explore.generation.PipelineExecutor()
-                            .with(wikidata.explore.generation.ConstructRecordsStep.acquiring(
+                    new domain.build.PipelineExecutor()
+                            .with(domain.build.ConstructRecordsStep.acquiring(
                                     records -> {
                                         try {
-                                            return wikidata.explore.transform.CompanionMatch
+                                            return domain.compile.transform.CompanionMatch
                                                     .loadSets(compiledProject, records,
                                                             WikidataAccess.sparql(
                                                                     context, Datasource.WIKIDATA),
@@ -306,7 +306,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                         }
                                     }))
                             .run(runContext, runState);
-                    wikidata.explore.transform.StatementTransforms.Result transformed =
+                    domain.compile.transform.StatementTransforms.Result transformed =
                             runState.construction();
                     List<WikidataDynamicObject> reified = transformed.reified();
                     java.util.Map<String, java.util.Set<java.util.List<String>>>
@@ -318,9 +318,9 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // them; what is SERVED is this pool.
                     List<WikidataDynamicObject> pool = reifyPool;
 
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.CONSTRUCT,
+                    completePhase(domain.build.GenerateDomainPipeline.CONSTRUCT,
                             reified.size() + " statement record(s)");
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                    phase(domain.build.GenerateDomainPipeline.SEMANTIC,
                             "Role stamps, fields, kinds and owned values");
                     // First acquisition pass: load fields on the role classes that are
                     // already known — e.g. Nominee.type (P31), ForWork.genre (P136).
@@ -341,15 +341,15 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // property, and the run must RECORD which — otherwise the snapshot
                     // it saves claims nothing has been fetched, and the first enrich
                     // after a full generation re-asks Wikidata for all of it.
-                    wikidata.explore.generation.GenerationQualityTracker qualityTracker =
+                    domain.build.GenerationQualityTracker qualityTracker =
                             generationState.quality();
-                    new wikidata.explore.generation.PipelineExecutor()
-                            .with(new wikidata.explore.generation.SemanticWorklistStep(
+                    new domain.build.PipelineExecutor()
+                            .with(new domain.build.SemanticWorklistStep(
                                     sourcePlan, qualityTracker))
                             .run(runContext, runState);
-                    wikidata.explore.generation.SemanticConvergence.Result convergence =
+                    domain.build.SemanticConvergence.Result convergence =
                             runState.convergence();
-                    java.util.Map<String, wikidata.explore.extract.LoadedDeclaration>
+                    java.util.Map<String, domain.runtime.LoadedDeclaration>
                             completedReferentLoads = new java.util.LinkedHashMap<>(
                                     convergence.completedDeclarations());
                     int loadedReferentFields = convergence.loadedFields();
@@ -357,52 +357,52 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         genLog.message("Loaded " + loadedReferentFields
                                 + " referent/owned field value(s) from declared PIDs.\n");
                     }
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                    completePhase(domain.build.GenerateDomainPipeline.SEMANTIC,
                             convergence.iterations() + " semantic iteration(s)");
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
-                            wikidata.explore.generation.StandardExternalSourceFamilies
+                    phase(domain.build.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                            domain.build.StandardExternalSourceFamilies
                                     .describe(sourcePlan));
-                    wikidata.explore.generation.ExternalSourceAcquisition.Applied acquired =
-                            wikidata.explore.generation.ExternalSourceAcquisition
+                    domain.build.ExternalSourceAcquisition.Applied acquired =
+                            domain.build.ExternalSourceAcquisition
                                     .applyWithSemanticReplay(
                                     project, pool, sourcePlan,
-                                    wikidata.explore.generation.StandardExternalSourceFamilies
+                                    domain.build.StandardExternalSourceFamilies
                                             .services(WikidataAccess.sparql(
                                                     context, Datasource.WIKIDATA),
                                                     WikidataAccess.sparql(
                                                     context, Datasource.DBPEDIA), entityApi),
                                     genLog, context.cancellation(),
-                                    wikidata.explore.generation.ExternalSourceAcquisition
+                                    domain.build.ExternalSourceAcquisition
                                             .FailurePolicy.STRICT,
                                     completedReferentLoads.values(), qualityTracker);
-                    wikidata.explore.generation.ExternalSourceAcquisition.Result external =
+                    domain.build.ExternalSourceAcquisition.Result external =
                             acquired.sources();
                     if (!external.complete()) {
                         qualityTracker.failed("external-source",
                                 String.join("; ", external.failures()));
                     }
-                    convergence = wikidata.explore.generation.SemanticConvergence.combine(
+                    convergence = domain.build.SemanticConvergence.combine(
                             convergence, acquired.semantic());
                     completedReferentLoads.clear();
                     completedReferentLoads.putAll(convergence.completedDeclarations());
                     loadedReferentFields = convergence.loadedFields();
                     String acquiredExternal = external.acquiredSummary();
                     if (!acquiredExternal.isBlank()) {
-                        progress(wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                        progress(domain.build.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                                 acquiredExternal + " acquired");
                     }
                     completePhase(
-                            wikidata.explore.generation.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
+                            domain.build.GenerateDomainPipeline.EXTERNAL_EVIDENCE,
                             external.summary());
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.LABELS,
+                    phase(domain.build.GenerateDomainPipeline.LABELS,
                             "Hydrating final reachable QIDs");
-                    wikidata.explore.generation.FinalLabelHydration.Result labels =
-                            wikidata.explore.generation.FinalLabelHydration.apply(
+                    domain.build.FinalLabelHydration.Result labels =
+                            domain.build.FinalLabelHydration.apply(
                                     pool, entityApi, genLog, qualityTracker,
                                     project, sourcePlan);
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.LABELS,
+                    completePhase(domain.build.GenerateDomainPipeline.LABELS,
                             labels.resolved() + " label(s) resolved");
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
+                    phase(domain.build.GenerateDomainPipeline.FINALIZE,
                             "Canonicalize, prune, validate and build vocabularies");
                     // Through the executor, which owns the order. Two calls rather than
                     // one because ~120 lines of reporting sit between the two phases and
@@ -413,10 +413,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     //
                     // The same state construction and the worklist advanced: pool IS
                     // reifyPool, and the records are the ones the construct step left.
-                    new wikidata.explore.generation.PipelineExecutor()
-                            .with(new wikidata.explore.generation.FinalizeStep())
+                    new domain.build.PipelineExecutor()
+                            .with(new domain.build.FinalizeStep())
                             .run(runContext, runState);
-                    wikidata.explore.generation.DomainFinalization.Result finalization =
+                    domain.build.DomainFinalization.Result finalization =
                             runState.finalization();
                     // Fetched vs avoided says whether the cache paid; the eviction
                     // figures say WHY. A poor hit rate with no evicted re-fetches means
@@ -517,7 +517,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                                     + retained.unusedEstimatedBytes() / 1024 + " KB.\n");
                         }
                     }
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.FINALIZE,
+                    completePhase(domain.build.GenerateDomainPipeline.FINALIZE,
                             pool.size() + " final object(s)"
                                     + finalization.ownedPartsSummary());
 
@@ -526,26 +526,26 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // materialization defect never forces the remote work to run again.
                     if (recovery != null) {
                         GenerationRun.Quality recoveryQuality = qualityTracker.quality();
-                        datasource.graph.GraphDiscoveryState recoveryDiscovery =
-                                wikidata.explore.generation.WikidataGraphDiscoveryState.compute(
+                        domain.datasource.graph.GraphDiscoveryState recoveryDiscovery =
+                                domain.build.WikidataGraphDiscoveryState.compute(
                                         project, pool);
-                        wikidata.explore.transform.SelfReferenceLedger recoverySelfReferences =
-                                wikidata.explore.transform.SelfReferenceLedger.ran(
+                        domain.compile.transform.SelfReferenceLedger recoverySelfReferences =
+                                domain.compile.transform.SelfReferenceLedger.ran(
                                         transformed.selfReferenceFindings(),
                                         finalization.suspectedSelfReferences());
-                        wikidata.explore.generation.GraphCheckpoint recoveryCheckpoint =
-                                wikidata.explore.generation.GraphCheckpoint.finalGraph(
+                        domain.build.GraphCheckpoint recoveryCheckpoint =
+                                domain.build.GraphCheckpoint.finalGraph(
                                         pool,
                                         java.util.List.copyOf(
                                                 completedReferentLoads.values()),
                                         recoveryDiscovery, recoveryQuality,
-                                        wikidata.explore.generation.DomainSave.signature(project));
+                                        domain.build.DomainSave.signature(project));
                         genLog.message("Saving finalized recovery graph: "
                                 + pool.size() + " objects -> "
                                 + recovery.snapshotFile().getPath() + "\n");
                         recovery.save(project, recoveryCheckpoint, recoverySelfReferences);
                     }
-                    phase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
+                    phase(domain.build.GenerateDomainPipeline.MATERIALIZE,
                             pool.size() + " object(s)");
 
                     // ONE shared mapper over the SERVED POOL: each QID -> one typed
@@ -554,12 +554,12 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     // generation preview identical to load/serve — otherwise a qid
                     // stamped as a class root but stored untyped in the pool would
                     // show at generation yet vanish on reload.
-                    new wikidata.explore.generation.PipelineExecutor()
-                            .with(new wikidata.explore.generation.MaterializeStep())
+                    new domain.build.PipelineExecutor()
+                            .with(new domain.build.MaterializeStep())
                             .run(runContext, runState);
                     GeneratedViewableRuntime runtime = runState.runtime();
                     List<Viewable> allInstances = runState.instances();
-                    completePhase(wikidata.explore.generation.GenerateDomainPipeline.MATERIALIZE,
+                    completePhase(domain.build.GenerateDomainPipeline.MATERIALIZE,
                             allInstances.size() + " instances materialized");
                     if (recovery != null) {
                         recovery.clear();
@@ -581,10 +581,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         qualityWarnings.add(childQueryFailures
                                 + " child extraction query(ies) did not complete");
                         partialPhase(
-                                wikidata.explore.generation.GenerateDomainPipeline.DISCOVER,
+                                domain.build.GenerateDomainPipeline.DISCOVER,
                                 childQueryFailures + " child query failure(s)");
                     }
-                    java.util.List<wikidata.explore.extract.LoadedDeclaration> failedLoads =
+                    java.util.List<domain.runtime.LoadedDeclaration> failedLoads =
                             new java.util.ArrayList<>(convergence.unresolvedLoads());
                     if (!failedLoads.isEmpty()) {
                         String failedNames = failedLoads.stream().limit(3)
@@ -597,28 +597,28 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                         }
                         boolean roleFailure = failedLoads.stream().anyMatch(d -> {
                             GeneratedClassModel c = project.findClass(d.className());
-                            return c != null && wikidata.explore.model.MembershipPattern.of(
-                                    c, project) == wikidata.explore.model.MembershipPattern.REFERENCED;
+                            return c != null && domain.config.MembershipPattern.of(
+                                    c, project) == domain.config.MembershipPattern.REFERENCED;
                         });
                         if (roleFailure) partialPhase(
-                                wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                                domain.build.GenerateDomainPipeline.SEMANTIC,
                                 failedNames);
                         boolean laterFailure = failedLoads.stream().anyMatch(d -> {
                             GeneratedClassModel c = project.findClass(d.className());
                             if (c == null) return false;
-                            var pattern = wikidata.explore.model.MembershipPattern.of(c, project);
-                            return pattern == wikidata.explore.model.MembershipPattern.EVIDENCE_KIND
-                                    || pattern == wikidata.explore.model.MembershipPattern.OWNED_COMPONENT;
+                            var pattern = domain.config.MembershipPattern.of(c, project);
+                            return pattern == domain.config.MembershipPattern.EVIDENCE_KIND
+                                    || pattern == domain.config.MembershipPattern.OWNED_COMPONENT;
                         });
                         if (laterFailure || !roleFailure) partialPhase(
-                                wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                                domain.build.GenerateDomainPipeline.SEMANTIC,
                                 failedNames);
                     }
                     java.util.Set<String> unresolvedKindQids =
                             convergence.unresolvedKindQids();
                     int unresolvedKindEvidence = unresolvedKindQids.size();
                     if (unresolvedKindEvidence > 0) {
-                        partialPhase(wikidata.explore.generation.GenerateDomainPipeline.SEMANTIC,
+                        partialPhase(domain.build.GenerateDomainPipeline.SEMANTIC,
                                 unresolvedKindEvidence
                                         + " entity-kind referent(s) unavailable");
                     }
@@ -704,7 +704,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     static List<RuleNode> populationPlans(
             RuleNode configuredPlan,
             RuleNode supplementalPlan,
-            wikidata.explore.generation.PopulationSourceExecution.Resolution configured,
+            domain.build.PopulationSourceExecution.Resolution configured,
             List<String> supplementalQids) {
         List<RuleNode> plans = new ArrayList<>();
         if (configured != null && configured.available() && configuredPlan != null) {
@@ -713,7 +713,7 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
         }
         if (supplementalQids != null && !supplementalQids.isEmpty()
                 && supplementalPlan != null) {
-            wikidata.explore.generation.PopulationSourceExecution.applyExact(
+            domain.build.PopulationSourceExecution.applyExact(
                     supplementalPlan, supplementalQids);
             plans.add(supplementalPlan);
         }
@@ -750,10 +750,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
     }
 
     private static String statementAcquisitionPlan(
-            wikidata.explore.compiled.CompiledProjectModel model) {
+            domain.compile.CompiledProjectModel model) {
         java.util.List<String> descriptions = new java.util.ArrayList<>();
         for (var recipe :
-                wikidata.explore.transform.ModelStatementReifications.derive(model)) {
+                domain.compile.transform.ModelStatementReifications.derive(model)) {
             var load = recipe.load();
             String source = load.discoverSubjects() ? "discover subjects" : "reuse "
                     + load.entityType() + " members";

@@ -10,7 +10,7 @@ place (fetching the child on demand) — the web counterpart of the desktop
 1. Start the Java API (from the repo root):
 
    ```
-   mvn -o exec:java -Dexec.mainClass=quiz.web.ViewableServerMain
+   mvn -o exec:java -Dexec.mainClass=quiz.web.cli.ViewableServerMain
    ```
 
    It serves on `http://localhost:7070` with CORS enabled. The first request

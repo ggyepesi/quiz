@@ -4,8 +4,8 @@ import objectview.ViewableAdapter;
 import objectview.field.FieldPath;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import quiz.group.ViewableGroup;
-import quiz.transform.FacetGroup;
+import domain.group.ViewableGroup;
+import domain.transform.FacetGroup;
 
 import java.util.Set;
 

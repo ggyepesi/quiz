@@ -1,0 +1,120 @@
+package domain.workbench.execution.ui;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class WorkflowLogWindowFilenameTest {
+    @TempDir Path directory;
+
+    @Test void suggestsTheFirstDomainSpecificLog() {
+        assertEquals(directory.resolve("query-log-oscarnominations-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(directory, "OscarNominations"));
+    }
+
+    @Test void advancesPastTextAndCompanionArtifactsWithoutFillingOldGaps()
+            throws Exception {
+        Files.createFile(directory.resolve("query-log-movies-1.txt"));
+        Files.createFile(directory.resolve("query-log-movies-3.run.json"));
+        Files.createFile(directory.resolve("query-log-other-99.txt"));
+
+        assertEquals(directory.resolve("query-log-movies-4.txt"),
+                WorkflowLogWindow.suggestedLogPath(directory, "Movies"));
+    }
+
+    @Test void sanitizesAConfiguredDomainName() {
+        assertEquals(directory.resolve("query-log-history-people-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(directory, " History / People "));
+    }
+
+    // --- the domain is stated, not recovered from the display title ---------
+
+    @Test void aDomainWhoseNameContainsTheSeparatorSurvives() {
+        // The title used to be split on " — " to recover the domain, which a domain
+        // carrying that separator in its own name cannot survive.
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        window.registerPipeline("Generate domain — Rulers — Hungary", pipeline(),
+                "Rulers — Hungary", directory);
+
+        assertEquals("Rulers — Hungary", window.destination().domain());
+        assertEquals(directory.resolve("query-log-rulers-hungary-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(
+                        directory, window.destination().domain()));
+    }
+
+    @Test void nameAndFolderComeFromTheSameRun() {
+        // Scanning for them separately could name a log after the newest run while
+        // writing it into an older run's folder.
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        window.registerPipeline("Generate domain — Movies", pipeline(),
+                "Movies", directory.resolve("movies"));
+        window.registerPipeline("Enrich — Constellations", pipeline(),
+                "Constellations", null);
+
+        WorkflowLogWindow.RegisteredPipeline destination = window.destination();
+        assertEquals("Constellations", destination.domain(),
+                "the most recent run that says where it belongs");
+        assertNull(destination.snapshotDirectory(),
+                "and its folder, rather than the previous run's");
+    }
+
+    @Test void aRunThatNamesNoDomainIsNotADestination() {
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        window.registerPipeline("Ad-hoc query", pipeline());
+
+        assertNull(window.destination());
+        assertEquals(directory.resolve("query-log-domain-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(directory, ""),
+                "an unnamed run still gets a usable filename");
+    }
+
+    @Test void aModelProvidesTheDestinationForItsExplorerQueries() {
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        Path modelDirectory = directory.resolve("person");
+        window.saveContext("Person", modelDirectory);
+
+        assertEquals("Person", window.destination().domain());
+        assertEquals(modelDirectory.toAbsolutePath().normalize(),
+                window.destination().snapshotDirectory());
+        assertEquals(modelDirectory.resolve("query-log-person-1.txt"),
+                WorkflowLogWindow.suggestedLogPath(
+                        modelDirectory, window.destination().domain()));
+    }
+
+    @Test void onlyTheWholeWorkflowFinishingRequestsAFullTreeRefresh() {
+        assertFalse(WorkflowLogWindow.refreshFully(work.LogStatus.RUNNING));
+        assertTrue(WorkflowLogWindow.refreshFully(work.LogStatus.OK));
+        assertTrue(WorkflowLogWindow.refreshFully(work.LogStatus.FAILED));
+    }
+
+    @Test void switchingProjectsForgetsLogsPipelinesAndSaveDestination() throws Exception {
+        WorkflowLogWindow window = new WorkflowLogWindow();
+        window.saveContext("History", directory.resolve("history"));
+        window.registerPipeline("Generate History", pipeline(),
+                "History", directory.resolve("history"));
+        window.info("An old-project message");
+        long deadline = System.nanoTime()
+                + java.util.concurrent.TimeUnit.SECONDS.toNanos(2);
+        while (window.workflowCount() == 0 && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+
+        window.resetForProjectSwitch();
+
+        assertEquals(0, window.workflowCount(),
+                "the next project must not reopen the previous project's rows");
+        assertNull(window.destination(),
+                "the next saved log must not use the previous project's name or folder");
+    }
+
+    private static process.ProcessWorkflowPipeline pipeline() {
+        return new process.ProcessWorkflowPipeline(java.util.List.of());
+    }
+}

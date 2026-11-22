@@ -3,16 +3,16 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.rule.RuleNode;
+import domain.compile.rule.RuleNode;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Discover the recipient TYPE (instance-of, P31) per membership target, so the
@@ -85,7 +85,7 @@ public class DiscoverRecipientTypeQuery implements Query<TableQueryResult> {
                             + " (GROUP_CONCAT(DISTINCT ?inst; SEPARATOR=\" \") AS ?insts)"
                             + " WHERE {\n"
                             + "  hint:Query hint:optimizer \"None\" .\n"
-                            + "  " + wikidata.explore.query.template.sparql.SparqlValues
+                            + "  " + wikidata.query.template.sparql.SparqlValues
                                     .clause("target", targets) + "\n"
                             + "  " + triple + "\n"
                             + "} GROUP BY ?target";

@@ -1,0 +1,468 @@
+package domain.datasource.wikidata;
+
+import domain.datasource.api.BindingScope;
+import domain.datasource.api.DatasourceOperation;
+import domain.datasource.api.DatasourceProvider;
+import domain.datasource.api.DatasourceInstanceField;
+import domain.datasource.api.ParameterDescriptor;
+import domain.datasource.api.SourceValueKind;
+import domain.datasource.api.SourceValueSchema;
+import domain.datasource.api.SourceReferenceSchema;
+import domain.datasource.api.SourceRecipe;
+import domain.datasource.api.PreparedSourceOperation;
+import domain.datasource.api.acquisition.ClassPopulationOperation;
+import domain.datasource.api.acquisition.PopulationRequest;
+import domain.datasource.EntityRef;
+import wikidata.WikidataIds;
+
+import java.util.List;
+
+/**
+ * What Wikidata offers a class, as operations.
+ *
+ * <p>The second provider, and the one that tests the abstraction: Wikidata can be a
+ * class's identity authority, supplying the identifier it is keyed by and the label its
+ * instances display. It is not privileged by the contract; a Wikipedia-authoritative
+ * class may instead choose that provider's durable page reference and title.
+ *
+ * <p>They can. Each is an offering with a scope saying where it may be bound and a
+ * schema saying what it yields, so a class declaring its origin is choosing among these
+ * rather than being told by the extraction layer which source it came from.
+ *
+ * <p>Only the first is not optional. An entity class without {@link #IDENTIFIER} has no
+ * identity of its own; a class may perfectly well decline the label and compose one from
+ * its fields, decline the aliases, or take the description and mark it minor.
+ */
+public final class WikidataDatasourceProvider implements DatasourceProvider {
+
+    public static final String ID = "wikidata";
+
+    /** The QID: what makes two instances the same instance. */
+    public static final String IDENTIFIER = "identifier";
+    /** The label, in a language preference — what an instance displays as its name. */
+    public static final String LABEL = "label";
+    /** "Also known as": the values that surface today as an undeclared alternateNames. */
+    public static final String ALIASES = "aliases";
+    /** The short gloss under a label. */
+    public static final String DESCRIPTION = "description";
+    /** A statement property read as the configured value of one model field. */
+    public static final String PROPERTY_VALUE = "property-value";
+    public static final String SITELINK_COUNT = "sitelink-count";
+    public static final String INCOMING_RELATION_COUNT = "incoming-relation-count";
+    public static final String INHERITED_INCOMING_RELATION_COUNT =
+            "inherited-incoming-relation-count";
+    public static final String FAMILY_COMPUTED_FIELD = "wikidata-computed-field";
+    public static final String RELATION_ROUTES = "relation-routes";
+    public static final String FAMILY_RELATION_ROUTE_FIELD =
+            "wikidata-relation-route-field";
+    public static final String ROUTES_PARAMETER = "routes";
+    /** The article a Wikipedia operation needs to say anything about this entity. */
+    public static final String SITELINK = "sitelink";
+    public static final String SOURCE_FIELD = "wikidataSource";
+    public static final String STATEMENTS_FIELD = "wikidataStatements";
+    public static final String ROUTE_MATCHES_FIELD = "wikidataRelationRouteMatches";
+    public static final String WIKIPEDIA_SOURCE_FIELD = "wikipediaSource";
+
+    private static final DatasourceInstanceField SOURCE =
+            new DatasourceInstanceField() {
+                @Override public String name() { return SOURCE_FIELD; }
+                @Override public String label() { return "Wikidata source"; }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof domain.runtime.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    String qid = o.qid();
+                    return qid.isBlank() ? List.of()
+                            : List.of(new domain.provenance.WikidataSource(qid));
+                }
+            };
+
+    private static final DatasourceInstanceField STATEMENTS =
+            new DatasourceInstanceField() {
+                @Override public String name() { return STATEMENTS_FIELD; }
+                @Override public String label() { return "Wikidata statements"; }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof domain.runtime.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    return List.copyOf(o.wikidataStatementSources());
+                }
+            };
+
+    private static final DatasourceInstanceField ROUTE_MATCHES =
+            new DatasourceInstanceField() {
+                @Override public String name() { return ROUTE_MATCHES_FIELD; }
+                @Override public String label() {
+                    return "Wikidata relation route matches";
+                }
+                @Override public SourceValueSchema valueSchema() {
+                    return SourceValueSchema.collection(
+                            SourceValueKind.ENTITY_REFERENCE, ID);
+                }
+                @Override public objectview.field.FieldRole role() {
+                    return objectview.field.FieldRole.NONE;
+                }
+                @Override public Class<? extends objectview.Viewable> referenceType() {
+                    return domain.provenance.WikidataRelationRouteMatch.class;
+                }
+                @Override public Object value(Object source) {
+                    if (!(source instanceof domain.runtime.WikidataDynamicObject o)) {
+                        return List.of();
+                    }
+                    return List.copyOf(o.wikidataRelationRouteMatches());
+                }
+            };
+
+    /**
+     * Membership by a statement: the instances whose {@code property} points at one of
+     * {@code values}.
+     *
+     * <p>One offering rather than four, because it is one query. The model's membership
+     * patterns — a type (P31), a type with its subclasses, a single-target relation, a
+     * multi-target one — are configurations of this, differing in which property is
+     * named and whether the subclass closure applies. Splitting them here would make the
+     * catalogue describe the editor's vocabulary instead of the source's.
+     */
+    public static final String STATEMENT_MEMBERSHIP = "statement-membership";
+
+    /** Membership by an explicit list of ids, for a population no statement selects. */
+    public static final String SEED_LIST = "seed-list";
+
+    private static final ParameterDescriptor LANGUAGES = new ParameterDescriptor(
+            "languages", "Languages", ParameterDescriptor.Kind.TEXT, false,
+            wikidata.WikidataLanguageDefaults.languages(),
+            List.of(),
+            "Language preference, most preferred first. mul is Wikidata's "
+                    + "multilingual default and is many entities' only Latin-script name.");
+
+    private final List<DatasourceOperation> operations = List.of(
+            offering(IDENTIFIER, "Wikidata id (QID)", BindingScope.CLASS_IDENTITY,
+                    new SourceValueSchema(SourceValueKind.ENTITY_REFERENCE, false, ID),
+                    List.of()),
+            offering(LABEL, "Label", BindingScope.CLASS_NAMES,
+                    new SourceValueSchema(SourceValueKind.LANGUAGE_TEXT, false, ""),
+                    List.of(LANGUAGES)),
+            offering(ALIASES, "Also known as", BindingScope.CLASS_NAMES,
+                    SourceValueSchema.collection(SourceValueKind.LANGUAGE_TEXT),
+                    List.of(LANGUAGES)),
+            offering(DESCRIPTION, "Description", BindingScope.FIELD_VALUE,
+                    new SourceValueSchema(SourceValueKind.LANGUAGE_TEXT, false, ""),
+                    List.of(LANGUAGES)),
+            offering(PROPERTY_VALUE, "Statement property", BindingScope.FIELD_VALUE,
+                    new SourceValueSchema(SourceValueKind.MODEL_VALUE, true, ""),
+                    List.of(
+                            ParameterDescriptor.reference("property", "Property", true, "",
+                                    "The Wikidata property supplying this field.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            new ParameterDescriptor("valueLanguage", "Value language",
+                                    ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                                    "Optional language code for values constrained by "
+                                            + "a P407 qualifier. Blank preserves all."),
+                            ParameterDescriptor.reference("conditionQualifier",
+                                    "Only statements with qualifier", false, "",
+                                    "Read only the statements carrying this qualifier "
+                                            + "with one of the allowed values.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            new ParameterDescriptor("conditionValues", "Allowed qualifier values",
+                                    ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                                    "Space-separated QIDs the qualifier must have."))),
+            new RelationRoutesOffering(),
+            new ComputedFieldOffering(SITELINK_COUNT, "Sitelink count", List.of()),
+            new ComputedFieldOffering(INCOMING_RELATION_COUNT,
+                    "Incoming relation count", List.of(
+                    ParameterDescriptor.reference("property", "Property", true, "",
+                            "Count distinct entities whose statement points to this entity.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
+            new ComputedFieldOffering(INHERITED_INCOMING_RELATION_COUNT,
+                    "Inherited incoming relation count", List.of(
+                    ParameterDescriptor.reference("property", "Property", true, "",
+                            "Count distinct entities whose statement points to a loaded "
+                                    + "instance that is a strict P279 descendant of this "
+                                    + "entity. Descendants outside the loaded population "
+                                    + "are not counted.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.PROPERTY, false)))),
+            new StatementMembershipOffering(
+                    BindingScope.CLASS_POPULATION,
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
+                    List.of(
+                            ParameterDescriptor.reference("property", "Property", true,
+                                    "P31",
+                                    "The statement that makes an entity a member. P31 "
+                                            + "for a type; any property for a relation.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            ParameterDescriptor.reference("values", "Values", false, "",
+                                    "The QIDs the property must point at. Several means "
+                                            + "membership by any of them. May be blank when "
+                                            + "a qualifier condition selects the statement.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.ENTITY, true)),
+                            new ParameterDescriptor("includeSubclasses",
+                                    "Include subclasses", ParameterDescriptor.Kind.BOOLEAN,
+                                    false, "false", List.of(),
+                                    "Follow P279 down from each value. Meaningful for a "
+                                            + "type; not for a relation."),
+                            ParameterDescriptor.reference("conditionProperty",
+                                    "Qualifier property", false, "",
+                                    "Keep only statements whose qualifier has one of the "
+                                            + "allowed values.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.PROPERTY, false)),
+                            ParameterDescriptor.reference("conditionValues",
+                                    "Allowed qualifier values", false, "",
+                                    "Space-separated QIDs the qualifier must have.",
+                                    new SourceReferenceSchema(ID,
+                                            SourceReferenceSchema.Kind.ENTITY, true)))),
+            new SeedListOffering(BindingScope.CLASS_POPULATION,
+                    SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID),
+                    List.of(ParameterDescriptor.reference("ids", "Ids", true, "",
+                            "The QIDs that are members, named one by one.",
+                            new SourceReferenceSchema(ID,
+                                    SourceReferenceSchema.Kind.ENTITY, true)))),
+            offering(SITELINK, "Wikipedia article", BindingScope.SOURCE_CORRESPONDENCE,
+                    new SourceValueSchema(SourceValueKind.URL, false, ""),
+                    List.of(new ParameterDescriptor(
+                            "wiki", "Wiki", ParameterDescriptor.Kind.TEXT, false, "enwiki",
+                            List.of(), "Which Wikipedia the article is taken from."))));
+
+    @Override public String id() { return ID; }
+    @Override public String displayName() { return "Wikidata"; }
+    @Override public List<? extends DatasourceOperation> operations() { return operations; }
+    @Override public List<? extends DatasourceInstanceField> instanceFields() {
+        return List.of(SOURCE, STATEMENTS);
+    }
+
+    @Override public List<? extends DatasourceInstanceField> instanceFields(
+            domain.datasource.api.SourceBinding binding) {
+        if (binding == null || !ID.equals(binding.recipe().providerId())) {
+            return List.of();
+        }
+        if (binding.target().scope() == BindingScope.FIELD_VALUE
+                && RELATION_ROUTES.equals(binding.recipe().operationId())) {
+            return List.of(ROUTE_MATCHES);
+        }
+        if (binding.target().scope() != BindingScope.SOURCE_CORRESPONDENCE
+                || !SITELINK.equals(binding.recipe().operationId())) {
+            return List.of();
+        }
+        String wiki = binding.recipe().parameter("wiki").trim();
+        if (wiki.isBlank()) wiki = "enwiki";
+        if (!"enwiki".equals(wiki)) {
+            throw new IllegalArgumentException(
+                    "Wikipedia source links currently support enwiki, not " + wiki);
+        }
+        return List.of(new WikipediaArticleField(wiki));
+    }
+
+    private record WikipediaArticleField(String wiki) implements DatasourceInstanceField {
+        @Override public String name() { return WIKIPEDIA_SOURCE_FIELD; }
+        @Override public String label() { return "Wikipedia source"; }
+        @Override public SourceValueSchema valueSchema() {
+            return new SourceValueSchema(SourceValueKind.ENTITY_REFERENCE, false,
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider.ID);
+        }
+        @Override public Object value(Object source) {
+            if (!(source instanceof domain.runtime.WikidataDynamicObject o)) {
+                return null;
+            }
+            String title = o.enwikiTitle();
+            return title.isBlank() ? null
+                    : new domain.provenance.WikipediaSource(title, o.wikipediaArticle());
+        }
+    }
+
+    private static DatasourceOperation offering(
+            String id, String displayName, BindingScope scope,
+            SourceValueSchema schema, List<ParameterDescriptor> parameters) {
+        return new EntityOffering(id, displayName, scope, schema, parameters);
+    }
+
+    /**
+     * An offering that needs no request of its own: it rides the entity read a
+     * generation already performs, so binding it changes what is KEPT, not what is
+     * fetched. That is why it is a plain declaration and not a query.
+     */
+    private record EntityOffering(
+            String id, String displayName, BindingScope scope,
+            SourceValueSchema outputSchema, List<ParameterDescriptor> parameters)
+            implements DatasourceOperation {
+
+        EntityOffering {
+            parameters = List.copyOf(parameters == null ? List.of() : parameters);
+        }
+    }
+
+    public record ComputedFieldSpec(Kind kind, String propertyPid) {
+        public enum Kind { SITELINKS, INCOMING_RELATION, INHERITED_INCOMING_RELATION }
+    }
+
+    private record RelationRoutesOffering() implements DatasourceOperation {
+        @Override public String id() { return RELATION_ROUTES; }
+        @Override public String displayName() { return "Bounded relation routes"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID);
+        }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(new ParameterDescriptor(ROUTES_PARAMETER, "Routes",
+                    ParameterDescriptor.Kind.RELATION_ROUTES, true, "", List.of(),
+                    "Finite ordered relation routes. Configure them with the route editor; "
+                            + "no route repeats or follows an implicit closure."));
+        }
+        @Override public PreparedSourceOperation prepare(
+                domain.datasource.api.SourceBinding binding) {
+            WikidataRelationRouteSpec spec = WikidataRelationRouteSpec.parse(
+                    binding.recipe().parameter(ROUTES_PARAMETER));
+            String summary = spec.routes().stream()
+                    .map(route -> route.label() + " (" + route.steps().size() + " step(s))")
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return new PreparedSourceOperation(FAMILY_RELATION_ROUTE_FIELD,
+                    "Wikidata relation routes", PreparedSourceOperation.Execution.ACQUIRE,
+                    "Follow " + spec.routes().size() + " bounded route(s)",
+                    java.util.Map.of("routes", summary,
+                            "output", binding.target().className() + "."
+                                    + binding.target().fieldPath()), spec);
+        }
+    }
+
+    private record ComputedFieldOffering(
+            String id, String displayName, List<ParameterDescriptor> parameters)
+            implements DatasourceOperation {
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public SourceValueSchema outputSchema() {
+            return new SourceValueSchema(SourceValueKind.QUANTITY, false, "");
+        }
+        @Override public PreparedSourceOperation prepare(domain.datasource.api.SourceBinding binding) {
+            String property = binding.recipe().parameter("property").trim().toUpperCase();
+            if ((INCOMING_RELATION_COUNT.equals(id)
+                    || INHERITED_INCOMING_RELATION_COUNT.equals(id))
+                    && !WikidataIds.isPid(property)) {
+                throw new IllegalArgumentException("Invalid incoming relation property: "
+                        + property);
+            }
+            ComputedFieldSpec spec = new ComputedFieldSpec(
+                    SITELINK_COUNT.equals(id) ? ComputedFieldSpec.Kind.SITELINKS
+                            : INHERITED_INCOMING_RELATION_COUNT.equals(id)
+                                    ? ComputedFieldSpec.Kind.INHERITED_INCOMING_RELATION
+                                    : ComputedFieldSpec.Kind.INCOMING_RELATION,
+                    property);
+            String operation = switch (spec.kind()) {
+                case SITELINKS -> "Read wikibase:sitelinks";
+                case INCOMING_RELATION ->
+                        "Count distinct incoming " + property + " entities";
+                case INHERITED_INCOMING_RELATION ->
+                        "Count distinct incoming " + property
+                                + " entities on loaded strict P279 descendants";
+            };
+            return new PreparedSourceOperation(FAMILY_COMPUTED_FIELD,
+                    "Wikidata computed field", PreparedSourceOperation.Execution.ACQUIRE,
+                    displayName, java.util.Map.of("operation", operation,
+                            "output", binding.target().className() + "."
+                                    + binding.target().fieldPath()), spec);
+        }
+    }
+
+    private record StatementMembershipOffering(
+            BindingScope scope, SourceValueSchema outputSchema,
+            List<ParameterDescriptor> parameters)
+            implements ClassPopulationOperation {
+
+        StatementMembershipOffering {
+            parameters = List.copyOf(parameters);
+        }
+
+        @Override public String id() { return STATEMENT_MEMBERSHIP; }
+        @Override public String displayName() { return "Members by statement"; }
+
+        @Override public PopulationRequest selection(SourceRecipe recipe) {
+            SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
+            String property = safe.parameter("property").trim().toUpperCase();
+            List<String> values = qids(safe.parameter("values"));
+            boolean subclasses = Boolean.parseBoolean(safe.parameter("includeSubclasses"));
+            wikidata.QualifierCondition condition = wikidata.QualifierCondition.of(
+                    safe.parameter("conditionProperty"),
+                    qids(safe.parameter("conditionValues")));
+            validateMembership(property, values, subclasses, condition);
+            domain.datasource.api.acquisition.RelationCondition relationCondition = condition == null
+                    ? null : new domain.datasource.api.acquisition.RelationCondition(
+                            condition.qualifierPid(), condition.allowedQids().stream()
+                                    .map(EntityRef::wikidata).toList());
+            return PopulationRequest.qualifiedRelation(EntityRef.WIKIDATA, property,
+                    values.stream().map(EntityRef::wikidata).toList(), subclasses,
+                    relationCondition);
+        }
+
+    }
+
+    private record SeedListOffering(
+            BindingScope scope, SourceValueSchema outputSchema,
+            List<ParameterDescriptor> parameters)
+            implements ClassPopulationOperation {
+
+        SeedListOffering { parameters = List.copyOf(parameters); }
+        @Override public String id() { return SEED_LIST; }
+        @Override public String displayName() { return "Members by explicit list"; }
+
+        @Override public PopulationRequest selection(SourceRecipe recipe) {
+            SourceRecipe safe = java.util.Objects.requireNonNull(recipe, "recipe");
+            return PopulationRequest.explicit(EntityRef.WIKIDATA,
+                    qids(safe.parameter("ids")).stream()
+                    .map(EntityRef::wikidata).toList());
+        }
+
+    }
+
+    private static List<String> qids(String text) {
+        if (text == null || text.isBlank()) return List.of();
+        java.util.LinkedHashSet<String> result = new java.util.LinkedHashSet<>();
+        for (String token : text.split("[,\\s|]+")) {
+            String qid = token.trim().toUpperCase();
+            if (qid.isBlank()) continue;
+            if (!WikidataIds.isQid(qid)) {
+                throw new IllegalArgumentException("Invalid Wikidata entity QID: " + token);
+            }
+            result.add(qid);
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * Subclass expansion bounds the OBJECT of the membership relation — the targets
+     * and everything below them — so it says nothing about which relation reaches
+     * them. It was refused here for anything but P31 while no run could perform a
+     * closure at all; the membership backbone performs it now, for any property, and
+     * refusing it kept "the subclasses of position" (P279 into Q4164871) from being
+     * a population a class could have.
+     */
+    private static void validateMembership(String property, List<String> values,
+            boolean subclasses, wikidata.QualifierCondition condition) {
+        if (!WikidataIds.isPid(property)) {
+            throw new IllegalArgumentException("Invalid Wikidata property: " + property);
+        }
+        if ((values == null || values.isEmpty()) && condition == null) {
+            throw new IllegalArgumentException("At least one Wikidata value QID or a "
+                    + "complete qualifier condition is required");
+        }
+        if (subclasses && (values == null || values.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "Include subclasses needs at least one Wikidata value QID");
+        }
+        if (subclasses && condition != null) {
+            throw new IllegalArgumentException(
+                    "Include subclasses cannot be combined with a qualifier condition");
+        }
+    }
+
+}

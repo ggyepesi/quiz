@@ -4,7 +4,7 @@ import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
 import wikidata.api.WikidataApiClient;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 public class ClassSearchQuery implements Query<TableQueryResult> {
 

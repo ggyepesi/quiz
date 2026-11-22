@@ -1,14 +1,14 @@
 package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
-import wikidata.explore.model.ClassDependencies;
-import wikidata.explore.model.MembershipPattern;
-import wikidata.explore.model.ProductionChain;
-import wikidata.explore.transform.OwnedComponents;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.config.ClassDependencies;
+import domain.config.MembershipPattern;
+import domain.config.ProductionChain;
+import domain.compile.transform.OwnedComponents;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -119,11 +119,11 @@ class OwnedSampleIsWholePartsTest {
 
     private static GeneratedClassModel ownerOf(String className, String fieldName) {
         GeneratedClassModel owner = new GeneratedClassModel(className);
-        var field = owner.addField(fieldName, datasource.schema.FieldType.ENTITY,
-                wikidata.explore.model.FieldCardinality.SINGLE);
+        var field = owner.addField(fieldName, domain.datasource.schema.FieldType.ENTITY,
+                domain.config.FieldCardinality.SINGLE);
         field.entityClassName("Name");
         field.mapping().productionKind(
-                wikidata.explore.model.FieldProductionKind.OWNED_COMPONENT);
+                domain.config.FieldProductionKind.OWNED_COMPONENT);
         return owner;
     }
 

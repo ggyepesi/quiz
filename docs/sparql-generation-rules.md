@@ -264,7 +264,7 @@ tools we should adopt:
   **`OPTIONAL { } FILTER(!bound)`** over `FILTER NOT EXISTS` for set difference.
 
 ### Toward a programmatic rule set
-Each rule has a **Hook** in `wikidata.explore.query.template.rule`. The plan is a
+Each rule has a **Hook** in `wikidata.query.template.rule`. The plan is a
 small linter/optimizer over the emitted query (or the `RuleNode`) that:
 asserts R1/R2 (no row-LIMIT on multi-valued; no outer-pattern-on-subquery),
 chooses inline-vs-SERVICE labelling per R3/R4, warns on unbounded range filters

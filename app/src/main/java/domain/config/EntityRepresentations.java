@@ -1,0 +1,168 @@
+package domain.config;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/** Shared interpretation of a project's ordered contextual representation rules. */
+public final class EntityRepresentations {
+    private EntityRepresentations() { }
+
+    /** A representation target together with its nearest inherited admission rule. */
+    public record Admission(String className, EntityKindRule evidence) { }
+
+    /** Whether a value declared as {@code roleClassName} may become {@code className}. */
+    public static boolean mayRepresent(GeneratedProjectModel model,
+                                       String roleClassName,
+                                       String className) {
+        if (model == null || roleClassName == null || className == null) return false;
+        GeneratedClassModel role = model.findClass(roleClassName);
+        GeneratedClassModel target = model.findClass(className);
+        if (role == null || target == null) return false;
+        return model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(rule -> model.resolveClass(
+                                rule.roleClassId(), rule.roleClassName()) == role
+                        && model.resolveClass(rule.representationClassId(),
+                                rule.representationClassName()) == target);
+    }
+
+    /** Whether this class is a contextual role with at least one final representation. */
+    public static boolean hasRepresentations(
+            GeneratedProjectModel model, GeneratedClassModel role) {
+        if (model == null || role == null) return false;
+        return model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(rule -> model.resolveClass(
+                        rule.roleClassId(), rule.roleClassName()) == role);
+    }
+
+    /**
+     * Whether an entity configured as {@code configuredClassNames} may be stored in a
+     * field declared as {@code expectedClassName}.
+     *
+     * <p>Every class the entity is configured as is asked, not a single carrier. An
+     * entity occupies as many roles as the fields that reach it — the film that is also
+     * the nominee, the person a technical award names as the work — and which of those
+     * roles became the carrier is a tie-break, not a fact about the entity. Asking only
+     * the carrier refused 1180 Oscars nominees that were configured as {@code Nominee}
+     * or {@code Person} and merely sorted after {@code ForWork}.</p>
+     *
+     * <p>QID equality is deliberately absent: source identity can unify copies only
+     * inside a compatible configured type. Compatibility is either ordinary model
+     * inheritance or an explicit contextual representation rule.</p>
+     */
+    public static boolean fieldAccepts(GeneratedProjectModel model,
+                                       String expectedClassName,
+                                       Collection<String> configuredClassNames) {
+        if (model == null || expectedClassName == null || configuredClassNames == null) {
+            return false;
+        }
+        for (String configured : configuredClassNames) {
+            if (accepts(model, expectedClassName, configured)) return true;
+        }
+        return false;
+    }
+
+    private static boolean accepts(GeneratedProjectModel model,
+                                   String expectedClassName,
+                                   String actualClassName) {
+        if (actualClassName == null) return false;
+        if (model.isSameOrSubclass(actualClassName, expectedClassName)) return true;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (GeneratedClassModel actual = model.findClass(actualClassName);
+                actual != null && seen.add(actual.className());
+                actual = actual.hasBase() ? model.findClass(actual.baseClassName()) : null) {
+            if (mayRepresent(model, expectedClassName, actual.className())) return true;
+            if (!actual.hasBase()) break;
+        }
+        return false;
+    }
+
+    /** Ordered role classes whose matching instances may be represented as {@code target}. */
+    public static java.util.List<String> rolesRepresentedAs(
+            GeneratedProjectModel model, GeneratedClassModel target) {
+        if (model == null || target == null) return java.util.List.of();
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+        for (EntityRepresentationRule rule : model.entityRepresentationRules()) {
+            if (rule == null || model.resolveClass(rule.representationClassId(),
+                    rule.representationClassName()) != target) continue;
+            GeneratedClassModel role = model.resolveClass(
+                    rule.roleClassId(), rule.roleClassName());
+            if (role != null) roles.add(role.className());
+        }
+        return java.util.List.copyOf(roles);
+    }
+
+    public static java.util.List<Admission> admissions(GeneratedProjectModel model) {
+        if (model == null) return java.util.List.of();
+        java.util.LinkedHashMap<String, Admission> found = new java.util.LinkedHashMap<>();
+        // An evidence rule defines a kind whether or not that kind also happens to be
+        // the target of a contextual role -> representation rule. A field declared as
+        // Person is itself a population on which Person's P31 admission is meaningful;
+        // requiring an unrelated PositionHolder -> Person rule made the same model fact
+        // mean two different things in two projects.
+        for (GeneratedClassModel candidate : model.classes()) {
+            EntityKindRule evidence = MembershipPattern.kindRule(candidate, model);
+            if (candidate != null && evidence != null) {
+                found.putIfAbsent(candidate.className(),
+                        new Admission(candidate.className(), evidence));
+            }
+        }
+        for (EntityRepresentationRule representation : model.entityRepresentationRules()) {
+            if (representation == null || !representation.isConfigured()) continue;
+            GeneratedClassModel target = model.resolveClass(
+                    representation.representationClassId(),
+                    representation.representationClassName());
+            EntityKindRule evidence = MembershipPattern.kindRule(target, model);
+            if (target != null && evidence != null) {
+                found.putIfAbsent(target.className(),
+                        new Admission(target.className(), evidence));
+            }
+        }
+        return java.util.List.copyOf(found.values());
+    }
+
+    /**
+     * Classes explicitly configured as final representations.
+     *
+     * <p>A statement field may also point directly at one of these classes (History's
+     * predecessor and successor point at Person). That use does not turn the final
+     * representation back into a contextual role.
+     */
+    public static Set<String> representationClassNames(GeneratedProjectModel model) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (model == null) return names;
+        for (EntityRepresentationRule rule : model.entityRepresentationRules()) {
+            if (rule == null || !rule.isConfigured()) continue;
+            GeneratedClassModel target = model.resolveClass(
+                    rule.representationClassId(), rule.representationClassName());
+            if (target != null) names.add(target.className());
+        }
+        return java.util.Collections.unmodifiableSet(names);
+    }
+
+    /** The first explicitly configured representation whose admission matched. */
+    public static String preferredClass(GeneratedProjectModel model,
+                                        Set<String> matchedClasses) {
+        if (model == null || matchedClasses == null) return null;
+        return model.entityRepresentationRules().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(EntityRepresentationRule::representationClassName)
+                .filter(matchedClasses::contains)
+                .findFirst().orElse(null);
+    }
+
+    /** Compatibility role stamps replaced by the matching representations. */
+    public static Set<String> replacedRoleClasses(GeneratedProjectModel model,
+                                                   Set<String> matchedClasses) {
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+        if (model == null || matchedClasses == null) return roles;
+        for (EntityRepresentationRule rule : model.entityRepresentationRules()) {
+            if (rule != null && matchedClasses.contains(rule.representationClassName())) {
+                roles.add(rule.roleClassName());
+            }
+        }
+        return roles;
+    }
+}

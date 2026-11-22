@@ -1,9 +1,9 @@
 {
-  "@class": "wikidata.explore.model.GeneratedProjectModel",
+  "@class": "domain.config.GeneratedProjectModel",
   "name": "Astronomy",
   "projectKind": "MODEL",
   "rootClass": {
-    "@class": "wikidata.explore.model.GeneratedClassModel",
+    "@class": "domain.config.GeneratedClassModel",
     "declarationId": "decl:4eab0fc8-9a56-4dd1-b173-d24d41e28767",
     "className": "CelestialBody",
     "baseClassName": "",
@@ -19,7 +19,7 @@
     "graphSource": null,
     "generationDepth": 0,
     "instanceMapping": {
-      "@class": "wikidata.explore.model.FieldSourceMapping",
+      "@class": "domain.config.FieldSourceMapping",
       "sourceQid": "",
       "sourceLabel": "",
       "propertyPid": "",
@@ -72,7 +72,7 @@
       "java.util.ArrayList",
       [
         {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "@class": "domain.config.GeneratedFieldModel",
           "name": "image",
           "type": "IMAGE",
           "entityClassName": "",
@@ -87,7 +87,7 @@
           "sortDescending": false,
           "unit": "",
           "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "@class": "domain.config.FieldSourceMapping",
             "sourceQid": "",
             "sourceLabel": "",
             "propertyPid": "P18",
@@ -156,7 +156,7 @@
           ]
         },
         {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "@class": "domain.config.GeneratedFieldModel",
           "name": "radius",
           "type": "NUMBER",
           "entityClassName": "",
@@ -171,7 +171,7 @@
           "sortDescending": false,
           "unit": "",
           "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "@class": "domain.config.FieldSourceMapping",
             "sourceQid": "",
             "sourceLabel": "",
             "propertyPid": "P2120",
@@ -240,7 +240,7 @@
           ]
         },
         {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "@class": "domain.config.GeneratedFieldModel",
           "name": "diameter",
           "type": "NUMBER",
           "entityClassName": "",
@@ -255,7 +255,7 @@
           "sortDescending": false,
           "unit": "",
           "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "@class": "domain.config.FieldSourceMapping",
             "sourceQid": "",
             "sourceLabel": "",
             "propertyPid": "P2386",
@@ -324,7 +324,7 @@
           ]
         },
         {
-          "@class": "wikidata.explore.model.GeneratedFieldModel",
+          "@class": "domain.config.GeneratedFieldModel",
           "name": "discovery",
           "type": "ENTITY",
           "entityClassName": "Discovery",
@@ -340,7 +340,7 @@
           "sortDescending": false,
           "unit": "",
           "mapping": {
-            "@class": "wikidata.explore.model.FieldSourceMapping",
+            "@class": "domain.config.FieldSourceMapping",
             "sourceQid": "",
             "sourceLabel": "",
             "propertyPid": "",
@@ -460,7 +460,7 @@
       ]
     ],
     "canonical": {
-      "@class": "wikidata.explore.model.CanonicalSpec",
+      "@class": "domain.config.CanonicalSpec",
       "keyFields": [
         "java.util.ArrayList",
         []
@@ -470,7 +470,7 @@
       },
       "missingKeyPolicy": "INCOMPLETE_GROUP",
       "duplicatePolicy": [
-        "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+        "domain.config.CanonicalSpec$DuplicatePolicy",
         "KEEP_ONE"
       ],
       "displayNameMode": "LABEL",
@@ -485,7 +485,7 @@
     "java.util.ArrayList",
     [
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:4eab0fc8-9a56-4dd1-b173-d24d41e28767",
         "className": "CelestialBody",
         "baseClassName": "",
@@ -501,7 +501,7 @@
         "graphSource": null,
         "generationDepth": 0,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -554,7 +554,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "image",
               "type": "IMAGE",
               "entityClassName": "",
@@ -569,7 +569,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P18",
@@ -638,7 +638,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "radius",
               "type": "NUMBER",
               "entityClassName": "",
@@ -653,7 +653,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P2120",
@@ -722,7 +722,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "diameter",
               "type": "NUMBER",
               "entityClassName": "",
@@ -737,7 +737,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P2386",
@@ -806,7 +806,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "discovery",
               "type": "ENTITY",
               "entityClassName": "Discovery",
@@ -822,7 +822,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "",
@@ -942,7 +942,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -952,7 +952,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -963,7 +963,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:7da4d7de-7261-3320-a064-c560ecaccd7f",
         "className": "Star",
         "baseClassName": "CelestialBody",
@@ -979,7 +979,7 @@
         "graphSource": null,
         "generationDepth": 0,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "",
           "propertyPid": "",
@@ -1090,7 +1090,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1100,7 +1100,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1111,7 +1111,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:2a90ba78-4c88-4ec1-90d7-2a0e7d07a740",
         "className": "BrightStar",
         "baseClassName": "Star",
@@ -1127,7 +1127,7 @@
         "graphSource": null,
         "generationDepth": 0,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "star",
           "propertyPid": "",
@@ -1189,7 +1189,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "apparentMagnitude",
               "type": "NUMBER",
               "entityClassName": "",
@@ -1204,7 +1204,7 @@
               "sortDescending": false,
               "unit": "mag",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P1215",
@@ -1376,7 +1376,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1386,7 +1386,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1397,7 +1397,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:93631a37-6e08-457f-a706-b834a0521eac",
         "className": "NamedGalaxyStar",
         "baseClassName": "Star",
@@ -1413,7 +1413,7 @@
         "graphSource": null,
         "generationDepth": 0,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "star",
           "propertyPid": "",
@@ -1468,7 +1468,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "apparentMagnitude",
               "type": "NUMBER",
               "entityClassName": "",
@@ -1483,7 +1483,7 @@
               "sortDescending": false,
               "unit": "mag",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P1215",
@@ -1651,7 +1651,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -1661,7 +1661,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",
@@ -1672,7 +1672,7 @@
         }
       },
       {
-        "@class": "wikidata.explore.model.GeneratedClassModel",
+        "@class": "domain.config.GeneratedClassModel",
         "declarationId": "decl:4a242d0d-8e06-4a40-9b8a-8c09e6af5e79",
         "className": "Galaxy",
         "baseClassName": "CelestialBody",
@@ -1688,7 +1688,7 @@
         "graphSource": null,
         "generationDepth": 0,
         "instanceMapping": {
-          "@class": "wikidata.explore.model.FieldSourceMapping",
+          "@class": "domain.config.FieldSourceMapping",
           "sourceQid": "",
           "sourceLabel": "galaxy",
           "propertyPid": "",
@@ -1743,7 +1743,7 @@
           "java.util.ArrayList",
           [
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "morphologicalType",
               "type": "STRING",
               "entityClassName": "",
@@ -1758,7 +1758,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P223",
@@ -1827,7 +1827,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "redshift",
               "type": "NUMBER",
               "entityClassName": "",
@@ -1842,7 +1842,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P1090",
@@ -1911,7 +1911,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "distanceFromEarth",
               "type": "NUMBER",
               "entityClassName": "",
@@ -1926,7 +1926,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P2583",
@@ -1995,7 +1995,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "apparentMagnitude",
               "type": "NUMBER",
               "entityClassName": "",
@@ -2010,7 +2010,7 @@
               "sortDescending": false,
               "unit": "mag",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P1215",
@@ -2090,7 +2090,7 @@
               ]
             },
             {
-              "@class": "wikidata.explore.model.GeneratedFieldModel",
+              "@class": "domain.config.GeneratedFieldModel",
               "name": "stars",
               "type": "ENTITY",
               "entityClassName": "NamedGalaxyStar",
@@ -2106,7 +2106,7 @@
               "sortDescending": false,
               "unit": "",
               "mapping": {
-                "@class": "wikidata.explore.model.FieldSourceMapping",
+                "@class": "domain.config.FieldSourceMapping",
                 "sourceQid": "",
                 "sourceLabel": "",
                 "propertyPid": "P361",
@@ -2266,7 +2266,7 @@
           ]
         ],
         "canonical": {
-          "@class": "wikidata.explore.model.CanonicalSpec",
+          "@class": "domain.config.CanonicalSpec",
           "keyFields": [
             "java.util.ArrayList",
             []
@@ -2276,7 +2276,7 @@
           },
           "missingKeyPolicy": "INCOMPLETE_GROUP",
           "duplicatePolicy": [
-            "wikidata.explore.model.CanonicalSpec$DuplicatePolicy",
+            "domain.config.CanonicalSpec$DuplicatePolicy",
             "KEEP_ONE"
           ],
           "displayNameMode": "LABEL",

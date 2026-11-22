@@ -8,8 +8,8 @@ import objectview.view.SearchableView;
 import wikidata.WikidataSparqlClient;
 import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Constraint;
 import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Edge;
-import wikidata.explore.workbench.CachedPropertyViewablePanel;
-import wikidata.explore.workbench.WikidataPropertyViewable;
+import domain.workbench.modelbuilder.ui.CachedPropertyViewablePanel;
+import domain.workbench.modelbuilder.ui.WikidataPropertyViewable;
 import wikidata.ui.WikidataLinks;
 
 import javax.swing.*;

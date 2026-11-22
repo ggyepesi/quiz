@@ -1,8 +1,8 @@
 package oscar;
 
 import objectview.annotations.Reference;
-import quiz.source.ManualEntity;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.provenance.ManualEntity;
+import domain.runtime.WikidataDynamicObject;
 
 public class OscarNomination extends ManualEntity {
     private String name;

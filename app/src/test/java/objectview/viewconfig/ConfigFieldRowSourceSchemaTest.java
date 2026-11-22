@@ -1,7 +1,7 @@
 package objectview.viewconfig;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicViewable;
+import domain.transform.DynamicViewable;
 
 import java.util.ArrayList;
 import java.util.List;

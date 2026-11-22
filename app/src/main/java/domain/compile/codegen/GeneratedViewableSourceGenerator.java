@@ -1,0 +1,455 @@
+package domain.compile.codegen;
+
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class GeneratedViewableSourceGenerator {
+    public static final String GENERATED_PACKAGE = "wikidata.generated";
+
+    private final String packageName;
+    private final domain.datasource.api.DatasourceRegistry datasourceRegistry;
+
+    public GeneratedViewableSourceGenerator(String packageName) {
+        this(packageName, domain.datasource.Datasources.standard());
+    }
+
+    public GeneratedViewableSourceGenerator(
+            String packageName,
+            domain.datasource.api.DatasourceRegistry datasourceRegistry) {
+        this.packageName =
+                packageName == null || packageName.isBlank()
+                        ? GENERATED_PACKAGE
+                        : packageName;
+        this.datasourceRegistry = java.util.Objects.requireNonNull(
+                datasourceRegistry, "datasourceRegistry");
+    }
+
+    public String qualifiedClassName(GeneratedClassModel model) {
+        return packageName + "." + sanitizeClassName(model.className());
+    }
+
+    public String sourceFor(GeneratedClassModel model) {
+        return sourceFor(model, null);
+    }
+
+    /**
+     * Source for a class. With a {@code project}, its <b>effective</b> fields
+     * (inherited from the {@code extends} base chain + its own) are emitted —
+     * the generated runtime compiles each class independently (no cross-class
+     * Java inheritance), so inherited fields must be flattened in as real
+     * declared fields or the mapper would drop them. Inherited fields are
+     * tagged with a comment so the source still shows where they came from.
+     */
+    public String sourceFor(GeneratedClassModel model, GeneratedProjectModel project) {
+        String className = sanitizeClassName(model.className());
+
+        List<GeneratedFieldModel> fields =
+                project == null ? model.fields() : model.effectiveFields(project);
+        List<domain.config.ConfiguredInstanceFields.Field> instanceFields =
+                domain.config.ConfiguredInstanceFields.of(
+                        model, project, datasourceRegistry);
+
+        // Own (non-inherited) field names, to tag inherited ones in the source.
+        Set<String> ownNames = new HashSet<>();
+        for (GeneratedFieldModel f : model.fields()) {
+            if (f != null && f.name() != null) {
+                ownNames.add(f.name());
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("package ").append(packageName).append(";\n\n");
+
+        boolean needsReferenceImport =
+                fields.stream()
+                     .filter(f -> f != null && !f.isNameField())
+                     .anyMatch(GeneratedFieldModel::renderAsReference);
+        boolean needsInlineImport =
+                fields.stream()
+                     .filter(f -> f != null && !f.isNameField())
+                     .anyMatch(GeneratedFieldModel::renderInline);
+
+        if (needsReferenceImport) {
+            sb.append("import objectview.annotations.Reference;\n\n");
+        }
+        if (needsInlineImport) {
+            sb.append("import objectview.annotations.Inline;\n\n");
+        }
+
+        // All generated classes extend the neutral GeneratedEntity carrier. Provider
+        // fields are declared on the generated subclass below, beside modeled fields.
+        sb.append("public class ").append(className)
+          .append(" extends domain.provenance.GeneratedEntity {\n\n");
+
+        // Aliases are an explicit class-source offering, not a universal property of
+        // generated objects. Declaring the field here makes reflection, view config and
+        // the generated schema agree with the binding. Legacy models still answer true
+        // until their implicit source bindings are materialized.
+        boolean aliases = domain.config.ClassSourceBindings
+                .aliasesEnabled(model);
+        boolean aliasesDeclared = fields.stream().filter(java.util.Objects::nonNull)
+                .anyMatch(field -> "alternateNames".equals(field.name()));
+        if (aliases && !aliasesDeclared) {
+            sb.append("    @objectview.annotations.Minor\n")
+              .append("    public java.util.List<String> alternateNames")
+              .append(" = new java.util.ArrayList<>();\n\n");
+        }
+
+        for (domain.config.ConfiguredInstanceFields.Field configured
+                : instanceFields) {
+            boolean conflicts = fields.stream().filter(java.util.Objects::nonNull)
+                    .anyMatch(modeled -> configured.name().equals(
+                            sanitizeFieldName(modeled.name())));
+            if (conflicts) {
+                throw new IllegalArgumentException(
+                        "Configured instance field conflicts with modeled field: "
+                                + configured.name());
+            }
+            sb.append("    @objectview.annotations.Label(\"")
+              .append(escape(configured.label())).append("\")\n")
+              .append("    @objectview.annotations.Role(objectview.field.FieldRole.")
+              .append(domain.config.ConfiguredInstanceFields
+                      .toFieldRef(configured).role().name()).append(")\n");
+            if (configured.valueSchema().kind()
+                    == domain.datasource.api.SourceValueKind.ENTITY_REFERENCE) {
+                sb.append("    @objectview.annotations.Reference\n");
+            }
+            sb.append("    public ").append(javaType(configured))
+              .append(" ").append(sanitizeFieldName(configured.name()));
+            if (configured.valueSchema().collection()) {
+                sb.append(" = new java.util.ArrayList<>()");
+            } else if (configured.valueSchema().kind().fieldType()
+                    == domain.datasource.schema.FieldType.STRING) {
+                sb.append(" = \"\"");
+            }
+            sb.append(";\n\n");
+        }
+
+        if (model.hasBase()) {
+            sb.append("    // extends ").append(model.baseClassName())
+              .append(" — base fields below are inherited (flattened in;\n")
+              .append("    // the generated runtime compiles each class standalone).\n");
+        }
+
+        for (GeneratedFieldModel field : fields) {
+            if (field == null || field.isNameField()) {
+                continue;
+            }
+
+            if (!ownNames.contains(field.name())) {
+                sb.append("    // inherited from ").append(model.baseClassName()).append("\n");
+            }
+
+            if (field.renderAsReference()) {
+                sb.append("    @Reference\n");
+            } else if (field.renderInline()) {
+                sb.append("    @Inline\n");
+            }
+            // Quantity fields sort by their leading number, not lexically.
+            if (effectiveType(field) == FieldType.NUMBER) {
+                sb.append("    @objectview.annotations.Numeric\n");
+            }
+
+            sb.append("    public ")
+              .append(javaType(field, model, project))
+              .append(" ")
+              .append(sanitizeFieldName(field.name()));
+
+            if (field.cardinality() == FieldCardinality.COLLECTION) {
+                sb.append(" = new java.util.ArrayList<>()");
+            } else if (effectiveType(field) == FieldType.STRING
+                    || effectiveType(field) == FieldType.TEXT
+                    || effectiveType(field) == FieldType.AUTO) {
+                sb.append(" = \"\"");
+            }
+
+            sb.append(";\n");
+        }
+
+        sb.append("\n");
+        sb.append("    public ").append(className).append("() {}\n\n");
+
+        sb.append("    @Override\n")
+          .append("    public String toString() { return getDisplayName(); }\n");
+
+        sb.append("}\n");
+        return sb.toString();
+    }
+
+    private static String javaType(domain.datasource.api.SourceValueSchema schema) {
+        String scalar = switch (schema.kind()) {
+            case ENTITY_REFERENCE -> "objectview.Viewable";
+            case QUANTITY -> "domain.runtime.Quantity";
+            case MEDIA -> "objectview.media.MediaValue";
+            case TEXT, LANGUAGE_TEXT, DATE_TIME, URL, MODEL_VALUE, DOCUMENT, UNKNOWN
+                    -> "String";
+        };
+        return schema.collection()
+                ? "java.util.List<" + scalar + ">" : scalar;
+    }
+
+    private static String javaType(
+            domain.config.ConfiguredInstanceFields.Field configured) {
+        domain.datasource.api.SourceValueSchema schema = configured.valueSchema();
+        if (schema.kind() != domain.datasource.api.SourceValueKind.ENTITY_REFERENCE
+                || configured.referenceType() == objectview.Viewable.class) {
+            return javaType(schema);
+        }
+        String scalar = configured.referenceType().getCanonicalName();
+        return schema.collection()
+                ? "java.util.List<" + scalar + ">" : scalar;
+    }
+
+    private static String escape(String text) {
+        return (text == null ? "" : text)
+                .replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    public String javaType(
+            GeneratedFieldModel field,
+            GeneratedClassModel owner) {
+        return javaType(field, owner, null);
+    }
+
+    public String javaType(
+            GeneratedFieldModel field,
+            GeneratedClassModel owner,
+            GeneratedProjectModel project) {
+
+        String base =
+                switch (effectiveType(field)) {
+                    case IMAGE -> "objectview.media.ImagePane";
+                    // domain.runtime.Quantity carries the unit (e.g. "1538 K") yet sorts
+                    // numerically; dimensionless numbers render as the bare value.
+                    case NUMBER -> "domain.runtime.Quantity";
+                    case DATE, STRING, TEXT, AUTO -> "String";
+                    case BOOLEAN -> "Boolean";
+                    case ENTITY -> objectType(field, owner, project);
+                };
+
+        return field.cardinality() == FieldCardinality.COLLECTION
+                ? "java.util.List<" + base + ">"
+                : base;
+    }
+
+    private FieldType effectiveType(GeneratedFieldModel field) {
+        String pid =
+                field.mapping() == null ? "" : field.mapping().propertyPid();
+
+        if ("P18".equals(pid) || "P242".equals(pid)) {
+            return FieldType.IMAGE;
+        }
+
+        return field.type();
+    }
+
+    private String objectType(
+            GeneratedFieldModel field,
+            GeneratedClassModel owner,
+            GeneratedProjectModel project) {
+
+        String ownerClass = sanitizeClassName(owner.className());
+        String type = field.entityClassName();
+
+        // A model subclass is flattened into an independent generated Java class. A
+        // field declared against its base must therefore accept the final subclass
+        // carrier, just as a referenced role accepts its classified representation.
+        // Freezing the field to the base Java class made the mapper manufacture a
+        // second base instance for the same entity (OfficeHolding.position was a
+        // Position beside the displayed PositionWithHolders card), so navigation had
+        // no shared object to follow.
+        if (project != null && type != null && !type.isBlank()
+                && hasModeledSubclass(project, type)) {
+            return "objectview.Viewable";
+        }
+
+        // Self-reference (e.g. "neighbours" -> the same class): the owner type
+        // is generated, so we can name it directly.
+        if (type != null && !type.isBlank()
+                && sanitizeClassName(type).equals(ownerClass)) {
+            return ownerClass;
+        }
+        if (field.name().toLowerCase().contains("neigh")) {
+            return ownerClass;
+        }
+
+        // A cross-reference to another class IN THIS PROJECT: the whole domain
+        // is compiled together in one package, so name the target class directly
+        // (e.g. an Episode's "characters" -> Character). This is what lets
+        // ViewableFieldPaths recurse into the referenced class's fields for
+        // nested search/sort/config.
+        if (project != null && type != null && !type.isBlank()) {
+            GeneratedClassModel target = project.findClass(type);
+            // A target with contextual representations is a semantic ROLE, not the
+            // final entity kind. The representation may come from type evidence
+            // (Nominee -> Person/Film) or from the declared production site of an
+            // already-known object (Owner -> Constellation/CelestialBody). Either way,
+            // the Java carrier must accept the concrete card while the model remains
+            // explicitly typed as the named role.
+            if (domain.config.EntityRepresentations
+                    .hasRepresentations(project, target)) {
+                return "objectview.Viewable";
+            }
+            String sanitized = sanitizeClassName(type);
+            for (GeneratedClassModel cls : project.classes()) {
+                if (cls != null
+                        && sanitizeClassName(cls.className()).equals(sanitized)) {
+                    return sanitized;
+                }
+            }
+        }
+
+        // Any other entity reference (e.g. a constellation's hemisphere or
+        // namesake) points at a wikidata entity that has no class of its own —
+        // type it as Viewable so it compiles and still renders as a linked
+        // reference (and maps to a raw object, a navigation target).
+        return "objectview.Viewable";
+    }
+
+    private static boolean hasModeledSubclass(
+            GeneratedProjectModel project, String baseClassName) {
+        if (project == null || baseClassName == null || baseClassName.isBlank()) {
+            return false;
+        }
+        for (GeneratedClassModel candidate : project.classes()) {
+            if (candidate == null || candidate.className().equals(baseClassName)) continue;
+            String current = candidate.baseClassName();
+            Set<String> seen = new HashSet<>();
+            while (current != null && !current.isBlank() && seen.add(current)) {
+                if (baseClassName.equals(current)) return true;
+                GeneratedClassModel parent = project.findClass(current);
+                current = parent == null ? "" : parent.baseClassName();
+            }
+        }
+        return false;
+    }
+
+    public static String sanitizeClassName(String s) {
+        if (s == null || s.isBlank()) {
+            return "GeneratedItem";
+        }
+
+        StringBuilder out = new StringBuilder();
+
+        for (String part : splitWords(s)) {
+            if (part.isBlank()) {
+                continue;
+            }
+
+            out.append(Character.toUpperCase(part.charAt(0)));
+
+            if (part.length() > 1) {
+                out.append(part.substring(1));
+            }
+        }
+
+        if (out.isEmpty()) {
+            out.append("GeneratedItem");
+        }
+
+        if (Character.isDigit(out.charAt(0))) {
+            out.insert(0, "Generated");
+        }
+
+        return out.toString();
+    }
+
+    public static String sanitizeFieldName(String s) {
+        if (s == null || s.isBlank()) {
+            return "field";
+        }
+
+        List<String> parts = splitWords(s);
+
+        if (parts.isEmpty()) {
+            return "field";
+        }
+
+        String first = parts.getFirst();
+        // A model field may already be a Java-style name (structuredName).  Lowering
+        // the whole first token produced `structuredname`, while every model/schema
+        // path continued to say `structuredName`; reflective path reads then quietly
+        // missed the generated field.  Only decapitalize the identifier's first
+        // character.  Labels split into several words still become normal camelCase.
+        String initial = first.chars().allMatch(ch -> !Character.isLetter(ch)
+                || Character.isUpperCase(ch))
+                ? first.toLowerCase(java.util.Locale.ROOT)
+                : Character.toLowerCase(first.charAt(0)) + first.substring(1);
+        StringBuilder out = new StringBuilder(initial);
+
+        for (int i = 1; i < parts.size(); i++) {
+            String p = parts.get(i);
+
+            if (p.isBlank()) {
+                continue;
+            }
+
+            out.append(Character.toUpperCase(p.charAt(0)));
+
+            if (p.length() > 1) {
+                out.append(p.substring(1));
+            }
+        }
+
+        if (out.isEmpty()) {
+            out.append("field");
+        }
+
+        if (Character.isDigit(out.charAt(0))) {
+            out.insert(0, "f");
+        }
+
+        String name = out.toString();
+
+        return switch (name) {
+            case "class", "public", "private", "void" -> name + "Field";
+            default -> name;
+        };
+    }
+
+    private static String singularClassName(String fieldName) {
+        if (fieldName == null || fieldName.isBlank()) {
+            return "GeneratedItem";
+        }
+
+        String s = fieldName.trim();
+
+        if (s.endsWith("ies") && s.length() > 3) {
+            return s.substring(0, s.length() - 3) + "y";
+        }
+
+        if (s.endsWith("s") && s.length() > 1) {
+            return s.substring(0, s.length() - 1);
+        }
+
+        return s;
+    }
+
+    private static List<String> splitWords(String s) {
+        List<String> out = new ArrayList<>();
+
+        if (s == null) {
+            return out;
+        }
+
+        String normalized =
+                s.replaceAll("[^A-Za-z0-9]+", " ").trim();
+
+        for (String p : normalized.split("\\s+")) {
+            if (!p.isBlank()) {
+                out.add(p);
+            }
+        }
+
+        return out;
+    }
+}

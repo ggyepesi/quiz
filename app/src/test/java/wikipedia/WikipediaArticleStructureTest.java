@@ -1,6 +1,6 @@
 package wikipedia;
 
-import datasource.evidence.WikipediaArticle;
+import domain.datasource.evidence.WikipediaArticle;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -209,11 +209,11 @@ class WikipediaArticleStructureTest {
         var parsed = WikipediaArticleClient.parseArticleText(KINDS);
         var document = WikipediaArticleClient.sourceDocument("Maat", "1", parsed.text(),
                 List.of(), parsed.links());
-        var maat = new wikidata.explore.extract.WikidataDynamicObject("Q170471", "Maat");
+        var maat = new domain.runtime.WikidataDynamicObject("Q170471", "Maat");
         maat.type("EgyptianDeity");
         maat.wikipediaArticleEvidence(new WikipediaArticle(document, parsed.text(), List.of(),
                 parsed.structuredSections()), true);
-        var store = new wikidata.explore.extract.WikidataDynamicObjectJsonStore();
+        var store = new domain.runtime.WikidataDynamicObjectJsonStore();
         var file = dir.resolve("kinds-snapshot.json").toFile();
         store.save(List.of(maat), file);
 

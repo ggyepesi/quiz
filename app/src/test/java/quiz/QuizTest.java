@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.*;
-import quiz.group.ViewableGroup;
+import domain.group.ViewableGroup;
 
 class QuizGenerationTest {
 
@@ -193,8 +193,8 @@ class QuizGenerationTest {
 
     @Test
     void selectedDisplayNameIsTheCardTitleNotAMachineNamedField() {
-        quiz.transform.DynamicViewable person =
-                new quiz.transform.DynamicViewable(
+        domain.transform.DynamicViewable person =
+                new domain.transform.DynamicViewable(
                         "Q1", "Frederick, Prince of Wales");
         person.put("answer", "question");
         ViewConfig queryConfig = new ViewConfig();
@@ -288,13 +288,13 @@ class QuizGenerationTest {
 
     @Test
     void savedDomainReferenceDisplayAlsoRendersTheReferencedPosition() {
-        quiz.transform.DynamicViewable position =
-                new quiz.transform.DynamicViewable("P1", "President");
-        quiz.transform.DynamicViewable holding =
-                new quiz.transform.DynamicViewable("H1", personName());
+        domain.transform.DynamicViewable position =
+                new domain.transform.DynamicViewable("P1", "President");
+        domain.transform.DynamicViewable holding =
+                new domain.transform.DynamicViewable("H1", personName());
         holding.put("position", position);
-        quiz.transform.DynamicViewable person =
-                new quiz.transform.DynamicViewable("Q1", personName());
+        domain.transform.DynamicViewable person =
+                new domain.transform.DynamicViewable("Q1", personName());
         person.put("offices", List.of(holding));
         person.put("answer", "answer");
 

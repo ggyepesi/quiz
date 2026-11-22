@@ -1,10 +1,11 @@
 ---
 description: Declared roles, carrier shapes, identity, and the order a generation must run in
 paths:
-  - "app/src/main/java/wikidata/explore/model/**/*.java"
-  - "app/src/main/java/wikidata/explore/transform/**/*.java"
-  - "app/src/main/java/wikidata/explore/generation/**/*.java"
-  - "app/src/main/java/wikidata/explore/extract/**/*.java"
+  - "app/src/main/java/domain/config/**/*.java"
+  - "app/src/main/java/domain/compile/**/*.java"
+  - "app/src/main/java/domain/build/**/*.java"
+  - "app/src/main/java/domain/runtime/**/*.java"
+  - "app/src/main/java/domain/transform/**/*.java"
   - "objectview/src/main/java/objectview/field/**/*.java"
 ---
 

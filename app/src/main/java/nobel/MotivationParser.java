@@ -7,7 +7,7 @@ import objectview.ViewableAdapter;
 
 public class MotivationParser {
 
-    public static class Motivation extends ViewableAdapter implements quiz.ValueObject {
+    public static class Motivation extends ViewableAdapter implements domain.runtime.ValueObject {
         public String action;
         public List<String> topics = new ArrayList<>();
         public String method;
@@ -25,7 +25,7 @@ public class MotivationParser {
             return s;
         }
 
-        // A VALUE object ({@link quiz.ValueObject}) — inlined in its
+        // A VALUE object ({@link domain.runtime.ValueObject}) — inlined in its
         // LaureatesWithMotivation, no identity invented (a constant id had merged every
         // motivation into one entity, cross-contaminating topics). The topics are its
         // LABEL, not an identifier.

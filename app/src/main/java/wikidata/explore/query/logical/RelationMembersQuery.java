@@ -3,7 +3,7 @@ package wikidata.explore.query.logical;
 import wikidata.WikidataIds;
 
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
@@ -11,7 +11,7 @@ import wikidata.explore.query.result.TableQueryResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 /**
  * Fetches the members of ONE relation of an entity, on demand — e.g. every entity

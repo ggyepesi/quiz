@@ -1,8 +1,8 @@
 package quiz.web;
 
-import wikidata.explore.extract.SnapshotDomain;
+import domain.runtime.SnapshotDomain;
 
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -902,8 +902,8 @@ public final class ViewableJson {
     /** A value object either by its Java type (hand-written domain) or by the runtime
      *  flag carried on a snapshot-loaded {@link WikidataDynamicObject}. */
     private static boolean isValueObject(Viewable q) {
-        return q instanceof quiz.ValueObject
-                || (q instanceof wikidata.explore.extract.WikidataDynamicObject w
+        return q instanceof domain.runtime.ValueObject
+                || (q instanceof domain.runtime.WikidataDynamicObject w
                         && w.isValueObject());
     }
 

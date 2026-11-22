@@ -2,7 +2,7 @@ package nobel;
 
 import objectview.media.ImagePane;
 import objectview.annotations.DisplayField;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 class Laureate extends ManualEntity {
     @DisplayField private String name;

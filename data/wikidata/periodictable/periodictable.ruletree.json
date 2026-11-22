@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "Element",
     "itemVar" : "element",
     "sourceQid" : "Q11344",
@@ -20,12 +20,12 @@
     "membershipFilterIncludesDescendants" : false,
     "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "symbol",
       "propertyPid" : "P246",
       "propertyLabel" : "element symbol",
@@ -38,7 +38,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "atomicNumber",
       "propertyPid" : "P1086",
       "propertyLabel" : "atomic number",
@@ -51,7 +51,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "mass",
       "propertyPid" : "P2067",
       "propertyLabel" : "mass",
@@ -64,7 +64,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "electronegativity",
       "propertyPid" : "P1108",
       "propertyLabel" : "electronegativity",
@@ -77,7 +77,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "meltingPoint",
       "propertyPid" : "P2101",
       "propertyLabel" : "melting point",
@@ -90,7 +90,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "boilingPoint",
       "propertyPid" : "P2102",
       "propertyLabel" : "boiling point",
@@ -103,7 +103,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "density",
       "propertyPid" : "P2054",
       "propertyLabel" : "density",
@@ -116,7 +116,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "oxidationStates",
       "propertyPid" : "P1121",
       "propertyLabel" : "oxidation state",
@@ -129,7 +129,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "discoveryDate",
       "propertyPid" : "P575",
       "propertyLabel" : "time of discovery or invention",
@@ -142,7 +142,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "discoverer",
       "propertyPid" : "P61",
       "propertyLabel" : "discoverer or inventor",
@@ -155,7 +155,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "namedAfter",
       "propertyPid" : "P138",
       "propertyLabel" : "named after",
@@ -168,7 +168,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "partOf",
       "propertyPid" : "P361",
       "propertyLabel" : "part of",
@@ -181,7 +181,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "image",
       "propertyPid" : "P18",
       "propertyLabel" : "image",
@@ -201,7 +201,7 @@
     "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
     "excludedPredicateObjects" : [ "java.util.ArrayList", [ ] ],
     "valueFilters" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.filter.WikidataValueFilter",
+      "@class" : "domain.compile.filter.WikidataValueFilter",
       "fieldName" : "atomicNumber",
       "propertyPid" : "P1086",
       "propertyLabel" : "atomic number",

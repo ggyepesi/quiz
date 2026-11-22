@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "Position",
     "itemVar" : "position",
     "sourceQid" : "Q114962596",
@@ -20,12 +20,12 @@
     "membershipFilterIncludesDescendants" : false,
     "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : false,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "superClasses",
       "propertyPid" : "P279",
       "propertyLabel" : "",
@@ -38,7 +38,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "jurisdiction",
       "propertyPid" : "P1001",
       "propertyLabel" : "",
@@ -51,7 +51,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "directedOrganizations",
       "propertyPid" : "P2389",
       "propertyLabel" : "",
@@ -64,7 +64,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "inception",
       "propertyPid" : "P571",
       "propertyLabel" : "",
@@ -77,7 +77,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "abolished",
       "propertyPid" : "P576",
       "propertyLabel" : "",
@@ -90,7 +90,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "replaces",
       "propertyPid" : "P1365",
       "propertyLabel" : "",
@@ -103,7 +103,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "replacedBy",
       "propertyPid" : "P1366",
       "propertyLabel" : "",
@@ -116,7 +116,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "countries",
       "propertyPid" : "P17",
       "propertyLabel" : "",

@@ -1,0 +1,141 @@
+package domain.compile.transform;
+
+import org.junit.jupiter.api.Test;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.FieldCardinality;
+import domain.config.FieldProductionKind;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.EntityKindRule;
+import domain.compile.ProjectModelCompiler;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ModelInvertsTest {
+
+    private static GeneratedFieldModel entityField(String name, String pid, String ofClass) {
+        GeneratedFieldModel f = new GeneratedFieldModel(
+                name, FieldType.ENTITY, FieldCardinality.COLLECTION);
+        f.entityClassName(ofClass);
+        f.mapping().propertyPid(pid);
+        return f;
+    }
+
+    private static GeneratedProjectModel oscarProject() {
+        GeneratedClassModel oscar = new GeneratedClassModel("Oscarnominations");
+        oscar.fields().add(entityField("categories", "P1411", "Category"));
+
+        GeneratedClassModel category = new GeneratedClassModel("Category");
+        GeneratedFieldModel nominees =
+                entityField("nominees", "P1411", "Oscarnominations");
+        nominees.mapping().productionKind(FieldProductionKind.INVERT);
+        category.fields().add(nominees);
+
+        GeneratedProjectModel p = new GeneratedProjectModel();
+        p.rootClass(oscar);
+        p.addClass(category);
+        return p;
+    }
+
+    @Test void derivesInvertFromTheInvertField() {
+        List<InvertConstruct> inverts = ModelInverts.derive(oscarProject());
+        assertEquals(1, inverts.size());
+        InvertConstruct c = inverts.get(0);
+        assertEquals("Oscarnominations", c.sourceType());
+        assertEquals("categories", c.refField());      // the forward field
+        assertEquals("Category", c.targetType());
+        assertEquals("nominees", c.backRefField());
+    }
+
+    @Test void explicitForwardFieldDisambiguatesSeveralReferencesToTheSameClass() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField(
+                "offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        offices.mapping().inverseField("source");
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("predecessor", "P155", "Person"));
+        holding.fields().add(entityField("source", "", "Person"));
+        holding.fields().add(entityField("successor", "P156", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        InvertConstruct invert = ModelInverts.derive(project).get(0);
+        assertEquals("source", invert.refField());
+    }
+
+    @Test void inverseReachesAContextualRepresentationOfTheDeclaredRole() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField(
+                "offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        offices.mapping().inverseField("source");
+        person.fields().add(offices);
+
+        GeneratedClassModel holder = new GeneratedClassModel("PositionHolder");
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("source", "", "PositionHolder"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holder);
+        project.addClass(holding);
+        project.addEntityKindRule(new EntityKindRule("Person", List.of("Q5")));
+        project.representationClasses(holder, List.of("Person"));
+
+        assertEquals("source", ModelInverts.derive(project).get(0).refField());
+        assertEquals("source", ModelInverts.derive(
+                ProjectModelCompiler.compile(project)).get(0).refField());
+    }
+
+    @Test void legacyInferenceDoesNotChooseByFieldOrderWhenAmbiguous() {
+        GeneratedClassModel person = new GeneratedClassModel("Person");
+        GeneratedFieldModel offices = entityField("offices", "", "OfficeHolding");
+        offices.mapping().productionKind(FieldProductionKind.INVERT);
+        person.fields().add(offices);
+
+        GeneratedClassModel holding = new GeneratedClassModel("OfficeHolding");
+        holding.fields().add(entityField("predecessor", "P155", "Person"));
+        holding.fields().add(entityField("source", "", "Person"));
+
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        project.rootClass(person);
+        project.addClass(holding);
+
+        assertTrue(ModelInverts.derive(project).isEmpty());
+    }
+
+    @Test void invertFillsTheReverseFieldFromTheForwardReferences() {
+        WikidataDynamicObject cat = obj("Q102427", "Best Picture", "Category");
+        WikidataDynamicObject f1 = obj("Q1", "Film One", "Oscarnominations");
+        WikidataDynamicObject f2 = obj("Q2", "Film Two", "Oscarnominations");
+        f1.put("categories", List.of(cat));
+        f2.put("categories", List.of(cat));
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(cat, f1, f2));
+
+        InvertConstruct c = ModelInverts.derive(oscarProject()).get(0);
+        new TransformEngine().applyInvert(pool, c);
+
+        Object nominees = cat.get("nominees");
+        assertTrue(nominees instanceof Collection<?>, "nominees should be a collection");
+        Collection<?> ns = (Collection<?>) nominees;
+        assertTrue(ns.contains(f1) && ns.contains(f2), ns.toString());
+    }
+
+    private static WikidataDynamicObject obj(String qid, String name, String type) {
+        WikidataDynamicObject o = new WikidataDynamicObject(qid, name);
+        o.type(type);
+        return o;
+    }
+}

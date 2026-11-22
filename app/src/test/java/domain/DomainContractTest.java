@@ -111,8 +111,8 @@ class DomainContractTest {
     }
 
     private static final Set<String> ALLOWED_DECLARATIONS = Set.of(
-            "wikidata.explore.model.WikipediaCategoryRule",
-            "wikidata.explore.model.EntityKindRule");
+            "domain.config.WikipediaCategoryRule",
+            "domain.config.EntityKindRule");
 
     /** Imports AND fully-qualified uses: the two allowances above are written inline, so an
      *  import scan alone would have reported this package as depending on nothing. Comments
@@ -135,7 +135,7 @@ class DomainContractTest {
         java.nio.file.Path source = java.nio.file.Path.of("src/main/java/domain");
         assertTrue(java.nio.file.Files.isDirectory(source),
                 "run from the app module: " + source.toAbsolutePath());
-        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.walk(source)) {
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.list(source)) {
             return files.filter(f -> f.toString().endsWith(".java")).sorted().toList();
         }
     }
@@ -169,7 +169,7 @@ class DomainContractTest {
 
     /** Package-private backings referenced by class rather than by name. */
     private static final class SnapshotDomainNames {
-        static final Class<?> SNAPSHOT = wikidata.explore.extract.SnapshotDomain.class;
-        static final Class<?> REFLECTION = quiz.transform.ui.ReflectionDomain.class;
+        static final Class<?> SNAPSHOT = domain.runtime.SnapshotDomain.class;
+        static final Class<?> REFLECTION = domain.transform.ui.ReflectionDomain.class;
     }
 }

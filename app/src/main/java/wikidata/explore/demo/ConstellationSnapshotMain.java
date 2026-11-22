@@ -4,8 +4,8 @@ import wikidata.WikidataIds;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
 import java.net.URLEncoder;

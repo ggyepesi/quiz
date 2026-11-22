@@ -43,9 +43,9 @@ class DisclosureIsCheckedInTest {
         LogNode log = queryLog();
         describe(actual, "Query log - a generation run", log, context -> { });
         describe(actual, "Query log window - first render", log,
-                wikidata.explore.query.swing.WorkflowLogWindow::applyLogDisclosure);
+                domain.workbench.execution.ui.WorkflowLogWindow::applyLogDisclosure);
         describe(actual, "Query log window - a run, once opened", log, context -> {
-            wikidata.explore.query.swing.WorkflowLogWindow.applyLogDisclosure(context);
+            domain.workbench.execution.ui.WorkflowLogWindow.applyLogDisclosure(context);
             context.toggleCardExpanded(log);
         });
         describe(actual, "Query log - after opening steps", log,

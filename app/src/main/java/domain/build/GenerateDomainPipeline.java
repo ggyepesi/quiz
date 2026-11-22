@@ -1,0 +1,680 @@
+package domain.build;
+
+import process.ProcessWorkflowPipeline;
+import process.PhaseExplanation;
+import domain.config.FieldProductionKind;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedFieldModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.MembershipPattern;
+
+import java.util.ArrayList;
+import java.util.List;
+import wikidata.api.FactDemandPlan;
+import wikidata.api.FactDemand;
+
+/** The executable Generate Domain phases and their model-derived explanation. */
+public final class GenerateDomainPipeline {
+    public static final String PLAN = "validate-plan";
+    public static final String DISCOVER = "discover";
+    public static final String ACQUIRE_STATEMENTS = "statement-facts";
+    public static final String CONSTRUCT = "construct";
+    public static final String SEMANTIC = "semantic-worklist";
+    public static final String EXTERNAL_EVIDENCE = "external-evidence";
+    public static final String LABELS = "labels";
+    public static final String FINALIZE = "finalize";
+    public static final String MATERIALIZE = "materialize";
+    // Compatibility aliases for callers/tests that address the old coarse phases.
+    public static final String EXTRACT = DISCOVER;
+    public static final String REIFY = CONSTRUCT;
+    public static final String ROLE_EVIDENCE = SEMANTIC;
+    public static final String CLASSIFY = SEMANTIC;
+    public static final String OWNED = SEMANTIC;
+    public static final String KIND_OWNED_FIELDS = SEMANTIC;
+
+    private GenerateDomainPipeline() { }
+
+    public static ProcessWorkflowPipeline configured(GeneratedProjectModel model) {
+        return configured(CompiledPipelineRun.compile(
+                PipelineRequest.generateDomain(model)));
+    }
+
+    /**
+     * The description, from the same compiled run execution consumes.
+     *
+     * <p>It used to compile the model for itself, so a Generate run compiled it twice —
+     * once to say what would happen and once to make it happen — and the two could
+     * describe different models the moment anything edited one between them. The compiled
+     * run is the one owner; this reads it.
+     */
+    public static ProcessWorkflowPipeline configured(CompiledPipelineRun run) {
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        GeneratedProjectModel model = run.request().model();
+        if (run.blocked()) {
+            return new ProcessWorkflowPipeline(List.of(
+                    phase(PLAN, "Cannot generate",
+                            "The model must be corrected before any request is made.",
+                            run.explain().lines().filter(line -> !line.isBlank()).toList())));
+        }
+        var compiled = run.model();
+        return new ProcessWorkflowPipeline(List.of(
+                phase(PLAN, "Validate & plan",
+                        "Freeze the model, compile it and derive required operations.",
+                        List.of(model.classes().size() + " configured classes")),
+                phase(DISCOVER, "Discover populations",
+                        "Discover root members and statement subjects.",
+                        rootDetails(model, compiled), discoveryExplanation(model)),
+                phase(ACQUIRE_STATEMENTS, "Acquire statement facts",
+                        "Load main statements and configured qualifier facts.",
+                        statementAcquisitionDetails(model, compiled),
+                        statementAcquisitionExplanation(compiled)),
+                phase(CONSTRUCT, "Construct graph",
+                        "Reify statement records, apply restrictions, inverts and projections.",
+                        statementConstructionDetails(compiled),
+                        statementConstructionExplanation(compiled)),
+                phase(SEMANTIC, "Resolve semantic worklist",
+                        "Repeat role stamping, field/evidence acquisition, kind classification "
+                                + "and owned-value construction until stable.",
+                        semanticDetails(model), semanticExplanation(model)),
+                phase(EXTERNAL_EVIDENCE, "Acquire external evidence",
+                        "Acquire configured non-Wikidata source facts in reusable batches.",
+                        categoryDetails(model), categoryExplanation(model)),
+                phase(LABELS, "Hydrate final labels",
+                        "Resolve labels once for placeholder QIDs in the closed graph.",
+                        List.of("English labels with multilingual fallback")),
+                phase(FINALIZE, "Finalize & validate",
+                        "Canonicalize, prune, apply expectations, audit consistency and build vocabularies.",
+                        List.of(model.classes().size() + " configured classes")),
+                phase(MATERIALIZE, "Materialize instances",
+                        "Compile and map the final shared object graph.",
+                        List.of(model.classes().size() + " configured classes"))));
+    }
+
+    /** The local replay recipe, built beside Generate so phase identity, wording and
+     * order are execution architecture rather than Swing configuration. */
+    public static ProcessWorkflowPipeline configuredRemap(
+            List<String> details, boolean retransform) {
+        return new ProcessWorkflowPipeline(List.of(
+                phase(PLAN, "Prepare remap",
+                        "Freeze and compile the model, then stage a copy of the saved graph.",
+                        details),
+                phase(CONSTRUCT, "Construct",
+                        retransform
+                                ? "Reify statements and replay the transform sequence on "
+                                        + "the cached pre-reification pool."
+                                : "Replay the transforms safe for an already-reified pool.",
+                        List.of()),
+                phase(SEMANTIC, "Semantic",
+                        "Settle entity kinds and compose owned parts.", List.of()),
+                phase(FINALIZE, "Finalize",
+                        "Canonicalize names, prune, check expectations and build vocabularies.",
+                        List.of()),
+                phase(MATERIALIZE, "Materialize instances",
+                        "Map the final shared graph into viewable instances.", List.of())));
+    }
+
+    /** Remap description tied to the same decisions its query consumes. */
+    public static ProcessWorkflowPipeline configuredRemap(
+            CompiledPipelineRun run, List<String> details, boolean retransform) {
+        requirePlanned(run, PipelinePhase.REFRESH_DERIVED_VALUES);
+        requirePlanned(run, PipelinePhase.RESOLVE_SEMANTIC_WORKLIST);
+        return configuredRemap(details, retransform);
+    }
+
+    /** The additive network recipe over an existing population. */
+    public static ProcessWorkflowPipeline configuredEnrich(List<String> details) {
+        return new ProcessWorkflowPipeline(List.of(
+                phase(PLAN, "Prepare enrich",
+                        "Freeze and compile the model, then stage a copy of the saved graph.",
+                        details),
+                phase(SEMANTIC, "Semantic",
+                        "Load declared properties, settle kinds and compose owned parts.",
+                        List.of()),
+                phase(EXTERNAL_EVIDENCE, "External evidence",
+                        "Acquire Wikipedia category memberships and native infobox values.",
+                        List.of()),
+                phase(CONSTRUCT, "Construct",
+                        "Replay the transforms safe for an already-reified pool.", List.of()),
+                phase(LABELS, "Labels",
+                        "Resolve names still displayed as bare QIDs.", List.of()),
+                phase(FINALIZE, "Finalize",
+                        "Canonicalize names, prune, check expectations and build vocabularies.",
+                        List.of()),
+                phase(MATERIALIZE, "Materialize instances",
+                        "Map the final shared graph into viewable instances.", List.of())));
+    }
+
+
+    /** Enrich description tied to the same decisions its query consumes. */
+    public static ProcessWorkflowPipeline configuredEnrich(
+            CompiledPipelineRun run, List<String> details) {
+        requirePlanned(run, PipelinePhase.RESOLVE_SEMANTIC_WORKLIST);
+        requirePlanned(run, PipelinePhase.ACQUIRE_EXTERNAL_EVIDENCE);
+        requirePlanned(run, PipelinePhase.REFRESH_DERIVED_VALUES);
+        return configuredEnrich(details);
+    }
+
+    private static void requirePlanned(CompiledPipelineRun run, PipelinePhase phase) {
+        if (run == null) throw new IllegalArgumentException("No compiled pipeline run");
+        PhaseDecision decision = run.decision(phase);
+        if (!decision.runs()) {
+            throw new IllegalArgumentException(
+                    phase.label() + " is not part of this run: " + decision);
+        }
+    }
+
+    private static ProcessWorkflowPipeline.Phase phase(
+            String id, String title, String description, List<String> details) {
+        return phase(id, title, description, details, new PhaseExplanation(
+                description, List.of(), details, List.of(), List.of(), List.of()));
+    }
+
+    private static ProcessWorkflowPipeline.Phase phase(
+            String id, String title, String description, List<String> details,
+            PhaseExplanation explanation) {
+        return new ProcessWorkflowPipeline.Phase(
+                id, title, description, details, explanation);
+    }
+
+    private static List<String> rootDetails(GeneratedProjectModel model,
+            domain.compile.CompiledProjectModel compiled) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            MembershipPattern pattern = MembershipPattern.of(clazz, model);
+            if (pattern != MembershipPattern.REFERENCED
+                    && pattern != MembershipPattern.OWNED_COMPONENT
+                    && pattern != MembershipPattern.EVIDENCE_KIND
+                    && pattern != MembershipPattern.POPULATION_SUBCLASS
+                    && !clazz.reifiesStatements()) {
+                out.add(clazz.className() + " — " + pattern
+                        + ", depth " + clazz.generationDepth());
+            }
+        }
+        for (FactDemand demand : GenerationFactDemandPlan.compile(
+                model, compiled, null).all()) {
+            if (!demand.propertyPids().isEmpty()) {
+                out.add(demand.targetClass() + " — retain "
+                        + String.join(", ", demand.propertyPids()) + " for "
+                        + demand.consumer());
+            }
+            if (!demand.metadata().isEmpty()) {
+                out.add(demand.targetClass() + " — retain " + demand.metadata()
+                        + " for " + demand.consumer());
+            }
+        }
+        return none(out, "No directly extracted root classes");
+    }
+
+    private static List<String> statementAcquisitionDetails(GeneratedProjectModel model,
+            domain.compile.CompiledProjectModel compiled) {
+        List<String> out = new ArrayList<>();
+        FactDemandPlan demandPlan = GenerationFactDemandPlan.compile(model, compiled, null);
+        for (var recipe : domain.compile.transform.ModelStatementReifications.derive(compiled)) {
+            var load = recipe.load();
+            String source = load.discoverSubjects()
+                    ? "discover subjects into " + load.entityType()
+                    : "reuse " + load.entityType() + " members";
+            String qualifiers = load.qualifiers() == null || load.qualifiers().isEmpty()
+                    ? "no qualifiers"
+                    : load.qualifiers().stream().map(q -> q.fieldName() + " ← " + q.pid()
+                            + " (" + q.kind() + (q.multi() ? ", list" : "") + ")")
+                            .collect(java.util.stream.Collectors.joining(", "));
+            out.add(load.statementType() + " — " + source + "; load "
+                    + load.propertyPid() + " statements; " + qualifiers
+                    + "; value domain: " + load.valueDomainLabel());
+            GeneratedClassModel statementClass = model.findClass(load.statementType());
+            if (statementClass != null) {
+                java.util.LinkedHashSet<String> subjectClosure = new java.util.LinkedHashSet<>();
+                for (var role : recipe.reify().roles()) {
+                    if (!role.fallbackToSource()) continue;
+                    statementClass.fields().stream()
+                            .filter(field -> role.field().equals(field.name()))
+                            .findFirst().ifPresent(field -> demandPlan
+                                    .forClass(field.entityClassName()).forEach(demand ->
+                                            subjectClosure.addAll(demand.propertyPids())));
+                }
+                if (!subjectClosure.isEmpty()) {
+                    out.add(load.entityType() + " subject response — retain role closure "
+                            + String.join(", ", subjectClosure));
+                }
+            }
+        }
+        return none(out, "No statement classes");
+    }
+
+    private static List<String> statementConstructionDetails(
+            domain.compile.CompiledProjectModel compiled) {
+        List<String> out = new ArrayList<>();
+        for (var recipe : domain.compile.transform.ModelStatementReifications.derive(compiled)) {
+            var load = recipe.load();
+            var construct = recipe.reify();
+            String key = construct.dedupBy().isEmpty() ? "surrogate statement identity"
+                    : "canonical key " + String.join(" + ", construct.dedupBy());
+            out.add(construct.targetType() + " — promote " + load.statementField()
+                    + " records; source → " + construct.sourceField()
+                    + ", value → " + load.valueField() + "; " + key
+                    + "; " + construct.roles().size() + " fallback role(s)");
+        }
+        return none(out, "No statement classes");
+    }
+
+    private static List<String> roleFieldDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            if (MembershipPattern.of(clazz, model) != MembershipPattern.REFERENCED) continue;
+            addPropertyFields(out, clazz);
+        }
+        return none(out, "No referenced-role property fields");
+    }
+
+    private static List<String> kindDetails(GeneratedProjectModel model) {
+        List<String> out = model.entityKindRules().stream().filter(r -> r.isConfigured())
+                .map(r -> r.className() + " ← " + r.propertyPid() + " in "
+                        + String.join(", ", r.evidenceQids())
+                        + evidenceProducerSuffix(model, r.propertyPid())).toList();
+        return none(out, "No entity-kind rules");
+    }
+
+    private static String evidenceProducerSuffix(
+            GeneratedProjectModel model, String propertyPid) {
+        List<String> producers = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            if (owner == null || MembershipPattern.of(owner, model)
+                    != MembershipPattern.REFERENCED) continue;
+            for (GeneratedFieldModel field : owner.fields()) {
+                if (field != null && field.mapping() != null
+                        && propertyPid.equalsIgnoreCase(field.mapping().propertyPid())) {
+                    producers.add(owner.className() + "." + field.name());
+                }
+            }
+        }
+        return producers.isEmpty() ? " — all role members (no modeled producer)"
+                : " — candidates from " + String.join(", ", producers);
+    }
+
+    private static List<String> ownedDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                if (field.mapping().productionKind() == FieldProductionKind.OWNED_COMPONENT) {
+                    out.add(owner.className() + "." + field.name() + " → "
+                            + field.entityClassName() + " (owner QID)");
+                }
+            }
+        }
+        return none(out, "No owned-component fields");
+    }
+
+    private static List<String> kindOwnedFieldDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            MembershipPattern pattern = MembershipPattern.of(clazz, model);
+            if (pattern == MembershipPattern.EVIDENCE_KIND
+                    || pattern == MembershipPattern.POPULATION_SUBCLASS
+                    || pattern == MembershipPattern.OWNED_COMPONENT) {
+                addPropertyFields(out, clazz);
+            }
+        }
+        return none(out, "No kind/owned property fields");
+    }
+
+    /** What the run will retain by, described from the model alone: the phase
+     *  description is built before a source plan exists, and the demands that widen
+     *  a slice — a finalizer's P31, say — are declared by the model either way. */
+    private static java.util.Collection<wikidata.api.FactDemand> plannedFactDemands(
+            GeneratedProjectModel model) {
+        return GenerationFactDemandPlan.compile(model).all();
+    }
+
+    private static List<String> semanticDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        out.add("Role stamping — apply each ENTITY field's declared target class");
+        out.add("Reachability — rescan the graph after every newly loaded or owned value");
+        out.add("Evidence acquisition — fetch all newly reachable declared properties together");
+        // The same manifest the run retains by, downstream demands included — a plan
+        // that listed only the semantic closure would understate every slice a
+        // finalizer's demand widens (Person keeps P31 with its P570, for instance).
+        var manifest = domain.compile.transform.ReferentFieldLoad.compileManifest(
+                model, plannedFactDemands(model));
+        manifest.propertiesByClass().forEach((className, pids) -> out.add(
+                className + " acquisition slice — " + String.join(", ", pids)));
+        out.add("Kind classification — combine stored evidence with missing remote evidence");
+        out.add("Owned construction — materialize owner-QID components after kinds settle");
+        out.addAll(roleFieldDetails(model));
+        out.addAll(kindDetails(model));
+        out.addAll(ownedDetails(model));
+        out.addAll(kindOwnedFieldDetails(model));
+        return out.stream().distinct().toList();
+    }
+
+    /** Interpret field recipes through their owning providers without mutating the model. */
+    private static List<domain.datasource.api.PreparedSourceOperation> acquiringSources(
+            GeneratedFieldModel field) {
+        if (field == null) return List.of();
+        var registry = domain.datasource.Datasources.standard();
+        List<domain.datasource.api.PreparedSourceOperation> result = new ArrayList<>();
+        for (domain.datasource.api.SourceBinding binding : field.sourceBindings()) {
+            var operation = registry.require(binding.recipe().providerId(),
+                    binding.recipe().operationId(), domain.datasource.api.DatasourceOperation.class);
+            var prepared = operation.prepare(binding);
+            if (prepared.execution() == domain.datasource.api.PreparedSourceOperation.Execution.ACQUIRE) {
+                result.add(prepared);
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<String> categoryDetails(GeneratedProjectModel model) {
+        List<String> out = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                acquiringSources(field).stream()
+                        .map(domain.datasource.api.PreparedSourceOperation::description)
+                        .filter(description -> !description.isBlank()).forEach(out::add);
+            }
+        }
+        return none(out, "No external category recipes");
+    }
+
+    private static PhaseExplanation categoryExplanation(GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel owner : model.classes()) {
+            for (GeneratedFieldModel field : owner.fields()) {
+                for (var prepared : acquiringSources(field)) {
+                    var ref = PhaseExplanation.ModelReference.field(
+                            owner.className(), field.name());
+                    refs.add(ref);
+                    examples.add(new PhaseExplanation.PhaseExample(
+                            PhaseExplanation.ExampleKind.PLANNED,
+                            prepared.description(),
+                            detail(prepared, "input"), detail(prepared, "operation"),
+                            detail(prepared, "output"), List.of(ref)));
+                }
+            }
+        }
+        return new PhaseExplanation(
+                "Acquire source facts once at domain scale; interpretation remains explicit and auditable.",
+                List.of("Reachable entity QIDs",
+                        "Configured DBpedia, Wikipedia-category and Infobox recipes"),
+                List.of("Join DBpedia resources to entity QIDs through owl:sameAs",
+                        "Read configured DBpedia properties in batches of 100 QIDs",
+                        "Resolve English Wikipedia sitelinks in batches of 50",
+                        "Fetch visible category memberships with continuation",
+                        "Fetch native Infobox wikitext in retryable batches of 50",
+                        "Retain page revision, evidence digest and retrieval time",
+                        "Expose matched values to generation/review according to policy"),
+                List.of("DBpedia values merged into configured fields",
+                        "Snapshot-backed category memberships",
+                        "Per-value provenance usable by Explore and TransformApp"),
+                refs, examples);
+    }
+
+    private static List<String> detail(
+            domain.datasource.api.PreparedSourceOperation prepared, String key) {
+        String value = prepared.details().getOrDefault(key, "");
+        return value.isBlank() ? List.of() : List.of(value);
+    }
+
+    private static PhaseExplanation semanticExplanation(GeneratedProjectModel model) {
+        List<String> inputs = new ArrayList<>(List.of(
+                "Reachable entities and statement records produced so far",
+                "Declared target classes on entity-valued fields",
+                "Persisted field coverage and retained Wikidata facts"));
+        List<String> operations = List.of(
+                "Preflight all currently knowable ⟨entity QID, property⟩ demands before acquisition",
+                "Stamp role membership from configured field targets",
+                "Acquire newly demanded properties in model-derived bundles",
+                "Classify entity kinds from configured evidence rules",
+                "Construct owned values that inherit their owner's QID",
+                "Repeat until no stamp, value, kind or owned component changes");
+        List<String> outputs = List.of(
+                "Role and entity-kind class memberships",
+                "Loaded referent and owned-field values",
+                "Owned components connected to their owners",
+                "Exact-QID declarations recording answered fields",
+                "Retention plans protecting facts that a later semantic operation will consume",
+                "A fixed-point object graph ready for final labels and validation");
+
+        List<PhaseExplanation.ModelReference> references = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            for (GeneratedFieldModel field : clazz.effectiveFields(model)) {
+                String pid = field.mapping() == null ? "" : field.mapping().propertyPid();
+                boolean owned = field.mapping() != null
+                        && field.mapping().productionKind()
+                        == FieldProductionKind.OWNED_COMPONENT;
+                if (pid != null && pid.matches("(?i)P\\d+")) {
+                    references.add(PhaseExplanation.ModelReference.field(
+                            clazz.className(), field.name()));
+                    references.add(PhaseExplanation.ModelReference.property(pid));
+                    if (examples.size() < 3) examples.add(propertyExample(clazz, field, pid));
+                }
+                if (owned) {
+                    references.add(PhaseExplanation.ModelReference.field(
+                            clazz.className(), field.name()));
+                    references.add(PhaseExplanation.ModelReference.clazz(
+                            field.entityClassName()));
+                    examples.add(ownedExample(clazz, field));
+                }
+            }
+        }
+        for (var rule : model.entityKindRules()) {
+            if (!rule.isConfigured()) continue;
+            references.add(PhaseExplanation.ModelReference.kindRule(rule.className()));
+            references.add(PhaseExplanation.ModelReference.property(rule.propertyPid()));
+            references.add(PhaseExplanation.ModelReference.clazz(rule.className()));
+            examples.add(kindExample(model, rule));
+        }
+        PhaseExplanation.PhaseExample preflight = preflightExample(model);
+        if (preflight != null) examples.add(0, preflight);
+        return new PhaseExplanation(
+                "Close the semantic gap between records discovered from Wikidata and "
+                        + "the typed object graph promised by the model.",
+                inputs, operations, outputs,
+                references.stream().distinct().toList(),
+                examples.stream().limit(6).toList());
+    }
+
+    private static PhaseExplanation.PhaseExample preflightExample(
+            GeneratedProjectModel model) {
+        var manifest = domain.compile.transform.ReferentFieldLoad.compileManifest(
+                model, plannedFactDemands(model));
+        var first = manifest.propertiesByClass().entrySet().stream()
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                .findFirst().orElse(null);
+        if (first == null) return null;
+        String className = first.getKey();
+        List<String> pids = List.copyOf(first.getValue());
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        refs.add(PhaseExplanation.ModelReference.clazz(className));
+        pids.stream().limit(4).map(PhaseExplanation.ModelReference::property)
+                .forEach(refs::add);
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Plan facts before loading " + className,
+                List.of("Every currently reachable " + className + " QID"),
+                List.of("The compiled acquisition slice needs "
+                        + String.join(", ", pids)),
+                List.of("Register exact ⟨QID, property⟩ retention plans first",
+                        "A fact fetched for one operation remains available to later consumers",
+                        "Newly discovered populations are planned before the next iteration"),
+                refs);
+    }
+
+    private static PhaseExplanation discoveryExplanation(GeneratedProjectModel model) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (GeneratedClassModel clazz : model.classes()) {
+            MembershipPattern pattern = MembershipPattern.of(clazz, model);
+            if (pattern == MembershipPattern.REFERENCED
+                    || pattern == MembershipPattern.OWNED_COMPONENT
+                    || pattern == MembershipPattern.EVIDENCE_KIND
+                    || pattern == MembershipPattern.POPULATION_SUBCLASS
+                    || clazz.reifiesStatements()) continue;
+            refs.add(PhaseExplanation.ModelReference.clazz(clazz.className()));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Discover " + clazz.className(),
+                    List.of("Configured source for " + clazz.className()),
+                    List.of("Membership pattern " + pattern,
+                            "Traversal depth " + clazz.generationDepth()),
+                    List.of("Seed QIDs that subsequent phases enrich and connect"),
+                    List.of(PhaseExplanation.ModelReference.clazz(clazz.className()))));
+        }
+        for (FactDemand demand : GenerationFactDemandPlan.compile(model).all()) {
+            if (demand.propertyPids().isEmpty()) continue;
+            demand.propertyPids().forEach(pid -> refs.add(
+                    PhaseExplanation.ModelReference.property(pid)));
+            if (examples.size() < 5) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Carry facts forward for " + demand.targetClass(),
+                    List.of("Discovered " + demand.targetClass() + " QIDs"),
+                    List.of("Fetch " + String.join(", ", demand.propertyPids())
+                                    + " with the root fields",
+                            demand.reason()),
+                    List.of(demand.consumer() + " can reuse the retained response instead of refetching"),
+                    demand.propertyPids().stream()
+                            .map(PhaseExplanation.ModelReference::property).toList()));
+        }
+        return new PhaseExplanation(
+                "Establish the root populations and statement subjects from which the domain graph grows.",
+                List.of("Compiled class sources and membership patterns"),
+                List.of("Execute root discovery",
+                        "Bind prospective downstream fact needs to the discovered QIDs",
+                        "Acquire configured root fields and retained downstream facts together",
+                        "Carry only declared label, alias and sitelink demands on those responses",
+                        "Discover subjects required by statement classes"),
+                List.of("Root entity QIDs", "Statement subject populations",
+                        "Retained facts for later pipeline consumers"),
+                refs.stream().distinct().toList(), examples);
+    }
+
+    private static PhaseExplanation statementAcquisitionExplanation(
+            domain.compile.CompiledProjectModel compiled) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (var recipe : domain.compile.transform.ModelStatementReifications.derive(compiled)) {
+            var load = recipe.load();
+            refs.add(PhaseExplanation.ModelReference.clazz(load.statementType()));
+            refs.add(PhaseExplanation.ModelReference.property(load.propertyPid()));
+            var qualifiers = load.qualifiers() == null ? List
+                    .<domain.compile.transform.QualifierLoadConfig.Qualifier>of()
+                    : load.qualifiers();
+            qualifiers.forEach(q -> refs.add(
+                    PhaseExplanation.ModelReference.property(q.pid())));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.PLANNED,
+                    "Acquire " + load.statementType() + " facts",
+                    List.of(load.entityType() + " subject QIDs"),
+                    List.of("Main statement property " + load.propertyPid(),
+                            qualifiers.isEmpty() ? "No configured qualifiers"
+                                    : "Qualifier properties " + qualifiers.stream()
+                                    .map(q -> q.pid()).collect(
+                                            java.util.stream.Collectors.joining(", "))),
+                    List.of("Raw statement records ready for graph construction"),
+                    List.of(PhaseExplanation.ModelReference.clazz(load.statementType()),
+                            PhaseExplanation.ModelReference.property(load.propertyPid()))));
+        }
+        return new PhaseExplanation(
+                "Acquire the statements and qualifiers needed to build configured statement-class records.",
+                List.of("Discovered or reused statement subject QIDs", "Statement recipes"),
+                List.of("Propagate the statement property into subject acquisition",
+                        "Reuse retained statement bodies when available",
+                        "Load main statements", "Load configured qualifiers in batches"),
+                List.of("Raw statement and qualifier facts"),
+                refs.stream().distinct().toList(), examples);
+    }
+
+    private static PhaseExplanation statementConstructionExplanation(
+            domain.compile.CompiledProjectModel compiled) {
+        List<PhaseExplanation.ModelReference> refs = new ArrayList<>();
+        List<PhaseExplanation.PhaseExample> examples = new ArrayList<>();
+        for (var recipe : domain.compile.transform.ModelStatementReifications.derive(compiled)) {
+            var load = recipe.load();
+            var construct = recipe.reify();
+            refs.add(PhaseExplanation.ModelReference.clazz(construct.targetType()));
+            if (examples.size() < 3) examples.add(new PhaseExplanation.PhaseExample(
+                    PhaseExplanation.ExampleKind.CHANGED,
+                    "Construct " + construct.targetType(),
+                    List.of("A raw " + load.statementField() + " statement record"),
+                    List.of("Source maps to " + construct.sourceField(),
+                            "Value maps to " + load.valueField()),
+                    List.of("A typed " + construct.targetType() + " object connected to its source and value"),
+                    List.of(PhaseExplanation.ModelReference.clazz(construct.targetType()))));
+        }
+        return new PhaseExplanation(
+                "Turn acquired statement facts into the typed records and relationships promised by the model.",
+                List.of("Raw statement and qualifier facts", "Reification recipes"),
+                List.of("Promote statement records", "Apply restrictions, inverses and projections",
+                        "Deduplicate by the configured canonical key"),
+                List.of("Typed statement-class records connected into the graph"),
+                refs.stream().distinct().toList(), examples);
+    }
+
+    private static PhaseExplanation.PhaseExample propertyExample(
+            GeneratedClassModel owner, GeneratedFieldModel field, String pid) {
+        String target = field.entityClassName() == null || field.entityClassName().isBlank()
+                ? field.type().toString() : field.entityClassName();
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Load " + owner.className() + "." + field.name(),
+                List.of("A reachable " + owner.className() + " carrying a Wikidata QID"),
+                List.of(pid + " is the configured producing property"),
+                List.of("Store the answered value as " + target,
+                        "Record coverage even when Wikidata returns no value"),
+                List.of(PhaseExplanation.ModelReference.field(
+                                owner.className(), field.name()),
+                        PhaseExplanation.ModelReference.property(pid)));
+    }
+
+    private static PhaseExplanation.PhaseExample ownedExample(
+            GeneratedClassModel owner, GeneratedFieldModel field) {
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Compose owned " + field.entityClassName(),
+                List.of("A " + owner.className() + " instance with QID Q…"),
+                List.of(owner.className() + "." + field.name()
+                        + " declares owned production"),
+                List.of("Create " + field.entityClassName() + "@"
+                                + owner.className() + "." + field.name(),
+                        "The component inherits Q… only for loading its declared fields"),
+                List.of(PhaseExplanation.ModelReference.field(
+                                owner.className(), field.name()),
+                        PhaseExplanation.ModelReference.clazz(field.entityClassName())));
+    }
+
+    private static PhaseExplanation.PhaseExample kindExample(
+            GeneratedProjectModel model, domain.config.EntityKindRule rule) {
+        String producers = evidenceProducerSuffix(model, rule.propertyPid())
+                .replace(" — candidates from ", "").replace(
+                        " — all role members (no modeled producer)", "role members");
+        return new PhaseExplanation.PhaseExample(
+                PhaseExplanation.ExampleKind.PLANNED,
+                "Classify an entity as " + rule.className(),
+                List.of("A candidate entity reached through " + producers),
+                List.of(rule.propertyPid() + " contains one of "
+                        + String.join(", ", rule.evidenceQids())),
+                List.of("Add " + rule.className() + " membership",
+                        "Use the deterministic most-specific kind as display carrier"),
+                List.of(PhaseExplanation.ModelReference.kindRule(rule.className()),
+                        PhaseExplanation.ModelReference.property(rule.propertyPid()),
+                        PhaseExplanation.ModelReference.clazz(rule.className())));
+    }
+
+    private static void addPropertyFields(List<String> out, GeneratedClassModel clazz) {
+        for (GeneratedFieldModel field : clazz.fields()) {
+            String pid = field.mapping() == null ? "" : field.mapping().propertyPid();
+            if (pid != null && pid.matches("(?i)P\\d+")) {
+                String target = field.entityClassName() == null
+                        || field.entityClassName().isBlank() ? "" : " → " + field.entityClassName();
+                out.add(clazz.className() + "." + field.name() + " — "
+                        + field.type() + " " + field.cardinality() + target + " — " + pid);
+            }
+        }
+    }
+
+    private static List<String> none(List<String> values, String message) {
+        return values == null || values.isEmpty() ? List.of(message) : List.copyOf(values);
+    }
+}

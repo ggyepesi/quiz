@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ViewableJsonSourceTest {
 
     @Test void syntheticDisplayFieldIsReadableWhereTheFieldApiOffersIt() {
-        var person = new wikidata.explore.extract.WikidataDynamicObject(
+        var person = new domain.runtime.WikidataDynamicObject(
                 "Q71231", "Charles the Bald");
 
         ViewableView.Field display = ViewableJson.fieldOf(
@@ -22,10 +22,10 @@ class ViewableJsonSourceTest {
     }
 
     @Test void statementTripleIsAnExpandableSourceField() {
-        var nomination = new wikidata.explore.extract.WikidataDynamicObject(
+        var nomination = new domain.runtime.WikidataDynamicObject(
                 "modeled-key", "Nomination");
         nomination.wikidataStatementSources(List.of(
-                new quiz.source.WikidataStatementSource(
+                new domain.provenance.WikidataStatementSource(
                         "Q28$a", "Q28", "P1411", "Q103916", "Best Actor")));
 
         ViewableView.Field source = statements(ViewableJson.of(nomination,
@@ -58,7 +58,7 @@ class ViewableJsonSourceTest {
     }
 
     @Test void entitySourceDisplayIsAQidLinkWithoutADuplicateBodyRow() {
-        var person = new wikidata.explore.extract.WikidataDynamicObject(
+        var person = new domain.runtime.WikidataDynamicObject(
                 "Q42", "Douglas Adams");
 
         ViewableView.Field source = source(ViewableJson.of(person,
@@ -73,7 +73,7 @@ class ViewableJsonSourceTest {
     }
 
     @Test void defaultEntitySourceCaptionIsTheSameQidLink() {
-        var person = new wikidata.explore.extract.WikidataDynamicObject(
+        var person = new domain.runtime.WikidataDynamicObject(
                 "Q42", "Douglas Adams");
 
         ViewableView.Ref source = source(ViewableJson.of(person)).refs().getFirst();
@@ -83,13 +83,13 @@ class ViewableJsonSourceTest {
     }
 
     @Test void multipleStatementsShareOneExpandableWebSourceField() {
-        var award = new wikidata.explore.extract.WikidataDynamicObject(
+        var award = new domain.runtime.WikidataDynamicObject(
                 "modeled-key", "Le Duc Tho — Nobel Peace Prize");
         award.wikidataStatementSources(List.of(
-                new quiz.source.WikidataStatementSource(
+                new domain.provenance.WikidataStatementSource(
                         "Q66107$a", "Q66107", "P166", "Q35637",
                         "Nobel Peace Prize"),
-                new quiz.source.WikidataStatementSource(
+                new domain.provenance.WikidataStatementSource(
                         "Q233969$b", "Q233969", "P166", "Q35637",
                         "Nobel Peace Prize")));
 

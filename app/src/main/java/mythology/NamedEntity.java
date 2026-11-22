@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JPanel;
 
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 public  class NamedEntity extends ManualEntity implements MythologyEntity {
     @DisplayField private String name;

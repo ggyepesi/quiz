@@ -3,7 +3,7 @@ package objectview.viewconfig;
 import objectview.field.RecordTypes;
 
 import org.junit.jupiter.api.Test;
-import quiz.transform.DynamicViewable;
+import domain.transform.DynamicViewable;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

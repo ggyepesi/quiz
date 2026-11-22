@@ -7,7 +7,7 @@ import java.util.List;
 import aux.FlexibleDate;
 import objectview.media.ImagePane;
 import objectview.ViewableAdapter;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 // private fields are seemengly unused - they are used via reflection!
 @SuppressWarnings("unused")

@@ -1,12 +1,12 @@
 package quiz.web.sources;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.model.FieldCardinality;
-import datasource.schema.FieldType;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.StatementClassSource;
-import wikidata.explore.model.VocabularySelection;
+import domain.config.FieldCardinality;
+import domain.datasource.schema.FieldType;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.StatementClassSource;
+import domain.config.VocabularySelection;
 
 import java.util.List;
 import java.util.Set;
@@ -30,7 +30,7 @@ class GeneratedSourceModelTest {
         // A statement class states its key; nothing chooses one for it. This is what
         // the editor offers — the triple's own components — accepted explicitly.
         nom.canonical().keyFields().addAll(
-                wikidata.explore.model.StatementIdentity.structuralKey(nom));
+                domain.config.StatementIdentity.structuralKey(nom));
         m.addClass(nom);
 
         GeneratedClassModel nominee = new GeneratedClassModel("Nominee");

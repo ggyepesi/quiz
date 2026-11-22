@@ -2,23 +2,23 @@ package wikidata.explore.query.logical;
 
 import wikidata.WikidataIds;
 
-import wikidata.explore.query.template.rule.RuleIncludedFieldSparql;
-import wikidata.explore.query.template.rule.RuleTreeQueries;
-import wikidata.explore.rule.RuleTreeCompiler;
-import wikidata.explore.rule.RuleIncludedField;
-import wikidata.explore.rule.RuleNode;
+import wikidata.query.template.rule.RuleIncludedFieldSparql;
+import wikidata.query.template.rule.RuleTreeQueries;
+import domain.compile.rule.RuleTreeCompiler;
+import domain.compile.rule.RuleIncludedField;
+import domain.compile.rule.RuleNode;
 import wikidata.WikidataBinding;
-import wikidata.explore.query.core.Datasource;
+import wikidata.query.core.Datasource;
 import work.Query;
 import work.QueryContext;
 import wikidata.explore.query.result.TableQueryResult;
-import wikidata.explore.model.FieldSampleContext;
+import domain.config.FieldSampleContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 public class SampleFieldQuery implements Query<TableQueryResult> {
 

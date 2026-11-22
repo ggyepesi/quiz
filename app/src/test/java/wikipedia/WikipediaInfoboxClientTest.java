@@ -72,7 +72,7 @@ class WikipediaInfoboxClientTest {
 
         assertNotNull(result);
         assertEquals("group 8", result.valueOf(
-                datasource.evidence.InfoboxParameters.Key.parse("Rendered.Group")));
+                domain.datasource.evidence.InfoboxParameters.Key.parse("Rendered.Group")));
         assertEquals("d-block", result.renderedFields().get("Block"));
         assertEquals("2, 8, 14, 2", result.renderedFields().get("Electrons per shell"));
         assertFalse(result.renderedFields().containsKey("Nested presentation"));

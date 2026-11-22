@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`quiz.datasource.app.DataSourceApp` is the interactive home for reading external sources into a
+`domain.datasource.app.DataSourceApp` is the interactive home for reading external sources into a
 loaded project. It resolves identities, loads configured field values, inspects source data and
 reviews proposals before applying them. It does not define a second acquisition pipeline.
 
@@ -29,7 +29,7 @@ reader, review model or apply path is duplicated.
 
 ## First workflow
 
-1. Run `quiz.datasource.app.DataSourceApp` from the `app` module.
+1. Run `domain.datasource.app.DataSourceApp` from the `app` module.
 2. Load a saved model or domain through the shared project chooser.
 3. Select a class, optional named selection or group, and a field.
 4. Choose All, Present or Missing to state the exact instance scope.

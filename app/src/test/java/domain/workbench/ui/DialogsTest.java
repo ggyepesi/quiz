@@ -1,0 +1,94 @@
+package domain.workbench.ui;
+
+import org.junit.jupiter.api.Test;
+
+import java.awt.Dimension;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class DialogsTest {
+
+    @Test void aSuccessfulSaveSaysSoBeforeListingItsFiles() {
+        assertEquals("Save domain \"Periodic Table\" completed successfully.\n\n"
+                        + "Config: data/wikidata/periodictable/periodictable.model.json",
+                Dialogs.persistenceSuccessMessage("Save domain", "Periodic Table",
+                        "Config: data/wikidata/periodictable/periodictable.model.json\n"));
+    }
+
+    @Test void persistenceSuccessIsRaisedBeforeItBlocksItsOwner() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/domain/workbench/ui/Dialogs.java"));
+        int success = source.indexOf("public static void showPersistenceSuccess(");
+        int afterSuccess = source.indexOf("\n    static ", success);
+        String successBody = source.substring(success, afterSuccess);
+        int raised = source.indexOf("static void showRaisedMessage(");
+        int afterRaised = source.indexOf("\n    static ", raised + 1);
+        String raisedBody = source.substring(raised, afterRaised);
+
+        assertTrue(successBody.contains("showRaisedMessage(parent,"));
+        assertTrue(raisedBody.indexOf("raiseOnOpen(dialog);")
+                < raisedBody.indexOf("dialog.setVisible(true);"),
+                "the front/focus listener must be installed before the modal dialog opens");
+    }
+
+    @Test void resizableDialogNeverStartsSmallerThanItsUsableMinimum() {
+        assertEquals(new Dimension(720, 560), Dialogs.dialogSize(
+                new Dimension(600, 400), new Dimension(720, 560)));
+        assertEquals(new Dimension(920, 760), Dialogs.dialogSize(
+                new Dimension(920, 760), new Dimension(720, 560)));
+    }
+
+    @Test void explanatoryDialogTextWrapsAtOneSharedReadableWidth() {
+        javax.swing.JTextArea area = (javax.swing.JTextArea) Dialogs.wrapped(
+                "Save model and instances to /a/very/long/path/that/would/otherwise/"
+                        + "make/the/dialog/span/the/whole/screen/model.snapshot.json");
+
+        assertTrue(area.getLineWrap());
+        assertTrue(area.getWrapStyleWord());
+        assertEquals(64, area.getColumns());
+        assertTrue(area.getRows() >= 2);
+    }
+
+    @Test void visibleModelessChildOwnsAModalPromptStartedFromItsMainFrame() {
+        Node main = new Node(null);
+        Node workflow = main.child();
+
+        assertSame(workflow, owner(main, main, workflow));
+    }
+
+    @Test void unrelatedActiveWindowCannotStealThePrompt() {
+        Node main = new Node(null);
+        Node workflow = main.child();
+        Node unrelated = new Node(null);
+
+        assertSame(workflow, owner(main, unrelated, workflow));
+    }
+
+    private static Node owner(Node requested, Node active, Node visible) {
+        return Dialogs.chooseOwner(requested, active, DialogsTest::root,
+                node -> node.children, node -> node == visible);
+    }
+
+    private static Node root(Node node) {
+        while (node.parent != null) node = node.parent;
+        return node;
+    }
+
+    private static final class Node {
+        final Node parent;
+        final List<Node> children = new ArrayList<>();
+
+        Node(Node parent) { this.parent = parent; }
+
+        Node child() {
+            Node child = new Node(this);
+            children.add(child);
+            return child;
+        }
+    }
+}

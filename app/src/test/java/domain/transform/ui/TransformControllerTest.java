@@ -1,0 +1,332 @@
+package domain.transform.ui;
+
+import org.junit.jupiter.api.Test;
+import objectview.Viewable;
+import objectview.field.FieldPath;
+
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import domain.DomainField;
+import domain.DomainModel;
+import domain.DomainSchemas;
+
+/**
+ * The headless workbench logic: building the per-type group tree, adding named
+ * facet/filter producers under a selected group, and the removal guards — all
+ * without any Swing.
+ */
+class TransformControllerTest {
+
+    @Test void facetDialogCallsValuePartitionsGroupsRatherThanBuckets() {
+        assertArrayEquals(new Object[] {"One group per value", "Present / missing"},
+                TransformWorkbenchPanel.facetGroupingChoices());
+        assertArrayEquals(new Object[] {"One group per value", "Present / missing",
+                        "Nearest selected ancestor"},
+                TransformWorkbenchPanel.facetGroupingChoices(true));
+    }
+
+    @Test void nearestAncestorCandidatesAndGroupUseTheSelectedReferenceGraph() {
+        domain.transform.DynamicViewable king = city("Q12097", null);
+        king.type("Position");
+        domain.transform.DynamicViewable concrete = city("Q1", null);
+        concrete.type("Position");
+        concrete.put("superClasses", List.of(king));
+        DomainField superClasses = new DomainField(
+                "Position", "superClasses", true, true);
+        DomainModel positions = new DomainModel() {
+            @Override public List<String> types() { return List.of("Position"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return () -> List.of(objectview.field.FieldRef.described(
+                        "superClasses", objectview.field.FieldKind.COLLECTION,
+                        objectview.field.FieldKind.REFERENCE, "List<Position>",
+                        true, true, "Position", false, false,
+                        false, false, "", false));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(concrete, king);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(positions, null);
+        domain.transform.EditableGroup root = (domain.transform.EditableGroup)
+                controller.groupRoot("Position");
+
+        assertTrue(controller.isRecursiveReference(superClasses));
+        assertEquals(List.of("Q12097", "Q1"),
+                controller.ancestorCandidates(root, superClasses).stream()
+                        .map(candidate -> candidate.value().getDisplayName()).toList());
+        assertEquals(List.of(1, 0),
+                controller.ancestorCandidates(root, superClasses).stream()
+                        .map(TransformController.AncestorCandidate::directChildren).toList());
+        assertEquals(List.of(1, 0),
+                controller.ancestorCandidates(root, superClasses).stream()
+                        .map(TransformController.AncestorCandidate::descendants).toList());
+        domain.transform.NearestAncestorGroup group = controller.addNearestAncestorGroup(
+                "Position", root, "By office", superClasses, List.of(king));
+        assertNotNull(group);
+        assertEquals(List.of("Q1", "Q12097"),
+                group.getChild("Q12097").getMembers().stream()
+                        .map(Viewable::getDisplayName).toList());
+    }
+
+    @Test void aReferenceToTheOwnersSuperclassIsRecursive() {
+        DomainModel hierarchy = new DomainModel() {
+            @Override public List<String> types() { return List.of("Position", "Office"); }
+            @Override public String baseType(String type) {
+                return "Position".equals(type) ? "Office" : null;
+            }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                if (!"Position".equals(type)) return () -> List.of();
+                return () -> List.of(objectview.field.FieldRef.described(
+                        "broaderOffice", objectview.field.FieldKind.REFERENCE,
+                        objectview.field.FieldKind.REFERENCE, "Office",
+                        true, false, "Office", false, false,
+                        false, false, "", false));
+            }
+            @Override public Collection<? extends Viewable> instances() { return List.of(); }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(hierarchy, null);
+
+        assertTrue(controller.isRecursiveReference(new DomainField(
+                "Position", "broaderOffice", true, false)),
+                "specialised instances may climb through a field targeting their base class");
+    }
+
+    @Test void anAncestorIsRankedByWhatItWouldClassify() {
+        // The shape that made the direct count misleading on the real position
+        // hierarchy: "mayor" names 668 children and reaches 48 175, while "mayor of
+        // a place in France" names and reaches the same 39 158. Ranking on fan-out
+        // alone put the flat bucket first and left the layer anyone would group by
+        // far down the list.
+        domain.transform.DynamicViewable mayor = position("Q30185");
+        domain.transform.DynamicViewable france = position("Q382617");
+        domain.transform.DynamicViewable japan = position("Q19961107");
+        france.put("superClasses", List.of(mayor));
+        japan.put("superClasses", List.of(mayor));
+        List<Viewable> below = new java.util.ArrayList<>(List.of(mayor, france, japan));
+        for (int i = 0; i < 3; i++) {
+            domain.transform.DynamicViewable town = position("Q10" + i);
+            town.put("superClasses", List.of(france));
+            below.add(town);
+        }
+
+        TransformController controller = new TransformController(
+                positionsDomain(below), null);
+        DomainField superClasses = new DomainField(
+                "Position", "superClasses", true, true);
+        domain.transform.EditableGroup root = (domain.transform.EditableGroup)
+                controller.groupRoot("Position");
+
+        List<TransformController.AncestorCandidate> ranked =
+                controller.ancestorCandidates(root, superClasses);
+        assertEquals(List.of("Q30185", "Q382617"), ranked.stream()
+                .filter(candidate -> candidate.descendants() > 0)
+                .map(candidate -> candidate.value().getIdentifier()).toList(),
+                "the ancestor that reaches more is offered first, even though it "
+                        + "names fewer children directly");
+        assertEquals(2, ranked.getFirst().directChildren());
+        assertEquals(5, ranked.getFirst().descendants());
+        assertEquals(3, ranked.get(1).directChildren());
+        assertEquals(3, ranked.get(1).descendants());
+    }
+
+    @Test void anAncestorCountIsNotInflatedByASubclassCycle() {
+        // P279 cycles exist in Wikidata; a count that followed one would not end.
+        domain.transform.DynamicViewable broad = position("Q1");
+        domain.transform.DynamicViewable near = position("Q2");
+        broad.put("superClasses", List.of(near));
+        near.put("superClasses", List.of(broad));
+
+        TransformController controller = new TransformController(
+                positionsDomain(List.of(broad, near)), null);
+        domain.transform.EditableGroup root = (domain.transform.EditableGroup)
+                controller.groupRoot("Position");
+
+        assertEquals(List.of(1, 1), controller.ancestorCandidates(
+                root, new DomainField("Position", "superClasses", true, true)).stream()
+                .map(TransformController.AncestorCandidate::descendants).toList(),
+                "each node reaches the other once, and neither counts itself");
+    }
+
+    private static domain.transform.DynamicViewable position(String qid) {
+        domain.transform.DynamicViewable value =
+                new domain.transform.DynamicViewable(qid, qid);
+        value.type("Position");
+        return value;
+    }
+
+    private static DomainModel positionsDomain(Collection<? extends Viewable> members) {
+        return new DomainModel() {
+            @Override public List<String> types() { return List.of("Position"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return () -> List.of(objectview.field.FieldRef.described(
+                        "superClasses", objectview.field.FieldKind.COLLECTION,
+                        objectview.field.FieldKind.REFERENCE, "List<Position>",
+                        true, true, "Position", false, false,
+                        false, false, "", false));
+            }
+            @Override public Collection<? extends Viewable> instances() { return members; }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+    }
+
+    private static domain.transform.DynamicViewable city(String name, String region) {
+        domain.transform.DynamicViewable c = new domain.transform.DynamicViewable(name, name);
+        c.type("City");
+        c.put("region", region);
+        return c;
+    }
+
+    @Test void producedGroupsRecomputeWhenInstancesChangeAndSurviveWhenStable() {
+        List<Viewable> pool = new java.util.ArrayList<>(List.of(
+                city("Paris", "Europe"), city("Tokyo", "Asia")));
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
+            }
+            @Override public Collection<? extends Viewable> instances() { return pool; }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        domain.transform.EditableGroup root =
+                (domain.transform.EditableGroup) c.groupRoot("City");
+        domain.transform.FacetGroup facet =
+                c.addFacetGroup("City", root, "Regions",
+                        c.field("City", FieldPath.of("region")));
+        assertNotNull(facet.getChild("Europe"));
+        assertNull(facet.getChild("Africa"));
+
+        // A hand-nested group under a bucket must survive an access with UNCHANGED data.
+        domain.transform.EditableGroup europe =
+                (domain.transform.EditableGroup) facet.getChild("Europe");
+        c.addManualGroup(europe, "Manual pick");
+        c.groupRoot("City");
+        assertNotNull(europe.getChild("Manual pick"),
+                "no instance change -> no recompute -> hand edits preserved");
+
+        // The instance set changes online -> the facet recomputes from its rule.
+        pool.add(city("Cairo", "Africa"));
+        c.groupRoot("City");
+        assertNotNull(facet.getChild("Africa"),
+                "scope changed -> produced descendants recompute");
+        assertEquals(3, root.getMembers().size());
+    }
+
+    @Test void realGroupTreeAddsNamedProducersUnderTheSelectedGroup() {
+        domain.transform.DynamicViewable paris = city("Paris", "Europe");
+        domain.transform.DynamicViewable berlin = city("Berlin", "Europe");
+        domain.transform.DynamicViewable tokyo = city("Tokyo", "Asia");
+        paris.put("population", 1);
+        berlin.put("population", 2);
+        tokyo.put("population", 3);
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false),
+                        new DomainField("City", "population", false, false)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris, berlin, tokyo);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        domain.transform.EditableGroup root =
+                (domain.transform.EditableGroup) c.groupRoot("City");
+        assertEquals(3, root.getMembers().size());
+
+        domain.transform.FacetGroup facet = c.addFacetGroup(
+                "City", root, "Regions",
+                c.field("City", FieldPath.of("region")));
+        domain.transform.EditableGroup europe = (domain.transform.EditableGroup)
+                facet.getChild("Europe");
+        domain.transform.OperationGroup filtered = c.addFilterGroup(
+                "City", europe, "Only Paris",
+                new domain.transform.FilterCondition(
+                        new DomainField("City", "population", false, false),
+                        domain.transform.FilterOperator.EQUALS,
+                        1, null));
+
+        assertSame(europe, filtered.getParent());
+        assertEquals(List.of("Paris"), filtered.getMembers().stream()
+                .map(Viewable::getDisplayName).toList());
+        assertNull(facet.getChild("Asia").getChild("Only Paris"));
+        assertTrue(c.removeGroup("City", filtered));
+        assertTrue(europe.getChildren().isEmpty());
+        assertFalse(c.removeGroup("City", root));
+    }
+
+    @Test void createSubclassFromAnEmptyGroupIsRejected() {
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(city("Paris", "Europe"));
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController c = new TransformController(cities, null);
+        domain.transform.EditableGroup empty = new domain.transform.EditableGroup("Empty");
+        assertThrows(IllegalArgumentException.class,
+                () -> c.createSubclassFromGroup("X", "City", empty));
+    }
+
+    @Test void manualGroupCreatesAFrozenPopulationProducerForItsSubclass() {
+        domain.transform.DynamicViewable paris = city("Q90", "Europe");
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("City", "region", false, false)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(cities, null);
+        domain.transform.EditableGroup manual = new domain.transform.EditableGroup("Chosen");
+        manual.replaceMembers(List.of(paris));
+
+        assertEquals(1, controller.createSubclassFromGroup(
+                "ChosenCity", "City", manual));
+        var producer = ((WorkingDomain) controller.domain())
+                .subclassProducer("ChosenCity");
+        assertInstanceOf(WorkingDomain.SavedManualSubclass.class, producer);
+        assertEquals("ChosenCityPopulation",
+                ((WorkingDomain.SavedManualSubclass) producer).populationName());
+        assertEquals(List.of("Q90"),
+                ((WorkingDomain.SavedManualSubclass) producer).qids());
+    }
+
+    @Test void typeSpecGroupExplainsThatItsExecutableStepDoesNotExistYet() {
+        domain.transform.DynamicViewable paris = city("Q90", "Europe");
+        DomainModel cities = new DomainModel() {
+            @Override public List<String> types() { return List.of("City"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of());
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(paris);
+            }
+            @Override public Class<? extends Viewable> universe() { return Viewable.class; }
+        };
+        TransformController controller = new TransformController(cities, null);
+        var group = new domain.transform.TypeSpecGroup("Typed",
+                new domain.transform.TypeSpec("City", java.util.Map.of()), cities);
+        group.reproduce(List.of(paris));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> controller.createSubclassFromGroup("TypedCity", "City", group));
+        assertTrue(error.getMessage().contains("Type-spec transformation steps are not implemented"));
+    }
+}

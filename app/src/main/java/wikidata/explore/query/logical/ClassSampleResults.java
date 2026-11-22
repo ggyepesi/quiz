@@ -1,10 +1,10 @@
 package wikidata.explore.query.logical;
 
 import objectview.Viewable;
-import wikidata.explore.codegen.GeneratedViewableRuntime;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.compile.codegen.GeneratedViewableRuntime;
+import domain.runtime.WikidataDynamicObject;
+import domain.build.GenerationPipeline;
+import domain.config.GeneratedProjectModel;
 import wikidata.explore.query.result.ClassSampleResult;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -26,7 +26,7 @@ final class ClassSampleResults {
     private static List<String> partsOtherThan(
             GeneratedProjectModel snapshot, String requestedClass) {
         List<String> parts = new java.util.ArrayList<>(
-                wikidata.explore.model.MembershipPattern.partClassNames(snapshot));
+                domain.config.MembershipPattern.partClassNames(snapshot));
         parts.remove(requestedClass == null ? "" : requestedClass.trim());
         return parts;
     }

@@ -1,6 +1,6 @@
 # Discovery workbench
 
-`discovery.DiscoveryApp` opens one bounded workbench over a saved project. It answers
+`domain.datasource.discovery.app.DiscoveryApp` opens one bounded workbench over a saved project. It answers
 "what could this source add to these instances?" before anything is configured.
 
 ## One selection, one tab per source

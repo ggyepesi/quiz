@@ -1,0 +1,198 @@
+package domain.config;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import domain.datasource.graph.constraint.GraphNodeCondition;
+import domain.datasource.graph.constraint.GraphRelationAbsent;
+import domain.datasource.graph.constraint.GraphRelationExists;
+import domain.datasource.graph.constraint.GraphRelationReaches;
+
+import java.io.File;
+import java.io.IOException;
+
+/**
+ * Persists a {@link GeneratedProjectModel} (the editable class/field config) to
+ * JSON, so a model edited in the workbench can be saved alongside its generated
+ * instances and rule tree.
+ *
+ * <p>Field-only visibility mirrors {@code RuleTreeSerializer}, so the model's
+ * fluent accessors aren't mistaken for getters and each value is written once.</p>
+ */
+public final class GeneratedProjectModelStore {
+
+    private final ObjectMapper mapper;
+
+    public GeneratedProjectModelStore() {
+        mapper = new ObjectMapper();
+        mapper.setVisibility(
+                PropertyAccessor.ALL,
+                JsonAutoDetect.Visibility.NONE);
+        mapper.setVisibility(
+                PropertyAccessor.FIELD,
+                JsonAutoDetect.Visibility.ANY);
+        mapper.activateDefaultTypingAsProperty(
+                BasicPolymorphicTypeValidator.builder()
+                                             .allowIfSubType("domain.")
+                                             .allowIfSubType("java.util")
+                                             .build(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                "@class");
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        // A model must serialize to the same bytes every time it is written. Map.copyOf
+        // — which SourceRecipe.parameters is — iterates in an order the JVM randomizes
+        // per process, so an untouched model produced a different file, and a different
+        // SHA-256, on each restart. DomainSave.signature is that hash, so a domain could
+        // report its instances stale purely because the workbench had been reopened.
+        // Parameters are read by name and their order means nothing, so fixing it costs
+        // nothing and makes the signature answer the question it claims to.
+        mapper.enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+        // Persistence binds to the neutral graph contract here. Jackson annotations
+        // must not leak into domain.datasource.graph, whose boundary test deliberately permits
+        // only neutral foundations.
+        mapper.addMixIn(GraphNodeCondition.class, GraphNodeConditionJson.class);
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+    @JsonSubTypes({
+            @JsonSubTypes.Type(value = GraphRelationAbsent.class, name = "relation-absent"),
+            @JsonSubTypes.Type(value = GraphRelationExists.class, name = "relation-exists"),
+            @JsonSubTypes.Type(value = GraphRelationReaches.class, name = "relation-reaches"),
+            @JsonSubTypes.Type(value = domain.datasource.graph.constraint.GraphRelationReachesUnder.class,
+                    name = "relation-reaches-under"),
+            @JsonSubTypes.Type(value = domain.datasource.graph.constraint.GraphNodeIsUnder.class,
+                    name = "node-is-under")
+    })
+    private abstract static class GraphNodeConditionJson { }
+
+    public void save(
+            GeneratedProjectModel model,
+            File file) throws IOException {
+
+        if (model == null) {
+            throw new IllegalArgumentException(
+                    "model must not be null");
+        }
+
+        OwnedClassSemantics.synchronizeOwnerReferences(model);
+        model.ensureDeclarationIdentities();
+        GeneratedProjectModelValidator.ValidationResult validation =
+                GeneratedProjectModelValidator.validate(model);
+
+        if (!validation.valid()) {
+            throw new IOException(
+                    "Cannot save invalid model:"
+                            + System.lineSeparator()
+                            + validation.format());
+        }
+
+        PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        FieldSourceBindings.synchronizeForSave(model);
+        model.ensureDeclarationIdentities();
+
+        File parent = file.getParentFile();
+        if (parent != null) {
+            parent.mkdirs();
+        }
+
+        // A terminating newline, because these files are checked in: without one git
+        // prints "\ No newline at end of file" against any change that touches the last
+        // line, and POSIX tools treat the final line as truncated. "\n" rather than the
+        // platform separator, so a model saved on Windows is byte-identical to the same
+        // model saved here.
+        //
+        // The newline belongs to the FILE and not to toJson, which feeds
+        // DomainSave.signature: changing that string would change the SHA-256 of every
+        // model and make every saved domain read as stale.
+        java.nio.file.Files.writeString(file.toPath(),
+                mapper.writeValueAsString(model.withoutResolvedImports()) + "\n");
+    }
+
+    public String toJson(
+            GeneratedProjectModel model) throws IOException {
+
+        if (model == null) {
+            throw new IllegalArgumentException(
+                    "model must not be null");
+        }
+
+        OwnedClassSemantics.synchronizeOwnerReferences(model);
+        model.ensureDeclarationIdentities();
+        GeneratedProjectModelValidator.ValidationResult validation =
+                GeneratedProjectModelValidator.validate(model);
+
+        if (!validation.valid()) {
+            throw new IOException(
+                    "Cannot serialize invalid model:"
+                            + System.lineSeparator()
+                            + validation.format());
+        }
+
+        PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        FieldSourceBindings.synchronizeForSave(model);
+        model.ensureDeclarationIdentities();
+
+        return mapper.writeValueAsString(model);
+    }
+
+    public GeneratedProjectModel load(
+            File file) throws IOException {
+
+        GeneratedProjectModel authored = loadRaw(file);
+        if (authored.imports().isEmpty()) return authored;
+        File root = file.getParentFile() == null ? null : file.getParentFile().getParentFile();
+        try {
+            return ModelImportResolver.resolve(authored, name -> {
+                if (root == null) throw new IOException("Model directory is unavailable");
+                File source = dataset.DomainStorage.in(root).modelFileOf(name);
+                if (source == null || !source.isFile()) {
+                    throw new IOException("Saved model not found: " + name);
+                }
+                return loadRaw(source);
+            });
+        } catch (IllegalStateException failure) {
+            throw new IOException(failure.getMessage(), failure);
+        }
+    }
+
+    GeneratedProjectModel loadRaw(File file) throws IOException {
+
+        JsonNode tree = mapper.readTree(file);
+        migrateRemovedCanonicalKind(tree);
+        GeneratedProjectModel model = mapper.treeToValue(tree, GeneratedProjectModel.class);
+        OwnedClassSemantics.migrateLegacy(model);
+        model.ensureDeclarationIdentities();
+        model.reconcileSourceBindingTargets();
+        PopulationSourceBindings.synchronize(model);
+        ClassSourceBindings.synchronize(model);
+        StatementFieldSemantics.migrateLegacyObjectRoles(model);
+        FieldSourceBindings.migrateOnLoad(model);
+        model.ensureDeclarationIdentities();
+        return model;
+    }
+
+    /**
+     * One-way file migration for the discriminator removed from CanonicalSpec.
+     * Class construction is authoritative now, so the old value carries no state
+     * forward; removing it before binding lets old user-saved models load without
+     * retaining a dead compatibility property on the Java model.
+     */
+    private static void migrateRemovedCanonicalKind(JsonNode node) {
+        if (node == null) return;
+        if (node instanceof ObjectNode object) {
+            JsonNode canonical = object.get("canonical");
+            if (canonical instanceof ObjectNode canonicalObject) {
+                canonicalObject.remove("kind");
+            }
+        }
+        node.forEach(GeneratedProjectModelStore::migrateRemovedCanonicalKind);
+    }
+}

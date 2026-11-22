@@ -2,7 +2,7 @@ package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 import java.util.Map;
 

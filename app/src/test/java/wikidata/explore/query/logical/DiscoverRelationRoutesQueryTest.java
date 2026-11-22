@@ -79,7 +79,7 @@ class DiscoverRelationRoutesQueryTest {
                         entity + "Q401", null, null));
         var summary = wikidata.statement.EntityStatementSummary.fromRows(
                 java.util.List.of("Q101"), rows).getFirst();
-        java.util.Set<wikidata.explore.analysis.RelationRouteDiscovery.Segment> segments =
+        java.util.Set<domain.analysis.RelationRouteDiscovery.Segment> segments =
                 new java.util.LinkedHashSet<>();
 
         DiscoverRelationRoutesQuery.addOutgoing(summary, segments);

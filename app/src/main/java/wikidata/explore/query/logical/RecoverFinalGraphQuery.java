@@ -1,17 +1,17 @@
 package wikidata.explore.query.logical;
 
 import objectview.Viewable;
-import wikidata.explore.codegen.GeneratedViewableRuntime;
-import wikidata.explore.generation.CompiledPipelineRun;
-import wikidata.explore.generation.GenerationPipeline;
-import wikidata.explore.generation.GenerationRecoveryStore;
-import wikidata.explore.generation.GenerationRun;
-import wikidata.explore.generation.GraphCheckpoint;
-import wikidata.explore.generation.MaterializeStep;
-import wikidata.explore.generation.PipelineContext;
-import wikidata.explore.generation.PipelineExecutor;
-import wikidata.explore.generation.PipelineState;
-import wikidata.explore.model.GeneratedProjectModel;
+import domain.compile.codegen.GeneratedViewableRuntime;
+import domain.build.CompiledPipelineRun;
+import domain.build.GenerationPipeline;
+import domain.build.GenerationRecoveryStore;
+import domain.build.GenerationRun;
+import domain.build.GraphCheckpoint;
+import domain.build.MaterializeStep;
+import domain.build.PipelineContext;
+import domain.build.PipelineExecutor;
+import domain.build.PipelineState;
+import domain.config.GeneratedProjectModel;
 import work.Query;
 import work.QueryContext;
 
@@ -51,11 +51,11 @@ public final class RecoverFinalGraphQuery implements Query<GenerationRun> {
                     GraphCheckpoint checkpoint = GraphCheckpoint.finalGraph(
                             saved.objects(), saved.loadedDeclarations(),
                             saved.graphDiscovery(), recovered.quality(),
-                            wikidata.explore.generation.DomainSave.signature(model));
+                            domain.build.DomainSave.signature(model));
                     PipelineState state = PipelineState.from(checkpoint);
                     PipelineContext pipelineContext = new PipelineContext(
                             compiledRun, null,
-                            wikidata.explore.extract.GenerationLog.NOOP,
+                            domain.runtime.GenerationLog.NOOP,
                             context.cancellation());
                     new PipelineExecutor().with(new MaterializeStep())
                             .run(pipelineContext, state);

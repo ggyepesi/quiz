@@ -1,24 +1,18 @@
 package quiz;
 
-import aux.Constants;
-import flag.SportTeams;
-import flag.States;
-import language.Languages;
-import mythology.MythologyEntities;
-import nobel.NobelPrizes;
 import objectview.Viewable;
 import objectview.field.FieldPath;
 import objectview.group.ViewableGroup;
-import objectview.viewconfig.DomainViews;
 import objectview.viewconfig.ViewConfig;
-import oscar.OscarNominations;
-import presidents.USPresidents;
 import objectview.media.ImageBlurrer;
 import objectview.render.GroupView;
 import objectview.viewconfig.ViewConfigEditor;
 import domain.DomainModel;
-import quiz.transform.app.DomainCatalog;
-import quiz.transform.ui.DomainEntry;
+import domain.persistence.DatasetRegistry;
+import domain.transform.app.DomainCatalog;
+import domain.transform.FacetGroup;
+import domain.transform.ui.DomainEntry;
+import domain.workbench.ui.Dialogs;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -49,25 +43,6 @@ public class QuizFactory {
         // so it works from any entry point, not only those that load QuizFactory.)
     }
 
-    /** A built-in Viewable domain (icon, name, builder) — exposed so the transform
-     * domain navigator can load the live implementation for conversion. QuizFactory
-     * itself consumes only configured snapshots from {@link DomainCatalog#configured()}. */
-    public record BuiltInDomain(String icon, String name, DomainViews views) {}
-
-    private static final List<BuiltInDomain> BUILT_IN_DOMAINS = List.of(
-            new BuiltInDomain("🐉", "Mythology", new MythologyEntities()),
-            new BuiltInDomain("🏳️", "States", new States()),
-            new BuiltInDomain("⚽", "Sport Teams", new SportTeams()),
-            new BuiltInDomain("🏅", "Nobel Prizes", new NobelPrizes()),
-            new BuiltInDomain("🇺🇸", "US Presidents", new USPresidents()),
-            new BuiltInDomain("🗣️", "Languages", new Languages()),
-            new BuiltInDomain("🎬", "Oscars", new OscarNominations())
-    );
-
-    public static List<BuiltInDomain> builtInDomains() {
-        return BUILT_IN_DOMAINS;
-    }
-
     private static final String PREF_LAST_DOMAIN = "lastDomain";
     private static final Preferences PREFS =
             Preferences.userNodeForPackage(QuizFactory.class);
@@ -95,12 +70,7 @@ public class QuizFactory {
             ViewableGroup<?> root,
             boolean configuredGrouping) {}
 
-    public static void main(String[] args) {
-        Constants.setFontSizeMultiplier(1.5f);
-        SwingUtilities.invokeLater(QuizFactory::showQuizSelector);
-    }
-
-    private static void showQuizSelector() {
+    public static void showQuizSelector() {
         List<DomainEntry> configured = DomainCatalog.configured();
         JFrame frame = new JFrame("Select Quiz Source");
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
@@ -195,7 +165,7 @@ public class QuizFactory {
             int index = Integer.parseInt(group.getSelection().getActionCommand());
             DomainEntry selected = configured.get(index);
             PREFS.put(PREF_LAST_DOMAIN, selected.name());
-            if (!quiz.ui.Dialogs.confirmPersistence(
+            if (!Dialogs.confirmPersistence(
                     selectorFrame, "Load domain", selected.loadDescription())) return;
 
             startButton.setText("Loading \"" + selected.name() + "\"…");
@@ -319,7 +289,7 @@ public class QuizFactory {
         ViewableGroup<?> configuredRoot = domain.groupRoot(type);
         ViewableGroup<?> root = configuredRoot;
         if (root == null) {
-            quiz.group.ViewableGroup flat = new quiz.group.ViewableGroup("All " + type);
+            domain.group.ViewableGroup flat = new domain.group.ViewableGroup("All " + type);
             instances.forEach(instance -> flat.addMember(instance, false));
             root = flat;
         }
@@ -525,7 +495,7 @@ public class QuizFactory {
             QuizAnswerType type,
             objectview.group.ViewableGroup<?> selectedGroup) {
         return type == QuizAnswerType.CATEGORIZE
-                ? quiz.transform.FacetGroup.fieldPathOf(selectedGroup)
+                ? FacetGroup.fieldPathOf(selectedGroup)
                         .map(Set::of).orElseGet(Set::of)
                 : Set.of();
     }

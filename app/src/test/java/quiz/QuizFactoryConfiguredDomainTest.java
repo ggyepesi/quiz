@@ -9,7 +9,7 @@ import objectview.viewconfig.DomainGroupRoot;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import quiz.data.ViewableKeyExtractor;
-import quiz.transform.ui.ReflectionDomain;
+import domain.transform.ui.ReflectionDomain;
 
 import java.util.List;
 
@@ -61,7 +61,7 @@ class QuizFactoryConfiguredDomainTest {
     @Test void servedClassDrivesInstancesGroupAndDynamicFieldRows() {
         Person person = new Person("Charles", "king");
         Office office = new Office("Apostolic King of Hungary", 53);
-        quiz.group.ViewableGroup offices = new quiz.group.ViewableGroup("Offices");
+        domain.group.ViewableGroup offices = new domain.group.ViewableGroup("Offices");
         offices.addMember(office, false);
         DomainModel domain = domain(List.of(person, office), offices);
 
@@ -231,7 +231,7 @@ class QuizFactoryConfiguredDomainTest {
 
     private static DomainModel domain(
             List<? extends Viewable> values,
-            quiz.group.ViewableGroup offices) {
+            domain.group.ViewableGroup offices) {
         ReflectionDomain reflected = new ReflectionDomain(values);
         return new DelegatingDomainModel(reflected) {
             @Override public List<String> servedTypes() {

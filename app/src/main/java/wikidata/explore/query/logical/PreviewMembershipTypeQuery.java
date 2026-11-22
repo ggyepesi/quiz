@@ -2,12 +2,12 @@ package wikidata.explore.query.logical;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 import wikidata.explore.query.result.MembershipTypePreview;
-import wikidata.explore.query.template.rule.RuleNodeQueryBuilder;
-import wikidata.explore.rule.RuleNode;
+import wikidata.query.template.rule.RuleNodeQueryBuilder;
+import domain.compile.rule.RuleNode;
 import work.Query;
 import work.QueryContext;
 
@@ -158,8 +158,8 @@ public final class PreviewMembershipTypeQuery implements Query<MembershipTypePre
         RuleNode rule = classRule.backboneCopy(COUNT_BOUND + 1);
         rule.sourceQid(typeQid);
         rule.additionalSourceQids().clear();
-        rule.propertyPid(wikidata.explore.model.MembershipPattern.INSTANCE_OF);
-        rule.direction(wikidata.explore.model.RuleDirection.ITEM_TO_ROOT);
+        rule.propertyPid(domain.config.MembershipPattern.INSTANCE_OF);
+        rule.direction(domain.config.RuleDirection.ITEM_TO_ROOT);
         rule.membershipIncludesDescendants(includeSubclasses);
         rule.membershipQualifierCondition(null);
         rule.rankBySitelinks(false);

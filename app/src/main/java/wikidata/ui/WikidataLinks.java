@@ -62,7 +62,7 @@ public final class WikidataLinks {
                 }
                 """.formatted(property, property,
                         wikidata.query.LabelService.service());
-        return wikidata.explore.query.core.Datasource.WIKIDATA.browseUrl(query);
+        return wikidata.query.core.Datasource.WIKIDATA.browseUrl(query);
     }
 
     public static void open(String id) {

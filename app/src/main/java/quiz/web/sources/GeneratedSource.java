@@ -1,15 +1,15 @@
 package quiz.web.sources;
 
-import datasource.schema.FieldType;
+import domain.datasource.schema.FieldType;
 
 import objectview.field.DynamicFields;
 import objectview.Viewable;
 import objectview.group.ViewableGroup;
 import quiz.web.ViewableSource;
 import quiz.web.ViewableStore;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
-import quiz.transform.app.DynamicViewableGroup;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.transform.app.DynamicViewableGroup;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class GeneratedSource implements ViewableSource {
     // Nested vocabulary paths {dottedPath, label} — e.g. {"nominee.type","type"},
     // {"forWork.genre","genre"} — retained for field coverage, never auto-grouped.
     private final List<String[]> nestedVocabularyPaths;
-    private final wikidata.explore.model.GeneratedProjectModel model;   // for field expectations
+    private final domain.config.GeneratedProjectModel model;   // for field expectations
     private List<WikidataDynamicObject> groupRoots;
     private List<WikidataDynamicObjectJsonStore.LoadedGroupRoot> groupRootBindings = List.of();
     private List<WikidataDynamicObject> allObjects = List.of();
@@ -48,7 +48,7 @@ public class GeneratedSource implements ViewableSource {
     private boolean explicitGroupsBuilt;
 
     public GeneratedSource(String type, File file) {
-        this(type, file, (wikidata.explore.model.GeneratedProjectModel) null);
+        this(type, file, (domain.config.GeneratedProjectModel) null);
     }
 
     public GeneratedSource(String type, File file, File modelFile) {
@@ -56,7 +56,7 @@ public class GeneratedSource implements ViewableSource {
     }
 
     private GeneratedSource(String type, File file,
-                            wikidata.explore.model.GeneratedProjectModel model) {
+                            domain.config.GeneratedProjectModel model) {
         this.type = type;
         this.file = file;
         this.structural = structuralFor(type, model);
@@ -71,33 +71,33 @@ public class GeneratedSource implements ViewableSource {
     // Nomination.nominee.type -> NomineeType). Direct fields are already included by
     // the owning class's normal field coverage, so only nested paths are added here.
     static List<String[]> nestedVocabularyPaths(
-            String type, wikidata.explore.model.GeneratedProjectModel model) {
+            String type, domain.config.GeneratedProjectModel model) {
         List<String[]> out = new ArrayList<>();
         if (model == null) {
             return out;
         }
-        wikidata.explore.model.GeneratedClassModel t = model.findClass(type);
+        domain.config.GeneratedClassModel t = model.findClass(type);
         if (t == null) {
             return out;
         }
-        for (wikidata.explore.model.GeneratedFieldModel f : t.fields()) {
-            if (f == null || f.type() != datasource.schema.FieldType.ENTITY) {
+        for (domain.config.GeneratedFieldModel f : t.fields()) {
+            if (f == null || f.type() != domain.datasource.schema.FieldType.ENTITY) {
                 continue;
             }
-            wikidata.explore.model.GeneratedClassModel c =
+            domain.config.GeneratedClassModel c =
                     f.entityClassName() == null ? null : model.findClass(f.entityClassName());
             if (c == null) {
                 continue;   // f targets a vocabulary or nothing, not a nested class
             }
-            for (wikidata.explore.model.GeneratedFieldModel g : c.fields()) {
-                if (g == null || g.type() != datasource.schema.FieldType.ENTITY) {
+            for (domain.config.GeneratedFieldModel g : c.fields()) {
+                if (g == null || g.type() != domain.datasource.schema.FieldType.ENTITY) {
                     continue;
                 }
                 String vocab = g.entityClassName();
                 if (vocab != null && !vocab.isBlank()
                         && model.findClass(vocab) == null
                         && model.findSelection(vocab)
-                                instanceof wikidata.explore.model.VocabularySelection) {
+                                instanceof domain.config.VocabularySelection) {
                     out.add(new String[] {f.name() + "." + g.name(), g.name()});
                 }
             }
@@ -127,19 +127,19 @@ public class GeneratedSource implements ViewableSource {
      * start node says nothing about whether the class is quiz content.
      */
     private static boolean neverServed(
-            wikidata.explore.model.GeneratedProjectModel model, String type) {
+            domain.config.GeneratedProjectModel model, String type) {
         if (model == null || type == null) return false;
-        wikidata.explore.model.GeneratedClassModel clazz = model.findClass(type);
+        domain.config.GeneratedClassModel clazz = model.findClass(type);
         return clazz != null
-                && clazz.classKind() == wikidata.explore.model.ClassKind.GRAPH;
+                && clazz.classKind() == domain.config.ClassKind.GRAPH;
     }
 
-    private static wikidata.explore.model.GeneratedProjectModel loadModel(File modelFile) {
+    private static domain.config.GeneratedProjectModel loadModel(File modelFile) {
         if (modelFile == null || !modelFile.isFile()) {
             return null;
         }
         try {
-            return new wikidata.explore.model.GeneratedProjectModelStore().load(modelFile);
+            return new domain.config.GeneratedProjectModelStore().load(modelFile);
         } catch (Exception ignore) {
             return null;
         }
@@ -149,10 +149,10 @@ public class GeneratedSource implements ViewableSource {
     // statement-reification provenance is hidden; a field merely named "groups" is
     // ordinary data and follows the same rules as every other object reference.
     static Set<String> structuralFor(
-            String type, wikidata.explore.model.GeneratedProjectModel model) {
+            String type, domain.config.GeneratedProjectModel model) {
         Set<String> structural = new LinkedHashSet<>();
         if (model != null) {
-            wikidata.explore.model.GeneratedClassModel c = model.findClass(type);
+            domain.config.GeneratedClassModel c = model.findClass(type);
             if (c != null && c.reifiesStatements()) {
                 structural.add("source");
             }
@@ -179,7 +179,7 @@ public class GeneratedSource implements ViewableSource {
             // The served types' schemas, so the web reads nested types off the field
             // graph rather than off the objects.
             if (loaded.fieldGraph() != null) {
-                wikidata.explore.extract.SnapshotFieldGraph graph = loaded.fieldGraph();
+                domain.runtime.SnapshotFieldGraph graph = loaded.fieldGraph();
                 quiz.web.ViewableJson.registerTypeSchemas(
                         name -> graph.fieldSchema(name, java.util.Set.of()));
             }
@@ -187,11 +187,11 @@ public class GeneratedSource implements ViewableSource {
             groupRootBindings = loaded.groupRootBindings();
             // Bare references (unstamped, no substance — e.g. type values) read
             // as display-name strings on the web too, matching the workbench.
-            wikidata.explore.transform.BareReferenceCollapse.apply(all);
+            domain.compile.transform.BareReferenceCollapse.apply(all);
             boolean anyTyped = all.stream().anyMatch(o -> isStamped(o.typeName()));
             if (anyTyped) {
-                wikidata.explore.extract.SnapshotDomain domain =
-                        new wikidata.explore.extract.SnapshotDomain(all, loaded.fieldGraph());
+                domain.runtime.SnapshotDomain domain =
+                        new domain.runtime.SnapshotDomain(all, loaded.fieldGraph());
                 members = domain.instancesOf(type).stream()
                         .map(WikidataDynamicObject.class::cast)
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -248,7 +248,7 @@ public class GeneratedSource implements ViewableSource {
             types.addAll(loaded.fieldGraph().memberTypes());
         }
         if (types.isEmpty()) types.add(defaultType);
-        wikidata.explore.model.GeneratedProjectModel model = loadModel(modelFile);
+        domain.config.GeneratedProjectModel model = loadModel(modelFile);
         types.removeIf(type -> neverServed(model, type));
         java.util.List<String> conflicts = new java.util.ArrayList<>();
         for (String t : types) {
@@ -285,8 +285,8 @@ public class GeneratedSource implements ViewableSource {
                 }
             }
             List<objectview.viewconfig.DomainGroupRoot> resolved =
-                    quiz.transform.app.ConfiguredGroups.combine(
-                            quiz.transform.app.ConfiguredGroups.rootBindings(
+                    domain.transform.app.ConfiguredGroups.combine(
+                            domain.transform.app.ConfiguredGroups.rootBindings(
                                     model, allObjects), saved);
             explicitGroups = resolved.stream()
                     .filter(binding -> type.equals(binding.memberType()))
@@ -329,14 +329,14 @@ public class GeneratedSource implements ViewableSource {
     // is all "human" among the first alphabetical nominees) plus nested vocabulary paths.
     // Validation is deliberately independent from grouping.
     private List<Dimension> coveragePaths(Collection<? extends Viewable> sample) {
-        wikidata.explore.model.GeneratedClassModel c =
+        domain.config.GeneratedClassModel c =
                 model == null ? null : model.findClass(type);
         if (c == null) {
             return sampledCoveragePaths(sample);
         }
         List<Dimension> out = new ArrayList<>();
         java.util.Set<String> seen = new HashSet<>();
-        for (wikidata.explore.model.GeneratedFieldModel f : c.fields()) {
+        for (domain.config.GeneratedFieldModel f : c.fields()) {
             if (f == null || f.name() == null || structural.contains(f.name())) {
                 continue;
             }
@@ -382,14 +382,14 @@ public class GeneratedSource implements ViewableSource {
         if (model == null) {
             return "NONE";
         }
-        wikidata.explore.model.GeneratedClassModel c = model.findClass(type);
-        wikidata.explore.model.GeneratedFieldModel f = null;
+        domain.config.GeneratedClassModel c = model.findClass(type);
+        domain.config.GeneratedFieldModel f = null;
         for (String seg : path.split("\\.")) {
             if (c == null) {
                 return "NONE";
             }
             f = null;
-            for (wikidata.explore.model.GeneratedFieldModel cand : c.fields()) {
+            for (domain.config.GeneratedFieldModel cand : c.fields()) {
                 if (cand != null && seg.equals(cand.name())) {
                     f = cand;
                     break;

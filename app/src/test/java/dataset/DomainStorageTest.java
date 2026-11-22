@@ -2,7 +2,7 @@ package dataset;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.DatasetRegistry;
+import domain.persistence.DatasetRegistry;
 
 import java.io.File;
 import java.io.IOException;

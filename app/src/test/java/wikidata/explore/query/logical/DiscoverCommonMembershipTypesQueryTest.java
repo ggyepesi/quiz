@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 import wikidata.explore.query.result.MembershipTypeCandidate;
 
 import java.util.List;

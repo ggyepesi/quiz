@@ -1,11 +1,11 @@
 package wikidata.explore.query.logical;
 
-import datasource.graph.GraphExpansionPattern;
-import datasource.graph.GraphRelation;
-import datasource.graph.GraphTraversalDirection;
+import domain.datasource.graph.GraphExpansionPattern;
+import domain.datasource.graph.GraphRelation;
+import domain.datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 import wikidata.FakeWikidataSparqlClient;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.WikidataAccess;
 
 import java.util.List;
 import java.util.Map;

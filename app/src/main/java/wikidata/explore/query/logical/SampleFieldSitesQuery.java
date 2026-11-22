@@ -1,6 +1,6 @@
 package wikidata.explore.query.logical;
 
-import wikidata.explore.model.FieldSampleContext;
+import domain.config.FieldSampleContext;
 import wikidata.explore.query.result.TableQueryResult;
 import work.Query;
 import work.QueryContext;

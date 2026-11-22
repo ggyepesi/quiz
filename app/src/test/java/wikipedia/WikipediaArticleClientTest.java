@@ -1,7 +1,7 @@
 package wikipedia;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datasource.evidence.WikipediaArticle;
+import domain.datasource.evidence.WikipediaArticle;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,7 +49,7 @@ class WikipediaArticleClientTest {
                 + "<p>His principal cult centre was Hermopolis.</p>";
         WikipediaArticleClient.ParsedArticleText parsed =
                 WikipediaArticleClient.parseArticleText(extract);
-        var introduction = new datasource.evidence.ArticleIntroduction(parsed.text(),
+        var introduction = new domain.datasource.evidence.ArticleIntroduction(parsed.text(),
                 WikipediaArticleClient.sourceDocument("Thoth", "17", parsed.text(),
                         java.util.List.of(), parsed.links()), parsed.links());
 

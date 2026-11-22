@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "Character",
     "itemVar" : "character",
     "sourceQid" : "Q22988604",
@@ -20,12 +20,12 @@
     "membershipFilterIncludesDescendants" : false,
     "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "father",
       "propertyPid" : "P22",
       "propertyLabel" : "father",
@@ -38,7 +38,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "mother",
       "propertyPid" : "P25",
       "propertyLabel" : "mother",
@@ -51,7 +51,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "type",
       "propertyPid" : "P31",
       "propertyLabel" : "instance of",

@@ -1,12 +1,12 @@
 package wikidata.explore.query.logical;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.compiled.CompiledProjectModel;
-import wikidata.explore.compiled.ProjectModelCompiler;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.model.GeneratedProjectModel;
-import wikidata.explore.model.GeneratedProjectModelStore;
-import wikidata.explore.transform.ModelAggregates;
+import domain.compile.CompiledProjectModel;
+import domain.compile.ProjectModelCompiler;
+import domain.runtime.WikidataDynamicObject;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.compile.transform.ModelAggregates;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -72,8 +72,8 @@ class AggregateSampleIsCompleteGroupsTest {
     @Test void theObjectSideOfTheKeyIsWhatNarrowsTheRead() throws Exception {
         GeneratedProjectModel project = nobel();
         CompiledProjectModel compiled = ProjectModelCompiler.compile(project);
-        wikidata.explore.model.ProductionChain chain =
-                wikidata.explore.model.ProductionChain.of(
+        domain.config.ProductionChain chain =
+                domain.config.ProductionChain.of(
                         project.findClass("NobelPrize"), project);
 
         assertEquals("LaureatesWithMotivation", chain.population().className(),

@@ -3,7 +3,7 @@ package quiz.data;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
-import quiz.transform.DynamicViewable;
+import domain.transform.DynamicViewable;
 
 import java.util.List;
 import java.util.Map;

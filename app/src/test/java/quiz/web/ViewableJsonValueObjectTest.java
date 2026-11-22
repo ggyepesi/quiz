@@ -5,7 +5,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import objectview.ViewableAdapter;
 import objectview.annotations.Inline;
-import quiz.ValueObject;
+import domain.runtime.ValueObject;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

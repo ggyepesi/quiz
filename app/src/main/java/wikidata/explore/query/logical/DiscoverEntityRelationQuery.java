@@ -2,8 +2,8 @@ package wikidata.explore.query.logical;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;
-import wikidata.explore.query.core.Datasource;
-import wikidata.explore.query.core.WikidataAccess;
+import wikidata.query.core.Datasource;
+import wikidata.query.core.WikidataAccess;
 import work.Query;
 import work.QueryContext;
 

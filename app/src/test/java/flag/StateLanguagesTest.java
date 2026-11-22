@@ -3,10 +3,10 @@ package flag;
 import language.Language;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import quiz.transform.app.ViewableToWdo;
-import quiz.transform.ui.ReflectionDomain;
-import wikidata.explore.extract.WikidataDynamicObject;
-import wikidata.explore.extract.WikidataDynamicObjectJsonStore;
+import domain.transform.app.ViewableToWdo;
+import domain.transform.ui.ReflectionDomain;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
 import java.nio.file.Path;

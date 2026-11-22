@@ -2,7 +2,7 @@ package oscar;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

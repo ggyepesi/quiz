@@ -1,6 +1,6 @@
 package wikidata;
 
-import wikidata.explore.extract.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObject;
 
 import java.util.Map;
 

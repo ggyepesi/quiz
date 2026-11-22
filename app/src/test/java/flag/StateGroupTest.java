@@ -1,7 +1,7 @@
 package flag;
 
 import org.junit.jupiter.api.Test;
-import quiz.group.ViewableGroup;
+import domain.group.ViewableGroup;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

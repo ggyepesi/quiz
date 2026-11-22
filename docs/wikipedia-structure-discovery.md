@@ -32,7 +32,7 @@ read from that response, so they always describe the same revision (#461).
 
 ## First bounded workflow
 
-1. Run `discovery.DiscoveryApp` and open one saved project through the shared domain
+1. Run `domain.datasource.discovery.app.DiscoveryApp` and open one saved project through the shared domain
    chooser, or press DataSourceApp's Wikipedia discovery action, which hands over its
    selected instances and opens this tab.
 2. Choose a class whose loaded instances have Wikidata QIDs.

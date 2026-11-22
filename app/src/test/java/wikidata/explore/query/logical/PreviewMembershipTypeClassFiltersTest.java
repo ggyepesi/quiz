@@ -3,12 +3,12 @@ package wikidata.explore.query.logical;
 import org.junit.jupiter.api.Test;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.model.EntityBound;
-import wikidata.explore.model.GeneratedClassModel;
-import wikidata.explore.query.core.WikidataAccess;
+import domain.config.EntityBound;
+import domain.config.GeneratedClassModel;
+import wikidata.query.core.WikidataAccess;
 import wikidata.explore.query.result.MembershipTypePreview;
-import wikidata.explore.rule.RuleNode;
-import wikidata.explore.rule.RuleTreeCompiler;
+import domain.compile.rule.RuleNode;
+import domain.compile.rule.RuleTreeCompiler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +51,7 @@ class PreviewMembershipTypeClassFiltersTest {
             assertFalse(filters.passes("Q17"));
 
             String filtered = sparql.queries.getLast();
-            assertEquals(filtered, wikidata.explore.query.template.rule.RuleNodeQueryBuilder.valuesQuery(
+            assertEquals(filtered, wikidata.query.template.rule.RuleNodeQueryBuilder.valuesQuery(
                     PreviewMembershipTypeQuery.candidatePopulationRule(
                             episode, "Q63143903", false)),
                     "the filtered count runs generation's own root query");

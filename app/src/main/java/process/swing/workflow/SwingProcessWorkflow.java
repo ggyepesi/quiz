@@ -545,7 +545,7 @@ public final class SwingProcessWorkflow {
         void applyDecision(D decision, boolean wholeResult, String confirmation) {
             if (decision == null) return;
             if (wholeResult && confirmation != null && !confirmation.isBlank()) {
-                if (!quiz.ui.Dialogs.confirmPersistence(owner, applyVerb, confirmation)) return;
+                if (!domain.workbench.ui.Dialogs.confirmPersistence(owner, applyVerb, confirmation)) return;
             }
             applyDecisions(List.of(decision), wholeResult);
         }

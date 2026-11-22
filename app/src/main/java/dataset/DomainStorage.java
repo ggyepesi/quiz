@@ -1,7 +1,7 @@
 package dataset;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import quiz.DatasetRegistry;
+import domain.persistence.DatasetRegistry;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,7 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import wikidata.explore.model.ConstructInventory;
+import domain.config.ConstructInventory;
 
 /**
  * Where a named domain's files live, and how the registry records them.

@@ -22,7 +22,7 @@ absorbing it silently.
 - `4ab60f22` — discovery seeds separated from accepted statement values. A seeded
   target class finds subjects while leaving their other statements open; a vocabulary
   still does both jobs, by construction rather than by care.
-- `749531ec` — the graph contract (`datasource.graph`), the Wikidata adapter deriving
+- `749531ec` — the graph contract (`domain.datasource.graph`), the Wikidata adapter deriving
   the pattern from statement models, coverage persisted with the snapshot, and the
   frontier workflow that turns a chosen node into an expansion (superseded by
   `110d5ee2`, which stopped that choice editing the authored model).

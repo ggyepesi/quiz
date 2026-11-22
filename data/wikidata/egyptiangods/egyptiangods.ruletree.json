@@ -1,10 +1,10 @@
 {
-  "@class" : "wikidata.explore.rule.RuleTreeConfig",
+  "@class" : "domain.compile.rule.RuleTreeConfig",
   "version" : 1,
   "name" : "",
   "description" : "",
   "root" : {
-    "@class" : "wikidata.explore.rule.RuleNode",
+    "@class" : "domain.compile.rule.RuleNode",
     "name" : "EgyptianDeity",
     "itemVar" : "egyptianDeity",
     "sourceQid" : "Q146083",
@@ -20,12 +20,12 @@
     "membershipFilterIncludesDescendants" : false,
     "membershipFilterQualifierCondition" : null,
     "labelConfig" : {
-      "@class" : "wikidata.explore.rule.RuleLabelConfig",
+      "@class" : "domain.compile.rule.RuleLabelConfig",
       "requireLabel" : true,
       "language" : "en"
     },
     "includedFields" : [ "java.util.ArrayList", [ {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "image",
       "propertyPid" : "P18",
       "propertyLabel" : "image",
@@ -38,7 +38,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "domain",
       "propertyPid" : "P2925",
       "propertyLabel" : "domain of saint or deity",
@@ -51,7 +51,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "iconographicSymbol",
       "propertyPid" : "P4185",
       "propertyLabel" : "iconographic symbol",
@@ -64,7 +64,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "father",
       "propertyPid" : "P22",
       "propertyLabel" : "father",
@@ -77,7 +77,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "mother",
       "propertyPid" : "P25",
       "propertyLabel" : "mother",
@@ -90,7 +90,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "spouse",
       "propertyPid" : "P26",
       "propertyLabel" : "spouse",
@@ -103,7 +103,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "child",
       "propertyPid" : "P40",
       "propertyLabel" : "child",
@@ -116,7 +116,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "sibling",
       "propertyPid" : "P3373",
       "propertyLabel" : "sibling",
@@ -129,7 +129,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "partOf",
       "propertyPid" : "P361",
       "propertyLabel" : "part of",
@@ -142,7 +142,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "equivalent",
       "propertyPid" : "P460",
       "propertyLabel" : "said to be the same as",
@@ -155,7 +155,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "worshippedBy",
       "propertyPid" : "P1049",
       "propertyLabel" : "worshipped by",
@@ -168,7 +168,7 @@
       "membershipQualifierCondition" : null,
       "qualifierCondition" : null
     }, {
-      "@class" : "wikidata.explore.rule.RuleIncludedField",
+      "@class" : "domain.compile.rule.RuleIncludedField",
       "fieldName" : "symbolizedBy",
       "propertyPid" : "P4878",
       "propertyLabel" : "symbolizes",

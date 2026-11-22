@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public
-class LaureatesWithMotivation extends ViewableAdapter implements quiz.ValueObject {
+class LaureatesWithMotivation extends ViewableAdapter implements domain.runtime.ValueObject {
     private final List<Laureate> laureates = new ArrayList<>();
     private MotivationParser.Motivation motivation;
 
@@ -23,7 +23,7 @@ class LaureatesWithMotivation extends ViewableAdapter implements quiz.ValueObjec
         return laureates;
     }
 
-    /** A VALUE object ({@link quiz.ValueObject}) — inlined in its NobelPrize, no identity
+    /** A VALUE object ({@link domain.runtime.ValueObject}) — inlined in its NobelPrize, no identity
      *  invented. The laureate names are just its LABEL (shown as the inline section
      *  heading), not an identifier. */
     @Override

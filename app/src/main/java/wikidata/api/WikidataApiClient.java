@@ -93,7 +93,7 @@ public class WikidataApiClient {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String userAgent;
-    private final datasource.http.SharedHttpTransport transport;
+    private final domain.datasource.http.SharedHttpTransport transport;
     private work.CancellationToken cancellation = new work.CancellationToken();
     private WikidataFactStore facts = new WikidataFactStore();
     private int entityConcurrency = 6;
@@ -155,15 +155,15 @@ public class WikidataApiClient {
     }
 
     public WikidataApiClient(String userAgent) {
-        this(userAgent, datasource.http.SharedHttpTransport.standard());
+        this(userAgent, domain.datasource.http.SharedHttpTransport.standard());
     }
 
     public WikidataApiClient(String userAgent,
-            datasource.http.SharedHttpTransport transport) {
+            domain.datasource.http.SharedHttpTransport transport) {
         this.userAgent = userAgent == null
                 ? "WikidataApiClient/1.0" : userAgent;
         this.transport = transport == null
-                ? datasource.http.SharedHttpTransport.standard() : transport;
+                ? domain.datasource.http.SharedHttpTransport.standard() : transport;
     }
 
     public void log(java.util.function.Consumer<String> log) {
@@ -1874,7 +1874,7 @@ public class WikidataApiClient {
         int responseStatus = -1;
         long retryAfterMillis = -1;
         try {
-            datasource.http.SharedHttpTransport.Response response = transport.get(
+            domain.datasource.http.SharedHttpTransport.Response response = transport.get(
                     URI.create(url), Map.of(
                             "User-Agent", userAgent,
                             "Accept", "application/json",
@@ -1931,7 +1931,7 @@ public class WikidataApiClient {
                                + (System.nanoTime() - started) / 1_000_000
                                + "\n");
 
-            if (e instanceof datasource.http.SharedHttpTransport.ExchangeIOException exchange) {
+            if (e instanceof domain.datasource.http.SharedHttpTransport.ExchangeIOException exchange) {
                 responseStatus = exchange.status();
                 retryAfterMillis = RetryAfter.millis(exchange.header("Retry-After"), -1);
             }

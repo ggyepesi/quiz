@@ -2,7 +2,7 @@ package language;
 
 import objectview.annotations.Reference;
 import objectview.annotations.DisplayField;
-import quiz.source.ManualEntity;
+import domain.provenance.ManualEntity;
 
 import java.util.ArrayList;
 import java.util.List;
